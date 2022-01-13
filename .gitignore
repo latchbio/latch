@@ -1,0 +1,4 @@
+.*sw*
+build/
+dist/
+latch.egg-info
