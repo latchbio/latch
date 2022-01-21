@@ -14,11 +14,16 @@ from typing import List, Optional
 
 import docker
 import requests
-from latch.auth import PKCE, CSRFState, OAuth2
 from latch.config import LatchConfig, UserConfig
-from latch.constants import OAuth2Constants
 from latch.services import login
 from latch.utils import sub_from_jwt
+
+
+class RegisterOutput:
+
+    build_logs: List[str] = None
+    serialize_logs: List[str] = None
+    registration_response: dict = None
 
 
 class RegisterCtx:
@@ -31,7 +36,7 @@ class RegisterCtx:
     token = None
     version = None
     serialize_dir = None
-    url = "https://nucleus.ligma.ai/api/register-workflow"
+    latch_register_api_url = "https://nucleus.ligma.ai/api/register-workflow"
 
     def __init__(self, pkg_root: Path):
 
@@ -47,14 +52,12 @@ class RegisterCtx:
         self.pkg_root = pkg_root
         self.dkr_repo = LatchConfig.dkr_repo
 
-        # login flow
         user_conf = UserConfig()
         token = user_conf.token
         if token is None:
             login()
             token = user_conf.token
 
-        print("token: ", token)
         self.token = token
         self.user_sub = sub_from_jwt(token)
 
@@ -91,10 +94,10 @@ def register(pkg_root: str):
 
     build_logs = _build_image(ctx)
     with tempfile.TemporaryDirectory() as td:
-        serialize_logs = _serialize_pkg(ctx, Path(td).resolve())
-        [print(x) for x in serialize_logs]
-        quit()
-        register_response = _register_serialized_pkg()
+        td_path = Path(td).resolve()
+        serialize_logs = _serialize_pkg(ctx, td_path)
+        register_response = _register_serialized_pkg(ctx, td_path)
+        print(register_response)
 
 
 def _build_image(ctx: RegisterCtx) -> List[str]:
@@ -203,19 +206,14 @@ def _serialize_pkg(ctx: RegisterCtx, serialize_dir: Path) -> List[str]:
     return [x.decode("utf-8") for x in logs]
 
 
-def _register_serialized_pkg():
+def _register_serialized_pkg(ctx: RegisterCtx, serialize_dir: Path) -> dict:
 
-    token = None
-    version = None
-    serialize_dir = None
-    url = "https://nucleus.ligma.ai/api/register-workflow"
-
-    files = {"version": version.encode("utf-8")}
+    files = {"version": ctx.version.encode("utf-8")}
     for dirname, dirnames, fnames in os.walk(serialize_dir):
         for filename in fnames + dirnames:
             file = Path(dirname).resolve().joinpath(filename)
             files[file.name] = open(file, "rb")
 
-    headers = {"Authentication": f"Bearer {token}"}
-    response = requests.post(url, headers=headers, files=files)
+    headers = {"Authorization": f"Bearer {ctx.token}"}
+    response = requests.post(ctx.latch_register_api_url, headers=headers, files=files)
     return response.text
