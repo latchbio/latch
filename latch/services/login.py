@@ -5,7 +5,7 @@ Performs authorization flow with the latch platform.
 """
 
 from latch.auth import PKCE, CSRFState, OAuth2
-from latch.config import Config
+from latch.config import UserConfig
 from latch.constants import OAuth2Constants
 
 
@@ -19,6 +19,5 @@ def login():
             auth_code = oauth2_flow.authorization_request()
             token = oauth2_flow.access_token_request(auth_code)
 
-            config = Config()
-            if config.token_exists():
-                config.update_token(token)
+            config = UserConfig()
+            config.update_token(token)

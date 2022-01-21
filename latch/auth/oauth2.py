@@ -75,7 +75,7 @@ class OAuth2:
         url_parameters = {
             "scope": "openid profile email",
             "response_type": "code",
-            "redirect_uri": "http://127.0.0.1:5000/callback",  # TODO
+            "redirect_uri": "http://127.0.0.1:5050/callback",  # TODO
             "client_id": self.client_id,
             "code_challenge": self.pkce.challenge,
             "code_challenge_method": self.pkce.challenge_method,
@@ -85,7 +85,7 @@ class OAuth2:
         url = base_url + urllib.parse.urlencode(url_parameters)
         webbrowser.open_new(url)
 
-        server_name = ("", 5000)
+        server_name = ("", 5050)
         server = http.server.HTTPServer(server_name, _CallbackHandler)
         server.authorized = False
         while not server.authorized:
@@ -106,7 +106,7 @@ class OAuth2:
                 "client_id": self.client_id,
                 "code_verifier": self.pkce.verifier,
                 "code": auth_code,
-                "redirect_uri": "http://127.0.0.1:5000/callback",  # TODO
+                "redirect_uri": "http://127.0.0.1:5050/callback",  # TODO
             }
         ).encode("utf-8")
         print(
@@ -115,7 +115,7 @@ class OAuth2:
                 "client_id": self.client_id,
                 "code_verifier": self.pkce.verifier,
                 "code": auth_code,
-                "redirect_uri": "http://127.0.0.1:5000/callback",
+                "redirect_uri": "http://127.0.0.1:5050/callback",
             }
         )
         token_request = urllib.request.Request(token_url, token_body)
@@ -128,3 +128,4 @@ class OAuth2:
                 raise ValueError(f"Passed response is not json {json_response}")
 
         print("token: ", id_token)
+        return id_token
