@@ -43,12 +43,19 @@ class OAuth2:
                 except (KeyError, IndexError):
                     return
 
-                print("aha", code, state)
-
                 self.send_response(200)
                 self.send_header("Content-type", "html")
                 self.send_header("Content-Disposition", "inline")
                 self.end_headers()
+
+                if state != self.server.csrf_state:
+                    # TODO: log csrf attack for debugging but do not fail
+                    return
+
+                self.server.authorized = True
+                self.server.code = code
+                self.server.state = state
+
                 auth_response_html = """
                 <!DOCTYPE html>
                 <html lang="en">
@@ -63,19 +70,12 @@ class OAuth2:
                 """.encode(
                     "utf-8"
                 )
-
                 self.wfile.write(auth_response_html)
-
-                #
-                self.server.authorized = True
-
-                self.server.code = code
-                self.server.state = state
 
         url_parameters = {
             "scope": "openid profile email",
             "response_type": "code",
-            "redirect_uri": "http://127.0.0.1:5050/callback",  # TODO
+            "redirect_uri": self.redirect_url,
             "client_id": self.client_id,
             "code_challenge": self.pkce.challenge,
             "code_challenge_method": self.pkce.challenge_method,
@@ -88,12 +88,9 @@ class OAuth2:
         server_name = ("", 5050)
         server = http.server.HTTPServer(server_name, _CallbackHandler)
         server.authorized = False
+        server.csrf_state = self.csrf_state.state
         while not server.authorized:
             server.handle_request()
-
-        if server.state != self.csrf_state.state:
-            # TODO: log csrf attack for debugging but do not fail
-            return
 
         return server.code
 
@@ -106,18 +103,9 @@ class OAuth2:
                 "client_id": self.client_id,
                 "code_verifier": self.pkce.verifier,
                 "code": auth_code,
-                "redirect_uri": "http://127.0.0.1:5050/callback",  # TODO
+                "redirect_uri": self.redirect_url,
             }
         ).encode("utf-8")
-        print(
-            {
-                "grant_type": "authorization_code",
-                "client_id": self.client_id,
-                "code_verifier": self.pkce.verifier,
-                "code": auth_code,
-                "redirect_uri": "http://127.0.0.1:5050/callback",
-            }
-        )
         token_request = urllib.request.Request(token_url, token_body)
         token_request.add_header("Content-Type", "application/json")
         with urllib.request.urlopen(token_request) as f:
@@ -127,5 +115,4 @@ class OAuth2:
             except KeyError:
                 raise ValueError(f"Passed response is not json {json_response}")
 
-        print("token: ", id_token)
         return id_token
