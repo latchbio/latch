@@ -6,6 +6,8 @@ Hammers and nails.
 
 import base64
 
+import jwt
+
 
 def base64url_encode(bytestring: bytes) -> str:
     """Construct a "base64url" encoding of a bytestring.
@@ -19,3 +21,17 @@ def base64url_encode(bytestring: bytes) -> str:
     """
     # Padding must be stripped as specified in RFC.
     return base64.urlsafe_b64encode(bytestring).decode("utf-8").replace("=", "")
+
+
+def sub_from_jwt(token: str) -> str:
+    """Extract a user sub from a generic jwt."""
+
+    payload = jwt.decode(token, options={"verify_signature": False})
+    try:
+        sub = payload["sub"]
+    except KeyError:
+        raise ValueError(
+            "Provided token lacks a user sub in the data payload"
+            " and is not a valid token."
+        )
+    return sub
