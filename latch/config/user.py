@@ -1,5 +1,5 @@
 """
-config
+config.user
 ~~~~~~
 Repository for retrieving + updating user config values.
 """
@@ -7,7 +7,8 @@ Repository for retrieving + updating user config values.
 from pathlib import Path
 
 
-class Config:
+class UserConfig:
+    """User specific configuration persisted in `~/.latch/`."""
 
     _root = None
 
