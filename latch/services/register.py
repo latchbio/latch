@@ -90,10 +90,11 @@ def register(pkg_root: str):
     ctx = RegisterCtx(pkg_root)
 
     build_logs = _build_image(ctx)
-    [print(x) for x in build_logs]
-    quit()
-    serialize_logs = _serialize_pkg(ctx)
-    register_response = _register_serialized_pkg()
+    with tempfile.TemporaryDirectory() as td:
+        serialize_logs = _serialize_pkg(ctx, Path(td).resolve())
+        [print(x) for x in serialize_logs]
+        quit()
+        register_response = _register_serialized_pkg()
 
 
 def _build_image(ctx: RegisterCtx) -> List[str]:
@@ -118,7 +119,6 @@ def _build_image(ctx: RegisterCtx) -> List[str]:
 
                 if i.isfile():
                     try:
-                        print("path: ", path)
                         if full_path.name == "__init__.py":
                             pkg_name_candidate = full_path.parent.name
                             if ctx.pkg_name is not None:
@@ -168,10 +168,8 @@ def _build_image(ctx: RegisterCtx) -> List[str]:
             dfinfo.size = len(dockerfile.getvalue())
             dockerfile.seek(0)
             t.addfile(dfinfo, dockerfile)
-            print([x for x in t])
             f.seek(0)
 
-            print(ctx.image_tagged)
             build_logs = ctx.dkr_client.build(
                 fileobj=f,
                 custom_context=True,
@@ -182,19 +180,14 @@ def _build_image(ctx: RegisterCtx) -> List[str]:
     return [x.decode("utf-8") for x in build_logs]
 
 
-def _serialize_pkg():
-
-    serialize_dir = None
-    client = None
-    image_full = None
+def _serialize_pkg(ctx: RegisterCtx, serialize_dir: Path) -> List[str]:
 
     _serialize_cmd = ["make", "serialize"]
-
-    container = client.create_container(
-        image_full,
+    container = ctx.dkr_client.create_container(
+        ctx.image_tagged,
         command=_serialize_cmd,
         volumes=[str(serialize_dir)],
-        host_config=client.create_host_config(
+        host_config=ctx.dkr_client.create_host_config(
             binds={
                 str(serialize_dir): {
                     "bind": "/tmp/output",
@@ -204,8 +197,8 @@ def _serialize_pkg():
         ),
     )
     container_id = container.get("Id")
-    client.start(container_id)
-    logs = client.logs(container_id, stream=True)
+    ctx.dkr_client.start(container_id)
+    logs = ctx.dkr_client.logs(container_id, stream=True)
 
     return [x.decode("utf-8") for x in logs]
 
