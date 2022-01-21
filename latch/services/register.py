@@ -8,6 +8,7 @@ import os
 import tarfile
 import tempfile
 import textwrap
+from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
 from typing import List, Optional
@@ -19,15 +20,14 @@ from latch.services import login
 from latch.utils import sub_from_jwt
 
 
+@dataclass
 class RegisterOutput:
-
     build_logs: List[str] = None
     serialize_logs: List[str] = None
     registration_response: dict = None
 
 
 class RegisterCtx:
-
     dkr_repo: Optional[str] = None
     dkr_client: docker.APIClient = None
     pkg_name: str = None
@@ -81,7 +81,7 @@ class RegisterCtx:
         return f"{self.dkr_repo}/{self.image}:{self.version}"
 
 
-def register(pkg_root: str):
+def register(pkg_root: str) -> RegisterOutput:
     """
 
     * Constructs a container from a workflow package.
@@ -96,8 +96,13 @@ def register(pkg_root: str):
     with tempfile.TemporaryDirectory() as td:
         td_path = Path(td).resolve()
         serialize_logs = _serialize_pkg(ctx, td_path)
-        register_response = _register_serialized_pkg(ctx, td_path)
-        print(register_response)
+        registration_response = _register_serialized_pkg(ctx, td_path)
+
+    return RegisterOutput(
+        build_logs=build_logs,
+        serialize_logs=serialize_logs,
+        registration_response=registration_response,
+    )
 
 
 def _build_image(ctx: RegisterCtx) -> List[str]:
