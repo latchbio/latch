@@ -7,7 +7,7 @@ Context manager to control state for PKCE flow.
 import hashlib
 import secrets
 
-from latch.utils import base64url_encode
+from latch.auth.utils import base64url_encode
 
 
 class PKCE:
