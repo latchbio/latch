@@ -4,23 +4,11 @@ utils
 Hammers and nails.
 """
 
-import base64
-
 import jwt
+import requests
 
-
-def base64url_encode(bytestring: bytes) -> str:
-    """Construct a "base64url" encoding of a bytestring.
-
-    Not that this is a modified Base 64 encoding with a url + filename safe
-    alphabet. This "base64url" encoding is _not_ the same thing as a
-    "base64" encoding.
-
-    The differences are enumerated
-    [here](https://datatracker.ietf.org/doc/html/rfc4648#section-5).
-    """
-    # Padding must be stripped as specified in RFC.
-    return base64.urlsafe_b64encode(bytestring).decode("utf-8").replace("=", "")
+from latch.config import UserConfig
+from latch.services import login
 
 
 def sub_from_jwt(token: str) -> str:
@@ -35,3 +23,25 @@ def sub_from_jwt(token: str) -> str:
             " and is not a valid token."
         )
     return sub
+
+
+def retrieve_or_login() -> str:
+    """Returns a valid token, prompting a login flow if needed."""
+
+    user_conf = UserConfig()
+    token = user_conf.token
+    if token == "" or not token_is_valid(token):
+        token = login()
+    return token
+
+
+def token_is_valid(token: str) -> bool:
+
+    headers = {"Authorization": f"Bearer {token}"}
+    response = requests.get(
+        "https://nucleus.latch.bio/api/protected-sdk-ping", headers=headers
+    )
+
+    if response.status_code == 200:
+        return True
+    return False
