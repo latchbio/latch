@@ -1,2 +1,4 @@
 git+ssh://git@github.com/latchbio/flaightkit
 pyjwt
+click
+requests
