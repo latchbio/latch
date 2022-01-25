@@ -2,13 +2,11 @@ import math
 from pathlib import Path
 
 import requests
-from latch.config import UserConfig
+from latch.utils import retrieve_or_login
 
 
 def cp(local_file: str, remote_dest: str):
-
-    user_conf = UserConfig()
-    token = user_conf.token
+    """Copies local file to remote latch uri."""
 
     local_file = Path(local_file).resolve()
     if local_file.exists() is not True:
@@ -19,6 +17,8 @@ def cp(local_file: str, remote_dest: str):
             remote_dest = f"latch:/{remote_dest}"
         else:
             raise ValueError(f"{remote_dest} must be prefixed with 'latch://' or '/'")
+
+    token = retrieve_or_login()
 
     with open(local_file, "rb") as f:
         f.seek(0, 2)
@@ -34,7 +34,7 @@ def cp(local_file: str, remote_dest: str):
         "content_type": "text/plain",
         "nrof_parts": nrof_parts,
     }
-    url = "https://nucleus.ligma.ai/sdk/initiate-multipart-upload"
+    url = "https://nucleus.latch.bio/sdk/initiate-multipart-upload"
     headers = {"Authorization": f"Bearer {token}"}
     response = requests.post(url, headers=headers, json=data)
 
@@ -53,6 +53,6 @@ def cp(local_file: str, remote_dest: str):
             parts.append({"ETag": etag, "PartNumber": i + 1})
 
     data = {"path": path, "upload_id": upload_id, "parts": parts}
-    url = "https://nucleus.ligma.ai/sdk/complete-multipart-upload"
+    url = "https://nucleus.latch.bio/sdk/complete-multipart-upload"
     headers = {"Authorization": f"Bearer {token}"}
     response = requests.post(url, headers=headers, json=data)
