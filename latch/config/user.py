@@ -26,10 +26,6 @@ class UserConfig:
             return False
         return True
 
-    def token_valid():
-        # hit protected ping endpoint
-        ...
-
     @property
     def token(self) -> str:
         """The ID token used to authorize a user in interacting with Latch.
