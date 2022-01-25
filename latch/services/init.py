@@ -22,11 +22,24 @@ def init(pkg_name: Path):
             " Remove it or pick another name for your latch workflow."
         )
 
+    pkg_root = pkg_root.joinpath("latch")
+    pkg_root.mkdir(parents=True)
+
     init_f = pkg_root.joinpath("__init__.py")
     with open(init_f, "w") as f:
         f.write(
             textwrap.dedent(
                 f'''
+
+                    """
+                    {pkg_name}
+                    ~~
+                    Some biocompute
+                    """
+
+                    from flytekit import task, workflow
+                    from flytekit.types.file import FlyteFile
+
                     @task()
                     def {pkg_name}_task(
                         nucleotide: str, fastq_file: FlyteFile, output: FlyteFile
@@ -36,14 +49,14 @@ def init(pkg_name: Path):
 
                     @workflow
                     def {pkg_name}_wf(nucleotide: str, fastq_file: FlyteFile, output: FlyteFile):
-                        """foo
+                        """Write a short description about your workflow here.
 
-                        foo
+                        Write a longer descrption about your workflow here.
 
                         Args:
 
                             nucleotide:
-                              nucleotide
+                              Describe the nucleotide parameter here.
 
                               __metadata__:
                                 display_name: nucleotide sequence
@@ -52,7 +65,7 @@ def init(pkg_name: Path):
                                     message: Sequence must contain characters a,t,c,g,A,T,G,C
 
                             fastq_file:
-                              fastq_file
+                              Describe the fastq_file parameter here.
 
                               __metadata__:
                                 display_name: fastq_file
@@ -64,18 +77,16 @@ def init(pkg_name: Path):
 
 
                             output:
-                              nada
+                              Describe the output parameter here.
 
                               __metadata__:
-                                display_name: output
+                                display_name: Output
                                 output: true
 
                         """
-                        return {pkg_name}_tsk(
+                        return {pkg_name}_task(
                             nucleotide=nucleotide, fastq_file=fastq_file, output=output
                         )
-
-
 
                     '''
             )
@@ -83,4 +94,4 @@ def init(pkg_name: Path):
 
     version_f = pkg_root.joinpath("version")
     with open(version_f, "w") as f:
-        f.write("a version?")
+        f.write("0.0.0")
