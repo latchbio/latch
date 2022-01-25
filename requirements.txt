@@ -11,7 +11,9 @@ certifi==2021.10.8
 charset-normalizer==2.0.10
     # via requests
 click==7.1.2
-    # via flytekit
+    # via
+    #   -r requirements.in
+    #   flytekit
 croniter==1.1.0
     # via flytekit
 dataclasses-json==0.5.6
@@ -90,6 +92,7 @@ regex==2021.11.10
     # via docker-image-py
 requests==2.27.1
     # via
+    #   -r requirements.in
     #   flytekit
     #   responses
 responses==0.17.0
