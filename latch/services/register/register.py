@@ -33,10 +33,13 @@ def register(pkg_root: str) -> RegisterOutput:
         serialize_logs = _serialize_pkg(ctx, td_path)
         registration_response = _register_serialized_pkg(ctx, td_path)
 
-    return RegisterOutput(
-        build_logs=build_logs,
-        serialize_logs=serialize_logs,
-        registration_response=registration_response,
+    return (
+        RegisterOutput(
+            build_logs=build_logs,
+            serialize_logs=serialize_logs,
+            registration_response=registration_response,
+        ),
+        ctx.pkg_name,
     )
 
 
@@ -56,7 +59,7 @@ def _build_image(ctx: RegisterCtx) -> List[str]:
     with tempfile.NamedTemporaryFile() as f:
         with tarfile.open(mode="w", fileobj=f) as t:
 
-            for path in _build_file_list(ctx.pkg_root):
+            for path in _build_file_list(str(ctx.pkg_root)):
                 full_path = Path(ctx.pkg_root).resolve().joinpath(path)
                 i = t.gettarinfo(full_path, arcname=path)
 
