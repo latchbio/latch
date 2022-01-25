@@ -9,9 +9,8 @@ from pathlib import Path
 from typing import List, Optional
 
 import docker
-from latch.config import LatchConfig, UserConfig
-from latch.services import login
-from latch.utils import sub_from_jwt
+from latch.config import LatchConfig
+from latch.utils import retrieve_or_login, sub_from_jwt
 
 
 @dataclass
@@ -30,7 +29,7 @@ class RegisterCtx:
     token = None
     version = None
     serialize_dir = None
-    latch_register_api_url = "https://nucleus.ligma.ai/api/register-workflow"
+    latch_register_api_url = "https://nucleus.latch.bio/api/register-workflow"
 
     def __init__(self, pkg_root: Path):
 
@@ -43,17 +42,11 @@ class RegisterCtx:
                 " Docker is running before attempting to register a workflow."
             )
 
-        self.pkg_root = pkg_root
+        self.pkg_root = Path(pkg_root).resolve()
         self.dkr_repo = LatchConfig.dkr_repo
 
-        user_conf = UserConfig()
-        token = user_conf.token
-        if token is None:
-            login()
-            token = user_conf.token
-
-        self.token = token
-        self.user_sub = sub_from_jwt(token)
+        self.token = retrieve_or_login()
+        self.user_sub = sub_from_jwt(self.token)
 
     @property
     def image(self):
@@ -67,6 +60,7 @@ class RegisterCtx:
 
     @property
     def image_tagged(self):
+        # TODO (kenny): check version is valid for docker
         if self.image is None or self.version is None:
             raise ValueError(
                 "Attempting to create a tagged image name without first"
