@@ -6,7 +6,7 @@ Context manager to hold state preventing CSRF attacks.
 
 import secrets
 
-from latch.utils import base64url_encode
+from latch.auth.utils import base64url_encode
 
 
 class CSRFState:
