@@ -9,7 +9,7 @@ from latch.config import UserConfig
 from latch.constants import OAuth2Constants
 
 
-def login():
+def login() -> str:
     """Retrieves + persists an access token to a user's latch resources."""
 
     with PKCE() as pkce:
@@ -21,3 +21,4 @@ def login():
 
             config = UserConfig()
             config.update_token(token)
+            return token
