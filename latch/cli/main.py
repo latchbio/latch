@@ -44,7 +44,7 @@ def init(pkg_name: str):
 @click.argument("remote_dest", nargs=1)
 def cp(local_file: str, remote_dest: str):
     _cp(local_file, remote_dest)
-    click.secho(f"Copied {local_file} to {remote_dest}.", fg="green")
+    click.secho(f"Successfully copied {local_file} to {remote_dest}.", fg="green")
 
 
 main.add_command(register)
