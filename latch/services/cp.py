@@ -25,7 +25,7 @@ def cp(local_file: str, remote_dest: str):
         total_bytes = f.tell()
         f.seek(0, 0)
 
-    chunk_size = 10000000
+    chunk_size = 5000000
     nrof_parts = math.ceil(total_bytes / chunk_size)
 
     data = {
@@ -44,10 +44,23 @@ def cp(local_file: str, remote_dest: str):
     urls = r_json["urls"]
 
     parts = []
+    print(f"\t{local_file.name} -> {remote_dest}")
+    total_mb = total_bytes // 1000000
     for i in range(nrof_parts):
+
+        if i < nrof_parts - 1:
+            _end_char = "\r"
+        else:
+            _end_char = "\n"
+
+        print(
+            f"\t\tcopying part {i+1}/{nrof_parts} ~ {min(total_mb, (chunk_size//1000000)*(i+1))}MB/{total_mb}MB",
+            end=_end_char,
+            flush=True,
+        )
         url = urls[str(i)]
         with open(local_file, "rb") as f:
-            f.seek(0, i * chunk_size)
+            f.seek(i * chunk_size, 0)
             resp = requests.put(url, f.read(chunk_size))
             etag = resp.headers["ETag"]
             parts.append({"ETag": etag, "PartNumber": i + 1})
