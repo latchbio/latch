@@ -4,6 +4,8 @@ cli.main
 CLI entrypoints.
 """
 
+from typing import Union
+
 import click
 from latch.services import cp as _cp
 from latch.services import init as _init
@@ -19,14 +21,27 @@ def main():
 
 @click.command("register")
 @click.argument("pkg_root", nargs=1, type=click.Path(exists=True))
-def register(pkg_root: str):
-    _, pkg_name = _register(pkg_root)
-    click.secho(f"Successfully registered {pkg_name}.", fg="green")
+@click.option(
+    "--dockerfile",
+    default=None,
+    help="An explicit Dockerfile to define your workflow's execution environment",
+)
+@click.option(
+    "--pkg_name",
+    default=None,
+    help="The name of your workflow package (the folder with __init__.py). This is a mandatory option if --dockerfile is provided",
+)
+def register(pkg_root: str, dockerfile: Union[str, None], pkg_name: Union[str, None]):
+    _register(pkg_root, dockerfile, pkg_name)
+    click.secho(
+        "Successfully registered workflow. View @ console.latch.bio.", fg="green"
+    )
 
 
 @click.command("login")
 def login():
     _login()
+    click.secho("Successfully logged into LatchBio.", fg="green")
 
 
 @click.command("init")
