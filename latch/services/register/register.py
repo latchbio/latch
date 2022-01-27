@@ -4,6 +4,7 @@ services.register
 Registers workflows with the latch platform.
 """
 
+import json
 import os
 import tarfile
 import tempfile
@@ -34,16 +35,6 @@ def register(
     explicitly, it will be used for image construction instead.
     """
 
-    ctx = RegisterCtx(pkg_root)
-    print(f"Initializing registration for {pkg_root}")
-
-    if dockerfile is not None:
-        dockerfile = Path(dockerfile).resolve()
-        if not dockerfile.exists():
-            raise OSError(f"Provided Dockerfile {dockerfile} does not exist.")
-
-    build_logs = _build_image(ctx, dockerfile, pkg_name)
-
     def _print_build_logs(build_logs):
         print(f"\tBuilding Docker image for {pkg_root}")
         for x in build_logs:
@@ -55,17 +46,45 @@ def register(
             elif line is not None:
                 print(f"\t\t{line}", end="")
 
+    def _print_serialize_logs(serialize_logs):
+        print("\tSerializing workflow in image:")
+        for x in serialize_logs:
+            print(f"\t\t{x}", end="")
+
+    def _print_reg_resp(resp):
+        print("\tRegistering workflow with LatchBio.")
+        print("\tstdout:")
+        for x in resp["stdout"].split("\n"):
+            print(f"\t\t{x}")
+        print("\tstderr:")
+        for x in resp["stderr"].split("\n"):
+            print(f"\t\t{x}")
+
+    ctx = RegisterCtx(pkg_root)
+    print(f"Initializing registration for {pkg_root}")
+
+    if dockerfile is not None:
+        dockerfile = Path(dockerfile).resolve()
+        if not dockerfile.exists():
+            raise OSError(f"Provided Dockerfile {dockerfile} does not exist.")
+
+    build_logs = _build_image(ctx, dockerfile, pkg_name)
     _print_build_logs(build_logs)
+
     with tempfile.TemporaryDirectory() as td:
         td_path = Path(td).resolve()
+
         serialize_logs = _serialize_pkg(ctx, td_path)
-        registration_response = _register_serialized_pkg(ctx, td_path)
+        _print_serialize_logs(serialize_logs)
+
+        reg_resp = _register_serialized_pkg(ctx, td_path)
+        _print_reg_resp(reg_resp)
 
     return (
         RegisterOutput(
             build_logs=build_logs,
             serialize_logs=serialize_logs,
-            registration_response=registration_response,
+            registration_response=reg_resp,
         ),
         ctx.pkg_name,
     )
@@ -216,4 +235,4 @@ def _register_serialized_pkg(ctx: RegisterCtx, serialize_dir: Path) -> dict:
 
     headers = {"Authorization": f"Bearer {ctx.token}"}
     response = requests.post(ctx.latch_register_api_url, headers=headers, files=files)
-    return response.text
+    return response.json()
