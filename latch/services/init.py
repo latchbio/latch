@@ -30,7 +30,6 @@ def init(pkg_name: Path):
         f.write(
             textwrap.dedent(
                 f'''
-
                     """
                     {pkg_name}
                     ~~
@@ -39,55 +38,59 @@ def init(pkg_name: Path):
 
                     from flytekit import task, workflow
                     from flytekit.types.file import FlyteFile
+                    from flytekit.types.directory import FlyteDirectory
 
                     @task()
                     def {pkg_name}_task(
-                        nucleotide: str, fastq_file: FlyteFile, output: FlyteFile
+                        sample_input: FlyteFile, output_dir: FlyteDirectory
                     ) -> str:
                         return "foo"
 
 
                     @workflow
-                    def {pkg_name}_wf(nucleotide: str, fastq_file: FlyteFile, output: FlyteFile):
-                        """Write a short description about your workflow here.
+                    def {pkg_name}(
+                        sample_input: FlyteFile, output_dir: FlyteDirectory
+                    ) -> str:
+                        """Description...
 
-                        Write a longer descrption about your workflow here.
+                        {pkg_name} markdown
+                        ----
+
+                        Write some documentation about your workflow in
+                        markdown here:
+
+                        > Markdown syntax works as expected.
+
+                        ## Foobar
+
+                        __metadata__:
+                            display_name: {pkg_name}
+                            author:
+                                name: n/a
+                                email:
+                                github:
+                            repository:
+                            license:
+                                id: MIT
 
                         Args:
 
-                            nucleotide:
-                              Describe the nucleotide parameter here.
+                            sample_input:
+                              A description
 
                               __metadata__:
-                                display_name: nucleotide sequence
-                                rules:
-                                  - regex: "^[atcgATCG]+$"
-                                    message: Sequence must contain characters a,t,c,g,A,T,G,C
+                                display_name: Sample Param
 
-                            fastq_file:
-                              Describe the fastq_file parameter here.
+                            output_dir:
+                              A description
 
                               __metadata__:
-                                display_name: fastq_file
-                                rules:
-                                  - regex: "[^\/]$"
-                                    message: Trailing '/' are not allowed in file names
-                                  - regex: "(.fastq.gz|.fastq)$"
-                                    message: Only .fastq or .fastq.gz extensions are valid
-
-
-                            output:
-                              Describe the output parameter here.
-
-                              __metadata__:
-                                display_name: Output
-                                output: true
-
+                                display_name: Output Directory
                         """
                         return {pkg_name}_task(
-                            nucleotide=nucleotide, fastq_file=fastq_file, output=output
+                            sample_input=sample_input,
+                            output_dir=output_dir
                         )
-
                     '''
             )
         )
