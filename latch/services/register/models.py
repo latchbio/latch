@@ -50,10 +50,11 @@ class RegisterCtx:
 
     @property
     def image(self):
-        if self.user_sub is None or self.pkg_name is None:
+        if self.user_sub is None:
+            raise ValueError("You need to log in before you can register a workflow.")
+        if self.pkg_name is None:
             raise ValueError(
-                "Attempting to create an image name without first"
-                " logging in or extracting the package name."
+                "Attempting to register a workflow before the package name is known - something is wrong."
             )
         fmt_sub = self.user_sub.replace("|", "-")
         return f"{fmt_sub}_{self.pkg_name}"
@@ -61,6 +62,11 @@ class RegisterCtx:
     @property
     def image_tagged(self):
         # TODO (kenny): check version is valid for docker
+        if self.version is None:
+            raise ValueError(
+                "Attempting to create a tagged image name without first"
+                "extracting the package version."
+            )
         if self.image is None or self.version is None:
             raise ValueError(
                 "Attempting to create a tagged image name without first"
