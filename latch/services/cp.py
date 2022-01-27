@@ -4,6 +4,8 @@ from pathlib import Path
 import requests
 from latch.utils import retrieve_or_login
 
+_CHUNK_SIZE = 5 * 10 ** 6  # 5 MB
+
 
 def cp(local_file: str, remote_dest: str):
     """Copies local file to remote latch uri."""
@@ -25,8 +27,7 @@ def cp(local_file: str, remote_dest: str):
         total_bytes = f.tell()
         f.seek(0, 0)
 
-    chunk_size = 5000000
-    nrof_parts = math.ceil(total_bytes / chunk_size)
+    nrof_parts = math.ceil(total_bytes / _CHUNK_SIZE)
 
     data = {
         "dest_path": remote_dest,
@@ -54,14 +55,14 @@ def cp(local_file: str, remote_dest: str):
             _end_char = "\n"
 
         print(
-            f"\t\tcopying part {i+1}/{nrof_parts} ~ {min(total_mb, (chunk_size//1000000)*(i+1))}MB/{total_mb}MB",
+            f"\t\tcopying part {i+1}/{nrof_parts} ~ {min(total_mb, (_CHUNK_SIZE//1000000)*(i+1))}MB/{total_mb}MB",
             end=_end_char,
             flush=True,
         )
         url = urls[str(i)]
         with open(local_file, "rb") as f:
-            f.seek(i * chunk_size, 0)
-            resp = requests.put(url, f.read(chunk_size))
+            f.seek(i * _CHUNK_SIZE, 0)
+            resp = requests.put(url, f.read(_CHUNK_SIZE))
             etag = resp.headers["ETag"]
             parts.append({"ETag": etag, "PartNumber": i + 1})
 
