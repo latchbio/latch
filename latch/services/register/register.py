@@ -1,5 +1,5 @@
 """
-register
+services.register
 ~~~~~
 Registers workflows with the latch platform.
 """
@@ -10,24 +10,52 @@ import tempfile
 import textwrap
 from io import BytesIO
 from pathlib import Path
-from typing import List
+from typing import List, Union
 
 import requests
 from latch.services.register import RegisterCtx, RegisterOutput
 
 
-def register(pkg_root: str) -> RegisterOutput:
-    """
+def register(
+    pkg_root: str,
+    dockerfile: Union[str, None] = None,
+    pkg_name: Union[str, None] = None,
+) -> RegisterOutput:
+    """This service will register a workflow defined as python code with latch.
 
-    * Constructs a container from a workflow package.
-    * Serializes workflow objects from within container
-    * Registers serialized objects with latch
+    The major constituent steps are:
 
+        - Constructing a Docker image
+        - Serializing flyte objects within an instantiated container
+        - Registering serialized objects + the container with latch.
+
+    The Docker image is constructed by inferring relevant files + dependencies
+    from the workflow package code itself. If a Dockerfile is provided
+    explicitly, it will be used for image construction instead.
     """
 
     ctx = RegisterCtx(pkg_root)
+    print(f"Initializing registration for {pkg_root}")
 
-    build_logs = _build_image(ctx)
+    if dockerfile is not None:
+        dockerfile = Path(dockerfile).resolve()
+        if not dockerfile.exists():
+            raise OSError(f"Provided Dockerfile {dockerfile} does not exist.")
+
+    build_logs = _build_image(ctx, dockerfile, pkg_name)
+
+    def _print_build_logs(build_logs):
+        print(f"\tBuilding Docker image for {pkg_root}")
+        for x in build_logs:
+            line = x.get("stream")
+            error = x.get("error")
+            if error is not None:
+                print(f"\t\t{x}")
+                raise OSError(f"Error when building image ~ {x}")
+            elif line is not None:
+                print(f"\t\t{line}", end="")
+
+    _print_build_logs(build_logs)
     with tempfile.TemporaryDirectory() as td:
         td_path = Path(td).resolve()
         serialize_logs = _serialize_pkg(ctx, td_path)
@@ -43,7 +71,35 @@ def register(pkg_root: str) -> RegisterOutput:
     )
 
 
-def _build_image(ctx: RegisterCtx) -> List[str]:
+def _build_image(
+    ctx: RegisterCtx, dockerfile: Union[None, Path], pkg_name: Union[None, str]
+) -> List[str]:
+
+    if dockerfile is not None:
+        if pkg_name is not None:
+            ctx.pkg_name = pkg_name
+            try:
+                version_file = ctx.pkg_root.joinpath(pkg_name).joinpath("version")
+                with open(version_file, "r") as vf:
+                    ctx.version = vf.read().strip()
+            except:
+                raise ValueError(
+                    f"Unable to extract pkg version ~ root:{str(ctx.pkg_root)}"
+                    f" pkg_name:{pkg_name}"
+                )
+        else:
+            raise ValueError(
+                "You passed a custom Dockerfile but failed to pass"
+                " a value to --pkg_name. This option is mandatory if an explicity"
+                " Dockerfile is provided."
+            )
+        build_logs = ctx.dkr_client.build(
+            path=str(dockerfile.parent),
+            buildargs={"tag": ctx.image_tagged},
+            tag=ctx.image_tagged,
+            decode=True,
+        )
+        return build_logs
 
     # Contruct tarball holding docker build context
     # We want to construct a custom context that only has package files + our
@@ -121,9 +177,10 @@ def _build_image(ctx: RegisterCtx) -> List[str]:
                 custom_context=True,
                 buildargs={"tag": ctx.image_tagged},
                 tag=ctx.image_tagged,
+                decode=True,
             )
 
-    return [x.decode("utf-8") for x in build_logs]
+    return build_logs
 
 
 def _serialize_pkg(ctx: RegisterCtx, serialize_dir: Path) -> List[str]:
