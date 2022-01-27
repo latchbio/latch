@@ -72,6 +72,10 @@ class OAuth2:
                 )
                 self.wfile.write(auth_response_html)
 
+            def log_request(self, format, *args):
+                """Quiets server."""
+                ...
+
         url_parameters = {
             "scope": "openid profile email",
             "response_type": "code",
