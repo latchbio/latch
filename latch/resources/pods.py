@@ -25,15 +25,15 @@ def _get_medium_gpu_pod() -> Pod:
 	"""
 	primary_container = V1Container(name="primary")
 	resources = V1ResourceRequirements(
-		requests={"cpu": "6", "memory": "31", "nvidia.com/gpu": "1"},
-		limits={"cpu": "8", "memory": "32", "nvidia.com/gpu": "1"},
+			requests={"cpu": "7", "memory": "30Gi", "nvidia.com/gpu": "1"},
+			limits={"cpu": "8", "memory": "32Gi", "nvidia.com/gpu": "1"},
 	)
 	primary_container.resources = resources
 
 	return Pod(
 		pod_spec=V1PodSpec(
 			containers=[primary_container],
-			tolerations=[V1Toleration(effect="NoSchedule", key="ng", value="gpu-big")],
+			tolerations=[V1Toleration(effect="NoSchedule", key="ng", value="gpu-small")],
 		),
 		primary_container_name="primary"
 	)
