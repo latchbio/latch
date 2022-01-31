@@ -17,5 +17,6 @@ setup(
         "click>=7.0",
         "docker>=5.0",
         "flytekit @ git+ssh://git@github.com/latchbio/flaightkit.git#egg=flytekit+dev",
+        "flytekitplugins-pod @ git+ssh://git@github.com/latchbio/flaightkit.git#subdirectory=plugins/flytekit-k8s-pod"
     ],
 )
