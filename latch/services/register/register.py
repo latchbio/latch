@@ -116,6 +116,42 @@ def register(
     )
 
 
+def _login(ctx: RegisterCtx):
+
+    headers = {"Authorization": f"Bearer {ctx.token}"}
+    data = {"pkg_name": ctx.image}
+    response = requests.post(ctx.latch_image_api_url, headers=headers, json=data)
+    try:
+        response = response.json()
+        access_key = response["tmp_access_key"]
+        secret_key = response["tmp_secret_key"]
+        session_token = response["tmp_session_token"]
+    except KeyError as err:
+        raise ValueError(f"malformed response on image upload: {response}") from err
+
+    # TODO: cache
+    try:
+        client = boto3.session.Session(
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            aws_session_token=session_token,
+        ).client("ecr")
+        token = client.get_authorization_token()["authorizationData"][0][
+            "authorizationToken"
+        ]
+    except client.exceptions.ClientError as err:
+        raise ValueError(
+            f"unable to retreive an ecr login token for user {ctx.account_id}"
+        ) from err
+
+    user, password = base64.b64decode(token).decode("utf-8").split(":")
+    ctx.dkr_client.login(
+        username=user,
+        password=password,
+        registry=ctx.dkr_repo,
+    )
+
+
 def _build_image(
     ctx: RegisterCtx, dockerfile: Union[None, Path], pkg_name: Union[None, str]
 ) -> List[str]:
@@ -138,6 +174,7 @@ def _build_image(
                 " a value to --pkg_name. This option is mandatory if an explicity"
                 " Dockerfile is provided."
             )
+        _login(ctx)
         build_logs = ctx.dkr_client.build(
             path=str(dockerfile.parent),
             buildargs={"tag": ctx.full_image_tagged},
@@ -217,6 +254,7 @@ def _build_image(
             t.addfile(dfinfo, dockerfile)
             f.seek(0)
 
+            _login(ctx)
             build_logs = ctx.dkr_client.build(
                 fileobj=f,
                 custom_context=True,
@@ -253,38 +291,6 @@ def _serialize_pkg(ctx: RegisterCtx, serialize_dir: Path) -> List[str]:
 
 def _upload_pkg_image(ctx: RegisterCtx) -> List[str]:
 
-    headers = {"Authorization": f"Bearer {ctx.token}"}
-    data = {"pkg_name": ctx.image}
-    response = requests.post(ctx.latch_image_api_url, headers=headers, json=data)
-    try:
-        response = response.json()
-        access_key = response["tmp_access_key"]
-        secret_key = response["tmp_secret_key"]
-        session_token = response["tmp_session_token"]
-    except KeyError as err:
-        raise ValueError(f"malformed response on image upload: {response}") from err
-
-    # TODO: cache
-    try:
-        client = boto3.session.Session(
-            aws_access_key_id=access_key,
-            aws_secret_access_key=secret_key,
-            aws_session_token=session_token,
-        ).client("ecr")
-        token = client.get_authorization_token()["authorizationData"][0][
-            "authorizationToken"
-        ]
-    except client.exceptions.ClientError as err:
-        raise ValueError(
-            f"unable to retreive an ecr login token for user {account_id}"
-        ) from err
-
-    user, password = base64.b64decode(token).decode("utf-8").split(":")
-    ctx.dkr_client.login(
-        username=user,
-        password=password,
-        registry=ctx.dkr_repo,
-    )
     return ctx.dkr_client.push(
         repository=ctx.full_image_tagged,
         stream=True,
