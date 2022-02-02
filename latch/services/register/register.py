@@ -4,6 +4,7 @@ services.register
 Registers workflows with the latch platform.
 """
 
+import base64
 import json
 import os
 import tarfile
@@ -13,6 +14,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import List, Union
 
+import boto3
 import requests
 from latch.services.register import RegisterCtx, RegisterOutput
 
@@ -28,6 +30,7 @@ def register(
 
         - Constructing a Docker image
         - Serializing flyte objects within an instantiated container
+        - Uploading the container with a latch-owned registry
         - Registering serialized objects + the container with latch.
 
     The Docker image is constructed by inferring relevant files + dependencies
@@ -35,8 +38,8 @@ def register(
     explicitly, it will be used for image construction instead.
     """
 
-    def _print_build_logs(build_logs):
-        print(f"\tBuilding Docker image for {pkg_root}")
+    def _print_build_logs(build_logs, image):
+        print(f"\tBuilding Docker image for {image}")
         for x in build_logs:
             line = x.get("stream")
             error = x.get("error")
@@ -46,13 +49,33 @@ def register(
             elif line is not None:
                 print(f"\t\t{line}", end="")
 
-    def _print_serialize_logs(serialize_logs):
-        print("\tSerializing workflow in image:")
+    def _print_serialize_logs(serialize_logs, image):
+        print(f"\tSerializing workflow in {image}:")
         for x in serialize_logs:
             print(f"\t\t{x}", end="")
 
-    def _print_reg_resp(resp):
-        print("\tRegistering workflow with LatchBio.")
+    def _print_upload_logs(upload_image_logs, image):
+        print(f"\tUploading Docker image for {image}")
+        prog_map = {}
+
+        def _pp_prog_map(m):
+            prog_chunk = ""
+            i = 0
+            for id, prog in m.items():
+                if prog is None:
+                    continue
+                prog_chunk += f"\t\t{id} ~ {prog}\n"
+                i += 1
+            if prog_chunk == "":
+                return
+            print(prog_chunk, end=f"\x1B[{i}A")
+
+        for x in upload_image_logs:
+            prog_map[x.get("id")] = x.get("progress")
+            _pp_prog_map(prog_map)
+
+    def _print_reg_resp(resp, image):
+        print(f"\tRegistering {image} with LatchBio.")
         print("\tstdout:")
         for x in resp["stdout"].split("\n"):
             print(f"\t\t{x}")
@@ -69,16 +92,19 @@ def register(
             raise OSError(f"Provided Dockerfile {dockerfile} does not exist.")
 
     build_logs = _build_image(ctx, dockerfile, pkg_name)
-    _print_build_logs(build_logs)
+    _print_build_logs(build_logs, ctx.image_tagged)
 
     with tempfile.TemporaryDirectory() as td:
         td_path = Path(td).resolve()
 
         serialize_logs = _serialize_pkg(ctx, td_path)
-        _print_serialize_logs(serialize_logs)
+        _print_serialize_logs(serialize_logs, ctx.image_tagged)
+
+        upload_image_logs = _upload_pkg_image(ctx)
+        _print_upload_logs(upload_image_logs, ctx.image_tagged)
 
         reg_resp = _register_serialized_pkg(ctx, td_path)
-        _print_reg_resp(reg_resp)
+        _print_reg_resp(reg_resp, ctx.image_tagged)
 
     return (
         RegisterOutput(
@@ -114,8 +140,8 @@ def _build_image(
             )
         build_logs = ctx.dkr_client.build(
             path=str(dockerfile.parent),
-            buildargs={"tag": ctx.image_tagged},
-            tag=ctx.image_tagged,
+            buildargs={"tag": ctx.full_image_tagged},
+            tag=ctx.full_image_tagged,
             decode=True,
         )
         return build_logs
@@ -194,8 +220,8 @@ def _build_image(
             build_logs = ctx.dkr_client.build(
                 fileobj=f,
                 custom_context=True,
-                buildargs={"tag": ctx.image_tagged},
-                tag=ctx.image_tagged,
+                buildargs={"tag": ctx.full_image_tagged},
+                tag=ctx.full_image_tagged,
                 decode=True,
             )
 
@@ -206,7 +232,7 @@ def _serialize_pkg(ctx: RegisterCtx, serialize_dir: Path) -> List[str]:
 
     _serialize_cmd = ["make", "serialize"]
     container = ctx.dkr_client.create_container(
-        ctx.image_tagged,
+        ctx.full_image_tagged,
         command=_serialize_cmd,
         volumes=[str(serialize_dir)],
         host_config=ctx.dkr_client.create_host_config(
@@ -223,6 +249,47 @@ def _serialize_pkg(ctx: RegisterCtx, serialize_dir: Path) -> List[str]:
     logs = ctx.dkr_client.logs(container_id, stream=True)
 
     return [x.decode("utf-8") for x in logs]
+
+
+def _upload_pkg_image(ctx: RegisterCtx) -> List[str]:
+
+    headers = {"Authorization": f"Bearer {ctx.token}"}
+    data = {"pkg_name": ctx.image}
+    response = requests.post(ctx.latch_image_api_url, headers=headers, json=data)
+    try:
+        response = response.json()
+        access_key = response["tmp_access_key"]
+        secret_key = response["tmp_secret_key"]
+        session_token = response["tmp_session_token"]
+    except KeyError as err:
+        raise ValueError(f"malformed response on image upload: {response}") from err
+
+    # TODO: cache
+    try:
+        client = boto3.session.Session(
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            aws_session_token=session_token,
+        ).client("ecr")
+        token = client.get_authorization_token()["authorizationData"][0][
+            "authorizationToken"
+        ]
+    except client.exceptions.ClientError as err:
+        raise ValueError(
+            f"unable to retreive an ecr login token for user {account_id}"
+        ) from err
+
+    user, password = base64.b64decode(token).decode("utf-8").split(":")
+    ctx.dkr_client.login(
+        username=user,
+        password=password,
+        registry=ctx.dkr_repo,
+    )
+    return ctx.dkr_client.push(
+        repository=ctx.full_image_tagged,
+        stream=True,
+        decode=True,
+    )
 
 
 def _register_serialized_pkg(ctx: RegisterCtx, serialize_dir: Path) -> dict:
