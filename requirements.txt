@@ -6,6 +6,12 @@
 #
 attrs==21.4.0
     # via scantree
+boto3==1.20.46
+    # via -r requirements.in
+botocore==1.23.46
+    # via
+    #   boto3
+    #   s3transfer
 certifi==2021.10.8
     # via requests
 charset-normalizer==2.0.10
@@ -38,6 +44,10 @@ idna==3.3
     # via requests
 importlib-metadata==4.10.0
     # via keyring
+jmespath==0.10.0
+    # via
+    #   boto3
+    #   botocore
 joblib==1.1.0
     # via flytekit
 keyring==23.5.0
@@ -75,6 +85,7 @@ pyjwt==2.3.0
     # via -r requirements.in
 python-dateutil==2.8.1
     # via
+    #   botocore
     #   croniter
     #   flytekit
     #   pandas
@@ -99,6 +110,8 @@ responses==0.17.0
     # via flytekit
 retry==0.9.2
     # via flytekit
+s3transfer==0.5.0
+    # via boto3
 scantree==0.0.1
     # via dirhash
 six==1.16.0
@@ -118,6 +131,7 @@ typing-inspect==0.7.1
     # via dataclasses-json
 urllib3==1.26.8
     # via
+    #   botocore
     #   flytekit
     #   requests
     #   responses
