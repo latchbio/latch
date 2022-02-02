@@ -10,7 +10,7 @@ from typing import List, Optional
 
 import docker
 from latch.config import LatchConfig
-from latch.utils import retrieve_or_login, sub_from_jwt
+from latch.utils import account_id_from_token, retrieve_or_login
 
 
 @dataclass
@@ -29,7 +29,8 @@ class RegisterCtx:
     token = None
     version = None
     serialize_dir = None
-    latch_register_api_url = "https://nucleus.latch.bio/api/register-workflow"
+    latch_register_api_url = "https://nucleus.latch.bio/sdk/register-workflow"
+    latch_image_api_url = "https://nucleus.latch.bio/sdk/initiate-image-upload"
 
     def __init__(self, pkg_root: Path):
 
@@ -46,18 +47,17 @@ class RegisterCtx:
         self.dkr_repo = LatchConfig.dkr_repo
 
         self.token = retrieve_or_login()
-        self.user_sub = sub_from_jwt(self.token)
+        self.account_id = account_id_from_token(self.token)
 
     @property
     def image(self):
-        if self.user_sub is None:
+        if self.account_id is None:
             raise ValueError("You need to log in before you can register a workflow.")
         if self.pkg_name is None:
             raise ValueError(
                 "Attempting to register a workflow before the package name is known - something is wrong."
             )
-        fmt_sub = self.user_sub.replace("|", "-")
-        return f"{fmt_sub}_{self.pkg_name}"
+        return f"{self.account_id}_{self.pkg_name}"
 
     @property
     def image_tagged(self):
@@ -72,4 +72,8 @@ class RegisterCtx:
                 "Attempting to create a tagged image name without first"
                 " logging in or extracting the package version."
             )
-        return f"{self.dkr_repo}/{self.image}:{self.version}"
+        return f"{self.image}:{self.version}"
+
+    @property
+    def full_image_tagged(self):
+        return f"{self.dkr_repo}/{self.image_tagged}"
