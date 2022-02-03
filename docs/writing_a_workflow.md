@@ -73,7 +73,7 @@ Armed with the above explanation of workflows on latch, let's go through the ste
 
 * Define workflow inputs and outputs and task input and outputs: [workflow i/o](workflow_io.md)
 * Write a workflow description (optional): [workflow metadata](workflow_metadata.md)
-* Write input argument descriptions: [argument metadata](argument_metadata.md)
+* Write input parameter descriptions: [parameter metadata](parameter_metadata.md)
 * Write tasks
 * Chain together tasks in workflow
 * Write a requirements file (optional)
