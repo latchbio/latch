@@ -50,7 +50,7 @@ def init(pkg_name: str):
     _init(pkg_name)
     click.secho(f"Created a latch workflow called {pkg_name}.", fg="green")
     click.secho("Run", fg="green")
-    click.secho(f"\t$ cd {pkg_name}; latch register . ", fg="green")
+    click.secho(f"\t$ latch register {pkg_name}", fg="green")
     click.secho("To register the workflow with console.latch.bio.", fg="green")
 
 
