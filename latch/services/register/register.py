@@ -5,7 +5,6 @@ Registers workflows with the latch platform.
 """
 
 import base64
-import json
 import os
 import tarfile
 import tempfile
@@ -19,10 +18,59 @@ import requests
 from latch.services.register import RegisterCtx, RegisterOutput
 
 
+def _print_build_logs(build_logs, image):
+    print(f"\tBuilding Docker image for {image}")
+    for x in build_logs:
+        line = x.get("stream")
+        error = x.get("error")
+        if error is not None:
+            print(f"\t\t{x}")
+            raise OSError(f"Error when building image ~ {x}")
+        elif line is not None:
+            print(f"\t\t{line}", end="")
+
+
+def _print_serialize_logs(serialize_logs, image):
+    print(f"\tSerializing workflow in {image}:")
+    for x in serialize_logs:
+        print(f"\t\t{x}", end="")
+
+
+def _print_upload_logs(upload_image_logs, image):
+    print(f"\tUploading Docker image for {image}")
+    prog_map = {}
+
+    def _pp_prog_map(m):
+        prog_chunk = ""
+        i = 0
+        for id, prog in m.items():
+            if prog is None:
+                continue
+            prog_chunk += f"\t\t{id} ~ {prog}\n"
+            i += 1
+        if prog_chunk == "":
+            return
+        print(prog_chunk, end=f"\x1B[{i}A")
+
+    for x in upload_image_logs:
+        prog_map[x.get("id")] = x.get("progress")
+        _pp_prog_map(prog_map)
+
+
+def _print_reg_resp(resp, image):
+    print(f"\tRegistering {image} with LatchBio.")
+    print("\tstdout:")
+    for x in resp["stdout"].split("\n"):
+        print(f"\t\t{x}")
+    print("\tstderr:")
+    for x in resp["stderr"].split("\n"):
+        print(f"\t\t{x}")
+
+
 def register(
     pkg_root: str,
     dockerfile: Union[str, None] = None,
-    pkg_name: Union[str, None] = None,
+    requirements: Union[str, None] = None,
 ) -> RegisterOutput:
     """This service will register a workflow defined as python code with latch.
 
@@ -38,51 +86,6 @@ def register(
     explicitly, it will be used for image construction instead.
     """
 
-    def _print_build_logs(build_logs, image):
-        print(f"\tBuilding Docker image for {image}")
-        for x in build_logs:
-            line = x.get("stream")
-            error = x.get("error")
-            if error is not None:
-                print(f"\t\t{x}")
-                raise OSError(f"Error when building image ~ {x}")
-            elif line is not None:
-                print(f"\t\t{line}", end="")
-
-    def _print_serialize_logs(serialize_logs, image):
-        print(f"\tSerializing workflow in {image}:")
-        for x in serialize_logs:
-            print(f"\t\t{x}", end="")
-
-    def _print_upload_logs(upload_image_logs, image):
-        print(f"\tUploading Docker image for {image}")
-        prog_map = {}
-
-        def _pp_prog_map(m):
-            prog_chunk = ""
-            i = 0
-            for id, prog in m.items():
-                if prog is None:
-                    continue
-                prog_chunk += f"\t\t{id} ~ {prog}\n"
-                i += 1
-            if prog_chunk == "":
-                return
-            print(prog_chunk, end=f"\x1B[{i}A")
-
-        for x in upload_image_logs:
-            prog_map[x.get("id")] = x.get("progress")
-            _pp_prog_map(prog_map)
-
-    def _print_reg_resp(resp, image):
-        print(f"\tRegistering {image} with LatchBio.")
-        print("\tstdout:")
-        for x in resp["stdout"].split("\n"):
-            print(f"\t\t{x}")
-        print("\tstderr:")
-        for x in resp["stderr"].split("\n"):
-            print(f"\t\t{x}")
-
     ctx = RegisterCtx(pkg_root)
     print(f"Initializing registration for {pkg_root}")
 
@@ -91,7 +94,17 @@ def register(
         if not dockerfile.exists():
             raise OSError(f"Provided Dockerfile {dockerfile} does not exist.")
 
-    build_logs = _build_image(ctx, dockerfile, pkg_name)
+    if requirements is not None:
+        if dockerfile is not None:
+            raise ValueError(
+                "Cannot provide both a dockerfile -"
+                f" {str(dockerfile)} and requirements file {requirements}"
+            )
+        dockerfile = Path(dockerfile).resolve()
+        if not dockerfile.exists():
+            raise OSError(f"Provided Dockerfile {dockerfile} does not exist.")
+
+    build_logs = _build_image(ctx, dockerfile, requirements)
     _print_build_logs(build_logs, ctx.image_tagged)
 
     with tempfile.TemporaryDirectory() as td:
@@ -112,7 +125,6 @@ def register(
             serialize_logs=serialize_logs,
             registration_response=reg_resp,
         ),
-        ctx.pkg_name,
     )
 
 
@@ -153,27 +165,12 @@ def _login(ctx: RegisterCtx):
 
 
 def _build_image(
-    ctx: RegisterCtx, dockerfile: Union[None, Path], pkg_name: Union[None, str]
+    ctx: RegisterCtx,
+    dockerfile: Union[None, Path] = None,
+    requirements: Union[None, Path] = None,
 ) -> List[str]:
 
     if dockerfile is not None:
-        if pkg_name is not None:
-            ctx.pkg_name = pkg_name
-            try:
-                version_file = ctx.pkg_root.joinpath(pkg_name).joinpath("version")
-                with open(version_file, "r") as vf:
-                    ctx.version = vf.read().strip()
-            except:
-                raise ValueError(
-                    f"Unable to extract pkg version ~ root:{str(ctx.pkg_root)}"
-                    f" pkg_name:{pkg_name}"
-                )
-        else:
-            raise ValueError(
-                "You passed a custom Dockerfile but failed to pass"
-                " a value to --pkg_name. This option is mandatory if an explicity"
-                " Dockerfile is provided."
-            )
         _login(ctx)
         build_logs = ctx.dkr_client.build(
             path=str(dockerfile.parent),
@@ -182,6 +179,9 @@ def _build_image(
             decode=True,
         )
         return build_logs
+
+    if requirements is not None:
+        ...
 
     # Contruct tarball holding docker build context
     # We want to construct a custom context that only has package files + our
@@ -197,50 +197,43 @@ def _build_image(
     with tempfile.NamedTemporaryFile() as f:
         with tarfile.open(mode="w", fileobj=f) as t:
 
-            for path in _build_file_list(str(ctx.pkg_root)):
-                full_path = Path(ctx.pkg_root).resolve().joinpath(path)
+            # TODO: docker build context is from the perspective of one
+            # directory up.
+            for path in _build_file_list(str(ctx.pkg_root.parent)):
+                full_path = Path(ctx.pkg_root.parent).resolve().joinpath(path)
                 i = t.gettarinfo(full_path, arcname=path)
-
                 if i.isfile():
                     try:
-                        if full_path.name == "__init__.py":
-                            pkg_name_candidate = full_path.parent.name
-                            if ctx.pkg_name is not None:
-                                raise ValueError(
-                                    "Can only register one"
-                                    " workflow package at a time."
-                                    " Attempted to register both"
-                                    f" {ctx.pkg_name} and"
-                                    f" {pkg_name_candidate}"
-                                )
-                            else:
-                                ctx.pkg_name = pkg_name_candidate
-
-                        if full_path.name == "version":
-                            with open(full_path, "r") as v:
-                                ctx.version = v.read().strip()
-                                v.seek(0)
                         with open(full_path, "rb") as fp:
                             t.addfile(i, fp)
-
-                    except OSError:
-                        raise OSError(f"Can not read file in context: {full_path}")
+                    except OSError as e:
+                        raise OSError(
+                            f"Can not read file in context: {full_path}"
+                        ) from e
                 else:
                     # Directories, FIFOs, symlinks don't need to be read.
                     t.addfile(i, None)
 
-            if ctx.version is None:
-                raise ValueError(
-                    "No version file found in {root}. This file is required"
-                    " and should contain the package version in plain text."
-                )
+            fk_config_file = textwrap.dedent(
+                f"""
+                    [sdk]
+                    workflow_packages={ctx.pkg_root.name}
+                    python_venv=flytekit_venv
+                    """
+            )
+            fk_config_file = BytesIO(fk_config_file.encode("utf-8"))
+            fcfinfo = tarfile.TarInfo("flytekit.config")
+            fcfinfo.size = len(fk_config_file.getvalue())
+            fk_config_file.seek(0)
+            t.addfile(fcfinfo, fk_config_file)
 
             dockerfile = textwrap.dedent(
                 f"""
                     FROM {ctx.dkr_repo}/wf-base:wf-base-d2fb-main
 
 
-                    COPY {ctx.pkg_name} /root/{ctx.pkg_name}
+                    COPY flytekit.config /root
+                    COPY {ctx.pkg_root.name} /root/{ctx.pkg_root.name}
                     WORKDIR /root
 
                     ARG tag
@@ -255,15 +248,13 @@ def _build_image(
             f.seek(0)
 
             _login(ctx)
-            build_logs = ctx.dkr_client.build(
+            return ctx.dkr_client.build(
                 fileobj=f,
                 custom_context=True,
                 buildargs={"tag": ctx.full_image_tagged},
                 tag=ctx.full_image_tagged,
                 decode=True,
             )
-
-    return build_logs
 
 
 def _serialize_pkg(ctx: RegisterCtx, serialize_dir: Path) -> List[str]:
