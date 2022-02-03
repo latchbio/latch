@@ -22,9 +22,6 @@ def init(pkg_name: Path):
             " Remove it or pick another name for your latch workflow."
         )
 
-    pkg_root = pkg_root.joinpath("latch")
-    pkg_root.mkdir(parents=True)
-
     init_f = pkg_root.joinpath("__init__.py")
     with open(init_f, "w") as f:
         f.write(_gen__init__(pkg_name))
