@@ -50,7 +50,7 @@ class RegisterCtx:
 
         self.pkg_root = Path(pkg_root).resolve()
         try:
-            version_file = pkg_root.joinpath("version")
+            version_file = self.pkg_root.joinpath("version")
             with open(version_file, "r") as vf:
                 self.version = vf.read().strip()
         except Exception as e:
