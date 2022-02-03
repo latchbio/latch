@@ -39,7 +39,7 @@ def token_is_valid(token: str) -> bool:
 
     headers = {"Authorization": f"Bearer {token}"}
     response = requests.get(
-        "https://nucleus.latch.bio/sdk/protected-sdk-ping", headers=headers
+        "https://nucleus.latch.bio/api/protected-sdk-ping", headers=headers
     )
 
     if response.status_code == 200:
