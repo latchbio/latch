@@ -160,13 +160,69 @@ When specifying the inputs of your workflow, you can pass in default values. You
 
 ## Note on Predefined Launchplans
 
-When authoring a workflow, it is useful to have default sets of input data for new users to play around with. (TODO(aidan))
+When authoring a workflow, it is useful to have default sets of input data for new users to play around with. In flyte, we use launchplans to capture this concept. In the launchplan, you must provide values for any non-optional parameter without a default value.
 
 ```
-TODO(aidan) examples
+from flytekit import LaunchPlan, task, workflow
+...
+@large_task
+def bactopia_tsk(
+	fastq_one: FlyteFile,
+    fastq_two: FlyteFile,
+    sample_name: str,
+    output_dir: FlyteDirectory,
+    coverage: int = 100,
+    species: Optional[Species] = None,
+):
+	...
+
+@workflow
+def bactopia_wf(
+	fastq_one: FlyteFile,
+    fastq_two: FlyteFile,
+    sample_name: str,
+    output_dir: FlyteDirectory,
+    coverage: int = 100,
+    species: Optional[Species] = None,
+):
+	return bactopia_tsk(
+		...
+	)
+
+LaunchPlan.create(
+   "bactopia_wf.Paired Reads",
+    bactopia_wf,
+    default_inputs={
+        "fastq_one": FlyteFile(
+            "s3://latch-public/welcome/bactopia/SRX4563634_R1.fastq.gz"
+        ),
+        "fastq_two": FlyteFile(
+            "s3://latch-public/welcome/bactopia/SRX4563634_R2.fastq.gz"
+        ),
+        "sample_name": "SRX4563634",
+        "output_dir": FlyteDirectory("latch://bactopia_paired_results/"),
+    },
+)
+
+LaunchPlan.create(
+   "bactopia_wf.Paired Reads With Optionals",
+    bactopia_wf,
+    default_inputs={
+        "fastq_one": FlyteFile(
+            "s3://latch-public/welcome/bactopia/SRX4563634_R1.fastq.gz"
+        ),
+        "fastq_two": FlyteFile(
+            "s3://latch-public/welcome/bactopia/SRX4563634_R2.fastq.gz"
+        ),
+        "sample_name": "SRX4563634",
+        "output_dir": FlyteDirectory("latch://bactopia_paired_results/"),
+        "coverage": 120,
+        "species": Species.staphylococcus_aureus,
+    },
+)
 ```
 
-## Example 
+## Example
 
 ```
 @large_task
