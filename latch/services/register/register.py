@@ -100,9 +100,9 @@ def register(
                 "Cannot provide both a dockerfile -"
                 f" {str(dockerfile)} and requirements file {requirements}"
             )
-        dockerfile = Path(dockerfile).resolve()
-        if not dockerfile.exists():
-            raise OSError(f"Provided Dockerfile {dockerfile} does not exist.")
+        requirements = Path(requirements).resolve()
+        if not requirements.exists():
+            raise OSError(f"Provided requirements file {requirements} does not exist.")
 
     build_logs = _build_image(ctx, dockerfile, requirements)
     _print_build_logs(build_logs, ctx.image_tagged)
@@ -119,12 +119,10 @@ def register(
         reg_resp = _register_serialized_pkg(ctx, td_path)
         _print_reg_resp(reg_resp, ctx.image_tagged)
 
-    return (
-        RegisterOutput(
-            build_logs=build_logs,
-            serialize_logs=serialize_logs,
-            registration_response=reg_resp,
-        ),
+    return RegisterOutput(
+        build_logs=build_logs,
+        serialize_logs=serialize_logs,
+        registration_response=reg_resp,
     )
 
 
@@ -180,9 +178,6 @@ def _build_image(
         )
         return build_logs
 
-    if requirements is not None:
-        ...
-
     # Contruct tarball holding docker build context
     # We want to construct a custom context that only has package files + our
     # dockerfile object injected directly from memory.
@@ -227,6 +222,23 @@ def _build_image(
             fk_config_file.seek(0)
             t.addfile(fcfinfo, fk_config_file)
 
+            if requirements is not None:
+
+                requirements_cmds = textwrap.dedent(
+                    """
+                            COPY requirements.txt /root
+                            RUN python3 -m pip install -r requirements.txt
+                        """
+                )
+                with open(requirements) as r:
+                    requirements = BytesIO(r.read().encode("utf-8"))
+                rinfo = tarfile.TarInfo("requirements.txt")
+                rinfo.size = len(requirements.getvalue())
+                requirements.seek(0)
+                t.addfile(rinfo, requirements)
+            else:
+                requirements_cmds = ""
+
             dockerfile = textwrap.dedent(
                 f"""
                     FROM {ctx.dkr_repo}/wf-base:wf-base-d2fb-main
@@ -235,6 +247,8 @@ def _build_image(
                     COPY flytekit.config /root
                     COPY {ctx.pkg_root.name} /root/{ctx.pkg_root.name}
                     WORKDIR /root
+
+                    {requirements_cmds}
 
                     ARG tag
                     ENV FLYTE_INTERNAL_IMAGE $tag
