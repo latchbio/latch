@@ -72,8 +72,8 @@ To run each task, flyte schedules the code inside the task to run on a computer 
 Armed with the above explanation of workflows on latch, let's go through the steps of writing a workflow. These steps can be done in almost any order. It is suggested to run `latch init` first to establish some boilerplate. It should be noted that, while the above examples are rudimentary, the span of what a workflow can be is extreme. On Latch, we have alphafold, built in conda and executed on gpus, numerous nextflow workflows, containing tasks requiring hundreds of gigabytes of memory, and workflows that require terabytes of supporting files. This is all achieveable by you, so let's get into the grit of it.
 
 * Define workflow inputs and outputs and task input and outputs: [workflow i/o](workflow_io.md)
-* Write a workflow description (optional)
-* Write input argument descriptions
+* Write a workflow description (optional): [workflow metadata](workflow_metadata.md)
+* Write input argument descriptions: [argument metadata](argument_metadata.md)
 * Write tasks
 * Chain together tasks in workflow
 * Write a requirements file (optional)
