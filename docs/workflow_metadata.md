@@ -1,5 +1,7 @@
 # Describing Your Workflow
 
+==Why do we want people to write descriptions?==
+
 ## Short and Long Workflow Description
 
 Adding a description to your workflow is easily achieved by following the workflow metadata format. You provide two descriptions, one short one displayed in the workflow list (in explore or in workflows) and a longer description which is rendered in markdown on the workflow about page.
@@ -31,7 +33,7 @@ def test(
 
 ## Standardized Workflow Metadata
 
-After the long workflow description, you have the opportunity to specify standard workflow metadata. The currently supported metadata fields are display name, documentation, author, repository, and license. The only constrained field is license, which should be an identifier from [spdx](https://spdx.org/licenses/).
+After the long workflow description, you have the opportunity to specify standard workflow metadata. The currently supported metadata fields are display name, documentation, author ==(name, email, github)==, repository, and license. The only constrained field is license, which should be an identifier from [spdx](https://spdx.org/licenses/). ~~==How do I set a custom license?==~~
 
 ```
 __metadata__:
@@ -44,4 +46,4 @@ __metadata__:
     repository: https://github.com/author/my_workflow
     license:
         id: MIT
-```
+```~~~~

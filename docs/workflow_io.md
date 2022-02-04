@@ -1,8 +1,9 @@
 # Workflow Input and Output
 
+==Should have a better introduction...==
 
 ## Possible Workflow Input / Output Types
-Workflows consist of a workflow wrapper containing tasks, both the i/o of which is strongly typed. Below are the types supported by latch as expressed in Python types.
+Workflows consist of a workflow wrapper ==manske: what is a wrapper?== containing tasks, both the i/o of which is strongly typed. Below are the types supported by Latch as expressed in Python types.
 
 ```
 from typing import Union, Optional
@@ -82,9 +83,11 @@ Each type gets displayed in on the frontend differently in the workflow paramete
 
 ## FlyteFiles and FlyteDirectories
 
-In flyte, task logic is executed on a computer in the cloud. Thus we need an interface for passing in files and directories from latch data and for returning outputs in a task to latch data. Here we explain the interfaces and how to use them. Additional documentation is found at [FlyteFile](https://docs.flyte.org/projects/flytekit/en/latest/generated/flytekit.types.file.FlyteFile.html) and [FlyteDirectory](https://docs.flyte.org/projects/flytekit/en/latest/generated/flytekit.types.directory.FlyteDirectory.html).
+In Flyte, task logic is executed on a computer in the cloud. Thus we need an interface for passing in files and directories from Latch data and for returning outputs in a task to Latch data. Here we explain the interfaces and how to use them. 
 
-From Latch Console, when you input a file or directory, it is of type FlyteFile or FlyteDirectory. These types specify how to fetch the file / directory to operate on locally. Below is an example of how data is fetched.
+Additional documentation is found at [FlyteFile](https://docs.Flyte.org/projects/Flytekit/en/latest/generated/Flytekit.types.file.FlyteFile.html) and [FlyteDirectory](https://docs.Flyte.org/projects/Flytekit/en/latest/generated/Flytekit.types.directory.FlyteDirectory.html).
+
+From Latch Console, when you input a file or directory, it is of type FlyteFile or FlyteDirectory respectively. These types specify how to fetch the file/directory to operate on locally. Below is an example of how data is fetched.
 
 ```
 ...
@@ -130,15 +133,15 @@ When the file is accessed, a download is triggered resulting in the object becom
 	downloaded: True
 }
 ```
-While inputting FlyteFiles and FlyteDirectories does a good job mimicking normal filelike behavior, outputs require more fine grained manipulation. We recommend the following procedure for outputting data (having a single output directory).
+While inputting FlyteFiles and FlyteDirectories does a good job mimicking normal file like behavior, outputs require more fine grained manipulation. We recommend the following procedure for outputting data: ==don't love the flow here so played around with it==
+
 
 ```
 ...
 from pathlib import Path
 from typing import Tuple
-from flytekit.types.directory import FlyteDirectory
-from flytekit.types.file import FlyteFile
-
+from Flytekit.types.directory import FlyteDirectory
+from Flytekit.types.file import FlyteFile
 ...
 
 @small_Task
@@ -152,18 +155,23 @@ def t(fastq: FlyteFile, dir: FlyteDirectory, output_dir: FlyteDirectory) -> Flyt
 	
 ```
 
-In this example, we organize all output data into a single directory and set our output_dir FlyteDirectory path to this local directory. Here is a breakdown of what is happening. In Latch Console, you specify where you want your outputs to go in latch data. This gets transformed into a location in the cloud. When you set the path of the output FlyteDirectory and return said FlyteDirectory, flyte uploads your local directory to the cloud location. This data is then synced into latch data and whoever ran your workflow gets the results.
 
-## Note on Default values
+Set a single directory to organize all output data into and setting the output_dir FlyteDirectory path to this local directory. 
 
-When specifying the inputs of your workflow, you can pass in default values. You must pass in default values for any parameter you do not wish the user to set every run. They can always override this value. One notable confusing case is with optionals. Always give optional parameters a default value. See how this is done in the Bactopia example below.
+Here is a breakdown of this procedure. In Latch Console, specify where you want your outputs to go in Latch data. This gets transformed into a location in the cloud. When you set the path of the output as FlyteDirectory and return said FlyteDirectory, Flyte will upload your local directory to the cloud location. This data is then synced into Latch data and whoever ran it gets the results ==when the work completes??==.
 
-## Note on Predefined Launchplans
+==Some details on the why maybe?==
 
-When authoring a workflow, it is useful to have default sets of input data for new users to play around with. In flyte, we use launchplans to capture this concept. In the launchplan, you must provide values for any non-optional parameter without a default value.
+## Setting Default Values
+
+When specifying the inputs of your workflow, you can pass in default values. You must pass in default values for any parameter you do not wish the user to set every run. They can always override this value. One notable confusing case is with optionals. Always give optional parameters a default value. See how this is done in the Bactopia example below. ==Why not show example here??==
+
+## Launchplans (Setting Test Data for Users)
+
+When authoring a workflow, it is useful to have ~~default~~ ==test== sets of input data for new users to play around with. In Flyte, we use launchplans to capture this concept. In the launchplan, you must provide values for any non-optional parameter without a default value. ==Would wanna see the anatomy of a plan??==
 
 ```
-from flytekit import LaunchPlan, task, workflow
+from Flytekit import LaunchPlan, task, workflow
 ...
 @large_task
 def bactopia_tsk(
@@ -194,13 +202,13 @@ LaunchPlan.create(
     bactopia_wf,
     default_inputs={
         "fastq_one": FlyteFile(
-            "s3://latch-public/welcome/bactopia/SRX4563634_R1.fastq.gz"
+            "s3://Latch-public/welcome/bactopia/SRX4563634_R1.fastq.gz"
         ),
         "fastq_two": FlyteFile(
-            "s3://latch-public/welcome/bactopia/SRX4563634_R2.fastq.gz"
+            "s3://Latch-public/welcome/bactopia/SRX4563634_R2.fastq.gz"
         ),
         "sample_name": "SRX4563634",
-        "output_dir": FlyteDirectory("latch://bactopia_paired_results/"),
+        "output_dir": FlyteDirectory("Latch://bactopia_paired_results/"),
     },
 )
 
@@ -209,13 +217,13 @@ LaunchPlan.create(
     bactopia_wf,
     default_inputs={
         "fastq_one": FlyteFile(
-            "s3://latch-public/welcome/bactopia/SRX4563634_R1.fastq.gz"
+            "s3://Latch-public/welcome/bactopia/SRX4563634_R1.fastq.gz"
         ),
         "fastq_two": FlyteFile(
-            "s3://latch-public/welcome/bactopia/SRX4563634_R2.fastq.gz"
+            "s3://Latch-public/welcome/bactopia/SRX4563634_R2.fastq.gz"
         ),
         "sample_name": "SRX4563634",
-        "output_dir": FlyteDirectory("latch://bactopia_paired_results/"),
+        "output_dir": FlyteDirectory("Latch://bactopia_paired_results/"),
         "coverage": 120,
         "species": Species.staphylococcus_aureus,
     },
@@ -223,6 +231,8 @@ LaunchPlan.create(
 ```
 
 ## Example
+
+ADD IN BREIF DESCRIPT + clink to Bactopia
 
 ```
 @large_task
@@ -251,7 +261,7 @@ def bactopia_tsk(
     min_contig_length: int = 500,
     amr_plus: bool = False,
 ) -> FlyteDirectory:
-	 # example opening a flytefile
+	 # example opening a Flytefile
 	 with open(Path(fastq_one), "w") as f:
 	 	lines = f.readlines() 
 	 	
@@ -259,7 +269,7 @@ def bactopia_tsk(
     
     local_output_dir = Path("/root/outputs")
   
-	# example returning flyte directory
+	# example returning Flyte directory
     return FlyteDirectory(
         str(local_output_dir.resolve()),
         remote_directory=_fmt_dir(output_dir.remote_source),
@@ -320,3 +330,5 @@ def bactopia_wf(
     )
 
 ```
+
+==Where do I go next :( ?======

@@ -1,5 +1,5 @@
 # Tasks
-Tasks are the heart(s) of any flyte workflow where all the computation happens. Let's go over the anatomy of a task.
+Tasks are the heart of any Flyte workflow where all the computation happens. Let's go over the anatomy of a task.
 
 ## Resources
 
