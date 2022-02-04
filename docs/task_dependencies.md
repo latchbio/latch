@@ -1,10 +1,10 @@
 ## Task Dependencies
 
-Within a task, nearly anything available in Python can be achieved. ==manske: These next 2+ sentences confuse me ->== Often times, users wish to use command line tools, conda packages, or libraries from a task, using the task as a wrapper for the meat of their program. These goals are entirely achieveable through the python `subprocess` module. 
+Within a task, nearly anything available in Python can be achieved. Often times task are used as wrapper for the meat of their program (command line tools, conda packages, or libraries).
 
-==To bring these dependecieis in...== However, there is the question ==why is there this question?== of getting these tools into the task execution environment. To this end, we offer two options. The easier one is to write a `requirements.txt` and pass it into `latch register`. Using this option, the docker image in which your task executes will install these dependencies, allowing you to call any of these packages from within your task. Of course, this assumes that the tools you need to write your task are available in pypi. ==What's the second option??==
+To bring in these dependecieis to the task execution environment, we offer two options. The easier one is to write a `requirements.txt` and pass it into `latch register`. Using this option, the docker image in which your task executes will install these dependencies, allowing you to call any of these packages from within your task. This assumes that the tools you need to write your task are available in pypi.
 
-In the common case where you need to, say install miniconda and setup a custom conda environment, you can pass in a Dockerfile which creates said execution environment. Said Dockerfile will be chained using the `FROM` command with our Flyte default dockerfile holding our dependencies, and viola, you have everything you need to execute your task. Below is an example of such a Dockerfile in the conda and local packages case: ==I might just be r------- but this is confusing explanation==
+More expressively, you can pass in a Dockerfile to explicitly create your execution environment. This solution covers most cases where you need to download and install non-python dependencies, say install miniconda and setup a custom conda environment. The Dockerfile will be chained using the `FROM` command with our Flyte default Dockerfile holding our dependencies, and viola, you have everything you need to execute your task. Below is an example of such a Dockerfile in the conda and linux packages case:
 
 ```
 FROM python:3.10.2-buster
@@ -45,4 +45,6 @@ RUN python setup.py install \
 
 Thus using a Dockerfile gives us almost infinite flexibility. Looking at the above commands, we bring both conda and a local python package into our latch execution environment. Then from our task, we have the ability to use conda and our local CRISPResso2 package.
 
-**Note for multiple tasks**: for now, ==why for now== each task in your workflow gets the same environment as defined by the Dockerfile.
+**Note for multiple tasks**: a current limitation of our system is that each task in your workflow gets the same environment as defined by the Dockerfile. In the future, environments will be task specific.
+
+[Writing A Workflow](writing_a_workflow.md)

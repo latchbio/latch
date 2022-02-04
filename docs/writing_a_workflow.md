@@ -2,24 +2,24 @@
 
 ## What Is A Workflow?
 
-A workflow on Latch is a collection of chained (or not) programs, called tasks, which are run through the Latch Console in the cloud: [example workflow](https://console.latch.bio/se/crispresso2). A workflow has statically typed inputs (int, string, file, etc) and usually comes with test data. If you choose the test data and hit launch on Latch Console, the workflow executes in the cloud returning any outputs it may have into Latch data. The span of what a workflow can do is massive -- for example we have Alphafold2 which uses conda and executes on GPUs, and nf_core sarek, which require hundreds of gigabytes of memory. Writing workflows as powerful as these is achieveable by you, so let's get into the grit of it.
+A workflow on Latch is a collection of chained (or not) programs, called tasks, which are run through the Latch Console in the cloud: [example workflow](https://console.latch.bio/se/crispresso2). A workflow has statically typed inputs (int, string, file, etc) and usually comes with test data. If you choose the test data and hit launch on Latch Console, the workflow executes in the cloud returning any outputs it may have into Latch data. The span of what a workflow can do is massive -- for example we have Alphafold2, which uses conda and executes on GPUs, and nf_core sarek, which require hundreds of gigabytes of memory. Writing workflows as powerful as these is achieveable by you, so let's get into the grit of it.
 
 ## How Do I Write A Workflow?
 
-Let's go through the steps of writing a workflow. These steps can be done in almost any order. It is suggested to run `latch init` to establish some boilerplate and to read the How Do Workflows "Work" section first.
+The steps of writing a workflow are deliniated below and can be done in almost any order. To initalize some boilerplate, run `latch init workfow_name`. To gain further understanding of how workflows "work", check out the [how workflows "work"](#how-workflows-work) section.
 
 * Define workflow inputs and outputs and task input and outputs: [workflow i/o](workflow_io.md)
 * Write a workflow description: [workflow metadata](workflow_metadata.md)
 * Write input parameter descriptions: [parameter metadata](parameter_metadata.md)
 * Write tasks: [tasks](tasks.md)
-* Chain together tasks in workflow (see chained tasks in the How Do Workflows "Work" section)
+* Chain together tasks in workflow (see chained tasks in [how workflows "work"](#how-workflows-work))
 * Write a requirements file (optional): [task dependencies](task_dependencies.md)
 * Write a Dockerfile (optional): [task dependencies](task_dependencies.md)
 * Write launchplans: [workflow i/o](workflow_io.md)
 
 After these steps, we can register our workflow and execute it from Latch Console. For how to register, see the [docs](register.md).
 
-## How Do Workflows "Work"
+## How Workflows Work
 
 ```
 @small_task

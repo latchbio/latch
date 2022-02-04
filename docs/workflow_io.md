@@ -1,9 +1,9 @@
 # Workflow Input and Output
 
-==Should have a better introduction...==
+Workflows consist of an outer wrapper, signified by `@workflow`, containing tasks, signified by `@x_task`. These objects are written as python functions. All Flyte workflows are statically typed and thus require a user to specify input and output types in workflow and task function headers. 
 
 ## Possible Workflow Input / Output Types
-Workflows consist of a workflow wrapper ==manske: what is a wrapper?== containing tasks, both the i/o of which is strongly typed. Below are the types supported by Latch as expressed in Python types.
+Below is the list of types available to workflow author's and how to specifically use file and directory inputs and outputs.
 
 ```
 from typing import Union, Optional
@@ -133,7 +133,7 @@ When the file is accessed, a download is triggered resulting in the object becom
 	downloaded: True
 }
 ```
-While inputting FlyteFiles and FlyteDirectories does a good job mimicking normal file like behavior, outputs require more fine grained manipulation. We recommend the following procedure for outputting data: ==don't love the flow here so played around with it==
+While inputting FlyteFiles and FlyteDirectories does a good job mimicking normal file like behavior, outputs require more fine grained manipulation. We recommend the following procedure for outputting data:
 
 
 ```
@@ -158,17 +158,29 @@ def t(fastq: FlyteFile, dir: FlyteDirectory, output_dir: FlyteDirectory) -> Flyt
 
 Set a single directory to organize all output data into and setting the output_dir FlyteDirectory path to this local directory. 
 
-Here is a breakdown of this procedure. In Latch Console, specify where you want your outputs to go in Latch data. This gets transformed into a location in the cloud. When you set the path of the output as FlyteDirectory and return said FlyteDirectory, Flyte will upload your local directory to the cloud location. This data is then synced into Latch data and whoever ran it gets the results ==when the work completes??==.
+Here is a breakdown of this procedure. In Latch Console, specify where you want your outputs to go in Latch data. This gets transformed into a location in the cloud. When you set the path of the output as FlyteDirectory and return said FlyteDirectory, Flyte will upload your local directory to the cloud location. This data is then synced into Latch data and whoever ran it gets the results when the work completes.
 
-==Some details on the why maybe?==
+We use the pattern of passing in an output directory to avoid having to manually manipulate s3 paths to specify where a workflow should dump its results, and so a user running a workflow gets to decide where in their filesystem a workflow will return results.
 
 ## Setting Default Values
 
-When specifying the inputs of your workflow, you can pass in default values. You must pass in default values for any parameter you do not wish the user to set every run. They can always override this value. One notable confusing case is with optionals. Always give optional parameters a default value. See how this is done in the Bactopia example below. ==Why not show example here??==
+When specifying the inputs of your workflow, you can pass in default values. You must pass in default values for any parameter you do not wish the user to set every run. They can always override this value. One notable confusing case is with optionals. Always give optional parameters a default value.
+
+```
+@workflow
+def bactopia_wf(
+	...
+    species: Optional[Species] = None,
+    #or species: Optional[Species] = Species.staphylococcus_aureus,
+):
+	return bactopia_tsk(
+		...
+	)
+```
 
 ## Launchplans (Setting Test Data for Users)
 
-When authoring a workflow, it is useful to have ~~default~~ ==test== sets of input data for new users to play around with. In Flyte, we use launchplans to capture this concept. In the launchplan, you must provide values for any non-optional parameter without a default value. ==Would wanna see the anatomy of a plan??==
+When authoring a workflow, it is useful to have test sets of input data for new users of a workflow to play around with. In Flyte, we use launchplans to capture this concept. A launchplan is comprised of a name, always prefixed by the workflow name, the workflow function itself, and a set of inputs. File and directory test data usually live in a public s3 bucket so any user can run the workflow on said inputs. In the launchplan, you must provide values for any non-optional parameter without a default value.
 
 ```
 from Flytekit import LaunchPlan, task, workflow
@@ -232,7 +244,7 @@ LaunchPlan.create(
 
 ## Example
 
-ADD IN BREIF DESCRIPT + clink to Bactopia
+Here is the function header for Bactopia, a workflow available on Latch. To see how these inputs translate into a user interface, check out [Bactopia](https://console.latch.bio/se/bactopia) on Latch.
 
 ```
 @large_task
@@ -331,4 +343,4 @@ def bactopia_wf(
 
 ```
 
-==Where do I go next :( ?======
+[Next Step (workflow metadata)](workflow_metadata.md)

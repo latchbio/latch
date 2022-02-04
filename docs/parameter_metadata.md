@@ -1,11 +1,11 @@
 # Customizing Parameter Presentation
 
-Latch workflows have parameter with names in ==E==nglish, hidden parameters, and parameters grouped together in sections. A parameter of a certain type, say string, may display as a line or paragraph, and various parameters only accept a subset of arguments of said type. For example, a file input may only take files ending in `.fasta`, `.faa`, or `.fa`.
+Latch workflows have parameter with names in English, hidden parameters, and parameters grouped together in sections. A parameter of a certain type, say string, may display as a line or paragraph, and various parameters only accept a subset of arguments of said type. For example, a file input may only take files ending in `.fasta`, `.faa`, or `.fa`.
 
-To facilitate these important restrictions and displays, parameters have metadata specified either in line ==<-  is a verb so think no hyphen?== with Python's `typing.Annotated` or in the workflow docstring. Only one field, display name is required. Below we show an example of a workflow with docstring parameter metadata and the equivalent using `typing.Annotated`. The descrition language we use to specify this metadata is `yaml`, as seen below: ==seen below where??==
+To facilitate these important restrictions and displays, parameters have metadata specified either in line with Python's `typing.Annotated` or in the workflow docstring. Only one field, display name is required. Below we show an example of a workflow with docstring parameter metadata and the equivalent using `typing.Annotated`. The descrition language we use to specify this metadata is `yaml`, as seen in the docstrings below.
 
 
-***Note**: `typing.Annotated` is necessary when attaching metadata to nested types. For example, if we have a `List[FlyteFile]` input where each FlyteFile must be of extension `.fasta`, `.faa`, or `.fa`, typing. Annotated is necessary: *
+**Note**: `typing.Annotated` is necessary when attaching metadata to nested types. For example, if we have a `List[FlyteFile]` input where each FlyteFile must be of extension `.fasta`, `.faa`, or `.fa`, typing. Annotated is necessary:
 
 ```
 ...
@@ -441,4 +441,6 @@ def test(
 					placeholder: "aidan@latch.bio"
 	"""
 
-``` 
+```
+
+[Next Step (tasks.md)](tasks.md)

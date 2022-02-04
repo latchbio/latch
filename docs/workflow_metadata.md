@@ -1,6 +1,6 @@
 # Describing Your Workflow
 
-==Why do we want people to write descriptions?==
+Workflow descriptions both attribute the workflow author and aid users in understanding why they would analyze their data with the workflow. For an example of a rendered workflow description, see the [about page](https://console.latch.bio/se/crispresso2) for CRISPResso2.
 
 ## Short and Long Workflow Description
 
@@ -33,7 +33,7 @@ def test(
 
 ## Standardized Workflow Metadata
 
-After the long workflow description, you have the opportunity to specify standard workflow metadata. The currently supported metadata fields are display name, documentation, author ==(name, email, github)==, repository, and license. The only constrained field is license, which should be an identifier from [spdx](https://spdx.org/licenses/). ~~==How do I set a custom license?==~~
+After the long workflow description, you have the opportunity to specify standard workflow metadata. The currently supported metadata fields are display name, documentation, author (name, email, github), repository, and license. The only constrained field is license, which should be an identifier from [spdx](https://spdx.org/licenses/).
 
 ```
 __metadata__:
@@ -46,4 +46,6 @@ __metadata__:
     repository: https://github.com/author/my_workflow
     license:
         id: MIT
-```~~~~
+```
+
+[Next Step (parameter metadata)](parameter_metadata.md)

@@ -25,9 +25,9 @@ def my_task(
 
 Almost anything. Call libraries, use conda environments, write algorithms, etc. The only limitation between a flyte workflow and running your code on your linux computer is that we restrict your access to `/dev/` and the networking stack. For example, you cannot create mounts using `/dev/fuse` (so mounts are generally off limits) and you do not have admin access to the networking stack on the host machine as your task execution does not have root access. Here are some examples of flyte tasks to get started, or you can just write your task as it is Python code which does not require much further explanation.
 
-*	TODO(examples)
-
 
 ## Requirements
 
 To ensure that you have all the dependencies you need, you can provide a `requirements.txt` or a Dockerfile (see [task dependencies](task_dependencies.md)).
+
+[Next Step (task dependencies)](task_dependencies.md)
