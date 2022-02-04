@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="latch",
-    version="0.0.11",
+    version="0.0.14",
     author_email="kenny@latch.bio",
     description="latch sdk",
     packages=find_packages(),
@@ -17,5 +17,6 @@ setup(
         "click>=7.0",
         "docker>=5.0",
         "boto3>=1.2",
+        "flaightkit==0.1.0",
     ],
 )
