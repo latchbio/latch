@@ -17,20 +17,20 @@ def cp(local_file: str, remote_dest: str):
         remote_dest: A valid path to a LatchData file. The path must be
             absolute. The path can be optionally prefixed with `latch://`.
 
-    This function will initiate a [multipart
-    upload](https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html)
-    directly with AWS S3. The upload URLs are retrieved and presigned using
-    credentials proxied through Latch's APIs.
+    This function will initiate a `multipart upload`_ directly with AWS S3. The
+    upload URLs are retrieved and presigned using credentials proxied through
+    Latch's APIs.
 
-    Example:
-        literal blocks::
+    Example: ::
 
-            cp("sample.fa", "latch://sample.fa")
-            cp("sample.fa", "latch://new_name/sample.fa")
+        cp("sample.fa", "latch://sample.fa")
+        cp("sample.fa", "latch://new_name/sample.fa")
 
-            # You can also drop the `latch://` prefix...
-            cp("sample.fa", "/samples/sample.fa")
+        # You can also drop the `latch://` prefix...
+        cp("sample.fa", "/samples/sample.fa")
 
+    .. _multipart upload:
+        https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html
     """
 
     local_file = Path(local_file).resolve()
