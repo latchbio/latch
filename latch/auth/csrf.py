@@ -1,21 +1,25 @@
-"""
-csrf
-~~~~
-Context manager to hold state preventing CSRF attacks.
-"""
-
 import secrets
 
 from latch.auth.utils import base64url_encode
 
 
 class CSRFState:
-    """A state string as a client-side protection against CSRF attacks.
+
+    """Context manager to hold state preventing CSRF attacks.
+
+    Outlined in detail `here`_, this object holds a state string as a
+    client-side protection against CSRF attacks.
 
     Used in conjunction with PKCE verifier/challenge protection, which is a
     server-side security mechanism.
 
-    https://spring.io/blog/2011/11/30/cross-site-request-forgery-and-oauth2
+    Example usage: ::
+
+        with CSRFState() as csrf:
+            oauth2_flow = OAuth2(..., csrf, ...)
+
+    .. _here:
+        https://spring.io/blog/2011/11/30/cross-site-request-forgery-and-oauth2
     """
 
     def __init__(self):
