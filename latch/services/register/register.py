@@ -72,7 +72,18 @@ def register(
     dockerfile: Union[str, None] = None,
     requirements: Union[str, None] = None,
 ) -> RegisterOutput:
-    """This service will register a workflow defined as python code with latch.
+    """Registers a workflow, defined as python code, with Latch.
+
+    Kicks off a three-legged OAuth2.0 flow outlined in `this RFC`_.  Logic
+    scaffolding this flow and detailed documentation can be found in the
+    `latch.auth` package
+
+    From a high-level, the user will be redirected to a browser and prompted to
+    login. The SDK meanwhile spins up a callback server on a separate thread
+    that will be hit when the browser login is successful with an access token.
+
+    .. _this RFC
+        https://datatracker.ietf.org/doc/html/rfc6749
 
     The major constituent steps are:
 
@@ -84,6 +95,43 @@ def register(
     The Docker image is constructed by inferring relevant files + dependencies
     from the workflow package code itself. If a Dockerfile is provided
     explicitly, it will be used for image construction instead.
+
+    The registration flow makes heavy use of `Flyte`_, and while the Latch SDK
+    modifies many components to play nicely with Latch, eg. platform API,
+    user-specific auth, the underlying concepts are nicely summarized in the
+    `flytekit documentation`_.
+
+    Args:
+        pkg_root: A valid path pointing to the worklow code a user wishes to
+            register. The path can be absolute or relative. The path is always
+            a directory, with its structure exactly as constructed and
+            described in the `latch.services.init` function.
+        dockerfile: An optional valid path pointing to `Dockerfile`_ to define
+            a custom container. If passed, the resulting container will be used
+            as the environment to execute the registered workflow, allowing
+            arbitrary binaries and libraries to be called from workflow code.
+            However, be warned, this Dockerfile will be used *as is* - files
+            must be copied correctly and shell variables must be set to ensure
+            correct execution. See examples (TODO) for guidance.
+        requirements: An optional valid path pointing to `requirements.txt`
+            file containing a list of python libraries in the format produced
+            by `pip freeze` to install within the container that the workflow
+            will execute.
+
+    Example: ::
+
+        register("./foo")
+        register("/root/home/foo")
+
+        register("/root/home/foo", dockerfile="./Dockerfile")
+        register("/root/home/foo", requirements="./requirements.txt")
+
+    .. _Flyte:
+        https://docs.flyte.org
+    .. _Dockerfile:
+        https://docs.docker.com/engine/reference/builder/
+    .. _flytekit documentation:
+        https://docs.flyte.org/en/latest/concepts/registration.html
     """
 
     ctx = RegisterCtx(pkg_root)
