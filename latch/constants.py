@@ -1,9 +1,4 @@
-"""
-constants
-~~~~~~~~~
-Library level constants for authentication.
-"""
-
+"""Package-wide constants."""
 
 from dataclasses import dataclass
 
