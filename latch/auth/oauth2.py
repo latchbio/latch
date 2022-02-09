@@ -1,9 +1,3 @@
-"""
-oauth2
-~~~~~~
-An object to facilitate the two-legged OAuth2.0 flow.
-"""
-
 import http.server
 import json
 import urllib
@@ -16,7 +10,61 @@ from latch.constants import OAuth2Constants
 
 
 class OAuth2:
-    """TODO: docs on flow..."""
+    """An object to facilitate the OAuth2.0 flow.
+
+    This implementation of OAuth2.0 follows `RFC5849`_ as gospel.
+
+    (Note we are using the PKCE extension of OAuth2, but the outline of the
+    flow below is still a correct model if crytography is removed.)
+
+    ::
+
+         +--------+                               +---------------+
+         |        |--(A)- Authorization Request ->|   Resource    |
+         |        |                               |     Owner     |
+         |        |<-(B)-- Authorization Grant ---|               |
+         |        |                               +---------------+
+         |        |
+         |        |                               +---------------+
+         |        |--(C)-- Authorization Grant -->| Authorization |
+         | Client |                               |     Server    |
+         |        |<-(D)----- Access Token -------|               |
+         |        |                               +---------------+
+         |        |
+         |        |                               +---------------+
+         |        |--(E)----- Access Token ------>|    Resource   |
+         |        |                               |     Server    |
+         |        |<-(F)--- Protected Resource ---|               |
+         +--------+                               +---------------+
+
+                         Figure 1: Abstract Protocol Flow
+
+
+
+    Note the correspondence between diagram letters and comments in the code
+    example snippet below ::
+
+        # Note these context managers hold values critical to flows.
+        with PKCE() as pkce:
+            with CSRFState() as csrf_state:
+
+                # Construct our object + call each leg of the flow as a method.
+                oauth2_flow = OAuth2(pkce, csrf_state, OAuth2Constants)
+                auth_code = oauth2_flow.authorization_request() # A + B
+                token = oauth2_flow.access_token_request(auth_code) # C + D
+
+                # With token, we can do E + F...
+
+
+    Params:
+        pkce: Object managing PKCE values.
+        csrf_state: Object managing state for CSRF mitigation.
+        oauth2_constants: Object holding constants to identify Latch's authz
+            server.
+
+    .. _RFC5849:
+        https://datatracker.ietf.org/doc/html/rfc6749
+    """
 
     def __init__(
         self, pkce: PKCE, csrf_state: CSRFState, oauth2_constants: OAuth2Constants
@@ -28,7 +76,11 @@ class OAuth2:
         self.redirect_url = oauth2_constants.redirect_url
 
     def authorization_request(self) -> str:
-        """TODO: Returns code..."""
+        """Request authorization code from Latch authz server.
+
+        Returns:
+            An authorization code to complete the first leg of 0Auth2.0.
+        """
 
         class _CallbackHandler(http.server.BaseHTTPRequestHandler):
             def do_GET(self):
@@ -99,6 +151,14 @@ class OAuth2:
         return server.code
 
     def access_token_request(self, auth_code: str) -> str:
+        """Using a valid code returned from our authz server, request token.
+
+        Args:
+            auth_code: Returned from our authz server if it likes us.
+        Returns:
+            An access token that a user can use to access their resources on
+                latch (register workflows, upload files, etc.)
+        """
 
         token_url = self.authz_server_host + "/oauth/token"
         token_body: bytes = json.dumps(
