@@ -1,8 +1,4 @@
-"""
-init
-~~~~~
-Puts boilerplate project files into users working directory
-"""
+"""Service to initialize boilerplate."""
 
 import os
 import textwrap
@@ -10,7 +6,27 @@ from pathlib import Path
 
 
 def init(pkg_name: Path):
-    """Puts boilerplate files in the designated path."""
+    """Creates boilerplate workflow files in the user's working directory.
+
+    Args:
+        pkg_name: A identifier for the workflow - will name the boilerplate
+            directory as well as functions within the constructed package.
+
+    Example: ::
+
+        init("foo")
+
+    The resulting file structure will look like::
+
+        foo
+        ├── __init__.py
+        └── version
+
+    Where `version` holds the workflow's version in plaintext and `__init__.py`
+    contains the objects needed to define the workflow.
+
+
+    """
 
     cwd = Path(os.getcwd()).resolve()
     pkg_root = cwd.joinpath(pkg_name)
