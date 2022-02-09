@@ -1,8 +1,4 @@
-"""
-services.register
-~~~~~
-Registers workflows with the latch platform.
-"""
+"""Service to register workflows."""
 
 import base64
 import os
