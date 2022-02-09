@@ -1,3 +1,5 @@
+"""Service to copy files. """
+
 import math
 from pathlib import Path
 
@@ -8,7 +10,28 @@ _CHUNK_SIZE = 5 * 10 ** 6  # 5 MB
 
 
 def cp(local_file: str, remote_dest: str):
-    """Copies local file to remote latch uri."""
+    """Allows movement of files between local machines and Latch.
+
+    Args:
+        local_file: valid path to a local file (can be absolute or relative)
+        remote_dest: A valid path to a LatchData file. The path must be
+            absolute. The path can be optionally prefixed with `latch://`.
+
+    This function will initiate a [multipart
+    upload](https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html)
+    directly with AWS S3. The upload URLs are retrieved and presigned using
+    credentials proxied through Latch's APIs.
+
+    Example:
+        literal blocks::
+
+            cp("sample.fa", "latch://sample.fa")
+            cp("sample.fa", "latch://new_name/sample.fa")
+
+            # You can also drop the `latch://` prefix...
+            cp("sample.fa", "/samples/sample.fa")
+
+    """
 
     local_file = Path(local_file).resolve()
     if local_file.exists() is not True:
