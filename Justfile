@@ -18,6 +18,7 @@ build-api-docs:
   sphinx-apidoc latch -o docs/source/api/
 
 build-docs:
+  rm -rf docs/build
   make -C docs html
 
 #
