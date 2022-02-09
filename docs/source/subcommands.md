@@ -1,4 +1,4 @@
-Subcommands
+CLI Reference
 ---
 
 ## `latch cp`
