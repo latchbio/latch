@@ -42,10 +42,41 @@ redirected to sign into the Latch platform through the browser.
 Our toy workflow will be available at [console.latch.bio](console.latch.bio)
 after the dialogue in your terminal has completed.
 
-There is much left to do. You can ingest and output enormous files, execute
-custom programs written in any language, scale your logic to high-performance and
-GPU-enabled computing instances in a single line. Peruse the rest of the
-documentation to learn more.
+There is much left to do. You can ingest enormous files and execute custom
+programs written in any language... 
+
+```
+@task()
+def samtools_sort_tsk(
+    bam_file: BamFile,
+    output_dir: LatchDirectory = LatchDirectory("latch://sorted_output"),
+) -> FlyteDirectory:
+
+    local_output = Path("/root/output")
+
+    _cmd = [
+        "samtools",
+        "sort",
+        str(fasta_file),
+        "-o",
+        str(local_output),
+    ]
+
+    subprocess.run(_cmd, check=True)
+
+    return LatchDirectory(local_output)
+```
+
+scale your logic to high-performance and GPU-enabled computing instances in a
+single line...
+
+```
+@large_gpu_task() # 4 GPU, 32 CPU, 256 RAM
+def train_protein_model(samples: LatchDirectory) -> LatchFile:
+  ...
+```
+
+Peruse the rest of the documentation to learn more.
 
 
 ```{toctree}
@@ -64,6 +95,15 @@ workflow_metadata
 parameter_metadata
 task_dependencies
 task_overview
+```
+
+```{toctree}
+:hidden:
+:maxdepth: 2
+:caption: Biocomputing Recipes
+mageck
+nf-core-rnaseq
+alphafold
 ```
 
 ```{toctree}

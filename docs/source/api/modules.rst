@@ -1,4 +1,4 @@
-Python API Docs
+Python API Reference
 ==============
 
 latch.services.register.register module
