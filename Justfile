@@ -15,6 +15,7 @@ doc-requirements:
   pip-compile doc-requirements.in
 
 build-docs:
+  sphinx-apidoc latch -o docs/source/api/
   make -C docs html
 
 #
