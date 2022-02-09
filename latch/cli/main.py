@@ -1,8 +1,4 @@
-"""
-cli.main
-~~~~~~~~~~~~~~
-CLI entrypoints.
-"""
+"""Entrypoints to service functions through a CLI."""
 
 from typing import Union
 
@@ -15,7 +11,10 @@ from latch.services import register as _register
 
 @click.group("latch")
 def main():
-    """A commmand line toolkit to interact with the LatchBio platform"""
+    """A command line toolchain to register workflows and upload data to Latch.
+
+    Visit docs.latch.bio to learn more.
+    """
     ...
 
 
@@ -32,6 +31,10 @@ def main():
     help="The name of your workflow package (the folder with __init__.py). This is a mandatory option if --dockerfile is provided",
 )
 def register(pkg_root: str, dockerfile: Union[str, None], pkg_name: Union[str, None]):
+    """Register local workflow code to Latch.
+
+    Visit docs.latch.bio to learn more.
+    """
     _register(pkg_root, dockerfile, pkg_name)
     click.secho(
         "Successfully registered workflow. View @ console.latch.bio.", fg="green"
@@ -40,6 +43,10 @@ def register(pkg_root: str, dockerfile: Union[str, None], pkg_name: Union[str, N
 
 @click.command("login")
 def login():
+    """Manually login to Latch.
+
+    Visit docs.latch.bio to learn more.
+    """
     _login()
     click.secho("Successfully logged into LatchBio.", fg="green")
 
@@ -47,6 +54,10 @@ def login():
 @click.command("init")
 @click.argument("pkg_name", nargs=1)
 def init(pkg_name: str):
+    """Initialize boilerplate for local workflow code.
+
+    Visit docs.latch.bio to learn more.
+    """
     _init(pkg_name)
     click.secho(f"Created a latch workflow called {pkg_name}.", fg="green")
     click.secho("Run", fg="green")
@@ -58,6 +69,10 @@ def init(pkg_name: str):
 @click.argument("local_file", nargs=1, type=click.Path(exists=True))
 @click.argument("remote_dest", nargs=1)
 def cp(local_file: str, remote_dest: str):
+    """Copy local files to LatchData.
+
+    Visit docs.latch.bio to learn more.
+    """
     _cp(local_file, remote_dest)
     click.secho(f"Successfully copied {local_file} to {remote_dest}.", fg="green")
 
