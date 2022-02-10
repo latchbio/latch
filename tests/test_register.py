@@ -163,6 +163,7 @@ def test_pkg_register(test_account_jwt):
         with tempfile.TemporaryDirectory() as tmpdir:
             _serialize_pkg(ctx, tmpdir)
             resp = _register_serialized_pkg(ctx, tmpdir)
+            print("resp: ", resp)
             stdout = resp["stdout"]
             assert "Success" in stdout
             assert pkg in stdout
