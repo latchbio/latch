@@ -167,7 +167,7 @@ def test_pkg_register(test_account_jwt):
 
             tmp_name = f"{str(Path(tmpdir).resolve())}/*"
 
-            with Path(tmpdir).resolve().joinpath("foo.txt") as f:
+            with open(Path(tmpdir).resolve().joinpath("foo.txt"), "w") as f:
                 f.write("foobar")
 
             print("actual: ", tmp_name)
