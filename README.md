@@ -96,5 +96,10 @@ def train_protein_model(samples: LatchDirectory) -> LatchFile:
   ...
 ```
 
+## carpe diem
+
+<div align="center">
 
 ![manske](static/manske.png)
+
+</div>
