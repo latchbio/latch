@@ -189,6 +189,7 @@ def _login(ctx: RegisterCtx):
             aws_access_key_id=access_key,
             aws_secret_access_key=secret_key,
             aws_session_token=session_token,
+            region_name="us-west-2",
         ).client("ecr")
         token = client.get_authorization_token()["authorizationData"][0][
             "authorizationToken"
