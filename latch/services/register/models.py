@@ -61,22 +61,7 @@ class RegisterCtx:
 
     def __init__(self, pkg_root: Path, token: Optional[str] = None):
 
-        try:
-            tls_config = docker.tls.TLSConfig(
-                ca_cert="/Users/runner/.docker/machine/certs/ca.pem"
-            )
-            self.dkr_client = docker.APIClient(os.getenv("DOCKER_HOST"), tls=tls_config)
-        except docker.errors.DockerException:
-            try:
-                self.dkr_client = docker.APIClient(
-                    base_url="unix://var/run/docker.sock"
-                )
-            except docker.errors.DockerException as de:
-                raise OSError(
-                    "Docker is not running. Make sure that"
-                    " Docker is running before attempting to register a workflow."
-                ) from de
-
+        self.dkr_client = self._construct_dkr_client()
         self.pkg_root = Path(pkg_root).resolve()
         try:
             version_file = self.pkg_root.joinpath("version")
@@ -137,3 +122,69 @@ class RegisterCtx:
 
         """
         return f"{self.dkr_repo}/{self.image_tagged}"
+
+    def _construct_dkr_client():
+        """Try many methods of establishing valid connection with client.
+
+        This was helpful -
+        https://github.com/docker/docker-py/blob/a48a5a9647761406d66e8271f19fab7fa0c5f582/docker/utils/utils.py#L321
+        """
+
+        def _from_env():
+
+            host = environment.get("DOCKER_HOST")
+
+            # empty string for cert path is the same as unset.
+            cert_path = environment.get("DOCKER_CERT_PATH") or None
+
+            # empty string for tls verify counts as "false".
+            # Any value or 'unset' counts as true.
+            tls_verify = environment.get("DOCKER_TLS_VERIFY")
+            if tls_verify == "":
+                tls_verify = False
+            else:
+                tls_verify = tls_verify is not None
+
+            enable_tls = cert_path or tls_verify
+
+            dkr_client = None
+            try:
+                if not enable_tls:
+                    dkr_client = docker.APIClient(host)
+                else:
+                    if not cert_path:
+                        cert_path = os.path.join(os.path.expanduser("~"), ".docker")
+
+                    docker.tls.TLSConfig(
+                        client_cert=(
+                            os.path.join(cert_path, "cert.pem"),
+                            os.path.join(cert_path, "key.pem"),
+                        ),
+                        ca_cert=os.path.join(cert_path, "ca.pem"),
+                        verify=tls_verify,
+                    )
+
+            except docker.errors.DockerException as de:
+                raise OSError(
+                    "Unable to establish a connection to Docker. Make sure that"
+                    " Docker is running and properly configured before attempting"
+                    " to register a workflow."
+                ) from de
+
+            return dkr_client
+
+        environment = os.environ
+
+        host = environment.get("DOCKER_HOST")
+
+        if host is not None and host != "":
+            return _from_env()
+        else:
+            try:
+                # TODO: platform specific socket defaults
+                return docker.APIClient(base_url="unix://var/run/docker.sock")
+            except docker.errors.DockerException as de:
+                raise OSError(
+                    "Docker is not running. Make sure that"
+                    " Docker is running before attempting to register a workflow."
+                ) from de
