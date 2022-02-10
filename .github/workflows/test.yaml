@@ -14,7 +14,6 @@ jobs:
       - name: Download Docker
         run: |
           brew install docker docker-machine
-          brew install --cask virtualbox
           docker-machine create --driver virtualbox default
           docker-machine env default
           eval $(docker-machine env default)
