@@ -342,9 +342,6 @@ def _serialize_pkg(ctx: RegisterCtx, serialize_dir: Path) -> List[str]:
     ctx.dkr_client.start(container_id)
     logs = ctx.dkr_client.logs(container_id, stream=True)
 
-    print("serialize logs: ")
-    [print(x.decode("utf-8")) for x in logs]
-
     return [x.decode("utf-8") for x in logs]
 
 

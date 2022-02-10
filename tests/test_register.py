@@ -10,6 +10,7 @@ test.test_register
 
 """
 
+import glob
 import tempfile
 from pathlib import Path
 
@@ -161,8 +162,14 @@ def test_pkg_register(test_account_jwt):
     def _setup_register(pkg):
         ctx = _setup_and_build_wo_dockerfile(test_account_jwt, pkg)
         with tempfile.TemporaryDirectory() as tmpdir:
+
             _serialize_pkg(ctx, tmpdir)
+
+            tmp_name = f"{str(Path(tmpdir).resolve())}/*"
+            print("list: ", glob.glob(tmp_name))
+
             resp = _register_serialized_pkg(ctx, tmpdir)
+            print("list: ", glob.glob(tmp_name))
             print("resp: ", resp)
             stdout = resp["stdout"]
             assert "Success" in stdout
