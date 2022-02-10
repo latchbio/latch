@@ -193,10 +193,15 @@ def _login(ctx: RegisterCtx):
         token = client.get_authorization_token()["authorizationData"][0][
             "authorizationToken"
         ]
-    except client.exceptions.ClientError as err:
+    except Exception as err:
         raise ValueError(
             f"unable to retreive an ecr login token for user {ctx.account_id}"
         ) from err
+
+    # except client.exceptions.ClientError as err:
+    #    raise ValueError(
+    #        f"unable to retreive an ecr login token for user {ctx.account_id}"
+    #    ) from err
 
     user, password = base64.b64decode(token).decode("utf-8").split(":")
     ctx.dkr_client.login(
