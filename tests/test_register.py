@@ -166,6 +166,7 @@ def test_pkg_register(test_account_jwt):
             _serialize_pkg(ctx, tmpdir)
 
             tmp_name = f"{str(Path(tmpdir).resolve())}/*"
+            print("actual: ", tmp_name)
             print("list: ", glob.glob(tmp_name))
 
             resp = _register_serialized_pkg(ctx, tmpdir)
