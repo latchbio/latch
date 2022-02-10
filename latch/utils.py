@@ -1,5 +1,7 @@
 """Utility functions for services."""
 
+import webbrowser
+
 import jwt
 import requests
 
@@ -87,3 +89,21 @@ def account_id_from_token(token: str) -> str:
             f"Could not retrieve id from token - {token}.\n\t{response.text}"
         )
     return response.json()["id"]
+
+
+def browser_available() -> bool:
+    """Returns true if browser available for login flow.
+
+    Takes advantage of browser seaching logic for many platforms written
+    `here`_.
+
+    .. _here:
+        https://github.com/python/cpython/blob/main/Lib/webbrowser.py#L38
+    """
+    try:
+        browser = webbrowser.get()
+        if browser is not None:
+            return True
+    except Exception:
+        pass
+    return False
