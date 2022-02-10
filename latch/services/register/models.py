@@ -123,6 +123,7 @@ class RegisterCtx:
         """
         return f"{self.dkr_repo}/{self.image_tagged}"
 
+    @staticmethod
     def _construct_dkr_client():
         """Try many methods of establishing valid connection with client.
 
