@@ -146,8 +146,7 @@ def register(
             )
         requirements = Path(requirements).resolve()
         if not requirements.exists():
-            raise OSError(
-                f"Provided requirements file {requirements} does not exist.")
+            raise OSError(f"Provided requirements file {requirements} does not exist.")
 
     build_logs = _build_image(ctx, dockerfile, requirements)
     _print_build_logs(build_logs, ctx.image_tagged)
@@ -175,16 +174,14 @@ def _login(ctx: RegisterCtx):
 
     headers = {"Authorization": f"Bearer {ctx.token}"}
     data = {"pkg_name": ctx.image}
-    response = requests.post(ctx.latch_image_api_url,
-                             headers=headers, json=data)
+    response = requests.post(ctx.latch_image_api_url, headers=headers, json=data)
     try:
         response = response.json()
         access_key = response["tmp_access_key"]
         secret_key = response["tmp_secret_key"]
         session_token = response["tmp_session_token"]
     except KeyError as err:
-        raise ValueError(
-            f"malformed response on image upload: {response}") from err
+        raise ValueError(f"malformed response on image upload: {response}") from err
 
     # TODO: cache
     try:
@@ -364,10 +361,9 @@ def _register_serialized_pkg(ctx: RegisterCtx, serialize_dir: Path) -> dict:
         for filename in fnames + dirnames:
             file = Path(dirname).resolve().joinpath(filename)
             files[file.name] = open(file, "rb")
-    print("map"))
+    print("map")
     print(files)
 
-    headers={"Authorization": f"Bearer {ctx.token}"}
-    response=requests.post(ctx.latch_register_api_url,
-                           headers = headers, files = files)
+    headers = {"Authorization": f"Bearer {ctx.token}"}
+    response = requests.post(ctx.latch_register_api_url, headers=headers, files=files)
     return response.json()
