@@ -1,5 +1,7 @@
 <div align="center">
 
+![biocompute](static/biocompute.png)
+
 # Latch SDK
 
 The Latch SDK is an open-source toolchain to define serverless bioinformatics
@@ -18,10 +20,13 @@ workflow orchestration framework provides - task-level type-safety and
 containerization, independent task scheduling, and heterogeneous & highly
 scalable computing infrastructure.
 
-[docs](https://docs.latch.bio) •
+[Docs](https://docs.latch.bio) •
 [Installation](#installation) •
-[Quickstart](#configuration)
-[latch](https://latch.bio) •
+[Quickstart](#configuration) •
+[Latch](https://latch.bio) •
+
+
+![side-by-side](static/side-by-side.png)
 
 </div>
 
@@ -90,3 +95,6 @@ from latch.types import LatchDirectory, BamFile
 def train_protein_model(samples: LatchDirectory) -> LatchFile:
   ...
 ```
+
+
+![manske](static/manske.png)
