@@ -1,0 +1,29 @@
+name: Test
+on:
+  push:
+    branches:
+      - "main"
+      - "kenny/ci"
+jobs:
+  build:
+    name: Build
+    runs-on: macos-10.15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Download Docker
+        run: |
+          brew install docker docker-machine
+          brew install --cask virtualbox
+          docker-machine create --driver virtualbox default
+          docker-machine env default
+          eval $(docker-machine env default)
+      - name: Install dev
+        run: |
+          python3 -m pip install -r dev-requirements.txt
+      - name: Install latch
+        run: |
+          python3 -m pip install -e .
+      - name: Test
+        run: |
+          cd tests; pytest -s .
