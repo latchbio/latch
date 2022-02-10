@@ -32,4 +32,4 @@ jobs:
       - name: Test
         run: |
           eval $(docker-machine env default)
-          cd tests; python3 -m pytest .
+          cd tests; python3 -m pytest -s .
