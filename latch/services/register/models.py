@@ -156,7 +156,7 @@ class RegisterCtx:
                     if not cert_path:
                         cert_path = os.path.join(os.path.expanduser("~"), ".docker")
 
-                    docker.tls.TLSConfig(
+                    tls_config = docker.tls.TLSConfig(
                         client_cert=(
                             os.path.join(cert_path, "cert.pem"),
                             os.path.join(cert_path, "key.pem"),
@@ -164,6 +164,7 @@ class RegisterCtx:
                         ca_cert=os.path.join(cert_path, "ca.pem"),
                         verify=tls_verify,
                     )
+                    dkr_client = docker.APIClient(host, tls_config)
 
             except docker.errors.DockerException as de:
                 raise OSError(
