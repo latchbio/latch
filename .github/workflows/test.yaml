@@ -7,7 +7,6 @@ on:
 jobs:
   build:
     name: Build
-    runs-on: macos-10.15
     strategy:
       fail-fast: false
       matrix:
@@ -17,6 +16,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
       - name: Download Docker
         run: |
           brew install docker docker-machine
