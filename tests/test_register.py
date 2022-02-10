@@ -28,7 +28,7 @@ def test_account_jwt():
     return tmp_token
 
 
-_VERSION_0 = "0.0.0+dev"
+_VERSION_0 = "0.0.0-dev"
 _VERSION_1 = "0.0.1"
 
 
