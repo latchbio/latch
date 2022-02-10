@@ -1,5 +1,6 @@
 """Models used in the register service."""
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
@@ -61,12 +62,20 @@ class RegisterCtx:
     def __init__(self, pkg_root: Path, token: Optional[str] = None):
 
         try:
-            self.dkr_client = docker.APIClient(base_url="unix://var/run/docker.sock")
-        except docker.errors.DockerException as de:
-            raise OSError(
-                "Docker is not running. Make sure that"
-                " Docker is running before attempting to register a workflow."
-            ) from de
+            tls_config = docker.tls.TLSConfig(
+                ca_cert="/Users/runner/.docker/machine/certs/ca.pem"
+            )
+            self.dkr_client = docker.APIClient(os.getenv("DOCKER_HOST"), tls=tls_config)
+        except docker.errors.DockerException:
+            try:
+                self.dkr_client = docker.APIClient(
+                    base_url="unix://var/run/docker.sock"
+                )
+            except docker.errors.DockerException as de:
+                raise OSError(
+                    "Docker is not running. Make sure that"
+                    " Docker is running before attempting to register a workflow."
+                ) from de
 
         self.pkg_root = Path(pkg_root).resolve()
         try:

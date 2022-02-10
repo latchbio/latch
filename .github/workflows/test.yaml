@@ -14,9 +14,15 @@ jobs:
       - name: Download Docker
         run: |
           brew install docker docker-machine
+
+          # Latest virtualbox has breaking change for mac
+          brew uninstall virtualbox
+          cd $(brew --repo homebrew/cask)
+          git checkout 8670a72380c57c606d6582b645421e31dad2eee2
+          brew install --cask virtualbox
+
           docker-machine create --driver virtualbox default
           docker-machine env default
-          eval $(docker-machine env default)
       - name: Install dev
         run: |
           python3 -m pip install -r dev-requirements.txt
@@ -25,4 +31,5 @@ jobs:
           python3 -m pip install -e .
       - name: Test
         run: |
+          eval $(docker-machine env default)
           cd tests; pytest -s .
