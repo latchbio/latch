@@ -23,7 +23,7 @@ scalable computing infrastructure.
 [Docs](https://docs.latch.bio) •
 [Installation](#installation) •
 [Quickstart](#configuration) •
-[Latch](https://latch.bio) •
+[Latch](https://latch.bio)
 
 
 ![side-by-side](static/side-by-side.png)
