@@ -164,7 +164,7 @@ class RegisterCtx:
                         ca_cert=os.path.join(cert_path, "ca.pem"),
                         verify=tls_verify,
                     )
-                    dkr_client = docker.APIClient(host, tls_config)
+                    dkr_client = docker.APIClient(host, tls=tls_config)
 
             except docker.errors.DockerException as de:
                 raise OSError(
