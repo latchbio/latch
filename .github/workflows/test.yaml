@@ -9,10 +9,10 @@ jobs:
     name: Build
     runs-on: macos-10.15
     strategy:
-         fail-fast: false
-         matrix:
-           python: [3.8, 3.9, 3.10]
-           platform: [macos-10.15]
+      fail-fast: false
+      matrix:
+        python: [3.8, 3.9, 3.10]
+        platform: [macos-10.15]
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout
