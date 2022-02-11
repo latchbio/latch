@@ -163,26 +163,25 @@ def test_pkg_register(test_account_jwt):
         ctx = _setup_and_build_wo_dockerfile(test_account_jwt, pkg)
 
         # with tempfile.TemporaryDirectory() as tmpdir:
-        foobar = Path("/Users/Shared/foobar/")
-        foobar.mkdir()
-        with open(foobar, "w") as tmpdir:
+        tmpdir = Path("/Users/Shared/foobar/")
+        tmpdir.mkdir()
 
-            _serialize_pkg(ctx, tmpdir)
+        _serialize_pkg(ctx, tmpdir)
 
-            tmp_name = f"{str(Path(tmpdir).resolve())}/*"
+        tmp_name = f"{str(Path(tmpdir).resolve())}/*"
 
-            with open(Path(tmpdir).resolve().joinpath("foo.txt"), "w") as f:
-                f.write("foobar")
+        with open(Path(tmpdir).resolve().joinpath("foo.txt"), "w") as f:
+            f.write("foobar")
 
-            print("actual: ", tmp_name)
-            print("list: ", glob.glob(tmp_name))
+        print("actual: ", tmp_name)
+        print("list: ", glob.glob(tmp_name))
 
-            resp = _register_serialized_pkg(ctx, tmpdir)
-            print("list: ", glob.glob(tmp_name))
-            print("resp: ", resp)
-            stdout = resp["stdout"]
-            assert "Success" in stdout
-            assert pkg in stdout
+        resp = _register_serialized_pkg(ctx, tmpdir)
+        print("list: ", glob.glob(tmp_name))
+        print("resp: ", resp)
+        stdout = resp["stdout"]
+        assert "Success" in stdout
+        assert pkg in stdout
 
     _setup_register("foo")
     _setup_register("foo-bar")
