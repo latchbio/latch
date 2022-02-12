@@ -168,17 +168,7 @@ def test_pkg_register(test_account_jwt):
 
         _serialize_pkg(ctx, tmpdir)
 
-        tmp_name = f"{str(Path(tmpdir).resolve())}/*"
-
-        with open(Path(tmpdir).resolve().joinpath("foo.txt"), "w") as f:
-            f.write("foobar")
-
-        print("actual: ", tmp_name)
-        print("list: ", glob.glob(tmp_name))
-
         resp = _register_serialized_pkg(ctx, tmpdir)
-        print("list: ", glob.glob(tmp_name))
-        print("resp: ", resp)
         stdout = resp["stdout"]
         assert "Success" in stdout
         assert pkg in stdout
