@@ -361,8 +361,6 @@ def _register_serialized_pkg(ctx: RegisterCtx, serialize_dir: Path) -> dict:
         for filename in fnames + dirnames:
             file = Path(dirname).resolve().joinpath(filename)
             files[file.name] = open(file, "rb")
-    print("map")
-    print(files)
 
     headers = {"Authorization": f"Bearer {ctx.token}"}
     response = requests.post(ctx.latch_register_api_url, headers=headers, files=files)
