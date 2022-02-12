@@ -163,7 +163,11 @@ def test_pkg_register(test_account_jwt):
         ctx = _setup_and_build_wo_dockerfile(test_account_jwt, pkg)
 
         # with tempfile.TemporaryDirectory() as tmpdir:
-        tmpdir = Path("/Users/runner/foobar/")
+
+        import secrets
+
+        token = secrets.token_urlsafe(16)
+        tmpdir = Path(f"/Users/runner/{token}/")
         tmpdir.mkdir()
 
         _serialize_pkg(ctx, tmpdir)
