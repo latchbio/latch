@@ -138,7 +138,7 @@ def test_serialize_pkg(test_account_jwt):
         with tempfile.TemporaryDirectory() as tmpdir:
             logs = _serialize_pkg(ctx, tmpdir)
             # Log order is shuffled
-            assert any(["Successfully serialized" in x for x in logs[-3:]])
+            assert any(["Successfully serialized" in x for x in logs])
             assert pkg in logs[-3]
         return ctx
 
