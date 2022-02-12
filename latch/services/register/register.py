@@ -331,8 +331,8 @@ def _serialize_pkg(ctx: RegisterCtx, serialize_dir: Path) -> List[str]:
         volumes=[str(serialize_dir)],
         host_config=ctx.dkr_client.create_host_config(
             binds={
-                "/tmp/output": {
-                    "bind": str(serialize_dir),
+                str(serialize_dir): {
+                    "bind": "/tmp/output",
                     "mode": "rw",
                 },
             }
