@@ -10,11 +10,10 @@ test.test_register
 
 """
 
-import glob
+import shutil
 import tempfile
 from pathlib import Path
 
-import pytest
 from latch.services.init import _gen__init__
 from latch.services.register.models import RegisterCtx
 from latch.services.register.register import (_build_image,
@@ -22,12 +21,7 @@ from latch.services.register.register import (_build_image,
                                               _serialize_pkg,
                                               _upload_pkg_image)
 
-
-@pytest.fixture(scope="session")
-def test_account_jwt():
-    tmp_token = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IlNMdVluMm1jTDN5UXByWjRRQ0pMdiJ9.eyJnaXZlbl9uYW1lIjoiS2VubnkiLCJmYW1pbHlfbmFtZSI6IldvcmttYW4iLCJuaWNrbmFtZSI6Imtlbm55IiwibmFtZSI6Iktlbm55IFdvcmttYW4iLCJwaWN0dXJlIjoiaHR0cHM6Ly9saDMuZ29vZ2xldXNlcmNvbnRlbnQuY29tL2EtL0FPaDE0R2hCOGNKR2Q1RklXUHVPWmUtYlN2QnZ2WDE5MkFFRC1GV3UwendocGdNOTl5RHEzcXF4LUZOMmJWS1VVYlJPR21tYklNS19yeVh2TF9ERDR3YWdOVFNSTGY3NTJJZV9hejlNZTZMSmEzS1cwWUxiUkpWeXFnT0U5SDgxQkVWbEdvNXZYd1ZJN3NuVkFwWlZVZkJnNldwb0gtTkRETDFGQThQSGE4VVlVRnlkZFJRaFlwTUt1eFYzU25TNUJDc3hlSWxoaHJXNS1rTWRpcmNTWmQ4N3ROejdLaExnZFowcWpwQUY3UEljZ1p1QnhoTmN0R3JZNDE5ZXhsS0YwOUs3cFFMSmpROU5Xc3VETHVEMlR6UkxxekxsMk5fekZrM01Idnc4eUxZbFJPNmpSUV9hdUgyRURadUtRcjZWUmNpZ2NqUk1OUjhkbFptajJabmxGR0M4eG9sU3Jfa1MxUGNCalRqV0t3X3lBVkx3R0w4ZzVyY2VWenNOSldhdGViZEtxX29kZUlUbFpWQWd1SERrM3c3dUJvdV9nTUZMcXo5MTBBUkEweXNyNHJsZEVLbkN1N1BTWmhqV1lwYlB5eGhaQlVRZU84OG90TDJsQ1hDUzE0WlNGaDE0WDRJeFZSVFJ1bUtKQ0hmT19HalV4WjdWRko0cWhFVW9iNVhMbTRpaER4Tms1M3ZmaDdleFNwTkNJd01ZY3AxX3R2X0dKcFlxaVJEc0dMNGpDYk96bVlEMndvVjV6M0g5ZE1QS245Wm5XTW1JZXJQNlY1emIxVXZEelJHeFllek4xbm54bUdoVHF2eUZGaE9kSENOTV9qYTRqZG9KU1EzQlhMbnlQTktqcHRIZmdqRGFSX0ZUSXRGQkVZbXRWb0M0VXlBVS1WbHplRlM1emZxU0h2MU4tRU9WZGRqMm41YWhLemwwQnBCQnA3SzU2M1hST0sxczdyME4xMVBoN3cwaTQzYTQ4SDR4M010WDg4RHBYOWs1Y01adzUxdFBSX1BXdDlGY2JFWkhJQl9zM0E9czk2LWMiLCJsb2NhbGUiOiJlbiIsInVwZGF0ZWRfYXQiOiIyMDIyLTAyLTA4VDIxOjIyOjM2LjIwOVoiLCJlbWFpbCI6Imtlbm55QGxhdGNoLmJpbyIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJpc3MiOiJodHRwczovL2xhdGNoYWkudXMuYXV0aDAuY29tLyIsInN1YiI6Imdvb2dsZS1vYXV0aDJ8MTA1MDg3OTM4NjkzMDUwODkxMDI0IiwiYXVkIjoianpGQk9oSWJmcDRFUFJZWjh3bXg0WXl2TDI3TEZEZUIiLCJpYXQiOjE2NDQ3MDE3MzMsImV4cCI6MTY0NDczNzczM30.lfQRrFT-jKXPArgQJe3QL9W6RUZ90gEZJ0FFnobNxLkiXUD7EFJQsaCVHeXMFUZdDldZf7GHhYcogwKuj0JV43w1nDA0eNCUPrFm_xEmr4sJM7susXHPzxb-57b-8N74MZmkXveHfJZ_1f2bgFuJRdXSk424SLvIyKiNktQi5FrKZnZc9Ow0KNXvwPWG4DD80ydQuWoJkeRNdJE9KY7pPx_rP0Eee6vv6PqGQZysFpXcLq6Po4sRj2bnSaprux4Ojr7ZuOxnOtdGyIQaWbc__A4pzgxJoZNqB62uYIt4SZvP2RwmOKMkpzZW9ojs-4CE-OVyucE8-E8P2UaCqen_xw"
-    return tmp_token
-
+from .fixtures import test_account_jwt
 
 _VERSION_0 = "0.0.0-dev"
 _VERSION_1 = "0.0.1"
@@ -167,12 +161,14 @@ def test_pkg_register(test_account_jwt):
         import secrets
 
         token = secrets.token_urlsafe(16)
-        tmpdir = Path(f"/Users/runner/{token}/")
+        tmpdir = Path.home().joinpath(f"{token}/")
         tmpdir.mkdir()
 
         _serialize_pkg(ctx, tmpdir)
-
         resp = _register_serialized_pkg(ctx, tmpdir)
+
+        shutil.rmtree(str(tmpdir.resolve()))
+
         stdout = resp["stdout"]
         assert "Success" in stdout
         assert pkg in stdout
