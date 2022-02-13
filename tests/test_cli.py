@@ -1,5 +1,9 @@
+import shutil
 import subprocess
+from pathlib import Path
 from typing import List
+
+from .fixtures import project_name, test_account_jwt
 
 
 def _run_and_verify(cmd: List[str], does_exist: str):
@@ -8,19 +12,20 @@ def _run_and_verify(cmd: List[str], does_exist: str):
     assert does_exist in stdout
 
 
-def test_init():
+def test_init(test_account_jwt, project_name):
 
-    _cmd = ["latch", "init", "foobar"]
-    _run_and_verify(_cmd, "Created a latch workflow called foobar.")
+    _cmd = ["latch", "init", project_name]
+    _run_and_verify(_cmd, f"Created a latch workflow called {project_name}.")
 
 
-def test_register():
+def test_register(test_account_jwt, project_name):
 
-    _cmd = ["latch", "register", "foobar"]
+    _cmd = ["latch", "register", project_name]
     _run_and_verify(_cmd, "Successfully registered workflow.")
+    shutil.rmtree(str(Path(project_name).resolve()))
 
 
-def test_cp():
+def test_cp(test_account_jwt):
 
     with open("foo.txt", "w") as f:
         f.write("foobar")
