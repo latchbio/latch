@@ -133,7 +133,7 @@ def test_serialize_pkg(test_account_jwt):
             logs = _serialize_pkg(ctx, tmpdir)
             # Log order is shuffled
             assert any(["Successfully serialized" in x for x in logs])
-            assert pkg in logs[-3]
+            assert any([pkg in x for x in logs])
         return ctx
 
     _setup_serialize("foo")
