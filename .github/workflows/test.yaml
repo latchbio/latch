@@ -5,7 +5,7 @@ on:
       - "main"
       - "kenny/ubuntu"
 jobs:
-  build:
+  macos:
     name: Test MacOs
     strategy:
       fail-fast: false
@@ -45,8 +45,8 @@ jobs:
         run: |
           eval $(docker-machine env default)
           cd tests; python3 -m pytest -s .
-  build:
-    name: Test Ubuntu
+  linux:
+    name: Test Linux
     strategy:
       fail-fast: false
       matrix:
