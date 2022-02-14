@@ -297,7 +297,7 @@ def _build_image(
                     COPY flytekit.config /root
                     COPY {ctx.pkg_root.name} /root/{ctx.pkg_root.name}
                     WORKDIR /root
-                    RUN python3 -m pip install latch
+                    RUN python3 -m pip install --upgrade latch
 
                     {requirements_cmds}
 
