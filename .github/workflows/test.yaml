@@ -6,12 +6,12 @@ on:
       - "kenny/ubuntu"
 jobs:
   build:
-    name: Build
+    name: Test MacOs
     strategy:
       fail-fast: false
       matrix:
         python: ["3.7", "3.8", "3.9"]
-        platform: ["macos-10.15", "ubuntu-18.04"]
+        platform: ["macos-10.15"]
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout
@@ -35,6 +35,31 @@ jobs:
 
           docker-machine create --driver virtualbox default
           docker-machine env default
+      - name: Install dev
+        run: |
+          python3 -m pip install -r dev-requirements.txt
+      - name: Install latch
+        run: |
+          python3 -m pip install -e .
+      - name: Test
+        run: |
+          eval $(docker-machine env default)
+          cd tests; python3 -m pytest -s .
+  build:
+    name: Test Ubuntu
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.7", "3.8", "3.9"]
+        platform: ["ubuntu-18.04"]
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
       - name: Install dev
         run: |
           python3 -m pip install -r dev-requirements.txt
