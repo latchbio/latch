@@ -109,7 +109,11 @@ class LatchFile(FlyteFile):
         if kwargs.get("downloader") is not None:
             super().__init__(path, kwargs["downloader"], remote_path)
         else:
-            super().__init__(path, None, remote_path)
+
+            def noop():
+                ...
+
+            super().__init__(path, noop, remote_path)
 
         # This will manually download object to local disk in the case of a
         # user wishing to access self locally without referencing the path
