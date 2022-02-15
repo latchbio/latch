@@ -49,6 +49,11 @@ def _print_upload_logs(upload_image_logs, image):
         print(prog_chunk, end=f"\x1B[{i}A")
 
     for x in upload_image_logs:
+        if (
+            x.get("error") is not None
+            and "denied: Your authorization token has expired." in x["error"]
+        ):
+            raise OSError(f"Docker authorization for {image} is expired.")
         prog_map[x.get("id")] = x.get("progress")
         _pp_prog_map(prog_map)
 
