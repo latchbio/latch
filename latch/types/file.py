@@ -1,5 +1,6 @@
 from enum import Enum
-from typing import Annotated
+from os import PathLike
+from typing import Annotated, Union
 from urllib.parse import urlparse
 
 # Note this only exists in flaightkit fork.
@@ -101,14 +102,21 @@ class LatchFile(FlyteFile):
     remote_path: str = None
     """A url referencing in object in LatchData or s3."""
 
-    def __init__(self, remote_path: str):
+    def __init__(self, path: Union[str, PathLike], remote_path: PathLike, **kwargs):
+
+        remote_path = LatchURL(remote_path).url  # validation
+
+        if kwargs.get("downloader") is not None:
+            super().__init__(path, kwargs["downloader"], remote_path)
+        else:
+            super().__init__(path, remote_path)
 
         # This will manually download object to local disk in the case of a
         # user wishing to access self locally without referencing the path
         # through `__fspath__`, eg. through `self.local_path`.
         self.local_path = self.__fspath__()
 
-        self.remote_path = LatchURL(remote_path).url
+        # self.remote_path already constructed.
 
 
 LatchOutputFile = Annotated[
