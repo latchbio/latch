@@ -59,6 +59,10 @@ def token_is_valid(token: str) -> bool:
         "https://nucleus.latch.bio/api/protected-sdk-ping", headers=headers
     )
 
+    if response.status_code == 403:
+        raise PermissionError(
+            "You need access to the latch sdk beta ~ join the waitlist @ https://latch.bio/sdk"
+        )
     if response.status_code == 200:
         return True
     return False
@@ -82,6 +86,10 @@ def account_id_from_token(token: str) -> str:
         "https://nucleus.latch.bio/sdk/get-account-id", headers=headers
     )
 
+    if response.status_code == 403:
+        raise PermissionError(
+            "You need access to the latch sdk beta ~ join the waitlist @ https://latch.bio/sdk"
+        )
     if response.status_code != 200:
         raise Exception(
             f"Could not retrieve id from token - {token}.\n\t{response.text}"

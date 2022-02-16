@@ -180,6 +180,10 @@ def _login(ctx: RegisterCtx):
     headers = {"Authorization": f"Bearer {ctx.token}"}
     data = {"pkg_name": ctx.image}
     response = requests.post(ctx.latch_image_api_url, headers=headers, json=data)
+    if response.status_code == 403:
+        raise PermissionError(
+            "You need access to the latch sdk beta ~ join the waitlist @ https://latch.bio/sdk"
+        )
     try:
         response = response.json()
         access_key = response["tmp_access_key"]
@@ -369,4 +373,8 @@ def _register_serialized_pkg(ctx: RegisterCtx, serialize_dir: Path) -> dict:
 
     headers = {"Authorization": f"Bearer {ctx.token}"}
     response = requests.post(ctx.latch_register_api_url, headers=headers, files=files)
+    if response.status_code == 403:
+        raise PermissionError(
+            "You need access to the latch sdk beta ~ join the waitlist @ https://latch.bio/sdk"
+        )
     return response.json()
