@@ -4,7 +4,7 @@ import jwt
 import requests
 
 from latch.config import UserConfig
-from latch.services import login
+from latch.services.login import login
 
 
 def retrieve_or_login() -> str:
