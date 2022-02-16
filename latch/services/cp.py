@@ -62,6 +62,11 @@ def cp(local_file: str, remote_dest: str):
     headers = {"Authorization": f"Bearer {token}"}
     response = requests.post(url, headers=headers, json=data)
 
+    if response.status_code == 403:
+        raise PermissionError(
+            "You need access to the latch sdk beta ~ join the waitlist @ https://latch.bio/sdk"
+        )
+
     r_json = response.json()
     path = r_json["path"]
     upload_id = r_json["upload_id"]
