@@ -1,63 +1,13 @@
-from enum import Enum
 from os import PathLike
-from typing import Annotated, Optional, Union
-from urllib.parse import urlparse
+from typing import Annotated, Optional, Type, Union
 
+from flytekit.core.context_manager import FlyteContext
+from flytekit.core.type_engine import TypeEngine, TypeTransformer
 # Note this only exists in flaightkit fork.
 from flytekit.core.with_metadata import FlyteMetadata
-from flytekit.types.file import FlyteFile
-
-
-class LatchSchemes(Enum):
-    latch = "latch"
-    s3 = "s3"
-
-
-class URL:
-    """Validates a URL string with respect to a scheme.
-
-    Args:
-        scheme : eg. s3, latch
-        raw_url : the url string to be validated
-    """
-
-    def __init__(self, scheme: str, raw_url: str):
-        scheme = scheme.value
-        raw_scheme = urlparse(raw_url).scheme
-        if raw_scheme != scheme:
-            raise ValueError(f"{raw_url} is must use the {scheme} scheme.")
-        self._url = raw_url
-
-    @property
-    def url(self) -> str:
-        """Returns self as string."""
-        return self._url
-
-
-class LatchURL(URL):
-    """A URL referencing an object in LatchData.
-
-    Uses the latch scheme and a path that resolves absolutely with
-    respect to an authenticated users's root.
-
-    ..
-        latch:///foobar # a valid directory
-        latch:///test_samples/test.fa # a valid file
-    """
-
-    def __init__(self, raw_url: str):
-        super().__init__(LatchSchemes.latch, raw_url)
-
-
-class S3URL:
-    """A URL referencing an object in S3.
-
-    ..
-        s3:/<bucket>//path
-    """
-
-    def __init__(self, raw_url: str):
-        super().__init__(LatchSchemes.s3, raw_url)
+from flytekit.models.literals import Literal
+from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
+from latch.types.url import LatchURL
 
 
 class LatchFile(FlyteFile):
@@ -138,3 +88,38 @@ file at its remote path and displaying an error. This check is normally made to
 avoid launching workflows with LatchFiles that point to objects that don't
 exist.
 """
+
+
+class LatchFilePathTransformer(FlyteFilePathTransformer):
+    def __init__(self):
+        TypeTransformer.__init__(self, name="LatchFilePath", t=LatchFile)
+
+    def to_python_value(
+        self, ctx: FlyteContext, lv: Literal, expected_python_type:
+        Union[Type[LatchFile], PathLike]
+    ) -> FlyteFile:
+
+        uri = lv.scalar.blob.uri
+        if expected_python_type is PathLike:
+            raise TypeError(
+                "Casting from Pathlike to LatchFile is currently not supported.")
+
+        if not issubclass(expected_python_type, LatchFile):
+            raise TypeError(
+                f"Neither os.PathLike nor LatchFile specified {expected_python_type}")
+
+        # This is a local file path, like /usr/local/my_file, don't mess with it. Certainly, downloading it doesn't
+        # make any sense.
+        if not ctx.file_access.is_remote(uri):
+            return expected_python_type(uri)
+
+        # For the remote case, return an FlyteFile object that can download
+        local_path = ctx.file_access.get_random_local_path(uri)
+
+        def _downloader():
+            return ctx.file_access.get_data(uri, local_path, is_multipart=False)
+
+        return LatchFile(local_path, uri, downloader=_downloader)
+
+
+TypeEngine.register(LatchFilePathTransformer())
