@@ -37,11 +37,11 @@ def cp(local_file: str, remote_dest: str):
     if local_file.exists() is not True:
         raise ValueError(f"{local_file} must exist.")
 
-    if remote_dest[:8] != "latch://":
+    if remote_dest[:9] != "latch:///":
         if remote_dest[0] == "/":
-            remote_dest = f"latch:/{remote_dest}"
+            remote_dest = f"latch://{remote_dest}"
         else:
-            raise ValueError(f"{remote_dest} must be prefixed with 'latch://' or '/'")
+            raise ValueError(f"{remote_dest} must be prefixed with 'latch:///' or '/'")
 
     token = retrieve_or_login()
 
