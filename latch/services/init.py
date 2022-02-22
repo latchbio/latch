@@ -4,6 +4,8 @@ import os
 import textwrap
 from pathlib import Path
 
+import boto3
+
 
 def init(pkg_name: Path):
     """Creates boilerplate workflow files in the user's working directory.
@@ -38,7 +40,9 @@ def init(pkg_name: Path):
             " Remove it or pick another name for your latch workflow."
         )
 
-    init_f = pkg_root.joinpath("__init__.py")
+    wf_root = pkg_root.joinpath("wf")
+    wf_root.mkdir(exist_ok=True)
+    init_f = wf_root.joinpath("__init__.py")
     with open(init_f, "w") as f:
         f.write(_gen__init__(pkg_name))
 
@@ -50,13 +54,31 @@ def init(pkg_name: Path):
     with open(docker_f, "w") as f:
         f.write(_gen_dockerfile())
 
+    data_root = pkg_root.joinpath("data")
+    data_root.mkdir(exist_ok=True)
+
+    ref_ids = ["wuhan.1.bt2",
+               "wuhan.2.bt2",
+               "wuhan.3.bt2",
+               "wuhan.4.bt2",
+               "wuhan.fasta",
+               "wuhan.rev.1.bt2",
+               "wuhan.rev.2.bt2"]
+
+    s3 = boto3.client('s3')
+    print("Downloading workflow data ", flush=True, end="")
+    for id in ref_ids:
+        print(".", flush=True, end="")
+        with open(data_root.joinpath(id), "wb") as f:
+            s3.download_fileobj('latch-public', f'sdk/{id}', f)
+    print()
+
 
 def _gen__init__(pkg_name: str):
 
     # TODO: (kenny) format pkg_name s.t. resulting function name is valid with
     # more complete parser
-
-    fmt_pkg_name = pkg_name.replace("-", "_")
+    # fmt_pkg_name = pkg_name.replace("-", "_")
 
     # Within the ASCII range (U+0001..U+007F), the valid characters for identifiers
     # are the same as in Python 2.x: the uppercase and lowercase letters A through Z,
@@ -64,68 +86,106 @@ def _gen__init__(pkg_name: str):
     # https://docs.python.org/3/reference/lexical_analysis.html#grammar-token-identifier
 
     return textwrap.dedent(
-        f'''
+        '''
+            """
+            Assemble and sort some COVID reads...
+            """
+
+            import subprocess
+            from pathlib import Path
+
+            from latch import small_task, workflow
+            from latch.types import LatchFile
+
+
+            @small_task
+            def assembly_task(read1: LatchFile, read2: LatchFile) -> LatchFile:
+
+                # A reference to our output.
+                sam_file = Path("covid_assembly.sam").resolve()
+
+                _bowtie2_cmd = [
+                    "bowtie2/bowtie2",
+                    "--local",
+                    "-x",
+                    "wuhan",
+                    "-1",
+                    read1.local_path,
+                    "-2",
+                    read2.local_path,
+                    "--very-sensitive-local",
+                    "-S",
+                    str(sam_file),
+                ]
+
+                subprocess.run(_bowtie2_cmd)
+
+                return LatchFile(str(sam_file), "latch:///covid_assembly.sam")
+
+
+            @small_task
+            def sort_bam_task(sam: LatchFile) -> LatchFile:
+
+                bam_file = Path("covid_sorted.bam").resolve()
+
+                _samtools_sort_cmd = [
+                    "samtools",
+                    "sort",
+                    "-o",
+                    str(bam_file),
+                    "-O",
+                    "bam",
+                    sam.local_path,
+                ]
+
+                subprocess.run(_samtools_sort_cmd)
+
+                return LatchFile(str(bam_file), "latch:///covid_sorted.bam")
+
+
+            @workflow
+            def assemble_and_sort(read1: LatchFile, read2: LatchFile) -> LatchFile:
+                """Description...
+
+                markdown header
+                ----
+
+                Write some documentation about your workflow in
+                markdown here:
+
+                > Regular markdown constructs work as expected.
+
+                ## Heading
+
+                * content1
+                * content2
+
+                __metadata__:
+                    display_name: Assemble and Sort FastQ Files
+                    author:
+                        name:
+                        email:
+                        github:
+                    repository:
+                    license:
+                        id: MIT
+
+                Args:
+
+                    read1:
+                      Paired-end read 1 file to be assembled.
+
+                      __metadata__:
+                        display_name: Read1
+
+                    read2:
+                      Paired-end read 2 file to be assembled.
+
+                      __metadata__:
+                        display_name: Read2
                 """
-                {fmt_pkg_name}
-                ~~
-                Some biocompute
-                """
-
-                from flytekit import task, workflow
-                from flytekit.types.file import FlyteFile
-                from flytekit.types.directory import FlyteDirectory
-
-                @task()
-                def {fmt_pkg_name}_task(
-                    sample_input: FlyteFile, output_dir: FlyteDirectory
-                ) -> str:
-                    return "foo"
-
-
-                @workflow
-                def {fmt_pkg_name}(
-                    sample_input: FlyteFile, output_dir: FlyteDirectory
-                ) -> str:
-                    """Description...
-
-                    {fmt_pkg_name} markdown
-                    ----
-
-                    Write some documentation about your workflow in
-                    markdown here:
-
-                    > Markdown syntax works as expected.
-
-                    ## Foobar
-
-                    __metadata__:
-                        display_name: {fmt_pkg_name}
-                        author:
-                            name: n/a
-                            email:
-                            github:
-                        repository:
-                        license:
-                            id: MIT
-
-                    Args:
-
-                        sample_input:
-                          A description
-
-                          __metadata__:
-                            display_name: Sample Param
-
-                        output_dir:
-                          A description
-
-                          __metadata__:
-                            display_name: Output Directory
-                    """
-                    return {fmt_pkg_name}_task(
-                        sample_input=sample_input,
-                        output_dir=output_dir
-                    )
+                sam = assembly_task(read1=read1, read2=read2)
+                return sort_bam_task(sam=sam)
                 '''
     )
 
