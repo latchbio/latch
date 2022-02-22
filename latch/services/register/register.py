@@ -153,6 +153,10 @@ def register(
         if not requirements.exists():
             raise OSError(f"Provided requirements file {requirements} does not exist.")
 
+    # TODO: kenny, retire logic for automatic container construction
+    if dockerfile is None:
+        dockerfile = ctx.pkg_root.joinpath("Dockerfile")
+
     build_logs = _build_image(ctx, dockerfile, requirements)
     _print_build_logs(build_logs, ctx.image_tagged)
 
@@ -300,8 +304,7 @@ def _build_image(
 
             dockerfile = textwrap.dedent(
                 f"""
-                    FROM {ctx.dkr_repo}/wf-base:wf-base-d2fb-main
-
+                    FROM {ctx.dkr_repo}/wf-base:fbe8-main
 
                     COPY flytekit.config /root
                     COPY {ctx.pkg_root.name} /root/{ctx.pkg_root.name}
