@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - "main"
-      - "kenny/ubuntu"
+      - "kenny/*"
 jobs:
   macos:
     name: Test MacOs
