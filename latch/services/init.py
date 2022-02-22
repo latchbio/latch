@@ -5,6 +5,8 @@ import textwrap
 from pathlib import Path
 
 import boto3
+from botocore import UNSIGNED
+from botocore.config import Config
 
 
 def init(pkg_name: Path):
@@ -65,7 +67,8 @@ def init(pkg_name: Path):
                "wuhan.rev.1.bt2",
                "wuhan.rev.2.bt2"]
 
-    s3 = boto3.client('s3')
+    s3 = boto3.client('s3', config=Config(signature_version=UNSIGNED))
+
     print("Downloading workflow data ", flush=True, end="")
     for id in ref_ids:
         print(".", flush=True, end="")
@@ -155,7 +158,7 @@ def _gen__init__(pkg_name: str):
 
                 > Regular markdown constructs work as expected.
 
-                ## Heading
+                # Heading
 
                 * content1
                 * content2
