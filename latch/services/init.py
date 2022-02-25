@@ -59,21 +59,23 @@ def init(pkg_name: Path):
     data_root = pkg_root.joinpath("data")
     data_root.mkdir(exist_ok=True)
 
-    ref_ids = ["wuhan.1.bt2",
-               "wuhan.2.bt2",
-               "wuhan.3.bt2",
-               "wuhan.4.bt2",
-               "wuhan.fasta",
-               "wuhan.rev.1.bt2",
-               "wuhan.rev.2.bt2"]
+    ref_ids = [
+        "wuhan.1.bt2",
+        "wuhan.2.bt2",
+        "wuhan.3.bt2",
+        "wuhan.4.bt2",
+        "wuhan.fasta",
+        "wuhan.rev.1.bt2",
+        "wuhan.rev.2.bt2",
+    ]
 
-    s3 = boto3.client('s3', config=Config(signature_version=UNSIGNED))
+    s3 = boto3.client("s3", config=Config(signature_version=UNSIGNED))
 
     print("Downloading workflow data ", flush=True, end="")
     for id in ref_ids:
         print(".", flush=True, end="")
         with open(data_root.joinpath(id), "wb") as f:
-            s3.download_fileobj('latch-public', f'sdk/{id}', f)
+            s3.download_fileobj("latch-public", f"sdk/{id}", f)
     print()
 
 
@@ -89,8 +91,7 @@ def _gen__init__(pkg_name: str):
     # https://docs.python.org/3/reference/lexical_analysis.html#grammar-token-identifier
 
     return textwrap.dedent(
-        '''
-            """
+        '''"""
             Assemble and sort some COVID reads...
             """
 
@@ -195,18 +196,18 @@ def _gen__init__(pkg_name: str):
 
 def _gen_dockerfile():
     return textwrap.dedent(
-        """
-        FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/wf-base:fbe8-main
+        """FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/wf-base:fbe8-main
 
         # Its easy to build binaries from source that you can later reference as
         # subprocesses within your workflow.
-        RUN curl -L https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.4.4/bowtie2-2.4.4-linux-x86_64.zip/download -o bowtie2-2.4.4.zip &&\
-            unzip bowtie2-2.4.4.zip &&\
+        RUN curl -L
+        https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.4.4/bowtie2-2.4.4-linux-x86_64.zip/download -o bowtie2-2.4.4.zip &&\\
+            unzip bowtie2-2.4.4.zip &&\\
             mv bowtie2-2.4.4-linux-x86_64 bowtie2
 
         # Or use managed library distributions through the container OS's package
         # manager.
-        RUN apt-get update -y &&\
+        RUN apt-get update -y &&\\
             apt-get install -y autoconf samtools
 
 
