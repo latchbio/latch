@@ -91,7 +91,8 @@ def _gen__init__(pkg_name: str):
     # https://docs.python.org/3/reference/lexical_analysis.html#grammar-token-identifier
 
     return textwrap.dedent(
-        '''"""
+        '''
+            """
             Assemble and sort some COVID reads...
             """
 
@@ -191,12 +192,13 @@ def _gen__init__(pkg_name: str):
                 sam = assembly_task(read1=read1, read2=read2)
                 return sort_bam_task(sam=sam)
                 '''
-    )
+    ).lstrip()
 
 
 def _gen_dockerfile():
     return textwrap.dedent(
-        """FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/wf-base:fbe8-main
+        """
+        FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/wf-base:fbe8-main
 
         # Its easy to build binaries from source that you can later reference as
         # subprocesses within your workflow.
@@ -227,4 +229,4 @@ def _gen_dockerfile():
         RUN python3 -m pip install --upgrade latch
         WORKDIR /root
         """
-    )
+    ).lstrip()
