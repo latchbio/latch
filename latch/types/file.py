@@ -95,18 +95,22 @@ class LatchFilePathTransformer(FlyteFilePathTransformer):
         TypeTransformer.__init__(self, name="LatchFilePath", t=LatchFile)
 
     def to_python_value(
-        self, ctx: FlyteContext, lv: Literal, expected_python_type:
-        Union[Type[LatchFile], PathLike]
+        self,
+        ctx: FlyteContext,
+        lv: Literal,
+        expected_python_type: Union[Type[LatchFile], PathLike],
     ) -> FlyteFile:
 
         uri = lv.scalar.blob.uri
         if expected_python_type is PathLike:
             raise TypeError(
-                "Casting from Pathlike to LatchFile is currently not supported.")
+                "Casting from Pathlike to LatchFile is currently not supported."
+            )
 
         if not issubclass(expected_python_type, LatchFile):
             raise TypeError(
-                f"Neither os.PathLike nor LatchFile specified {expected_python_type}")
+                f"Neither os.PathLike nor LatchFile specified {expected_python_type}"
+            )
 
         # This is a local file path, like /usr/local/my_file, don't mess with it. Certainly, downloading it doesn't
         # make any sense.
