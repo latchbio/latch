@@ -4,12 +4,17 @@ import math
 from pathlib import Path
 
 import requests
+import urllib3
 from latch.utils import retrieve_or_login
 
 _CHUNK_SIZE = 5 * 10 ** 6  # 5 MB
 
 
-def cp(local_file: str, remote_dest: str):
+# todo(ayush)
+def _cp_remote_to_remote(remote_file: str, remote_dest: str):
+    pass
+
+def _cp_local_to_remote(local_file: str, remote_dest: str):
     """Allows movement of files between local machines and Latch.
 
     Args:
@@ -98,3 +103,41 @@ def cp(local_file: str, remote_dest: str):
     url = "https://nucleus.latch.bio/sdk/complete-multipart-upload"
     headers = {"Authorization": f"Bearer {token}"}
     response = requests.post(url, headers=headers, json=data)
+
+def _cp_remote_to_local(remote_file: str, local_dest: str):
+    # check credentials
+    # check if remote file exists
+    # stream file data from s3 to local file (use a presigned url from nucleus api)
+    local_dest = Path(local_dest).resolve()
+    
+    token = retrieve_or_login()
+    headers = {"Authorization": f"Bearer {token}"}
+    data = {"source_path": remote_file}
+    # todo(ayush): change to prod nucleus for release
+    url = "https://nucleus.sugma.ai/sdk/download"
+
+    response = requests.post(url, headers=headers, json=data)
+    if response.status_code == 403:
+        raise PermissionError(
+            "You need access to the latch sdk beta ~ join the waitlist @ https://latch.bio/sdk"
+        )
+    
+    response_data = response.json()
+    url = response_data['url']
+
+    with requests.get(url, stream=True) as r:
+        r.raise_for_status()
+        with open(local_dest, "wb") as f:
+            for chunk in r.iter_content(chunk_size=_CHUNK_SIZE):
+                f.write(chunk)
+
+
+def cp(f1: str, f2: str):
+    if f1[:9] == f2[:9] == "latch:///":
+        _cp_remote_to_remote(remote_file=f1, remote_dest=f2)
+    elif f2[:9] == "latch:///":
+        _cp_local_to_remote(local_file=f1, remote_dest=f2)
+    elif f1[:9] == "latch:///":
+        _cp_remote_to_local(remote_file=f1, local_dest=f2)
+    else:
+        raise ValueError("If you want to copy a local file to a local destination just use regular cp.")
