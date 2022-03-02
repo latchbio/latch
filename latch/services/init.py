@@ -202,8 +202,7 @@ def _gen_dockerfile():
 
         # Its easy to build binaries from source that you can later reference as
         # subprocesses within your workflow.
-        RUN curl -L
-        https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.4.4/bowtie2-2.4.4-linux-x86_64.zip/download -o bowtie2-2.4.4.zip &&\\
+        RUN curl -L https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.4.4/bowtie2-2.4.4-linux-x86_64.zip/download -o bowtie2-2.4.4.zip &&\\
             unzip bowtie2-2.4.4.zip &&\\
             mv bowtie2-2.4.4-linux-x86_64 bowtie2
 
