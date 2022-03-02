@@ -49,6 +49,11 @@ def _print_upload_logs(upload_image_logs, image):
         print(prog_chunk, end=f"\x1B[{i}A")
 
     for x in upload_image_logs:
+        if (
+            x.get("error") is not None
+            and "denied: Your authorization token has expired." in x["error"]
+        ):
+            raise OSError(f"Docker authorization for {image} is expired.")
         prog_map[x.get("id")] = x.get("progress")
         _pp_prog_map(prog_map)
 
@@ -148,6 +153,10 @@ def register(
         if not requirements.exists():
             raise OSError(f"Provided requirements file {requirements} does not exist.")
 
+    # TODO: kenny, retire logic for automatic container construction
+    if dockerfile is None:
+        dockerfile = ctx.pkg_root.joinpath("Dockerfile")
+
     build_logs = _build_image(ctx, dockerfile, requirements)
     _print_build_logs(build_logs, ctx.image_tagged)
 
@@ -175,6 +184,10 @@ def _login(ctx: RegisterCtx):
     headers = {"Authorization": f"Bearer {ctx.token}"}
     data = {"pkg_name": ctx.image}
     response = requests.post(ctx.latch_image_api_url, headers=headers, json=data)
+    if response.status_code == 403:
+        raise PermissionError(
+            "You need access to the latch sdk beta ~ join the waitlist @ https://latch.bio/sdk"
+        )
     try:
         response = response.json()
         access_key = response["tmp_access_key"]
@@ -198,11 +211,6 @@ def _login(ctx: RegisterCtx):
         raise ValueError(
             f"unable to retreive an ecr login token for user {ctx.account_id}"
         ) from err
-
-    # except client.exceptions.ClientError as err:
-    #    raise ValueError(
-    #        f"unable to retreive an ecr login token for user {ctx.account_id}"
-    #    ) from err
 
     user, password = base64.b64decode(token).decode("utf-8").split(":")
     ctx.dkr_client.login(
@@ -291,13 +299,12 @@ def _build_image(
 
             dockerfile = textwrap.dedent(
                 f"""
-                    FROM {ctx.dkr_repo}/wf-base:wf-base-d2fb-main
-
+                    FROM {ctx.dkr_repo}/wf-base:fbe8-main
 
                     COPY flytekit.config /root
                     COPY {ctx.pkg_root.name} /root/{ctx.pkg_root.name}
                     WORKDIR /root
-                    RUN python3 -m pip install latch
+                    RUN python3 -m pip install --upgrade latch
 
                     {requirements_cmds}
 
@@ -364,4 +371,8 @@ def _register_serialized_pkg(ctx: RegisterCtx, serialize_dir: Path) -> dict:
 
     headers = {"Authorization": f"Bearer {ctx.token}"}
     response = requests.post(ctx.latch_register_api_url, headers=headers, files=files)
+    if response.status_code == 403:
+        raise PermissionError(
+            "You need access to the latch sdk beta ~ join the waitlist @ https://latch.bio/sdk"
+        )
     return response.json()
