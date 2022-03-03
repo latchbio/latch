@@ -119,10 +119,10 @@ def _cp_remote_to_local(remote_file: str, local_dest: str):
             for chunk in r.iter_content(chunk_size=_CHUNK_SIZE):
                 f.write(chunk)
 
-def cp(file_1: str, file_2: str):
-    if file_1[:9] != "latch:///" and file_2[:9] == "latch:///":
-        _cp_local_to_remote(file_1, file_2)
-    elif file_1[:9] == "latch:///" and file_2[:9] != "latch:///":
-        _cp_remote_to_local(file_1, file_2)
+def cp(source_file: str, destination_file: str):
+    if source_file[:9] != "latch:///" and destination_file[:9] == "latch:///":
+        _cp_local_to_remote(source_file, destination_file)
+    elif source_file[:9] == "latch:///" and destination_file[:9] != "latch:///":
+        _cp_remote_to_local(source_file, destination_file)
     else:
         raise ValueError("latch cp can only be used to either copy remote -> local or local -> remote")

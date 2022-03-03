@@ -66,15 +66,15 @@ def init(pkg_name: str):
 
 
 @click.command("cp")
-@click.argument("file_1", nargs=1)
-@click.argument("file_2", nargs=1)
-def cp(file_1: str, file_2: str):
-    """Copy local files to LatchData.
+@click.argument("source_file", nargs=1)
+@click.argument("destination_file", nargs=1)
+def cp(source_file: str, destination_file: str):
+    """Copy local files to LatchData and vice versa.
 
     Visit docs.latch.bio to learn more.
     """
-    _cp(file_1, file_2)
-    click.secho(f"Successfully copied {file_1} to {file_2}.", fg="green")
+    _cp(source_file, destination_file)
+    click.secho(f"Successfully copied {source_file} to {destination_file}.", fg="green")
 
 
 main.add_command(register)
