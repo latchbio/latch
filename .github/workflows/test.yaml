@@ -4,6 +4,7 @@ on:
     branches:
       - "main"
       - "kenny/*"
+      - "ayush/*"
 jobs:
   macos:
     name: Test MacOs
