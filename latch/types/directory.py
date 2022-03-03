@@ -43,9 +43,12 @@ class LatchDir(FlyteDirectory):
             return LatchDir("./foo", "latch:///foo")
     """
 
-    def __init__(self, path: Union[str, PathLike], remote_path: PathLike, **kwargs):
+    def __init__(
+        self, path: Union[str, PathLike], remote_path: PathLike = None, **kwargs
+    ):
 
-        self._remote_directory = LatchURL(remote_path).url  # validates url string
+        if remote_path is not None:
+            self._remote_directory = LatchURL(remote_path).url  # validates url string
 
         if kwargs.get("downloader") is not None:
             super().__init__(path, kwargs["downloader"], remote_path)
