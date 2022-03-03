@@ -104,8 +104,7 @@ def _cp_remote_to_local(remote_file: str, local_dest: str):
     token = retrieve_or_login()
     headers = {"Authorization": f"Bearer {token}"}
     data = {"source_path": remote_file}
-    # todo(ayush): change to prod nucleus for release
-    url = "https://nucleus.sugma.ai/sdk/download"
+    url = "https://nucleus.latch.bio/sdk/download"
     response = requests.post(url, headers=headers, json=data)
     if response.status_code == 403:
         raise PermissionError(
