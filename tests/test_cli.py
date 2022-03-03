@@ -5,7 +5,6 @@ from typing import List
 
 from .fixtures import project_name, test_account_jwt
 
-
 def _run_and_verify(cmd: List[str], does_exist: str):
     output = subprocess.run(cmd, capture_output=True, check=True)
     stdout = output.stdout.decode("utf-8")
@@ -30,5 +29,5 @@ def test_cp(test_account_jwt):
     with open("foo.txt", "w") as f:
         f.write("foobar")
 
-    _cmd = ["latch", "cp", "foo.txt", "/foo.txt"]
+    _cmd = ["latch", "cp", "foo.txt", "latch:///foo.txt"]
     _run_and_verify(_cmd, "Successfully copied foo.txt to /foo.txt.")
