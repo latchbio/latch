@@ -86,7 +86,7 @@ def execute(params_file: Path, version: Union[None, str] = None) -> bool:
 
                 python_value = wf_params[key]
                 # Recover parameterized generics for TypeTransformer.
-                python_type = to_python_literal(python_value)
+                python_type = _to_python_literal(python_value)
 
                 python_type_literal = TypeEngine.to_literal(
                     ctx, python_value, python_type, literal_type)
@@ -97,7 +97,7 @@ def execute(params_file: Path, version: Union[None, str] = None) -> bool:
         return _execute_workflow(token, wf_id, wf_literals)
 
 
-def to_python_literal(v: any) -> typing.T:
+def _to_python_literal(v: any) -> typing.T:
     """Python literal builder.
 
     We will attempt to construct the correct python type representation from the
