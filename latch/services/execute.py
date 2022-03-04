@@ -24,10 +24,9 @@ def execute(params_file: Path, version: Union[None, str] = None) -> bool:
             None is provided
 
         Parameters for the workflow execution are specified in plain python as
-        a function call, as the syntax is highly legible and easier to work
+        a dictionary, as the syntax is highly legible and easier to work
         with than alternatives such as YAML, JSON. This file is passed to the
-        `execute` service and should contain no code other than the single
-        call.
+        `execute` service.
 
     Returns:
         True if successful else False
