@@ -1,9 +1,8 @@
 """Service to execute a workflow."""
 
-import json
+import importlib.util
 import typing
 from pathlib import Path
-from types import ModuleType
 from typing import Union
 
 import google.protobuf.json_format as gpjson
@@ -29,7 +28,7 @@ def execute(params_file: Path, version: Union[None, str] = None) -> bool:
         `execute` service.
 
     Returns:
-        True if successful else False
+        True if successful
 
     Example: ::
 
@@ -49,55 +48,55 @@ def execute(params_file: Path, version: Union[None, str] = None) -> bool:
     with open(params_file, "r") as pf:
 
         param_code = pf.read()
-        param_module = ModuleType("wf_params")
-        exec(param_code, param_module.__dict__)
 
-        module_vars = vars(param_module)
-        try:
-            wf_params = module_vars["params"]
-        except KeyError as e:
-            raise ValueError(
-                f"Execution file {params_file.name} needs to have"
-                " a parameter value dictionary named 'params'"
-            ) from e
+    spec = importlib.util.spec_from_file_location("wf_params", params_file)
+    param_module = importlib.util.module_from_spec(spec)
+    exec(param_code, param_module.__dict__)
 
-        wf_name = wf_params.get("_name")
-        if wf_name is None:
-            raise ValueError(
-                f"The dictionary of parameters in the launch file lacks the"
-                " _name key used to identify the workflow. Make sure a _name"
-                " key with the workflow name exists in the dictionary."
+    module_vars = vars(param_module)
+    try:
+        wf_params = module_vars["params"]
+    except KeyError as e:
+        raise ValueError(
+            f"Execution file {params_file.name} needs to have"
+            " a parameter value dictionary named 'params'"
+        ) from e
+
+    wf_name = wf_params.get("_name")
+    if wf_name is None:
+        raise ValueError(
+            f"The dictionary of parameters in the launch file lacks the"
+            " _name key used to identify the workflow. Make sure a _name"
+            " key with the workflow name exists in the dictionary."
+        )
+
+    wf_id, wf_interface = _get_workflow_interface(token, wf_name, version)
+
+    wf_vars = wf_interface["variables"]
+    wf_literals = {}
+    for key, value in wf_vars.items():
+
+        ctx = FlyteContextManager.current_context()
+        literal_type_json = value["type"]
+        literal_type = gpjson.ParseDict(literal_type_json, LiteralType())
+
+        if key in wf_params:
+
+            python_value = wf_params[key]
+            # Recover parameterized generics for TypeTransformer.
+            python_type = _guess_python_type(python_value)
+
+            python_type_literal = TypeEngine.to_literal(
+                ctx, python_value, python_type, literal_type
             )
 
-        wf_id, wf_interface = _get_workflow_interface(token, wf_name, version)
+            wf_literals[key] = gpjson.MessageToDict(python_type_literal.to_flyte_idl())
 
-        wf_vars = wf_interface["variables"]
-        wf_literals = {}
-        for key, value in wf_vars.items():
-
-            ctx = FlyteContextManager.current_context()
-            literal_type_json = value["type"]
-            literal_type = gpjson.Parse(json.dumps(literal_type_json), LiteralType())
-
-            if key in wf_params:
-
-                python_value = wf_params[key]
-                # Recover parameterized generics for TypeTransformer.
-                python_type = _to_python_literal(python_value)
-
-                python_type_literal = TypeEngine.to_literal(
-                    ctx, python_value, python_type, literal_type
-                )
-
-                wf_literals[key] = json.loads(
-                    gpjson.MessageToJson(python_type_literal.to_flyte_idl())
-                )
-
-        return _execute_workflow(token, wf_id, wf_literals)
+    return _execute_workflow(token, wf_id, wf_literals)
 
 
-def _to_python_literal(v: any) -> typing.T:
-    """Python literal builder.
+def _guess_python_type(v: any) -> typing.T:
+    """Python literal guesser.
 
     We will attempt to construct the correct python type representation from the
     value and JSON type representation and rely on the TypeTransformer to produce
@@ -126,7 +125,7 @@ def _to_python_literal(v: any) -> typing.T:
         if len(v) == 0:
             raise ValueError(f"Unable to create List[T] literal from empty list {v}")
         elif type(v[0]) is list:
-            return typing.List[_to_python_literal(v[0])]
+            return typing.List[_guess_python_type(v[0])]
         else:
             return typing.List[type(v[0])]
 
@@ -175,7 +174,7 @@ def _get_workflow_interface(
 def _execute_workflow(token: str, wf_id: str, params: dict) -> bool:
     """Execute the workflow of given id with parameter map.
 
-    Return True if success else False.
+    Return True if success
     """
 
     # TODO (kenny) - pull out to consolidated requests class
@@ -197,7 +196,4 @@ def _execute_workflow(token: str, wf_id: str, params: dict) -> bool:
         )
     wf_interface_resp = response.json()
 
-    if wf_interface_resp.get("success") is True:
-        return True
-
-    return False
+    return wf_interface_resp.get("success") is True
