@@ -84,13 +84,13 @@ def test_execute_previous_versions():
         assert execute(tf.name, "50") is True
 
 
-# def test_execute_rnaseq():
-#
-#     with NamedTemporaryFile("w+") as tf:
-#         tf.write(rnaseq_plan)
-#         tf.seek(0)
-#
-#         assert execute(tf.name) is True
+def test_execute_rnaseq():
+
+    with NamedTemporaryFile("w+") as tf:
+        tf.write(rnaseq_plan)
+        tf.seek(0)
+
+        assert execute(tf.name) is True
 
 
 def test_execute_crispresso():
