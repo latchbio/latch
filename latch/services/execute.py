@@ -127,6 +127,8 @@ def _to_python_literal(v: any) -> typing.T:
         if len(v) == 0:
             raise ValueError(
                 f"Unable to create List[T] literal from empty list {v}")
+        elif type(v[0]) is list:
+            return typing.List[_to_python_literal(v[0])]
         else:
             return typing.List[type(v[0])]
 
