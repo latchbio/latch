@@ -9,13 +9,15 @@ from latch.utils import retrieve_or_login
 _CHUNK_SIZE = 5 * 10 ** 6  # 5 MB
 
 
-def _cp_local_to_remote(local_file: str, remote_dest: str):
-    """Allows movement of files between local machines and Latch.
+def _cp_local_to_remote(local_source: str, remote_dest: str):
+    """Allows movement of files from local machines -> Latch.
 
     Args:
-        local_file: valid path to a local file (can be absolute or relative)
-        remote_dest: A valid path to a LatchData file. The path must be
-            absolute. The path can be optionally prefixed with `latch://`.
+        local_source:  A valid path to a local file (can be absolute or relative).
+        remote_dest:   A valid path to a LatchData file. The path must be absolute
+                       and prefixed with `latch://`. If a directory in the path 
+                       doesn't exist, that directory and everything following it
+                       becomes the file name - see below.
 
     This function will initiate a `multipart upload`_ directly with AWS S3. The
     upload URLs are retrieved and presigned using credentials proxied through
@@ -23,19 +25,29 @@ def _cp_local_to_remote(local_file: str, remote_dest: str):
 
     Example: ::
 
-        cp("sample.fa", "latch://sample.fa")
-        cp("sample.fa", "latch://new_name/sample.fa")
+        cp("sample.fa", "latch:///sample.fa")
 
-        # You can also drop the `latch://` prefix...
-        cp("sample.fa", "/samples/sample.fa")
+            Creates a new file visible in Latch Console called sample.fa, located in 
+            the root of the user's Latch filesystem
+
+        cp("sample.fa", "latch:///dir1/dir2/sample.fa")
+
+            Creates a new file visible in Latch Console called sample.fa, located in 
+            the nested directory /dir1/dir2/
+
+        cp("sample.fa", "latch:///dir1/doesnt_exist/dir2/sample.fa") # doesnt_exist doesn't exist
+
+            Creates a new file visible in Latch Console called doesnt_exist/dir2/sample.fa, 
+            located in the directory /dir1/. Note that 'doesnt_exist' and everything 
+            following (including the `/`s) are part of the filename.
 
     .. _multipart upload:
         https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html
     """
 
-    local_file = Path(local_file).resolve()
-    if local_file.exists() is not True:
-        raise ValueError(f"{local_file} must exist.")
+    local_source = Path(local_source).resolve()
+    if local_source.exists() is not True:
+        raise ValueError(f"{local_source} must exist.")
 
     if remote_dest[:9] != "latch:///":
         if remote_dest[0] == "/":
@@ -45,7 +57,7 @@ def _cp_local_to_remote(local_file: str, remote_dest: str):
 
     token = retrieve_or_login()
 
-    with open(local_file, "rb") as f:
+    with open(local_source, "rb") as f:
         f.seek(0, 2)
         total_bytes = f.tell()
         f.seek(0, 0)
@@ -54,7 +66,7 @@ def _cp_local_to_remote(local_file: str, remote_dest: str):
 
     data = {
         "dest_path": remote_dest,
-        "node_name": local_file.name,
+        "node_name": local_source.name,
         "content_type": "text/plain",
         "nrof_parts": nrof_parts,
     }
@@ -73,7 +85,7 @@ def _cp_local_to_remote(local_file: str, remote_dest: str):
     urls = r_json["urls"]
 
     parts = []
-    print(f"\t{local_file.name} -> {remote_dest}")
+    print(f"\t{local_source.name} -> {remote_dest}")
     total_mb = total_bytes // 1000000
     for i in range(nrof_parts):
 
@@ -88,7 +100,7 @@ def _cp_local_to_remote(local_file: str, remote_dest: str):
             flush=True,
         )
         url = urls[str(i)]
-        with open(local_file, "rb") as f:
+        with open(local_source, "rb") as f:
             f.seek(i * _CHUNK_SIZE, 0)
             resp = requests.put(url, f.read(_CHUNK_SIZE))
             etag = resp.headers["ETag"]
@@ -99,11 +111,45 @@ def _cp_local_to_remote(local_file: str, remote_dest: str):
     headers = {"Authorization": f"Bearer {token}"}
     response = requests.post(url, headers=headers, json=data)
 
-def _cp_remote_to_local(remote_file: str, local_dest: str):
+def _cp_remote_to_local(remote_source: str, local_dest: str):
+    """Allows movement of files from Latch -> local machines.
+
+    Args:
+        remote_source: A valid path to an existing LatchData file. The path must 
+                       be absolute and prefixed with `latch://`.
+        local_dest:    A (relative or absolute) path. If a directory in the path
+                       doesn't exist, that directory and everything following it
+                       becomes the file name - see below.
+
+    This function will initiate a download using an authenticated and presigned 
+    URL directly from AWS S3. 
+
+    Example: ::
+
+        cp("latch:///sample.fa", "sample.fa")
+
+            Creates a new file in the user's local working directory called 
+            sample.fa, which has the same contents as the remote file.
+
+        cp("latch:///dir1/dir2/sample.fa", "/dir3/dir4/sample.fa")
+
+            Creates a new file in the local directory /dir3/dir4/ called 
+            sample.fa, which has the same contents as the remote file.
+
+        cp("latch:///sample.fa", "/dir1/doesnt_exist/dir2/sample.fa")
+        # doesnt_exist doesn't exist
+
+            Creates a new file in the local directory /dir1/ called 
+            doesnt_exist/dir2/sample.fa, which has the same content as the
+            remote file. Note the nonexistent directory is folded into the
+            name of the copied file.
+    """
     local_dest = Path(local_dest).resolve()
     token = retrieve_or_login()
     headers = {"Authorization": f"Bearer {token}"}
-    data = {"source_path": remote_file}
+    data = {"source_path": remote_source}
+
+    # todo(ayush): change it so we don't hardcode api endpoints
     url = "https://nucleus.latch.bio/sdk/download"
     response = requests.post(url, headers=headers, json=data)
     if response.status_code == 403:
