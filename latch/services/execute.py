@@ -11,6 +11,8 @@ from flyteidl.core.types_pb2 import LiteralType
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
 from latch.utils import retrieve_or_login
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 
 def execute(params_file: Path, version: Union[None, str] = None) -> bool:
@@ -89,7 +91,8 @@ def execute(params_file: Path, version: Union[None, str] = None) -> bool:
                 ctx, python_value, python_type, literal_type
             )
 
-            wf_literals[key] = gpjson.MessageToDict(python_type_literal.to_flyte_idl())
+            wf_literals[key] = gpjson.MessageToDict(
+                python_type_literal.to_flyte_idl())
 
     return _execute_workflow(token, wf_id, wf_literals)
 
@@ -122,7 +125,8 @@ def _guess_python_type(v: any) -> typing.T:
 
     if type(v) is list:
         if len(v) == 0:
-            raise ValueError(f"Unable to create List[T] literal from empty list {v}")
+            raise ValueError(
+                f"Unable to create List[T] literal from empty list {v}")
         elif type(v[0]) is list:
             return typing.List[_guess_python_type(v[0])]
         else:
@@ -147,7 +151,21 @@ def _get_workflow_interface(
     # TODO - pull out
     url = "https://nucleus.latch.bio/sdk/wf-interface"
 
-    response = requests.post(url, headers=headers, json=_interface_request)
+    # TODO - use retry logic in all requests + figure out why timeout happens
+    # within this endpoint only.
+    session = requests.Session()
+    retries = 5
+    retry = Retry(
+        total=retries,
+        read=retries,
+        connect=retries,
+        method_whitelist=False,
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount('http://', adapter)
+    session.mount('https://', adapter)
+
+    response = session.post(url, headers=headers, json=_interface_request)
 
     if response.status_code == 403:
         raise PermissionError(
