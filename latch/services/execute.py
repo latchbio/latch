@@ -48,10 +48,9 @@ def execute(params_file: Path, version: Union[None, str] = None) -> bool:
     with open(params_file, "r") as pf:
 
         param_code = pf.read()
-
-    spec = importlib.util.spec_from_file_location("wf_params", params_file)
-    param_module = importlib.util.module_from_spec(spec)
-    exec(param_code, param_module.__dict__)
+        spec = importlib.util.spec_from_loader("wf_params", loader=None)
+        param_module = importlib.util.module_from_spec(spec)
+        exec(param_code, param_module.__dict__)
 
     module_vars = vars(param_module)
     try:
