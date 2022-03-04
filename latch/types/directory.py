@@ -1,5 +1,4 @@
 from os import PathLike
-from typing import Annotated, Optional, Type, Union
 
 from flytekit.core.context_manager import FlyteContext
 # Note this only exists in flaightkit fork.
@@ -9,6 +8,12 @@ from flytekit.models.literals import Literal
 from flytekit.types.directory.types import (FlyteDirectory,
                                             FlyteDirToMultipartBlobTransformer)
 from latch.types.url import LatchURL
+from typing_extensions import Optional, Type, Union
+
+try:
+    from typing import Annotated
+except ImportError:
+    from typing_extensions import Annotated
 
 
 class LatchDir(FlyteDirectory):

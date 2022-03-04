@@ -1,5 +1,10 @@
 from os import PathLike
-from typing import Annotated, Optional, Type, Union
+from typing import Optional, Type, Union
+
+try:
+    from typing import Annotated
+except ImportError:
+    from typing_extensions import Annotated
 
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
