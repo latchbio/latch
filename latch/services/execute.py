@@ -70,17 +70,15 @@ def execute(params_file: Path, version: Union[None, str] = None) -> bool:
                 " key with the workflow name exists in the dictionary."
             )
 
-        wf_id, wf_interface = _get_workflow_interface(
-            token, wf_name, version)
+        wf_id, wf_interface = _get_workflow_interface(token, wf_name, version)
 
         wf_vars = wf_interface["variables"]
         wf_literals = {}
         for key, value in wf_vars.items():
 
             ctx = FlyteContextManager.current_context()
-            literal_type_json = value['type']
-            literal_type = gpjson.Parse(
-                json.dumps(literal_type_json), LiteralType())
+            literal_type_json = value["type"]
+            literal_type = gpjson.Parse(json.dumps(literal_type_json), LiteralType())
 
             if key in wf_params:
 
@@ -89,10 +87,12 @@ def execute(params_file: Path, version: Union[None, str] = None) -> bool:
                 python_type = _to_python_literal(python_value)
 
                 python_type_literal = TypeEngine.to_literal(
-                    ctx, python_value, python_type, literal_type)
+                    ctx, python_value, python_type, literal_type
+                )
 
-                wf_literals[key] = json.loads(gpjson.MessageToJson(
-                    python_type_literal.to_flyte_idl()))
+                wf_literals[key] = json.loads(
+                    gpjson.MessageToJson(python_type_literal.to_flyte_idl())
+                )
 
         return _execute_workflow(token, wf_id, wf_literals)
 
@@ -125,8 +125,7 @@ def _to_python_literal(v: any) -> typing.T:
 
     if type(v) is list:
         if len(v) == 0:
-            raise ValueError(
-                f"Unable to create List[T] literal from empty list {v}")
+            raise ValueError(f"Unable to create List[T] literal from empty list {v}")
         elif type(v[0]) is list:
             return typing.List[_to_python_literal(v[0])]
         else:
@@ -149,7 +148,7 @@ def _get_workflow_interface(
     _interface_request = {"workflow_name": wf_name, "version": version}
 
     # TODO - pull out
-    url = "https://nucleus.ligma.ai/sdk/wf-interface"
+    url = "https://nucleus.latch.bio/sdk/wf-interface"
 
     response = requests.post(url, headers=headers, json=_interface_request)
 
@@ -159,8 +158,9 @@ def _get_workflow_interface(
         )
     wf_interface_resp = response.json()
 
-    wf_id, wf_interface = wf_interface_resp.get(
-        "id"), wf_interface_resp.get("interface")
+    wf_id, wf_interface = wf_interface_resp.get("id"), wf_interface_resp.get(
+        "interface"
+    )
     if wf_interface is None:
         raise ValueError(
             f"Could not find interface. Nucleus returned a malformed JSON response - {wf_interface_resp}"
@@ -173,9 +173,7 @@ def _get_workflow_interface(
     return int(wf_id), wf_interface
 
 
-def _execute_workflow(
-    token: str, wf_id: str, params: dict
-) -> bool:
+def _execute_workflow(token: str, wf_id: str, params: dict) -> bool:
     """Execute the workflow of given id with parameter map.
 
     Return True if success else False.
@@ -183,12 +181,14 @@ def _execute_workflow(
 
     # TODO (kenny) - pull out to consolidated requests class
     # Server sometimes stalls on requests with python user-agent
-    headers = {"Authorization": f"Bearer {token}",
-               "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.119 Safari/537.36"}
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.119 Safari/537.36",
+    }
 
     _interface_request = {"workflow_id": str(wf_id), "params": params}
     # TODO (kenny) - config
-    url = "https://nucleus.ligma.ai/sdk/wf"
+    url = "https://nucleus.latch.bio/sdk/wf"
 
     response = requests.post(url, headers=headers, json=_interface_request)
 
