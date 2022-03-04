@@ -50,7 +50,7 @@ $ latch register test-workflow
 Copy local files to latch data.
 
 ```
-$ latch cp test.fa latch://samples/test.fa
+$ latch cp test.fa latch:///samples/test.fa
 ```
 
 ## More Examples

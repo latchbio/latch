@@ -30,4 +30,4 @@ def test_cp(test_account_jwt):
         f.write("foobar")
 
     _cmd = ["latch", "cp", "foo.txt", "latch:///foo.txt"]
-    _run_and_verify(_cmd, "Successfully copied foo.txt to /foo.txt.")
+    _run_and_verify(_cmd, "Successfully copied foo.txt to latch:///foo.txt.")
