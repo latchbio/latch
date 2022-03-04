@@ -14,7 +14,7 @@ if CURRENT_PYTHON < MIN_PYTHON_VERSION:
 
 setup(
     name="latch",
-    version="0.0.36",
+    version="0.0.37",
     author_email="kenny@latch.bio",
     description="latch sdk",
     packages=find_packages(),
@@ -32,6 +32,7 @@ setup(
         "boto3>=1.2",
         "flaightkit==0.2.0",
         "flaightkitplugins-pod==0.0.1",
+        "typing-extensions==4.0.1",
     ],
     classifiers=[
         "Programming Language :: Python :: 3.7",
