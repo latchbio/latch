@@ -1,5 +1,10 @@
 from os import PathLike
-from typing import Annotated, Optional, Type, Union
+from typing import Optional, Type, Union
+
+try:
+    from typing import Annotated
+except ImportError:
+    from typing_extensions import Annotated
 
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
@@ -46,9 +51,12 @@ class LatchFile(FlyteFile):
             return LatchFile("./foobar.txt", "latch:///foobar.txt")
     """
 
-    def __init__(self, path: Union[str, PathLike], remote_path: PathLike, **kwargs):
+    def __init__(
+        self, path: Union[str, PathLike], remote_path: PathLike = None, **kwargs
+    ):
 
-        self._remote_path = LatchURL(remote_path).url  # validates url string
+        if remote_path is not None:
+            self._remote_path = LatchURL(remote_path).url  # validates url string
 
         if kwargs.get("downloader") is not None:
             super().__init__(path, kwargs["downloader"], remote_path)
