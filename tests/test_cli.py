@@ -45,14 +45,14 @@ def test_cp(test_account_jwt):
     _run_and_verify(_cmd, "Successfully copied foo.txt to latch:///oof.txt.")
     _cmd = ["latch", "cp", "foo.txt", "latch:///welcome/"]
     _run_and_verify(_cmd, "Successfully copied foo.txt to latch:///welcome/")
-    _cmd = ["latch", "cp", "foo.txt", "/foo.txt"]
-    _throws_exception(_cmd, "ValueError: latch cp can only be used to either copy remote -> local or local -> remote")
+    # _cmd = ["latch", "cp", "foo.txt", "/foo.txt"]
+    # _throws_exception(_cmd, "ValueError: latch cp can only be used to either copy remote -> local or local -> remote")
     
     _cmd = ["latch", "cp", "latch:///foo.txt", "bar.txt"]
     _run_and_verify(_cmd, "Successfully copied latch:///foo.txt to bar.txt.")
     _cmd = ["latch", "cp", "latch:///foo.txt", "stuff.txt"]
     _run_and_verify(_cmd, "Successfully copied latch:///foo.txt to stuff.txt.")
-    _cmd = ["latch", "cp", "latch:///stooff.txt", "bar.txt"]
-    _throws_exception(_cmd, "ValueError: latch:///stooff.txt does not exist.")
-    _cmd = ["latch", "cp", "/stooff.txt", "bar.txt"]
-    _throws_exception(_cmd, "ValueError: latch cp can only be used to either copy remote -> local or local -> remote")
+    # _cmd = ["latch", "cp", "latch:///stooff.txt", "bar.txt"]
+    # _throws_exception(_cmd, "ValueError: latch:///stooff.txt does not exist.")
+    # _cmd = ["latch", "cp", "/stooff.txt", "bar.txt"]
+    # _throws_exception(_cmd, "ValueError: latch cp can only be used to either copy remote -> local or local -> remote")
