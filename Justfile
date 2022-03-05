@@ -9,7 +9,7 @@ publish:
   twine upload dist/*
 
 requirements:
-  pip-compile requirements.iin
+  pip-compile requirements.in
 
 doc-requirements:
   pip-compile doc-requirements.in

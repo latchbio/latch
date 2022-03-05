@@ -1,5 +1,5 @@
 from os import PathLike
-from typing import Annotated, Optional, Type, Union
+from typing import Optional, Type, Union
 
 from flytekit.core.context_manager import FlyteContext
 # Note this only exists in flaightkit fork.
@@ -9,6 +9,11 @@ from flytekit.models.literals import Literal
 from flytekit.types.directory.types import (FlyteDirectory,
                                             FlyteDirToMultipartBlobTransformer)
 from latch.types.url import LatchURL
+
+try:
+    from typing import Annotated
+except ImportError:
+    from typing_extensions import Annotated
 
 
 class LatchDir(FlyteDirectory):
@@ -43,9 +48,13 @@ class LatchDir(FlyteDirectory):
             return LatchDir("./foo", "latch:///foo")
     """
 
-    def __init__(self, path: Union[str, PathLike], remote_path: PathLike, **kwargs):
+    def __init__(
+        self, path: Union[str, PathLike], remote_path: PathLike = None, **kwargs
+    ):
 
-        self._remote_directory = LatchURL(remote_path).url  # validates url string
+        if remote_path is not None:
+            self._remote_directory = LatchURL(
+                remote_path).url  # validates url string
 
         if kwargs.get("downloader") is not None:
             super().__init__(path, kwargs["downloader"], remote_path)
