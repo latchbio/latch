@@ -1,9 +1,12 @@
 """Entrypoints to service functions through a CLI."""
 
+from pathlib import Path
 from typing import Union
 
 import click
 from latch.services import cp as _cp
+from latch.services import execute as _execute
+from latch.services import get_wf as _get_wf
 from latch.services import init as _init
 from latch.services import login as _login
 from latch.services import register as _register
@@ -77,7 +80,29 @@ def cp(local_file: str, remote_dest: str):
     click.secho(f"Successfully copied {local_file} to {remote_dest}.", fg="green")
 
 
+@click.command("execute")
+@click.argument("params_file", nargs=1, type=click.Path(exists=True))
+@click.option(
+    "--version",
+    default=None,
+    help="The version of the workflow to execute. Defaults to latest.",
+)
+def execute(params_file: Path, version: Union[str, None] = None):
+    """Execute a workflow using a python parameter map.
+
+    Visit docs.latch.bio to learn more.
+    """
+    wf_name = _execute(params_file, version)
+    if version is None:
+        version = "latest"
+    click.secho(
+        f"Successfully launched workflow named {wf_name} with version {version}.",
+        fg="green",
+    )
+
+
 main.add_command(register)
 main.add_command(login)
 main.add_command(init)
 main.add_command(cp)
+main.add_command(execute)
