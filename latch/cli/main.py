@@ -5,7 +5,7 @@ from typing import Union
 import click
 from latch.services import cp as _cp
 from latch.services import init as _init
-from latch.services.ls import lsd as _ls
+from latch.services.ls import ls as _ls
 from latch.services import login as _login
 from latch.services import register as _register
 
