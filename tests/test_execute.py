@@ -80,8 +80,8 @@ def test_execute_previous_versions():
         tf.write(simple_plan)
         tf.seek(0)
 
-        assert execute(tf.name) is True
-        assert execute(tf.name, "50") is True
+        assert execute(tf.name) == "wf.assemble_and_sort"
+        assert execute(tf.name, "50") == "wf.assemble_and_sort"
 
 
 def test_execute_rnaseq():
@@ -90,7 +90,7 @@ def test_execute_rnaseq():
         tf.write(rnaseq_plan)
         tf.seek(0)
 
-        assert execute(tf.name) is True
+        assert execute(tf.name) == "latch.nf_rnaseq_wf"
 
 
 def test_execute_crispresso():
@@ -99,4 +99,4 @@ def test_execute_crispresso():
         tf.write(crispresso_plan)
         tf.seek(0)
 
-        assert execute(tf.name) is True
+        assert execute(tf.name) == "latch.crispresso2_wf"
