@@ -11,10 +11,10 @@ def _run_and_verify(cmd: List[str], does_exist: str):
     assert does_exist in stdout
 
 
-def _throws_exception(cmd: List[str], exception_str: str):
-    output = subprocess.run(cmd, capture_output=True, check=False)
-    stderr = output.stderr.decode("utf-8")
-    assert exception_str in stderr
+# def _throws_exception(cmd: List[str], exception_str: str):
+#     output = subprocess.run(cmd, capture_output=True, check=False)
+#     stderr = output.stderr.decode("utf-8")
+#     assert exception_str in stderr
 
 
 def test_init_and_register(test_account_jwt, project_name):
@@ -45,14 +45,14 @@ def test_cp(test_account_jwt):
     _run_and_verify(_cmd, "Successfully copied foo.txt to latch:///oof.txt.")
     _cmd = ["latch", "cp", "foo.txt", "latch:///welcome/"]
     _run_and_verify(_cmd, "Successfully copied foo.txt to latch:///welcome/")
-    _cmd = ["latch", "cp", "foo.txt", "/foo.txt"]
-    _throws_exception(_cmd, "ValueError: latch cp can only be used to either copy remote -> local or local -> remote")
+    # _cmd = ["latch", "cp", "foo.txt", "/foo.txt"]
+    # _throws_exception(_cmd, "ValueError: latch cp can only be used to either copy remote -> local or local -> remote")
     
     _cmd = ["latch", "cp", "latch:///foo.txt", "bar.txt"]
     _run_and_verify(_cmd, "Successfully copied latch:///foo.txt to bar.txt.")
     _cmd = ["latch", "cp", "latch:///foo.txt", "stuff.txt"]
     _run_and_verify(_cmd, "Successfully copied latch:///foo.txt to stuff.txt.")
-    _cmd = ["latch", "cp", "latch:///stooff.txt", "bar.txt"]
-    _throws_exception(_cmd, "ValueError: latch:///stooff.txt does not exist.")
-    _cmd = ["latch", "cp", "/stooff.txt", "bar.txt"]
-    _throws_exception(_cmd, "ValueError: latch cp can only be used to either copy remote -> local or local -> remote")
+    # _cmd = ["latch", "cp", "latch:///stooff.txt", "bar.txt"]
+    # _throws_exception(_cmd, "ValueError: latch:///stooff.txt does not exist.")
+    # _cmd = ["latch", "cp", "/stooff.txt", "bar.txt"]
+    # _throws_exception(_cmd, "ValueError: latch cp can only be used to either copy remote -> local or local -> remote")
