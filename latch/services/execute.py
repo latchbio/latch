@@ -91,10 +91,10 @@ def execute(params_file: Path, version: Union[None, str] = None) -> bool:
                 ctx, python_value, python_type, literal_type
             )
 
-            wf_literals[key] = gpjson.MessageToDict(
-                python_type_literal.to_flyte_idl())
+            wf_literals[key] = gpjson.MessageToDict(python_type_literal.to_flyte_idl())
 
-    return _execute_workflow(token, wf_id, wf_literals)
+    _execute_workflow(token, wf_id, wf_literals)
+    return wf_name
 
 
 def _guess_python_type(v: any) -> typing.T:
@@ -125,8 +125,7 @@ def _guess_python_type(v: any) -> typing.T:
 
     if type(v) is list:
         if len(v) == 0:
-            raise ValueError(
-                f"Unable to create List[T] literal from empty list {v}")
+            raise ValueError(f"Unable to create List[T] literal from empty list {v}")
         elif type(v[0]) is list:
             return typing.List[_guess_python_type(v[0])]
         else:
@@ -162,8 +161,8 @@ def _get_workflow_interface(
         method_whitelist=False,
     )
     adapter = HTTPAdapter(max_retries=retry)
-    session.mount('http://', adapter)
-    session.mount('https://', adapter)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
 
     response = session.post(url, headers=headers, json=_interface_request)
 
