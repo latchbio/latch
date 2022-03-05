@@ -10,7 +10,7 @@ def _str_none(s: Optional[str]) -> str:
     return str(s)
 
 def ls(remote_directory: str, padding: int = 3):
-    url = "https://nucleus.sugma.ai/sdk/list"
+    url = "https://nucleus.latch.bio/sdk/list"
     token = retrieve_or_login()
     headers = {"Authorization": f"Bearer {token}"}
     data = {"directory": remote_directory}
