@@ -23,9 +23,9 @@ def ls(remote_directory: str, padding: int = 3):
     # Initial values are the number of characters in the output header
     max_lengths = {
         "name": len("Name") + padding, 
-        "content_type": len("Content Type") + padding, 
-        "content_size": len("Content Size") + padding, 
-        "modify_time": len("Modify Time") + padding,
+        "content_type": len("Type") + padding, 
+        "content_size": len("Size") + padding, 
+        "modify_time": len("Last Modified"),
     }
 
     output = []
@@ -35,14 +35,15 @@ def ls(remote_directory: str, padding: int = 3):
         t = _str_none(name_data["type"])
         if t == "dir" and name[-1] != "/":
             name = name_data["name"] = f"{name}/"
-        content_type = _str_none(name_data["content_type"])
+        content_type = str(name_data["content_type"]) if not name_data["content_type"] is None else "directory"
         content_size = _str_none(name_data["content_size"])
         modify_time = _str_none(name_data["modify_time"])
 
         output.append((name, t, content_type, content_size, modify_time))
 
         for i in max_lengths:
-            max_lengths[i] = max(max_lengths[i], padding + len(_str_none(name_data[i])))
+            _padding = 0 if i == "modify_time" else padding
+            max_lengths[i] = max(max_lengths[i], _padding + len(_str_none(name_data[i])))
 
     output.sort()
     output.sort(key=lambda x: x[1])

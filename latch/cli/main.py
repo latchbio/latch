@@ -79,60 +79,78 @@ def cp(source_file: str, destination_file: str):
 
 
 @click.command("ls")
-@click.argument("remote_directory", nargs=1)
-def ls(remote_directory: str):
+@click.argument("remote_directories", nargs=-1)
+def ls(remote_directories: str):
     """Copy local files to LatchData and vice versa.
 
     Visit docs.latch.bio to learn more.
     """
-    _INITIAL_PADDING = 0
-    _ITEM_PADDING = 3
+    _item_padding = 3
 
-    output, max_lengths = _ls(remote_directory, padding=_ITEM_PADDING)
+    if not remote_directories:
+        remote_directories = ["latch:///"]
 
-    header_name_padding = max_lengths["name"] - len("Name")
-    header_content_type_padding = max_lengths["content_type"] - len("Content Type")
-    header_content_size_padding = max_lengths["content_size"] - len("Content Size")
-    header_modify_time_padding = max_lengths["modify_time"] - len("Modify Time")
+    _initial_padding = 0 if len(remote_directories) < 2 else 3
 
-    header = (
-        "Name"
-        + " " * header_name_padding
-        + "Content Type"
-        + " " * header_content_type_padding
-        + "Content Size"
-        + " " * header_content_size_padding
-        + "Modify Time"
-        + " " * header_modify_time_padding
-    )
+    def _emit_directory_header(remote_directory):
+        if len(remote_directories) > 1:
+            click.secho(f"{remote_directory}:")
+            click.secho("")
+    
+    def _emit_directory_footer(remote_directory):
+        if len(remote_directories) > 1:
+            click.secho("")
+    
+    for remote_directory in remote_directories:
+        output, max_lengths = _ls(remote_directory, padding=_item_padding)
 
-    click.secho(" " * _INITIAL_PADDING, nl=False)
-    click.secho(header, underline=True)
+        header_name_padding = max_lengths["name"] - len("Name")
+        header_content_type_padding = max_lengths["content_type"] - len("Type")
+        header_content_size_padding = max_lengths["content_size"] - len("Size")
+        header_modify_time_padding = max_lengths["modify_time"] - len("Last Modified")
 
-    for row in output:
-        name, t, content_type, content_size, modify_time = row
-
-        style = {
-            "fg": "cyan" if t == "obj" else "green",
-            "bold": True,
-        }
-
-        name_padding = max_lengths["name"] - len(name)
-        content_type_padding = max_lengths["content_type"] - len(content_type)
-        content_size_padding = max_lengths["content_size"] - len(content_size)
-
-        output_str = (
-            name
-            + " " * name_padding
-            + content_type
-            + " " * content_type_padding
-            + content_size
-            + " " * content_size_padding
-            + modify_time
+        header = (
+            "Name"
+            + " " * header_name_padding
+            + "Type"
+            + " " * header_content_type_padding
+            + "Size"
+            + " " * header_content_size_padding
+            + "Last Modified"
+            + " " * header_modify_time_padding
         )
 
-        click.secho(" " * _INITIAL_PADDING, nl=False)
-        click.secho(output_str, **style)
+        _emit_directory_header(remote_directory=remote_directory)
+
+        click.secho(" " * _initial_padding, nl=False)
+        click.secho(header, underline=True)
+
+        for row in output:
+            name, t, content_type, content_size, modify_time = row
+
+            style = {
+                "fg": "cyan" if t == "obj" else "green",
+                "bold": True,
+            }
+
+            name_padding = max_lengths["name"] - len(name)
+            content_type_padding = max_lengths["content_type"] - len(content_type)
+            content_size_padding = max_lengths["content_size"] - len(content_size)
+
+            output_str = (
+                name
+                + " " * name_padding
+                + content_type
+                + " " * content_type_padding
+                + content_size
+                + " " * content_size_padding
+                + modify_time
+            )
+
+            click.secho(" " * _initial_padding, nl=False)
+            click.secho(output_str, **style)
+        
+        _emit_directory_footer(remote_directory=remote_directory)
 
 
 main.add_command(register)
