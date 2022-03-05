@@ -33,7 +33,6 @@ def test_init_and_register(test_account_jwt, project_name):
 
 
 def test_cp(test_account_jwt):
-
     with open("foo.txt", "w") as f:
         f.write("foobar")
 
@@ -56,3 +55,10 @@ def test_cp(test_account_jwt):
     # _throws_exception(_cmd, "ValueError: latch:///stooff.txt does not exist.")
     # _cmd = ["latch", "cp", "/stooff.txt", "bar.txt"]
     # _throws_exception(_cmd, "ValueError: latch cp can only be used to either copy remote -> local or local -> remote")
+
+
+def test_ls(test_account_jwt):
+
+    # todo(ayush) add more ls tests
+    _cmd = ["latch", "ls"]
+    _run_and_verify(_cmd, "welcome/")

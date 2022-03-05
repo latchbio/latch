@@ -35,7 +35,8 @@ def ls(remote_directory: str, padding: int = 3):
         t = _str_none(name_data["type"])
         if t == "dir" and name[-1] != "/":
             name = name_data["name"] = f"{name}/"
-        content_type = str(name_data["content_type"]) if not name_data["content_type"] is None else "directory"
+            name_data["content_type"] = "directory"
+        content_type = _str_none(name_data["content_type"])
         content_size = _str_none(name_data["content_size"])
         modify_time = _str_none(name_data["modify_time"])
 
