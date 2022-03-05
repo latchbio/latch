@@ -5,8 +5,8 @@ from typing import Union
 import click
 from latch.services import cp as _cp
 from latch.services import init as _init
-from latch.services.ls import ls as _ls
 from latch.services import login as _login
+from latch.services import ls as _ls
 from latch.services import register as _register
 
 
@@ -113,7 +113,7 @@ def ls(remote_directory: str):
         name, t, content_type, content_size, modify_time = row
 
         style = {
-            "fg": "green" if t == "obj" else "cyan",
+            "fg": "cyan" if t == "obj" else "green",
             "bold": True,
         }
 
