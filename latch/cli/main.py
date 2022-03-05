@@ -101,8 +101,26 @@ def execute(params_file: Path, version: Union[str, None] = None):
     )
 
 
+@click.command("get-wf")
+@click.option(
+    "--name",
+    default=None,
+    help="The name of the workflow to list. Will display all versions",
+)
+def get_wf(name: Union[str, None] = None):
+    """List workflows.
+
+    Visit docs.latch.bio to learn more.
+    """
+    wfs = _get_wf(name)
+    click.secho("ID\tName\tVersion")
+    for wf in wfs:
+        click.secho(f"{wf[0]}\t{wf[1]}\t{wf[2]}")
+
+
 main.add_command(register)
 main.add_command(login)
 main.add_command(init)
 main.add_command(cp)
 main.add_command(execute)
+main.add_command(get_wf)
