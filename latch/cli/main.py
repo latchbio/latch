@@ -1,12 +1,9 @@
 """Entrypoints to service functions through a CLI."""
 
-from pathlib import Path
-from typing import List, Union
+from typing import Union, List
 
 import click
 from latch.services import cp as _cp
-from latch.services import execute as _execute
-from latch.services import get_wf as _get_wf
 from latch.services import init as _init
 from latch.services import login as _login
 from latch.services import ls as _ls
@@ -78,13 +75,11 @@ def cp(source_file: str, destination_file: str):
     Visit docs.latch.bio to learn more.
     """
     _cp(source_file, destination_file)
-    click.secho(
-        f"Successfully copied {source_file} to {destination_file}.", fg="green")
+    click.secho(f"Successfully copied {source_file} to {destination_file}.", fg="green")
 
 
 @click.command("ls")
-# Allows the user to provide unlimited arguments (including zero)
-@click.argument("remote_directories", nargs=-1)
+@click.argument("remote_directories", nargs=-1) # Allows the user to provide unlimited arguments (including zero)
 def ls(remote_directories: Union[None, List[str]]):
     """List remote files in the command line. Supports multiple directory arguments.
 
@@ -160,58 +155,8 @@ def ls(remote_directories: Union[None, List[str]]):
         _emit_directory_footer()
 
 
-@click.command("execute")
-@click.argument("params_file", nargs=1, type=click.Path(exists=True))
-@click.option(
-    "--version",
-    default=None,
-    help="The version of the workflow to execute. Defaults to latest.",
-)
-def execute(params_file: Path, version: Union[str, None] = None):
-    """Execute a workflow using a python parameter map.
-
-    Visit docs.latch.bio to learn more.
-    """
-    wf_name = _execute(params_file, version)
-    if version is None:
-        version = "latest"
-    click.secho(
-        f"Successfully launched workflow named {wf_name} with version {version}.",
-        fg="green",
-    )
-
-
-@click.command("get-wf")
-@click.option(
-    "--name",
-    default=None,
-    help="The name of the workflow to list. Will display all versions",
-)
-def get_wf(name: Union[str, None] = None):
-    """List workflows.
-
-    Visit docs.latch.bio to learn more.
-    """
-    wfs = _get_wf(name)
-    id_padding, name_padding, version_padding = 0, 0, 0
-    for wf in wfs:
-        id, name, version = wf
-        id_len, name_len, version_len = len(str(id)), len(name), len(version)
-        id_padding = max(id_padding, id_len)
-        name_padding = max(name_padding, name_len)
-        version_padding = max(version_padding, version_len)
-
-    click.secho(
-        f"ID{id_padding * ' '}\tName{name_padding * ' '}\tVersion{version_padding * ' '}")
-    for wf in wfs:
-        click.secho(
-            f"{wf[0]}{(id_padding - len(str(wf[0]))) * ' '}\t{wf[1]}{(name_padding - len(wf[1])) * ' '}\t{wf[2]}{(version_padding - len(wf[2])) * ' '}")
-
-
 main.add_command(register)
 main.add_command(login)
 main.add_command(init)
 main.add_command(cp)
 main.add_command(ls)
-main.add_command(execute)
-main.add_command(get_wf)
