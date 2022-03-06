@@ -11,12 +11,6 @@ def _run_and_verify(cmd: List[str], does_exist: str):
     assert does_exist in stdout
 
 
-# def _throws_exception(cmd: List[str], exception_str: str):
-#     output = subprocess.run(cmd, capture_output=True, check=False)
-#     stderr = output.stderr.decode("utf-8")
-#     assert exception_str in stderr
-
-
 def test_init_and_register(test_account_jwt, project_name):
     # Originally two separate tests: test_init and test_register.
     
