@@ -1,5 +1,6 @@
 import hashlib
 import secrets
+from typing import Tuple
 
 from latch.auth.utils import base64url_encode
 
@@ -87,7 +88,7 @@ class PKCE:
     def __exit__(self, *args):
         ...
 
-    def construct_challenge(self) -> (str, str):
+    def construct_challenge(self) -> Tuple[str, str]:
         """Construct verifier & challenge to verify a client's identity in PKCE.
 
         Reference  `RFC7636`_.
