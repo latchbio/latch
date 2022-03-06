@@ -1,5 +1,6 @@
 import shutil
 import subprocess
+import textwrap
 from pathlib import Path
 from typing import List
 
@@ -38,17 +39,11 @@ def test_cp(test_account_jwt):
     _run_and_verify(_cmd, "Successfully copied foo.txt to latch:///oof.txt.")
     _cmd = ["latch", "cp", "foo.txt", "latch:///welcome/"]
     _run_and_verify(_cmd, "Successfully copied foo.txt to latch:///welcome/")
-    # _cmd = ["latch", "cp", "foo.txt", "/foo.txt"]
-    # _throws_exception(_cmd, "ValueError: latch cp can only be used to either copy remote -> local or local -> remote")
     
     _cmd = ["latch", "cp", "latch:///foo.txt", "bar.txt"]
     _run_and_verify(_cmd, "Successfully copied latch:///foo.txt to bar.txt.")
     _cmd = ["latch", "cp", "latch:///foo.txt", "stuff.txt"]
     _run_and_verify(_cmd, "Successfully copied latch:///foo.txt to stuff.txt.")
-    # _cmd = ["latch", "cp", "latch:///stooff.txt", "bar.txt"]
-    # _throws_exception(_cmd, "ValueError: latch:///stooff.txt does not exist.")
-    # _cmd = ["latch", "cp", "/stooff.txt", "bar.txt"]
-    # _throws_exception(_cmd, "ValueError: latch cp can only be used to either copy remote -> local or local -> remote")
 
 
 def test_ls(test_account_jwt):
@@ -56,3 +51,33 @@ def test_ls(test_account_jwt):
     # todo(ayush) add more ls tests
     _cmd = ["latch", "ls"]
     _run_and_verify(_cmd, "welcome/")
+
+
+def test_execute(test_account_jwt):
+
+    with open("foo.py", "w") as f:
+        f.write(textwrap.dedent("""
+            from latch.types import LatchFile
+
+            params = {
+                "_name": "wf.assemble_and_sort",
+                "read1": LatchFile("latch:///read1"),
+                "read2": LatchFile("latch:///read2"),
+            }
+        """
+                                ))
+
+    _cmd = ["latch", "execute", "foo.py"]
+    _run_and_verify(
+        _cmd, "Successfully launched workflow named wf.assemble_and_sort with version latest.")
+
+
+def test_get_wf(test_account_jwt):
+
+    _cmd = ["latch", "get-wf"]
+    _run_and_verify(
+        _cmd, "latch.crispresso2_wf")
+
+    _cmd = ["latch", "get-wf", "--name", "latch.crispresso2_wf"]
+    _run_and_verify(
+        _cmd, "v0.1.11")

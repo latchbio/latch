@@ -6,6 +6,8 @@ CLI, eg. to "register" a workflow given login context.
 """
 
 from latch.services.cp import cp
+from latch.services.execute import execute
+from latch.services.get import get_wf
 from latch.services.init import init
 from latch.services.login import login
 from latch.services.ls import ls
