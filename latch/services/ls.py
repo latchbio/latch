@@ -33,8 +33,6 @@ def ls(remote_directory: str, padding: int = 3):
 
     output = []
     for i in json_data:
-        print(json_data)
-
         name_data = json_data[i]
         name = _str_none(name_data["name"])
         t = _str_none(name_data["type"])
