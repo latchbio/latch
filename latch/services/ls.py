@@ -16,8 +16,6 @@ def ls(remote_directory: str, padding: int = 3):
     headers = {"Authorization": f"Bearer {token}"}
     data = {"directory": remote_directory}
 
-    print(remote_directory)
-
     response = requests.post(url, headers=headers, json=data)
     json_data = response.json()
 
