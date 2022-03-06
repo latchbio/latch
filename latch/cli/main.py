@@ -1,7 +1,7 @@
 """Entrypoints to service functions through a CLI."""
 
 from pathlib import Path
-from typing import Union, List
+from typing import List, Union
 
 import click
 from latch.services import cp as _cp
@@ -78,11 +78,13 @@ def cp(source_file: str, destination_file: str):
     Visit docs.latch.bio to learn more.
     """
     _cp(source_file, destination_file)
-    click.secho(f"Successfully copied {source_file} to {destination_file}.", fg="green")
+    click.secho(
+        f"Successfully copied {source_file} to {destination_file}.", fg="green")
 
 
 @click.command("ls")
-@click.argument("remote_directories", nargs=-1) # Allows the user to provide unlimited arguments (including zero)
+# Allows the user to provide unlimited arguments (including zero)
+@click.argument("remote_directories", nargs=-1)
 def ls(remote_directories: Union[None, List[str]]):
     """List remote files in the command line. Supports multiple directory arguments.
 
@@ -101,18 +103,21 @@ def ls(remote_directories: Union[None, List[str]]):
         if len(remote_directories) > 1:
             click.secho(f"{remote_directory}:")
             click.secho("")
-    
+
     def _emit_directory_footer():
         if len(remote_directories) > 1:
             click.secho("")
-    
+
     for remote_directory in remote_directories:
         output, max_lengths = _ls(remote_directory, padding=_item_padding)
 
         header_name_padding = " " * (max_lengths["name"] - len("Name"))
-        header_content_type_padding = " " * (max_lengths["content_type"] - len("Type"))
-        header_content_size_padding = " " * (max_lengths["content_size"] - len("Size"))
-        header_modify_time_padding = " " * (max_lengths["modify_time"] - len("Last Modified"))
+        header_content_type_padding = " " * \
+            (max_lengths["content_type"] - len("Type"))
+        header_content_size_padding = " " * \
+            (max_lengths["content_size"] - len("Size"))
+        header_modify_time_padding = " " * \
+            (max_lengths["modify_time"] - len("Last Modified"))
 
         header = f"Name{header_name_padding}Type{header_content_type_padding}Size{header_content_size_padding}Last Modified{header_modify_time_padding}"
 
@@ -130,14 +135,16 @@ def ls(remote_directories: Union[None, List[str]]):
             }
 
             name_padding = max_lengths["name"] - len(name)
-            content_type_padding = max_lengths["content_type"] - len(content_type)
-            content_size_padding = max_lengths["content_size"] - len(content_size)
+            content_type_padding = max_lengths["content_type"] - \
+                len(content_type)
+            content_size_padding = max_lengths["content_size"] - \
+                len(content_size)
 
             output_str = f"{name}{name_padding}{content_type}{content_type_padding}{content_size}{content_size_padding}{modify_time}"
 
             click.secho(" " * _initial_padding, nl=False)
             click.secho(output_str, **style)
-        
+
         _emit_directory_footer()
 
 
@@ -174,9 +181,19 @@ def get_wf(name: Union[str, None] = None):
     Visit docs.latch.bio to learn more.
     """
     wfs = _get_wf(name)
-    click.secho("ID\tName\tVersion")
+    id_padding, name_padding, version_padding = 0, 0, 0
     for wf in wfs:
-        click.secho(f"{wf[0]}\t{wf[1]}\t{wf[2]}")
+        id, name, version = wf
+        id_len, name_len, version_len = len(str(id)), len(name), len(version)
+        id_padding = max(id_padding, id_len)
+        name_padding = max(name_padding, name_len)
+        version_padding = max(version_padding, version_len)
+
+    click.secho(
+        f"ID{id_padding * ' '}\tName{name_padding * ' '}\tVersion{version_padding * ' '}")
+    for wf in wfs:
+        click.secho(
+            f"{wf[0]}{(id_padding - len(str(wf[0]))) * ' '}\t{wf[1]}{(name_padding - len(wf[1])) * ' '}\t{wf[2]}{(version_padding - len(wf[2])) * ' '}")
 
 
 main.add_command(register)
