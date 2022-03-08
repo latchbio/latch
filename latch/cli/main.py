@@ -103,23 +103,29 @@ def ls(remote_directories: Union[None, List[str]]):
         if len(remote_directories) > 1:
             click.secho(f"{remote_directory}:")
             click.secho("")
-
+    
     def _emit_directory_footer():
         if len(remote_directories) > 1:
             click.secho("")
-
+    
     for remote_directory in remote_directories:
         output, max_lengths = _ls(remote_directory, padding=_item_padding)
 
-        header_name_padding = " " * (max_lengths["name"] - len("Name"))
-        header_content_type_padding = " " * \
-            (max_lengths["content_type"] - len("Type"))
-        header_content_size_padding = " " * \
-            (max_lengths["content_size"] - len("Size"))
-        header_modify_time_padding = " " * \
-            (max_lengths["modify_time"] - len("Last Modified"))
-
-        header = f"Name{header_name_padding}Type{header_content_type_padding}Size{header_content_size_padding}Last Modified{header_modify_time_padding}"
+        header_name_padding = max_lengths["name"] - len("Name")
+        header_content_type_padding = max_lengths["content_type"] - len("Type")
+        header_content_size_padding = max_lengths["content_size"] - len("Size")
+        header_modify_time_padding = max_lengths["modify_time"] - len("Last Modified")
+    
+        header = (
+            "Name"
+            + " " * header_name_padding
+            + "Type"
+            + " " * header_content_type_padding
+            + "Size"
+            + " " * header_content_size_padding
+            + "Last Modified"
+            + " " * header_modify_time_padding
+        )
 
         _emit_directory_header(remote_directory=remote_directory)
 
@@ -135,16 +141,22 @@ def ls(remote_directories: Union[None, List[str]]):
             }
 
             name_padding = max_lengths["name"] - len(name)
-            content_type_padding = max_lengths["content_type"] - \
-                len(content_type)
-            content_size_padding = max_lengths["content_size"] - \
-                len(content_size)
+            content_type_padding = max_lengths["content_type"] - len(content_type)
+            content_size_padding = max_lengths["content_size"] - len(content_size)
 
-            output_str = f"{name}{name_padding}{content_type}{content_type_padding}{content_size}{content_size_padding}{modify_time}"
+            output_str = (
+                name
+                + " " * name_padding
+                + content_type
+                + " " * content_type_padding
+                + content_size
+                + " " * content_size_padding
+                + modify_time
+            )
 
             click.secho(" " * _initial_padding, nl=False)
             click.secho(output_str, **style)
-
+        
         _emit_directory_footer()
 
 
