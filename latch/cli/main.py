@@ -78,8 +78,7 @@ def cp(source_file: str, destination_file: str):
     Visit docs.latch.bio to learn more.
     """
     _cp(source_file, destination_file)
-    click.secho(
-        f"Successfully copied {source_file} to {destination_file}.", fg="green")
+    click.secho(f"Successfully copied {source_file} to {destination_file}.", fg="green")
 
 
 @click.command("ls")
@@ -90,74 +89,54 @@ def ls(remote_directories: Union[None, List[str]]):
 
     Visit docs.latch.bio to learn more.
     """
-    _item_padding = 3
+    _item_padding = lambda k: 0 if k == "modifyTime" else 3
 
     # If the user doesn't provide any arguments, default to root
     if not remote_directories:
         remote_directories = ["latch:///"]
 
-    # conditional formatting based on whether the user asks for multiple ls's or not
-    _initial_padding = 0 if len(remote_directories) < 2 else 3
-
-    def _emit_directory_header(remote_directory):
-        if len(remote_directories) > 1:
-            click.secho(f"{remote_directory}:")
-            click.secho("")
-    
-    def _emit_directory_footer():
-        if len(remote_directories) > 1:
-            click.secho("")
-    
     for remote_directory in remote_directories:
-        output, max_lengths = _ls(remote_directory, padding=_item_padding)
+        try:
+            output = _ls(remote_directory)
+        except Exception as e:
+            click.secho(
+                f"Unable to display contents of {remote_directory}: {str(e)}", fg="red"
+            )
+            continue
 
-        header_name_padding = max_lengths["name"] - len("Name")
-        header_content_type_padding = max_lengths["content_type"] - len("Type")
-        header_content_size_padding = max_lengths["content_size"] - len("Size")
-        header_modify_time_padding = max_lengths["modify_time"] - len("Last Modified")
-    
-        header = (
-            "Name"
-            + " " * header_name_padding
-            + "Type"
-            + " " * header_content_type_padding
-            + "Size"
-            + " " * header_content_size_padding
-            + "Last Modified"
-            + " " * header_modify_time_padding
-        )
+        header = {
+            "name": "Name:",
+            "contentType": "Type:",
+            "contentSize": "Size:",
+            "modifyTime": "Last Modified:",
+        }
 
-        _emit_directory_header(remote_directory=remote_directory)
+        max_lengths = {key: len(key) + _item_padding(key) for key in header}
+        for row in output:
+            for key in header:
+                max_lengths[key] = max(
+                    len(row[key]) + _item_padding(key), max_lengths[key]
+                )
 
-        click.secho(" " * _initial_padding, nl=False)
-        click.secho(header, underline=True)
+        def _display(row, style):
+            click.secho(f"{row['name']:<{max_lengths['name']}}", nl=False, **style)
+            click.secho(
+                f"{row['contentType']:<{max_lengths['contentType']}}", nl=False, **style
+            )
+            click.secho(
+                f"{row['contentSize']:<{max_lengths['contentSize']}}", nl=False, **style
+            )
+            click.secho(f"{row['modifyTime']}", **style)
+
+        _display(header, style={"underline": True})
 
         for row in output:
-            name, t, content_type, content_size, modify_time = row
-
             style = {
-                "fg": "cyan" if t == "obj" else "green",
+                "fg": "cyan" if row["type"] == "obj" else "green",
                 "bold": True,
             }
 
-            name_padding = max_lengths["name"] - len(name)
-            content_type_padding = max_lengths["content_type"] - len(content_type)
-            content_size_padding = max_lengths["content_size"] - len(content_size)
-
-            output_str = (
-                name
-                + " " * name_padding
-                + content_type
-                + " " * content_type_padding
-                + content_size
-                + " " * content_size_padding
-                + modify_time
-            )
-
-            click.secho(" " * _initial_padding, nl=False)
-            click.secho(output_str, **style)
-        
-        _emit_directory_footer()
+            _display(row, style)
 
 
 @click.command("execute")
@@ -202,10 +181,12 @@ def get_wf(name: Union[str, None] = None):
         version_padding = max(version_padding, version_len)
 
     click.secho(
-        f"ID{id_padding * ' '}\tName{name_padding * ' '}\tVersion{version_padding * ' '}")
+        f"ID{id_padding * ' '}\tName{name_padding * ' '}\tVersion{version_padding * ' '}"
+    )
     for wf in wfs:
         click.secho(
-            f"{wf[0]}{(id_padding - len(str(wf[0]))) * ' '}\t{wf[1]}{(name_padding - len(wf[1])) * ' '}\t{wf[2]}{(version_padding - len(wf[2])) * ' '}")
+            f"{wf[0]}{(id_padding - len(str(wf[0]))) * ' '}\t{wf[1]}{(name_padding - len(wf[1])) * ' '}\t{wf[2]}{(version_padding - len(wf[2])) * ' '}"
+        )
 
 
 main.add_command(register)

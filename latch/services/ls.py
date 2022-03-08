@@ -5,49 +5,36 @@ from typing import Optional
 import requests
 from latch.utils import retrieve_or_login
 
-def _str_none(s: Optional[str]) -> str:
-    if s is None:
-        return "-"
-    return str(s)
 
-def ls(remote_directory: str, padding: int = 3):
-    url = "https://nucleus.latch.bio/sdk/list"
+def ls(remote_directory: str):
+
+    if remote_directory.startswith("latch://"):
+        remote_directory = remote_directory[len("latch://") :]
+    if not remote_directory.startswith("/"):
+        remote_directory = f"/{remote_directory}"
+
+    url = "https://nucleus.sugma.ai/sdk/list"
     token = retrieve_or_login()
     headers = {"Authorization": f"Bearer {token}"}
     data = {"directory": remote_directory}
 
     response = requests.post(url, headers=headers, json=data)
-    json_data = response.json()
 
-    
-    # used for pretty printing
-    # Initial values are the number of characters in the output header
-    max_lengths = {
-        "name": len("Name") + padding, 
-        "content_type": len("Type") + padding, 
-        "content_size": len("Size") + padding, 
-        "modify_time": len("Last Modified"),
-    }
+    if response.status_code == 403:
+        raise ValueError(
+            "you need access to the latch sdk beta ~ join the waitlist @ https://latch.bio/sdk"
+        )
+    elif response.status_code == 500:
+        raise ValueError(f"the directory does not exist.")
+
+    json_data = response.json()
 
     output = []
     for i in json_data:
         name_data = json_data[i]
-        name = _str_none(name_data["name"])
-        t = _str_none(name_data["type"])
-        if t == "dir" and name[-1] != "/":
-            name = name_data["name"] = f"{name}/"
-            name_data["content_type"] = "directory"
-        content_type = _str_none(name_data["content_type"])
-        content_size = _str_none(name_data["content_size"])
-        modify_time = _str_none(name_data["modify_time"])
+        output.append(name_data)
 
-        output.append((name, t, content_type, content_size, modify_time))
+    output.sort(key=lambda x: x["name"])
+    output.sort(key=lambda x: x["type"])
 
-        for i in max_lengths:
-            _padding = 0 if i == "modify_time" else padding
-            max_lengths[i] = max(max_lengths[i], _padding + len(_str_none(name_data[i])))
-
-    output.sort()
-    output.sort(key=lambda x: x[1])
-
-    return output, max_lengths
+    return output
