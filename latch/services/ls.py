@@ -13,7 +13,7 @@ def ls(remote_directory: str):
     if not remote_directory.startswith("/"):
         remote_directory = f"/{remote_directory}"
 
-    url = "https://nucleus.sugma.ai/sdk/list"
+    url = "https://nucleus.latch.bio/sdk/list"
     token = retrieve_or_login()
     headers = {"Authorization": f"Bearer {token}"}
     data = {"directory": remote_directory}

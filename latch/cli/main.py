@@ -39,10 +39,13 @@ def register(pkg_root: str, dockerfile: Union[str, None], pkg_name: Union[str, N
 
     Visit docs.latch.bio to learn more.
     """
-    _register(pkg_root, dockerfile, pkg_name)
-    click.secho(
-        "Successfully registered workflow. View @ console.latch.bio.", fg="green"
-    )
+    try:
+        _register(pkg_root, dockerfile, pkg_name)
+        click.secho(
+            "Successfully registered workflow. View @ console.latch.bio.", fg="green"
+        )
+    except Exception as e:
+        click.secho(f"Unable to register workflow: {str(e)}", fg="red")
 
 
 @click.command("login")
@@ -51,8 +54,11 @@ def login():
 
     Visit docs.latch.bio to learn more.
     """
-    _login()
-    click.secho("Successfully logged into LatchBio.", fg="green")
+    try:
+        _login()
+        click.secho("Successfully logged into LatchBio.", fg="green")
+    except Exception as e:
+        click.secho(f"Unable to log in: {str(e)}", fg="red")
 
 
 @click.command("init")
@@ -62,7 +68,11 @@ def init(pkg_name: str):
 
     Visit docs.latch.bio to learn more.
     """
-    _init(pkg_name)
+    try:
+        _init(pkg_name)
+    except Exception as e:
+        click.secho(f"Unable to initialize {pkg_name}: {str(e)}", fg="red")
+        return
     click.secho(f"Created a latch workflow called {pkg_name}.", fg="green")
     click.secho("Run", fg="green")
     click.secho(f"\t$ latch register {pkg_name}", fg="green")
@@ -77,8 +87,15 @@ def cp(source_file: str, destination_file: str):
 
     Visit docs.latch.bio to learn more.
     """
-    _cp(source_file, destination_file)
-    click.secho(f"Successfully copied {source_file} to {destination_file}.", fg="green")
+    try:
+        _cp(source_file, destination_file)
+        click.secho(
+            f"Successfully copied {source_file} to {destination_file}.", fg="green"
+        )
+    except Exception as e:
+        click.secho(
+            f"Unable to copy {source_file} to {destination_file}: {str(e)}", fg="red"
+        )
 
 
 @click.command("ls")
@@ -151,7 +168,11 @@ def execute(params_file: Path, version: Union[str, None] = None):
 
     Visit docs.latch.bio to learn more.
     """
-    wf_name = _execute(params_file, version)
+    try:
+        wf_name = _execute(params_file, version)
+    except Exception as e:
+        click.secho(f"Unable to execute workflow: {str(e)}", fg="red")
+        return
     if version is None:
         version = "latest"
     click.secho(
@@ -171,7 +192,11 @@ def get_wf(name: Union[str, None] = None):
 
     Visit docs.latch.bio to learn more.
     """
-    wfs = _get_wf(name)
+    try:
+        wfs = _get_wf(name)
+    except Exception as e:
+        click.secho(f"Unable to get workflows: {str(e)}", fg="red")
+        return
     id_padding, name_padding, version_padding = 0, 0, 0
     for wf in wfs:
         id, name, version = wf
