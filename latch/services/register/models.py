@@ -86,7 +86,16 @@ class RegisterCtx:
         """The image to be registered."""
         if self.account_id is None:
             raise ValueError("You need to log in before you can register a workflow.")
-        return f"{self.account_id}_{self.pkg_root.name}"
+
+        # CAUTION ~ this weird formatting is maintained indepedently in the
+        # nucleus endpoint and here.
+        # Name for federated token request has minimum of 2 characters.
+        if int(self.account_id) < 10:
+            account_id = f"x{self.account_id}"
+        else:
+            account_id = self.account_id
+
+        return f"{account_id}_{self.pkg_root.name}"
 
     @property
     def image_tagged(self):
