@@ -72,7 +72,7 @@ def _auth0_jwt_for_access_jwt(token) -> str:
         "Authorization": f"Bearer {token}",
     }
 
-    url = "https://nucleus.latch.bio/sdk/access_jwt"
+    url = "https://nucleus.latch.bio/sdk/access-jwt"
 
     response = requests.post(url, headers=headers)
     if response.status_code == 403:
@@ -82,10 +82,10 @@ def _auth0_jwt_for_access_jwt(token) -> str:
 
     try:
         resp = response.json()
-        print(resp)
         jwt = resp["jwt"]
     except KeyError as e:
         raise ValueError(
-            f"Malformed response from request for access token {resp}") from e
+            f"Malformed response from request for access token {resp}"
+        ) from e
 
     return jwt
