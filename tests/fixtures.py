@@ -9,7 +9,6 @@ import pytest
 @pytest.fixture(scope="session")
 def test_account_jwt():
 
-    # TODO: env variable
     tmp_token = os.environ["TEST_TOKEN"]
     token_dir = Path.home().joinpath(".latch")
     token_dir.mkdir(exist_ok=True)
