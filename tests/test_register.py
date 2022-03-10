@@ -146,6 +146,7 @@ def test_image_upload(test_account_jwt):
         with tempfile.TemporaryDirectory() as tmpdir:
             _serialize_pkg(ctx, tmpdir)
             logs = _upload_pkg_image(ctx)
+            print("loglist: ", list(logs))
             assert list(logs)[-1]["aux"]["Size"] > 0
 
     _setup_upload("foo")
