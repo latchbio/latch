@@ -55,17 +55,8 @@ def account_id_from_token(token: str) -> str:
         A Latch account ID (UUID).
     """
 
-    headers = {"Authorization": f"Bearer {token}"}
-    response = requests.post(
-        "https://nucleus.latch.bio/sdk/get-account-id", headers=headers
-    )
-
-    if response.status_code == 403:
-        raise PermissionError(
-            "You need access to the latch sdk beta ~ join the waitlist @ https://latch.bio/sdk"
-        )
-    if response.status_code != 200:
-        raise Exception(
-            f"Could not retrieve id from token - {token}.\n\t{response.text}"
-        )
-    return response.json()["id"]
+    decoded_jwt = jwt.decode(token, options={"verify_signature": False})
+    try:
+        return decoded_jwt.get("id")
+    except KeyError as e:
+        raise ValueError("Your Latch access token is malformed") from e
