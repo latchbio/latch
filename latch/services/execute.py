@@ -15,7 +15,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 
-def execute(params_file: Path, version: Union[None, str] = None) -> bool:
+def execute(params_file: Path, version: Union[None, str] = None) -> str:
     """Executes a versioned workflow with parameters specified in python.
 
     Args:
@@ -30,7 +30,7 @@ def execute(params_file: Path, version: Union[None, str] = None) -> bool:
         `execute` service.
 
     Returns:
-        True if successful
+        The name of the workflow if successful
 
     Example: ::
 

@@ -55,7 +55,7 @@ def test_ls(test_account_jwt):
 
     # todo(ayush) add more ls tests
     _cmd = ["latch", "ls"]
-    _run_and_verify(_cmd, "welcome/")
+    _run_and_verify(_cmd, "welcome")
 
 
 def test_execute(test_account_jwt):
