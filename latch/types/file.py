@@ -56,7 +56,8 @@ class LatchFile(FlyteFile):
     ):
 
         if remote_path is not None:
-            self._remote_path = LatchURL(remote_path).url  # validates url string
+            self._remote_path = LatchURL(
+                remote_path).url  # validates url string
 
         if kwargs.get("downloader") is not None:
             super().__init__(path, kwargs["downloader"], remote_path)
@@ -81,6 +82,9 @@ class LatchFile(FlyteFile):
     def remote_path(self) -> Optional[str]:
         """A url referencing in object in LatchData or s3."""
         return self._remote_path
+
+    def __str__(self):
+        return f'LatchFile("{self.local_path}")'
 
 
 LatchOutputFile = Annotated[
