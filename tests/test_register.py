@@ -48,8 +48,9 @@ def _setup_and_build_wo_dockerfile(jwt, pkg_name, requirements=None):
 
         pkg_dir = Path(tmpdir).joinpath(pkg_name)
         pkg_dir.mkdir()
+        pkg_dir.joinpath("wf").mkdir()
 
-        with open(pkg_dir.joinpath("__init__.py"), "w") as f:
+        with open(pkg_dir.joinpath("wf/__init__.py"), "w") as f:
             f.write(_gen__init__(pkg_name))
 
         with open(pkg_dir.joinpath("version"), "w") as f:
@@ -67,20 +68,21 @@ def _setup_and_build_w_dockerfile(jwt, pkg_name):
 
         pkg_dir = Path(tmpdir).joinpath(pkg_name)
         pkg_dir.mkdir()
+        pkg_dir.joinpath("wf").mkdir()
 
-        with open(pkg_dir.joinpath("__init__.py"), "w") as f:
+        with open(pkg_dir.joinpath("wf/__init__.py"), "w") as f:
             f.write(_gen__init__(pkg_name))
 
         with open(pkg_dir.joinpath("version"), "w") as f:
             f.write(_VERSION_0)
 
-        dockerfile = Path(tmpdir).joinpath("Dockerfile")
+        dockerfile = Path(pkg_dir).joinpath("Dockerfile")
         with open(dockerfile, "w") as df:
             df.write(
                 "\n".join(
                     [
                         "FROM busybox",
-                        f"COPY {pkg_name} /src/{pkg_name}",
+                        "COPY wf /src/wf",
                         "WORKDIR /src",
                     ]
                 )
