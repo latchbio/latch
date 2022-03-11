@@ -62,12 +62,12 @@ Ingest TBs of genomic files and call arbitrary programs...
 
 ```
 from latch import task
-from latch.types import LatchDirectory, BamFile
+from latch.types import LatchDir, BamFile
 
 @task()
 def samtools_sort_tsk(
     bam_file: BamFile,
-    output_dir: LatchDirectory = LatchDirectory("latch://sorted_output"),
+    output_dir: LatchDir= LatchDir("latch://sorted_output"),
 ) -> FlyteDirectory:
 
     local_output = Path("/root/output")
@@ -89,10 +89,10 @@ Scale your logic to curated high-performance and GPU-enabled computing instances
 
 ```
 from latch.tasks import large_gpu_task
-from latch.types import LatchDirectory, BamFile
+from latch.types import LatchDir, LatchFile
 
 @large_gpu_task() # 4 GPU, 32 CPU, 256 RAM
-def train_protein_model(samples: LatchDirectory) -> LatchFile:
+def train_protein_model(samples: LatchDir) -> LatchFile:
   ...
 ```
 
