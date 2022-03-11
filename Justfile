@@ -24,6 +24,10 @@ build-docs:
   rm -rf docs/build
   make -C docs html
 
+test:
+  export TEST_TOKEN=$(cat ~/.latch/token) &&\
+    pytest -s tests
+
 #
 # Docs build.
 

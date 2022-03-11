@@ -43,6 +43,8 @@ jobs:
         run: |
           python3 -m pip install -e .
       - name: Test
+        env:
+          TEST_TOKEN: ${{ secrets.TEST_TOKEN }}
         run: |
           eval $(docker-machine env default)
           cd tests; python3 -m pytest -s .
@@ -68,6 +70,8 @@ jobs:
         run: |
           python3 -m pip install -e .
       - name: Test
+        env:
+          TEST_TOKEN: ${{ secrets.TEST_TOKEN }}
         run: |
           eval $(docker-machine env default)
           cd tests; python3 -m pytest -s .

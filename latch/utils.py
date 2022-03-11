@@ -16,7 +16,7 @@ def retrieve_or_login() -> str:
 
     user_conf = UserConfig()
     token = user_conf.token
-    if token == "" or not token_is_valid(token):
+    if token == "":
         token = login()
     return token
 
@@ -42,32 +42,6 @@ def sub_from_jwt(token: str) -> str:
     return sub
 
 
-def token_is_valid(token: str) -> bool:
-    """Checks if passed token is authenticated with Latch.
-
-    Queries a protected endpoint within the Latch API.
-
-    Args:
-        token: JWT
-
-    Returns:
-        True if valid.
-    """
-
-    headers = {"Authorization": f"Bearer {token}"}
-    response = requests.get(
-        "https://nucleus.latch.bio/api/protected-sdk-ping", headers=headers
-    )
-
-    if response.status_code == 403:
-        raise PermissionError(
-            "You need access to the latch sdk beta ~ join the waitlist @ https://latch.bio/sdk"
-        )
-    if response.status_code == 200:
-        return True
-    return False
-
-
 def account_id_from_token(token: str) -> str:
     """Exchanges a valid JWT for a Latch account ID.
 
@@ -81,17 +55,8 @@ def account_id_from_token(token: str) -> str:
         A Latch account ID (UUID).
     """
 
-    headers = {"Authorization": f"Bearer {token}"}
-    response = requests.post(
-        "https://nucleus.latch.bio/sdk/get-account-id", headers=headers
-    )
-
-    if response.status_code == 403:
-        raise PermissionError(
-            "You need access to the latch sdk beta ~ join the waitlist @ https://latch.bio/sdk"
-        )
-    if response.status_code != 200:
-        raise Exception(
-            f"Could not retrieve id from token - {token}.\n\t{response.text}"
-        )
-    return response.json()["id"]
+    decoded_jwt = jwt.decode(token, options={"verify_signature": False})
+    try:
+        return decoded_jwt.get("id")
+    except KeyError as e:
+        raise ValueError("Your Latch access token is malformed") from e
