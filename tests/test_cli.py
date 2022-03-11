@@ -50,7 +50,7 @@ def test_ls(test_account_jwt):
 
     # todo(ayush) add more ls tests
     _cmd = ["latch", "ls"]
-    _run_and_verify(_cmd, "welcome/")
+    _run_and_verify(_cmd, "welcome")
 
 
 def test_execute(test_account_jwt):
@@ -80,4 +80,4 @@ def test_get_wf(test_account_jwt):
 
     _cmd = ["latch", "get-wf", "--name", "latch.crispresso2_wf"]
     _run_and_verify(
-        _cmd, "v0.1.11")
+        _cmd, "v0.1.42")
