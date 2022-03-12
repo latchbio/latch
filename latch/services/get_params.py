@@ -1,8 +1,8 @@
 
 try:
-    from typing import get_args
+    from typing import get_args, get_origin
 except ImportError:
-    from typing_extensions import get_args
+    from typing_extensions import get_args, get_origin
 
 import json
 import typing
@@ -162,13 +162,13 @@ def _best_effort_default_val(t: typing.T):
         raise NotImplementedError(
             f"Unable to produce a best-effort value for the python type {t}")
 
-    if t.__origin__ is list:
+    if get_origin(t) is list:
         list_args = get_args(t)
         if len(list_args) == 0:
             return []
         return [_best_effort_default_val(arg) for arg in list_args]
 
-    if t.__origin__ is typing.Union:
+    if get_origin(t) is typing.Union:
         return _best_effort_default_val(get_args(t)[0])
 
     raise NotImplementedError(
