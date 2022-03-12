@@ -17,6 +17,32 @@ from latch.types import LatchDir, LatchFile
 from latch.utils import retrieve_or_login
 
 
+class Unsupported:
+    ...
+
+
+_simple_table = {
+    0: type(None),
+    1: int,
+    2: float,
+    3: str,
+    4: bool,
+    5: Unsupported,
+    6: Unsupported,
+    7: Unsupported,
+    8: Unsupported,
+    9: Unsupported,
+}
+
+_primitive_table = {
+    type(None): None,
+    int: 0,
+    float: 0.0,
+    str: "foo",
+    bool: False,
+}
+
+
 def get_params(wf_name: Union[None, str], wf_version: Union[None, str] = None):
     """Constructs a python parameter map from a workflow name and (opt) version.
 
@@ -153,27 +179,11 @@ def _get_code_literal(python_val: any, python_type: typing.T):
     return python_val, python_type
 
 
-class Unsupported:
-    ...
-
-
 def _guess_python_type(literal: LiteralType, param_name: str):
     """Transform flyte type literal to native python type."""
 
     if literal.simple is not None:
-        simple_table = {
-            0: type(None),
-            1: int,
-            2: float,
-            3: str,
-            4: bool,
-            5: Unsupported,
-            6: Unsupported,
-            7: Unsupported,
-            8: Unsupported,
-            9: Unsupported,
-        }
-        return simple_table[literal.simple]
+        return _simple_table[literal.simple]
 
     if literal.collection_type is not None:
         return typing.List[_guess_python_type(literal.collection_type, param_name)]
@@ -227,15 +237,8 @@ def _guess_python_type(literal: LiteralType, param_name: str):
 def _best_effort_default_val(t: typing.T):
     """Produce a "best-effort" default value given a python type."""
 
-    primitive_table = {
-        type(None): None,
-        int: 0,
-        float: 0.0,
-        str: "foo",
-        bool: False,
-    }
-    if t in primitive_table:
-        return primitive_table[t]
+    if t in _primitive_table:
+        return _primitive_table[t]
 
     if t is list:
         return []
