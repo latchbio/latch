@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import List, Union
 
 import click
+
 from latch.services import cp as _cp
 from latch.services import execute as _execute
 from latch.services import get_wf as _get_wf

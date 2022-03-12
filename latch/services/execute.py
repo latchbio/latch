@@ -10,9 +10,14 @@ import requests
 from flyteidl.core.types_pb2 import LiteralType
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
-from latch.utils import retrieve_or_login
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+
+from latch.config.latch import ENV, LatchConfig
+from latch.utils import retrieve_or_login
+
+config = LatchConfig(ENV)
+endpoints = config.sdk_endpoints
 
 
 def execute(params_file: Path, version: Union[None, str] = None) -> str:
@@ -147,8 +152,7 @@ def _get_workflow_interface(
     headers = {"Authorization": f"Bearer {token}"}
     _interface_request = {"workflow_name": wf_name, "version": version}
 
-    # TODO - pull out
-    url = "https://nucleus.latch.bio/sdk/wf-interface"
+    url = endpoints["get-workflow-interface"]
 
     # TODO - use retry logic in all requests + figure out why timeout happens
     # within this endpoint only.
@@ -201,8 +205,7 @@ def _execute_workflow(token: str, wf_id: str, params: dict) -> bool:
     }
 
     _interface_request = {"workflow_id": str(wf_id), "params": params}
-    # TODO (kenny) - config
-    url = "https://nucleus.latch.bio/sdk/wf"
+    url = endpoints["execute-workflow"]
 
     response = requests.post(url, headers=headers, json=_interface_request)
 

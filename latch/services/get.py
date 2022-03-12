@@ -3,7 +3,12 @@
 from typing import List, Tuple, Union
 
 import requests
+
+from latch.config.latch import ENV, LatchConfig
 from latch.utils import retrieve_or_login
+
+config = LatchConfig(ENV)
+endpoints = config.sdk_endpoints
 
 
 def get_wf(wf_name: Union[None, str] = None, wf_id: Union[None, str] = None):
@@ -38,7 +43,7 @@ def _list_workflow_request(
     }
     _request = {"workflow_name": wf_name}
 
-    url = "https://nucleus.latch.bio/sdk/get-wf"
+    url = endpoints["get-workflows"]
 
     response = requests.post(url, headers=headers, json=_request)
     if response.status_code == 403:

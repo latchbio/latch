@@ -4,7 +4,12 @@ import math
 from pathlib import Path
 
 import requests
+
+from latch.config.latch import ENV, LatchConfig
 from latch.utils import retrieve_or_login
+
+config = LatchConfig(ENV)
+endpoints = config.sdk_endpoints
 
 _CHUNK_SIZE = 5 * 10 ** 6  # 5 MB
 
@@ -15,7 +20,7 @@ def _cp_local_to_remote(local_source: str, remote_dest: str):
     Args:
         local_source:  A valid path to a local file (can be absolute or relative).
         remote_dest:   A valid path to a LatchData file. The path must be absolute
-                       and prefixed with `latch://`. If a directory in the path 
+                       and prefixed with `latch://`. If a directory in the path
                        doesn't exist, that directory and everything following it
                        becomes the file name - see below.
 
@@ -27,18 +32,18 @@ def _cp_local_to_remote(local_source: str, remote_dest: str):
 
         cp("sample.fa", "latch:///sample.fa")
 
-            Creates a new file visible in Latch Console called sample.fa, located in 
+            Creates a new file visible in Latch Console called sample.fa, located in
             the root of the user's Latch filesystem
 
         cp("sample.fa", "latch:///dir1/dir2/sample.fa")
 
-            Creates a new file visible in Latch Console called sample.fa, located in 
+            Creates a new file visible in Latch Console called sample.fa, located in
             the nested directory /dir1/dir2/
 
         cp("sample.fa", "latch:///dir1/doesnt_exist/dir2/sample.fa") # doesnt_exist doesn't exist
 
-            Creates a new file visible in Latch Console called doesnt_exist/dir2/sample.fa, 
-            located in the directory /dir1/. Note that 'doesnt_exist' and everything 
+            Creates a new file visible in Latch Console called doesnt_exist/dir2/sample.fa,
+            located in the directory /dir1/. Note that 'doesnt_exist' and everything
             following (including the `/`s) are part of the filename.
 
     .. _multipart upload:
@@ -70,7 +75,7 @@ def _cp_local_to_remote(local_source: str, remote_dest: str):
         "content_type": "text/plain",
         "nrof_parts": nrof_parts,
     }
-    url = "https://nucleus.latch.bio/sdk/initiate-multipart-upload"
+    url = endpoints["initiate-multipart-upload"]
     headers = {"Authorization": f"Bearer {token}"}
     response = requests.post(url, headers=headers, json=data)
 
@@ -107,72 +112,71 @@ def _cp_local_to_remote(local_source: str, remote_dest: str):
             parts.append({"ETag": etag, "PartNumber": i + 1})
 
     data = {"path": path, "upload_id": upload_id, "parts": parts}
-    url = "https://nucleus.latch.bio/sdk/complete-multipart-upload"
+    url = endpoints["complete-multipart-upload"]
     headers = {"Authorization": f"Bearer {token}"}
     response = requests.post(url, headers=headers, json=data)
+
 
 def _cp_remote_to_local(remote_source: str, local_dest: str):
     """Allows movement of files from Latch -> local machines.
 
     Args:
-        remote_source: A valid path to an existing LatchData file. The path must 
+        remote_source: A valid path to an existing LatchData file. The path must
                        be absolute and prefixed with `latch://`.
         local_dest:    A (relative or absolute) path. If a directory in the path
                        doesn't exist, that directory and everything following it
                        becomes the file name - see below.
 
-    This function will initiate a download using an authenticated and presigned 
-    URL directly from AWS S3. 
+    This function will initiate a download using an authenticated and presigned
+    URL directly from AWS S3.
 
     Example: ::
 
         cp("latch:///sample.fa", "sample.fa")
 
-            Creates a new file in the user's local working directory called 
+            Creates a new file in the user's local working directory called
             sample.fa, which has the same contents as the remote file.
 
         cp("latch:///dir1/dir2/sample.fa", "/dir3/dir4/sample.fa")
 
-            Creates a new file in the local directory /dir3/dir4/ called 
+            Creates a new file in the local directory /dir3/dir4/ called
             sample.fa, which has the same contents as the remote file.
 
         cp("latch:///sample.fa", "/dir1/doesnt_exist/dir2/sample.fa")
         # doesnt_exist doesn't exist
 
-            Creates a new file in the local directory /dir1/ called 
+            Creates a new file in the local directory /dir1/ called
             doesnt_exist/dir2/sample.fa, which has the same content as the
             remote file. Note the nonexistent directory is folded into the
             name of the copied file.
     """
     if remote_source[:9] != "latch:///":
         raise ValueError(f'{remote_source} needs to be prefixed with "latch:///"')
-    
+
     local_dest = Path(local_dest).resolve()
     token = retrieve_or_login()
     headers = {"Authorization": f"Bearer {token}"}
     data = {"source_path": remote_source}
 
-    # todo(ayush): change it so we don't hardcode api endpoints
-    url = "https://nucleus.latch.bio/sdk/download"
+    url = endpoints["download"]
     response = requests.post(url, headers=headers, json=data)
     if response.status_code == 403:
         raise PermissionError(
             "You need access to the latch sdk beta ~ join the waitlist @ https://latch.bio/sdk"
         )
     elif response.status_code == 500:
-        raise ValueError(
-            f"{remote_source} does not exist."
-        )
-    
+        raise ValueError(f"{remote_source} does not exist.")
+
     print(response.status_code)
 
     response_data = response.json()
-    url = response_data['url']
+    url = response_data["url"]
     with requests.get(url, stream=True) as r:
         r.raise_for_status()
         with open(local_dest, "wb") as f:
             for chunk in r.iter_content(chunk_size=_CHUNK_SIZE):
                 f.write(chunk)
+
 
 def cp(source_file: str, destination_file: str):
     if source_file[:9] != "latch:///" and destination_file[:9] == "latch:///":
@@ -180,4 +184,6 @@ def cp(source_file: str, destination_file: str):
     elif source_file[:9] == "latch:///" and destination_file[:9] != "latch:///":
         _cp_remote_to_local(source_file, destination_file)
     else:
-        raise ValueError("latch cp can only be used to either copy remote -> local or local -> remote")
+        raise ValueError(
+            "latch cp can only be used to either copy remote -> local or local -> remote"
+        )

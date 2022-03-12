@@ -11,6 +11,7 @@ from typing import List, Union
 
 import boto3
 import requests
+
 from latch.services.register import RegisterCtx, RegisterOutput
 
 

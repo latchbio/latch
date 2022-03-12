@@ -1,16 +1,76 @@
+import secrets
 import shutil
+import string
 import subprocess
 import textwrap
 from pathlib import Path
 from typing import List
 
+import requests
+
+from latch.config import ENV, LatchConfig
+
 from .fixtures import project_name, test_account_jwt
+
+config = LatchConfig(ENV)
+endpoints = config.sdk_endpoints
 
 
 def _run_and_verify(cmd: List[str], does_exist: str):
     output = subprocess.run(cmd, capture_output=True, check=True)
     stdout = output.stdout.decode("utf-8")
     assert does_exist in stdout
+
+
+def _file_exists(token, filename: str) -> bool:
+    if not filename[0] == "/":
+        filename = f"/{filename}"
+    headers = {"Authorization": f"Bearer {token}"}
+    data = {"filename": filename}
+    response = requests.post(url=endpoints["verify"], headers=headers, json=data)
+    try:
+        assert response.status_code == 200
+    except:
+        raise ValueError(f"{response.content}")
+    return response.json()["exists"]
+
+
+def _remove_file(token, filename: str):
+    if not filename[0] == "/":
+        filename = f"/{filename}"
+    data = {"filename": filename}
+    headers = {"Authorization": f"Bearer {token}"}
+    response = requests.post(url=endpoints["remove"], headers=headers, json=data)
+    try:
+        assert response.status_code == 200
+    except:
+        raise ValueError(f"{response.content}")
+
+
+def _run_cp_and_clean_up(token, filename: str):
+    """
+    Checks that
+        (1) the file was actually copied to latch, and
+        (2) the file contents do not change from local -> latch -> local
+    """
+    initial = Path(f"initial_{filename}").resolve()
+    final = Path(f"final_{filename}").resolve()
+    try:
+        initial_text = "".join(secrets.choice(string.ascii_letters) for _ in range(100))
+        with open(initial, "w") as f:
+            f.write(initial_text)
+        cmd = ["latch", "cp", initial, f"latch:///{filename}"]
+        _run_and_verify(cmd, f"Successfully copied {initial} to latch:///{filename}")
+        assert _file_exists(token, filename)
+        cmd = ["latch", "cp", f"latch:///{filename}", final]
+        _run_and_verify(cmd, f"Successfully copied latch:///{filename} to {final}")
+        with open(final, "r") as f:
+            final_text = f.read()
+        assert initial_text == final_text
+        _remove_file(token, filename)
+    finally:
+        initial.unlink(missing_ok=True)
+        final.unlink(missing_ok=True)
 
 
 def test_init_and_register(test_account_jwt, project_name):
@@ -29,31 +89,15 @@ def test_init_and_register(test_account_jwt, project_name):
 
 
 def test_cp(test_account_jwt):
-    with open("foo.txt", "w") as f:
-        f.write("foobar")
-
-    _cmd = ["latch", "cp", "foo.txt", "latch:///foo.txt"]
-    _run_and_verify(_cmd, "Successfully copied foo.txt to latch:///foo.txt.")
-    _cmd = ["latch", "cp", "foo.txt", "latch:///fake_dir_that_doesnt_exist/foo.txt"]
-    # doesn't do what we expected
-    _run_and_verify(
-        _cmd,
-        "Successfully copied foo.txt to latch:///fake_dir_that_doesnt_exist/foo.txt.",
-    )
-    _cmd = ["latch", "cp", "foo.txt", "latch:///oof.txt"]
-    _run_and_verify(_cmd, "Successfully copied foo.txt to latch:///oof.txt.")
-    _cmd = ["latch", "cp", "foo.txt", "latch:///welcome/"]
-    _run_and_verify(_cmd, "Successfully copied foo.txt to latch:///welcome/")
-
-    _cmd = ["latch", "cp", "latch:///foo.txt", "bar.txt"]
-    _run_and_verify(_cmd, "Successfully copied latch:///foo.txt to bar.txt.")
-    _cmd = ["latch", "cp", "latch:///foo.txt", "stuff.txt"]
-    _run_and_verify(_cmd, "Successfully copied latch:///foo.txt to stuff.txt.")
+    for _ in range(10):
+        filename = "".join(secrets.choice(string.ascii_letters) for _ in range(10))
+        filename = f"{filename}.txt"
+        _run_cp_and_clean_up(test_account_jwt, filename)
 
 
 def test_ls(test_account_jwt):
 
-    # todo(ayush) add more ls tests
+    # TODO(ayush) add more ls tests
     _cmd = ["latch", "ls"]
     _run_and_verify(_cmd, "welcome")
 

@@ -3,9 +3,13 @@
 import webbrowser
 
 import requests
+
 from latch.auth import PKCE, CSRFState, OAuth2
-from latch.config import UserConfig
+from latch.config import ENV, LatchConfig, UserConfig
 from latch.constants import OAuth2Constants
+
+config = LatchConfig(ENV)
+endpoints = config.sdk_endpoints
 
 
 def login() -> str:
@@ -72,7 +76,7 @@ def _auth0_jwt_for_access_jwt(token) -> str:
         "Authorization": f"Bearer {token}",
     }
 
-    url = "https://nucleus.latch.bio/sdk/access-jwt"
+    url = endpoints["access-jwt"]
 
     response = requests.post(url, headers=headers)
     if response.status_code == 403:

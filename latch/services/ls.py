@@ -1,19 +1,23 @@
 """Service to list files in a remote directory."""
 
-import json
-from typing import Optional
+from typing import Dict, List
+
 import requests
+
+from latch.config.latch import ENV, LatchConfig
 from latch.utils import retrieve_or_login
 
+config = LatchConfig(ENV)
+endpoints = config.sdk_endpoints
 
-def ls(remote_directory: str):
 
+def ls(remote_directory: str) -> List[Dict[str, str]]:
     if remote_directory.startswith("latch://"):
         remote_directory = remote_directory[len("latch://") :]
     if not remote_directory.startswith("/"):
         remote_directory = f"/{remote_directory}"
 
-    url = "https://nucleus.latch.bio/sdk/list"
+    url = endpoints["list-files"]
     token = retrieve_or_login()
     headers = {"Authorization": f"Bearer {token}"}
     data = {"directory": remote_directory}

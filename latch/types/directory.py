@@ -8,6 +8,7 @@ from flytekit.core.with_metadata import FlyteMetadata
 from flytekit.models.literals import Literal
 from flytekit.types.directory.types import (FlyteDirectory,
                                             FlyteDirToMultipartBlobTransformer)
+
 from latch.types.url import LatchURL
 
 try:
@@ -53,8 +54,7 @@ class LatchDir(FlyteDirectory):
     ):
 
         if remote_path is not None:
-            self._remote_directory = LatchURL(
-                remote_path).url  # validates url string
+            self._remote_directory = LatchURL(remote_path).url  # validates url string
 
         if kwargs.get("downloader") is not None:
             super().__init__(path, kwargs["downloader"], remote_path)

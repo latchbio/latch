@@ -12,6 +12,7 @@ from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.core.with_metadata import FlyteMetadata
 from flytekit.models.literals import Literal
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
+
 from latch.types.url import LatchURL
 
 
