@@ -123,6 +123,18 @@ def _get_code_literal(python_val: any, python_type: typing.T):
         name = python_type._name
         return python_val, f"<enum '{name}'>"
 
+    if hasattr(python_type, '__origin__') and get_origin(python_type) is typing.Union:
+        summands = get_args(python_type)
+        type_repr = "typing.Union["
+        for i, summand in enumerate(summands):
+            if i < len(summands) - 1:
+                delimiter = ", "
+            else:
+                delimiter = ""
+            type_repr += f"{_get_code_literal(python_val, summand)[1]}{delimiter}"
+        type_repr += "]"
+        return python_val, type_repr
+
     if hasattr(python_type, '__origin__') and get_origin(python_type) is list:
         collection_literal = "["
         for i, item in enumerate(python_val):
