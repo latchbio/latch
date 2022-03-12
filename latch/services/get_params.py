@@ -76,14 +76,16 @@ def get_params(wf_name: Union[None, str], wf_version: Union[None, str] = None):
             LiteralType.from_flyte_idl(literal_type), param_name
         )
 
+        default = True
         if default_wf_vars[param_name].get("required") is not True:
             literal_json = default_wf_vars[param_name].get("default")
             literal = gpjson.ParseDict(literal_json, _Literal())
             val = _guess_python_val(Literal.from_flyte_idl(literal), python_type)
         else:
+            default = False
             val = _best_effort_default_val(python_type)
 
-        params[param_name] = (python_type, val)
+        params[param_name] = (python_type, val, default)
 
     import_statements = {
         LatchFile: "from latch.types import LatchFile",
@@ -97,7 +99,7 @@ def get_params(wf_name: Union[None, str], wf_version: Union[None, str] = None):
     param_map_str += "\nparams = {"
     param_map_str += f'\n    "_name": "{wf_name}", # Dont edit this value.'
     for param_name, value in params.items():
-        python_type, python_val = value
+        python_type, python_val, default = value
 
         # Check for imports.
 
@@ -134,7 +136,12 @@ def get_params(wf_name: Union[None, str], wf_version: Union[None, str] = None):
 
         python_val, python_type = _get_code_literal(python_val, python_type)
 
-        param_map_str += f'\n    "{param_name}": {python_val}, # {python_type}'
+        if default is True:
+            default = "DEFAULT. "
+        else:
+            default = ""
+
+        param_map_str += f'\n    "{param_name}": {python_val}, # {default}{python_type}'
     param_map_str += "\n}"
 
     with open(f"{wf_name}.params.py", "w") as f:
@@ -203,7 +210,6 @@ def _guess_python_val(literal: _Literal, python_type: typing.T):
 
     print(literal, python_type)
 
-    # simple
     if literal.scalar.none_type is not None:
         return None
 
@@ -222,7 +228,6 @@ def _guess_python_val(literal: _Literal, python_type: typing.T):
     if literal.collection is not None:
         print(literal.collection)
 
-    # blob
     if literal.scalar.blob is not None:
         blob = literal.scalar.blob
         dim = blob.metadata.type.dimensionality
