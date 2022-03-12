@@ -6,6 +6,7 @@ from typing import List, Union
 import click
 from latch.services import cp as _cp
 from latch.services import execute as _execute
+from latch.services import get_params as _get_params
 from latch.services import get_wf as _get_wf
 from latch.services import init as _init
 from latch.services import login as _login
@@ -39,10 +40,13 @@ def register(pkg_root: str, dockerfile: Union[str, None], pkg_name: Union[str, N
 
     Visit docs.latch.bio to learn more.
     """
-    _register(pkg_root, dockerfile, pkg_name)
-    click.secho(
-        "Successfully registered workflow. View @ console.latch.bio.", fg="green"
-    )
+    try:
+        _register(pkg_root, dockerfile, pkg_name)
+        click.secho(
+            "Successfully registered workflow. View @ console.latch.bio.", fg="green"
+        )
+    except Exception as e:
+        click.secho(f"Unable to register workflow: {str(e)}", fg="red")
 
 
 @click.command("login")
@@ -51,8 +55,11 @@ def login():
 
     Visit docs.latch.bio to learn more.
     """
-    _login()
-    click.secho("Successfully logged into LatchBio.", fg="green")
+    try:
+        _login()
+        click.secho("Successfully logged into LatchBio.", fg="green")
+    except Exception as e:
+        click.secho(f"Unable to log in: {str(e)}", fg="red")
 
 
 @click.command("init")
@@ -62,7 +69,11 @@ def init(pkg_name: str):
 
     Visit docs.latch.bio to learn more.
     """
-    _init(pkg_name)
+    try:
+        _init(pkg_name)
+    except Exception as e:
+        click.secho(f"Unable to initialize {pkg_name}: {str(e)}", fg="red")
+        return
     click.secho(f"Created a latch workflow called {pkg_name}.", fg="green")
     click.secho("Run", fg="green")
     click.secho(f"\t$ latch register {pkg_name}", fg="green")
@@ -77,9 +88,15 @@ def cp(source_file: str, destination_file: str):
 
     Visit docs.latch.bio to learn more.
     """
-    _cp(source_file, destination_file)
-    click.secho(
-        f"Successfully copied {source_file} to {destination_file}.", fg="green")
+    try:
+        _cp(source_file, destination_file)
+        click.secho(
+            f"Successfully copied {source_file} to {destination_file}.", fg="green"
+        )
+    except Exception as e:
+        click.secho(
+            f"Unable to copy {source_file} to {destination_file}: {str(e)}", fg="red"
+        )
 
 
 @click.command("ls")
@@ -90,74 +107,55 @@ def ls(remote_directories: Union[None, List[str]]):
 
     Visit docs.latch.bio to learn more.
     """
-    _item_padding = 3
+    def _item_padding(k): return 0 if k == "modifyTime" else 3
 
     # If the user doesn't provide any arguments, default to root
     if not remote_directories:
         remote_directories = ["latch:///"]
 
-    # conditional formatting based on whether the user asks for multiple ls's or not
-    _initial_padding = 0 if len(remote_directories) < 2 else 3
-
-    def _emit_directory_header(remote_directory):
-        if len(remote_directories) > 1:
-            click.secho(f"{remote_directory}:")
-            click.secho("")
-    
-    def _emit_directory_footer():
-        if len(remote_directories) > 1:
-            click.secho("")
-    
     for remote_directory in remote_directories:
-        output, max_lengths = _ls(remote_directory, padding=_item_padding)
+        try:
+            output = _ls(remote_directory)
+        except Exception as e:
+            click.secho(
+                f"Unable to display contents of {remote_directory}: {str(e)}", fg="red"
+            )
+            continue
 
-        header_name_padding = max_lengths["name"] - len("Name")
-        header_content_type_padding = max_lengths["content_type"] - len("Type")
-        header_content_size_padding = max_lengths["content_size"] - len("Size")
-        header_modify_time_padding = max_lengths["modify_time"] - len("Last Modified")
-    
-        header = (
-            "Name"
-            + " " * header_name_padding
-            + "Type"
-            + " " * header_content_type_padding
-            + "Size"
-            + " " * header_content_size_padding
-            + "Last Modified"
-            + " " * header_modify_time_padding
-        )
+        header = {
+            "name": "Name:",
+            "contentType": "Type:",
+            "contentSize": "Size:",
+            "modifyTime": "Last Modified:",
+        }
 
-        _emit_directory_header(remote_directory=remote_directory)
+        max_lengths = {key: len(key) + _item_padding(key) for key in header}
+        for row in output:
+            for key in header:
+                max_lengths[key] = max(
+                    len(row[key]) + _item_padding(key), max_lengths[key]
+                )
 
-        click.secho(" " * _initial_padding, nl=False)
-        click.secho(header, underline=True)
+        def _display(row, style):
+            click.secho(
+                f"{row['name']:<{max_lengths['name']}}", nl=False, **style)
+            click.secho(
+                f"{row['contentType']:<{max_lengths['contentType']}}", nl=False, **style
+            )
+            click.secho(
+                f"{row['contentSize']:<{max_lengths['contentSize']}}", nl=False, **style
+            )
+            click.secho(f"{row['modifyTime']}", **style)
+
+        _display(header, style={"underline": True})
 
         for row in output:
-            name, t, content_type, content_size, modify_time = row
-
             style = {
-                "fg": "cyan" if t == "obj" else "green",
+                "fg": "cyan" if row["type"] == "obj" else "green",
                 "bold": True,
             }
 
-            name_padding = max_lengths["name"] - len(name)
-            content_type_padding = max_lengths["content_type"] - len(content_type)
-            content_size_padding = max_lengths["content_size"] - len(content_size)
-
-            output_str = (
-                name
-                + " " * name_padding
-                + content_type
-                + " " * content_type_padding
-                + content_size
-                + " " * content_size_padding
-                + modify_time
-            )
-
-            click.secho(" " * _initial_padding, nl=False)
-            click.secho(output_str, **style)
-        
-        _emit_directory_footer()
+            _display(row, style)
 
 
 @click.command("execute")
@@ -172,11 +170,41 @@ def execute(params_file: Path, version: Union[str, None] = None):
 
     Visit docs.latch.bio to learn more.
     """
-    wf_name = _execute(params_file, version)
+    try:
+        wf_name = _execute(params_file, version)
+    except Exception as e:
+        click.secho(f"Unable to execute workflow: {str(e)}", fg="red")
+        return
     if version is None:
         version = "latest"
     click.secho(
         f"Successfully launched workflow named {wf_name} with version {version}.",
+        fg="green",
+    )
+
+
+@click.command("get-params")
+@click.argument("wf_name", nargs=1)
+@click.option(
+    "--version",
+    default=None,
+    help="The version of the workflow. Defaults to latest.",
+)
+def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
+    """Generate a python parameter map for a workflow.
+
+    Visit docs.latch.bio to learn more.
+    """
+    try:
+        _get_params(wf_name, version)
+    except Exception as e:
+        click.secho(
+            f"Unable to generate param map for workflow: {str(e)}", fg="red")
+        return
+    if version is None:
+        version = "latest"
+    click.secho(
+        f"Successfully generated python param map named {wf_name}.params.py with version {version}\n Run `latch execute {wf_name}.params.py` to execute it.",
         fg="green",
     )
 
@@ -192,7 +220,11 @@ def get_wf(name: Union[str, None] = None):
 
     Visit docs.latch.bio to learn more.
     """
-    wfs = _get_wf(name)
+    try:
+        wfs = _get_wf(name)
+    except Exception as e:
+        click.secho(f"Unable to get workflows: {str(e)}", fg="red")
+        return
     id_padding, name_padding, version_padding = 0, 0, 0
     for wf in wfs:
         id, name, version = wf
@@ -202,10 +234,12 @@ def get_wf(name: Union[str, None] = None):
         version_padding = max(version_padding, version_len)
 
     click.secho(
-        f"ID{id_padding * ' '}\tName{name_padding * ' '}\tVersion{version_padding * ' '}")
+        f"ID{id_padding * ' '}\tName{name_padding * ' '}\tVersion{version_padding * ' '}"
+    )
     for wf in wfs:
         click.secho(
-            f"{wf[0]}{(id_padding - len(str(wf[0]))) * ' '}\t{wf[1]}{(name_padding - len(wf[1])) * ' '}\t{wf[2]}{(version_padding - len(wf[2])) * ' '}")
+            f"{wf[0]}{(id_padding - len(str(wf[0]))) * ' '}\t{wf[1]}{(name_padding - len(wf[1])) * ' '}\t{wf[2]}{(version_padding - len(wf[2])) * ' '}"
+        )
 
 
 main.add_command(register)
@@ -215,3 +249,4 @@ main.add_command(cp)
 main.add_command(ls)
 main.add_command(execute)
 main.add_command(get_wf)
+main.add_command(get_params)
