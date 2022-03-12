@@ -163,6 +163,8 @@ def _get_code_literal(python_val: any, python_type: typing.T):
     """Construct value that is executable python when templated into a code
     block."""
 
+    print(python_val, python_type)
+
     if python_type is str or (type(python_val) is str and str in get_args(python_type)):
         return f'"{python_val}"', python_type
 
@@ -188,17 +190,24 @@ def _get_code_literal(python_val: any, python_type: typing.T):
             return None, f"typing.List[{type_repr}]"
         else:
             collection_literal = "["
-            for i, item in enumerate(python_val):
-                item_literal, type_repr = _get_code_literal(
-                    item, get_args(python_type)[0]
+            if len(python_val) > 0:
+                for i, item in enumerate(python_val):
+                    item_literal, type_repr = _get_code_literal(
+                        item, get_args(python_type)[0]
+                    )
+
+                    if i < len(python_val) - 1:
+                        delimiter = ","
+                    else:
+                        delimiter = ""
+
+                    collection_literal += f"{item_literal}{delimiter}"
+            else:
+                list_t = get_args(python_type)[0]
+                _, type_repr = _get_code_literal(
+                    _best_effort_default_val(list_t), list_t
                 )
 
-                if i < len(python_val) - 1:
-                    delimiter = ","
-                else:
-                    delimiter = ""
-
-                collection_literal += f"{item_literal}{delimiter}"
             collection_literal += "]"
             return collection_literal, f"typing.List[{type_repr}]"
 
