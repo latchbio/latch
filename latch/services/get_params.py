@@ -1,4 +1,3 @@
-
 try:
     from typing import get_args, get_origin
 except ImportError:
@@ -10,7 +9,9 @@ import typing
 from typing import Union
 
 import google.protobuf.json_format as gpjson
+from flyteidl.core.literals_pb2 import Literal as _Literal
 from flyteidl.core.types_pb2 import LiteralType as _LiteralType
+from flytekit.models.literals import Literal
 from flytekit.models.types import LiteralType
 from latch.services.execute import _get_workflow_interface
 from latch.types import LatchDir, LatchFile
@@ -53,40 +54,47 @@ def get_params(wf_name: Union[None, str], wf_version: Union[None, str] = None):
 
     token = retrieve_or_login()
     wf_id, wf_interface, wf_default_params = _get_workflow_interface(
-        token, wf_name, wf_version)
+        token, wf_name, wf_version
+    )
 
     params = {}
     wf_vars = wf_interface["variables"]
     default_wf_vars = wf_default_params["parameters"]
     for key, value in wf_vars.items():
         try:
-            description_json = json.loads(value['description'])
-            param_name = description_json['name']
+            description_json = json.loads(value["description"])
+            param_name = description_json["name"]
         except (json.decoder.JSONDecodeError, KeyError) as e:
             raise ValueError(
-                f'Parameter description json for workflow {wf_name} is malformed') from e
-
-        if default_wf_vars[param_name].get("required") is not True:
-            continue
+                f"Parameter description json for workflow {wf_name} is malformed"
+            ) from e
 
         literal_type_json = value["type"]
         literal_type = gpjson.ParseDict(literal_type_json, _LiteralType())
 
         python_type = _guess_python_type(
-            LiteralType.from_flyte_idl(literal_type), param_name)
-        val = _best_effort_default_val(python_type)
+            LiteralType.from_flyte_idl(literal_type), param_name
+        )
+
+        if default_wf_vars[param_name].get("required") is not True:
+            literal_json = default_wf_vars[param_name].get("default")
+            literal = gpjson.ParseDict(literal_json, _Literal())
+            val = _guess_python_val(Literal.from_flyte_idl(literal), python_type)
+        else:
+            val = _best_effort_default_val(python_type)
+
         params[param_name] = (python_type, val)
 
     import_statements = {
         LatchFile: "from latch.types import LatchFile",
         LatchDir: "from latch.types import LatchDir",
-        enum.Enum: "from enum import Enum"
+        enum.Enum: "from enum import Enum",
     }
 
     import_types = []
     enum_literals = []
     param_map_str = ""
-    param_map_str += '\nparams = {'
+    param_map_str += "\nparams = {"
     param_map_str += f'\n    "_name": "{wf_name}", # Dont edit this value.'
     for param_name, value in params.items():
         python_type, python_val = value
@@ -112,7 +120,7 @@ def get_params(wf_name: Union[None, str], wf_version: Union[None, str] = None):
 
         # Parse collection, sum types for potential imports and dependent
         # objects, eg. enum class construction.
-        if hasattr(python_type, '__origin__'):
+        if hasattr(python_type, "__origin__"):
             if get_origin(python_type) is list:
                 _check_and_import(get_args(python_type)[0])
                 _handle_enum(get_args(python_type)[0])
@@ -127,19 +135,20 @@ def get_params(wf_name: Union[None, str], wf_version: Union[None, str] = None):
         python_val, python_type = _get_code_literal(python_val, python_type)
 
         param_map_str += f'\n    "{param_name}": {python_val}, # {python_type}'
-    param_map_str += '\n}'
+    param_map_str += "\n}"
 
-    with open(f'{wf_name}.params.py', 'w') as f:
+    with open(f"{wf_name}.params.py", "w") as f:
 
         f.write(
-            f'"""Run `latch execute {wf_name}.params.py` to execute this workflow"""\n')
+            f'"""Run `latch execute {wf_name}.params.py` to execute this workflow"""\n'
+        )
 
         for t in import_types:
-            f.write(f'\n{import_statements[t]}')
+            f.write(f"\n{import_statements[t]}")
         for e in enum_literals:
-            f.write(f'\n\n{e}\n')
+            f.write(f"\n\n{e}\n")
 
-        f.write('\n')
+        f.write("\n")
         f.write(param_map_str)
 
 
@@ -147,14 +156,14 @@ def _get_code_literal(python_val: any, python_type: typing.T):
     """Construct value that is executable python when templated into a code
     block."""
 
-    if python_type is str:
+    if python_type is str or (type(python_val) is str and str in get_args(python_type)):
         return f'"{python_val}"', python_type
 
     if type(python_type) is enum.EnumMeta:
         name = python_type._name
         return python_val, f"<enum '{name}'>"
 
-    if hasattr(python_type, '__origin__') and get_origin(python_type) is typing.Union:
+    if hasattr(python_type, "__origin__") and get_origin(python_type) is typing.Union:
         summands = get_args(python_type)
         type_repr = "typing.Union["
         for i, summand in enumerate(summands):
@@ -166,22 +175,62 @@ def _get_code_literal(python_val: any, python_type: typing.T):
         type_repr += "]"
         return python_val, type_repr
 
-    if hasattr(python_type, '__origin__') and get_origin(python_type) is list:
-        collection_literal = "["
-        for i, item in enumerate(python_val):
-            item_literal, type_repr = _get_code_literal(
-                item, get_args(python_type)[0])
+    if hasattr(python_type, "__origin__") and get_origin(python_type) is list:
+        if python_val is None:
+            _, type_repr = _get_code_literal(None, get_args(python_type)[0])
+            return None, f"typing.List[{type_repr}]"
+        else:
+            collection_literal = "["
+            for i, item in enumerate(python_val):
+                item_literal, type_repr = _get_code_literal(
+                    item, get_args(python_type)[0]
+                )
 
-            if i < len(python_val)-1:
-                delimiter = ","
-            else:
-                delimiter = ""
+                if i < len(python_val) - 1:
+                    delimiter = ","
+                else:
+                    delimiter = ""
 
-            collection_literal += f"{item_literal}{delimiter}"
-        collection_literal += "]"
-        return collection_literal, f"typing.List[{type_repr}]"
+                collection_literal += f"{item_literal}{delimiter}"
+            collection_literal += "]"
+            return collection_literal, f"typing.List[{type_repr}]"
 
     return python_val, python_type
+
+
+def _guess_python_val(literal: _Literal, python_type: typing.T):
+    """Transform flyte literal value to native python value."""
+
+    print(literal, python_type)
+
+    # simple
+    if literal.scalar.none_type is not None:
+        return None
+
+    if literal.scalar.primitive is not None:
+        primitive = literal.scalar.primitive
+        if primitive.integer is not None:
+            return int(primitive.integer)
+        if primitive.float_value is not None:
+            return float(primitive.float_value)
+        if primitive.string_value is not None:
+            return str(primitive.string_value)
+        if primitive.boolean is not None:
+            return bool(primitive.boolean)
+
+    # collection
+    if literal.collection is not None:
+        print(literal.collection)
+
+    # blob
+
+    # sum
+
+    # enum
+
+    raise NotImplementedError(
+        f"The flyte literal {literal} cannot be transformed to a python type."
+    )
 
 
 def _guess_python_type(literal: LiteralType, param_name: str):
@@ -209,8 +258,9 @@ def _guess_python_type(literal: LiteralType, param_name: str):
 
     if literal.sum is not None:
 
-        summand_types = [_guess_python_type(
-            summand, param_name) for summand in literal.sum.summands]
+        summand_types = [
+            _guess_python_type(summand, param_name) for summand in literal.sum.summands
+        ]
 
         # Trying to directly construct set of types will throw error if list is
         # included as 'list' is not hashable.
@@ -236,7 +286,8 @@ def _guess_python_type(literal: LiteralType, param_name: str):
         return _VariantCarrier
 
     raise NotImplementedError(
-        f"The flyte literal {literal} cannot be transformed to a python type.")
+        f"The flyte literal {literal} cannot be transformed to a python type."
+    )
 
 
 def _best_effort_default_val(t: typing.T):
@@ -250,7 +301,7 @@ def _best_effort_default_val(t: typing.T):
 
     file_like_table = {
         LatchDir: LatchDir("latch:///foobar"),
-        LatchFile: LatchFile("latch:///foobar")
+        LatchFile: LatchFile("latch:///foobar"),
     }
     if t in file_like_table:
         return file_like_table[t]
@@ -258,9 +309,10 @@ def _best_effort_default_val(t: typing.T):
     if type(t) is enum.EnumMeta:
         return f"{t._name}.{t._variants[0]}"
 
-    if not hasattr(t, '__origin__'):
+    if not hasattr(t, "__origin__"):
         raise NotImplementedError(
-            f"Unable to produce a best-effort value for the python type {t}")
+            f"Unable to produce a best-effort value for the python type {t}"
+        )
 
     if get_origin(t) is list:
         list_args = get_args(t)
@@ -272,4 +324,5 @@ def _best_effort_default_val(t: typing.T):
         return _best_effort_default_val(get_args(t)[0])
 
     raise NotImplementedError(
-        f"Unable to produce a best-effort value for the python type {t}")
+        f"Unable to produce a best-effort value for the python type {t}"
+    )
