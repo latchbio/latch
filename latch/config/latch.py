@@ -29,7 +29,7 @@ SDK_ENDPOINTS = {
     "remove": "/sdk/rm",
 }
 
-ENV = DEV
+ENV = PROD
 
 
 class LatchConfig:
