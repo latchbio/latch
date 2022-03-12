@@ -69,8 +69,12 @@ def _run_cp_and_clean_up(token, filename: str):
         assert initial_text == final_text
         _remove_file(token, filename)
     finally:
-        initial.unlink(missing_ok=True)
-        final.unlink(missing_ok=True)
+        try:
+            initial.unlink(missing_ok=True)
+            final.unlink(missing_ok=True)
+        except TypeError:
+            initial.unlink()
+            final.unlink()
 
 
 def test_init_and_register(test_account_jwt, project_name):
