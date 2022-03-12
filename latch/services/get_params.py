@@ -97,7 +97,7 @@ def get_params(wf_name: Union[None, str], wf_version: Union[None, str] = None):
     enum_literals = []
     param_map_str = ""
     param_map_str += "\nparams = {"
-    param_map_str += f'\n    "_name": "{wf_name}", # Dont edit this value.'
+    param_map_str += f'\n    "_name": "{wf_name}", # Don\'t edit this value.'
     for param_name, value in params.items():
         python_type, python_val, default = value
 
@@ -122,7 +122,7 @@ def get_params(wf_name: Union[None, str], wf_version: Union[None, str] = None):
 
         # Parse collection, sum types for potential imports and dependent
         # objects, eg. enum class construction.
-        if hasattr(python_type, "__origin__"):
+        if get_origin(python_type) is not None:
             if get_origin(python_type) is list:
                 _check_and_import(get_args(python_type)[0])
                 _handle_enum(get_args(python_type)[0])
@@ -170,7 +170,7 @@ def _get_code_literal(python_val: any, python_type: typing.T):
         name = python_type._name
         return python_val, f"<enum '{name}'>"
 
-    if hasattr(python_type, "__origin__") and get_origin(python_type) is typing.Union:
+    if get_origin(python_type) is typing.Union:
         summands = get_args(python_type)
         type_repr = "typing.Union["
         for i, summand in enumerate(summands):
@@ -182,7 +182,7 @@ def _get_code_literal(python_val: any, python_type: typing.T):
         type_repr += "]"
         return python_val, type_repr
 
-    if hasattr(python_type, "__origin__") and get_origin(python_type) is list:
+    if get_origin(python_type) is list:
         if python_val is None:
             _, type_repr = _get_code_literal(None, get_args(python_type)[0])
             return None, f"typing.List[{type_repr}]"
@@ -246,7 +246,7 @@ def _guess_python_val(literal: _Literal, python_type: typing.T):
     if literal.collection is not None:
         p_list = []
         for item in literal.collection.literals:
-            p_list.append(_guess_python_val(item), get_args(python_type)[0])
+            p_list.append(_guess_python_val(item, get_args(python_type)[0]))
         return p_list
 
     # sum
@@ -334,7 +334,7 @@ def _best_effort_default_val(t: typing.T):
     if type(t) is enum.EnumMeta:
         return f"{t._name}.{t._variants[0]}"
 
-    if not hasattr(t, "__origin__"):
+    if get_origin(t) is None:
         raise NotImplementedError(
             f"Unable to produce a best-effort value for the python type {t}"
         )
