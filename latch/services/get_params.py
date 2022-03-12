@@ -52,10 +52,12 @@ def get_params(wf_name: Union[None, str], wf_version: Union[None, str] = None):
     """
 
     token = retrieve_or_login()
-    wf_id, wf_interface = _get_workflow_interface(token, wf_name, wf_version)
+    wf_id, wf_interface, wf_default_params = _get_workflow_interface(
+        token, wf_name, wf_version)
 
     params = {}
     wf_vars = wf_interface["variables"]
+    default_wf_vars = wf_default_params["parameters"]
     for key, value in wf_vars.items():
         try:
             description_json = json.loads(value['description'])
@@ -63,6 +65,9 @@ def get_params(wf_name: Union[None, str], wf_version: Union[None, str] = None):
         except (json.decoder.JSONDecodeError, KeyError) as e:
             raise ValueError(
                 f'Parameter description json for workflow {wf_name} is malformed') from e
+
+        if default_wf_vars[param_name].get("required") is not True:
+            continue
 
         literal_type_json = value["type"]
         literal_type = gpjson.ParseDict(literal_type_json, _LiteralType())

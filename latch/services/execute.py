@@ -71,7 +71,7 @@ def execute(params_file: Path, version: Union[None, str] = None) -> str:
             " key with the workflow name exists in the dictionary."
         )
 
-    wf_id, wf_interface = _get_workflow_interface(token, wf_name, version)
+    wf_id, wf_interface, _ = _get_workflow_interface(token, wf_name, version)
 
     wf_vars = wf_interface["variables"]
     wf_literals = {}
@@ -91,7 +91,8 @@ def execute(params_file: Path, version: Union[None, str] = None) -> str:
                 ctx, python_value, python_type, literal_type
             )
 
-            wf_literals[key] = gpjson.MessageToDict(python_type_literal.to_flyte_idl())
+            wf_literals[key] = gpjson.MessageToDict(
+                python_type_literal.to_flyte_idl())
 
     _execute_workflow(token, wf_id, wf_literals)
     return wf_name
@@ -125,7 +126,8 @@ def _guess_python_type(v: any) -> typing.T:
 
     if type(v) is list:
         if len(v) == 0:
-            raise ValueError(f"Unable to create List[T] literal from empty list {v}")
+            raise ValueError(
+                f"Unable to create List[T] literal from empty list {v}")
         elif type(v[0]) is list:
             return typing.List[_guess_python_type(v[0])]
         else:
@@ -172,9 +174,8 @@ def _get_workflow_interface(
         )
     wf_interface_resp = response.json()
 
-    wf_id, wf_interface = wf_interface_resp.get("id"), wf_interface_resp.get(
-        "interface"
-    )
+    wf_id, wf_interface, wf_default_params = wf_interface_resp.get("id"), wf_interface_resp.get(
+        "interface"), wf_interface_resp.get("default_params")
     if wf_interface is None:
         raise ValueError(
             f"Could not find interface. Nucleus returned a malformed JSON response - {wf_interface_resp}"
@@ -183,8 +184,12 @@ def _get_workflow_interface(
         raise ValueError(
             f"Could not find wf ID. Nucleus returned a malformed JSON response - {wf_interface_resp}"
         )
+    if wf_default_params is None:
+        raise ValueError(
+            f"Could not find wf default parameters. Nucleus returned a malformed JSON response - {wf_interface_resp}"
+        )
 
-    return int(wf_id), wf_interface
+    return int(wf_id), wf_interface, wf_default_params
 
 
 def _execute_workflow(token: str, wf_id: str, params: dict) -> bool:
