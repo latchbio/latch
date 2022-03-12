@@ -8,6 +8,12 @@ DEV = "dev"
 STAGING = "staging"
 PROD = "prod"
 
+CONSOLE_URLS = {
+    "dev": "https://console.ligma.ai",
+    "staging": "https://console.sugma.ai",
+    "prod": "https://console.latch.bio",
+}
+
 NUCLEUS_URLS = {
     "dev": "https://nucleus.ligma.ai",
     "staging": "https://nucleus.sugma.ai",
@@ -27,6 +33,7 @@ SDK_ENDPOINTS = {
     "get-workflows": "/sdk/get-wf",
     "verify": "/sdk/verify",
     "remove": "/sdk/rm",
+    "id": "/sdk/node-id",
 }
 
 ENV = PROD
@@ -41,7 +48,9 @@ class LatchConfig:
 
     def set_environment(self, environment):
         self.environment = environment
+        self.console_url = CONSOLE_URLS[ENV]
+        self.nucleus_url = NUCLEUS_URLS[ENV]
         self.sdk_endpoints = {
-            key: f"{NUCLEUS_URLS[self.environment]}{endpoint}"
+            key: f"{self.nucleus_url}{endpoint}"
             for key, endpoint in SDK_ENDPOINTS.items()
         }

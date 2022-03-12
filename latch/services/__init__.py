@@ -11,4 +11,5 @@ from latch.services.get import get_wf
 from latch.services.init import init
 from latch.services.login import login
 from latch.services.ls import ls
+from latch.services.open_file import open_file
 from latch.services.register import register

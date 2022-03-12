@@ -11,6 +11,7 @@ from latch.services import get_wf as _get_wf
 from latch.services import init as _init
 from latch.services import login as _login
 from latch.services import ls as _ls
+from latch.services import open_file as _open_file
 from latch.services import register as _register
 
 
@@ -214,6 +215,20 @@ def get_wf(name: Union[str, None] = None):
             f"{wf[0]}{(id_padding - len(str(wf[0]))) * ' '}\t{wf[1]}{(name_padding - len(wf[1])) * ' '}\t{wf[2]}{(version_padding - len(wf[2])) * ' '}"
         )
 
+@click.command("open")
+@click.argument("remote_file", nargs=1, type=str)
+def open_remote_file(remote_file: str):
+    """Open a remote file in the browser
+    
+    Visit docs.latch.bio to learn more.
+    """
+    try:
+        _open_file(remote_file)
+        click.secho(f"Successfully opened {remote_file}", fg="green")
+    except Exception as e:
+        click.secho(f"Unable to open {remote_file}. {str(e)}", fg="red")
+
+
 
 main.add_command(register)
 main.add_command(login)
@@ -222,3 +237,4 @@ main.add_command(cp)
 main.add_command(ls)
 main.add_command(execute)
 main.add_command(get_wf)
+main.add_command(open_remote_file)
