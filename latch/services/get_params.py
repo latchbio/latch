@@ -66,32 +66,32 @@ def get_params(wf_name: Union[None, str], wf_version: Union[None, str] = None):
             if python_type in import_statements and python_type not in import_types:
                 import_types.append(python_type)
 
-        # Parse collection, sum types for potential imports.
+        def _handle_enum(python_type: typing.T):
+            if type(python_type) is enum.EnumMeta:
+                if enum.Enum not in import_types:
+                    import_types.append(enum.Enum)
+
+                variants = python_type._variants
+                name = python_type._name
+
+                _enum_literal = f"class {name}(Enum):"
+                for variant in variants:
+                    _enum_literal += f"\n    {variant} = '{variant}'"
+                enum_literals.append(_enum_literal)
+
+        # Parse collection, sum types for potential imports and dependent
+        # objects, eg. enum class construction.
         if hasattr(python_type, '__origin__'):
             if get_origin(python_type) is list:
                 _check_and_import(get_args(python_type)[0])
+                _handle_enum(get_args(python_type)[0])
             elif get_origin(python_type) is typing.Union:
                 for summand in get_args(python_type):
                     _check_and_import(summand)
+                    _handle_enum(summand)
         else:
             _check_and_import(python_type)
-
-        if python_type in import_statements and python_type not in import_types:
-            ...
-
-        # Construct native python types, eg. enums, to be defined above param
-        # map.
-        if type(python_type) is enum.EnumMeta:
-            if enum.Enum not in import_types:
-                import_types.append(enum.Enum)
-
-            variants = python_type._variants
-            name = python_type._name
-
-            _enum_literal = f"class {name}(Enum):"
-            for variant in variants:
-                _enum_literal += f"\n    {variant} = '{variant}'"
-            enum_literals.append(_enum_literal)
+            _handle_enum(python_type)
 
         python_val, python_type = _get_code_literal(python_val, python_type)
 
@@ -126,7 +126,8 @@ def _get_code_literal(python_val: any, python_type: typing.T):
     if hasattr(python_type, '__origin__') and get_origin(python_type) is list:
         collection_literal = "["
         for i, item in enumerate(python_val):
-            item_literal = _get_code_literal(item, get_args(python_type)[0])[0]
+            item_literal, type_repr = _get_code_literal(
+                item, get_args(python_type)[0])
 
             if i < len(python_val)-1:
                 delimiter = ","
@@ -135,7 +136,7 @@ def _get_code_literal(python_val: any, python_type: typing.T):
 
             collection_literal += f"{item_literal}{delimiter}"
         collection_literal += "]"
-        return collection_literal, python_type
+        return collection_literal, f"typing.List[{type_repr}]"
 
     return python_val, python_type
 
