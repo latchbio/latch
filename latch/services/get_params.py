@@ -80,7 +80,7 @@ def get_params(wf_name: Union[None, str], wf_version: Union[None, str] = None):
         if default_wf_vars[param_name].get("required") is not True:
             literal_json = default_wf_vars[param_name].get("default")
             literal = gpjson.ParseDict(literal_json, _Literal())
-            val = _guess_python_val(Literal.from_flyte_idl(literal), python_type)
+            val = _guess_python_val(Literal.from_flyte_idl(literal))
         else:
             default = False
             val = _best_effort_default_val(python_type)
@@ -205,36 +205,40 @@ def _get_code_literal(python_val: any, python_type: typing.T):
     return python_val, python_type
 
 
-def _guess_python_val(literal: _Literal, python_type: typing.T):
+def _guess_python_val(literal: _Literal):
     """Transform flyte literal value to native python value."""
 
-    print(literal, python_type)
+    print(literal)
 
-    if literal.scalar.none_type is not None:
-        return None
+    if literal.scalar is not None:
+        if literal.scalar.none_type is not None:
+            return None
 
-    if literal.scalar.primitive is not None:
-        primitive = literal.scalar.primitive
-        if primitive.integer is not None:
-            return int(primitive.integer)
-        if primitive.float_value is not None:
-            return float(primitive.float_value)
-        if primitive.string_value is not None:
-            return str(primitive.string_value)
-        if primitive.boolean is not None:
-            return bool(primitive.boolean)
+        if literal.scalar.primitive is not None:
+            primitive = literal.scalar.primitive
+            if primitive.integer is not None:
+                return int(primitive.integer)
+            if primitive.float_value is not None:
+                return float(primitive.float_value)
+            if primitive.string_value is not None:
+                return str(primitive.string_value)
+            if primitive.boolean is not None:
+                return bool(primitive.boolean)
+
+        if literal.scalar.blob is not None:
+            blob = literal.scalar.blob
+            dim = blob.metadata.type.dimensionality
+            if dim == 0:
+                return LatchFile(blob.uri)
+            else:
+                return LatchDir(blob.uri)
 
     # collection
     if literal.collection is not None:
-        print(literal.collection)
-
-    if literal.scalar.blob is not None:
-        blob = literal.scalar.blob
-        dim = blob.metadata.type.dimensionality
-        if dim == 0:
-            return LatchFile(blob.uri)
-        else:
-            return LatchDir(blob.uri)
+        p_list = []
+        for item in literal.collection.literals:
+            p_list.append(_guess_python_val(item))
+        return p_list
 
     # sum
 
