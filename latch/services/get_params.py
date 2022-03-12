@@ -60,9 +60,27 @@ def get_params(wf_name: Union[None, str], wf_version: Union[None, str] = None):
     for param_name, value in params.items():
         python_type, python_val = value
 
-        if python_type in import_statements and python_type not in import_types:
-            import_types.append(python_type)
+        # Check for imports.
 
+        def _check_and_import(python_type: typing.T):
+            if python_type in import_statements and python_type not in import_types:
+                import_types.append(python_type)
+
+        # Parse collection, sum types for potential imports.
+        if hasattr(python_type, '__origin__'):
+            if get_origin(python_type) is list:
+                _check_and_import(get_args(python_type)[0])
+            elif get_origin(python_type) is typing.Union:
+                for summand in get_args(python_type):
+                    _check_and_import(summand)
+        else:
+            _check_and_import(python_type)
+
+        if python_type in import_statements and python_type not in import_types:
+            ...
+
+        # Construct native python types, eg. enums, to be defined above param
+        # map.
         if type(python_type) is enum.EnumMeta:
             if enum.Enum not in import_types:
                 import_types.append(enum.Enum)
@@ -75,7 +93,7 @@ def get_params(wf_name: Union[None, str], wf_version: Union[None, str] = None):
                 _enum_literal += f"\n    {variant} = '{variant}'"
             enum_literals.append(_enum_literal)
 
-        python_type, python_val = _get_code_literal(python_val, python_type)
+        python_val, python_type = _get_code_literal(python_val, python_type)
 
         param_map_str += f'\n    "{param_name}": {python_val}, # {python_type}'
     param_map_str += '\n}'
@@ -88,7 +106,7 @@ def get_params(wf_name: Union[None, str], wf_version: Union[None, str] = None):
         for t in import_types:
             f.write(f'\n{import_statements[t]}')
         for e in enum_literals:
-            f.write(f'\n{e}\n')
+            f.write(f'\n\n{e}\n')
 
         f.write('\n')
         f.write(param_map_str)
@@ -104,6 +122,20 @@ def _get_code_literal(python_val: any, python_type: typing.T):
     if type(python_type) is enum.EnumMeta:
         name = python_type._name
         return python_val, f"<enum '{name}'>"
+
+    if hasattr(python_type, '__origin__') and get_origin(python_type) is list:
+        collection_literal = "["
+        for i, item in enumerate(python_val):
+            item_literal = _get_code_literal(item, get_args(python_type)[0])[0]
+
+            if i < len(python_val)-1:
+                delimiter = ","
+            else:
+                delimiter = ""
+
+            collection_literal += f"{item_literal}{delimiter}"
+        collection_literal += "]"
+        return collection_literal, python_type
 
     return python_val, python_type
 
