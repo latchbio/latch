@@ -223,6 +223,13 @@ def _guess_python_val(literal: _Literal, python_type: typing.T):
         print(literal.collection)
 
     # blob
+    if literal.scalar.blob is not None:
+        blob = literal.scalar.blob
+        dim = blob.metadata.type.dimensionality
+        if dim == 0:
+            return LatchFile(blob.uri)
+        else:
+            return LatchDir(blob.uri)
 
     # sum
 
