@@ -58,7 +58,7 @@ def get_params(wf_name: Union[None, str], wf_version: Union[None, str] = None):
     param_map_str += '\nparams = {'
     param_map_str += f'\n    "_name": "{wf_name}", # Dont edit this value.'
     for param_name, value in params.items():
-        python_type, val = value
+        python_type, python_val = value
 
         if python_type in import_statements and python_type not in import_types:
             import_types.append(python_type)
@@ -75,12 +75,9 @@ def get_params(wf_name: Union[None, str], wf_version: Union[None, str] = None):
                 _enum_literal += f"\n    {variant} = '{variant}'"
             enum_literals.append(_enum_literal)
 
-            python_type = f"<enum '{name}'>"
+        python_type, python_val = _get_code_literal(python_val, python_type)
 
-        elif type(val) is str:
-            val = f'"{val}"'
-
-        param_map_str += f'\n    "{param_name}": {val}, # {python_type}'
+        param_map_str += f'\n    "{param_name}": {python_val}, # {python_type}'
     param_map_str += '\n}'
 
     with open(f'{wf_name}.params.py', 'w') as f:
@@ -95,6 +92,20 @@ def get_params(wf_name: Union[None, str], wf_version: Union[None, str] = None):
 
         f.write('\n')
         f.write(param_map_str)
+
+
+def _get_code_literal(python_val: any, python_type: typing.T):
+    """Construct value that is executable python when templated into a code
+    block."""
+
+    if python_type is str:
+        return f'"{python_val}"', python_type
+
+    if type(python_type) is enum.EnumMeta:
+        name = python_type._name
+        return python_val, f"<enum '{name}'>"
+
+    return python_val, python_type
 
 
 class Unsupported:
