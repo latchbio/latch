@@ -173,7 +173,6 @@ def execute(params_file: Path, version: Union[str, None] = None):
     try:
         wf_name = _execute(params_file, version)
     except Exception as e:
-        raise e
         click.secho(f"Unable to execute workflow: {str(e)}", fg="red")
         return
     if version is None:
@@ -199,9 +198,8 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
     try:
         _get_params(wf_name, version)
     except Exception as e:
-        raise e
         click.secho(
-            f"Unable to generate param map for  workflow: {str(e)}", fg="red")
+            f"Unable to generate param map for workflow: {str(e)}", fg="red")
         return
     if version is None:
         version = "latest"
