@@ -80,7 +80,7 @@ def get_params(wf_name: Union[None, str], wf_version: Union[None, str] = None):
         if default_wf_vars[param_name].get("required") is not True:
             literal_json = default_wf_vars[param_name].get("default")
             literal = gpjson.ParseDict(literal_json, _Literal())
-            val = _guess_python_val(Literal.from_flyte_idl(literal))
+            val = _guess_python_val(Literal.from_flyte_idl(literal), python_type)
         else:
             default = False
             val = _best_effort_default_val(python_type)
@@ -163,8 +163,6 @@ def _get_code_literal(python_val: any, python_type: typing.T):
     """Construct value that is executable python when templated into a code
     block."""
 
-    print(python_val, python_type)
-
     if python_type is str or (type(python_val) is str and str in get_args(python_type)):
         return f'"{python_val}"', python_type
 
@@ -214,10 +212,8 @@ def _get_code_literal(python_val: any, python_type: typing.T):
     return python_val, python_type
 
 
-def _guess_python_val(literal: _Literal):
+def _guess_python_val(literal: _Literal, python_type: typing.T):
     """Transform flyte literal value to native python value."""
-
-    print(literal)
 
     if literal.scalar is not None:
         if literal.scalar.none_type is not None:
@@ -225,12 +221,16 @@ def _guess_python_val(literal: _Literal):
 
         if literal.scalar.primitive is not None:
             primitive = literal.scalar.primitive
+
+            if primitive.string_value is not None:
+                if type(python_type) is enum.EnumMeta:
+                    return f"{python_type._name}.{str(primitive.string_value)}"
+                return str(primitive.string_value)
+
             if primitive.integer is not None:
                 return int(primitive.integer)
             if primitive.float_value is not None:
                 return float(primitive.float_value)
-            if primitive.string_value is not None:
-                return str(primitive.string_value)
             if primitive.boolean is not None:
                 return bool(primitive.boolean)
 
@@ -246,7 +246,7 @@ def _guess_python_val(literal: _Literal):
     if literal.collection is not None:
         p_list = []
         for item in literal.collection.literals:
-            p_list.append(_guess_python_val(item))
+            p_list.append(_guess_python_val(item), get_args(python_type)[0])
         return p_list
 
     # sum
