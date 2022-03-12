@@ -4,9 +4,9 @@ try:
 except ImportError:
     from typing_extensions import get_args, get_origin
 
+import enum
 import json
 import typing
-from enum import Enum
 from typing import Union
 
 import google.protobuf.json_format as gpjson
@@ -42,17 +42,18 @@ def get_params(wf_name: Union[None, str], wf_version: Union[None, str] = None):
         literal_type = gpjson.ParseDict(literal_type_json, _LiteralType())
 
         python_type = _guess_python_type(
-            LiteralType.from_flyte_idl(literal_type))
+            LiteralType.from_flyte_idl(literal_type), param_name)
         val = _best_effort_default_val(python_type)
         params[param_name] = (python_type, val)
 
     import_statements = {
         LatchFile: "from latch.types import LatchFile",
         LatchDir: "from latch.types import LatchDir",
-        Enum: "from enum import Enum"
+        enum.Enum: "from enum import Enum"
     }
 
     import_types = []
+    enum_literals = []
     param_map_str = ""
     param_map_str += '\nparams = {'
     param_map_str += f'\n    "_name": "{wf_name}", # Dont edit this value.'
@@ -62,8 +63,23 @@ def get_params(wf_name: Union[None, str], wf_version: Union[None, str] = None):
         if python_type in import_statements and python_type not in import_types:
             import_types.append(python_type)
 
-        if type(val) is str:
+        if type(python_type) is enum.EnumMeta:
+            if enum.Enum not in import_types:
+                import_types.append(enum.Enum)
+
+            variants = python_type._variants
+            name = python_type._name
+
+            _enum_literal = f"class {name}(Enum):"
+            for variant in variants:
+                _enum_literal += f"\n    {variant} = '{variant}'"
+            enum_literals.append(_enum_literal)
+
+            python_type = f"<enum '{name}'>"
+
+        elif type(val) is str:
             val = f'"{val}"'
+
         param_map_str += f'\n    "{param_name}": {val}, # {python_type}'
     param_map_str += '\n}'
 
@@ -74,6 +90,9 @@ def get_params(wf_name: Union[None, str], wf_version: Union[None, str] = None):
 
         for t in import_types:
             f.write(f'\n{import_statements[t]}')
+        for e in enum_literals:
+            f.write(f'\n{e}\n')
+
         f.write('\n')
         f.write(param_map_str)
 
@@ -82,12 +101,12 @@ class Unsupported:
     ...
 
 
-def _guess_python_type(literal: LiteralType):
+def _guess_python_type(literal: LiteralType, param_name: str):
     """Transform flyte type literal to native python type."""
 
     if literal.simple is not None:
         simple_table = {
-            0: None,
+            0: type(None),
             1: int,
             2: float,
             3: str,
@@ -101,7 +120,7 @@ def _guess_python_type(literal: LiteralType):
         return simple_table[literal.simple]
 
     if literal.collection_type is not None:
-        return typing.List[_guess_python_type(literal.collection_type)]
+        return typing.List[_guess_python_type(literal.collection_type, param_name)]
 
     if literal.blob is not None:
 
@@ -120,7 +139,7 @@ def _guess_python_type(literal: LiteralType):
     if literal.sum is not None:
 
         summand_types = [_guess_python_type(
-            summand) for summand in literal.sum.summands]
+            summand, param_name) for summand in literal.sum.summands]
 
         # Trying to directly construct set of types will throw error if list is
         # included as 'list' is not hashable.
@@ -131,6 +150,20 @@ def _guess_python_type(literal: LiteralType):
 
         return typing.Union[tuple(summand_types)]
 
+    if literal.enum_type is not None:
+
+        # We can hold the variants a proxy class that is also type 'Enum', s.t.
+        # we can parse the variants and define the object in the param map
+        # code.
+
+        class _VariantCarrier(enum.Enum):
+            ...
+
+        _VariantCarrier._variants = literal.enum_type.values
+        # Use param name to uniquely identify each enum
+        _VariantCarrier._name = param_name
+        return _VariantCarrier
+
     raise NotImplementedError(
         f"The flyte literal {literal} cannot be transformed to a python type.")
 
@@ -139,7 +172,7 @@ def _best_effort_default_val(t: typing.T):
     """Produce a "best-effort" default value given a python type."""
 
     primitive_table = {
-        None: None,
+        type(None): None,
         int: 0,
         float: 0.0,
         str: "foo",
@@ -157,6 +190,9 @@ def _best_effort_default_val(t: typing.T):
     }
     if t in file_like_table:
         return file_like_table[t]
+
+    if type(t) is enum.EnumMeta:
+        return f"{t._name}.{t._variants[0]}"
 
     if not hasattr(t, '__origin__'):
         raise NotImplementedError(
