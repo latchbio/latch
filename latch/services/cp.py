@@ -83,6 +83,10 @@ def _cp_local_to_remote(local_source: str, remote_dest: str):
         raise PermissionError(
             "You need access to the latch sdk beta ~ join the waitlist @ https://latch.bio/sdk"
         )
+    elif response.status_code == 401:
+        raise ValueError(
+            "your token has expired - please run latch login to refresh your token and try again."
+        )
 
     r_json = response.json()
     path = r_json["path"]
@@ -163,6 +167,10 @@ def _cp_remote_to_local(remote_source: str, local_dest: str):
     if response.status_code == 403:
         raise PermissionError(
             "You need access to the latch sdk beta ~ join the waitlist @ https://latch.bio/sdk"
+        )
+    elif response.status_code == 401:
+        raise ValueError(
+            "your token has expired - please run latch login to refresh your token and try again."
         )
     elif response.status_code == 500:
         raise ValueError(f"{remote_source} does not exist.")
