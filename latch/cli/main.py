@@ -7,6 +7,7 @@ import click
 
 from latch.services import cp as _cp
 from latch.services import execute as _execute
+from latch.services import get_params as _get_params
 from latch.services import get_wf as _get_wf
 from latch.services import init as _init
 from latch.services import login as _login
@@ -108,7 +109,7 @@ def ls(remote_directories: Union[None, List[str]]):
 
     Visit docs.latch.bio to learn more.
     """
-    _item_padding = lambda k: 0 if k == "modifyTime" else 3
+    def _item_padding(k): return 0 if k == "modifyTime" else 3
 
     # If the user doesn't provide any arguments, default to root
     if not remote_directories:
@@ -138,7 +139,8 @@ def ls(remote_directories: Union[None, List[str]]):
                 )
 
         def _display(row, style):
-            click.secho(f"{row['name']:<{max_lengths['name']}}", nl=False, **style)
+            click.secho(
+                f"{row['name']:<{max_lengths['name']}}", nl=False, **style)
             click.secho(
                 f"{row['contentType']:<{max_lengths['contentType']}}", nl=False, **style
             )
@@ -179,6 +181,32 @@ def execute(params_file: Path, version: Union[str, None] = None):
         version = "latest"
     click.secho(
         f"Successfully launched workflow named {wf_name} with version {version}.",
+        fg="green",
+    )
+
+
+@click.command("get-params")
+@click.argument("wf_name", nargs=1)
+@click.option(
+    "--version",
+    default=None,
+    help="The version of the workflow. Defaults to latest.",
+)
+def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
+    """Generate a python parameter map for a workflow.
+
+    Visit docs.latch.bio to learn more.
+    """
+    try:
+        _get_params(wf_name, version)
+    except Exception as e:
+        click.secho(
+            f"Unable to generate param map for workflow: {str(e)}", fg="red")
+        return
+    if version is None:
+        version = "latest"
+    click.secho(
+        f"Successfully generated python param map named {wf_name}.params.py with version {version}\n Run `latch execute {wf_name}.params.py` to execute it.",
         fg="green",
     )
 
@@ -237,4 +265,5 @@ main.add_command(cp)
 main.add_command(ls)
 main.add_command(execute)
 main.add_command(get_wf)
+main.add_command(get_params)
 main.add_command(open_remote_file)
