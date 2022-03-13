@@ -14,3 +14,4 @@ from latch.services.login import login
 from latch.services.ls import ls
 from latch.services.open_file import open_file
 from latch.services.register import register
+from latch.services.rm import rm

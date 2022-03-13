@@ -1,5 +1,4 @@
 
-from multiprocessing import AuthenticationError
 import requests
 import webbrowser
 
@@ -37,4 +36,4 @@ def open_file(remote_file: str):
         open_url = f"{config.console_url}/data/{node_id}"
         webbrowser.open(open_url)
     except:
-        raise ValueError("Specified file does not exist.")
+        raise ValueError("Either specified file does not exist or you are trying to open a directory.")

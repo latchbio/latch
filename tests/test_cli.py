@@ -69,6 +69,8 @@ def _run_cp_and_clean_up(token, filename: str):
         assert initial_text == final_text
         _remove_file(token, filename)
     finally:
+        # python 3.7 doesn't have the missing_ok parameter in Path.unlink()
+        # TODO(ayush) make this less janky
         try:
             initial.unlink(missing_ok=True)
             final.unlink(missing_ok=True)

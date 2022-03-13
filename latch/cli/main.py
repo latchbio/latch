@@ -14,6 +14,7 @@ from latch.services import login as _login
 from latch.services import ls as _ls
 from latch.services import open_file as _open_file
 from latch.services import register as _register
+from latch.services import rm as _rm
 
 
 @click.group("latch")
@@ -256,6 +257,14 @@ def open_remote_file(remote_file: str):
     except Exception as e:
         click.secho(f"Unable to open {remote_file}. {str(e)}", fg="red")
 
+@click.command("rm")
+@click.argument("remote_file", nargs=1, type=str)
+def rm(remote_file):
+    try:
+        _rm(remote_file)
+        click.secho(f"Successfully deleted {remote_file}", fg="green")
+    except Exception as e:
+        click.secho(f"Unable to delete {remote_file}: {str(e)}", fg="red")
 
 
 main.add_command(register)
@@ -267,3 +276,4 @@ main.add_command(execute)
 main.add_command(get_wf)
 main.add_command(get_params)
 main.add_command(open_remote_file)
+main.add_command(rm)
