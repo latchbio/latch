@@ -34,9 +34,12 @@ SDK_ENDPOINTS = {
     "verify": "/sdk/verify",
     "remove": "/sdk/rm",
     "id": "/sdk/node-id",
+    "mkdir": "/sdk/mkdir",
+    "rmdir": "/sdk/rmdir",
+    "touch": "/sdk/touch",
 }
 
-ENV = PROD
+ENV = STAGING
 
 
 class LatchConfig:

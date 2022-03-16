@@ -14,6 +14,8 @@ from latch.services import login as _login
 from latch.services import ls as _ls
 from latch.services import open_file as _open_file
 from latch.services import register as _register
+from latch.services import mkdir as _mkdir
+from latch.services import touch as _touch
 from latch.services import rm as _rm
 
 
@@ -110,7 +112,9 @@ def ls(remote_directories: Union[None, List[str]]):
 
     Visit docs.latch.bio to learn more.
     """
-    def _item_padding(k): return 0 if k == "modifyTime" else 3
+
+    def _item_padding(k):
+        return 0 if k == "modifyTime" else 3
 
     # If the user doesn't provide any arguments, default to root
     if not remote_directories:
@@ -140,8 +144,7 @@ def ls(remote_directories: Union[None, List[str]]):
                 )
 
         def _display(row, style):
-            click.secho(
-                f"{row['name']:<{max_lengths['name']}}", nl=False, **style)
+            click.secho(f"{row['name']:<{max_lengths['name']}}", nl=False, **style)
             click.secho(
                 f"{row['contentType']:<{max_lengths['contentType']}}", nl=False, **style
             )
@@ -201,8 +204,7 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
     try:
         _get_params(wf_name, version)
     except Exception as e:
-        click.secho(
-            f"Unable to generate param map for workflow: {str(e)}", fg="red")
+        click.secho(f"Unable to generate param map for workflow: {str(e)}", fg="red")
         return
     if version is None:
         version = "latest"
@@ -244,27 +246,63 @@ def get_wf(name: Union[str, None] = None):
             f"{wf[0]}{(id_padding - len(str(wf[0]))) * ' '}\t{wf[1]}{(name_padding - len(wf[1])) * ' '}\t{wf[2]}{(version_padding - len(wf[2])) * ' '}"
         )
 
+
 @click.command("open")
 @click.argument("remote_file", nargs=1, type=str)
 def open_remote_file(remote_file: str):
     """Open a remote file in the browser
-    
+
     Visit docs.latch.bio to learn more.
     """
     try:
         _open_file(remote_file)
-        click.secho(f"Successfully opened {remote_file}", fg="green")
+        click.secho(f"Successfully opened {remote_file}.", fg="green")
     except Exception as e:
-        click.secho(f"Unable to open {remote_file}. {str(e)}", fg="red")
+        click.secho(f"Unable to open {remote_file}: {str(e)}", fg="red")
+
 
 @click.command("rm")
 @click.argument("remote_file", nargs=1, type=str)
 def rm(remote_file):
+    """Deletes a remote file.
+
+    Visit docs.latch.bio to learn more.
+    """
     try:
         _rm(remote_file)
-        click.secho(f"Successfully deleted {remote_file}", fg="green")
+        click.secho(f"Successfully deleted {remote_file}.", fg="green")
     except Exception as e:
         click.secho(f"Unable to delete {remote_file}: {str(e)}", fg="red")
+
+
+@click.command("mkdir")
+@click.argument("remote_directory", nargs=1, type=str)
+def mkdir(remote_directory):
+    """Creates a new remote directory
+
+    Visit docs.latch.bio to learn more.
+    """
+    try:
+        _mkdir(remote_directory)
+        click.secho(f"Successfully created directory {remote_directory}.", fg="green")
+    except Exception as e:
+        click.secho(
+            f"Unable to create directory {remote_directory}: {str(e)}", fg="red"
+        )
+
+
+@click.command("touch")
+@click.argument("remote_file", nargs=1, type=str)
+def touch(remote_file):
+    """Creates an empty
+
+    Visit docs.latch.bio to learn more.
+    """
+    try:
+        _touch(remote_file)
+        click.secho(f"Successfully touched {remote_file}.", fg="green")
+    except Exception as e:
+        click.secho(f"Unable to create {remote_file}: {str(e)}", fg="red")
 
 
 main.add_command(register)
@@ -277,3 +315,5 @@ main.add_command(get_wf)
 main.add_command(get_params)
 main.add_command(open_remote_file)
 main.add_command(rm)
+main.add_command(touch)
+main.add_command(mkdir)
