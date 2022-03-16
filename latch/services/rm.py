@@ -1,4 +1,3 @@
-
 import requests
 
 from latch.config.latch import ENV, LatchConfig
@@ -6,6 +5,7 @@ from latch.utils import retrieve_or_login
 
 config = LatchConfig(ENV)
 endpoints = config.sdk_endpoints
+
 
 def rm(filename: str):
     token = retrieve_or_login()

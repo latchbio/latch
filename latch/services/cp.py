@@ -172,12 +172,11 @@ def _cp_remote_to_local(remote_source: str, local_dest: str):
         raise ValueError(
             "your token has expired - please run latch login to refresh your token and try again."
         )
-    elif response.status_code == 500:
-        raise ValueError(f"{remote_source} does not exist.")
-
-    print(response.status_code)
+    elif response.status_code == 400:
+        raise ValueError(response_data["error"]["data"]["message"])
 
     response_data = response.json()
+
     url = response_data["url"]
     with requests.get(url, stream=True) as r:
         r.raise_for_status()

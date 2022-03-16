@@ -15,3 +15,5 @@ from latch.services.ls import ls
 from latch.services.open_file import open_file
 from latch.services.register import register
 from latch.services.rm import rm
+from latch.services.mkdir import mkdir
+from latch.services.touch import touch
