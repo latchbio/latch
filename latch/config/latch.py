@@ -39,7 +39,7 @@ SDK_ENDPOINTS = {
     "touch": "/sdk/touch",
 }
 
-ENV = STAGING
+ENV = PROD
 
 
 class LatchConfig:
