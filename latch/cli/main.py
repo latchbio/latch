@@ -250,7 +250,7 @@ def get_wf(name: Union[str, None] = None):
 @click.command("open")
 @click.argument("remote_file", nargs=1, type=str)
 def open_remote_file(remote_file: str):
-    """Open a remote file in the browser
+    """Open a remote file in the browser.
 
     Visit docs.latch.bio to learn more.
     """
@@ -278,7 +278,7 @@ def rm(remote_file: str):
 @click.command("mkdir")
 @click.argument("remote_directory", nargs=1, type=str)
 def mkdir(remote_directory: str):
-    """Creates a new remote directory
+    """Creates a new remote directory.
 
     Visit docs.latch.bio to learn more.
     """
@@ -294,7 +294,7 @@ def mkdir(remote_directory: str):
 @click.command("touch")
 @click.argument("remote_file", nargs=1, type=str)
 def touch(remote_file: str):
-    """Creates an empty
+    """Creates an empty text file.
 
     Visit docs.latch.bio to learn more.
     """
