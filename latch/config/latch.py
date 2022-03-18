@@ -4,8 +4,8 @@ config.latch
 Platform wide configuration, eg. api endpoints, callback server ports...
 """
 
-CONSOLE_URL = "https://console.sugma.ai"
-NUCLEUS_URL = "https://nucleus.sugma.ai"
+CONSOLE_URL = "https://console.latch.bio"
+NUCLEUS_URL = "https://nucleus.latch.bio"
 
 SDK_ENDPOINTS = {
     "initiate-multipart-upload": "/sdk/initiate-multipart-upload",
