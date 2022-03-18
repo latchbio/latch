@@ -99,6 +99,8 @@ def _cp_local_to_remote(local_source: str, remote_dest: str):
         headers = {"Authorization": f"Bearer {token}"}
         response = requests.post(url, headers=headers, json=data)
 
+        print(response.content)
+
         r_json = response.json()
         path = r_json["path"]
         upload_id = r_json["upload_id"]
