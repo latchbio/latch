@@ -86,7 +86,6 @@ def _run_nested_cp(token, curr_dir: str, filename: str, depth: int):
     nested_dir_name = _random_name(10)
     nested_filename = _random_name(10)
     _run_nested_cp(token, f"{curr_dir}/{nested_dir_name}", nested_filename, depth + 1)
-    _cmd = ["latch", "rm", curr_dir]
     _run_and_verify(_cmd, f"Successfully deleted {curr_dir}.")
 
 
