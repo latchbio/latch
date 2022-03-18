@@ -55,7 +55,7 @@ def _file_exists(token, remote_dir: str, filename: str) -> bool:
 
 
 def _run_mkdir_touch_recursive(token, curr_dir: str, branching_factor: int, depth: int):
-    if depth > 3:
+    if depth > 2:
         return
     curr_dir = _normalize_remote_path(curr_dir)
     for _ in range(branching_factor):
@@ -75,7 +75,7 @@ def _run_mkdir_touch_recursive(token, curr_dir: str, branching_factor: int, dept
 
 
 def _run_nested_cp(token, curr_dir: str, filename: str, depth: int):
-    if depth > 10:
+    if depth > 5:
         return
     filename = _normalize_remote_path(filename)
     curr_dir = _normalize_remote_path(curr_dir)
@@ -85,6 +85,7 @@ def _run_nested_cp(token, curr_dir: str, filename: str, depth: int):
     nested_dir_name = _random_name(10)
     nested_filename = _random_name(10)
     _run_nested_cp(token, f"{curr_dir}/{nested_dir_name}", nested_filename, depth + 1)
+    _cmd = ["latch", "rm", curr_dir]
     _run_and_verify(_cmd, f"Successfully deleted {curr_dir}.")
 
 
@@ -141,7 +142,7 @@ def test_init_and_register(test_account_jwt, project_name):
 
 
 def test_cp_home_robustness(test_account_jwt):
-    for _ in range(10):
+    for _ in range(5):
         filename = _random_name(10)
         filename = f"{filename}.txt"
         _run_cp_and_clean_up(test_account_jwt, "", filename)
@@ -175,7 +176,7 @@ def test_bad_input_cp_2():
 
 
 def test_ls(test_account_jwt):
-    for _ in range(10):
+    for _ in range(5):
         name = _random_name(10)
         _cmd = ["latch", "mkdir", name]
         _run_and_verify(_cmd, "Success")

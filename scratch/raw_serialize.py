@@ -5,8 +5,7 @@ Using flytekit internals to serialize instead of pyflyte
 import os
 
 import flytekit
-from flytekit.clis.sdk_in_container.serialize import (SerializationMode,
-                                                      serialize_all)
+from flytekit.clis.sdk_in_container.serialize import SerializationMode, serialize_all
 
 #
 # SERIALIZE
