@@ -12,11 +12,11 @@ from latch.services import get_wf as _get_wf
 from latch.services import init as _init
 from latch.services import login as _login
 from latch.services import ls as _ls
+from latch.services import mkdir as _mkdir
 from latch.services import open_file as _open_file
 from latch.services import register as _register
-from latch.services import mkdir as _mkdir
-from latch.services import touch as _touch
 from latch.services import rm as _rm
+from latch.services import touch as _touch
 
 
 @click.group("latch")

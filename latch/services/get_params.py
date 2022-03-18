@@ -13,6 +13,7 @@ from flyteidl.core.literals_pb2 import Literal as _Literal
 from flyteidl.core.types_pb2 import LiteralType as _LiteralType
 from flytekit.models.literals import Literal
 from flytekit.models.types import LiteralType
+
 from latch.services.execute import _get_workflow_interface
 from latch.types import LatchDir, LatchFile
 from latch.utils import retrieve_or_login

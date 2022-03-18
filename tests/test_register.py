@@ -16,10 +16,12 @@ from pathlib import Path
 
 from latch.services.init import _gen__init__
 from latch.services.register.models import RegisterCtx
-from latch.services.register.register import (_build_image,
-                                              _register_serialized_pkg,
-                                              _serialize_pkg,
-                                              _upload_pkg_image)
+from latch.services.register.register import (
+    _build_image,
+    _register_serialized_pkg,
+    _serialize_pkg,
+    _upload_pkg_image,
+)
 
 from .fixtures import test_account_jwt
 
@@ -35,7 +37,7 @@ def _validate_stream(stream, pkg_name, version):
 
     last_line = lines[-1]["stream"]
 
-    # https://github.com/docker/docker-py/blob/master/tests/ssh/api_build_test.py#L570
+    # https://github.com/docker/docker-py/blob/a48a5a9647761406d66e8271f19fab7fa0c5f582/tests/ssh/api_build_test.py#L570
     # Sufficient for moby's official api, suff. for us...
     assert "Successfully tagged" in last_line
     assert pkg_name in last_line

@@ -2,12 +2,15 @@ from os import PathLike
 from typing import Optional, Type, Union
 
 from flytekit.core.context_manager import FlyteContext
+
 # Note this only exists in flaightkit fork.
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.core.with_metadata import FlyteMetadata
 from flytekit.models.literals import Literal
-from flytekit.types.directory.types import (FlyteDirectory,
-                                            FlyteDirToMultipartBlobTransformer)
+from flytekit.types.directory.types import (
+    FlyteDirectory,
+    FlyteDirToMultipartBlobTransformer,
+)
 
 from latch.types.url import LatchURL
 

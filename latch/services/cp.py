@@ -1,14 +1,14 @@
 """Service to copy files. """
 
 import math
-from pathlib import Path
 import threading
+from pathlib import Path
 
 import requests
 
 from latch.config.latch import LatchConfig
 from latch.services.mkdir import mkdir
-from latch.utils import retrieve_or_login, _normalize_remote_path
+from latch.utils import _normalize_remote_path, retrieve_or_login
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints

@@ -6,8 +6,8 @@ import subprocess
 import textwrap
 from pathlib import Path
 from typing import List
-import pytest
 
+import pytest
 import requests
 
 from latch.config import LatchConfig

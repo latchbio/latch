@@ -1,8 +1,9 @@
-import requests
 import webbrowser
 
+import requests
+
 from latch.config.latch import LatchConfig
-from latch.utils import retrieve_or_login, _normalize_remote_path
+from latch.utils import _normalize_remote_path, retrieve_or_login
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints

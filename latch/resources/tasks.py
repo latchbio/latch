@@ -26,8 +26,12 @@ exported decorators.
 
 from flytekit import task
 from flytekitplugins.pod import Pod
-from kubernetes.client.models import (V1Container, V1PodSpec,
-                                      V1ResourceRequirements, V1Toleration)
+from kubernetes.client.models import (
+    V1Container,
+    V1PodSpec,
+    V1ResourceRequirements,
+    V1Toleration,
+)
 
 
 def _get_large_gpu_pod() -> Pod:

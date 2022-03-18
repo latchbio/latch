@@ -51,11 +51,11 @@ def login() -> str:
 def _browser_available() -> bool:
     """Returns true if browser available for login flow.
 
-    Takes advantage of browser seaching logic for many platforms written
+    Takes advantage of browser searching logic for many platforms written
     `here`_.
 
     .. _here:
-        https://github.com/python/cpython/blob/main/Lib/webbrowser.py#L38
+        https://github.com/python/cpython/blob/3a2b89580ded72262fbea0f7ad24096a90c42b9c/Lib/webbrowser.py#L38
     """
     try:
         browser = webbrowser.get()
