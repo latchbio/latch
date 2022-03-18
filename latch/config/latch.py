@@ -4,10 +4,6 @@ config.latch
 Platform wide configuration, eg. api endpoints, callback server ports...
 """
 
-DEV = "dev"
-STAGING = "staging"
-PROD = "prod"
-
 CONSOLE_URL = "https://console.sugma.ai"
 NUCLEUS_URL = "https://nucleus.sugma.ai"
 
