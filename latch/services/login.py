@@ -5,10 +5,10 @@ import webbrowser
 import requests
 
 from latch.auth import PKCE, CSRFState, OAuth2
-from latch.config import ENV, LatchConfig, UserConfig
+from latch.config import LatchConfig, UserConfig
 from latch.constants import OAuth2Constants
 
-config = LatchConfig(ENV)
+config = LatchConfig()
 endpoints = config.sdk_endpoints
 
 
@@ -79,10 +79,6 @@ def _auth0_jwt_for_access_jwt(token) -> str:
     url = endpoints["access-jwt"]
 
     response = requests.post(url, headers=headers)
-    if response.status_code == 403:
-        raise PermissionError(
-            "You need access to the Latch SDK beta ~ join the waitlist @ https://latch.bio/sdk"
-        )
 
     try:
         resp = response.json()

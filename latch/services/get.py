@@ -4,10 +4,10 @@ from typing import List, Tuple, Union
 
 import requests
 
-from latch.config.latch import ENV, LatchConfig
+from latch.config.latch import LatchConfig
 from latch.utils import retrieve_or_login
 
-config = LatchConfig(ENV)
+config = LatchConfig()
 endpoints = config.sdk_endpoints
 
 
@@ -46,14 +46,6 @@ def _list_workflow_request(
     url = endpoints["get-workflows"]
 
     response = requests.post(url, headers=headers, json=_request)
-    if response.status_code == 403:
-        raise PermissionError(
-            "You need access to the Latch SDK beta ~ join the waitlist @ https://latch.bio/sdk"
-        )
-    elif response.status_code == 401:
-        raise ValueError(
-            "your token has expired - please run latch login to refresh your token and try again."
-        )
 
     wf_interface_resp = response.json()
     return wf_interface_resp.get("wfs", [])

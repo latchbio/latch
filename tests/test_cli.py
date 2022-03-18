@@ -10,11 +10,11 @@ import pytest
 
 import requests
 
-from latch.config import ENV, LatchConfig
+from latch.config import LatchConfig
 
 from .fixtures import project_name, test_account_jwt
 
-config = LatchConfig(ENV)
+config = LatchConfig()
 endpoints = config.sdk_endpoints
 
 
@@ -160,7 +160,7 @@ def test_touch_mkdir_higher_branching_factor(test_account_jwt):
     _run_mkdir_touch_recursive(test_account_jwt, "/", branching_factor=3, depth=0)
 
 
-@pytest.mark.xfail
+@pytest.mark.xfail(strict=True)
 def test_bad_input_cp_1():
     name1 = _random_name(10)
     name2 = _random_name(10)
@@ -168,7 +168,7 @@ def test_bad_input_cp_1():
     _run_and_verify(_cmd, "Success")
 
 
-@pytest.mark.xfail
+@pytest.mark.xfail(strict=True)
 def test_bad_input_cp_2():
     name1 = _random_name(10)
     name2 = _random_name(10)
@@ -177,10 +177,14 @@ def test_bad_input_cp_2():
 
 
 def test_ls(test_account_jwt):
-
-    # TODO(ayush) add more ls tests
-    _cmd = ["latch", "ls"]
-    _run_and_verify(_cmd, "welcome")
+    for _ in range(10):
+        name = _random_name(10)
+        _cmd = ["latch", "mkdir", name]
+        _run_and_verify(_cmd, "Success")
+        _cmd = ["latch", "ls"]
+        _run_and_verify(_cmd, name)
+        _cmd = ["latch", "rm", name]
+        _run_and_verify(_cmd, "Success")
 
 
 def test_execute(test_account_jwt):

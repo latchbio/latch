@@ -7,10 +7,10 @@ from typing import List, Optional
 
 import docker
 
-from latch.config import ENV, LatchConfig
+from latch.config import LatchConfig
 from latch.utils import account_id_from_token, retrieve_or_login
 
-config = LatchConfig(ENV)
+config = LatchConfig()
 endpoints = config.sdk_endpoints
 
 

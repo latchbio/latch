@@ -263,7 +263,7 @@ def open_remote_file(remote_file: str):
 
 @click.command("rm")
 @click.argument("remote_file", nargs=1, type=str)
-def rm(remote_file):
+def rm(remote_file: str):
     """Deletes a remote file.
 
     Visit docs.latch.bio to learn more.
@@ -277,7 +277,7 @@ def rm(remote_file):
 
 @click.command("mkdir")
 @click.argument("remote_directory", nargs=1, type=str)
-def mkdir(remote_directory):
+def mkdir(remote_directory: str):
     """Creates a new remote directory
 
     Visit docs.latch.bio to learn more.
@@ -293,7 +293,7 @@ def mkdir(remote_directory):
 
 @click.command("touch")
 @click.argument("remote_file", nargs=1, type=str)
-def touch(remote_file):
+def touch(remote_file: str):
     """Creates an empty
 
     Visit docs.latch.bio to learn more.

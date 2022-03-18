@@ -8,17 +8,8 @@ DEV = "dev"
 STAGING = "staging"
 PROD = "prod"
 
-CONSOLE_URLS = {
-    "dev": "https://console.ligma.ai",
-    "staging": "https://console.sugma.ai",
-    "prod": "https://console.latch.bio",
-}
-
-NUCLEUS_URLS = {
-    "dev": "https://nucleus.ligma.ai",
-    "staging": "https://nucleus.sugma.ai",
-    "prod": "https://nucleus.latch.bio",
-}
+CONSOLE_URL = "https://console.sugma.ai"
+NUCLEUS_URL = "https://nucleus.sugma.ai"
 
 SDK_ENDPOINTS = {
     "initiate-multipart-upload": "/sdk/initiate-multipart-upload",
@@ -39,20 +30,14 @@ SDK_ENDPOINTS = {
     "touch": "/sdk/touch",
 }
 
-ENV = PROD
-
 
 class LatchConfig:
 
     dkr_repo = "812206152185.dkr.ecr.us-west-2.amazonaws.com"
 
-    def __init__(self, environment=PROD):
-        self.set_environment(environment=environment)
-
-    def set_environment(self, environment):
-        self.environment = environment
-        self.console_url = CONSOLE_URLS[ENV]
-        self.nucleus_url = NUCLEUS_URLS[ENV]
+    def __init__(self):
+        self.console_url = CONSOLE_URL
+        self.nucleus_url = NUCLEUS_URL
         self.sdk_endpoints = {
             key: f"{self.nucleus_url}{endpoint}"
             for key, endpoint in SDK_ENDPOINTS.items()

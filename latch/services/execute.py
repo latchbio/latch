@@ -13,10 +13,10 @@ from flytekit.core.type_engine import TypeEngine
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from latch.config.latch import ENV, LatchConfig
+from latch.config.latch import LatchConfig
 from latch.utils import retrieve_or_login
 
-config = LatchConfig(ENV)
+config = LatchConfig()
 endpoints = config.sdk_endpoints
 
 
@@ -170,10 +170,6 @@ def _get_workflow_interface(
 
     response = session.post(url, headers=headers, json=_interface_request)
 
-    if response.status_code == 403:
-        raise PermissionError(
-            "You need access to the latch sdk beta ~ join the waitlist @ https://latch.bio/sdk"
-        )
     wf_interface_resp = response.json()
 
     wf_id, wf_interface, wf_default_params = (
