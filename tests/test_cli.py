@@ -156,7 +156,7 @@ def test_cp_nested(test_account_jwt):
 
 def test_touch_mkdir_higher_branching_factor(test_account_jwt):
     # don't do any more than 3 for the branching_factor
-    _run_mkdir_touch_recursive(test_account_jwt, "/", branching_factor=3, depth=0)
+    _run_mkdir_touch_recursive(test_account_jwt, "/", branching_factor=3, depth=2)
 
 
 @pytest.mark.xfail(strict=True)
