@@ -81,7 +81,6 @@ def _run_nested_cp(token, curr_dir: str, filename: str, depth: int):
     curr_dir = _normalize_remote_path(curr_dir)
     _cmd = ["latch", "mkdir", curr_dir]
     _run_and_verify(_cmd, f"Successfully created directory {curr_dir}.")
-    assert _file_exists(token, curr_dir)
     _run_cp_and_clean_up(token, curr_dir, filename)
     nested_dir_name = _random_name(10)
     nested_filename = _random_name(10)
