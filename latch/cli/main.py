@@ -262,17 +262,17 @@ def open_remote_file(remote_file: str):
 
 
 @click.command("rm")
-@click.argument("remote_file", nargs=1, type=str)
-def rm(remote_file: str):
-    """Deletes a remote file.
+@click.argument("remote_path", nargs=1, type=str)
+def rm(remote_path: str):
+    """Deletes a remote entity.
 
     Visit docs.latch.bio to learn more.
     """
     try:
-        _rm(remote_file)
-        click.secho(f"Successfully deleted {remote_file}.", fg="green")
+        _rm(remote_path)
+        click.secho(f"Successfully deleted {remote_path}.", fg="green")
     except Exception as e:
-        click.secho(f"Unable to delete {remote_file}: {str(e)}", fg="red")
+        click.secho(f"Unable to delete {remote_path}: {str(e)}", fg="red")
 
 
 @click.command("mkdir")
