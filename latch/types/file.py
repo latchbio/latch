@@ -8,10 +8,12 @@ except ImportError:
 
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
+
 # Note this only exists in flaightkit fork.
 from flytekit.core.with_metadata import FlyteMetadata
 from flytekit.models.literals import Literal
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
+
 from latch.types.url import LatchURL
 
 
@@ -56,8 +58,7 @@ class LatchFile(FlyteFile):
     ):
 
         if remote_path is not None:
-            self._remote_path = LatchURL(
-                remote_path).url  # validates url string
+            self._remote_path = LatchURL(remote_path).url  # validates url string
 
         if kwargs.get("downloader") is not None:
             super().__init__(path, kwargs["downloader"], remote_path)

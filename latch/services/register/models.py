@@ -6,8 +6,12 @@ from pathlib import Path
 from typing import List, Optional
 
 import docker
+
 from latch.config import LatchConfig
 from latch.utils import account_id_from_token, retrieve_or_login
+
+config = LatchConfig()
+endpoints = config.sdk_endpoints
 
 
 @dataclass
@@ -56,8 +60,8 @@ class RegisterCtx:
     token = None
     version = None
     serialize_dir = None
-    latch_register_api_url = "https://nucleus.latch.bio/sdk/register-workflow"
-    latch_image_api_url = "https://nucleus.latch.bio/sdk/initiate-image-upload"
+    latch_register_api_url = endpoints["register-workflow"]
+    latch_image_api_url = endpoints["initiate-image-upload"]
 
     def __init__(self, pkg_root: Path, token: Optional[str] = None):
 

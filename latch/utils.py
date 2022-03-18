@@ -60,3 +60,12 @@ def account_id_from_token(token: str) -> str:
         return decoded_jwt.get("id")
     except KeyError as e:
         raise ValueError("Your Latch access token is malformed") from e
+
+
+def _normalize_remote_path(remote_path: str):
+    if remote_path.startswith("latch://"):
+        remote_path = remote_path[len("latch://") :]
+    if not remote_path.startswith("/"):
+        remote_path = f"/{remote_path}"
+
+    return remote_path

@@ -10,9 +10,14 @@ import requests
 from flyteidl.core.types_pb2 import LiteralType
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
-from latch.utils import retrieve_or_login
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+
+from latch.config.latch import LatchConfig
+from latch.utils import retrieve_or_login
+
+config = LatchConfig()
+endpoints = config.sdk_endpoints
 
 
 def execute(params_file: Path, version: Union[None, str] = None) -> str:
@@ -147,8 +152,7 @@ def _get_workflow_interface(
     headers = {"Authorization": f"Bearer {token}"}
     _interface_request = {"workflow_name": wf_name, "version": version}
 
-    # TODO - pull out
-    url = "https://nucleus.latch.bio/sdk/wf-interface"
+    url = endpoints["get-workflow-interface"]
 
     # TODO - use retry logic in all requests + figure out why timeout happens
     # within this endpoint only.
@@ -166,10 +170,6 @@ def _get_workflow_interface(
 
     response = session.post(url, headers=headers, json=_interface_request)
 
-    if response.status_code == 403:
-        raise PermissionError(
-            "You need access to the latch sdk beta ~ join the waitlist @ https://latch.bio/sdk"
-        )
     wf_interface_resp = response.json()
 
     wf_id, wf_interface, wf_default_params = (
@@ -207,14 +207,17 @@ def _execute_workflow(token: str, wf_id: str, params: dict) -> bool:
     }
 
     _interface_request = {"workflow_id": str(wf_id), "params": params}
-    # TODO (kenny) - config
-    url = "https://nucleus.latch.bio/sdk/wf"
+    url = endpoints["execute-workflow"]
 
     response = requests.post(url, headers=headers, json=_interface_request)
 
     if response.status_code == 403:
         raise PermissionError(
             "You need access to the latch sdk beta ~ join the waitlist @ https://latch.bio/sdk"
+        )
+    elif response.status_code == 401:
+        raise ValueError(
+            "your token has expired - please run latch login to refresh your token and try again."
         )
     wf_interface_resp = response.json()
 
