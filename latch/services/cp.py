@@ -5,6 +5,7 @@ import threading
 from pathlib import Path
 
 import requests
+from tqdm.auto import tqdm
 
 from latch.config.latch import LatchConfig
 from latch.services.mkdir import mkdir
@@ -15,6 +16,24 @@ endpoints = config.sdk_endpoints
 
 # AWS uses this value for minimum for multipart as opposed to 5 * 10 ** 6
 _CHUNK_SIZE = 5 * 2 ** 20  # 5 MB
+
+LOCK = threading.Lock()
+num_files = 0
+progressbars = []
+
+
+def _dir_exists(remote_dir: str) -> bool:
+    remote_dir = _normalize_remote_path(remote_dir)
+
+    token = retrieve_or_login()
+    headers = {"Authorization": f"Bearer {token}"}
+    data = {"filename": remote_dir}
+    response = requests.post(url=endpoints["verify"], headers=headers, json=data)
+    try:
+        assert response.status_code == 200
+    except:
+        raise ValueError(f"{response.content}")
+    return response.json()["exists"]
 
 
 def _cp_local_to_remote(local_source: str, remote_dest: str):
@@ -62,9 +81,9 @@ def _cp_local_to_remote(local_source: str, remote_dest: str):
     if remote_dest[-1] == "/":
         remote_dest = remote_dest[:-1]
 
-    token = retrieve_or_login()
     if local_source.is_dir():
-        mkdir(remote_directory=remote_dest)
+        if not _dir_exists(remote_dest):
+            mkdir(remote_directory=remote_dest)
         tasks = []
         for sub_dir in local_source.iterdir():
             tasks.append(
@@ -84,57 +103,77 @@ def _cp_local_to_remote(local_source: str, remote_dest: str):
             task.join()
 
     else:
-        with open(local_source, "rb") as f:
-            f.seek(0, 2)
-            total_bytes = f.tell()
-            f.seek(0, 0)
+        _upload_file(local_source, remote_dest)
 
-        nrof_parts = math.ceil(total_bytes / _CHUNK_SIZE)
 
-        data = {
-            "dest_path": remote_dest,
-            "node_name": local_source.name,
-            "content_type": "text/plain",
-            "nrof_parts": nrof_parts,
-        }
-        url = endpoints["initiate-multipart-upload"]
-        headers = {"Authorization": f"Bearer {token}"}
-        response = requests.post(url, headers=headers, json=data)
+def _upload_file(local_source: Path, remote_dest: str):
+    with open(local_source, "rb") as f:
+        f.seek(0, 2)
+        total_bytes = f.tell()
+        f.seek(0, 0)
 
-        print(response.content)
+    nrof_parts = math.ceil(total_bytes / _CHUNK_SIZE)
 
-        r_json = response.json()
-        path = r_json["path"]
-        upload_id = r_json["upload_id"]
-        urls = r_json["urls"]
+    data = {
+        "dest_path": remote_dest,
+        "node_name": local_source.name,
+        "content_type": "text/plain",
+        "nrof_parts": nrof_parts,
+    }
 
-        parts = []
-        print(f"\t{local_source.name} -> {remote_dest}")
-        total_mb = total_bytes // 1000000
-        for i in range(nrof_parts):
+    token = retrieve_or_login()
 
-            if i < nrof_parts - 1:
-                _end_char = "\r"
-            else:
-                _end_char = "\n"
+    url = endpoints["initiate-multipart-upload"]
+    headers = {"Authorization": f"Bearer {token}"}
+    response = requests.post(url, headers=headers, json=data)
 
-            print(
-                f"\t\tcopying part {i+1}/{nrof_parts} ~ {min(total_mb, (_CHUNK_SIZE//1000000)*(i+1))}MB/{total_mb}MB",
-                end=_end_char,
-                flush=True,
+    response_json = response.json()
+    path = response_json["path"]
+    upload_id = response_json["upload_id"]
+    urls = response_json["urls"]
+
+    parts = []
+    units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
+    index = 0
+    while total_bytes // (1024 ** index) > 1000:
+        index += 1
+
+    unit = 1024 ** index
+    total_human_readable = total_bytes // unit
+    suffix = units[index]
+    text = f"Copying {local_source.relative_to(Path.cwd())} -> {remote_dest}:"
+
+    with LOCK:
+        global num_files
+        file_index = num_files
+        num_files += 1
+        progressbars.append(
+            tqdm(
+                total=total_human_readable,
+                position=file_index,
+                desc=text,
+                unit=suffix,
+                leave=False,
+                colour="green",
             )
-            url = urls[str(i)]
-            with open(local_source, "rb") as f:
-                f.seek(i * _CHUNK_SIZE, 0)
-                resp = requests.put(url, f.read(_CHUNK_SIZE))
-                etag = resp.headers["ETag"]
-                parts.append({"ETag": etag, "PartNumber": i + 1})
+        )
 
-        data = {"path": path, "upload_id": upload_id, "parts": parts}
-        url = endpoints["complete-multipart-upload"]
-        headers = {"Authorization": f"Bearer {token}"}
-        response = requests.post(url, headers=headers, json=data)
-        print(remote_dest, response.content)
+    for i in range(nrof_parts):
+
+        url = urls[str(i)]
+        with open(local_source, "rb") as f:
+            f.seek(i * _CHUNK_SIZE, 0)
+            resp = requests.put(url, f.read(_CHUNK_SIZE))
+            etag = resp.headers["ETag"]
+            parts.append({"ETag": etag, "PartNumber": i + 1})
+
+        with LOCK:
+            progressbars[file_index].update(_CHUNK_SIZE // unit)
+
+    data = {"path": path, "upload_id": upload_id, "parts": parts}
+    url = endpoints["complete-multipart-upload"]
+    headers = {"Authorization": f"Bearer {token}"}
+    response = requests.post(url, headers=headers, json=data)
 
 
 def _cp_remote_to_local(remote_source: str, local_dest: str):
@@ -200,7 +239,7 @@ def _cp_remote_to_local(remote_source: str, local_dest: str):
                     f.write(chunk)
 
 
-def _cp_remote_to_local_dir_helper(output_dir, name, response_data):
+def _cp_remote_to_local_dir_helper(output_dir: Path, name: str, response_data: dict):
     if response_data["dir"]:
         sub_dir = output_dir.resolve().joinpath(name)
         sub_dir.mkdir(exist_ok=True)
@@ -239,6 +278,8 @@ def _cp_remote_to_local_dir(output_dir: Path, response_data: dict):
 def cp(source_file: str, destination_file: str):
     if source_file[:9] != "latch:///" and destination_file[:9] == "latch:///":
         _cp_local_to_remote(source_file, destination_file)
+        for progressbar in progressbars:
+            progressbar.close()
     elif source_file[:9] == "latch:///" and destination_file[:9] != "latch:///":
         _cp_remote_to_local(source_file, destination_file)
     else:
