@@ -5,10 +5,10 @@ from pathlib import Path
 
 import requests
 
-from latch.config.latch import ENV, LatchConfig
+from latch.config.latch import LatchConfig
 from latch.utils import retrieve_or_login
 
-config = LatchConfig(ENV)
+config = LatchConfig()
 endpoints = config.sdk_endpoints
 
 _CHUNK_SIZE = 5 * 10 ** 6  # 5 MB
