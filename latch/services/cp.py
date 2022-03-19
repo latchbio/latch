@@ -79,6 +79,8 @@ def _cp_local_to_remote(local_source: str, remote_dest: str):
 
         for task in tasks:
             task.start()
+
+        for task in tasks:
             task.join()
 
     else:
