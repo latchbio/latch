@@ -54,3 +54,7 @@ repos:
         name: doc-requirements.txt
         args: [doc-requirements.in]
         files: ^doc-requirements\.(in|txt)$
+      - id: pip-compile
+        name: dev-requirements.txt
+        args: [dev-requirements.in]
+        files: ^dev-requirements\.(in|txt)$
