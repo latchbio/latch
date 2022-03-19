@@ -96,7 +96,7 @@ def cp(source_file: str, destination_file: str):
     try:
         _cp(source_file, destination_file)
         click.secho(
-            f"Successfully copied {source_file} to {destination_file}.", fg="green"
+            f"\nSuccessfully copied {source_file} to {destination_file}.", fg="green"
         )
     except Exception as e:
         click.secho(

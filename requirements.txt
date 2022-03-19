@@ -125,6 +125,8 @@ sortedcontainers==2.4.0
     # via flaightkit
 statsd==3.3.0
     # via flaightkit
+tqdm==4.63.0
+    # via -r requirements.in
 typing-extensions==4.0.1
     # via
     #   -r requirements.in
