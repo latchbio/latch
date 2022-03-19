@@ -1,17 +1,20 @@
 """Service to copy files. """
 
 import math
+import threading
 from pathlib import Path
 
 import requests
 
-from latch.config.latch import ENV, LatchConfig
-from latch.utils import retrieve_or_login
+from latch.config.latch import LatchConfig
+from latch.services.mkdir import mkdir
+from latch.utils import _normalize_remote_path, retrieve_or_login
 
-config = LatchConfig(ENV)
+config = LatchConfig()
 endpoints = config.sdk_endpoints
 
-_CHUNK_SIZE = 5 * 10 ** 6  # 5 MB
+# AWS uses this value for minimum for multipart as opposed to 5 * 10 ** 6
+_CHUNK_SIZE = 5 * 2 ** 20  # 5 MB
 
 
 def _cp_local_to_remote(local_source: str, remote_dest: str):
@@ -54,71 +57,84 @@ def _cp_local_to_remote(local_source: str, remote_dest: str):
     if local_source.exists() is not True:
         raise ValueError(f"{local_source} must exist.")
 
-    if remote_dest[:9] != "latch:///":
-        if remote_dest[0] == "/":
-            remote_dest = f"latch://{remote_dest}"
-        else:
-            raise ValueError(f"{remote_dest} must be prefixed with 'latch:///' or '/'")
+    remote_dest = _normalize_remote_path(remote_dest)
+
+    if remote_dest[-1] == "/":
+        remote_dest = remote_dest[:-1]
 
     token = retrieve_or_login()
+    if local_source.is_dir():
+        mkdir(remote_directory=remote_dest)
+        tasks = []
+        for sub_dir in local_source.iterdir():
+            tasks.append(
+                threading.Thread(
+                    target=_cp_local_to_remote,
+                    kwargs={
+                        "local_source": sub_dir,
+                        "remote_dest": f"{remote_dest}/{sub_dir.name}",
+                    },
+                )
+            )
 
-    with open(local_source, "rb") as f:
-        f.seek(0, 2)
-        total_bytes = f.tell()
-        f.seek(0, 0)
+        for task in tasks:
+            task.start()
 
-    nrof_parts = math.ceil(total_bytes / _CHUNK_SIZE)
+        for task in tasks:
+            task.join()
 
-    data = {
-        "dest_path": remote_dest,
-        "node_name": local_source.name,
-        "content_type": "text/plain",
-        "nrof_parts": nrof_parts,
-    }
-    url = endpoints["initiate-multipart-upload"]
-    headers = {"Authorization": f"Bearer {token}"}
-    response = requests.post(url, headers=headers, json=data)
-
-    if response.status_code == 403:
-        raise PermissionError(
-            "You need access to the latch sdk beta ~ join the waitlist @ https://latch.bio/sdk"
-        )
-    elif response.status_code == 401:
-        raise ValueError(
-            "your token has expired - please run latch login to refresh your token and try again."
-        )
-
-    r_json = response.json()
-    path = r_json["path"]
-    upload_id = r_json["upload_id"]
-    urls = r_json["urls"]
-
-    parts = []
-    print(f"\t{local_source.name} -> {remote_dest}")
-    total_mb = total_bytes // 1000000
-    for i in range(nrof_parts):
-
-        if i < nrof_parts - 1:
-            _end_char = "\r"
-        else:
-            _end_char = "\n"
-
-        print(
-            f"\t\tcopying part {i+1}/{nrof_parts} ~ {min(total_mb, (_CHUNK_SIZE//1000000)*(i+1))}MB/{total_mb}MB",
-            end=_end_char,
-            flush=True,
-        )
-        url = urls[str(i)]
+    else:
         with open(local_source, "rb") as f:
-            f.seek(i * _CHUNK_SIZE, 0)
-            resp = requests.put(url, f.read(_CHUNK_SIZE))
-            etag = resp.headers["ETag"]
-            parts.append({"ETag": etag, "PartNumber": i + 1})
+            f.seek(0, 2)
+            total_bytes = f.tell()
+            f.seek(0, 0)
 
-    data = {"path": path, "upload_id": upload_id, "parts": parts}
-    url = endpoints["complete-multipart-upload"]
-    headers = {"Authorization": f"Bearer {token}"}
-    response = requests.post(url, headers=headers, json=data)
+        nrof_parts = math.ceil(total_bytes / _CHUNK_SIZE)
+
+        data = {
+            "dest_path": remote_dest,
+            "node_name": local_source.name,
+            "content_type": "text/plain",
+            "nrof_parts": nrof_parts,
+        }
+        url = endpoints["initiate-multipart-upload"]
+        headers = {"Authorization": f"Bearer {token}"}
+        response = requests.post(url, headers=headers, json=data)
+
+        print(response.content)
+
+        r_json = response.json()
+        path = r_json["path"]
+        upload_id = r_json["upload_id"]
+        urls = r_json["urls"]
+
+        parts = []
+        print(f"\t{local_source.name} -> {remote_dest}")
+        total_mb = total_bytes // 1000000
+        for i in range(nrof_parts):
+
+            if i < nrof_parts - 1:
+                _end_char = "\r"
+            else:
+                _end_char = "\n"
+
+            print(
+                f"\t\tcopying part {i+1}/{nrof_parts} ~ {min(total_mb, (_CHUNK_SIZE//1000000)*(i+1))}MB/{total_mb}MB",
+                end=_end_char,
+                flush=True,
+            )
+            url = urls[str(i)]
+            with open(local_source, "rb") as f:
+                f.seek(i * _CHUNK_SIZE, 0)
+                resp = requests.put(url, f.read(_CHUNK_SIZE))
+                etag = resp.headers["ETag"]
+                parts.append({"ETag": etag, "PartNumber": i + 1})
+
+        data = {"path": path, "upload_id": upload_id, "parts": parts}
+        url = endpoints["complete-multipart-upload"]
+        headers = {"Authorization": f"Bearer {token}"}
+        response = requests.post(url, headers=headers, json=data)
+        print(remote_dest, response.content)
 
 
 def _cp_remote_to_local(remote_source: str, local_dest: str):
@@ -154,8 +170,7 @@ def _cp_remote_to_local(remote_source: str, local_dest: str):
             remote file. Note the nonexistent directory is folded into the
             name of the copied file.
     """
-    if remote_source[:9] != "latch:///":
-        raise ValueError(f'{remote_source} needs to be prefixed with "latch:///"')
+    remote_source = _normalize_remote_path(remote_source)
 
     local_dest = Path(local_dest).resolve()
     token = retrieve_or_login()
@@ -164,25 +179,61 @@ def _cp_remote_to_local(remote_source: str, local_dest: str):
 
     url = endpoints["download"]
     response = requests.post(url, headers=headers, json=data)
-    if response.status_code == 403:
-        raise PermissionError(
-            "You need access to the latch sdk beta ~ join the waitlist @ https://latch.bio/sdk"
-        )
-    elif response.status_code == 401:
-        raise ValueError(
-            "your token has expired - please run latch login to refresh your token and try again."
-        )
-    elif response.status_code == 400:
-        raise ValueError(response_data["error"]["data"]["message"])
 
     response_data = response.json()
 
-    url = response_data["url"]
-    with requests.get(url, stream=True) as r:
-        r.raise_for_status()
-        with open(local_dest, "wb") as f:
-            for chunk in r.iter_content(chunk_size=_CHUNK_SIZE):
-                f.write(chunk)
+    if response.status_code == 400:
+        raise ValueError(response_data["error"]["data"]["message"])
+
+    is_dir = response_data["dir"]
+
+    if is_dir:
+        output_dir = Path(local_dest).resolve()
+        output_dir.mkdir(exist_ok=True)
+        _cp_remote_to_local_dir(output_dir, response_data)
+    else:
+        url = response_data["url"]
+        with requests.get(url, stream=True) as r:
+            r.raise_for_status()
+            with open(local_dest, "wb") as f:
+                for chunk in r.iter_content(chunk_size=_CHUNK_SIZE):
+                    f.write(chunk)
+
+
+def _cp_remote_to_local_dir_helper(output_dir, name, response_data):
+    if response_data["dir"]:
+        sub_dir = output_dir.resolve().joinpath(name)
+        sub_dir.mkdir(exist_ok=True)
+        _cp_remote_to_local_dir(sub_dir, response_data)
+    else:
+        url = response_data["url"]
+        with requests.get(url, stream=True) as r:
+            r.raise_for_status()
+            with open(output_dir.resolve().joinpath(name), "wb") as f:
+                for chunk in r.iter_content(chunk_size=_CHUNK_SIZE):
+                    f.write(chunk)
+
+
+def _cp_remote_to_local_dir(output_dir: Path, response_data: dict):
+    urls = response_data["url"]
+    tasks = []
+    for name in urls:
+        tasks.append(
+            threading.Thread(
+                target=_cp_remote_to_local_dir_helper,
+                kwargs={
+                    "output_dir": output_dir,
+                    "name": name,
+                    "response_data": urls[name],
+                },
+            )
+        )
+
+    for task in tasks:
+        task.start()
+
+    for task in tasks:
+        task.join()
 
 
 def cp(source_file: str, destination_file: str):
