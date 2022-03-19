@@ -20,3 +20,5 @@ pytest==7.0.0
     # via -r dev-requirements.in
 tomli==2.0.1
     # via pytest
+tqdm==4.63.0
+    # via -r dev-requirements.in
