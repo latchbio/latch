@@ -2,6 +2,7 @@
 build/
 dist/
 latch.egg-info
+.hypothesis
 
 __pycache__
 
