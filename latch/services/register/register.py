@@ -13,6 +13,7 @@ import boto3
 import requests
 
 from latch.services.register import RegisterCtx, RegisterOutput
+from latch.utils import retrieve_or_login
 
 
 def _print_build_logs(build_logs, image):
@@ -73,6 +74,7 @@ def register(
     pkg_root: str,
     dockerfile: Union[str, None] = None,
     requirements: Union[str, None] = None,
+    remote: Union[str, None] = None,
 ) -> RegisterOutput:
     """Registers a workflow, defined as python code, with Latch.
 
@@ -137,6 +139,7 @@ def register(
     """
 
     ctx = RegisterCtx(pkg_root)
+    ctx.remote = remote
     print(f"Initializing registration for {pkg_root}")
 
     if dockerfile is not None:
@@ -296,18 +299,18 @@ def _build_image(
 
             dockerfile = textwrap.dedent(
                 f"""
-                    FROM {ctx.dkr_repo}/wf-base:fbe8-main
+                FROM {ctx.dkr_repo}/wf-base:fbe8-main
 
-                    COPY flytekit.config /root
-                    COPY {ctx.pkg_root.name} /root/{ctx.pkg_root.name}
-                    WORKDIR /root
-                    RUN python3 -m pip install --upgrade latch
+                COPY flytekit.config /root
+                COPY {ctx.pkg_root.name} /root/{ctx.pkg_root.name}
+                WORKDIR /root
+                RUN python3 -m pip install --upgrade latch
 
-                    {requirements_cmds}
+                {requirements_cmds}
 
-                    ARG tag
-                    ENV FLYTE_INTERNAL_IMAGE $tag
-                    """
+                ARG tag
+                ENV FLYTE_INTERNAL_IMAGE $tag
+                """
             )
             dockerfile = BytesIO(dockerfile.encode("utf-8"))
             dfinfo = tarfile.TarInfo("Dockerfile")
@@ -359,13 +362,40 @@ def _upload_pkg_image(ctx: RegisterCtx) -> List[str]:
 
 
 def _register_serialized_pkg(ctx: RegisterCtx, serialize_dir: Path) -> dict:
+    headers = {"Authorization": f"Bearer {ctx.token}"}
 
-    files = {"version": ctx.version.encode("utf-8")}
+    serialize_files = {"version": ctx.version.encode("utf-8")}
     for dirname, dirnames, fnames in os.walk(serialize_dir):
         for filename in fnames + dirnames:
             file = Path(dirname).resolve().joinpath(filename)
-            files[file.name] = open(file, "rb")
+            serialize_files[file.name] = open(file, "rb")
 
-    headers = {"Authorization": f"Bearer {ctx.token}"}
-    response = requests.post(ctx.latch_register_api_url, headers=headers, files=files)
+    response = requests.post(
+        ctx.latch_register_api_url,
+        headers=headers,
+        files=serialize_files,
+    )
+
+    commit_files = {".workflow_name": ctx.pkg_root.name.encode("utf-8")}
+
+    if not (ctx.remote is None):
+        commit_files[".remote_name"] = ctx.remote.encode("utf-8")
+
+    for dirname, dirnames, fnames in os.walk(ctx.pkg_root):
+        for filename in fnames:
+            file = Path(dirname).resolve().joinpath(filename)
+            key = str(file.relative_to(ctx.pkg_root))
+            commit_files[key] = open(file, "rb")
+
+    commit_response = requests.post(
+        url=ctx.latch_commit_api_url,
+        headers=headers,
+        files=commit_files,
+    )
+
+    if not commit_response.json()["success"]:
+        raise ValueError(
+            "Issue committing: please make sure the specified remote exists, and that Latch can push to it."
+        )
+
     return response.json()
