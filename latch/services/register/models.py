@@ -56,11 +56,13 @@ class RegisterCtx:
     dkr_repo: Optional[str] = None
     dkr_client: docker.APIClient = None
     pkg_root: Path = None  # root
+    remote: Optional[str] = None
     image_full = None
     token = None
     version = None
     serialize_dir = None
     latch_register_api_url = endpoints["register-workflow"]
+    latch_commit_api_url = endpoints["commit-workflow"]
     latch_image_api_url = endpoints["initiate-image-upload"]
 
     def __init__(self, pkg_root: Path, token: Optional[str] = None):

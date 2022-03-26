@@ -14,6 +14,7 @@ SDK_ENDPOINTS = {
     "list-files": "/sdk/list",
     "initiate-image-upload": "/sdk/initiate-image-upload",
     "register-workflow": "/sdk/register-workflow",
+    "commit-workflow": "/sdk/commit-workflow",
     "get-workflow-interface": "/sdk/wf-interface",
     "access-jwt": "/sdk/access-jwt",
     "execute-workflow": "/sdk/wf",
