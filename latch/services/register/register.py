@@ -384,6 +384,9 @@ def _register_serialized_pkg(ctx: RegisterCtx, serialize_dir: Path) -> dict:
     for dirname, dirnames, fnames in os.walk(ctx.pkg_root):
         for filename in fnames:
             file = Path(dirname).resolve().joinpath(filename)
+            # ignore data folder
+            if ctx.pkg_root.joinpath("data") in file.parents:
+                continue
             key = str(file.relative_to(ctx.pkg_root))
             commit_files[key] = open(file, "rb")
 
