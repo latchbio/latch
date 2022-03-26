@@ -40,13 +40,23 @@ def main():
     default=None,
     help="The name of your workflow package (the folder with __init__.py). This is a mandatory option if --dockerfile is provided",
 )
-def register(pkg_root: str, dockerfile: Union[str, None], pkg_name: Union[str, None]):
+@click.option(
+    "--remote",
+    default=None,
+    help="The ssh url of a remote git repository where registered workflow code will reside.",
+)
+def register(
+    pkg_root: str,
+    dockerfile: Union[str, None],
+    pkg_name: Union[str, None],
+    remote: Union[str, None],
+):
     """Register local workflow code to Latch.
 
     Visit docs.latch.bio to learn more.
     """
     try:
-        _register(pkg_root, dockerfile, pkg_name)
+        _register(pkg_root, dockerfile, pkg_name, remote)
         click.secho(
             "Successfully registered workflow. View @ console.latch.bio.", fg="green"
         )
