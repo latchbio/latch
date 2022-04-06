@@ -168,7 +168,7 @@ def _upload_file(local_source: Path, remote_dest: str):
             parts.append({"ETag": etag, "PartNumber": i + 1})
 
         with LOCK:
-            progressbars[file_index].update(_CHUNK_SIZE // unit)
+            progressbars[file_index].update(_CHUNK_SIZE / unit)
 
     data = {"path": path, "upload_id": upload_id, "parts": parts}
     url = endpoints["complete-multipart-upload"]
