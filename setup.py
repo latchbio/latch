@@ -31,7 +31,7 @@ setup(
         "docker>=5.0",
         "boto3>=1.2",
         "tqdm>=4.63.0",
-        "numpy==1.21.4;platform_machine=arm64",
+        "numpy==1.21.4; platform_machine=='arm64'",
         "flaightkit==0.2.0",
         "flaightkitplugins-pod==0.0.1",
         "typing-extensions==4.0.1",
