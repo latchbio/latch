@@ -277,7 +277,7 @@ def _cp_remote_to_local_dir(output_dir: Path, response_data: dict):
 
 def cp(source_file: str, destination_file: str):
     if source_file[:9] != "latch://" and (
-        destination_file[:14] == "latch://shared" or destination_file[:9] == "latch://"
+        destination_file[:14] == "latch://shared" or destination_file[:9] == "latch:///"
     ):
         _cp_local_to_remote(source_file, destination_file)
         for progressbar in progressbars:
