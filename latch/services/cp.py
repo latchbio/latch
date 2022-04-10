@@ -276,15 +276,16 @@ def _cp_remote_to_local_dir(output_dir: Path, response_data: dict):
 
 
 def cp(source_file: str, destination_file: str):
-    if source_file[:8] != "latch://" and (
-        destination_file[:14] == "latch://shared" or destination_file[:9] == "latch:///"
+    if not source_file.startswith("latch://") and (
+        destination_file.startswith("latch://shared")
+        or destination_file.startswith("latch:///")
     ):
         _cp_local_to_remote(source_file, destination_file)
         for progressbar in progressbars:
             progressbar.close()
     elif (
-        source_file[:9] == "latch:///" or source_file[:14] == "latch://shared"
-    ) and destination_file[:8] != "latch://":
+        source_file.startswith("latch:///") or source_file.startswith("latch://shared")
+    ) and not destination_file.startswith("latch://"):
         _cp_remote_to_local(source_file, destination_file)
     else:
         raise ValueError(
