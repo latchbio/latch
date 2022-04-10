@@ -65,7 +65,7 @@ def account_id_from_token(token: str) -> str:
 def _normalize_remote_path(remote_path: str):
     if remote_path.startswith("latch://"):
         remote_path = remote_path[len("latch://") :]
-    if not remote_path.startswith("/"):
+    if not remote_path.startswith("/") and not remote_path.startswith("shared"):
         remote_path = f"/{remote_path}"
 
     return remote_path
