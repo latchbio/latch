@@ -1,8 +1,11 @@
 import http.server
 import json
+import ssl
 import urllib
 import urllib.request
 import webbrowser
+
+import certifi
 
 from latch.auth.csrf import CSRFState
 from latch.auth.pkce import PKCE
@@ -172,7 +175,9 @@ class OAuth2:
         ).encode("utf-8")
         token_request = urllib.request.Request(token_url, token_body)
         token_request.add_header("Content-Type", "application/json")
-        with urllib.request.urlopen(token_request) as f:
+        with urllib.request.urlopen(
+            token_request, context=ssl.create_default_context(cafile=certifi.where())
+        ) as f:
             try:
                 json_response = json.loads(f.read().decode("utf-8"))
                 id_token = json_response["id_token"]
