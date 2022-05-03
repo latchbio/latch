@@ -66,13 +66,33 @@ self
 ```{toctree}
 :hidden:
 :maxdepth: 2
-:caption: Tutorials
-workflow_overview
-workflow_io
-workflow_metadata
-parameter_metadata
-task_dependencies
-task_overview
+:caption: Basics
+basics/inputs_outputs
+basics/customizing_interface
+basics/defining_cloud_resources
+```
+
+```{toctree}
+:hidden:
+:maxdepth: 2
+:caption: Concepts
+concepts/tasks_workflows
+concepts/workflow_lifecycle
+concepts/execution_scheduling
+concepts/using_console
+concepts/flyte_interaction
+```
+
+```{toctree}
+:hidden:
+:maxdepth: 2
+:caption: Recipes
+```
+
+```{toctree}
+:hidden:
+:maxdepth: 2
+:caption: Examples
 ```
 
 ```{toctree}
