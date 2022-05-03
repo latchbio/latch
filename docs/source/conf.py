@@ -18,8 +18,7 @@
 # -- Project information -----------------------------------------------------
 
 project = "latch"
-copyright = "2022, Kenny Workman"
-author = "Kenny Workman"
+copyright = "2022, LatchBio"
 
 # The full version, including alpha/beta/rc tags
 release = "0.0.1"
