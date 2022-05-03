@@ -1,4 +1,0 @@
-MAGeCK
----
-
-Placeholder
