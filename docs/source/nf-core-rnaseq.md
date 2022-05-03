@@ -1,4 +1,0 @@
-nf-core/rnaseq
----
-
-Placeholder
