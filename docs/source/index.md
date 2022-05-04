@@ -67,6 +67,7 @@ self
 :hidden:
 :maxdepth: 2
 :caption: Basics
+basics/what_is_a_workflow
 basics/inputs_outputs
 basics/customizing_interface
 basics/defining_cloud_resources
