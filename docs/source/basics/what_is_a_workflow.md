@@ -121,7 +121,7 @@ where to put them or what supplementary files might be needed for registration.
 Workflow code needs to live in directory with three basic but necessary
 elements:
 
-  * a file named `Dockerfile`. (Read [this]() if you are unfamiliar with Docker).
+  * a file named `Dockerfile`
   * a file named `version` that holds the plaintext version of the workflow
   * a directory named `wf` that holds the python code needed for the workflow
 
@@ -140,6 +140,8 @@ The SDK ships with easily retrievable example workflow code. Just type
 reference or boilerplate.
 
 #### Example `Dockerfile`
+
+**Note**: you are required to use our base image for the time being.
 
 ```
 FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/wf-base:fbe8-main
@@ -279,7 +281,7 @@ def assemble_and_sort(read1: LatchFile, read2: LatchFile) -> LatchFile:
     return sort_bam_task(sam=sam)
 ```
 
-### What happens at registration?
+## What happens at registration?
 
 Now that we've defined our functions, we are ready to register our workflow with
 the [LatchBio](latch.bio) platform. This will give us:
@@ -290,4 +292,12 @@ the [LatchBio](latch.bio) platform. This will give us:
   * hosted documentation
   * parallelized CSV-to-batch execution
 
+To register, we type `latch register <directory_name>` into our terminal (where
+directory_name is the name of the directory holding our code, Dockerfile and
+version file).
 
+The registration process requires a local installation of Docker.
+
+To re-register changes, make sure you update the value in the version file. (The
+value of the version is not important, only that it is distinct from previously
+registered versions).
