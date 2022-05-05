@@ -85,29 +85,7 @@ basics/parameter_types
 basics/working_with_files
 basics/customizing_interface
 basics/defining_cloud_resources
-```
-
-```{toctree}
-:hidden:
-:maxdepth: 2
-:caption: Concepts
-concepts/tasks_workflows
-concepts/workflow_lifecycle
-concepts/execution_scheduling
-concepts/using_console
-concepts/flyte_interaction
-```
-
-```{toctree}
-:hidden:
-:maxdepth: 2
-:caption: Recipes
-```
-
-```{toctree}
-:hidden:
-:maxdepth: 2
-:caption: Examples
+basics/writing_dockerfiles
 ```
 
 ```{toctree}
