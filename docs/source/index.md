@@ -69,6 +69,16 @@ python3 -m pip install latch
 
 _Note that a local installation of docker is required to register workflows_.
 
+---
+
+### Examples
+
+We'll maintain a growing list of well documented examples here. Please open a
+pull request to feature your own:
+
+  * https://github.com/latchbio/wf-guide_counter 
+  * https://github.com/latchbio/wf-batch_ge
+
 
 ```{toctree}
 :hidden:
