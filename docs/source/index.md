@@ -56,6 +56,19 @@ file an issue on [github](https://github.com/latchbio/latch).
 
 ---
 
+### Installation
+
+The SDK is distributed on pip. Install in a fresh virtual environment for best
+behavior. 
+
+[Virtualenvwrapper]() is recommended.
+
+```
+python3 -m pip install latch
+```
+
+_Note that a local installation of docker is required to register workflows_.
+
 
 ```{toctree}
 :hidden:
@@ -69,6 +82,7 @@ self
 :caption: Basics
 basics/what_is_a_workflow
 basics/parameter_types
+basics/working_with_files
 basics/customizing_interface
 basics/defining_cloud_resources
 ```
