@@ -4,103 +4,94 @@
 
 # Latch SDK
 
-The Latch SDK is an open-source toolchain to define serverless bioinformatics
-workflows with plain python and deploy associated no-code interfaces with
-single command.
-
-With the Latch SDK, developers are able to write workflows as python functions
-and dynamically compile type-safe and highly customizable web apps to execute
-this logic. Workflow code is serialized, containerized and versioned
-transiently for maximum reproducibility and portability. Workflows can also be
-annotated with arbitrary resource constraints, eg. cores, RAM, GPUs, of which
-Latch can satisfy at execution time.
+The Latch SDK is a toolchain to define serverless bioinformatics workflows and
+dynamically generate no-code interfaces using python functions.
 
 It is built directly on [Flyte](https://docs.flyte.org) for all the benefits that the Kubernetes-native
 workflow orchestration framework provides - task-level type-safety and
 containerization, independent task scheduling, and heterogeneous & highly
 scalable computing infrastructure.
 
-[Docs](https://docs.latch.bio) •
-[Installation](#installation) •
-[Quickstart](#configuration) •
-[Latch](https://latch.bio)
-
+[Docs](https://docs.latch.bio) • [Installation](#installation) • [Quickstart](#configuration) • [Latch](https://latch.bio)
 
 ![side-by-side](static/side-by-side.png)
 
 </div>
 
-## Installation
+Workflows developed with the SDK feature:
 
-```sh
-$ pip install latch
-```
+  * Instant no-code interfaces for accessibility and publication
+  * First class static typing
+  * Containerization + versioning of every registered change
+  * Reliable + scalable managed cloud infrastructure
+  * Singe line definition of arbitrary resource requirements (eg. CPU, GPU) for serverless execution
 
-_Make sure you install [docker](https://docs.docker.com/) for your machine! You will be building lots of containers..._
 
-## Quickstart
 
-Initialize workflow boilerplate and register the workflow with Latch in 60 seconds.
+### Quickstart
 
-```
-$ latch init test-workflow
-$ latch register test-workflow
-```
+Getting your hands dirty with SDK is the best way to understand how it works.
+Run the following three commands in your terminal to register your first
+workflow to LatchBio.
 
-Copy local files to latch data.
+**Prerequisite**: ensure that `docker` is present and running on your machine. 
+(Install docker [here](https://docs.docker.com/get-docker/) if you don't already
+have it installed.)
 
-```
-$ latch cp test.fa latch:///samples/test.fa
-```
-
-## More Examples
-
-Vist our official [docs](https://docs.latch.bio) for tutorials, workflow
-recipes and full API specifications.
-
-Ingest TBs of genomic files and call arbitrary programs...
+First, install latch through `pip`.
 
 ```
-from latch import task
-from latch.types import LatchDir, BamFile
-
-@task()
-def samtools_sort_tsk(
-    bam_file: BamFile,
-    output_dir: LatchDir= LatchDir("latch://sorted_output"),
-) -> FlyteDirectory:
-
-    local_output = Path("/root/output")
-
-    _cmd = [
-        "samtools",
-        "sort",
-        str(fasta_file),
-        "-o",
-        str(local_output),
-    ]
-
-    subprocess.run(_cmd, check=True)
-
-    return LatchDirectory(local_output)
+$ python3 -m pip install latch
 ```
 
-Scale your logic to curated high-performance and GPU-enabled computing instances with a single line...
+Then, create some boilerplate code for your new workflow.
 
 ```
-from latch.tasks import large_gpu_task
-from latch.types import LatchDir, LatchFile
-
-@large_gpu_task() # 4 GPU, 32 CPU, 256 RAM
-def train_protein_model(samples: LatchDir) -> LatchFile:
-  ...
+$ latch init testworkflow
 ```
 
+Finally register the boilerplate code to [LatchBio](latch.bio).
 
-<div align="center">
+```
+$ latch register testworkflow
+```
 
-## carpe diem
+This might take 3-10 minutes depending on your network connection. (Subsequent
+registers will complete in seconds by reusing the image layers from this initial
+register.) The registration process will:
 
-![manske](static/manske.png)
+  * Build a docker image containing your workflow code
+  * Serialize your code and register it with your LatchBio account
+  * Push your docker image to a managed container registry
 
-</div>
+When registration has completed, you should be able to navigate
+[here](https://console.latch.bio/workflows) and see your new workflow in your
+account.
+
+If you are having issues with registration or have general questions, please
+file an issue on [github](https://github.com/latchbio/latch).
+
+---
+
+### Installation
+
+The SDK is distributed on pip. Install in a fresh virtual environment for best
+behavior. 
+
+[Virtualenvwrapper]() is recommended.
+
+```
+python3 -m pip install latch
+```
+
+_Note that a local installation of docker is required to register workflows_.
+
+---
+
+### Examples
+
+We'll maintain a growing list of well documented examples here. Please open a
+pull request to feature your own:
+
+  * [Guide Counter](https://github.com/latchbio/wf-guide_counter)
+  * [Batch-GE](https://github.com/latchbio/wf-batch_ge)
