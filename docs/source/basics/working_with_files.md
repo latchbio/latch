@@ -19,34 +19,34 @@ from pathlib import Path
 @small_task
 def foo(fastq: LatchFile, output_dir: LatchDir) -> (LatchFile, LatchDir):
 
-  # When you pass parameter values of type LatchFile or LatchDir, the file will
-  # be automatically downloaded on whatever machine the task is scheduled on.
-	
-  # Passing the parameter value to a python Path object and resolving it is a
-  # common pattern to retrieve the full path of the file on the local filesystem for
-  # downstream use.
+    # When you pass parameter values of type LatchFile or LatchDir, the file will
+    # be automatically downloaded on whatever machine the task is scheduled on.
 
-  local_fastq = Path(fastq).resolve()
-  local_output_dir = Path(dir).resolve()
+    # Passing the parameter value to a python Path object and resolving it is a
+    # common pattern to retrieve the full path of the file on the local filesystem for
+    # downstream use.
 
-  # It's now easy to reference the contents of the file in a subprocessed
-  # program. Notice how we're 'placing' outputs in a directory we will return.
-  subprocess.call(["myprogram", "analyze", "local_fastq", "-o", str(local_output_dir)])
+    local_fastq = Path(fastq).resolve()
+    local_output_dir = Path(dir).resolve()
 
-  # We can also simply read out the contents of the file as we would normally.
-  with open(local_fastq) as fq:
-    reads = fq.read()
+    # It's now easy to reference the contents of the file in a subprocessed
+    # program. Notice how we're 'placing' outputs in a directory we will return.
+    subprocess.call(["myprogram", "analyze", "local_fastq", "-o", str(local_output_dir)])
 
-  # Lets make a new file on this machine and return it along with the results of
-  # the previous subprocess.
-  with open("/root/foobar", "w") as fb:
-    fb.write("fizzbuzz")
+    # We can also simply read out the contents of the file as we would normally.
+    with open(local_fastq) as fq:
+      reads = fq.read()
 
-  # Notice when we return, we must specify *two* values - a local path and a
-  # remote path. We need to know where the file is coming from and where it's
-  # going. We'll discuss the latch URL scheme in a moment, but just understand
-  # it will go back in your filesystem on the LatchBio console for now.
-  return LatchFile("/root/foobar", "latch:///foobar.txt"), LatchDir(local_output_dir, output_dir.remote_path)
+    # Lets make a new file on this machine and return it along with the results of
+    # the previous subprocess.
+    with open("/root/foobar", "w") as fb:
+      fb.write("fizzbuzz")
+
+    # Notice when we return, we must specify *two* values - a local path and a
+    # remote path. We need to know where the file is coming from and where it's
+    # going. We'll discuss the latch URL scheme in a moment, but just understand
+    # it will go back in your filesystem on the LatchBio console for now.
+    return LatchFile("/root/foobar", "latch:///foobar.txt"), LatchDir(local_output_dir, output_dir.remote_path)
 ```
 
 ### Local Paths and Remote Paths
@@ -113,3 +113,8 @@ Some examples of valid latch URLs referencing objects in a user's filesystem:
 Note the three slashes. This is not accidental, but is in strict accordance with
 the [URL specification](https://www.ietf.org/rfc/rfc1738.txt) as there is no
 real user-facing "host" for latch objects.
+
+### Shared `latch` URLs
+
+Paths that are shared amongst accounts will bear the `latch://shared/<path>`
+syntax.

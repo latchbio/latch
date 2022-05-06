@@ -1,12 +1,12 @@
 Writing Dockerfiles
 ===
 
-Dockerfiles allow you to define computing environment that your task will
+Dockerfiles allow you to define the computing environment that your task will
 execute in.
 
-To write a Dockerfile, you simply write commands that you want executed
-or specify files that you want available before your task is run. A Dockerfile
-defines your task's "image" (the recipe for its virutal computing environment)
+To write a Dockerfile, you simply write the commands that you want executed and
+specify the files that you want available before your task is run. A Dockerfile
+defines your task's "image" (the recipe for its virtual computing environment)
 which will become a container that it will execute within at runtime.
 
 Here is an example of a Dockerfile used earlier:

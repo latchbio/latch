@@ -8,7 +8,7 @@ docstring of the workflow function, you can specify:
 
   * markdown formatted long form documentation
   * sidebar presentation of contact email, repository, social media links, etc.
-  * ordering and grouping of parameters
+  * the ordering and grouping of parameters
   * parameter tooltip descriptions
   * parameter display names
 
@@ -22,10 +22,11 @@ sidebar and the workflow expore tab as a brief description of your workflow's fu
 def foo(
 	...
 ):
-	"""This line is a short workflow description description, displayed in the explore tab and sidebar.
+	"""This line is a short workflow description, displayed in the explore tab and sidebar.
 
     ...
     """
+    ...
 ```
 
 ## Markdown Documentation 
@@ -39,9 +40,10 @@ workflow "About" tab on your interface.
 def foo(
 	...
 ):
-	"""This line is a short workflow description description, displayed in the explore tab
+	"""This line is a short workflow description, displayed in the explore tab
 
-    This line starts the long workflow description in markdown, displayed in the workflow about tab
+    This line starts the long workflow description in markdown, displayed in
+    this workflow's about tab
 
     Lists
     - item1
@@ -57,14 +59,15 @@ def foo(
     __metadata__:
         ...
     """
+    ...
 ```
 
 ## Sidebar Customization
 
 After the long workflow description, you have the opportunity to specify
 standard workflow metadata that will get rendered in the sidebar. The currently
-supported metadata fields are display name, documentation, author (name, email,
-github), repository, and license. The only constrained field is license, which
+supported metadata fields are `display_name`, `documentation`, `author` (`name`, `email`,
+`github`), `repository`, and `license`. The only constrained field is `license`, which
 should be an identifier from [spdx](https://spdx.org/licenses/).
 
 ```
@@ -128,6 +131,7 @@ def test(
 			__metadata__:
 				display_name: Sample Name
 	"""
+  ...
 ```
 
 ### Hidden Parameters 
@@ -162,6 +166,7 @@ def test(
 				_tmp:
 					hidden: true
 	"""
+  ...
 ```
 
 ### Section Titles
@@ -199,6 +204,7 @@ def test(
 					hidden: true
 					section_title: Notification Options
 	"""
+  ...
 ```
 
 ### Placeholders 
@@ -244,6 +250,7 @@ def test(
 				appearance:
 					placeholder: "aidan@latch.bio"
 	"""
+  ...
 ```
 
 ### Comments 
@@ -292,6 +299,7 @@ def test(
 				appearance:
 					placeholder: "aidan@latch.bio"
 	"""
+  ...
 ```
 ### Output 
 
@@ -345,6 +353,7 @@ def test(
 				appearance:
 					placeholder: "aidan@latch.bio"
 	"""
+  ...
 ```
 
 ### Batch Table Column 
@@ -401,6 +410,7 @@ def test(
 				appearance:
 					placeholder: "aidan@latch.bio"
 	"""
+  ...
 ```
 
 ### Additional `str` Type Customizations 
@@ -463,6 +473,7 @@ def test(
 				appearance:
 					placeholder: "aidan@latch.bio"
 	"""
+  ...
 ```
 
 ## Additional Rule-Based Validation
@@ -470,31 +481,41 @@ def test(
 In addition to the HTML-native validation that each parameter component will
 perform by default, developers can specify additional rule-based validation to
 further restrict the set of accepted values. Rule-based validation is currently
-specified with a regex pattern.
+specified with a [regex](https://docs.python.org/3/library/re.html#regular-expression-syntax) pattern.
 
 Here is an example of how using rule-based validation can be used to construct a
 "FastQ type" that only accepts a subset of semantic paths:
 
 ```
-...
 from flytekit.core.with_metadata import FlyteMetadata
 from typing import Annotated
-...
 
 @workflow
 def test(
-	sample_list: List[Annotated[LatchFile, FlyteMetadata(
-		{"rules": [{"regex": "(.fasta|.fa|.faa)$", "message": "Only .fasta, .fa, or .faa extensions are valid"}]}
-	)]
+    sample_list: List[
+        Annotated[
+            FlyteFile,
+            FlyteMetadata(
+                {
+                    "rules": [
+                        {
+                            "regex": "(.fasta|.fa|.faa)$",
+                            "message": "Only .fasta, .fa, or .faa extensions are valid",
+                        }
+                    ]
+                }
+            ),
+        ]
+    ]
 ):
-	"""
-	...
-	Short description and long description
-	...
-	
-	Args:
-		sample_list:
-			__metadata__:
-				display_name: "Sample List"
-	"""
+    """
+    ...
+    Short description and long description
+    ...
+    Args:
+            sample_list:
+                    __metadata__:
+                            display_name: "Sample List"
+    """
+    ...
 ```
