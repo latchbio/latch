@@ -84,7 +84,8 @@ def foo(
 
 ### Unions
 
-Along with the previous basic types, `Union` and `Optional` give extra flexibility.
+Along with the previous basic types, `Union` and `Optional` types from Python's
+`typing` module give extra flexibility.
 
 Recall that `Optional[T] = Union[None, T]`.
 
@@ -103,7 +104,8 @@ def foo(
 
 ### Lists
 
-Finally, we currently support a single collection type which is `List[T]`.
+Finally, we currently support a single collection type which is `List[T]`, also
+provided by the `typing` module.
 
 ```
 from typing import List, Optional

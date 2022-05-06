@@ -1,19 +1,19 @@
 What is a Workflow?
 ---
 
-A workflow can be thought of as an analysis that takes in some input,
-processes it in one or more steps and produces some output. 
+A workflow is an analysis that takes in some input, processes it in one or more
+steps and produces some output. 
 
-Formally, a workflow can be described as a [directed acyclic graph]() (DAG),
-where each node in the graph is called a task. This computational graph is a
-flexible model to describe most any bioinformatics analysis. 
+Formally, a workflow can be described as a [directed acyclic graph](https://en.wikipedia.org/wiki/Directed_acyclic_graph) (DAG), where each
+node in the graph is called a task. This computational graph is a flexible model
+to describe most any bioinformatics analysis. 
 
-In this example we will walk through, a workflow ingests FastQ files from a
-sequencing machine and produces a sorted assembly. The workflow's DAG has two
-tasks. The first task turns FastQ files into a BAM file using an assembly
-algorithm. The second task sorts the assembly from the first task. The final
-output is a useful assembly conducive to downstream analysis and visualization
-in tools like [IGV]().
+In this example, a workflow ingests sequencing files in FastQ format and
+produces a sorted assembly file. The workflow's DAG has two tasks. The first
+task turns the FastQ files into a single BAM file using an assembly algorithm.
+The second task sorts the assembly from the first task. The final output is a
+useful assembly conducive to downstream analysis and visualization in tools like
+[IGV](https://software.broadinstitute.org/software/igv/).
 
 The Latch SDK lets you define your workflow tasks as python functions.
 The parameters in the function signature define the task inputs and return
@@ -47,11 +47,16 @@ def assembly_task(read1: LatchFile, read2: LatchFile) -> LatchFile:
     return LatchFile(str(sam_file), "latch:///covid_assembly.sam")
 ```
 
-The tasks are then "glued" together in another function that represents the
+These tasks are then "glued" together in another function that represents the
 workflow. The workflow function body simply chains the task functions by calling
 them and passing returned values to downstream task functions. Notice that our
 workflow function calls the task that we just defined, `assembly_task`, as well
 as another task we can assume was defined elsewhere, `sort_bam_task`.
+
+You must not write actual logic in the workflow function body. It can only be
+used to call task functions and pass task function return values to downstream
+task functions. Additionally all task functions must be called with keyword
+arguments.
 
 ```
 @workflow
@@ -116,14 +121,16 @@ def assemble_and_sort(read1: LatchFile, read2: LatchFile) -> LatchFile:
 ## Workflow Code Structure
 
 So far we have defined workflows and tasks as python functions but we don't know
-where to put them or what supplementary files might be needed for registration.
+where to put them or what supplementary files might be needed to run the code on
+the Latch platform.
 
-Workflow code needs to live in directory with three basic but necessary
+Workflow code needs to live in directory with three necessary
 elements:
 
-  * a file named `Dockerfile`
+  * a file named `Dockerfile` that defines the computing environment of your tasks
   * a file named `version` that holds the plaintext version of the workflow
-  * a directory named `wf` that holds the python code needed for the workflow
+  * a directory named `wf` that holds the python code needed for the workflow.
+    * task and workflow functions must live in a `wf/__init__.py` file
 
 These three elements must be named as specified above. The directory should have
 the following structure:
@@ -176,6 +183,10 @@ WORKDIR /root
 ```
 
 #### Example `version` File
+
+You can use any versioning scheme that you would like, as long as each register
+has a unique version value. We recommend sticking with [semantic
+versioning](https://semver.org/).
 
 ```
 v0.0.0
