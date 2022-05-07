@@ -133,10 +133,10 @@ how these inputs translate into a user interface, check out
 ```python
 @large_task
 def bactopia_tsk(
-    fastq_one: Optional[FlyteFile],
-    fastq_two: Optional[FlyteFile],
-    input_dir: Optional[FlyteDirectory],
-    output_dir: FlyteDirectory,
+    fastq_one: Optional[LatchFile],
+    fastq_two: Optional[LatchFile],
+    input_dir: Optional[LatchDir],
+    output_dir: LatchDir,
     sample_name: List[Union[str, int]],
     genome_size: Optional[int],
     species: Optional[Species],
@@ -156,8 +156,8 @@ def bactopia_tsk(
     centre: str = "Bactopia",
     min_contig_length: int = 500,
     amr_plus: bool = False,
-) -> FlyteDirectory:
-    # example opening a Flytefile
+) -> LatchDir:
+    # example opening a LatchFile
     with open(Path(fastq_one), "w") as f:
         lines = f.readlines() 
     
@@ -166,7 +166,7 @@ def bactopia_tsk(
         local_output_dir = Path("/root/outputs")
   
         # example returning Flyte directory
-        return FlyteDirectory(
+        return LatchDir(
             str(local_output_dir.resolve()),
             remote_directory=_fmt_dir(output_dir.remote_source),
         )
@@ -174,11 +174,11 @@ def bactopia_tsk(
 
 @workflow
 def bactopia_wf(
-    output_dir: FlyteDirectory,
+    output_dir: LatchDir,
     sample_name: List[Union[str, int]] = "sample1",
-    fastq_one: Optional[FlyteFile] = None,
-    fastq_two: Optional[FlyteFile] = None,
-    input_dir: Optional[FlyteDirectory] = None,
+    fastq_one: Optional[LatchFile] = None,
+    fastq_two: Optional[LatchFile] = None,
+    input_dir: Optional[LatchDir] = None,
     genome_size: Optional[int] = None,
     species: Species = Species.none,
     species_genome_size: SpeciesGenomeSize = SpeciesGenomeSize.mash,
@@ -197,7 +197,7 @@ def bactopia_wf(
     amr_plus: bool = False,
     centre: str = "Bactopia",
     min_contig_length: int = 500,
-) -> FlyteDirectory:
+) -> LatchDir:
 
     return bactopia_tsk(
         fastq_one=fastq_one,
