@@ -96,6 +96,7 @@ basics/working_with_files
 basics/customizing_interface
 basics/defining_cloud_resources
 basics/writing_dockerfiles
+basics/local_development
 ```
 
 ```{toctree}
