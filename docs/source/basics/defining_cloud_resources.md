@@ -1,9 +1,10 @@
-Defining Cloud Resources
+# Defining Cloud Resources
+
 ---
 
 When a workflow is executed and tasks are scheduled, the machines needed to run
 the task are provisioned automatically and managed for the user until task
-completion. 
+completion.
 
 Tasks can be annotated with the resources they are expected to consume (eg. CPU,
 RAM, GPU) at runtime and these requests will be fullfilled during the scheduling
@@ -20,18 +21,18 @@ represented as decorators:
 
 We use the tasks as follows:
 
-```
+```python
 from latch import small_task
 
 @small_task
 def my_task(
-	...
+    ...
 ):
-  ...
+    ...
 
 @large_gpu_task
 def inference(
-	...
+    ...
 ):
-  ...
+    ...
 ```

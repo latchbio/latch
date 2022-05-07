@@ -1,12 +1,13 @@
-What is a Workflow?
+# What is a Workflow?
+
 ---
 
 A workflow is an analysis that takes in some input, processes it in one or more
-steps and produces some output. 
+steps and produces some output.
 
 Formally, a workflow can be described as a [directed acyclic graph](https://en.wikipedia.org/wiki/Directed_acyclic_graph) (DAG), where each
 node in the graph is called a task. This computational graph is a flexible model
-to describe most any bioinformatics analysis. 
+to describe most any bioinformatics analysis.
 
 In this example, a workflow ingests sequencing files in FastQ format and
 produces a sorted assembly file. The workflow's DAG has two tasks. The first
@@ -21,7 +22,7 @@ values define the task outputs. The body of the function holds the task logic,
 which can be written in plain python or can be subprocessed through a
 program/library in any language.
 
-```
+```python
 @small_task
 def assembly_task(read1: LatchFile, read2: LatchFile) -> LatchFile:
 
@@ -58,7 +59,7 @@ used to call task functions and pass task function return values to downstream
 task functions. Additionally all task functions must be called with keyword
 arguments.
 
-```
+```python
 @workflow
 def assemble_and_sort(read1: LatchFile, read2: LatchFile) -> LatchFile:
 
@@ -71,7 +72,7 @@ documentation and a DSL to specify the presentation of parameters when the
 workflow interface is generated. We'll add this content to the docstring of the
 workflow function we just wrote.
 
-```
+```python
 @workflow
 def assemble_and_sort(read1: LatchFile, read2: LatchFile) -> LatchFile:
     """Description...
@@ -127,15 +128,15 @@ the Latch platform.
 Workflow code needs to live in directory with three necessary
 elements:
 
-  * a file named `Dockerfile` that defines the computing environment of your tasks
-  * a file named `version` that holds the plaintext version of the workflow
-  * a directory named `wf` that holds the python code needed for the workflow.
-    * task and workflow functions must live in a `wf/__init__.py` file
+* a file named `Dockerfile` that defines the computing environment of your tasks
+* a file named `version` that holds the plaintext version of the workflow
+* a directory named `wf` that holds the python code needed for the workflow.
+* task and workflow functions must live in a `wf/__init__.py` file
 
 These three elements must be named as specified above. The directory should have
 the following structure:
 
-```
+```text
 ├── Dockerfile
 ├── version
 └── wf
@@ -146,11 +147,11 @@ The SDK ships with easily retrievable example workflow code. Just type
 `latch init myworkflow` to construct a directory structured as above for
 reference or boilerplate.
 
-#### Example `Dockerfile`
+### Example `Dockerfile`
 
 **Note**: you are required to use our base image for the time being.
 
-```
+```Dockerfile
 FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/wf-base:fbe8-main
 
 # Its easy to build binaries from source that you can later reference as
@@ -182,19 +183,19 @@ RUN python3 -m pip install --upgrade latch
 WORKDIR /root
 ```
 
-#### Example `version` File
+### Example `version` File
 
 You can use any versioning scheme that you would like, as long as each register
 has a unique version value. We recommend sticking with [semantic
 versioning](https://semver.org/).
 
-```
+```text
 v0.0.0
 ```
 
-#### Example `wf/__init__.py` File
+### Example `wf/__init__.py` File
 
-```
+```python
 import subprocess
 from pathlib import Path
 
@@ -295,13 +296,13 @@ def assemble_and_sort(read1: LatchFile, read2: LatchFile) -> LatchFile:
 ## What happens at registration?
 
 Now that we've defined our functions, we are ready to register our workflow with
-the [LatchBio](latch.bio) platform. This will give us:
+the [LatchBio](https://latch.bio) platform. This will give us:
 
-  * a no-code interface
-  * managed cloud infrastructure for workflow execution
-  * a dedicated API endpoint for programmatic execution
-  * hosted documentation
-  * parallelized CSV-to-batch execution
+* a no-code interface
+* managed cloud infrastructure for workflow execution
+* a dedicated API endpoint for programmatic execution
+* hosted documentation
+* parallelized CSV-to-batch execution
 
 To register, we type `latch register <directory_name>` into our terminal (where
 directory_name is the name of the directory holding our code, Dockerfile and

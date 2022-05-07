@@ -1,5 +1,6 @@
-Working with Files
-===
+# Working with Files
+
+---
 
 When working with bioinformatics workflows, we are often passing around large
 files or directories between our tasks. These files are usually located in
@@ -12,7 +13,7 @@ are copied to the task's machine at execution.
 
 Let's look at an example.
 
-```
+```python
 from pathlib import Path
 
 
@@ -49,16 +50,16 @@ def foo(fastq: LatchFile, output_dir: LatchDir) -> (LatchFile, LatchDir):
     return LatchFile("/root/foobar", "latch:///foobar.txt"), LatchDir(local_output_dir, output_dir.remote_path)
 ```
 
-### Local Paths and Remote Paths
+## Local Paths and Remote Paths
 
 In the majority of cases, we can just use a value annotated with `LatchFile` or
 `LatchDir` and expect it to yield a file handler pointing to a local file. This
 gives good synergy with `Path` or `open` as we've seen above.
 
 However, it is important to understand that these values _really_ have both a
-local and remote path associated with them. 
+local and remote path associated with them.
 
-```
+```python
 # latch/types/directory.py
 
     @property
@@ -79,9 +80,10 @@ file has been copied.  `remote_path` will be a remote object URL with `s3` or
 
 There are cases when we would want
 to access these `local_path` and `remote_path` attributes directly:
-  * Specifying the remote destination of a returned directory (eg. in the above return statement).
-  * Manually fetching additional files from s3 similar to a passed file's remote source.
-  * Using the Latch SDK to list other files similar to a passed file (eg. `latch ls latch:///foo`)
+
+* Specifying the remote destination of a returned directory (eg. in the above return statement).
+* Manually fetching additional files from s3 similar to a passed file's remote source.
+* Using the Latch SDK to list other files similar to a passed file (eg. `latch ls latch:///foo`)
 
 ### `latch:///` URLs
 
@@ -90,7 +92,7 @@ on the internet.
 
 A simplified representation of a URL string syntax can be denoted as:
 
-```
+```text
 scheme://<host>/<url-path>
 ```
 
@@ -103,7 +105,7 @@ the appropriate account.
 
 For instance, `latch:///foo.txt` might meant two entirely different things in
 the context of two different accounts. The resolution to retrieve the correct
-object occurs based on the user that executed the workflow, 
+object occurs based on the user that executed the workflow,
 
 Some examples of valid latch URLs referencing objects in a user's filesystem:
 
