@@ -13,7 +13,7 @@ infrastructure. Local execution should never be a substitute for testing
 workflow logic on the platform itself.
 
 However, the ability to quickly iterate and debug task logic locally is
-certainly useful for teasing out many types of bugs. Developers can easily 
+certainly useful for teasing out many types of bugs.
 
 Using a `if __name__ == "__main__":` clause is a useful way to tag local
 function calls with sample values. Running `python3 wf/__init__.py` will become
