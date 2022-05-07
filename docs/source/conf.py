@@ -21,7 +21,7 @@ project = "latch"
 copyright = "2022, LatchBio"
 
 # The full version, including alpha/beta/rc tags
-release = "0.0.1"
+release = "0.7.1"
 
 
 # -- General configuration ---------------------------------------------------
@@ -58,5 +58,5 @@ html_theme_options = {
     "repository_url": "https://github.com/latchbio/latch",
     "use_repository_button": True,
 }
-html_title = "the latch sdk"
+html_title = "The Latch SDK"
 html_logo = "_static/logo.png"

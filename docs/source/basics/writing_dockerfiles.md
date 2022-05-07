@@ -1,5 +1,6 @@
-Writing Dockerfiles
-===
+# Writing Dockerfiles
+
+---
 
 Dockerfiles allow you to define the computing environment that your task will
 execute in.
@@ -11,7 +12,7 @@ which will become a container that it will execute within at runtime.
 
 Here is an example of a Dockerfile used earlier:
 
-```
+```Dockerfile
 FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/wf-base:fbe8-main
 
 # Its easy to build binaries from source that you can later reference as
@@ -38,14 +39,13 @@ COPY wf /root/wf
 # correctly with latch.
 ARG tag
 ENV FLYTE_INTERNAL_IMAGE $tag
-RUN  sed -i 's/latch/wf/g' flytekit.config
+RUN sed -i 's/latch/wf/g' flytekit.config
 RUN python3 -m pip install --upgrade latch
 WORKDIR /root
 ```
 
 _Note that we must use the base image specified in the first line to configure
 libraries and settings for consistent task behavior._
-
 
 ## Limitations
 

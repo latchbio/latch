@@ -1,8 +1,9 @@
-Parameter Types
+# Parameter Types
+
 ---
 
 The Latch SDK supports first-class static typing. All input parameters and
-output values must be annotated with types in the function signature. 
+output values must be annotated with types in the function signature.
 
 These type annotations validate task values and guide construction of
 parameter-specific frontend components when your interface is generated at
@@ -12,10 +13,9 @@ registration.
 
 Below is an exhaustive list of supported types currently shipped with the SDK.
 
-
 ### Integers
 
-```
+```python
 @task
 def foo(
   a: int = 10
@@ -25,7 +25,7 @@ def foo(
 
 ### Floats
 
-```
+```python
 @task
 def foo(
   a: float = 10.0
@@ -35,7 +35,7 @@ def foo(
 
 ### Strings
 
-```
+```python
 @task
 def foo(
   a: str = "bio"
@@ -45,7 +45,7 @@ def foo(
 
 ### Files
 
-```
+```python
 @task
 def foo(
   a: LatchFile = LatchFile("/root/data.txt")
@@ -55,7 +55,7 @@ def foo(
 
 ### Directories
 
-```
+```python
 @task
 def foo(
   a: LatchDir = LatchDir("/root/test_data/")
@@ -65,7 +65,7 @@ def foo(
 
 ### Enums
 
-```
+```python
 from enum import Enum
 
 # You must define your Enum as a python class before using it as an annotation.
@@ -89,8 +89,7 @@ Along with the previous basic types, `Union` and `Optional` types from Python's
 
 Recall that `Optional[T] = Union[None, T]`.
 
-
-```
+```python
 from typing import Union, Optional
 
 
@@ -107,7 +106,7 @@ def foo(
 Finally, we currently support a single collection type which is `List[T]`, also
 provided by the `typing` module.
 
-```
+```python
 from typing import List, Optional
 
 @task
@@ -131,7 +130,7 @@ Here is the function header for Bactopia, a workflow available on Latch. To see
 how these inputs translate into a user interface, check out
 [Bactopia](https://console.latch.bio/se/bactopia) on Latch.
 
-```
+```python
 @large_task
 def bactopia_tsk(
     fastq_one: Optional[FlyteFile],
@@ -158,19 +157,19 @@ def bactopia_tsk(
     min_contig_length: int = 500,
     amr_plus: bool = False,
 ) -> FlyteDirectory:
-	 # example opening a Flytefile
-	 with open(Path(fastq_one), "w") as f:
-	 	lines = f.readlines() 
-	 	
-    ... Logic Here ...
+    # example opening a Flytefile
+    with open(Path(fastq_one), "w") as f:
+        lines = f.readlines() 
     
-    local_output_dir = Path("/root/outputs")
+        # ... Logic Here ...
+    
+        local_output_dir = Path("/root/outputs")
   
-	# example returning Flyte directory
-    return FlyteDirectory(
-        str(local_output_dir.resolve()),
-        remote_directory=_fmt_dir(output_dir.remote_source),
-    )
+        # example returning Flyte directory
+        return FlyteDirectory(
+            str(local_output_dir.resolve()),
+            remote_directory=_fmt_dir(output_dir.remote_source),
+        )
 
 
 @workflow
