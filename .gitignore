@@ -3,6 +3,8 @@ build/
 dist/
 latch.egg-info
 .hypothesis
+**/.DS_Store
+**/.pytest_cache
 
 __pycache__
 
