@@ -48,4 +48,4 @@ docker_image_full := docker_registry + "/" + docker_image_name + ":" + docker_im
 @docker-push:
   docker push {{docker_image_full}}
 
-@dbnp: docker-build docker-push
+@dbnp: build-docs docker-build docker-push
