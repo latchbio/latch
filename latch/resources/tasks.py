@@ -79,8 +79,8 @@ def _get_large_pod() -> Pod:
 
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
-        requests={"cpu": "46", "memory": "170"},
-        limits={"cpu": "48", "memory": "192"},
+        requests={"cpu": "46", "memory": "170Gi"},
+        limits={"cpu": "48", "memory": "192Gi"},
     )
     primary_container.resources = resources
 
@@ -209,6 +209,33 @@ on it.
    * - Limit
      - 48
      - 196Gi
+     - 0
+     - True
+"""
+
+medium_task = task(task_config=_get_medium_pod())
+"""This task will get scheduled on a medium node.
+
+This node will be dedicated to the task. No other tasks will be allowed to run
+on it.
+
+.. list-table:: Title
+   :widths: 20 20 20 20 20
+   :header-rows: 1
+
+   * - Type
+     - CPU
+     - RAM
+     - GPU
+     - On-Demand
+   * - Request
+     - 8
+     - 32Gi
+     - 0
+     - True
+   * - Limit
+     - 12
+     - 64Gi
      - 0
      - True
 """
