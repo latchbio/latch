@@ -198,7 +198,7 @@ def _gen__init__(pkg_name: str):
 def _gen_dockerfile():
     return textwrap.dedent(
         """
-        FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:02ab-main
+        FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/wf-base:fbe8-main
 
         # Its easy to build binaries from source that you can later reference as
         # subprocesses within your workflow.
@@ -221,6 +221,7 @@ def _gen_dockerfile():
         # The following lines are needed to ensure your build environement works
         # correctly with latch.
         COPY wf /root/wf
+        RUN  sed -i 's/latch/wf/g' flytekit.config
         ARG tag
         ENV FLYTE_INTERNAL_IMAGE $tag
         RUN python3 -m pip install --upgrade latch
