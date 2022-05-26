@@ -23,18 +23,33 @@ def local_execute(pkg_root: Path):
 
     ctx = RegisterCtx(pkg_root)
 
+    dockerfile = ctx.pkg_root.joinpath("Dockerfile")
+    wf_pkg = ctx.pkg_root.joinpath("wf")
+
     try:
         print("\tSpinning up local container...")
-        _exec_cmd = ["python3", "/root/wf/__init__.py"]
+        print("\tNOTE ~ workflow code is bound as a mount.")
+        print("\tYou must register your workflow to persist changes.")
+
         container = ctx.dkr_client.create_container(
             ctx.full_image_tagged,
-            command=_exec_cmd,
+            command=["python3", "/root/wf/__init__.py"],
+            volumes=[str(wf_pkg)],
+            host_config=ctx.dkr_client.create_host_config(
+                binds={
+                    str(wf_pkg): {
+                        "bind": "/root/wf",
+                        "mode": "rw",
+                    },
+                }
+            ),
         )
+
         container_id = container.get("Id")
         ctx.dkr_client.start(container_id)
-        logs = ctx.dkr_client.logs(container_id, stream=True)
 
-        print("\tStreaming stdout from registered container running locally")
+        logs = ctx.dkr_client.logs(container_id, stream=True)
+        print("\n\tStreaming stdout from registered container running locally")
         for x in logs:
             o = x.decode("utf-8")
             print(f"\t\t{o}")
@@ -43,11 +58,6 @@ def local_execute(pkg_root: Path):
             "\tUnable to find a local image associated with the local"
             " workflow version."
         )
-        _manual_build(ctx)
+        build_logs = ctx.dkr_client.logs(container_id, stream=True)
+        _print_build_logs(build_logs, ctx.full_image_tagged)
         local_execute(pkg_root)
-
-
-def _manual_build(ctx: RegisterCtx):
-    dockerfile = ctx.pkg_root.joinpath("Dockerfile")
-    build_logs = build_image(ctx, dockerfile)
-    _print_build_logs(build_logs, ctx.full_image_tagged)

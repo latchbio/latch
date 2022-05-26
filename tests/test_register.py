@@ -44,7 +44,7 @@ def _validate_stream(stream, pkg_name, version):
     assert version in last_line
 
 
-def _setup_and_build_wo_dockerfile(jwt, pkg_name, requirements=None):
+def _setup_and_build_wo_dockerfile(jwt, pkg_name):
 
     with tempfile.TemporaryDirectory() as tmpdir:
 
@@ -59,7 +59,7 @@ def _setup_and_build_wo_dockerfile(jwt, pkg_name, requirements=None):
             f.write(_VERSION_0)
 
         ctx = RegisterCtx(pkg_root=pkg_dir, token=jwt)
-        stream = build_image(ctx, requirements=requirements)
+        stream = build_image(ctx)
         _validate_stream(stream, pkg_name, _VERSION_0)
         return ctx
 
