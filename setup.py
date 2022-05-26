@@ -14,7 +14,7 @@ if CURRENT_PYTHON < MIN_PYTHON_VERSION:
 
 setup(
     name="latch",
-    version="0.9.1",
+    version="0.9.2",
     author_email="kenny@latch.bio",
     description="latch sdk",
     packages=find_packages(),
@@ -31,7 +31,7 @@ setup(
         "docker>=5.0",
         "boto3>=1.2",
         "tqdm>=4.63.0",
-        "flaightkit==0.3.0",
+        "flaightkit==0.4.0",
         "flaightkitplugins-pod==0.1.0",
         "typing-extensions==4.0.1",
     ],
