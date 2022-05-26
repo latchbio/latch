@@ -19,6 +19,15 @@ Using a `if __name__ == "__main__":` clause is a useful way to tag local
 function calls with sample values. Running `python3 wf/__init__.py` will become
 an entrypoint for quick debugging.
 
+To run the same entrypoint _within_ the latest registered container, one can run
+`latch local-execute <PATH_TO_WORKFLOW_DIR>`. This gives the same confidence in
+reproducible behavior one would usually receive post registration but with the
+benefits of fast local development. Note that workflow code is
+mounted inside the latest container build so that rebuilds are not consistently
+made with rapid changes.
+
+More information [here](https://docs.latch.bio/subcommands.html#latch-local-execute).
+
 
 Here is an example of a minimal `wf/__init__.py` file that demonstrates local
 execution:
