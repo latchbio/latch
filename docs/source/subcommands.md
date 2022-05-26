@@ -81,6 +81,31 @@ $ latch execute [--version=VERSION] PARAM_FILE
 
 This command allows a user to execute the workflow and parameters described in `PARAM_FILE`. If `--version` is provided, then that particular version will be executed. If it isn't provided, then it will default to the latest version. See `latch get-params` for more info on parameter files.
 
+## `latch local-execute`
+
+```shell-session
+$ latch local-execute PATH_TO_WORKFLOW_DIRECTORY
+```
+
+Execute a workflow within the latest registered container. Run from the
+outside the pkg root, eg. `latch local-execute myworkflow` where
+`myworkflow` is the directory containing your workflow package.
+
+This is the same as running `$ python3 wf/__init__.py` within the latest
+registered container. Workflow code is overlayed on the latest registered
+container as a volume available at container runtime, meaning that changes to
+python code do not require full Docker rebuilds. This is ideal for rapid local
+iteration. Just ensure that code is re-registered (via `latch register x`)
+when changes need to be persisted.
+
+As an aside, we assume the workflow file contains a snippet conducive to local
+execution such as:
+
+```python
+    if __name__ == "__main___":
+       my_workflow(a="foo", reads=LatchFile("/users/von/neumann/machine.txt")
+```
+
 ## `latch get-wf`
 
 ```shell-session

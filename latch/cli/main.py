@@ -177,7 +177,7 @@ def local_execute(pkg_root: Path):
     Assuming this file contains a snippet conducive to local execution such as:
 
         if __name__ == "__main___":
-           my_workflow(a="foo", reads=LatchFile("/Users/Von/Neuman/machine.txt")
+           my_workflow(a="foo", reads=LatchFile("/users/von/neuman/machine.txt")
 
     Visit https://docs.latch.bio/basics/local_development.html to read more
     about local development.
