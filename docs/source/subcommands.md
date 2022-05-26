@@ -40,12 +40,6 @@ $ latch register PATH_TO_WORKFLOW_DIRECTORY
 
 The first argument specifies the local path in which to look for workflow objects. Inside the local path should be a single directory called `wf` containing `__init__.py`, any helper python files, a `Dockerfile`, and a `version` files. See [here](basics/what_is_a_workflow.html#workflow-code-structure) for more info.
 
-### Options
-
-`--dockerfile` -- used as the execution environment for your workflow (see [writing a workflow](basics/what_is_a_workflow.md) for more details).
-
-`--requirements` -- pip installs these requirements into your workflow execution environment if dockerfile provided or the default environment if no dockerfile provided.
-
 ## `latch get-params`
 
 ```shell-session
