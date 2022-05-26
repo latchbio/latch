@@ -63,9 +63,13 @@ def _setup_and_build_w_dockerfile(jwt, pkg_name):
             df.write(
                 "\n".join(
                     [
-                        "FROM busybox",
-                        "COPY wf /src/wf",
-                        "WORKDIR /src",
+                        "FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/wf-base:fbe8-main",
+                        "COPY wf /root/wf",
+                        "RUN  sed -i 's/latch/wf/g' flytekit.config",
+                        "ARG tag",
+                        "ENV FLYTE_INTERNAL_IMAGE $tag",
+                        "RUN python3 -m pip install --upgrade latch",
+                        "WORKDIR /root",
                     ]
                 )
             )
@@ -124,6 +128,5 @@ def test_pkg_register(test_account_jwt):
 
         stdout = resp["stdout"]
         assert "Success" in stdout
-        assert pkg in stdout
 
     _setup_register("foo")
