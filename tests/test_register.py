@@ -44,7 +44,7 @@ def _validate_stream(stream, pkg_name, version):
     assert version in last_line
 
 
-def _setup_and_build_wo_dockerfile(jwt, pkg_name):
+def _setup_and_build_w_dockerfile(jwt, pkg_name):
 
     with tempfile.TemporaryDirectory() as tmpdir:
 
@@ -58,21 +58,32 @@ def _setup_and_build_wo_dockerfile(jwt, pkg_name):
         with open(pkg_dir.joinpath("version"), "w") as f:
             f.write(_VERSION_0)
 
+        dockerfile = Path(pkg_dir).joinpath("Dockerfile")
+        with open(dockerfile, "w") as df:
+            df.write(
+                "\n".join(
+                    [
+                        "FROM busybox",
+                        "COPY wf /src/wf",
+                        "WORKDIR /src",
+                    ]
+                )
+            )
+
         ctx = RegisterCtx(pkg_root=pkg_dir, token=jwt)
-        stream = build_image(ctx)
+        stream = build_image(ctx, dockerfile=dockerfile)
         _validate_stream(stream, pkg_name, _VERSION_0)
         return ctx
 
 
-def testbuild_image_wo_dockerfile(test_account_jwt):
+def test_build_image_w_dockerfile(test_account_jwt):
 
-    _setup_and_build_wo_dockerfile(test_account_jwt, "foo")
-    _setup_and_build_wo_dockerfile(test_account_jwt, "foo-bar")
+    _setup_and_build_w_dockerfile(test_account_jwt, "foo")
 
 
 def test_serialize_pkg(test_account_jwt):
     def _setup_serialize(pkg):
-        ctx = _setup_and_build_wo_dockerfile(test_account_jwt, pkg)
+        ctx = _setup_and_build_w_dockerfile(test_account_jwt, pkg)
         with tempfile.TemporaryDirectory() as tmpdir:
             logs = _serialize_pkg(ctx, tmpdir)
             # Log order is shuffled
@@ -81,24 +92,22 @@ def test_serialize_pkg(test_account_jwt):
         return ctx
 
     _setup_serialize("foo")
-    _setup_serialize("foo-bar")
 
 
 def test_image_upload(test_account_jwt):
     def _setup_upload(pkg):
-        ctx = _setup_and_build_wo_dockerfile(test_account_jwt, pkg)
+        ctx = _setup_and_build_w_dockerfile(test_account_jwt, pkg)
         with tempfile.TemporaryDirectory() as tmpdir:
             _serialize_pkg(ctx, tmpdir)
             logs = _upload_pkg_image(ctx)
             assert list(logs)[-1]["aux"]["Size"] > 0
 
     _setup_upload("foo")
-    _setup_upload("foo-bar")
 
 
 def test_pkg_register(test_account_jwt):
     def _setup_register(pkg):
-        ctx = _setup_and_build_wo_dockerfile(test_account_jwt, pkg)
+        ctx = _setup_and_build_w_dockerfile(test_account_jwt, pkg)
 
         # with tempfile.TemporaryDirectory() as tmpdir:
 
@@ -118,4 +127,3 @@ def test_pkg_register(test_account_jwt):
         assert pkg in stdout
 
     _setup_register("foo")
-    _setup_register("foo-bar")
