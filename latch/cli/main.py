@@ -177,7 +177,7 @@ def ls(remote_directories: Union[None, List[str]]):
 
 @click.command("local-execute")
 @click.argument("pkg_root", nargs=1, type=click.Path(exists=True))
-def execute(pkg_root: Path):
+def local_execute(pkg_root: Path):
     """Execute a workflow within the latest registered container. Run from the
     outside the pkg root, eg. `latch local-execute myworkflow` where
     `myworkflow` is the directory containing your workflow package.
@@ -346,6 +346,7 @@ main.add_command(login)
 main.add_command(init)
 main.add_command(cp)
 main.add_command(ls)
+main.add_command(local_execute)
 main.add_command(execute)
 main.add_command(get_wf)
 main.add_command(get_params)
