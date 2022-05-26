@@ -10,6 +10,7 @@ from latch.services.execute import execute
 from latch.services.get import get_wf
 from latch.services.get_params import get_params
 from latch.services.init import init
+from latch.services.local_execute import local_execute
 from latch.services.login import login
 from latch.services.ls import ls
 from latch.services.mkdir import mkdir
