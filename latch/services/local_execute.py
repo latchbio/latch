@@ -2,9 +2,7 @@
 
 from pathlib import Path
 
-import docker
-
-from latch.services.register import RegisterCtx, build_image
+from latch.services.register import RegisterCtx, _print_build_logs, build_image
 
 
 def local_execute(pkg_root: Path):
@@ -47,18 +45,6 @@ def local_execute(pkg_root: Path):
         )
         _manual_build(ctx)
         local_execute(pkg_root)
-
-
-def _print_build_logs(build_logs, image):
-    print(f"\tBuilding Docker image for {image}")
-    for x in build_logs:
-        line = x.get("stream")
-        error = x.get("error")
-        if error is not None:
-            print(f"\t\t{x}")
-            raise OSError(f"Error when building image ~ {x}")
-        elif line is not None:
-            print(f"\t\t{line}", end="")
 
 
 def _manual_build(ctx: RegisterCtx):
