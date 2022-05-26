@@ -72,8 +72,6 @@ def _print_reg_resp(resp, image):
 
 def register(
     pkg_root: str,
-    dockerfile: Union[str, None] = None,
-    requirements: Union[str, None] = None,
     remote: Union[str, None] = None,
 ) -> RegisterOutput:
     """Registers a workflow, defined as python code, with Latch.
@@ -117,10 +115,6 @@ def register(
             However, be warned, this Dockerfile will be used *as is* - files
             must be copied correctly and shell variables must be set to ensure
             correct execution. See examples (TODO) for guidance.
-        requirements: An optional valid path pointing to `requirements.txt`
-            file containing a list of python libraries in the format produced
-            by `pip freeze` to install within the container that the workflow
-            will execute.
 
     Example: ::
 
@@ -142,26 +136,8 @@ def register(
     ctx.remote = remote
     print(f"Initializing registration for {pkg_root}")
 
-    if dockerfile is not None:
-        dockerfile = Path(dockerfile).resolve()
-        if not dockerfile.exists():
-            raise OSError(f"Provided Dockerfile {dockerfile} does not exist.")
-
-    if requirements is not None:
-        if dockerfile is not None:
-            raise ValueError(
-                "Cannot provide both a dockerfile -"
-                f" {str(dockerfile)} and requirements file {requirements}"
-            )
-        requirements = Path(requirements).resolve()
-        if not requirements.exists():
-            raise OSError(f"Provided requirements file {requirements} does not exist.")
-
-    # TODO: kenny, retire logic for automatic container construction
-    if dockerfile is None:
-        dockerfile = ctx.pkg_root.joinpath("Dockerfile")
-
-    build_logs = _build_image(ctx, dockerfile, requirements)
+    dockerfile = ctx.pkg_root.joinpath("Dockerfile")
+    build_logs = build_image(ctx, dockerfile)
     _print_build_logs(build_logs, ctx.image_tagged)
 
     with tempfile.TemporaryDirectory() as td:
@@ -220,113 +196,19 @@ def _login(ctx: RegisterCtx):
     )
 
 
-def _build_image(
+def build_image(
     ctx: RegisterCtx,
-    dockerfile: Union[None, Path] = None,
-    requirements: Union[None, Path] = None,
+    dockerfile: Path,
 ) -> List[str]:
 
-    if dockerfile is not None:
-        _login(ctx)
-        build_logs = ctx.dkr_client.build(
-            path=str(dockerfile.parent),
-            buildargs={"tag": ctx.full_image_tagged},
-            tag=ctx.full_image_tagged,
-            decode=True,
-        )
-        return build_logs
-
-    # Contruct tarball holding docker build context
-    # We want to construct a custom context that only has package files + our
-    # dockerfile object injected directly from memory.
-    def _build_file_list(root: str):
-        files = []
-        for dirname, dirnames, fnames in os.walk(root):
-            for filename in fnames + dirnames:
-                longpath = os.path.join(dirname, filename)
-                files.append(longpath.replace(root, "", 1).lstrip("/"))
-        return files
-
-    with tempfile.NamedTemporaryFile() as f:
-        with tarfile.open(mode="w", fileobj=f) as t:
-
-            # TODO: docker build context is from the perspective of one
-            # directory up.
-            for path in _build_file_list(str(ctx.pkg_root.parent)):
-                full_path = Path(ctx.pkg_root.parent).resolve().joinpath(path)
-                i = t.gettarinfo(full_path, arcname=path)
-                if i.isfile():
-                    try:
-                        with open(full_path, "rb") as fp:
-                            t.addfile(i, fp)
-                    except OSError as e:
-                        raise OSError(
-                            f"Can not read file in context: {full_path}"
-                        ) from e
-                else:
-                    # Directories, FIFOs, symlinks don't need to be read.
-                    t.addfile(i, None)
-
-            fk_config_file = textwrap.dedent(
-                f"""
-                    [sdk]
-                    workflow_packages={ctx.pkg_root.name}
-                    python_venv=flytekit_venv
-                    """
-            )
-            fk_config_file = BytesIO(fk_config_file.encode("utf-8"))
-            fcfinfo = tarfile.TarInfo("flytekit.config")
-            fcfinfo.size = len(fk_config_file.getvalue())
-            fk_config_file.seek(0)
-            t.addfile(fcfinfo, fk_config_file)
-
-            if requirements is not None:
-
-                requirements_cmds = textwrap.dedent(
-                    """
-                            COPY requirements.txt /root
-                            RUN python3 -m pip install -r requirements.txt
-                        """
-                )
-                with open(requirements) as r:
-                    requirements = BytesIO(r.read().encode("utf-8"))
-                rinfo = tarfile.TarInfo("requirements.txt")
-                rinfo.size = len(requirements.getvalue())
-                requirements.seek(0)
-                t.addfile(rinfo, requirements)
-            else:
-                requirements_cmds = ""
-
-            dockerfile = textwrap.dedent(
-                f"""
-                FROM {ctx.dkr_repo}/wf-base:fbe8-main
-
-                COPY flytekit.config /root
-                COPY {ctx.pkg_root.name} /root/{ctx.pkg_root.name}
-                WORKDIR /root
-                RUN python3 -m pip install --upgrade latch
-
-                {requirements_cmds}
-
-                ARG tag
-                ENV FLYTE_INTERNAL_IMAGE $tag
-                """
-            )
-            dockerfile = BytesIO(dockerfile.encode("utf-8"))
-            dfinfo = tarfile.TarInfo("Dockerfile")
-            dfinfo.size = len(dockerfile.getvalue())
-            dockerfile.seek(0)
-            t.addfile(dfinfo, dockerfile)
-            f.seek(0)
-
-            _login(ctx)
-            return ctx.dkr_client.build(
-                fileobj=f,
-                custom_context=True,
-                buildargs={"tag": ctx.full_image_tagged},
-                tag=ctx.full_image_tagged,
-                decode=True,
-            )
+    _login(ctx)
+    build_logs = ctx.dkr_client.build(
+        path=str(dockerfile.parent),
+        buildargs={"tag": ctx.full_image_tagged},
+        tag=ctx.full_image_tagged,
+        decode=True,
+    )
+    return build_logs
 
 
 def _serialize_pkg(ctx: RegisterCtx, serialize_dir: Path) -> List[str]:
