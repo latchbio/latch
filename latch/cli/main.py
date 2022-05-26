@@ -32,24 +32,12 @@ def main():
 @click.command("register")
 @click.argument("pkg_root", nargs=1, type=click.Path(exists=True))
 @click.option(
-    "--dockerfile",
-    default=None,
-    help="An explicit Dockerfile to define your workflow's execution environment",
-)
-@click.option(
-    "--pkg_name",
-    default=None,
-    help="The name of your workflow package (the folder with __init__.py). This is a mandatory option if --dockerfile is provided",
-)
-@click.option(
     "--remote",
     default=None,
     help="The ssh url of a remote git repository where registered workflow code will reside.",
 )
 def register(
     pkg_root: str,
-    dockerfile: Union[str, None],
-    pkg_name: Union[str, None],
     remote: Union[str, None],
 ):
     """Register local workflow code to Latch.
@@ -57,7 +45,7 @@ def register(
     Visit docs.latch.bio to learn more.
     """
     try:
-        _register(pkg_root, dockerfile, pkg_name, remote)
+        _register(pkg_root, remote)
         click.secho(
             "Successfully registered workflow. View @ console.latch.bio.", fg="green"
         )
