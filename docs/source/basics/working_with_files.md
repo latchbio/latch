@@ -85,6 +85,37 @@ to access these `local_path` and `remote_path` attributes directly:
 * Manually fetching additional files from s3 similar to a passed file's remote source.
 * Using the Latch SDK to list other files similar to a passed file (eg. `latch ls latch:///foo`)
 
+## Using Globs to Move Groups of Files
+
+Often times logic is needed to move groups of files together based on a shared
+pattern. For instance, you may wish to return all files that end with a
+`fastq.gz` extension after a
+[trimming](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-016-1069-7#:~:text=Trimming%20of%20adapter%20sequences%20from,previously%20published%20adapter%20trimming%20tools.)
+task has been run.
+
+To do this in the SDK, you can leverage the `file_glob` function to construct
+lists of `LachFile`s defined by a pattern.
+
+The class of allowed patterns are defined as
+[globs](https://en.wikipedia.org/wiki/Glob_(programming)). It is likely you've
+already used globs in the terminal by using wildcard characters in common
+commands, eg. `ls *.txt`.
+
+The second argument must be a valid latch URL pointing to a directory. This will
+be the remote location of returned `LatchFile` constructed with this utility.
+
+In this example, all files ending with `.fastq.gz` in the working directory of
+the task will be returned to the `latch:///fastqc_outputs` directory:
+
+```
+@small_task
+def task():
+
+    ...
+
+    return file_glob("*.fastq.gz", "latch:///fastqc_outputs")
+```
+
 ### `latch:///` URLs
 
 Recall that URLs (Uniform Resource Locators) describe the location of an object
