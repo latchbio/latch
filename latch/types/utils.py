@@ -1,27 +1,31 @@
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 from urllib.parse import urlparse
 
 from latch.types import LatchFile
 
 
-def file_glob(pattern: str, remote_directory: str) -> List[LatchFile]:
+def file_glob(
+    pattern: str, remote_directory: str, target_dir: Optional[Path] = None
+) -> List[LatchFile]:
     """Constructs a list of LatchFiles from a glob pattern.
 
-    Convenient utility for passing collections of files between taks. See
+    Convenient utility for passing collections of files between tasks. See
     [nextflow's channels](https://www.nextflow.io/docs/latest/channel.html) or
     [snakemake's wildcards](https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#wildcards).
     for similar functionality in other orchestration tools.
 
     The remote location of each constructed LatchFile will be consructed by
     appending the file name returned by the pattern to the directory
-    represented by the `remote_path`. Ensure that a valid direc
+    represented by the `remote_directory`.
 
     Args:
         pattern: A glob pattern to match a set of files, eg. '*.py'. Will
             resolve paths with respect to the working directory of the caller.
         remote_directory: A valid latch URL pointing to a directory, eg.
             latch:///foo. This _must_ be a directory and not a file.
+        target_dir: An optional Path object to define an alternate working
+            directory for path resolution
 
     Returns:
         A list of instantiated LatchFile objects.
@@ -38,7 +42,13 @@ def file_glob(pattern: str, remote_directory: str) -> List[LatchFile]:
     """
 
     _validate_latch_url(remote_directory)
-    matched = sorted(Path(".").glob(pattern))
+
+    if target_dir is None:
+        wd = Path(".")
+    else:
+        wd = target_dir
+    matched = sorted(wd.glob(pattern))
+
     return [LatchFile(file, remote_directory + file.name) for file in matched]
 
 
