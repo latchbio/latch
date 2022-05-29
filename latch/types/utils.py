@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 from latch.types import LatchFile
 
 
-def file_glob(pattern: str, remote_path: str) -> List[LatchFile]:
+def file_glob(pattern: str, remote_directory: str) -> List[LatchFile]:
     """Constructs a list of LatchFiles from a glob pattern.
 
     Convenient utility for passing collections of files between taks. See
@@ -13,10 +13,15 @@ def file_glob(pattern: str, remote_path: str) -> List[LatchFile]:
     [snakemake's wildcards](https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#wildcards).
     for similar functionality in other orchestration tools.
 
+    The remote location of each constructed LatchFile will be consructed by
+    appending the file name returned by the pattern to the directory
+    represented by the `remote_path`. Ensure that a valid direc
+
     Args:
         pattern: A glob pattern to match a set of files, eg. '*.py'. Will
             resolve paths with respect to the working directory of the caller.
-        remote_path: A valid latch URL, eg. latch:///foo.txt.
+        remote_directory: A valid latch URL pointing to a directory, eg.
+            latch:///foo. This _must_ be a directory and not a file.
 
     Returns:
         A list of instantiated LatchFile objects.
@@ -32,9 +37,9 @@ def file_glob(pattern: str, remote_path: str) -> List[LatchFile]:
 
     """
 
-    _validate_latch_url(remote_path)
+    _validate_latch_url(remote_directory)
     matched = sorted(Path(".").glob(pattern))
-    return [LatchFile(file, remote_path + file.name) for file in matched]
+    return [LatchFile(file, remote_directory + file.name) for file in matched]
 
 
 class InvalidLatchURL(Exception):
