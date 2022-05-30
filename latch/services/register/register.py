@@ -1,6 +1,7 @@
 """Service to register workflows."""
 
 import base64
+import contextlib
 import os
 import tarfile
 import tempfile
@@ -246,41 +247,17 @@ def _upload_pkg_image(ctx: RegisterCtx) -> List[str]:
 def _register_serialized_pkg(ctx: RegisterCtx, serialize_dir: Path) -> dict:
     headers = {"Authorization": f"Bearer {ctx.token}"}
 
-    serialize_files = {"version": ctx.version.encode("utf-8")}
-    for dirname, dirnames, fnames in os.walk(serialize_dir):
-        for filename in fnames + dirnames:
-            file = Path(dirname).resolve().joinpath(filename)
-            serialize_files[file.name] = open(file, "rb")
+    with contextlib.ExitStack() as stack:
+        serialize_files = {"version": ctx.version.encode("utf-8")}
+        for dirname, dirnames, fnames in os.walk(serialize_dir):
+            for filename in fnames + dirnames:
+                file = Path(dirname).resolve().joinpath(filename)
+                serialize_files[file.name] = stack.enter_context(open(file, "rb"))
 
-    response = requests.post(
-        ctx.latch_register_api_url,
-        headers=headers,
-        files=serialize_files,
-    )
-
-    commit_files = {".workflow_name": ctx.pkg_root.name.encode("utf-8")}
-
-    if not (ctx.remote is None):
-        commit_files[".remote_name"] = ctx.remote.encode("utf-8")
-
-    for dirname, dirnames, fnames in os.walk(ctx.pkg_root):
-        for filename in fnames:
-            file = Path(dirname).resolve().joinpath(filename)
-            # ignore data folder
-            if ctx.pkg_root.joinpath("data") in file.parents:
-                continue
-            key = str(file.relative_to(ctx.pkg_root))
-            commit_files[key] = open(file, "rb")
-
-    commit_response = requests.post(
-        url=ctx.latch_commit_api_url,
-        headers=headers,
-        files=commit_files,
-    )
-
-    if not commit_response.json()["success"]:
-        raise ValueError(
-            "Issue committing: please make sure the specified remote exists, and that Latch can push to it."
+        response = requests.post(
+            ctx.latch_register_api_url,
+            headers=headers,
+            files=serialize_files,
         )
 
     return response.json()
