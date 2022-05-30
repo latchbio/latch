@@ -152,7 +152,6 @@ def register(
 
         reg_resp = _register_serialized_pkg(ctx, td_path)
         _print_reg_resp(reg_resp, ctx.image_tagged)
-        print(len(list(os.walk(td))))
 
     return RegisterOutput(
         build_logs=build_logs,
