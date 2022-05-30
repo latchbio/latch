@@ -75,7 +75,7 @@ class LatchFile(FlyteFile):
     @property
     def local_path(self) -> str:
         """File path local to the environment executing the task."""
-        return self._path
+        return self.path
 
     @property
     def remote_path(self) -> Optional[str]:

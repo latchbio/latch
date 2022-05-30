@@ -3,7 +3,6 @@ from typing import Optional, Type, Union
 
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext
-
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.models.literals import Literal
 from flytekit.types.directory.types import (
@@ -75,7 +74,7 @@ class LatchDir(FlyteDirectory):
     @property
     def local_path(self) -> str:
         """File path local to the environment executing the task."""
-        return self._path
+        return self.path
 
     @property
     def remote_path(self) -> Optional[str]:
