@@ -206,7 +206,7 @@ def test_execute(test_account_jwt):
     _cmd = ["latch", "execute", "foo.py"]
     _run_and_verify(
         _cmd,
-        "Successfully launched workflow named wf.assemble_and_sort with version latest.",
+        "Successfully launched workflow named wf.__init__.assemble_and_sort with version latest.",
     )
 
 
