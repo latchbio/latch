@@ -6,11 +6,9 @@ try:
 except ImportError:
     from typing_extensions import Annotated
 
+from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
-
-# Note this only exists in flaightkit fork.
-from flytekit.core.with_metadata import FlyteMetadata
 from flytekit.models.literals import Literal
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
 
@@ -90,7 +88,7 @@ class LatchFile(FlyteFile):
 
 LatchOutputFile = Annotated[
     LatchFile,
-    FlyteMetadata(
+    FlyteAnnotation(
         {"output": True},
     ),
 ]
