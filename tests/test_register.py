@@ -25,8 +25,7 @@ from latch.services.register.register import (
 
 from .fixtures import test_account_jwt
 
-_VERSION_0 = "0.0.0-dev"
-_VERSION_1 = "0.0.1"
+_VERSION_0 = "obama"
 
 
 def _validate_stream(stream, pkg_name, version):
