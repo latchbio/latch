@@ -62,9 +62,8 @@ def _setup_and_build_w_dockerfile(jwt, pkg_name):
             df.write(
                 "\n".join(
                     [
-                        "FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/wf-base:fbe8-main",
+                        "FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:9a7d-main",
                         "COPY wf /root/wf",
-                        "RUN  sed -i 's/latch/wf/g' flytekit.config",
                         "ARG tag",
                         "ENV FLYTE_INTERNAL_IMAGE $tag",
                         "RUN python3 -m pip install --upgrade latch",
