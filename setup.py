@@ -31,7 +31,7 @@ setup(
         "docker>=5.0",
         "boto3>=1.2",
         "tqdm>=4.63.0",
-        "lytekit==1.1.0",
+        "lytekit==0.1.1",
         "lytekitplugins-pods==0.1.0",
         "typing-extensions==0.1.0",
     ],
