@@ -195,7 +195,7 @@ def test_execute(test_account_jwt):
             from latch.types import LatchFile
 
             params = {
-                "_name": "wf.assemble_and_sort",
+                "_name": "wf.__init__.assemble_and_sort",
                 "read1": LatchFile("latch:///read1"),
                 "read2": LatchFile("latch:///read2"),
             }
@@ -213,7 +213,7 @@ def test_execute(test_account_jwt):
 def test_get_wf(test_account_jwt):
 
     _cmd = ["latch", "get-wf"]
-    _run_and_verify(_cmd, "latch.crispresso2_wf")
+    _run_and_verify(_cmd, "wf.__init__.crispresso2_wf")
 
-    _cmd = ["latch", "get-wf", "--name", "latch.crispresso2_wf"]
+    _cmd = ["latch", "get-wf", "--name", "wf.__init__.crispresso2_wf"]
     _run_and_verify(_cmd, "v0.1.11")
