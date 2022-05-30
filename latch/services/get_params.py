@@ -121,16 +121,16 @@ def get_params(wf_name: Union[None, str], wf_version: Union[None, str] = None):
                     _enum_literal += f"\n    {variant} = '{variant}'"
                 enum_literals.append(_enum_literal)
 
-        # Parse collection, sum types for potential imports and dependent
+        # Parse collection, union types for potential imports and dependent
         # objects, eg. enum class construction.
         if get_origin(python_type) is not None:
             if get_origin(python_type) is list:
                 _check_and_import(get_args(python_type)[0])
                 _handle_enum(get_args(python_type)[0])
             elif get_origin(python_type) is typing.Union:
-                for summand in get_args(python_type):
-                    _check_and_import(summand)
-                    _handle_enum(summand)
+                for variant in get_args(python_type):
+                    _check_and_import(variant)
+                    _handle_enum(variant)
         else:
             _check_and_import(python_type)
             _handle_enum(python_type)
@@ -172,14 +172,14 @@ def _get_code_literal(python_val: any, python_type: typing.T):
         return python_val, f"<enum '{name}'>"
 
     if get_origin(python_type) is typing.Union:
-        summands = get_args(python_type)
+        variants = get_args(python_type)
         type_repr = "typing.Union["
-        for i, summand in enumerate(summands):
-            if i < len(summands) - 1:
+        for i, variant in enumerate(variants):
+            if i < len(variants) - 1:
                 delimiter = ", "
             else:
                 delimiter = ""
-            type_repr += f"{_get_code_literal(python_val, summand)[1]}{delimiter}"
+            type_repr += f"{_get_code_literal(python_val, variant)[1]}{delimiter}"
         type_repr += "]"
         return python_val, type_repr
 
@@ -282,20 +282,21 @@ def _guess_python_type(literal: LiteralType, param_name: str):
         else:
             return LatchDir
 
-    if literal.sum is not None:
+    if literal.union_type is not None:
 
-        summand_types = [
-            _guess_python_type(summand, param_name) for summand in literal.sum.summands
+        variant_types = [
+            _guess_python_type(variant, param_name)
+            for variant in literal.union_type.variants
         ]
 
         # Trying to directly construct set of types will throw error if list is
         # included as 'list' is not hashable.
-        unique_summands = []
-        for t in summand_types:
-            if t not in unique_summands:
-                unique_summands.append(t)
+        unique_variants = []
+        for t in variant_types:
+            if t not in unique_variants:
+                unique_variants.append(t)
 
-        return typing.Union[tuple(summand_types)]
+        return typing.Union[tuple(variant_types)]
 
     if literal.enum_type is not None:
 
