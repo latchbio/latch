@@ -12,7 +12,7 @@ from latch.services.execute import execute
 simple_plan = """from latch.types import LatchFile
 
 params = {
-    "_name": "wf.assemble_and_sort",
+    "_name": "wf.__init__.assemble_and_sort",
     "read1": LatchFile("latch:///read1"),
     "read2": LatchFile("latch:///read2"),
 }"""
@@ -21,7 +21,7 @@ crispresso_plan = """from latch.types import LatchFile, LatchDir
 
 
 params = {
-    "_name": "latch.crispresso2_wf",
+    "_name": "wf.__init__.crispresso2_wf",
     "output_folder": LatchDir("latch:///CRISPResso2_output/"),
     "fastq_r1": LatchFile("s3://latch-public/welcome/CRISPResso2/nhej.r1.fastq.gz"),
     "fastq_r2": LatchFile("s3://latch-public/welcome/CRISPResso2/nhej.r2.fastq.gz"),
@@ -39,7 +39,7 @@ class Strandedness(Enum):
     forward = "forward"
 
 params = {
-    "_name": "latch.nf_rnaseq_wf",
+    "_name": "wf.__init__.nf_rnaseq_wf",
     "sample_ids": [
         "WT_REP1",
         "RAP1_UNINDUCED_REP1",
@@ -80,8 +80,8 @@ def test_execute_previous_versions():
         tf.write(simple_plan)
         tf.seek(0)
 
-        assert execute(tf.name) == "wf.assemble_and_sort"
-        assert execute(tf.name, "50") == "wf.assemble_and_sort"
+        assert execute(tf.name) == "wf.__init__.assemble_and_sort"
+        assert execute(tf.name, "barrackobama") == "wf.__init__.assemble_and_sort"
 
 
 def test_execute_rnaseq():
@@ -90,7 +90,7 @@ def test_execute_rnaseq():
         tf.write(rnaseq_plan)
         tf.seek(0)
 
-        assert execute(tf.name) == "latch.nf_rnaseq_wf"
+        assert execute(tf.name) == "wf.__init__.nf_rnaseq_wf"
 
 
 def test_execute_crispresso():
@@ -99,4 +99,4 @@ def test_execute_crispresso():
         tf.write(crispresso_plan)
         tf.seek(0)
 
-        assert execute(tf.name) == "latch.crispresso2_wf"
+        assert execute(tf.name) == "wf.__init__.crispresso2_wf"
