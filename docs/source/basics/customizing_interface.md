@@ -489,7 +489,7 @@ Here is an example of how using rule-based validation can be used to construct a
 "FastQ type" that only accepts a subset of semantic paths:
 
 ```python
-from flytekit.core.with_metadata import FlyteMetadata
+from flytekit.core.annotation import FlyteAnnotation
 from typing import Annotated
 
 @workflow
@@ -497,7 +497,7 @@ def test(
     sample_list: List[
         Annotated[
             FlyteFile,
-            FlyteMetadata(
+            FlyteAnnotation(
                 {
                     "rules": [
                         {
