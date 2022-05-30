@@ -13,7 +13,7 @@ which will become a container that it will execute within at runtime.
 Here is an example of a Dockerfile used earlier:
 
 ```Dockerfile
-FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:02ab-main
+FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:9a7d-main
 
 # Its easy to build binaries from source that you can later reference as
 # subprocesses within your workflow.
