@@ -198,7 +198,7 @@ def _gen__init__(pkg_name: str):
 def _gen_dockerfile():
     return textwrap.dedent(
         """
-        FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:02ab-main
+        FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:9a7d-main
 
         # Its easy to build binaries from source that you can later reference as
         # subprocesses within your workflow.
