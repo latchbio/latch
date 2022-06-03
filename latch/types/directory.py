@@ -67,14 +67,14 @@ class LatchDir(FlyteDirectory):
 
             super().__init__(path, noop, remote_path)
 
-        # This will manually download object to local disk in the case of a
-        # user wishing to access self locally without referencing the path
-        # through `__fspath__`, eg. through `self.local_path`.
-        self.__fspath__()
-
     @property
     def local_path(self) -> str:
         """File path local to the environment executing the task."""
+
+        # This will manually download object to local disk in the case of a
+        # user wishing to access the file without using `open`.
+        self.__fspath__()
+
         return self.path
 
     @property
