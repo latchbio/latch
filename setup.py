@@ -31,8 +31,8 @@ setup(
         "docker>=5.0",
         "boto3>=1.2",
         "tqdm>=4.63.0",
-        "lytekit==0.2.0",
-        "lytekitplugins-pods==0.2.0",
+        "lytekit==0.2.1",
+        "lytekitplugins-pods==0.2.1",
         "typing-extensions==4.0.1",
     ],
     classifiers=[
