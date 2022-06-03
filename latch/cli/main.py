@@ -73,6 +73,17 @@ def init(pkg_name: str):
 
     Visit docs.latch.bio to learn more.
     """
+
+    #Workflow name must not contain capitals or end in a hyphen or underscore. If it does, we should throw an error
+    #Check for capitals
+    if any(char.isupper() for char in pkg_name):
+        click.secho(f"Unable to initialize {pkg_name}: package name must not contain any upper-case characters", fg="red")
+        return
+    
+    if pkg_name[-1] is '-' or pkg_name[-1] is '_':
+        click.secho(f"Unable to initialize {pkg_name}: package name must not end in a hyphen or underscore", fg="red")
+        return
+
     try:
         _init(pkg_name)
     except Exception as e:
