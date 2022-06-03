@@ -12,7 +12,7 @@ from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.models.literals import Literal
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
 
-from latch.types.url import LatchURL
+from latch.types.utils import _is_valid_url
 
 
 class LatchFile(FlyteFile):
@@ -54,9 +54,10 @@ class LatchFile(FlyteFile):
     def __init__(
         self, path: Union[str, PathLike], remote_path: PathLike = None, **kwargs
     ):
-
         if remote_path is not None:
-            self._remote_path = LatchURL(remote_path).url  # validates url string
+            self._remote_path = remote_path
+        if _is_valid_url(path) and remote_path is None:
+            self._remote_path = path
 
         if kwargs.get("downloader") is not None:
             super().__init__(path, kwargs["downloader"], remote_path)

@@ -10,7 +10,7 @@ from flytekit.types.directory.types import (
     FlyteDirToMultipartBlobTransformer,
 )
 
-from latch.types.url import LatchURL
+from latch.types.utils import _is_valid_url
 
 try:
     from typing import Annotated
@@ -53,9 +53,10 @@ class LatchDir(FlyteDirectory):
     def __init__(
         self, path: Union[str, PathLike], remote_path: PathLike = None, **kwargs
     ):
-
         if remote_path is not None:
-            self._remote_directory = LatchURL(remote_path).url  # validates url string
+            self._remote_directory = remote_path
+        elif _is_valid_url(path) and remote_path is None:
+            self._remote_directory = path
 
         if kwargs.get("downloader") is not None:
             super().__init__(path, kwargs["downloader"], remote_path)
