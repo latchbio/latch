@@ -41,10 +41,11 @@ def file_glob(
 
     """
 
-    _is_valid_url(remote_directory)
+    if not _is_valid_url(remote_directory):
+        return []
 
     if target_dir is None:
-        wd = Path(".")
+        wd = Path.cwd()
     else:
         wd = target_dir
     matched = sorted(wd.glob(pattern))
