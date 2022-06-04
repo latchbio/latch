@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import List, Union
 
 import click
+import re
 
 from latch.services import cp as _cp
 from latch.services import execute as _execute
@@ -74,14 +75,16 @@ def init(pkg_name: str):
     Visit docs.latch.bio to learn more.
     """
 
-    #Workflow name must not contain capitals or end in a hyphen or underscore. If it does, we should throw an error
-    #Check for capitals
+    # Workflow name must not contain capitals or end in a hyphen or underscore. If it does, we should throw an error
+    # Check for capitals
     if any(char.isupper() for char in pkg_name):
         click.secho(f"Unable to initialize {pkg_name}: package name must not contain any upper-case characters", fg="red")
         return
     
-    if pkg_name[-1] is '-' or pkg_name[-1] is '_':
-        click.secho(f"Unable to initialize {pkg_name}: package name must not end in a hyphen or underscore", fg="red")
+    # Check for other illegal characters
+    if len(re.findall("(?:[a-z0-9]+(?:[._-][a-z0-9]+)*\/)*[a-z0-9]+(?:[._-][a-z0-9]+)*", pkg_name)) is not 1:
+        click.secho(f"Unable to initialize {pkg_name}: package name must match the regular expression '(?:[a-z0-9]+(?:[._-][a-z0-9]+)*\/)*[a-z0-9]+(?:[._-][a-z0-9]+)*'", fg="red")
+        click.secho("This means that the package name must start and end with a lower-case letter, and may contain hyphens, underscores, and periods", fg="red")
         return
 
     try:
