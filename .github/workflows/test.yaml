@@ -1,10 +1,6 @@
 name: Test
-on:
-  push:
-    branches:
-      - "main"
-      - "kenny/*"
-      - "ayush/*"
+on: [push, pull_request_target]
+
 jobs:
   macos:
     name: Test MacOs
