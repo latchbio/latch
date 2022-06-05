@@ -82,7 +82,7 @@ def init(pkg_name: str):
         return
     
     # Check for other illegal characters
-    if len(re.findall("(?:[a-z0-9]+(?:[._-][a-z0-9]+)*\/)*[a-z0-9]+(?:[._-][a-z0-9]+)*", pkg_name)) is not 1:
+    if len(re.findall("(?:[a-z0-9]+(?:[._-][a-z0-9]+)*\/)*[a-z0-9]+(?:[._-][a-z0-9]+)*", pkg_name)) != 1:
         click.secho(f"Unable to initialize {pkg_name}: package name must match the regular expression '(?:[a-z0-9]+(?:[._-][a-z0-9]+)*\/)*[a-z0-9]+(?:[._-][a-z0-9]+)*'", fg="red")
         click.secho("This means that the package name must start and end with a lower-case letter, and may contain hyphens, underscores, and periods", fg="red")
         return
