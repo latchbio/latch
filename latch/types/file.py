@@ -62,7 +62,7 @@ class LatchFile(FlyteFile):
         if kwargs.get("downloader") is not None:
             super().__init__(path, kwargs["downloader"], remote_path)
         else:
-
+            # a noop
             def downloader():
                 ...
 
