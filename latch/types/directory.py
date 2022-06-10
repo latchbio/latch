@@ -2,7 +2,7 @@ from os import PathLike
 from typing import Optional, Type, Union
 
 from flytekit.core.annotation import FlyteAnnotation
-from flytekit.core.context_manager import FlyteContext
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.models.literals import Literal
 from flytekit.types.directory.types import (
@@ -62,10 +62,21 @@ class LatchDir(FlyteDirectory):
             super().__init__(path, kwargs["downloader"], remote_path)
         else:
 
-            def noop():
+            def downloader():
                 ...
 
-            super().__init__(path, noop, remote_path)
+            ctx = FlyteContextManager.current_context()
+            if not (ctx is None):
+                path = ctx.file_access.get_random_local_path(self._remote_directory)
+
+                def downloader():
+                    return ctx.file_access.get_data(
+                        self._remote_directory,
+                        path,
+                        is_multipart=True,
+                    )
+
+            super().__init__(path, downloader, self._remote_directory)
 
     @property
     def local_path(self) -> str:
