@@ -16,6 +16,8 @@ Bioinformatics workflows developed with the SDK feature automatically receive:
 * Reliable and scalable managed cloud infrastructure
 * Singe line definition of arbitrary resource requirements (eg. CPU, GPU) for serverless execution
 
+![SDK Overview](./assets/sdk-intro.png)
+
 ## Problems Latch SDK solves
 
 <b>Building the infrastructure to share bioinformatics pipelines at scale is time-consuming.</b> Bioinformatics is dominated by terabytes of data and workflows that require multiple CPUs or GPUs, making sharing and scaling pipelines difficult. It often take engineering teams 6-12 months to build a robust cloud infrastructure necessary to support the ingestion and execution of bioinformatics pipelines.
