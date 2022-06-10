@@ -7,7 +7,7 @@ except ImportError:
     from typing_extensions import Annotated
 
 from flytekit.core.annotation import FlyteAnnotation
-from flytekit.core.context_manager import FlyteContext
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.models.literals import Literal
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
@@ -63,10 +63,18 @@ class LatchFile(FlyteFile):
             super().__init__(path, kwargs["downloader"], remote_path)
         else:
 
-            def noop():
-                ...
+            with FlyteContextManager.current_context() as ctx:
+                self.path = ctx.file_access.get_random_local_path(self._remote_path)
+                if ctx is None:
+                    downloader = lambda: ...
+                else:
+                    downloader = ctx.file_access.get_data(
+                        self._remote_path,
+                        self.path,
+                        is_multipart=False,
+                    )
 
-            super().__init__(path, noop, remote_path)
+            super().__init__(self.path, downloader, self._remote_path)
 
     @property
     def local_path(self) -> str:
