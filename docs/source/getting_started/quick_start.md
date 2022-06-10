@@ -15,9 +15,14 @@ You can follow the guided steps below or run the example in Google Colab.
 
 ## Overview
 
-Before we dive into the actual code implementation, it is helpful to understand what is happening at a high level. 
+![SDK Flow](../assets/high-level.png)
 
-<!-- Add diagram here -->
+At a high level, there are three main steps to the development flow using Latch SDK. 
+1. `latch init path_to_new_directory`: intializes a boilerplate repo for your workflow.
+2. `latch register path_to_new_directory`: registers your workflow onto Latch. 
+3. Once your workflow registers successfully, you will receive a user interface for your workflow on [Latch Console](console.latch.bio/workflows).
+
+In this tutorial, we will go through each step in-depth and explain how your workflow repo translates to an interface.
 
 ## Prerequisites
 * Install [Docker](https://docs.docker.com/get-docker/)
@@ -103,7 +108,7 @@ def assembly_task(read1: LatchFile, read2: LatchFile) -> LatchFile:
 
 The decorator `@small_task` is used to specify that a Python function is a task within a workflow. In other words, if you <i>don't</i> use the decorator, Latch will treat it as a normal Python helper function. Using the function in your workflow would throw an error. 
 
-The decorator is also used to determine the resources the task is expected to consume (eg. CPU, RAM, GPU) at runtime. Read more about how you can annotate tasks with different resource requirements [here](https://docs.latch.bio/basics/defining_cloud_resources.html).
+The decorator is also used to determine the resources the task is expected to consume (eg. CPU, RAM, GPU) at runtime. Read more about how you can annotate tasks with different resource requirements [here](../basics/defining_cloud_resources.md).
 
 <i>1.2. Definining Typed Inputs </i>
 
@@ -113,7 +118,7 @@ There are two reasons why typing your inputs is important. One, it maintains the
 
 <!-- Code and pictures here -->
 
-You can see an exhaustive list of all parameter types supported on Latch [here](https://docs.latch.bio/basics/parameter_types.html).
+You can see an exhaustive list of all parameter types supported on Latch [here](../basics/parameter_types.md).
 
 <i>1.3. Resolving Input File Path</i>
 
@@ -282,6 +287,8 @@ When calling your tasks, remember to pass in keyword arguments, such as `read1=r
 
 The final important component of the workflow function is a docstring. This is where you would customize how the interface of your workflow would look to the end user. 
 
+Latch automatically parses the written text and Python function headers of the workflow to compile a type-safe UI. 
+
 ```python
 """Description...
 
@@ -326,10 +333,10 @@ The final important component of the workflow function is a docstring. This is w
 
 See the side-by-side comparison below on how each section of the docstring translates to a workflow interface on [Latch Console](console.latch.bio/workflows).
 
-![Description Markdown](../assets/description-md.png)
+![Description UI](../assets/description-md.png)
 Your workflow description will show up in the <b>Description</b> tab on Latch Console.
 
-![Description Markdown](../assets/inputs-md.png)
+![Inputs UI](../assets/inputs-md.png)
 The interface for workflow inputs will be displayed on the <b>Parameters</b> tab on Console.
 
 Read more about how to customize the user interface for your inputs [here](../basics/customizing_interface.md).
@@ -348,9 +355,12 @@ This might take 3-10 minutes depending on your network connection. (Subsequent r
 
 When registration has completed, you should be able to navigate [here](console.latch.bio/workflows) and see your new workflow in your account.
 
+If you are having issues with registration or have general questions, please
+file an issue on [github](https://github.com/latchbio/latch).
+
 <hr>
 
 ## Next Steps
 * Read the Concepts page
 * Visit Examples to see real-world bioinformatics workflows being built using Latch SDK
-* Submit an interest form here if you want to join the SDK open-source community on Slack
+* Join the SDK open-source community on Slack [here](https://forms.gle/sCjr8tdjzx5HjVW27)! 
