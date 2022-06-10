@@ -1,75 +1,59 @@
-# Latch SDK Documentation
+# Introduction
 
 ---
 
-The Latch SDK is a toolchain to define serverless bioinformatics workflows and
-dynamically generate no-code interfaces using python functions.
+## What is Latch SDK?
 
-Workflows developed with the SDK feature:
+It takes months to build infrastructure with the compute, storage, and user-friendly interface necessary to run bioinformatics pipelines at scale. 
+
+The Latch SDK is an open-source toolchain to define serverless bioinformatics workflows with plain python and deploy associated no-code interfaces using single command.
+
+Bioinformatics workflows developed with the SDK feature automatically receive:
 
 * Instant no-code interfaces for accessibility and publication
 * First class static typing
-* Containerization + versioning of every registered change
-* Reliable + scalable managed cloud infrastructure
+* Containerization and versioning of every registered change
+* Reliable and scalable managed cloud infrastructure
 * Singe line definition of arbitrary resource requirements (eg. CPU, GPU) for serverless execution
 
-## Quickstart
+## Problems Latch SDK solves
 
-Getting your hands dirty with SDK is the best way to understand how it works.
-Run the following three commands in your terminal to register your first
-workflow to LatchBio.
+<b>Building the infrastructure to share bioinformatics pipelines at scale is time-consuming.</b> Bioinformatics is dominated by terabytes of data and workflows that require multiple CPUs or GPUs, making sharing and scaling pipelines difficult. It often take engineering teams 6-12 months to build a robust cloud infrastructure necessary to support the ingestion and execution of bioinformatics pipelines.
 
-**Prerequisite**: ensure that `docker` is present and running on your machine.
-(Install docker [here](https://docs.docker.com/get-docker/) if you don't already
-have it installed.)
+Lacth SDK allows developers to upload workflows to the full-featured [Latch Platform](console.latch.bio) with ease. The platform is built with Kubernetes, ensuring containerization, portability, and scalability are available out-of-the-box. Behind the scene, Latch takes advantage of AWS spot instances, offering ultra-fast runtimes with extremely low cloud costs for teams.
 
-First, install latch through `pip`.
+<b>Bioinformaticians need to create an intuitive user interfaces for biologists.</b> As a lab or R&D team grows, the number of biologists per bioinformatician increases to a point where it's no longer sustainable for the bioinformatician to manage requests and run pipelines manually from her computer. Automating pipeline runs returns valuable time to the bioinformatician to focus on writing analyses to generate scientific insights. 
 
-```bash
-python3 -m pip install latch
-```
+With Latch SDK, developers can write the description to their workflow and customize input parameters using plain Markdown. Latch automatically parses the written text and Python function headers to compile a type-safe UI. 
 
-Then, create some boilerplate code for your new workflow.
+<b>Specifying arbitrary cloud compute and storage resources for bioinformatics pipelines is difficult.</b> With Latch SDK, there are several Python task decorators that easily allow you to define the resources available at runtime. The framework starts at 2 CPUs and 4 GBs of memory and goes all the way to 31 CPUs, 120 GBs of memory and 1 GPU (24 GBs of VRAM, 9,216 CUDA cores) to easily handle all processing needs.
 
-```bash
-latch init testworkflow
-```
+<b>Bioinformatics tools face the challenges of irreproducibility.</b> The lack of proper versioning and dependencies management results in a long tail of poorly documented and unusable bioinformatics software tools.
 
-Finally register the boilerplate code to [LatchBio](https://latch.bio).
+Latch SDK containerizes and versions the code in the background each time a workflow is registered to the Latch platform. Container images are constructed by parsing the python runtime for imported libraries or defined using a [Dockerfile](https://docs.docker.com/engine/reference/builder/). Similarly, versions are user-specified as any unique plaintext string.
 
-```bash
-latch register testworkflow
-```
+This behavior is a strict requirement of the toolchain and gives us remarkable guarantees with respect to code reproducibility, portability and scalability. Containerized workflow logic can then be both duplicated en masse and run on heterogeneous computing environments. Additionally, each and every change is given a version-locked container for painless rollback.
 
-This might take 3-10 minutes depending on your network connection. (Subsequent
-registers will complete in seconds by reusing the image layers from this initial
-register.) The registration process will:
+## Problem Latch SDK does not yet solve 
+* <b>Workflows chaining</b>: We'll aim to support easy installation and reuse of other Latch SDK workflows in your own workflow.  
+* <b>Workflows monitoring</b>: For batched runs of workflows, we'll aim to provide better dashboard, logs, traces, metrics, and alerting for observability. 
 
-* Build a docker image containing your workflow code
-* Serialize your code and register it with your LatchBio account
-* Push your docker image to a managed container registry
+## What Latch SDK is not
+* <b>A pure workflow orchestration engine</b>: There are many popular workflow orchestration engines, such as Nextflow or Snakemake, that can be run locally from a bioinformatician's machine. Although workflow orchestration is a feature of Latch SDK, Latch is fundamentally a cloud-native solution. Latch SDK solves the problems of automating pipelines by providing a robust and scalable cloud infrastructure and asssociated no-code interfaces out of the box. You can also easily bring existing workflow script of any language to Latch (See examples [here](./examples/)).
+* <b>A self-hosted solution</b>: Currently, you cannot write your workflow using Latch SDK and host it in your own AWS instance or an HPC. The infrastructure serving bioinformatics pipelines is fully managed by Latch. This allows us to rapidly iterate to bring on high quality features, give cost and performance guarantees, and ensure that security is offered out-of-the-box. 
 
-When registration has completed, you should be able to navigate
-[here](https://console.latch.bio/workflows) and see your new workflow in your
-account.
+<hr/>
 
-If you are having issues with registration or have general questions, please
-file an issue on [github](https://github.com/latchbio/latch).
+## Next Steps
 
----
-
-### Installation
-
-The SDK is distributed on pip. Install in a fresh virtual environment for best
-behavior.
-
-[Virtualenvwrapper](https://virtualenvwrapper.readthedocs.io/en/latest/) is recommended.
-
-```bash
-python3 -m pip install latch
-```
-
-_Note that a local installation of docker is required to register workflows_.
+To get started with Latch SDK, view the following resources:
+* [Quickstart](./getting_started/quick_start.md) is the fastest way to get started with the Latch SDK. 
+* [Concepts](./basics/) describes all important Latch SDK concepts.
+* [Examples](./examples/workflows-examples.md) show full examples of using Latch SDK for various bioinformatics pipelines.
+* [Troubleshooting](./troubleshooting/) provides a guide to debug common errors. 
+* [Reference](./api/) contains detailed API and design documents.
+* [Subcommands](./subcommands.md) contains details about the Latch command line toolchain to register workflows and upload data to Latch.
+* Join the [SDK open-source community](https://forms.gle/sCjr8tdjzx5HjVW27) on Slack!
 
 ---
 
@@ -82,7 +66,7 @@ self
 ```{toctree}
 :hidden:
 :maxdepth: 2
-:caption: Basics
+:caption: Concepts
 basics/what_is_a_workflow
 basics/parameter_types
 basics/working_with_files
