@@ -30,9 +30,7 @@ With Latch SDK, developers can write the description to their workflow and custo
 
 <b>Bioinformatics tools face the challenges of irreproducibility.</b> The lack of proper versioning and dependencies management results in a long tail of poorly documented and unusable bioinformatics software tools.
 
-Latch SDK containerizes and versions the code in the background each time a workflow is registered to the Latch platform. Container images are constructed by parsing the python runtime for imported libraries or defined using a [Dockerfile](https://docs.docker.com/engine/reference/builder/). Similarly, versions are user-specified as any unique plaintext string.
-
-This behavior is a strict requirement of the toolchain and gives us remarkable guarantees with respect to code reproducibility, portability and scalability. Containerized workflow logic can then be both duplicated en masse and run on heterogeneous computing environments. Additionally, each and every change is given a version-locked container for painless rollback.
+Latch SDK containerizes and versions the code in the background each time a workflow is registered to the Latch platform. Container images are constructed by parsing the python runtime for imported libraries or defined using a [Dockerfile](https://docs.docker.com/engine/reference/builder/). Similarly, versions are user-specified as any unique plaintext string. This behavior is a strict requirement of the toolchain and gives us remarkable guarantees with respect to code reproducibility, portability and scalability. 
 
 ## Problem Latch SDK does not yet solve 
 * <b>Workflows chaining</b>: We'll aim to support easy installation and reuse of other Latch SDK workflows in your own workflow.  
@@ -47,13 +45,13 @@ This behavior is a strict requirement of the toolchain and gives us remarkable g
 ## Next Steps
 
 To get started with Latch SDK, view the following resources:
-* [Quickstart](./getting_started/quick_start.md) is the fastest way to get started with the Latch SDK. 
-* [Concepts](./basics/) describes all important Latch SDK concepts.
-* [Examples](./examples/workflows-examples.md) show full examples of using Latch SDK for various bioinformatics pipelines.
-* [Troubleshooting](./troubleshooting/) provides a guide to debug common errors. 
-* [Reference](./api/) contains detailed API and design documents.
-* [Subcommands](./subcommands.md) contains details about the Latch command line toolchain to register workflows and upload data to Latch.
-* Join the [SDK open-source community](https://forms.gle/sCjr8tdjzx5HjVW27) on Slack!
+* <b>[Quickstart](./getting_started/quick_start.md)</b> is the fastest way to get started with the Latch SDK. 
+* <b>[Concepts](./basics/what_is_a_workflow.md)</b> describes all important Latch SDK concepts.
+* <b>[Examples](./examples/workflows_examples.md)</b> show full examples of using Latch SDK for various bioinformatics pipelines.
+* <b>[Troubleshooting](./troubleshooting/troubleshooting)</b> provides a guide to debug common errors. 
+* <b>[Reference](./api/modules.rst)</b> contains detailed API and design documents.
+* <b>[Subcommands](./subcommands.md)</b> contains details about the Latch command line toolchain to register workflows and upload data to Latch.
+* Join the <a href="https://forms.gle/sCjr8tdjzx5HjVW27" target="_blank">SDK open-source community</a> on Slack!
 
 ---
 
@@ -61,6 +59,13 @@ To get started with Latch SDK, view the following resources:
 :hidden:
 :maxdepth: 2
 self
+```
+
+```{toctree}
+:hidden:
+:maxdepth: 2
+:caption: Getting Started
+getting_started/quick_start
 ```
 
 ```{toctree}
@@ -79,7 +84,22 @@ basics/local_development
 ```{toctree}
 :hidden:
 :maxdepth: 2
+:caption: Examples
+examples/workflows_examples
+examples/docker_recipes
+```
+
+```{toctree}
+:hidden:
+:maxdepth: 2
 :caption: API Docs
 subcommands
 api/modules
+```
+
+```{toctree}
+:hidden:
+:maxdepth: 2
+:caption: Troubleshooting
+troubleshooting/troubleshooting.md
 ```

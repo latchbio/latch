@@ -9,8 +9,6 @@ In this tutorial, we will:
 
 After going through the tutorial, you should have a conceptual understanding of how to translate a set of command lines into a Latch workflow and how to generate an interactive interface for that workflow. 
 
-You can follow the guided steps below or run the example in Google Colab. 
-
 <hr/>
 
 ## Overview
@@ -20,7 +18,7 @@ You can follow the guided steps below or run the example in Google Colab.
 At a high level, there are three main steps to the development flow using Latch SDK. 
 1. `latch init path_to_new_directory`: intializes a boilerplate repo for your workflow.
 2. `latch register path_to_new_directory`: registers your workflow onto Latch. 
-3. Once your workflow registers successfully, you will receive a user interface for your workflow on [Latch Console](console.latch.bio/workflows).
+3. Once your workflow registers successfully, you will receive a user interface for your workflow on [Latch Console](https://console.latch.bio/workflows).
 
 In this tutorial, we will go through each step in-depth and explain how your workflow repo translates to an interface.
 
@@ -361,6 +359,6 @@ file an issue on [github](https://github.com/latchbio/latch).
 <hr>
 
 ## Next Steps
-* Read the Concepts page
-* Visit Examples to see real-world bioinformatics workflows being built using Latch SDK
+* Read the [Concepts](../basics/what_is_a_workflow.md) page
+* Visit [Examples](../examples/workflows_examples.md) to see real-world bioinformatics workflows being built using Latch SDK
 * Join the SDK open-source community on Slack [here](https://forms.gle/sCjr8tdjzx5HjVW27)! 
