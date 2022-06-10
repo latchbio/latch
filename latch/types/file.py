@@ -67,13 +67,15 @@ class LatchFile(FlyteFile):
                 ...
 
             ctx = FlyteContextManager.current_context()
-            if not (ctx is None):
+            if ctx is not None:
                 path = ctx.file_access.get_random_local_path(self._remote_path)
-                downloader = ctx.file_access.get_data(
-                    self._remote_path,
-                    path,
-                    is_multipart=False,
-                )
+
+                def downloader():
+                    return ctx.file_access.get_data(
+                        self._remote_path,
+                        path,
+                        is_multipart=False,
+                    )
 
             super().__init__(path, downloader, self._remote_path)
 
