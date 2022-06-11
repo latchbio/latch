@@ -21,7 +21,7 @@ setup(
     python_requires=">=3.7",
     entry_points={
         "console_scripts": [
-            "latch=latch.cli.main:main",
+            "latch=cli.main:main",
         ]
     },
     install_requires=[

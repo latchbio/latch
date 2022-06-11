@@ -4,8 +4,8 @@ from typing import List, Tuple, Union
 
 import requests
 
-from latch.config.latch import LatchConfig
-from latch.utils import retrieve_or_login
+from cli.config.latch import LatchConfig
+from cli.utils import retrieve_or_login
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints

@@ -1,7 +1,6 @@
-import requests
-
-from latch.config.latch import LatchConfig
-from latch.utils import _normalize_remote_path, retrieve_or_login
+import cli.tinyrequests as tinyrequests
+from cli.config.latch import LatchConfig
+from cli.utils import _normalize_remote_path, retrieve_or_login
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints
@@ -45,13 +44,13 @@ def mkdir(remote_directory):
     headers = {"Authorization": f"Bearer {token}"}
     data = {"directory": remote_directory}
 
-    response = requests.post(endpoints["mkdir"], headers=headers, json=data)
+    response = tinyrequests.post(endpoints["mkdir"], headers=headers, json=data)
     json_data = response.json()
 
     if not json_data["success"]:
         raise ValueError(json_data["error"]["data"]["message"])
 
-    response = requests.post(
+    response = tinyrequests.post(
         endpoints["verify"], headers=headers, json={"filename": remote_directory}
     )
     json_data = response.json()

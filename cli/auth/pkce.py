@@ -2,7 +2,7 @@ import hashlib
 import secrets
 from typing import Tuple
 
-from latch.auth.utils import base64url_encode
+from cli.auth.utils import base64url_encode
 
 
 class PKCE:

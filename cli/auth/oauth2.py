@@ -7,9 +7,9 @@ import webbrowser
 
 import certifi
 
-from latch.auth.csrf import CSRFState
-from latch.auth.pkce import PKCE
-from latch.constants import OAuth2Constants
+from cli.auth.csrf import CSRFState
+from cli.auth.pkce import PKCE
+from cli.constants import OAuth2Constants
 
 
 class OAuth2:

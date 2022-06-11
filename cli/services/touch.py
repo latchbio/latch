@@ -1,7 +1,7 @@
 import requests
 
-from latch.config.latch import LatchConfig
-from latch.utils import _normalize_remote_path, retrieve_or_login
+from cli.config.latch import LatchConfig
+from cli.utils import _normalize_remote_path, retrieve_or_login
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints

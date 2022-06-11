@@ -7,8 +7,8 @@ from typing import List, Optional
 
 import docker
 
-from latch.config import LatchConfig
-from latch.utils import account_id_from_token, retrieve_or_login
+from cli.config.latch import LatchConfig
+from cli.utils import account_id_from_token, retrieve_or_login
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints
@@ -75,7 +75,7 @@ class RegisterCtx:
                 self.version = vf.read().strip()
         except Exception as e:
             raise ValueError(
-                "Unable to extract pkg version from" f" {str(self.pkg_root)}"
+                f"Unable to extract pkg version from {str(self.pkg_root)}"
             ) from e
 
         self.dkr_repo = LatchConfig.dkr_repo
