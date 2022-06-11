@@ -1,15 +1,15 @@
 # Quick Start
 
-In this tutorial, we will: 
-* Write a workflow to sort and assemble COVID genomes
+In this tutorial, we will:
+* Write a workflow to sort and assemble COVID sequencing data
 * Customize a front-end interface for our workflow
 * Define the necessary compute and resource requirements
 * Upload the workflow onto Latch
 * Test our workflow from a user-friendly interface 
 
-After going through the tutorial, you should have a conceptual understanding of how to translate a set of command lines into a Latch workflow and how to generate an interactive interface for that workflow. 
+After going through the tutorial, you should have a strong understanding of how to translate a handful of python functions into a Latch workflow.
 
-<hr/>
+---
 
 ## Overview
 
@@ -25,6 +25,9 @@ In this tutorial, we will go through each step in-depth and explain how your wor
 ## Prerequisites
 * Install [Docker](https://docs.docker.com/get-docker/)
 * Ensure Docker Daemon is running
+
+> **Note:**
+If you are using Windows, you have to install a virtualized Linux shell to use Latch. Please head to our [troubleshooting](../troubleshooting/troubleshooting.md) page to learn more. 
 
 ## Step 1: Install Latch
 Install the Latch SDK and CLI using pip: 
@@ -74,7 +77,7 @@ In this tutorial, our workflow ingests sequencing files in FastQ format and prod
 
 Let's walk through how each task is constructed, and how tasks are chained together to create a workflow. 
 
-<b>First task</b>: Converts FastQ files into a BAM file
+**First task**: Converts FastQ files into a BAM file
 
 ```python
 @small_task
@@ -102,23 +105,23 @@ def assembly_task(read1: LatchFile, read2: LatchFile) -> LatchFile:
     return LatchFile(str(sam_file), "latch:///covid_assembly.sam")
 ```
 
-<i>1.1 Decorating a task</i>
+### 1.1 Decorating a task
 
 The decorator `@small_task` is used to specify that a Python function is a task within a workflow. In other words, if you <i>don't</i> use the decorator, Latch will treat it as a normal Python helper function. Using the function in your workflow would throw an error. 
 
 The decorator is also used to determine the resources the task is expected to consume (eg. CPU, RAM, GPU) at runtime. Read more about how you can annotate tasks with different resource requirements [here](../basics/defining_cloud_resources.md).
 
-<i>1.2. Definining Typed Inputs </i>
+### 1.2. Definining Typed Inputs 
 
 All inputs to a task must be typed. The types can be any valid Python type (e.g. `str`, `int`, `List`, etc.) or Latch-specific types, such as `LatchFile` or `LatchDir`. 
 
-There are two reasons why typing your inputs is important. One, it maintains the integrity of the workflow, ensuring that the output of a previous task has the same type as the input of the next task. Second, Latch SDK parses the type of your input to generate the right front-end component at registration. For example, if you specify the input has type `str`, Latch would generate an input box that allows user to enter a string. Similarly, if you specify type `LatchFile` for a FastQ file, Latch would generate a button that says <b>Browse File</b>, allowing you to browse data on Latch. 
+There are two reasons why typing your inputs is important. One, it maintains the integrity of the workflow, ensuring that the output of a previous task has the same type as the input of the next task. Second, Latch SDK parses the type of your input to generate the right front-end component at registration. For example, if you specify the input has type `str`, Latch would generate an input box that allows user to enter a string. Similarly, if you specify type `LatchFile` for a FastQ file, Latch would generate a button that says **Browse File**, allowing you to browse data on Latch. 
 
 <!-- Code and pictures here -->
 
 You can see an exhaustive list of all parameter types supported on Latch [here](../basics/parameter_types.md).
 
-<i>1.3. Resolving Input File Path</i>
+### 1.3. Resolving Input File Path
 
 One common pattern you'd notice in tasks is calling `local_path` on an input parameter of type `LatchFile`:
 
@@ -143,7 +146,7 @@ def assembly_task(read1: LatchFile, read2: LatchFile) -> LatchFile:
 
 A `LatchFile` is a Python class that represents a file object in the context of a task execution. When we call `local_path` on a LatchFile, Latch downloads the files into the environment on which our task is executed, making it available to our assembly command line tool.
 
-<i>1.4. Running a command line with `subprocess`</i>
+### 1.4. Running a command line with `subprocess`
 
 Many bioinformatics tools are packaged as single command lines. To run such command line in a Latch task, we make use of the [`subprocess`](https://docs.python.org/3/library/subprocess.html) module, which allows us to execute and manage subprocesses directly from Python. That involves working with the standard input stdin, standard output stdout, and return codes.
 
@@ -173,7 +176,7 @@ To use the command in a Latch task, we would use `subprocess` like so:
 
 The code creates a new subprocess to execute the bowtie command and outputs a SAM file. 
 
-<i>1.5. Resolving Output File Path</i>
+### 1.5. Resolving Output File Path
 
 Another common pattern you will see with `LatchFile` is for workflow outputs in your function's return statement:  
 ```python
@@ -181,14 +184,14 @@ Another common pattern you will see with `LatchFile` is for workflow outputs in 
     return LatchFile(str(sam_file), "latch:///covid_assembly.sam")
 ```
 
-Here, we are passing <b>two</b> values to `LatchFile`, a local path and a remote path. 
+Here, we are passing **two** values to `LatchFile`, a local path and a remote path. 
 * The first value represents the full path reference to the output file that is inside the container after your workflow finishes executing. 
 
     We are able to retrieve the filepath thanks to the `Path` class from the `pathlib` module. Writing `str(Path("covid_assembly.sam").resolve())` returns the complete filepath. <i>(Still in doubt? Try it from your terminal!)</i>
 
 * The second value refers to the output file location on [Latch Console](console.latch.bio/data). In other words, when our workflow finishes, you shoujld see a file called `covid_assembly.sam` on Latch Console. 
 
-<b>Second task</b>: Sort BAM file
+**Second task**: Sort BAM file
 
 The structure of the second task is very similar to the first one, making use of, `@small_task`, `LatchFile` and `subprocess`, as explained above.
 
@@ -216,7 +219,7 @@ def sort_bam_task(sam: LatchFile) -> LatchFile:
 
 The only thing we have to pay attention to is because we are taking the output of the `assembly_task` as the input of `sort_bam_task`, their types must match. Here, they both have type `LatchFile`.
 
-<i>1.6. Defining the main workflow function</i>
+### 1.6. Defining the main workflow function 
 
 ```python
 @workflow
@@ -332,10 +335,10 @@ Latch automatically parses the written text and Python function headers of the w
 See the side-by-side comparison below on how each section of the docstring translates to a workflow interface on [Latch Console](console.latch.bio/workflows).
 
 ![Description UI](../assets/description-md.png)
-Your workflow description will show up in the <b>Description</b> tab on Latch Console.
+Your workflow description will show up in the **Description** tab on Latch Console.
 
 ![Inputs UI](../assets/inputs-md.png)
-The interface for workflow inputs will be displayed on the <b>Parameters</b> tab on Console.
+The interface for workflow inputs will be displayed on the **Parameters** tab on Console.
 
 Read more about how to customize the user interface for your inputs [here](../basics/customizing_interface.md).
 
@@ -356,7 +359,7 @@ When registration has completed, you should be able to navigate [here](console.l
 If you are having issues with registration or have general questions, please
 file an issue on [github](https://github.com/latchbio/latch).
 
-<hr>
+---
 
 ## Next Steps
 * Read the [Concepts](../basics/what_is_a_workflow.md) page
