@@ -9,3 +9,4 @@ latch.egg-info
 __pycache__
 
 docs/build
+/.envrc

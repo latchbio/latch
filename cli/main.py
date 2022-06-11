@@ -1,24 +1,10 @@
 """Entrypoints to service functions through a CLI."""
 
+import re
 from pathlib import Path
 from typing import List, Union
 
 import click
-import re
-
-from latch.services import cp as _cp
-from latch.services import execute as _execute
-from latch.services import get_params as _get_params
-from latch.services import get_wf as _get_wf
-from latch.services import init as _init
-from latch.services import local_execute as _local_execute
-from latch.services import login as _login
-from latch.services import ls as _ls
-from latch.services import mkdir as _mkdir
-from latch.services import open_file as _open_file
-from latch.services import register as _register
-from latch.services import rm as _rm
-from latch.services import touch as _touch
 
 
 @click.group("latch")
@@ -35,7 +21,10 @@ def main():
 @click.option(
     "--remote",
     default=None,
-    help="The ssh url of a remote git repository where registered workflow code will reside.",
+    help=(
+        "The ssh url of a remote git repository where registered workflow code will"
+        " reside."
+    ),
 )
 def register(
     pkg_root: str,
@@ -45,8 +34,10 @@ def register(
 
     Visit docs.latch.bio to learn more.
     """
+    from cli.services.register import register
+
     try:
-        _register(pkg_root, remote)
+        register(pkg_root, remote)
         click.secho(
             "Successfully registered workflow. View @ console.latch.bio.", fg="green"
         )
@@ -60,8 +51,10 @@ def login():
 
     Visit docs.latch.bio to learn more.
     """
+    from cli.services.login import login
+
     try:
-        _login()
+        login()
         click.secho("Successfully logged into LatchBio.", fg="green")
     except Exception as e:
         click.secho(f"Unable to log in: {str(e)}", fg="red")
@@ -74,21 +67,43 @@ def init(pkg_name: str):
 
     Visit docs.latch.bio to learn more.
     """
+    from cli.services.init import init
 
     # Workflow name must not contain capitals or end in a hyphen or underscore. If it does, we should throw an error
     # Check for capitals
     if any(char.isupper() for char in pkg_name):
-        click.secho(f"Unable to initialize {pkg_name}: package name must not contain any upper-case characters", fg="red")
+        click.secho(
+            f"Unable to initialize {pkg_name}: package name must not contain any"
+            " upper-case characters",
+            fg="red",
+        )
         return
-    
+
     # Check for other illegal characters
-    if len(re.findall("(?:[a-z0-9]+(?:[._-][a-z0-9]+)*\/)*[a-z0-9]+(?:[._-][a-z0-9]+)*", pkg_name)) != 1:
-        click.secho(f"Unable to initialize {pkg_name}: package name must match the regular expression '(?:[a-z0-9]+(?:[._-][a-z0-9]+)*\/)*[a-z0-9]+(?:[._-][a-z0-9]+)*'", fg="red")
-        click.secho("This means that the package name must start and end with a lower-case letter, and may contain hyphens, underscores, and periods", fg="red")
+    if (
+        len(
+            re.findall(
+                "(?:[a-z0-9]+(?:[._-][a-z0-9]+)*\/)*[a-z0-9]+(?:[._-][a-z0-9]+)*",
+                pkg_name,
+            )
+        )
+        != 1
+    ):
+        click.secho(
+            f"Unable to initialize {pkg_name}: package name must match the regular"
+            " expression"
+            " '(?:[a-z0-9]+(?:[._-][a-z0-9]+)*\/)*[a-z0-9]+(?:[._-][a-z0-9]+)*'",
+            fg="red",
+        )
+        click.secho(
+            "This means that the package name must start and end with a lower-case"
+            " letter, and may contain hyphens, underscores, and periods",
+            fg="red",
+        )
         return
 
     try:
-        _init(pkg_name)
+        init(pkg_name)
     except Exception as e:
         click.secho(f"Unable to initialize {pkg_name}: {str(e)}", fg="red")
         return
@@ -106,8 +121,10 @@ def cp(source_file: str, destination_file: str):
 
     Visit docs.latch.bio to learn more.
     """
+    from cli.services.cp import cp
+
     try:
-        _cp(source_file, destination_file)
+        cp(source_file, destination_file)
         click.secho(
             f"\nSuccessfully copied {source_file} to {destination_file}.", fg="green"
         )
@@ -125,6 +142,7 @@ def ls(remote_directories: Union[None, List[str]]):
 
     Visit docs.latch.bio to learn more.
     """
+    from cli.services.ls import ls
 
     def _item_padding(k):
         return 0 if k == "modifyTime" else 3
@@ -135,7 +153,7 @@ def ls(remote_directories: Union[None, List[str]]):
 
     for remote_directory in remote_directories:
         try:
-            output = _ls(remote_directory)
+            output = ls(remote_directory)
         except Exception as e:
             click.secho(
                 f"Unable to display contents of {remote_directory}: {str(e)}", fg="red"
@@ -196,8 +214,10 @@ def local_execute(pkg_root: Path):
     Visit https://docs.latch.bio/basics/local_development.html to read more
     about local development.
     """
+    from cli.services.local_execute import local_execute
+
     try:
-        _local_execute(pkg_root)
+        local_execute(pkg_root)
     except Exception as e:
         click.secho(f"Unable to execute workflow: {str(e)}", fg="red")
 
@@ -214,8 +234,10 @@ def execute(params_file: Path, version: Union[str, None] = None):
 
     Visit docs.latch.bio to learn more.
     """
+    from cli.services.execute import execute
+
     try:
-        wf_name = _execute(params_file, version)
+        wf_name = execute(params_file, version)
     except Exception as e:
         click.secho(f"Unable to execute workflow: {str(e)}", fg="red")
         return
@@ -239,15 +261,18 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
 
     Visit docs.latch.bio to learn more.
     """
+    from cli.services.get_params import get_params
+
     try:
-        _get_params(wf_name, version)
+        get_params(wf_name, version)
     except Exception as e:
         click.secho(f"Unable to generate param map for workflow: {str(e)}", fg="red")
         return
     if version is None:
         version = "latest"
     click.secho(
-        f"Successfully generated python param map named {wf_name}.params.py with version {version}\n Run `latch execute {wf_name}.params.py` to execute it.",
+        f"Successfully generated python param map named {wf_name}.params.py with"
+        f" version {version}\n Run `latch execute {wf_name}.params.py` to execute it.",
         fg="green",
     )
 
@@ -263,8 +288,10 @@ def get_wf(name: Union[str, None] = None):
 
     Visit docs.latch.bio to learn more.
     """
+    from cli.services.get import get_wf
+
     try:
-        wfs = _get_wf(name)
+        wfs = get_wf(name)
     except Exception as e:
         click.secho(f"Unable to get workflows: {str(e)}", fg="red")
         return
@@ -292,8 +319,10 @@ def open_remote_file(remote_file: str):
 
     Visit docs.latch.bio to learn more.
     """
+    from cli.services.open_file import open_file
+
     try:
-        _open_file(remote_file)
+        open_file(remote_file)
         click.secho(f"Successfully opened {remote_file}.", fg="green")
     except Exception as e:
         click.secho(f"Unable to open {remote_file}: {str(e)}", fg="red")
@@ -306,8 +335,10 @@ def rm(remote_path: str):
 
     Visit docs.latch.bio to learn more.
     """
+    from cli.services.rm import rm
+
     try:
-        _rm(remote_path)
+        rm(remote_path)
         click.secho(f"Successfully deleted {remote_path}.", fg="green")
     except Exception as e:
         click.secho(f"Unable to delete {remote_path}: {str(e)}", fg="red")
@@ -320,8 +351,10 @@ def mkdir(remote_directory: str):
 
     Visit docs.latch.bio to learn more.
     """
+    from cli.services.mkdir import mkdir
+
     try:
-        _mkdir(remote_directory)
+        mkdir(remote_directory)
         click.secho(f"Successfully created directory {remote_directory}.", fg="green")
     except Exception as e:
         click.secho(
@@ -336,8 +369,10 @@ def touch(remote_file: str):
 
     Visit docs.latch.bio to learn more.
     """
+    from cli.services.touch import touch
+
     try:
-        _touch(remote_file)
+        touch(remote_file)
         click.secho(f"Successfully touched {remote_file}.", fg="green")
     except Exception as e:
         click.secho(f"Unable to create {remote_file}: {str(e)}", fg="red")

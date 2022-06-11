@@ -13,7 +13,7 @@ from typing import List, Union
 import boto3
 import requests
 
-from latch.services.register import RegisterCtx, RegisterOutput
+from cli.services.register import RegisterCtx, RegisterOutput
 from latch.utils import retrieve_or_login
 
 
@@ -108,7 +108,7 @@ def register(
         pkg_root: A valid path pointing to the worklow code a user wishes to
             register. The path can be absolute or relative. The path is always
             a directory, with its structure exactly as constructed and
-            described in the `latch.services.init` function.
+            described in the `cli.services.init` function.
         dockerfile: An optional valid path pointing to `Dockerfile`_ to define
             a custom container. If passed, the resulting container will be used
             as the environment to execute the registered workflow, allowing

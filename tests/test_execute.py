@@ -7,7 +7,7 @@ test.test_execute
 
 from tempfile import NamedTemporaryFile
 
-from latch.services.execute import execute
+from cli.services.execute import execute
 
 simple_plan = """from latch.types import LatchFile
 

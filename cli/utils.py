@@ -1,10 +1,9 @@
 """Utility functions for services."""
 
 import jwt
-import requests
 
-from latch.config import UserConfig
-from latch.services.login import login
+from cli.config.user import UserConfig
+from cli.services.login import login
 
 
 def retrieve_or_login() -> str:
@@ -65,7 +64,19 @@ def account_id_from_token(token: str) -> str:
 def _normalize_remote_path(remote_path: str):
     if remote_path.startswith("latch://"):
         remote_path = remote_path[len("latch://") :]
-    if not remote_path.startswith("/") and not remote_path.startswith("shared"):
+    if (
+        not remote_path.startswith("/")
+        and not remote_path.startswith("shared")
+        and not remote_path.startswith("account")
+    ):
         remote_path = f"/{remote_path}"
 
     return remote_path
+
+
+def with_si_suffix(num, suffix="B"):
+    for unit in ["", "K", "M", "G", "T", "P", "E", "Z"]:
+        if abs(num) < 1000:
+            return f"{num:3.1f}{unit}{suffix}"
+        num /= 1000
+    return f"{num:.1f}Yi{suffix}"

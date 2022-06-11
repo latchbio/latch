@@ -4,18 +4,18 @@ import math
 import threading
 from pathlib import Path
 
-import requests
 from tqdm.auto import tqdm
 
-from latch.config.latch import LatchConfig
-from latch.services.mkdir import mkdir
-from latch.utils import _normalize_remote_path, retrieve_or_login
+import cli.tinyrequests as tinyrequests
+from cli.config.latch import LatchConfig
+from cli.services.mkdir import mkdir
+from cli.utils import _normalize_remote_path, retrieve_or_login
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints
 
 # AWS uses this value for minimum for multipart as opposed to 5 * 10 ** 6
-_CHUNK_SIZE = 5 * 2 ** 20  # 5 MB
+_CHUNK_SIZE = 5 * 2**20  # 5 MB
 
 LOCK = threading.Lock()
 num_files = 0
@@ -28,7 +28,7 @@ def _dir_exists(remote_dir: str) -> bool:
     token = retrieve_or_login()
     headers = {"Authorization": f"Bearer {token}"}
     data = {"filename": remote_dir}
-    response = requests.post(url=endpoints["verify"], headers=headers, json=data)
+    response = tinyrequests.post(url=endpoints["verify"], headers=headers, json=data)
     try:
         assert response.status_code == 200
     except:
@@ -72,8 +72,8 @@ def _cp_local_to_remote(local_source: str, remote_dest: str):
         https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html
     """
 
-    local_source = Path(local_source).resolve()
-    if local_source.exists() is not True:
+    local_source_p: Path = Path(local_source).resolve()
+    if local_source_p.exists() is not True:
         raise ValueError(f"{local_source} must exist.")
 
     remote_dest = _normalize_remote_path(remote_dest)
@@ -81,11 +81,11 @@ def _cp_local_to_remote(local_source: str, remote_dest: str):
     if remote_dest[-1] == "/":
         remote_dest = remote_dest[:-1]
 
-    if local_source.is_dir():
+    if local_source_p.is_dir():
         if not _dir_exists(remote_dest):
             mkdir(remote_directory=remote_dest)
         tasks = []
-        for sub_dir in local_source.iterdir():
+        for sub_dir in local_source_p.iterdir():
             tasks.append(
                 threading.Thread(
                     target=_cp_local_to_remote,
@@ -103,14 +103,13 @@ def _cp_local_to_remote(local_source: str, remote_dest: str):
             task.join()
 
     else:
-        _upload_file(local_source, remote_dest)
+        _upload_file(local_source_p, remote_dest)
 
 
 def _upload_file(local_source: Path, remote_dest: str):
     with open(local_source, "rb") as f:
         f.seek(0, 2)
         total_bytes = f.tell()
-        f.seek(0, 0)
 
     nrof_parts = math.ceil(total_bytes / _CHUNK_SIZE)
 
@@ -125,7 +124,7 @@ def _upload_file(local_source: Path, remote_dest: str):
 
     url = endpoints["initiate-multipart-upload"]
     headers = {"Authorization": f"Bearer {token}"}
-    response = requests.post(url, headers=headers, json=data)
+    response = tinyrequests.post(url, headers=headers, json=data)
 
     response_json = response.json()
     path = response_json["path"]
@@ -135,10 +134,10 @@ def _upload_file(local_source: Path, remote_dest: str):
     parts = []
     units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
     index = 0
-    while total_bytes // (1024 ** index) > 1000:
+    while total_bytes // (1024**index) > 1000:
         index += 1
 
-    unit = 1024 ** index
+    unit = 1024**index
     total_human_readable = total_bytes // unit
     suffix = units[index]
     text = f"Copying {local_source.relative_to(Path.cwd())} -> {remote_dest}:"
@@ -158,6 +157,8 @@ def _upload_file(local_source: Path, remote_dest: str):
             )
         )
 
+    import requests
+
     for i in range(nrof_parts):
 
         url = urls[str(i)]
@@ -173,7 +174,7 @@ def _upload_file(local_source: Path, remote_dest: str):
     data = {"path": path, "upload_id": upload_id, "parts": parts}
     url = endpoints["complete-multipart-upload"]
     headers = {"Authorization": f"Bearer {token}"}
-    response = requests.post(url, headers=headers, json=data)
+    response = tinyrequests.post(url, headers=headers, json=data)
 
 
 def _cp_remote_to_local(remote_source: str, local_dest: str):
@@ -211,13 +212,17 @@ def _cp_remote_to_local(remote_source: str, local_dest: str):
     """
     remote_source = _normalize_remote_path(remote_source)
 
-    local_dest = Path(local_dest).resolve()
+    local_dest_p = Path(local_dest).resolve()
+    if local_dest_p.is_dir():
+        last_slash = remote_source.rfind("/")
+        local_dest_p = local_dest_p / remote_source[last_slash + 1 :]
+
     token = retrieve_or_login()
     headers = {"Authorization": f"Bearer {token}"}
     data = {"source_path": remote_source}
 
     url = endpoints["download"]
-    response = requests.post(url, headers=headers, json=data)
+    response = tinyrequests.post(url, headers=headers, json=data)
 
     response_data = response.json()
 
@@ -227,14 +232,14 @@ def _cp_remote_to_local(remote_source: str, local_dest: str):
     is_dir = response_data["dir"]
 
     if is_dir:
-        output_dir = Path(local_dest).resolve()
+        output_dir = local_dest_p
         output_dir.mkdir(exist_ok=True)
         _cp_remote_to_local_dir(output_dir, response_data)
     else:
         url = response_data["url"]
-        with requests.get(url, stream=True) as r:
+        with tinyrequests.get(url, stream=True) as r:
             r.raise_for_status()
-            with open(local_dest, "wb") as f:
+            with open(local_dest_p, "wb") as f:
                 for chunk in r.iter_content(chunk_size=_CHUNK_SIZE):
                     f.write(chunk)
 
@@ -246,7 +251,7 @@ def _cp_remote_to_local_dir_helper(output_dir: Path, name: str, response_data: d
         _cp_remote_to_local_dir(sub_dir, response_data)
     else:
         url = response_data["url"]
-        with requests.get(url, stream=True) as r:
+        with tinyrequests.get(url, stream=True) as r:
             r.raise_for_status()
             with open(output_dir.resolve().joinpath(name), "wb") as f:
                 for chunk in r.iter_content(chunk_size=_CHUNK_SIZE):
@@ -278,16 +283,20 @@ def _cp_remote_to_local_dir(output_dir: Path, response_data: dict):
 def cp(source_file: str, destination_file: str):
     if not source_file.startswith("latch://") and (
         destination_file.startswith("latch://shared")
+        or destination_file.startswith("latch://account")
         or destination_file.startswith("latch:///")
     ):
         _cp_local_to_remote(source_file, destination_file)
         for progressbar in progressbars:
             progressbar.close()
     elif (
-        source_file.startswith("latch:///") or source_file.startswith("latch://shared")
+        source_file.startswith("latch:///")
+        or source_file.startswith("latch://shared")
+        or source_file.startswith("latch://account")
     ) and not destination_file.startswith("latch://"):
         _cp_remote_to_local(source_file, destination_file)
     else:
         raise ValueError(
-            "latch cp can only be used to either copy remote -> local or local -> remote"
+            "latch cp can only be used to either copy remote -> local or local ->"
+            " remote"
         )
