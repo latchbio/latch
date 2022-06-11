@@ -189,7 +189,7 @@ Here, we are passing **two** values to `LatchFile`, a local path and a remote pa
 
     We are able to retrieve the filepath thanks to the `Path` class from the `pathlib` module. Writing `str(Path("covid_assembly.sam").resolve())` returns the complete filepath. <i>(Still in doubt? Try it from your terminal!)</i>
 
-* The second value refers to the output file location on [Latch Console](console.latch.bio/data). In other words, when our workflow finishes, you shoujld see a file called `covid_assembly.sam` on Latch Console. 
+* The second value refers to the output file location on [Latch Console](console.latch.bio/data). In other words, when our workflow finishes, you should see a file called `covid_assembly.sam` on Latch Console. 
 
 **Second task**: Sort BAM file
 
