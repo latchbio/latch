@@ -6,16 +6,16 @@ from pathlib import Path
 
 from tqdm.auto import tqdm
 
-import cli.tinyrequests as tinyrequests
-from cli.config.latch import LatchConfig
-from cli.services.mkdir import mkdir
-from cli.utils import _normalize_remote_path, retrieve_or_login
+import latch_cli.tinyrequests as tinyrequests
+from latch_cli.config.latch import LatchConfig
+from latch_cli.services.mkdir import mkdir
+from latch_cli.utils import _normalize_remote_path, retrieve_or_login
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints
 
 # AWS uses this value for minimum for multipart as opposed to 5 * 10 ** 6
-_CHUNK_SIZE = 5 * 2**20  # 5 MB
+_CHUNK_SIZE = 5 * 2 ** 20  # 5 MB
 
 LOCK = threading.Lock()
 num_files = 0
@@ -134,10 +134,10 @@ def _upload_file(local_source: Path, remote_dest: str):
     parts = []
     units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
     index = 0
-    while total_bytes // (1024**index) > 1000:
+    while total_bytes // (1024 ** index) > 1000:
         index += 1
 
-    unit = 1024**index
+    unit = 1024 ** index
     total_human_readable = total_bytes // unit
     suffix = units[index]
     text = f"Copying {local_source.relative_to(Path.cwd())} -> {remote_dest}:"

@@ -1,6 +1,6 @@
-import cli.tinyrequests as tinyrequests
-from cli.config.latch import LatchConfig
-from cli.utils import _normalize_remote_path, retrieve_or_login
+import latch_cli.tinyrequests as tinyrequests
+from latch_cli.config.latch import LatchConfig
+from latch_cli.utils import _normalize_remote_path, retrieve_or_login
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints

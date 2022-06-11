@@ -14,9 +14,9 @@ from flyteidl.core.types_pb2 import LiteralType as _LiteralType
 from flytekit.models.literals import Literal
 from flytekit.models.types import LiteralType
 
-from cli.services.execute import _get_workflow_interface
 from latch.types import LatchDir, LatchFile
-from cli.utils import retrieve_or_login
+from latch_cli.services.execute import _get_workflow_interface
+from latch_cli.utils import retrieve_or_login
 
 
 class Unsupported:

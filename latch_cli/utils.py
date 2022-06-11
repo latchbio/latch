@@ -2,8 +2,8 @@
 
 import jwt
 
-from cli.config.user import UserConfig
-from cli.services.login import login
+from latch_cli.config.user import UserConfig
+from latch_cli.services.login import login
 
 
 def retrieve_or_login() -> str:

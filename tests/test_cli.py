@@ -10,7 +10,7 @@ from typing import List
 import pytest
 import requests
 
-from cli.config.latch import LatchConfig
+from latch_cli.config.latch import LatchConfig
 
 from .fixtures import project_name, test_account_jwt
 

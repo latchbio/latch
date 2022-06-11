@@ -2,8 +2,8 @@ import webbrowser
 
 import requests
 
-from cli.config.latch import LatchConfig
-from cli.utils import _normalize_remote_path, retrieve_or_login
+from latch_cli.config.latch import LatchConfig
+from latch_cli.utils import _normalize_remote_path, retrieve_or_login
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints
@@ -53,5 +53,6 @@ def open_file(remote_file: str):
         webbrowser.open(open_url)
     except:
         raise ValueError(
-            "Either specified file does not exist or you are trying to open a directory."
+            "Either specified file does not exist or you are trying to open a"
+            " directory."
         )

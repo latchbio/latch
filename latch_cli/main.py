@@ -1,4 +1,4 @@
-"""Entrypoints to service functions through a CLI."""
+"""Entrypoints to service functions through a latch_cli."""
 
 import re
 from pathlib import Path
@@ -34,7 +34,7 @@ def register(
 
     Visit docs.latch.bio to learn more.
     """
-    from cli.services.register import register
+    from latch_cli.services.register import register
 
     try:
         register(pkg_root, remote)
@@ -51,7 +51,7 @@ def login():
 
     Visit docs.latch.bio to learn more.
     """
-    from cli.services.login import login
+    from latch_cli.services.login import login
 
     try:
         login()
@@ -67,7 +67,7 @@ def init(pkg_name: str):
 
     Visit docs.latch.bio to learn more.
     """
-    from cli.services.init import init
+    from latch_cli.services.init import init
 
     # Workflow name must not contain capitals or end in a hyphen or underscore. If it does, we should throw an error
     # Check for capitals
@@ -121,7 +121,7 @@ def cp(source_file: str, destination_file: str):
 
     Visit docs.latch.bio to learn more.
     """
-    from cli.services.cp import cp
+    from latch_cli.services.cp import cp
 
     try:
         cp(source_file, destination_file)
@@ -142,7 +142,7 @@ def ls(remote_directories: Union[None, List[str]]):
 
     Visit docs.latch.bio to learn more.
     """
-    from cli.services.ls import ls
+    from latch_cli.services.ls import ls
 
     def _item_padding(k):
         return 0 if k == "modifyTime" else 3
@@ -214,7 +214,7 @@ def local_execute(pkg_root: Path):
     Visit https://docs.latch.bio/basics/local_development.html to read more
     about local development.
     """
-    from cli.services.local_execute import local_execute
+    from latch_cli.services.local_execute import local_execute
 
     try:
         local_execute(pkg_root)
@@ -234,7 +234,7 @@ def execute(params_file: Path, version: Union[str, None] = None):
 
     Visit docs.latch.bio to learn more.
     """
-    from cli.services.execute import execute
+    from latch_cli.services.execute import execute
 
     try:
         wf_name = execute(params_file, version)
@@ -261,7 +261,7 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
 
     Visit docs.latch.bio to learn more.
     """
-    from cli.services.get_params import get_params
+    from latch_cli.services.get_params import get_params
 
     try:
         get_params(wf_name, version)
@@ -288,7 +288,7 @@ def get_wf(name: Union[str, None] = None):
 
     Visit docs.latch.bio to learn more.
     """
-    from cli.services.get import get_wf
+    from latch_cli.services.get import get_wf
 
     try:
         wfs = get_wf(name)
@@ -319,7 +319,7 @@ def open_remote_file(remote_file: str):
 
     Visit docs.latch.bio to learn more.
     """
-    from cli.services.open_file import open_file
+    from latch_cli.services.open_file import open_file
 
     try:
         open_file(remote_file)
@@ -335,7 +335,7 @@ def rm(remote_path: str):
 
     Visit docs.latch.bio to learn more.
     """
-    from cli.services.rm import rm
+    from latch_cli.services.rm import rm
 
     try:
         rm(remote_path)
@@ -351,7 +351,7 @@ def mkdir(remote_directory: str):
 
     Visit docs.latch.bio to learn more.
     """
-    from cli.services.mkdir import mkdir
+    from latch_cli.services.mkdir import mkdir
 
     try:
         mkdir(remote_directory)
@@ -369,7 +369,7 @@ def touch(remote_file: str):
 
     Visit docs.latch.bio to learn more.
     """
-    from cli.services.touch import touch
+    from latch_cli.services.touch import touch
 
     try:
         touch(remote_file)

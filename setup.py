@@ -7,21 +7,21 @@ CURRENT_PYTHON = sys.version_info[:2]
 
 if CURRENT_PYTHON < MIN_PYTHON_VERSION:
     print(
-        f"Latch SDK is only supported for Python version is {MIN_PYTHON_VERSION}+. Detected you are on"
-        f" version {CURRENT_PYTHON}, installation will not proceed!"
+        f"Latch SDK is only supported for Python version is {MIN_PYTHON_VERSION}+."
+        f" Detected you are on version {CURRENT_PYTHON}, installation will not proceed!"
     )
     sys.exit(-1)
 
 setup(
     name="latch",
-    version="v1.1.0",
+    version="v1.2.0",
     author_email="kenny@latch.bio",
     description="latch sdk",
     packages=find_packages(),
     python_requires=">=3.7",
     entry_points={
         "console_scripts": [
-            "latch=cli.main:main",
+            "latch=latch_cli.main:main",
         ]
     },
     install_requires=[

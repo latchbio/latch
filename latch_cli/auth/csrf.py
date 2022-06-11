@@ -1,6 +1,6 @@
 import secrets
 
-from cli.auth.utils import base64url_encode
+from latch_cli.auth.utils import base64url_encode
 
 
 class CSRFState:

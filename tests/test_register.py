@@ -14,9 +14,9 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from cli.services.init import _gen__init__
-from cli.services.register.models import RegisterCtx
-from cli.services.register.register import (
+from latch_cli.services.init import _gen__init__
+from latch_cli.services.register.models import RegisterCtx
+from latch_cli.services.register.register import (
     _register_serialized_pkg,
     _serialize_pkg,
     _upload_pkg_image,

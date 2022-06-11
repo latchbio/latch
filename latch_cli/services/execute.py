@@ -13,8 +13,8 @@ from flytekit.core.type_engine import TypeEngine
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from cli.config.latch import LatchConfig
-from cli.utils import retrieve_or_login
+from latch_cli.config.latch import LatchConfig
+from latch_cli.utils import retrieve_or_login
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints
@@ -72,8 +72,8 @@ def execute(params_file: Path, version: Union[None, str] = None) -> str:
     if wf_name is None:
         raise ValueError(
             f"The dictionary of parameters in the launch file lacks the"
-            " _name key used to identify the workflow. Make sure a _name"
-            " key with the workflow name exists in the dictionary."
+            f" _name key used to identify the workflow. Make sure a _name"
+            f" key with the workflow name exists in the dictionary."
         )
 
     wf_id, wf_interface, _ = _get_workflow_interface(token, wf_name, version)
@@ -179,15 +179,18 @@ def _get_workflow_interface(
     )
     if wf_interface is None:
         raise ValueError(
-            f"Could not find interface. Nucleus returned a malformed JSON response - {wf_interface_resp}"
+            "Could not find interface. Nucleus returned a malformed JSON response -"
+            f" {wf_interface_resp}"
         )
     if wf_id is None:
         raise ValueError(
-            f"Could not find wf ID. Nucleus returned a malformed JSON response - {wf_interface_resp}"
+            "Could not find wf ID. Nucleus returned a malformed JSON response -"
+            f" {wf_interface_resp}"
         )
     if wf_default_params is None:
         raise ValueError(
-            f"Could not find wf default parameters. Nucleus returned a malformed JSON response - {wf_interface_resp}"
+            "Could not find wf default parameters. Nucleus returned a malformed JSON"
+            f" response - {wf_interface_resp}"
         )
 
     return int(wf_id), wf_interface, wf_default_params
@@ -203,7 +206,10 @@ def _execute_workflow(token: str, wf_id: str, params: dict) -> bool:
     # Server sometimes stalls on requests with python user-agent
     headers = {
         "Authorization": f"Bearer {token}",
-        "User-Agent": "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.119 Safari/537.36",
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like"
+            " Gecko) Chrome/72.0.3626.119 Safari/537.36"
+        ),
     }
 
     _interface_request = {"workflow_id": str(wf_id), "params": params}
@@ -213,11 +219,13 @@ def _execute_workflow(token: str, wf_id: str, params: dict) -> bool:
 
     if response.status_code == 403:
         raise PermissionError(
-            "You need access to the latch sdk beta ~ join the waitlist @ https://latch.bio/sdk"
+            "You need access to the latch sdk beta ~ join the waitlist @"
+            " https://latch.bio/sdk"
         )
     elif response.status_code == 401:
         raise ValueError(
-            "your token has expired - please run latch login to refresh your token and try again."
+            "your token has expired - please run latch login to refresh your token and"
+            " try again."
         )
     wf_interface_resp = response.json()
 

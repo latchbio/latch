@@ -2,9 +2,9 @@
 
 from typing import Dict, List
 
-import cli.tinyrequests as tinyrequests
-from cli.config.latch import LatchConfig
-from cli.utils import _normalize_remote_path, retrieve_or_login, with_si_suffix
+import latch_cli.tinyrequests as tinyrequests
+from latch_cli.config.latch import LatchConfig
+from latch_cli.utils import _normalize_remote_path, retrieve_or_login, with_si_suffix
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints

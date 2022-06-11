@@ -1,5 +1,6 @@
 """Service to login."""
 
+
 def login() -> str:
     """Authenticates user with Latch and persists an access token.
 
@@ -20,8 +21,8 @@ def login() -> str:
             " login flow"
         )
 
-    from cli.auth import PKCE, CSRFState, OAuth2
-    from cli.constants import OAuth2Constants
+    from latch_cli.auth import PKCE, CSRFState, OAuth2
+    from latch_cli.constants import OAuth2Constants
 
     with PKCE() as pkce:
         with CSRFState() as csrf_state:
@@ -34,7 +35,8 @@ def login() -> str:
             # LatchBio.
             access_jwt = _auth0_jwt_for_access_jwt(jwt)
 
-            from cli.config.user import UserConfig
+            from latch_cli.config.user import UserConfig
+
             config = UserConfig()
 
             config.update_token(access_jwt)
@@ -66,8 +68,8 @@ def _auth0_jwt_for_access_jwt(token) -> str:
 
     Uses an Auth0 token to authenticate the user.
     """
-    import cli.tinyrequests as tinyrequests
-    from cli.config.latch import LatchConfig
+    import latch_cli.tinyrequests as tinyrequests
+    from latch_cli.config.latch import LatchConfig
 
     endpoints = LatchConfig().sdk_endpoints
 

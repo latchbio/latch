@@ -7,8 +7,8 @@ from typing import List, Optional
 
 import docker
 
-from cli.config.latch import LatchConfig
-from cli.utils import account_id_from_token, retrieve_or_login
+from latch_cli.config.latch import LatchConfig
+from latch_cli.utils import account_id_from_token, retrieve_or_login
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints

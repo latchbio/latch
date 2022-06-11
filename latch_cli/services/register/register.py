@@ -10,7 +10,7 @@ from typing import List, Union
 import boto3
 import requests
 
-from cli.services.register import RegisterCtx, RegisterOutput
+from latch_cli.services.register import RegisterCtx, RegisterOutput
 
 
 def _print_build_logs(build_logs, image):
