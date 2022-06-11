@@ -39,7 +39,7 @@ Latch SDK containerizes and versions the code in the background each time a work
 * **Workflows monitoring**: For batched runs of workflows, we'll aim to provide better dashboard, logs, traces, metrics, and alerting for observability. 
 
 ## What Latch SDK is not
-* **A pure workflow orchestration engine**: There are many popular workflow orchestration engines, such as Nextflow or Snakemake, that can be run locally from a bioinformatician's machine. Although workflow orchestration is a feature of Latch SDK, Latch also provides managed infrastructure and no-code interface generation. You can also easily bring existing workflow script of any language to Latch (See examples [here](./examples/)).
+* **A pure workflow orchestration engine**: There are many popular workflow orchestration engines, such as Nextflow or Snakemake, that can be run locally from a bioinformatician's machine. Although workflow orchestration is a feature of Latch SDK, Latch also provides managed infrastructure and no-code interface generation. You can also easily bring existing workflow script of any language to Latch (See examples [here](./examples/workflows_examples.md)).
 * **A self-hosted solution**: Currently, you cannot write your workflow using Latch SDK and host it in your own AWS instance or an HPC. The infrastructure serving bioinformatics pipelines is fully managed by Latch. This allows us to rapidly iterate to bring on high quality features, give cost and performance guarantees, and ensure that security is offered out-of-the-box. 
 
 ## Examples
