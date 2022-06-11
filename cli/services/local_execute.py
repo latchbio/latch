@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from cli.services.register import RegisterCtx, _print_build_logs, build_image
+from cli.services.register import RegisterCtx, _print_build_logs
 
 
 def local_execute(pkg_root: Path):

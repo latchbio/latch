@@ -3,10 +3,7 @@
 import base64
 import contextlib
 import os
-import tarfile
 import tempfile
-import textwrap
-from io import BytesIO
 from pathlib import Path
 from typing import List, Union
 
@@ -14,7 +11,6 @@ import boto3
 import requests
 
 from cli.services.register import RegisterCtx, RegisterOutput
-from latch.utils import retrieve_or_login
 
 
 def _print_build_logs(build_logs, image):
