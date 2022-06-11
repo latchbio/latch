@@ -10,7 +10,7 @@ from typing import List
 import pytest
 import requests
 
-from cli.config import LatchConfig
+from cli.config.latch import LatchConfig
 
 from .fixtures import project_name, test_account_jwt
 
@@ -206,7 +206,8 @@ def test_execute(test_account_jwt):
     _cmd = ["latch", "execute", "foo.py"]
     _run_and_verify(
         _cmd,
-        "Successfully launched workflow named wf.__init__.assemble_and_sort with version latest.",
+        "Successfully launched workflow named wf.__init__.assemble_and_sort with"
+        " version latest.",
     )
 
 
