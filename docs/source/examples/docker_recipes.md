@@ -1,6 +1,6 @@
 # Docker Recipes
 
-This page contains some recurrent implementation patterns used in Dockerfile when constructing workflows. 
+This page contains some common implementation patterns used in Dockerfiles when building images for workflows.
 
 ## Installing Python Dependencies
 ### Solution 1:
