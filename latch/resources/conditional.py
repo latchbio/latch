@@ -1,9 +1,9 @@
 from flytekit.core.condition import conditional, ConditionalSection
 
 
-def if_else_block(name: str) -> ConditionalSection:
+def create_conditional_section(name: str) -> ConditionalSection:
     """
-    This method creates a new condtional section in a workflow, allowing a user
+    This method creates a new conditional section in a workflow, allowing a user
     to conditionally execute a task based on the value of a task result.
 
     Conditional sections are akin to ternary operators -- they returns the output

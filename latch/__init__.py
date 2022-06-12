@@ -6,4 +6,4 @@ Latch platform.
 
 from latch.resources.tasks import large_gpu_task, large_task, small_gpu_task, small_task, medium_task
 from latch.resources.workflow import workflow
-from latch.resources.conditional import if_else_block
+from latch.resources.conditional import create_conditional_section
