@@ -64,12 +64,12 @@ class LatchDir(FlyteDirectory):
 
             def downloader():
                 ctx = FlyteContextManager.current_context()
-                if ctx is not None:
-                    path = ctx.file_access.get_random_local_path(self._remote_directory)
-                    self.path = path
+                if ctx is not None and hasattr(self, "_remote_directory"):
+                    local_folder = ctx.file_access.get_random_local_directory()
+                    self.path = local_folder
                     return ctx.file_access.get_data(
                         self._remote_directory,
-                        path,
+                        self.path,
                         is_multipart=True,
                     )
 
