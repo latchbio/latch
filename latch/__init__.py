@@ -4,6 +4,14 @@ A commandline toolchain to define and register serverless workflows with the
 Latch platform.
 """
 
-from latch.resources.tasks import large_gpu_task, large_task, small_gpu_task, small_task, medium_task
-from latch.resources.workflow import workflow
 from latch.resources.conditional import create_conditional_section
+from latch.resources.dynamic_tasks import dynamic_task
+from latch.resources.map_tasks import map_task
+from latch.resources.tasks import (
+    large_gpu_task,
+    large_task,
+    medium_task,
+    small_gpu_task,
+    small_task,
+)
+from latch.resources.workflow import workflow
