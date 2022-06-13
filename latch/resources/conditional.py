@@ -1,4 +1,4 @@
-from flytekit.core.condition import conditional, ConditionalSection
+from flytekit.core.condition import ConditionalSection, conditional
 
 
 def create_conditional_section(name: str) -> ConditionalSection:
@@ -30,7 +30,7 @@ def create_conditional_section(name: str) -> ConditionalSection:
         def multiplier(my_input: float, file: LatchFile) -> float:
             result_1 = double(n=my_input, file=file)
             result_2 =  (
-                if_else_block("fractions")
+                create_conditional_section("fractions")
                 .if_((res < 0.0)).then(double(n=res, file=file))
                 .elif_((res > 0.0)).then(square(file=file))
                 .else_().fail("Only nonzero values allowed")
