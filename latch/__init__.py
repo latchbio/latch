@@ -5,7 +5,6 @@ Latch platform.
 """
 
 from latch.resources.conditional import create_conditional_section
-from latch.resources.dynamic_tasks import dynamic_task
 from latch.resources.map_tasks import map_task
 from latch.resources.tasks import (
     large_gpu_task,
