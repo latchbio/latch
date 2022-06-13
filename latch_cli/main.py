@@ -8,6 +8,7 @@ import click
 
 
 @click.group("latch")
+@click.version_option(package_name="latch")
 def main():
     """A command line toolchain to register workflows and upload data to Latch.
 
