@@ -6,8 +6,8 @@ def create_conditional_section(name: str) -> ConditionalSection:
     This method creates a new conditional section in a workflow, allowing a user
     to conditionally execute a task based on the value of a task result.
 
-    Conditional sections are akin to ternary operators -- they returns the output
-    of the branch result. However, they can be n-ary with as many elif_ clauses
+    Conditional sections are akin to ternary operators -- they return the output
+    of the branch result. However, they can be n-ary with as many _elif_ clauses
     as desired.
 
     It is possible to consume the outputs from conditional nodes. And to pass in

@@ -14,7 +14,7 @@ if CURRENT_PYTHON < MIN_PYTHON_VERSION:
 
 setup(
     name="latch",
-    version="v1.3.0",
+    version="v1.3.1",
     author_email="kenny@latch.bio",
     description="latch sdk",
     packages=find_packages(),
@@ -27,7 +27,7 @@ setup(
     install_requires=[
         "pyjwt>=0.2.0",
         "requests>=2.0",
-        "click>=7.0",
+        "click>=8.0",
         "docker>=5.0",
         "boto3>=1.2",
         "tqdm>=4.63.0",
