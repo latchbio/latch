@@ -27,15 +27,15 @@ def create_conditional_section(name: str) -> ConditionalSection:
     Intended Use: ::
 
         @workflow
-        def multiplier(my_input: float, file: LatchFile) -> float:
-            result_1 = double(n=my_input, file=file)
+        def multiplier(my_input: float) -> float:
+            result_1 = double(n=my_input)
             result_2 =  (
                 create_conditional_section("fractions")
-                .if_((res < 0.0)).then(double(n=res, file=file))
-                .elif_((res > 0.0)).then(square(file=file))
+                .if_((result_1 < 0.0)).then(double(n=result_1))
+                .elif_((result_1 > 0.0)).then(square(n=result_1))
                 .else_().fail("Only nonzero values allowed")
             )
-            result_3 = double(n=res2, file=file)
+            result_3 = double(n=result_2)
             return result_3
     """
     return conditional(name)
