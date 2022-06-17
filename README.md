@@ -95,3 +95,5 @@ pull request to feature your own:
 
   * [Guide Counter](https://github.com/latchbio/wf-guide_counter)
   * [Batch-GE](https://github.com/latchbio/wf-batch_ge)
+  * [Seq-to-tree](https://github.com/JLSteenwyk/latch_wf_seq_to_tree)
+  * [Codon optimization estimation](https://github.com/JLSteenwyk/latch_wf_codon_optimization)
