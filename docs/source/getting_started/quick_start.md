@@ -356,6 +356,9 @@ This might take 3-10 minutes depending on your network connection. (Subsequent r
 
 When registration has completed, you should be able to navigate [here](console.latch.bio/workflows) and see your new workflow in your account.
 
+> **Note:**
+Whenever you change your code and want to re-register, remember to bump up the version in the `version` file. See best practices on semantic versioning for software development [here](https://semver.org/).
+
 If you are having issues with registration or have general questions, please
 file an issue on [github](https://github.com/latchbio/latch).
 
