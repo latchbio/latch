@@ -1,7 +1,5 @@
 # Working with Files
 
----
-
 When working with bioinformatics workflows, we are often passing around large
 files or directories between our tasks. These files are usually located in
 cloud object stores and are copied to the file systems of the machines
@@ -10,6 +8,8 @@ on which the task is scheduled.
 The Latch SDK provides a convenient means of referencing files or directories
 within task functions without worrying about how or when the passed file objects
 are copied to the task's machine at execution.
+
+---
 
 Let's look at an example.
 
@@ -107,7 +107,7 @@ be the remote location of returned `LatchFile` constructed with this utility.
 In this example, all files ending with `.fastq.gz` in the working directory of
 the task will be returned to the `latch:///fastqc_outputs` directory:
 
-```
+```python
 @small_task
 def task():
 

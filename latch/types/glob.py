@@ -20,7 +20,7 @@ def file_glob(
     represented by the `remote_directory`.
 
     Args:
-        pattern: A glob pattern to match a set of files, eg. '*.py'. Will
+        pattern: A glob pattern to match a set of files, eg. '\*.py'. Will
             resolve paths with respect to the working directory of the caller.
         remote_directory: A valid latch URL pointing to a directory, eg.
             latch:///foo. This _must_ be a directory and not a file.

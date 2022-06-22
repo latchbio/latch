@@ -1,11 +1,15 @@
 """
 config.latch
-~~~~~
+~~~~~~~~~~~~
 Platform wide configuration, eg. api endpoints, callback server ports...
 """
 
-CONSOLE_URL = "https://console.latch.bio"
-NUCLEUS_URL = "https://nucleus.latch.bio"
+import os as _os
+
+
+CONSOLE_URL = _os.environ.get("LATCH_CLI_CONSOLE_URL", "https://console.latch.bio")
+NUCLEUS_URL = _os.environ.get("LATCH_CLI_NUCLEUS_URL", "https://nucleus.latch.bio")
+
 
 SDK_ENDPOINTS = {
     "initiate-multipart-upload": "/sdk/initiate-multipart-upload",

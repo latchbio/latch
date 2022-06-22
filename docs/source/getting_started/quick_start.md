@@ -189,7 +189,7 @@ Here, we are passing **two** values to `LatchFile`, a local path and a remote pa
 
     We are able to retrieve the filepath thanks to the `Path` class from the `pathlib` module. Writing `str(Path("covid_assembly.sam").resolve())` returns the complete filepath. <i>(Still in doubt? Try it from your terminal!)</i>
 
-* The second value refers to the output file location on [Latch Console](console.latch.bio/data). In other words, when our workflow finishes, you should see a file called `covid_assembly.sam` on Latch Console. 
+* The second value refers to the output file location on [Latch Console](https://console.latch.bio/data). In other words, when our workflow finishes, you should see a file called `covid_assembly.sam` on Latch Console. 
 
 **Second task**: Sort BAM file
 
@@ -332,7 +332,7 @@ Latch automatically parses the written text and Python function headers of the w
     """
 ```
 
-See the side-by-side comparison below on how each section of the docstring translates to a workflow interface on [Latch Console](console.latch.bio/workflows).
+See the side-by-side comparison below on how each section of the docstring translates to a workflow interface on [Latch Console](https://console.latch.bio/workflows).
 
 ![Description UI](../assets/description-md.png)
 Your workflow description will show up in the **Description** tab on Latch Console.
@@ -354,7 +354,10 @@ This might take 3-10 minutes depending on your network connection. (Subsequent r
 * Serialize your code and register it with your LatchBio account
 * Push your docker image to a managed container registry
 
-When registration has completed, you should be able to navigate [here](console.latch.bio/workflows) and see your new workflow in your account.
+When registration has completed, you should be able to navigate [here](https://console.latch.bio/workflows) and see your new workflow in your account.
+
+> **Note:**
+Whenever you change your code and want to re-register, remember to bump up the version in the `version` file. See best practices on semantic versioning for software development [here](https://semver.org/).
 
 If you are having issues with registration or have general questions, please
 file an issue on [github](https://github.com/latchbio/latch).

@@ -11,3 +11,4 @@ __pycache__
 docs/build
 /.envrc
 /twine_creds.sh
+.vscode

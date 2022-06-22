@@ -1,7 +1,5 @@
 # Customizing Your Interface
 
----
-
 The Latch SDK will dynamically construct interfaces from your python code.
 
 You have a great deal of control over the constructed interface.  Within the
@@ -12,6 +10,8 @@ docstring of the workflow function, you can specify:
 * the ordering and grouping of parameters
 * parameter tooltip descriptions
 * parameter display names
+
+---
 
 ## One Line Description
 
