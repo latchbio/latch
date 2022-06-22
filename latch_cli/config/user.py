@@ -1,6 +1,6 @@
 """
 config.user
-~~~~~~
+~~~~~~~~~~~
 Repository for retrieving + updating user config values.
 """
 

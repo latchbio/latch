@@ -1,5 +1,4 @@
-Local Development
-====
+# Local Development
 
 Executing workflows on the LatchBio platform is heavily encouraged for
 consistent behavior.
@@ -28,11 +27,10 @@ made with rapid changes.
 
 More information [here](https://docs.latch.bio/subcommands.html#latch-local-execute).
 
-
 Here is an example of a minimal `wf/__init__.py` file that demonstrates local
 execution:
 
-```
+```python
 from pathlib import Path
 
 from latch import small_task, workflow
@@ -67,7 +65,7 @@ if __name__ == "__main__":
 Note that all provided values must be python literals and must be valid
 parameter values given the respective parameter type.
 
-### File Behavior
+## File Behavior
 
 When a workflow is executing locally, remote path handling will be ignored. This
 means there will be no attempt to copy data from remote paths when ingesting or

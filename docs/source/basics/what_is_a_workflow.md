@@ -1,9 +1,9 @@
 # What is a Workflow?
 
----
-
 A workflow is an analysis that takes in some input, processes it in one or more
 steps and produces some output.
+
+---
 
 Formally, a workflow can be described as a [directed acyclic graph](https://en.wikipedia.org/wiki/Directed_acyclic_graph) (DAG), where each
 node in the graph is called a task. This computational graph is a flexible model

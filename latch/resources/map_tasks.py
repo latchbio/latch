@@ -1,9 +1,9 @@
 """
 A map task lets you run a pod task or a regular task over a 
-list of inputs within a single workflow node. This means you
- can run thousands of instances of the task without creating 
- a node for every instance, providing valuable performance 
- gains!
+list of inputs within a single workflow node. This means you 
+can run thousands of instances of the task without creating 
+a node for every instance, providing valuable performance 
+gains!
 
 Some use cases of map tasks include:
  - Several inputs must run through the same code logic
@@ -38,6 +38,6 @@ Intended Use: ::
         )
         coalesced = coalesce(b=mapped_out)
         return coalesced
-
 """
+
 from flytekit.core.map_task import map_task

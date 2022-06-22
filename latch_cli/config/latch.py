@@ -1,6 +1,6 @@
 """
 config.latch
-~~~~~
+~~~~~~~~~~~~
 Platform wide configuration, eg. api endpoints, callback server ports...
 """
 

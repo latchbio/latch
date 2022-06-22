@@ -1,7 +1,5 @@
 # Defining Cloud Resources
 
----
-
 When a workflow is executed and tasks are scheduled, the machines needed to run
 the task are provisioned automatically and managed for the user until task
 completion.
@@ -9,6 +7,8 @@ completion.
 Tasks can be annotated with the resources they are expected to consume (eg. CPU,
 RAM, GPU) at runtime and these requests will be fullfilled during the scheduling
 process.
+
+---
 
 The Latch SDK currently supports a set of prespecified task resource requests
 represented as decorators:

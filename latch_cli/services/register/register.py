@@ -73,7 +73,7 @@ def register(
 ) -> RegisterOutput:
     """Registers a workflow, defined as python code, with Latch.
 
-    Kicks off a three-legged OAuth2.0 flow outlined in `this RFC`_.  Logic
+    Kicks off a three-legged OAuth2.0 flow outlined in `RFC6749`_.  Logic
     scaffolding this flow and detailed documentation can be found in the
     `latch.auth` package
 
@@ -81,7 +81,7 @@ def register(
     login. The SDK meanwhile spins up a callback server on a separate thread
     that will be hit when the browser login is successful with an access token.
 
-    .. _this RFC
+    .. _RFC6749:
         https://datatracker.ietf.org/doc/html/rfc6749
 
     The major constituent steps are:
