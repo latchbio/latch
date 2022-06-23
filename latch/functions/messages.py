@@ -14,7 +14,7 @@ def message(typ: str, data: Dict[str, Any]) -> None:
         task_version = _os.environ["FLYTE_INTERNAL_TASK_VERSION"]
         execution_token = _os.environ["FLYTE_INTERNAL_EXECUTION_ID"]
     except KeyError:
-        print(f"In local execution mode, printing below.\n[{typ}]: {data}")
+        print(f"Local execution message:\n[{typ}]: {data}")
         return
 
     response = requests.post(
@@ -29,5 +29,4 @@ def message(typ: str, data: Dict[str, Any]) -> None:
     )
 
     if response.status_code != 200:
-        print("Error while sending message; printing message below instead...")
-        print(f"\t[{typ}]: {data}")
+        raise RuntimeError("Could not add task execution message to Latch.")
