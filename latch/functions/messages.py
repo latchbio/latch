@@ -12,6 +12,7 @@ def message(typ: str, data: Dict[str, Any]) -> None:
     try:
         task_name = _os.environ["FLYTE_INTERNAL_TASK_NAME"]
         task_version = _os.environ["FLYTE_INTERNAL_TASK_VERSION"]
+        task_attempt_number = _os.environ["FLYTE_ATTEMPT_NUMBER"]
         execution_token = _os.environ["FLYTE_INTERNAL_EXECUTION_ID"]
     except KeyError:
         print(f"Local execution message:\n[{typ}]: {data}")
@@ -23,6 +24,7 @@ def message(typ: str, data: Dict[str, Any]) -> None:
             "execution_token": execution_token,
             "task_name": task_name,
             "task_version": task_version,
+            "task_attempt_number": task_attempt_number,
             "type": typ,
             "data": data,
         },
