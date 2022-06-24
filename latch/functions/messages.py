@@ -5,11 +5,13 @@ import requests
 
 
 NUCLEUS_URL = _os.environ.get("LATCH_CLI_NUCLEUS_URL", "https://nucleus.latch.bio")
-ADD_MESSAGE_ENDPOINT = f"{NUCLEUS_URL}/add-task-execution-message"
+ADD_MESSAGE_ENDPOINT = f"{NUCLEUS_URL}/sdk/add-task-execution-message"
 
 
 def message(typ: str, data: Dict[str, Any]) -> None:
     try:
+        task_project = _os.environ["FLYTE_INTERNAL_TASK_PROJECT"]
+        task_domain = _os.environ["FLYTE_INTERNAL_TASK_DOMAIN"]
         task_name = _os.environ["FLYTE_INTERNAL_TASK_NAME"]
         task_version = _os.environ["FLYTE_INTERNAL_TASK_VERSION"]
         task_attempt_number = _os.environ["FLYTE_ATTEMPT_NUMBER"]
@@ -22,8 +24,12 @@ def message(typ: str, data: Dict[str, Any]) -> None:
         url=ADD_MESSAGE_ENDPOINT,
         json={
             "execution_token": execution_token,
-            "task_name": task_name,
-            "task_version": task_version,
+            "task": {
+                "project": task_project,
+                "domain": task_domain,
+                "name": task_name,
+                "version": task_version,
+            },
             "task_attempt_number": task_attempt_number,
             "type": typ,
             "data": data,
