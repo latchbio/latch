@@ -1,7 +1,7 @@
 import json
 import re
-from dataclasses import dataclass, field, fields
-from textwrap import dedent, indent
+from dataclasses import asdict, dataclass, field
+from textwrap import indent
 from typing import Any, List, Optional, Tuple
 
 import yaml
@@ -21,6 +21,13 @@ class LatchRule:
             re.compile(self.regex)
         except re.error as e:
             raise ValueError(f"Malformed regex {self.regex}: {e.msg}")
+
+
+@dataclass
+class LatchAuthor:
+    name: Optional[str] = None
+    email: Optional[str] = None
+    github: Optional[str] = None
 
 
 @dataclass
@@ -78,30 +85,17 @@ class LatchParameter:
 @dataclass
 class LatchMetadata:
     display_name: str
-    documentation_link: Optional[str] = None
-    name: Optional[str] = None
-    email: Optional[str] = None
-    github: Optional[str] = None
+    author: LatchAuthor
+    documentation: Optional[str] = None
     repository: Optional[str] = None
     license: str = "MIT"
     parameters: dict[str, LatchParameter] = field(default_factory=dict)
 
     @property
     def dict(self):
-        metadata_dict = {}
-        sidebar_dict = {}
-        sidebar_dict["display_name"] = self.display_name
-        sidebar_dict["documentation"] = self.documentation_link
-        sidebar_dict["author"] = {
-            "name": self.name,
-            "email": self.email,
-            "github": self.github,
-        }
-        sidebar_dict["repository"] = self.repository
-        sidebar_dict["license"] = {"id": self.license}
-        metadata_dict["__metadata__"] = sidebar_dict
-
-        return metadata_dict
+        metadata_dict = asdict(self)
+        metadata_dict["license"] = {"id": self.license}
+        return {"__metadata__": metadata_dict}
 
     def __str__(self):
         def _parameter_str(t: Tuple[str, LatchParameter]):
