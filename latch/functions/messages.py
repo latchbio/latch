@@ -3,6 +3,7 @@ from typing import Any, Dict
 
 import requests
 
+
 NUCLEUS_URL = _os.environ.get("LATCH_CLI_NUCLEUS_URL", "https://nucleus.latch.bio")
 ADD_MESSAGE_ENDPOINT = f"{NUCLEUS_URL}/sdk/add-task-execution-message"
 
