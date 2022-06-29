@@ -15,4 +15,3 @@ from latch.resources.tasks import (
     small_task,
 )
 from latch.resources.workflow import workflow
-from latch.functions.messages import message

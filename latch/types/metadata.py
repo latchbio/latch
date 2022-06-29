@@ -94,6 +94,8 @@ class LatchMetadata:
     @property
     def dict(self):
         metadata_dict = asdict(self)
+        # remove parameters since that will be handled by each parameters' dict() method
+        del metadata_dict["parameters"]
         metadata_dict["license"] = {"id": self.license}
         return {"__metadata__": metadata_dict}
 
