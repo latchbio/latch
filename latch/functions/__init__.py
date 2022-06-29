@@ -1,1 +1,1 @@
-from .messages import message
+from latch.functions.messages import message
