@@ -92,7 +92,7 @@ class LatchFile(FlyteFile):
         return self._remote_path
 
     def __str__(self):
-        return f'LatchFile("{self.local_path}")'
+        return f'LatchFile("remote_path={self.remote_path}")'
 
 
 LatchOutputFile = Annotated[
