@@ -1,6 +1,7 @@
 import json
 import re
 from dataclasses import asdict, dataclass, field
+from enum import Enum
 from textwrap import indent
 from typing import Any, List, Optional, Tuple
 
@@ -14,13 +15,18 @@ class LatchRule:
 
     @property
     def dict(self):
-        return {"regex": self.regex, "message": self.message}
+        return asdict(self)
 
     def __post_init__(self):
         try:
             re.compile(self.regex)
         except re.error as e:
             raise ValueError(f"Malformed regex {self.regex}: {e.msg}")
+
+
+class LatchAppearanceType(Enum):
+    line = "line"
+    paragraph = "paragraph"
 
 
 @dataclass
@@ -40,14 +46,8 @@ class LatchParameter:
     comment: Optional[str] = None
     output: bool = False
     batch_table_column: bool = False
-    appearance_type: str = "line"
+    appearance_type: LatchAppearanceType = LatchAppearanceType.line
     rules: List[LatchRule] = field(default_factory=list)
-
-    def __post_init__(self):
-        if self.appearance_type not in ["line", "paragraph"]:
-            raise ValueError(
-                f'Invalid value passed to appearance type: "{self.appearance_type}" (must either be "line" or "paragraph")'
-            )
 
     def __str__(self):
         metadata_yaml = yaml.dump(yaml.safe_load(json.dumps(self.dict)))
@@ -66,7 +66,7 @@ class LatchParameter:
             temp_dict["section_title"] = self.section_title
         parameter_dict["_tmp"] = temp_dict
 
-        appearance_dict = {"type": self.appearance_type}
+        appearance_dict = {"type": self.appearance_type.value}
         if self.placeholder is not None:
             appearance_dict["placeholder"] = self.placeholder
         if self.comment is not None:

@@ -70,8 +70,7 @@ class LatchFile(FlyteFile):
                     and hasattr(self, "_remote_path")
                     and self._remote_path is not None
                 ):
-                    path = ctx.file_access.get_random_local_path(self._remote_path)
-                    self.path = path
+                    self.path = ctx.file_access.get_random_local_path(self._remote_path)
                     return ctx.file_access.get_data(
                         self._remote_path,
                         self.path,
@@ -96,7 +95,7 @@ class LatchFile(FlyteFile):
         return self._remote_path
 
     def __str__(self):
-        return f'LatchFile("{self.local_path}")'
+        return f'LatchFile("remote_path={self.remote_path}")'
 
 
 LatchOutputFile = Annotated[
