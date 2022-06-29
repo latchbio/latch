@@ -3,7 +3,7 @@ import re
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from textwrap import indent
-from typing import Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import yaml
 
@@ -89,7 +89,7 @@ class LatchMetadata:
     documentation: Optional[str] = None
     repository: Optional[str] = None
     license: str = "MIT"
-    parameters: dict[str, LatchParameter] = field(default_factory=dict)
+    parameters: Dict[str, LatchParameter] = field(default_factory=dict)
 
     @property
     def dict(self):
