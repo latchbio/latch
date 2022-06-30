@@ -68,8 +68,8 @@ def _print_reg_resp(resp, image):
 
 
 def register(
-    *args,
-    **kwargs
+    pkg_root: str,
+    remote: Union[str, None] = None,
 ) -> RegisterOutput:
     """Registers a workflow, defined as python code, with Latch.
 
@@ -128,17 +128,6 @@ def register(
     .. _flytekit documentation:
         https://docs.flyte.org/en/latest/concepts/registration.html
     """
-
-    if len(args != 0):
-        pkg_root = args[0]
-    else:
-        pkg_root = os.getcwd()
-
-    if kwargs:
-        for kwarg in kwargs.values():
-            remote = kwarg
-    else:
-        remote = None
 
     ctx = RegisterCtx(pkg_root)
     ctx.remote = remote
