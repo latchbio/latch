@@ -3,6 +3,7 @@
 import re
 from pathlib import Path
 from typing import List, Union
+import os
 
 import click
 
@@ -28,8 +29,8 @@ def main():
     ),
 )
 def register(
-    pkg_root: str,
-    remote: Union[str, None],
+    pkg_root: str = os.getcwd(),
+    remote: Union[str, None] = None,
 ):
     """Register local workflow code to Latch.
 
