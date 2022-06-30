@@ -53,10 +53,10 @@ class LatchDir(FlyteDirectory):
     def __init__(
         self, path: Union[str, PathLike], remote_path: PathLike = None, **kwargs
     ):
-        if remote_path is not None:
-            self._remote_directory = remote_path
-        elif _is_valid_url(path) and remote_path is None:
+        if _is_valid_url(path) and remote_path is None:
             self._remote_directory = path
+        else:
+            self._remote_directory = remote_path
 
         if kwargs.get("downloader") is not None:
             super().__init__(path, kwargs["downloader"], remote_path)
@@ -64,7 +64,11 @@ class LatchDir(FlyteDirectory):
 
             def downloader():
                 ctx = FlyteContextManager.current_context()
-                if ctx is not None and hasattr(self, "_remote_directory"):
+                if (
+                    ctx is not None
+                    and hasattr(self, "_remote_directory")
+                    and self._remote_directory is not None
+                ):
                     self.path = ctx.file_access.get_random_local_directory()
                     return ctx.file_access.get_data(
                         self._remote_directory,

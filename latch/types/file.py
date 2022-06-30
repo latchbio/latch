@@ -54,10 +54,10 @@ class LatchFile(FlyteFile):
     def __init__(
         self, path: Union[str, PathLike], remote_path: PathLike = None, **kwargs
     ):
-        if remote_path is not None:
-            self._remote_path = remote_path
         if _is_valid_url(path) and remote_path is None:
             self._remote_path = path
+        else:
+            self._remote_path = remote_path
 
         if kwargs.get("downloader") is not None:
             super().__init__(path, kwargs["downloader"], remote_path)
@@ -65,9 +65,12 @@ class LatchFile(FlyteFile):
 
             def downloader():
                 ctx = FlyteContextManager.current_context()
-                if ctx is not None and hasattr(self, "_remote_path"):
-                    path = ctx.file_access.get_random_local_path(self._remote_path)
-                    self.path = path
+                if (
+                    ctx is not None
+                    and hasattr(self, "_remote_path")
+                    and self._remote_path is not None
+                ):
+                    self.path = ctx.file_access.get_random_local_path(self._remote_path)
                     return ctx.file_access.get_data(
                         self._remote_path,
                         self.path,

@@ -4,6 +4,7 @@ A commandline toolchain to define and register serverless workflows with the
 Latch platform.
 """
 
+from latch.functions.messages import message
 from latch.resources.conditional import create_conditional_section
 from latch.resources.map_tasks import map_task
 from latch.resources.tasks import (
@@ -14,4 +15,3 @@ from latch.resources.tasks import (
     small_task,
 )
 from latch.resources.workflow import workflow
-from latch.functions.messages import message
