@@ -10,6 +10,16 @@ import yaml
 
 @dataclass
 class LatchRule:
+    """Class describing a rule that a parameter input must follow
+
+    Fields:
+        regex:
+            A string regular expression which inputs must match
+        message:
+            The message to render when an input does not match
+            the regex
+    """
+
     regex: str
     message: str
 
@@ -31,6 +41,17 @@ class LatchAppearanceType(Enum):
 
 @dataclass
 class LatchAuthor:
+    """Class describing metadata about the workflow author
+
+    Fields:
+        name:
+            The name of the author
+        email:
+            The email of the author
+        github:
+            A link to the github profile of the author
+    """
+
     name: Optional[str] = None
     email: Optional[str] = None
     github: Optional[str] = None
@@ -38,6 +59,38 @@ class LatchAuthor:
 
 @dataclass
 class LatchParameter:
+    """Class for organizing parameter metadata
+
+    Fields:
+        display_name:
+            The name used to display the parameter on Latch Console
+        description:
+            The description of the parameter's role in the workflow
+        hidden:
+            Whether or not the parameter should be hidden by default
+        section_title:
+            Whether this parameter should start a new section
+        placeholder:
+            What should be rendered as a placeholder in the input box
+            of the parameter before any value is inputed.
+        comment:
+            Any comment on the parameter itself
+        output:
+            Whether or not this parameter is an output (used to disable
+            path validation before launching a workflow)
+        batch_table_column:
+            Whether this parameter should be given a column in the batch
+            table at the top of the workflow inputs
+        appearance_type:
+            Whether the parameter should be rendered as a line or paragraph
+            (must be exactly one of either LatchAppearanceType.line or
+            LatchAppearanceType.paragraph)
+        rules:
+            A list of LatchRule objects that inputs to this parameter must
+            follow.
+
+    """
+
     display_name: Optional[str] = None
     description: Optional[str] = None
     hidden: bool = False
@@ -84,6 +137,23 @@ class LatchParameter:
 
 @dataclass
 class LatchMetadata:
+    """Class for organizing workflow metadata
+
+    Fields:
+        display_name:
+            The name of the workflow
+        author:
+            A `LatchAuthor` object that describes the author of the workflow
+        documentation:
+            A link to documentation for the workflow itself
+        repository:
+            A link to the repository where the code for the workflow is hosted
+        license:
+            A SPDX identifier
+        parameters:
+            A dictionary mapping parameter names (strings) to `LatchParameter` objects
+    """
+
     display_name: str
     author: LatchAuthor
     documentation: Optional[str] = None
