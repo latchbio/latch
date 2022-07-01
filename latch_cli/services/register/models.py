@@ -1,5 +1,6 @@
 """Models used in the register service."""
 
+import hashlib
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -65,14 +66,29 @@ class RegisterCtx:
     latch_commit_api_url = endpoints["commit-workflow"]
     latch_image_api_url = endpoints["initiate-image-upload"]
 
-    def __init__(self, pkg_root: Path, token: Optional[str] = None):
+    def __init__(
+        self,
+        pkg_root: Path,
+        token: Optional[str] = None,
+        auto_version: bool = False,
+    ):
 
         self.dkr_client = self._construct_dkr_client()
         self.pkg_root = Path(pkg_root).resolve()
         try:
-            version_file = self.pkg_root.joinpath("version")
-            with open(version_file, "r") as vf:
-                self.version = vf.read().strip()
+            if auto_version:
+                m = hashlib.new("sha256")
+                for dir_path, fnames, _ in os.walk(self.pkg_root):
+                    for filename in fnames:
+                        filepath = Path(dir_path).joinpath(filename)
+                        m.update(filepath)
+                        with open(filepath, "r") as f:
+                            m.update(f.read())
+                self.version = m.hexdigest()[:6]
+            else:
+                version_file = self.pkg_root.joinpath("version")
+                with open(version_file, "r") as vf:
+                    self.version = vf.read().strip()
         except Exception as e:
             raise ValueError(
                 f"Unable to extract pkg version from {str(self.pkg_root)}"

@@ -2,7 +2,7 @@
 
 import re
 from pathlib import Path
-from typing import List, Union
+from typing import List, Optional, Union
 
 import click
 
@@ -27,18 +27,24 @@ def main():
         " reside."
     ),
 )
-def register(
-    pkg_root: str,
-    remote: Union[str, None],
-):
+@click.option(
+    "--auto-version",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Whether to automatically bump the version of the workflow each time register is called.",
+)
+def register(pkg_root: str, remote: Union[str, None], auto_version: bool):
     """Register local workflow code to Latch.
 
     Visit docs.latch.bio to learn more.
     """
     from latch_cli.services.register import register
 
+    print(auto_version)
+
     try:
-        register(pkg_root, remote)
+        register(pkg_root, remote, auto_version)
         click.secho(
             "Successfully registered workflow. View @ console.latch.bio.", fg="green"
         )
