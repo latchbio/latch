@@ -107,8 +107,6 @@ class RegisterCtx:
                         m.update(str(path).encode("utf-8"))
                 self.version = self.version + "-" + m.hexdigest()[:6]
         except Exception as e:
-            print(e)
-            traceback.print_exc()
             raise ValueError(
                 f"Unable to extract pkg version from {str(self.pkg_root)}"
             ) from e
