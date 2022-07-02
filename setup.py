@@ -26,7 +26,7 @@ setup(
     },
     install_requires=[
         "awscli==1.25.22",
-        "kubernetes==21.7.0",
+        "kubernetes>=24.2.0",
         "pyjwt>=0.2.0",
         "requests>=2.0",
         "click>=8.0",
