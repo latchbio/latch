@@ -26,8 +26,6 @@ def local_execute(pkg_root: Path):
     ctx = RegisterCtx(pkg_root)
 
     dockerfile = ctx.pkg_root.joinpath("Dockerfile")
-    wf_pkg = ctx.pkg_root.joinpath("wf")
-    data_pkg = ctx.pkg_root.joinpath("data")
 
     def _create_container(image_name: str):
         container = ctx.dkr_client.create_container(
