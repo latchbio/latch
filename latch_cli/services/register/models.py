@@ -83,12 +83,15 @@ class RegisterCtx:
                 self.version = vf.read().strip()
             if self.auto_version:
                 m = hashlib.new("sha256")
-                for dir_path, _, fnames in os.walk(self.pkg_root):
+                for containing_path, dirnames, fnames in os.walk(self.pkg_root):
                     for filename in fnames:
-                        filepath = Path(dir_path).joinpath(filename)
-                        m.update(str(filepath).encode("utf-8"))
-                        with open(filepath, "rb") as f:
+                        path = Path(containing_path).joinpath(filename)
+                        m.update(str(path).encode("utf-8"))
+                        with open(path, "rb") as f:
                             m.update(f.read())
+                    for dirname in dirnames:
+                        path = Path(containing_path).joinpath(dirname)
+                        m.update(str(path).encode("utf-8"))
                 self.version = self.version + "-" + m.hexdigest()[:6]
         except Exception as e:
             print(e)
