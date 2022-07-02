@@ -141,7 +141,6 @@ def _print_reg_resp(resp, image):
 
 def register(
     pkg_root: str,
-    remote: Union[str, None] = None,
     disable_auto_version: bool = False,
 ) -> RegisterOutput:
     """Registers a workflow, defined as python code, with Latch.
@@ -207,8 +206,6 @@ def register(
                 f"This version ({ctx.version}) already exists."
                 " Make sure that you've saved any changes you made."
             )
-
-    ctx.remote = remote
 
     print(f"Initializing registration for {pkg_root}")
 

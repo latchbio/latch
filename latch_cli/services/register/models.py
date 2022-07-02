@@ -61,7 +61,6 @@ class RegisterCtx:
     dkr_repo: Optional[str] = None
     dkr_client: docker.APIClient = None
     pkg_root: Path = None  # root
-    remote: Optional[str] = None
     disable_auto_version: bool = False
     image_full = None
     token = None
@@ -183,13 +182,6 @@ class RegisterCtx:
         version_archive_path.parent.mkdir(parents=True, exist_ok=True)
         version_archive_path.touch(exist_ok=True)
         return version_archive_path
-
-    @property
-    def fs_cache_path(self) -> Path:
-        fs_cache_path = Path.home() / ".latch" / self.image / "fs_cache.json"
-        fs_cache_path.parent.mkdir(parents=True, exist_ok=True)
-        fs_cache_path.touch(exist_ok=True)
-        return fs_cache_path
 
     @staticmethod
     def _construct_dkr_client():

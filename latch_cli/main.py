@@ -21,21 +21,13 @@ def main():
 @click.command("register")
 @click.argument("pkg_root", nargs=1, type=click.Path(exists=True))
 @click.option(
-    "--remote",
-    default=None,
-    help=(
-        "The ssh url of a remote git repository where registered workflow code will"
-        " reside."
-    ),
-)
-@click.option(
     "--disable-auto-version",
     is_flag=True,
     default=False,
     type=bool,
     help="Whether to automatically bump the version of the workflow each time register is called.",
 )
-def register(pkg_root: str, remote: Union[str, None], disable_auto_version: bool):
+def register(pkg_root: str, disable_auto_version: bool):
     """Register local workflow code to Latch.
 
     Visit docs.latch.bio to learn more.
