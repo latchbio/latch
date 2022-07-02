@@ -6,7 +6,6 @@ Platform wide configuration, eg. api endpoints, callback server ports...
 
 import os as _os
 
-
 CONSOLE_URL = _os.environ.get("LATCH_CLI_CONSOLE_URL", "https://console.latch.bio")
 NUCLEUS_URL = _os.environ.get("LATCH_CLI_NUCLEUS_URL", "https://nucleus.latch.bio")
 
@@ -18,7 +17,6 @@ SDK_ENDPOINTS = {
     "list-files": "/sdk/list",
     "initiate-image-upload": "/sdk/initiate-image-upload",
     "register-workflow": "/sdk/register-workflow",
-    "commit-workflow": "/sdk/commit-workflow",
     "get-workflow-interface": "/sdk/wf-interface",
     "access-jwt": "/sdk/access-jwt",
     "execute-workflow": "/sdk/wf",

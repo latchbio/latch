@@ -2,7 +2,10 @@
 
 import base64
 import contextlib
+import functools
 import os
+import re
+import shutil
 import tempfile
 from pathlib import Path
 from typing import List, Union
@@ -12,40 +15,96 @@ import requests
 
 from latch_cli.services.register import RegisterCtx, RegisterOutput
 
+_MAX_LINES = 10
+
+# for parsing out ansi escape codes
+_ANSI_REGEX = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
+
+
+print = functools.partial(print, flush=True)
+
+
+def _delete_lines(lines: List[str]):
+    """Deletes the previous len(lines) lines, assuming cursor is on a
+    new line just below the first line to be deleted"""
+    for _ in lines:
+        print("\x1b[1F\x1b[0G\x1b[2K", end="")
+    return []
+
+
+def _print_window(curr_lines: List[str], line: str):
+    """Prints the lines curr_lines[1:] and line, overwriting curr_lines
+    in the process"""
+    if line == "":
+        return curr_lines
+    elif len(curr_lines) >= _MAX_LINES:
+        line = _ANSI_REGEX.sub("", line)
+        new_lines = curr_lines[len(curr_lines) - _MAX_LINES + 1 :]
+        new_lines.append(line)
+        _delete_lines(curr_lines)
+        for s in new_lines:
+            print("\x1b[38;5;245m" + s + "\x1b[0m")
+        return new_lines
+    else:
+        print("\x1b[38;5;245m" + line + "\x1b[0m")
+        curr_lines.append(line)
+        return curr_lines
+
 
 def _print_build_logs(build_logs, image):
-    print(f"\tBuilding Docker image for {image}")
+    print(f"Building Docker image for {image}")
+    r = re.compile("^Step [0-9]+/[0-9]+ :")
+    curr_lines = []
     for x in build_logs:
-        line = x.get("stream")
-        error = x.get("error")
+        # for dockerfile parse errors
+        message: str = x.get("message")
+        if message is not None:
+            raise ValueError(message)
+
+        lines: str = x.get("stream")
+        error: str = x.get("error")
         if error is not None:
-            print(f"\t\t{x}")
-            raise OSError(f"Error when building image ~ {x}")
-        elif line is not None:
-            print(f"\t\t{line}", end="")
+            raise OSError(f"Error when building image ~ {error}")
+        if lines:
+            for line in lines.split("\n"):
+                curr_terminal_width = shutil.get_terminal_size()[0]
+                if len(line) > curr_terminal_width:
+                    line = line[: curr_terminal_width - 3] + "..."
+
+                if r.match(line):
+                    curr_lines = _delete_lines(curr_lines)
+                    print("\x1b[38;5;33m" + line + "\x1b[0m")
+                else:
+                    curr_lines = _print_window(curr_lines, line)
+    _delete_lines(curr_lines)
 
 
 def _print_serialize_logs(serialize_logs, image):
-    print(f"\tSerializing workflow in {image}:")
+    print(f"Serializing workflow in {image}:")
     for x in serialize_logs:
-        print(f"\t\t{x}", end="")
+        print(x, end="")
 
 
 def _print_upload_logs(upload_image_logs, image):
-    print(f"\tUploading Docker image for {image}")
+    print(f"Uploading Docker image for {image}")
     prog_map = {}
 
-    def _pp_prog_map(m):
+    def _pp_prog_map(prog_map, prev_lines):
+        if prev_lines > 0:
+            print("\x1b[2K\x1b[1E" * prev_lines + f"\x1b[{prev_lines}F", end="")
         prog_chunk = ""
         i = 0
-        for id, prog in m.items():
+        for id, prog in prog_map.items():
             if prog is None:
                 continue
-            prog_chunk += f"\t\t{id} ~ {prog}\n"
+            prog_chunk += f"{id} ~ {prog}\n"
             i += 1
         if prog_chunk == "":
-            return
+            return 0
         print(prog_chunk, end=f"\x1B[{i}A")
+        return i
+
+    prev_lines = 0
 
     for x in upload_image_logs:
         if (
@@ -54,22 +113,35 @@ def _print_upload_logs(upload_image_logs, image):
         ):
             raise OSError(f"Docker authorization for {image} is expired.")
         prog_map[x.get("id")] = x.get("progress")
-        _pp_prog_map(prog_map)
+        prev_lines = _pp_prog_map(prog_map, prev_lines)
 
 
 def _print_reg_resp(resp, image):
-    print(f"\tRegistering {image} with LatchBio.")
-    print("\tstdout:")
-    for x in resp["stdout"].split("\n"):
-        print(f"\t\t{x}")
-    print("\tstderr:")
-    for x in resp["stderr"].split("\n"):
-        print(f"\t\t{x}")
+    print(f"Registering {image} with LatchBio.")
+    version = image.split(":")[1]
+
+    if not resp.get("success"):
+        error_str = f"Error registering {image}\n\n"
+        if resp.get("stderr") is not None:
+            for line in resp.get("stderr").split("\n"):
+                if line and not line.startswith('{"json"'):
+                    error_str += line + "\n"
+        if "task with different structure already exists" in error_str:
+            error_str = f"This version ({version}) already exists."
+            " Make sure that you've saved any changes you made."
+        raise ValueError(error_str)
+    elif not "Successfully registered file" in resp["stdout"]:
+        raise ValueError(
+            f"This version ({version}) already exists."
+            " Make sure that you've saved any changes you made."
+        )
+    else:
+        print(resp.get("stdout"))
 
 
 def register(
     pkg_root: str,
-    remote: Union[str, None] = None,
+    disable_auto_version: bool = False,
 ) -> RegisterOutput:
     """Registers a workflow, defined as python code, with Latch.
 
@@ -105,13 +177,7 @@ def register(
             register. The path can be absolute or relative. The path is always
             a directory, with its structure exactly as constructed and
             described in the `cli.services.init` function.
-        dockerfile: An optional valid path pointing to `Dockerfile`_ to define
-            a custom container. If passed, the resulting container will be used
-            as the environment to execute the registered workflow, allowing
-            arbitrary binaries and libraries to be called from workflow code.
-            However, be warned, this Dockerfile will be used *as is* - files
-            must be copied correctly and shell variables must be set to ensure
-            correct execution. See examples (TODO) for guidance.
+
 
     Example: ::
 
@@ -129,8 +195,18 @@ def register(
         https://docs.flyte.org/en/latest/concepts/registration.html
     """
 
-    ctx = RegisterCtx(pkg_root)
-    ctx.remote = remote
+    pkg_root = Path(pkg_root).resolve()
+
+    ctx = RegisterCtx(pkg_root, disable_auto_version=disable_auto_version)
+
+    with open(ctx.version_archive_path, "r") as f:
+        registered_versions = f.read().split("\n")
+        if ctx.version in registered_versions:
+            raise ValueError(
+                f"This version ({ctx.version}) already exists."
+                " Make sure that you've saved any changes you made."
+            )
+
     print(f"Initializing registration for {pkg_root}")
 
     dockerfile = ctx.pkg_root.joinpath("Dockerfile")
@@ -140,14 +216,22 @@ def register(
     with tempfile.TemporaryDirectory() as td:
         td_path = Path(td).resolve()
 
-        serialize_logs = _serialize_pkg(ctx, td_path)
+        serialize_logs, container_id = _serialize_pkg(ctx, td_path)
         _print_serialize_logs(serialize_logs, ctx.image_tagged)
+        exit_status = ctx.dkr_client.wait(container_id)
+        if exit_status["StatusCode"] != 0:
+            raise ValueError(
+                f"Serialization exited with nonzero exit code: {exit_status['Error']}"
+            )
 
         upload_image_logs = _upload_pkg_image(ctx)
         _print_upload_logs(upload_image_logs, ctx.image_tagged)
 
         reg_resp = _register_serialized_pkg(ctx, td_path)
         _print_reg_resp(reg_resp, ctx.image_tagged)
+
+    with open(ctx.version_archive_path, "a") as f:
+        f.write(ctx.version + "\n")
 
     return RegisterOutput(
         build_logs=build_logs,
@@ -228,7 +312,7 @@ def _serialize_pkg(ctx: RegisterCtx, serialize_dir: Path) -> List[str]:
     ctx.dkr_client.start(container_id)
     logs = ctx.dkr_client.logs(container_id, stream=True)
 
-    return [x.decode("utf-8") for x in logs]
+    return [x.decode("utf-8") for x in logs], container_id
 
 
 def _upload_pkg_image(ctx: RegisterCtx) -> List[str]:

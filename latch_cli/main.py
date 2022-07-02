@@ -1,8 +1,9 @@
 """Entrypoints to service functions through a latch_cli."""
 
 import re
+import traceback
 from pathlib import Path
-from typing import List, Union
+from typing import List, Optional, Union
 
 import click
 
@@ -20,17 +21,13 @@ def main():
 @click.command("register")
 @click.argument("pkg_root", nargs=1, type=click.Path(exists=True))
 @click.option(
-    "--remote",
-    default=None,
-    help=(
-        "The ssh url of a remote git repository where registered workflow code will"
-        " reside."
-    ),
+    "--disable-auto-version",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Whether to automatically bump the version of the workflow each time register is called.",
 )
-def register(
-    pkg_root: str,
-    remote: Union[str, None],
-):
+def register(pkg_root: str, disable_auto_version: bool):
     """Register local workflow code to Latch.
 
     Visit docs.latch.bio to learn more.
@@ -38,7 +35,7 @@ def register(
     from latch_cli.services.register import register
 
     try:
-        register(pkg_root, remote)
+        register(pkg_root, disable_auto_version=disable_auto_version)
         click.secho(
             "Successfully registered workflow. View @ console.latch.bio.", fg="green"
         )
@@ -218,7 +215,7 @@ def local_execute(pkg_root: Path):
     from latch_cli.services.local_execute import local_execute
 
     try:
-        local_execute(pkg_root)
+        local_execute(Path(pkg_root).resolve())
     except Exception as e:
         click.secho(f"Unable to execute workflow: {str(e)}", fg="red")
 

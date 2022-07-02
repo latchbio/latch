@@ -1,6 +1,8 @@
 """Models used in the register service."""
 
+import hashlib
 import os
+import traceback
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
@@ -8,10 +10,13 @@ from typing import List, Optional
 import docker
 
 from latch_cli.config.latch import LatchConfig
-from latch_cli.utils import account_id_from_token, retrieve_or_login
+from latch_cli.utils import account_id_from_token, retrieve_or_login, with_si_suffix
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints
+
+
+_MAX_FILE_SIZE = 4 * 2**20
 
 
 @dataclass
@@ -56,23 +61,51 @@ class RegisterCtx:
     dkr_repo: Optional[str] = None
     dkr_client: docker.APIClient = None
     pkg_root: Path = None  # root
-    remote: Optional[str] = None
+    disable_auto_version: bool = False
     image_full = None
     token = None
     version = None
     serialize_dir = None
     latch_register_api_url = endpoints["register-workflow"]
-    latch_commit_api_url = endpoints["commit-workflow"]
     latch_image_api_url = endpoints["initiate-image-upload"]
 
-    def __init__(self, pkg_root: Path, token: Optional[str] = None):
+    def __init__(
+        self,
+        pkg_root: Path,
+        token: Optional[str] = None,
+        disable_auto_version: bool = False,
+    ):
 
         self.dkr_client = self._construct_dkr_client()
         self.pkg_root = Path(pkg_root).resolve()
+        self.disable_auto_version = disable_auto_version
         try:
             version_file = self.pkg_root.joinpath("version")
             with open(version_file, "r") as vf:
                 self.version = vf.read().strip()
+            if not self.disable_auto_version:
+                m = hashlib.new("sha256")
+                for containing_path, dirnames, fnames in os.walk(self.pkg_root):
+                    # for repeatability guarantees
+                    dirnames.sort()
+                    fnames.sort()
+                    for filename in fnames:
+                        path = Path(containing_path).joinpath(filename)
+                        m.update(str(path).encode("utf-8"))
+                        file_size = os.path.getsize(path)
+                        if file_size < _MAX_FILE_SIZE:
+                            with open(path, "rb") as f:
+                                m.update(f.read())
+                        else:
+                            print(
+                                "\x1b[38;5;226m"
+                                f"WARNING: {path.relative_to(pkg_root.resolve())} is too large ({with_si_suffix(file_size)}) to checksum, skipping."
+                                "\x1b[0m"
+                            )
+                    for dirname in dirnames:
+                        path = Path(containing_path).joinpath(dirname)
+                        m.update(str(path).encode("utf-8"))
+                self.version = self.version + "-" + m.hexdigest()[:6]
         except Exception as e:
             raise ValueError(
                 f"Unable to extract pkg version from {str(self.pkg_root)}"
@@ -137,6 +170,15 @@ class RegisterCtx:
 
         """
         return f"{self.dkr_repo}/{self.image_tagged}"
+
+    @property
+    def version_archive_path(self):
+        version_archive_path = (
+            Path.home() / ".latch" / self.image / "registered_versions"
+        )
+        version_archive_path.parent.mkdir(parents=True, exist_ok=True)
+        version_archive_path.touch(exist_ok=True)
+        return version_archive_path
 
     @staticmethod
     def _construct_dkr_client():
