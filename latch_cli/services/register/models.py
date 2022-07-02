@@ -58,6 +58,7 @@ class RegisterCtx:
     dkr_client: docker.APIClient = None
     pkg_root: Path = None  # root
     remote: Optional[str] = None
+    auto_version: bool = False
     image_full = None
     token = None
     version = None
@@ -75,21 +76,22 @@ class RegisterCtx:
 
         self.dkr_client = self._construct_dkr_client()
         self.pkg_root = Path(pkg_root).resolve()
+        self.auto_version = auto_version
         try:
-            if auto_version:
+            version_file = self.pkg_root.joinpath("version")
+            with open(version_file, "r") as vf:
+                self.version = vf.read().strip()
+            if self.auto_version:
                 m = hashlib.new("sha256")
-                for dir_path, fnames, _ in os.walk(self.pkg_root):
+                for dir_path, _, fnames in os.walk(self.pkg_root):
                     for filename in fnames:
                         filepath = Path(dir_path).joinpath(filename)
-                        m.update(filepath)
-                        with open(filepath, "r") as f:
+                        m.update(str(filepath).encode("utf-8"))
+                        with open(filepath, "rb") as f:
                             m.update(f.read())
-                self.version = m.hexdigest()[:6]
-            else:
-                version_file = self.pkg_root.joinpath("version")
-                with open(version_file, "r") as vf:
-                    self.version = vf.read().strip()
+                self.version = self.version + "-" + m.hexdigest()[:6]
         except Exception as e:
+            print(e)
             raise ValueError(
                 f"Unable to extract pkg version from {str(self.pkg_root)}"
             ) from e

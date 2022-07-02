@@ -41,10 +41,8 @@ def register(pkg_root: str, remote: Union[str, None], auto_version: bool):
     """
     from latch_cli.services.register import register
 
-    print(auto_version)
-
     try:
-        register(pkg_root, remote, auto_version)
+        register(pkg_root, remote, auto_version=auto_version)
         click.secho(
             "Successfully registered workflow. View @ console.latch.bio.", fg="green"
         )
