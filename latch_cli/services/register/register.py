@@ -127,23 +127,16 @@ def _print_reg_resp(resp, image):
                 if line and not line.startswith('{"json"'):
                     error_str += line + "\n"
         if "task with different structure already exists" in error_str:
-            error_str = f"This version ({version}) already exists. If you are using --auto-version,"
-            " make sure that you've saved any changes you made."
+            error_str = f"This version ({version}) already exists."
+            " Make sure that you've saved any changes you made."
         raise ValueError(error_str)
     elif not "Successfully registered file" in resp["stdout"]:
         raise ValueError(
-            f"This version ({version}) already exists. If you are using --auto-version,"
-            " make sure that you've saved any changes you made."
+            f"This version ({version}) already exists."
+            " Make sure that you've saved any changes you made."
         )
     else:
         print(resp.get("stdout"))
-
-
-def _version_archive_path(ctx: RegisterCtx):
-    version_archive_path = Path.home() / ".latch" / ctx.image / "registered_versions"
-    version_archive_path.parent.mkdir(parents=True, exist_ok=True)
-    version_archive_path.touch(exist_ok=True)
-    return version_archive_path
 
 
 def register(
@@ -203,15 +196,16 @@ def register(
         https://docs.flyte.org/en/latest/concepts/registration.html
     """
 
-    ctx = RegisterCtx(pkg_root, disable_auto_version=disable_auto_version)
-    version_archive_path = _version_archive_path(ctx)
+    pkg_root = Path(pkg_root).resolve()
 
-    with open(version_archive_path, "r") as f:
+    ctx = RegisterCtx(pkg_root, disable_auto_version=disable_auto_version)
+
+    with open(ctx.version_archive_path, "r") as f:
         registered_versions = f.read().split("\n")
         if ctx.version in registered_versions:
             raise ValueError(
-                f"This version ({ctx.version}) already exists. If you are using --auto-version,"
-                " make sure that you've saved any changes you made."
+                f"This version ({ctx.version}) already exists."
+                " Make sure that you've saved any changes you made."
             )
 
     ctx.remote = remote
@@ -239,7 +233,7 @@ def register(
         reg_resp = _register_serialized_pkg(ctx, td_path)
         _print_reg_resp(reg_resp, ctx.image_tagged)
 
-    with open(version_archive_path, "a") as f:
+    with open(ctx.version_archive_path, "a") as f:
         f.write(ctx.version + "\n")
 
     return RegisterOutput(

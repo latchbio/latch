@@ -1,6 +1,7 @@
 """Entrypoints to service functions through a latch_cli."""
 
 import re
+import traceback
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -42,7 +43,7 @@ def register(pkg_root: str, remote: Union[str, None], disable_auto_version: bool
     from latch_cli.services.register import register
 
     try:
-        register(pkg_root, remote, disable_auto_version=disable_auto_version)
+        register(pkg_root, disable_auto_version=disable_auto_version)
         click.secho(
             "Successfully registered workflow. View @ console.latch.bio.", fg="green"
         )

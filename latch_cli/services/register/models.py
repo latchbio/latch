@@ -2,6 +2,7 @@
 
 import hashlib
 import os
+import traceback
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
@@ -9,10 +10,13 @@ from typing import List, Optional
 import docker
 
 from latch_cli.config.latch import LatchConfig
-from latch_cli.utils import account_id_from_token, retrieve_or_login
+from latch_cli.utils import account_id_from_token, retrieve_or_login, with_si_suffix
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints
+
+
+_MAX_FILE_SIZE = 4 * 2**20
 
 
 @dataclass
@@ -82,13 +86,26 @@ class RegisterCtx:
             with open(version_file, "r") as vf:
                 self.version = vf.read().strip()
             if not self.disable_auto_version:
+                with open(self.fs_cache_path, "r") as f:
+                    ...
                 m = hashlib.new("sha256")
                 for containing_path, dirnames, fnames in os.walk(self.pkg_root):
+                    # for repeatability guarantees
+                    dirnames.sort()
+                    fnames.sort()
                     for filename in fnames:
                         path = Path(containing_path).joinpath(filename)
                         m.update(str(path).encode("utf-8"))
-                        with open(path, "rb") as f:
-                            m.update(f.read())
+                        file_size = os.path.getsize(path)
+                        if file_size < _MAX_FILE_SIZE:
+                            with open(path, "rb") as f:
+                                m.update(f.read())
+                        else:
+                            print(
+                                "\x1b[38;5;226m"
+                                f"WARNING: {path.relative_to(pkg_root.resolve())} is too large ({with_si_suffix(file_size)}) to checksum, skipping."
+                                "\x1b[0m"
+                            )
                     for dirname in dirnames:
                         path = Path(containing_path).joinpath(dirname)
                         m.update(str(path).encode("utf-8"))
@@ -157,6 +174,22 @@ class RegisterCtx:
 
         """
         return f"{self.dkr_repo}/{self.image_tagged}"
+
+    @property
+    def version_archive_path(self):
+        version_archive_path = (
+            Path.home() / ".latch" / self.image / "registered_versions"
+        )
+        version_archive_path.parent.mkdir(parents=True, exist_ok=True)
+        version_archive_path.touch(exist_ok=True)
+        return version_archive_path
+
+    @property
+    def fs_cache_path(self) -> Path:
+        fs_cache_path = Path.home() / ".latch" / self.image / "fs_cache.json"
+        fs_cache_path.parent.mkdir(parents=True, exist_ok=True)
+        fs_cache_path.touch(exist_ok=True)
+        return fs_cache_path
 
     @staticmethod
     def _construct_dkr_client():
