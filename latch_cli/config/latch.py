@@ -6,7 +6,6 @@ Platform wide configuration, eg. api endpoints, callback server ports...
 
 import os as _os
 
-
 CONSOLE_URL = _os.environ.get("LATCH_CLI_CONSOLE_URL", "https://console.latch.bio")
 NUCLEUS_URL = _os.environ.get("LATCH_CLI_NUCLEUS_URL", "https://nucleus.latch.bio")
 
@@ -29,6 +28,7 @@ SDK_ENDPOINTS = {
     "mkdir": "/sdk/mkdir",
     "rmdir": "/sdk/rmdir",
     "touch": "/sdk/touch",
+    "pod-exec-info": "/sdk/get-pod-exec-info",
 }
 
 
