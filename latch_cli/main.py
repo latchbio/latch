@@ -28,13 +28,13 @@ def main():
     ),
 )
 @click.option(
-    "--auto-version",
+    "--disable-auto-version",
     is_flag=True,
     default=False,
     type=bool,
     help="Whether to automatically bump the version of the workflow each time register is called.",
 )
-def register(pkg_root: str, remote: Union[str, None], auto_version: bool):
+def register(pkg_root: str, remote: Union[str, None], disable_auto_version: bool):
     """Register local workflow code to Latch.
 
     Visit docs.latch.bio to learn more.
@@ -42,7 +42,7 @@ def register(pkg_root: str, remote: Union[str, None], auto_version: bool):
     from latch_cli.services.register import register
 
     try:
-        register(pkg_root, remote, auto_version=auto_version)
+        register(pkg_root, remote, disable_auto_version=disable_auto_version)
         click.secho(
             "Successfully registered workflow. View @ console.latch.bio.", fg="green"
         )

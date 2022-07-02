@@ -58,7 +58,7 @@ class RegisterCtx:
     dkr_client: docker.APIClient = None
     pkg_root: Path = None  # root
     remote: Optional[str] = None
-    auto_version: bool = False
+    disable_auto_version: bool = False
     image_full = None
     token = None
     version = None
@@ -71,17 +71,17 @@ class RegisterCtx:
         self,
         pkg_root: Path,
         token: Optional[str] = None,
-        auto_version: bool = False,
+        disable_auto_version: bool = False,
     ):
 
         self.dkr_client = self._construct_dkr_client()
         self.pkg_root = Path(pkg_root).resolve()
-        self.auto_version = auto_version
+        self.disable_auto_version = disable_auto_version
         try:
             version_file = self.pkg_root.joinpath("version")
             with open(version_file, "r") as vf:
                 self.version = vf.read().strip()
-            if self.auto_version:
+            if not self.disable_auto_version:
                 m = hashlib.new("sha256")
                 for containing_path, dirnames, fnames in os.walk(self.pkg_root):
                     for filename in fnames:

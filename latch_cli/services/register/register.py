@@ -149,7 +149,7 @@ def _version_archive_path(ctx: RegisterCtx):
 def register(
     pkg_root: str,
     remote: Union[str, None] = None,
-    auto_version: bool = False,
+    disable_auto_version: bool = False,
 ) -> RegisterOutput:
     """Registers a workflow, defined as python code, with Latch.
 
@@ -203,7 +203,7 @@ def register(
         https://docs.flyte.org/en/latest/concepts/registration.html
     """
 
-    ctx = RegisterCtx(pkg_root, auto_version=auto_version)
+    ctx = RegisterCtx(pkg_root, disable_auto_version=disable_auto_version)
     version_archive_path = _version_archive_path(ctx)
 
     with open(version_archive_path, "r") as f:
