@@ -35,7 +35,7 @@ def local_execute(pkg_root: Path):
             host_config=ctx.dkr_client.create_host_config(
                 binds={
                     str(ctx.pkg_root): {
-                        "bind": f"/root",
+                        "bind": "/root",
                         "mode": "rw",
                     },
                 }
