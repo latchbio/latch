@@ -15,7 +15,10 @@ def workflow(metadata: Union[LatchMetadata, Callable]):
     else:
 
         def decorator(f: Callable):
-            f.__doc__ = f"{dedent(f.__doc__)}\n\n" + str(metadata)
+            if f.__doc__ is not None:
+                f.__doc__ = f"{dedent(f.__doc__)}\n\n" + str(metadata)
+            else:
+                f.__doc__ = "\n\n" + str(metadata)
             return _workflow(f)
 
         return decorator
