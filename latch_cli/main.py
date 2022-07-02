@@ -379,6 +379,22 @@ def touch(remote_file: str):
         click.secho(f"Unable to create {remote_file}: {str(e)}", fg="red")
 
 
+@click.command("exec")
+@click.argument("task_name", nargs=1, type=str)
+def execute(task_name: str):
+    """Drops the user into an interactive shell from within a task.
+
+    Visit docs.latch.bio to learn more.
+    """
+    from latch_cli.services.execute import execute
+
+    try:
+        execute(task_name)
+    except Exception as e:
+        click.secho(f"Unable to exec into {task_name}", fg="red")
+
+
+main.add_command(execute)
 main.add_command(register)
 main.add_command(login)
 main.add_command(init)
