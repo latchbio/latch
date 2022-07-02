@@ -23,7 +23,7 @@ def local_execute(pkg_root: Path):
         # Where `myworkflow` is a directory with workflow code.
     """
 
-    ctx = RegisterCtx(pkg_root)
+    ctx = RegisterCtx(Path(pkg_root).resolve())
 
     dockerfile = ctx.pkg_root.joinpath("Dockerfile")
 

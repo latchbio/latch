@@ -215,7 +215,7 @@ def local_execute(pkg_root: Path):
     from latch_cli.services.local_execute import local_execute
 
     try:
-        local_execute(pkg_root)
+        local_execute(Path(pkg_root).resolve())
     except Exception as e:
         click.secho(f"Unable to execute workflow: {str(e)}", fg="red")
 
