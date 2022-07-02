@@ -2,7 +2,9 @@
 
 from pathlib import Path
 
-from latch_cli.services.register import RegisterCtx, _print_build_logs
+import docker.errors
+
+from latch_cli.services.register import RegisterCtx, _print_build_logs, build_image
 
 
 def local_execute(pkg_root: Path):
@@ -25,39 +27,44 @@ def local_execute(pkg_root: Path):
 
     dockerfile = ctx.pkg_root.joinpath("Dockerfile")
     wf_pkg = ctx.pkg_root.joinpath("wf")
+    data_pkg = ctx.pkg_root.joinpath("data")
 
-    try:
-        print("\tSpinning up local container...")
-        print("\tNOTE ~ workflow code is bound as a mount.")
-        print("\tYou must register your workflow to persist changes.")
-
+    def _create_container(image_name: str):
         container = ctx.dkr_client.create_container(
-            ctx.full_image_tagged,
+            image_name,
             command=["python3", "/root/wf/__init__.py"],
-            volumes=[str(wf_pkg)],
+            volumes=[str(ctx.pkg_root)],
             host_config=ctx.dkr_client.create_host_config(
                 binds={
-                    str(wf_pkg): {
-                        "bind": "/root/wf",
+                    str(ctx.pkg_root): {
+                        "bind": f"/root",
                         "mode": "rw",
                     },
                 }
             ),
         )
+        return container
 
-        container_id = container.get("Id")
-        ctx.dkr_client.start(container_id)
+    try:
+        print("Spinning up local container...")
+        print("NOTE ~ workflow code is bound as a mount.")
+        print("You must register your workflow to persist changes.")
 
-        logs = ctx.dkr_client.logs(container_id, stream=True)
-        print("\n\tStreaming stdout from registered container running locally")
-        for x in logs:
-            o = x.decode("utf-8")
-            print(f"\t\t{o}")
-    except:
-        print(
-            "\tUnable to find a local image associated with the local"
-            " workflow version."
-        )
-        build_logs = ctx.dkr_client.logs(container_id, stream=True)
+        container = _create_container(ctx.full_image_tagged)
+
+    except docker.errors.ImageNotFound as e:
+        print("Unable to find an image associated to this version of your workflow")
+        print("Building from scratch:")
+
+        build_logs = build_image(ctx, dockerfile)
         _print_build_logs(build_logs, ctx.full_image_tagged)
-        local_execute(pkg_root)
+
+        container = _create_container(ctx.full_image_tagged)
+
+    container_id = container.get("Id")
+
+    ctx.dkr_client.start(container_id)
+    logs = ctx.dkr_client.logs(container_id, stream=True)
+    for x in logs:
+        o = x.decode("utf-8")
+        print(o, end="")
