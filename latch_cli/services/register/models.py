@@ -67,7 +67,6 @@ class RegisterCtx:
     version = None
     serialize_dir = None
     latch_register_api_url = endpoints["register-workflow"]
-    latch_commit_api_url = endpoints["commit-workflow"]
     latch_image_api_url = endpoints["initiate-image-upload"]
 
     def __init__(
@@ -85,8 +84,6 @@ class RegisterCtx:
             with open(version_file, "r") as vf:
                 self.version = vf.read().strip()
             if not self.disable_auto_version:
-                with open(self.fs_cache_path, "r") as f:
-                    ...
                 m = hashlib.new("sha256")
                 for containing_path, dirnames, fnames in os.walk(self.pkg_root):
                     # for repeatability guarantees
