@@ -7,10 +7,8 @@ import os
 import re
 import shutil
 import tempfile
-from datetime import datetime
 from pathlib import Path
-from time import sleep
-from typing import List, Optional, Union
+from typing import List, Union
 
 import boto3
 import requests
@@ -24,13 +22,6 @@ _ANSI_REGEX = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
 
 
 print = functools.partial(print, flush=True)
-
-# __print = print
-
-
-# def print(*args, **kwargs):
-#     sleep(0.1)
-#     __print(*args, **kwargs)
 
 
 def _delete_lines(lines: List[str]):
@@ -76,13 +67,14 @@ def _print_build_logs(build_logs, image):
             raise OSError(f"Error when building image ~ {error}")
         if lines:
             for line in lines.split("\n"):
+                curr_terminal_width = shutil.get_terminal_size()[0]
+                if len(line) > curr_terminal_width:
+                    line = line[: curr_terminal_width - 3] + "..."
+
                 if r.match(line):
                     curr_lines = _delete_lines(curr_lines)
                     print("\x1b[38;5;33m" + line + "\x1b[0m")
                 else:
-                    curr_terminal_width = shutil.get_terminal_size()[0]
-                    if len(line) > curr_terminal_width:
-                        line = line[: curr_terminal_width - 3] + "..."
                     curr_lines = _print_window(curr_lines, line)
     _delete_lines(curr_lines)
 
