@@ -3,6 +3,7 @@ pyjwt
 click
 requests
 boto3
+awscli
 
 typing_extensions
 tqdm
