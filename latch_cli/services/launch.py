@@ -1,4 +1,4 @@
-"""Service to execute a workflow."""
+"""Service to launch a workflow."""
 
 import importlib.util
 import typing
@@ -20,26 +20,26 @@ config = LatchConfig()
 endpoints = config.sdk_endpoints
 
 
-def execute(params_file: Path, version: Union[None, str] = None) -> str:
-    """Executes a versioned workflow with parameters specified in python.
+def launch(params_file: Path, version: Union[None, str] = None) -> str:
+    """Launches a versioned workflow with parameters specified in python.
 
     Args:
         params_file: A path pointing to a python file with a function call
             representing the workflow execution with valid parameter values.
-        version: An optional workflow version to execute, defaults to latest if
+        version: An optional workflow version to launch, defaults to latest if
             None is provided
 
         Parameters for the workflow execution are specified in plain python as
         a dictionary, as the syntax is highly legible and easier to work
         with than alternatives such as YAML, JSON. This file is passed to the
-        `execute` service.
+        `launch` service.
 
     Returns:
         The name of the workflow if successful
 
     Example: ::
 
-        # A minimal parameter file used to execute the boilerplate
+        # A minimal parameter file used to launch the boilerplate
 
         from latch.types import LatchFile
 
@@ -98,7 +98,7 @@ def execute(params_file: Path, version: Union[None, str] = None) -> str:
 
             wf_literals[key] = gpjson.MessageToDict(python_type_literal.to_flyte_idl())
 
-    _execute_workflow(token, wf_id, wf_literals)
+    _launch_workflow(token, wf_id, wf_literals)
     return wf_name
 
 
@@ -196,8 +196,8 @@ def _get_workflow_interface(
     return int(wf_id), wf_interface, wf_default_params
 
 
-def _execute_workflow(token: str, wf_id: str, params: dict) -> bool:
-    """Execute the workflow of given id with parameter map.
+def _launch_workflow(token: str, wf_id: str, params: dict) -> bool:
+    """Launch the workflow of given id with parameter map.
 
     Return True if success
     """

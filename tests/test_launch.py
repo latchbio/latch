@@ -1,5 +1,5 @@
 """
-test.test_execute
+test.test_launch
 ~~~
 
     -
@@ -7,7 +7,7 @@ test.test_execute
 
 from tempfile import NamedTemporaryFile
 
-from latch_cli.services.execute import execute
+from latch_cli.services.launch import launch
 
 simple_plan = """from latch.types import LatchFile
 
@@ -80,8 +80,8 @@ def test_execute_previous_versions():
         tf.write(simple_plan)
         tf.seek(0)
 
-        assert execute(tf.name) == "wf.__init__.assemble_and_sort"
-        assert execute(tf.name, "barrackobama") == "wf.__init__.assemble_and_sort"
+        assert launch(tf.name) == "wf.__init__.assemble_and_sort"
+        assert launch(tf.name, "barrackobama") == "wf.__init__.assemble_and_sort"
 
 
 def test_execute_rnaseq():
@@ -90,7 +90,7 @@ def test_execute_rnaseq():
         tf.write(rnaseq_plan)
         tf.seek(0)
 
-        assert execute(tf.name) == "wf.__init__.nf_rnaseq_wf"
+        assert launch(tf.name) == "wf.__init__.nf_rnaseq_wf"
 
 
 def test_execute_crispresso():
@@ -99,4 +99,4 @@ def test_execute_crispresso():
         tf.write(crispresso_plan)
         tf.seek(0)
 
-        assert execute(tf.name) == "wf.__init__.crispresso2_wf"
+        assert launch(tf.name) == "wf.__init__.crispresso2_wf"
