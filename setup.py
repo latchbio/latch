@@ -14,7 +14,7 @@ if CURRENT_PYTHON < MIN_PYTHON_VERSION:
 
 setup(
     name="latch",
-    version="v1.4.1",
+    version="v1.5.0",
     author_email="kenny@latch.bio",
     description="latch sdk",
     packages=find_packages(),
@@ -25,6 +25,7 @@ setup(
         ]
     },
     install_requires=[
+        "kubernetes==21.7.0",
         "pyjwt>=0.2.0",
         "requests>=2.0",
         "click>=8.0",
