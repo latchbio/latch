@@ -186,7 +186,7 @@ def test_ls(test_account_jwt):
         _run_and_verify(_cmd, "Success")
 
 
-def test_execute(test_account_jwt):
+def test_launch(test_account_jwt):
 
     with open("foo.py", "w") as f:
         f.write(
@@ -203,7 +203,7 @@ def test_execute(test_account_jwt):
             )
         )
 
-    _cmd = ["latch", "execute", "foo.py"]
+    _cmd = ["latch", "launch", "foo.py"]
     _run_and_verify(
         _cmd,
         "Successfully launched workflow named wf.__init__.assemble_and_sort with"

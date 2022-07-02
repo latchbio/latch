@@ -20,10 +20,10 @@ latch\_cli.services.cp module
    :undoc-members:
    :show-inheritance:
 
-latch\_cli.services.execute module
+latch\_cli.services.launch module
 ----------------------------------
 
-.. automodule:: latch_cli.services.execute
+.. automodule:: latch_cli.services.launch
    :members:
    :undoc-members:
    :show-inheritance:

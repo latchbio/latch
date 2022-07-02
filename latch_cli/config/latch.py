@@ -27,6 +27,7 @@ SDK_ENDPOINTS = {
     "mkdir": "/sdk/mkdir",
     "rmdir": "/sdk/rmdir",
     "touch": "/sdk/touch",
+    "pod-exec-info": "/sdk/get-pod-exec-info",
 }
 
 

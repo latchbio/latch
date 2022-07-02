@@ -220,24 +220,24 @@ def local_execute(pkg_root: Path):
         click.secho(f"Unable to execute workflow: {str(e)}", fg="red")
 
 
-@click.command("execute")
+@click.command("launch")
 @click.argument("params_file", nargs=1, type=click.Path(exists=True))
 @click.option(
     "--version",
     default=None,
-    help="The version of the workflow to execute. Defaults to latest.",
+    help="The version of the workflow to launch. Defaults to latest.",
 )
-def execute(params_file: Path, version: Union[str, None] = None):
-    """Execute a workflow using a python parameter map.
+def launch(params_file: Path, version: Union[str, None] = None):
+    """Launch a workflow using a python parameter map.
 
     Visit docs.latch.bio to learn more.
     """
-    from latch_cli.services.execute import execute
+    from latch_cli.services.launch import launch
 
     try:
-        wf_name = execute(params_file, version)
+        wf_name = launch(params_file, version)
     except Exception as e:
-        click.secho(f"Unable to execute workflow: {str(e)}", fg="red")
+        click.secho(f"Unable to launch workflow: {str(e)}", fg="red")
         return
     if version is None:
         version = "latest"
@@ -270,7 +270,7 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
         version = "latest"
     click.secho(
         f"Successfully generated python param map named {wf_name}.params.py with"
-        f" version {version}\n Run `latch execute {wf_name}.params.py` to execute it.",
+        f" version {version}\n Run `latch launch {wf_name}.params.py` to launch it.",
         fg="green",
     )
 
@@ -376,14 +376,30 @@ def touch(remote_file: str):
         click.secho(f"Unable to create {remote_file}: {str(e)}", fg="red")
 
 
+@click.command("exec")
+@click.argument("task_name", nargs=1, type=str)
+def execute(task_name: str):
+    """Drops the user into an interactive shell from within a task.
+
+    Visit docs.latch.bio to learn more.
+    """
+    from latch_cli.services.execute import execute
+
+    try:
+        execute(task_name)
+    except Exception as e:
+        click.secho(f"Unable to exec into {task_name}", fg="red")
+
+
+main.add_command(execute)
 main.add_command(register)
 main.add_command(login)
 main.add_command(init)
 main.add_command(cp)
 main.add_command(ls)
 main.add_command(local_execute)
-main.add_command(execute)
 main.add_command(get_wf)
+main.add_command(launch)
 main.add_command(get_params)
 main.add_command(open_remote_file)
 main.add_command(rm)

@@ -44,7 +44,8 @@ The first argument specifies the local path in which to look for workflow object
 $ latch get-params WORKFLOW_NAME
 ```
 
-This command will generate a dictionary of python-native parameters from the workflow `WORKFLOW_NAME`, which can then be passed to `latch execute` (documented below). For example, running
+This command will generate a dictionary of python-native parameters from the
+workflow `WORKFLOW_NAME`, which can then be passed to `latch launch` (documented below). For example, running
 
 ```shell-session
 $ latch get-params latch.alphafold_wf
@@ -53,7 +54,7 @@ $ latch get-params latch.alphafold_wf
 will generate a param file called `latch.alphafold_wf.params.py` whose contents are as below:
 
 ```python
-"""Run `latch execute latch.alphafold_wf.params.py` to execute this workflow"""
+"""Run `latch launch latch.alphafold_wf.params.py` to launch this workflow"""
 
 from latch.types import LatchFile
 from latch.types import LatchDir
@@ -71,13 +72,13 @@ params = {
 }
 ```
 
-## `latch execute`
+## `latch launch`
 
 ```shell-session
-$ latch execute [--version=VERSION] PARAM_FILE
+$ latch launch [--version=VERSION] PARAM_FILE
 ```
 
-This command allows a user to execute the workflow and parameters described in `PARAM_FILE`. If `--version` is provided, then that particular version will be executed. If it isn't provided, then it will default to the latest version. See `latch get-params` for more info on parameter files.
+This command allows a user to launch the workflow and parameters described in `PARAM_FILE`. If `--version` is provided, then that particular version will be executed. If it isn't provided, then it will default to the latest version. See `latch get-params` for more info on parameter files.
 
 ## `latch local-execute`
 
