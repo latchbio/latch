@@ -32,10 +32,6 @@ def _construct_kubeconfig(
     close_brack = "}"
     region_code = "us-west-2"
     cluster_name = "prion-prod"
-    cluster_endpoint = (
-        "https://C629A20F0E69D7DA6849ED877A3048EC.gr7.us-west-2.eks.amazonaws.com"
-    )
-    cert_auth_data = "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUM1ekNDQWMrZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJeU1EVXpNREEwTURJME5sb1hEVE15TURVeU56QTBNREkwTmxvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBTHptCkdkaGhBNDNzTHBrUnl3TlpJOUNtMWpXd1B2QTloRTNyWjVYWTRha2Ewb05uOFBlMSt4TVptZDg5ZHR3SjVVdFUKQ1AwR055cWd6NEtzbUxDOTMrVW8vcSs2eWxnMXZNRUV5bHFzNGt5WVN2dWhpaHVsbmZtODBBeE5xT0RQOEtDZgplSmRtTnM1cXo4MXpDamg1Y1NnNldFakJYVnhQSDQyQWdpcnZjYVUxbEJUd0VZV3gwQTdQRWlBd0I2NUtjUXB6CkRqOUFiZ0lYTjR0QjV6alhCZzNLemtJOFRDMWJvaElTbUxIa0NTTy9NUEd3RFpEdXN3RlFpYnpDSTdkVDlCTkEKaXBzZDNOTVcrd1kxV00zV2J6ZGNaSldib3NWUE5SUHNDTHlFSzFLZkpVbXFESGZGOWRMMUNjWFQ1QnFlY3B2cQpOVGdHRGZzZklJeVdJL2ZoMWpNQ0F3RUFBYU5DTUVBd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4R0ExVWRFd0VCCi93UUZNQU1CQWY4d0hRWURWUjBPQkJZRUZFKzJpT3RFRVhIS3VzaU5oUGoweE44ZElKUExNQTBHQ1NxR1NJYjMKRFFFQkN3VUFBNElCQVFBQVZlK28ybVN0M01CT04rdmRiNzIxWmRsY3IyZG5kNzBScjFyTlI4ME1DUTMwRVlFagpSSTdidUgvTUZhTzBaVjFZbjdYSGdUbVhNMWNPTk9DcTdLdXF6NURyVG5IN1c3VGQzbi80NjBPeFpOcWo4MUR1CnZZRlF6eHltbHZQMEx3dkVIQlliK1RWOUNsc2pCU1Vod1N3aXUrQWQrTHp6Wks0NWh0R2ZvdlJyeDYvR1pEVnEKYUFDQUZVTGgrVHRnMzFZdXdUQ0RZYmZZOC9QOUhma3psSTgraGY3UGxjZmp4Wmg5MTJUUk1VUTdkS1ZJMHF3TQo4NnFLK3ZmQktWOG5IQW1JMEEzVmp6cWQ4OWlHMkhQTHlhNDJXTkZmM0t3SCsxZC9IVHBYUEVBTk80WHpST1BQClJ6UHJHc21ZRmlZTGN2alA3RG5IZi9GYkViSFdYTXRWVjRSZgotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg=="
 
     return textwrap.dedent(
         f"""apiVersion: v1
@@ -196,7 +192,6 @@ def execute(task_name: str):
                             if cause["reason"] == "ExitCode":
                                 return int(cause["message"])
                     print(file=sys.stderr)
-                    print(f"Failure running: {' '.join(command)}", file=sys.stderr)
                     print(
                         f"Status: {error['status']} - Message: {error['message']}",
                         file=sys.stderr,
