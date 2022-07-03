@@ -385,7 +385,10 @@ def execute(task_name: str):
     """
     from latch_cli.services.execute import execute
 
-    execute(task_name)
+    try:
+        execute(task_name)
+    except Exception as e:
+        click.secho(f"Unable to exec into {task_name}", fg="red")
 
 
 main.add_command(execute)
