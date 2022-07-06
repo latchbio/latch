@@ -47,6 +47,11 @@ WORKDIR /root
 _Note that we must use the base image specified in the first line to configure
 libraries and settings for consistent task behavior._
 
+There are 3 latch-base images available as seen on [github](https://github.com/latchbio/latch-base):
+  * _Base_ - 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:9a7d-main
+  * *CUDA Enabled* - 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base-cuda:0e8e-main
+  * *OpenCL Enabled* - 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base-opencl:a040-main
+
 ## Limitations
 
 The only limitation between a latch workflow and running your code on your linux

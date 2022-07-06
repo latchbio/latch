@@ -28,7 +28,7 @@ def foo(fastq: LatchFile, output_dir: LatchDir) -> (LatchFile, LatchDir):
     # downstream use.
 
     local_fastq = Path(fastq).resolve()
-    local_output_dir = Path(dir).resolve()
+    local_output_dir = Path(output_dir).resolve()
 
     # It's now easy to reference the contents of the file in a subprocessed
     # program. Notice how we're 'placing' outputs in a directory we will return.
@@ -48,6 +48,16 @@ def foo(fastq: LatchFile, output_dir: LatchDir) -> (LatchFile, LatchDir):
     # going. We'll discuss the latch URL scheme in a moment, but just understand
     # it will go back in your filesystem on the LatchBio console for now.
     return LatchFile("/root/foobar", "latch:///foobar.txt"), LatchDir(local_output_dir, output_dir.remote_path)
+```
+_Writing to an existing remote LatchDir will only add or update files in it._ In the example below, it will leave the remote LatchDir untouched, rather than overwriting it and making it an empty directory.
+
+```python 
+@small_task
+def update_dir(
+    output_dir: LatchDir,
+) -> LatchDir:
+    os.mkdir('/root/output') # An empty dir
+    return LatchDir('/root/output', output_dir.remote_path)
 ```
 
 ## Local Paths and Remote Paths
@@ -75,8 +85,8 @@ local and remote path associated with them.
 ```
 
 `local_path` will always be the absolute path on the task's machine where the
-file has been copied.  `remote_path` will be a remote object URL with `s3` or
-`latch` as its host.
+file has been copied to (the machine that your code is running on).  
+`remote_path` will be a remote object URL with `s3` or `latch` as its host.
 
 There are cases when we would want
 to access these `local_path` and `remote_path` attributes directly:
@@ -94,7 +104,7 @@ pattern. For instance, you may wish to return all files that end with a
 task has been run.
 
 To do this in the SDK, you can leverage the `file_glob` function to construct
-lists of `LachFile`s defined by a pattern.
+lists of `LatchFile`s defined by a pattern.
 
 The class of allowed patterns are defined as
 [globs](https://en.wikipedia.org/wiki/Glob_(programming)). It is likely you've
