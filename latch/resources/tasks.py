@@ -159,6 +159,16 @@ on-demand.
      - True
 """
 
+
+def cached_large_gpu_task(cache_version):
+    """Provides caching with resources defined by `large_gpu_task`."""
+    if cache_version is None:
+        raise ValueError("Must provide a cache version to a cached task.")
+    return task(
+        cache=True, cache_version=cache_version, task_config=_get_large_gpu_pod()
+    )
+
+
 small_gpu_task = task(task_config=_get_small_gpu_pod())
 """This task will get scheduled on a small GPU-enabled node.
 
@@ -185,6 +195,16 @@ on it.
      - 1
      - True
 """
+
+
+def cached_small_gpu_task(cache_version):
+    """Provides caching with resources defined by `small_gpu_task`."""
+    if cache_version is None:
+        raise ValueError("Must provide a cache version to a cached task.")
+    return task(
+        cache=True, cache_version=cache_version, task_config=_get_small_gpu_pod()
+    )
+
 
 large_task = task(task_config=_get_large_pod())
 """This task will get scheduled on a large node.
@@ -213,6 +233,14 @@ on it.
      - True
 """
 
+
+def cached_large_task(cache_version):
+    """Provides caching with resources defined by `large_task`."""
+    if cache_version is None:
+        raise ValueError("Must provide a cache version to a cached task.")
+    return task(cache=True, cache_version=cache_version, task_config=_get_large_pod())
+
+
 medium_task = task(task_config=_get_medium_pod())
 """This task will get scheduled on a medium node.
 
@@ -240,6 +268,14 @@ on it.
      - True
 """
 
+
+def cached_medium_task(cache_version):
+    """Provides caching with resources defined by `medium_task`."""
+    if cache_version is None:
+        raise ValueError("Must provide a cache version to a cached task.")
+    return task(cache=True, cache_version=cache_version, task_config=_get_medium_pod())
+
+
 small_task = task(task_config=_get_small_pod())
 """This task will get scheduled on a small node.
 
@@ -263,3 +299,10 @@ small_task = task(task_config=_get_small_pod())
      - 0
      - False
 """
+
+
+def cached_small_task(cache_version):
+    """Provides caching with resources defined by `small_task`."""
+    if cache_version is None:
+        raise ValueError("Must provide a cache version to a cached task.")
+    return task(cache=True, cache_version=cache_version, task_config=_get_small_pod())
