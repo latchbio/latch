@@ -79,19 +79,18 @@ def _get_large_pod() -> Pod:
 
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
-        requests={"cpu": "46", "memory": "170Gi"},
-        limits={"cpu": "48", "memory": "192Gi"},
+        requests={"cpu": "90", "memory": "170Gi"},
+        limits={"cpu": "96", "memory": "192Gi"},
     )
     primary_container.resources = resources
 
     return Pod(
         pod_spec=V1PodSpec(
             containers=[primary_container],
-            tolerations=[V1Toleration(effect="NoSchedule", key="ng", value="big")],
+            tolerations=[V1Toleration(effect="NoSchedule", key="ng", value="cpu-96-spot")],
         ),
         primary_container_name="primary",
     )
-
 
 def _get_medium_pod() -> Pod:
     """Returns a pod which will be scheduled on a node with at least 8 cpus and 32 gigs of memory"""
