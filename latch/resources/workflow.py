@@ -17,7 +17,8 @@ def workflow(metadata: Union[LatchMetadata, Callable]):
         def decorator(f: Callable):
             if f.__doc__ is None:
                 f.__doc__ = f"{f.__name__}\n\nSample Description"
-            f.__doc__ = f"{dedent(f.__doc__)}\n\n" + str(metadata)
+            short_desc, long_desc = f.__doc__.split("\n", 1)
+            f.__doc__ = f"{short_desc}\n{dedent(long_desc)}\n\n" + str(metadata)
             return _workflow(f)
 
         return decorator
