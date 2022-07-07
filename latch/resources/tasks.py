@@ -263,3 +263,28 @@ small_task = task(task_config=_get_small_pod())
      - 0
      - False
 """
+
+
+def custom_task(cpu: int, memory: int):
+    """Returns a custom task configuration requesting
+    the specified CPU/RAM allocations
+
+    Args:
+        cpu: An integer number of cores to request, up to 48 cores
+        memory: An integer number of Gigabytes of RAM to request, up to 128 Gi
+    """
+    primary_container = V1Container(name="primary")
+    resources = V1ResourceRequirements(
+        requests={"cpu": str(cpu), "memory": f"{memory}Gi"},
+        limits={"cpu": "48", "memory": "128Gi"},
+    )
+    primary_container.resources = resources
+
+    task_config = Pod(
+        pod_spec=V1PodSpec(
+            containers=[primary_container],
+        ),
+        primary_container_name="primary",
+    )
+
+    return task(task_config=task_config)
