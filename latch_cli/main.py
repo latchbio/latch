@@ -19,7 +19,7 @@ def main():
 
 
 @click.command("register")
-@click.argument("pkg_root", nargs=1, type=click.Path(exists=True), required=False)
+@click.argument("pkg_root", nargs=1, required=False)
 @click.option(
     "--remote",
     default=None,
