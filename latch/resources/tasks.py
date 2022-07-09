@@ -279,12 +279,22 @@ def custom_task(cpu: int, memory: int):
         limits={"cpu": "48", "memory": "128Gi"},
     )
     primary_container.resources = resources
-
-    task_config = Pod(
-        pod_spec=V1PodSpec(
-            containers=[primary_container],
-        ),
-        primary_container_name="primary",
-    )
+    if cpu < 48 and memory < 128:
+        task_config = Pod(
+            pod_spec=V1PodSpec(
+                containers=[primary_container],
+            ),
+            primary_container_name="primary",
+        )
+    elif cpu < 96 and memory < 180:
+        task_config = Pod(
+            pod_spec=V1PodSpec(
+                containers=[primary_container],
+                tolerations=[
+                    V1Toleration(effect="NoSchedule", key="ng", value="cpu-96-spot")
+                ],
+            ),
+            primary_container_name="primary",
+        )
 
     return task(task_config=task_config)
