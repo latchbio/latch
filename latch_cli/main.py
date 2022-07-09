@@ -388,7 +388,23 @@ def execute(task_name: str):
     try:
         execute(task_name)
     except Exception as e:
-        click.secho(f"Unable to exec into {task_name}", fg="red")
+        click.secho(f"Unable to exec into {task_name}: {str(e)}", fg="red")
+
+
+@click.command("watch")
+@click.argument("workflow_name", nargs=1, type=str)
+def watch(workflow_name: str):
+    """Watches workflow code for changes and provides a parameter
+    interface preview in the Latch Console in real time.
+
+    Visit docs.latch.bio to learn more.
+    """
+    from latch_cli.services.watch import watch
+
+    try:
+        watch(workflow_name)
+    except Exception as e:
+        click.secho(f"Unable to watch {workflow_name}: {str(e)}", fg="red")
 
 
 main.add_command(execute)
@@ -405,3 +421,4 @@ main.add_command(open_remote_file)
 main.add_command(rm)
 main.add_command(touch)
 main.add_command(mkdir)
+main.add_command(watch)
