@@ -84,6 +84,7 @@ basics/customizing_interface
 basics/defining_cloud_resources
 basics/writing_dockerfiles
 basics/local_development
+basics/caching
 basics/conditional_and_map_tasks
 ```
 
