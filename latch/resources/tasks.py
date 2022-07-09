@@ -79,19 +79,18 @@ def _get_large_pod() -> Pod:
 
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
-        requests={"cpu": "46", "memory": "170Gi"},
-        limits={"cpu": "48", "memory": "192Gi"},
+        requests={"cpu": "90", "memory": "170Gi"},
+        limits={"cpu": "96", "memory": "192Gi"},
     )
     primary_container.resources = resources
 
     return Pod(
         pod_spec=V1PodSpec(
             containers=[primary_container],
-            tolerations=[V1Toleration(effect="NoSchedule", key="ng", value="big")],
+            tolerations=[V1Toleration(effect="NoSchedule", key="ng", value="cpu-96-spot")],
         ),
         primary_container_name="primary",
     )
-
 
 def _get_medium_pod() -> Pod:
     """Returns a pod which will be scheduled on a node with at least 8 cpus and 32 gigs of memory"""
@@ -159,6 +158,16 @@ on-demand.
      - True
 """
 
+
+def cached_large_gpu_task(cache_version):
+    """Provides caching with resources defined by `large_gpu_task`."""
+    if cache_version is None:
+        raise ValueError("Must provide a cache version to a cached task.")
+    return task(
+        cache=True, cache_version=cache_version, task_config=_get_large_gpu_pod()
+    )
+
+
 small_gpu_task = task(task_config=_get_small_gpu_pod())
 """This task will get scheduled on a small GPU-enabled node.
 
@@ -185,6 +194,16 @@ on it.
      - 1
      - True
 """
+
+
+def cached_small_gpu_task(cache_version):
+    """Provides caching with resources defined by `small_gpu_task`."""
+    if cache_version is None:
+        raise ValueError("Must provide a cache version to a cached task.")
+    return task(
+        cache=True, cache_version=cache_version, task_config=_get_small_gpu_pod()
+    )
+
 
 large_task = task(task_config=_get_large_pod())
 """This task will get scheduled on a large node.
@@ -213,6 +232,14 @@ on it.
      - True
 """
 
+
+def cached_large_task(cache_version):
+    """Provides caching with resources defined by `large_task`."""
+    if cache_version is None:
+        raise ValueError("Must provide a cache version to a cached task.")
+    return task(cache=True, cache_version=cache_version, task_config=_get_large_pod())
+
+
 medium_task = task(task_config=_get_medium_pod())
 """This task will get scheduled on a medium node.
 
@@ -240,6 +267,14 @@ on it.
      - True
 """
 
+
+def cached_medium_task(cache_version):
+    """Provides caching with resources defined by `medium_task`."""
+    if cache_version is None:
+        raise ValueError("Must provide a cache version to a cached task.")
+    return task(cache=True, cache_version=cache_version, task_config=_get_medium_pod())
+
+
 small_task = task(task_config=_get_small_pod())
 """This task will get scheduled on a small node.
 
@@ -264,6 +299,12 @@ small_task = task(task_config=_get_small_pod())
      - False
 """
 
+
+def cached_small_task(cache_version):
+    """Provides caching with resources defined by `small_task`."""
+    if cache_version is None:
+        raise ValueError("Must provide a cache version to a cached task.")
+    return task(cache=True, cache_version=cache_version, task_config=_get_small_pod())
 
 def custom_task(cpu: int, memory: int):
     """Returns a custom task configuration requesting

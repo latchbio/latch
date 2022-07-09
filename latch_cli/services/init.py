@@ -198,7 +198,7 @@ def _gen__init__(pkg_name: str):
 def _gen_dockerfile():
     return textwrap.dedent(
         """
-        FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:9a7d-main
+        FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:6839-main
 
         RUN apt-get install -y curl unzip
 
