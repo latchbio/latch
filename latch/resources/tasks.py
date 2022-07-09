@@ -87,10 +87,13 @@ def _get_large_pod() -> Pod:
     return Pod(
         pod_spec=V1PodSpec(
             containers=[primary_container],
-            tolerations=[V1Toleration(effect="NoSchedule", key="ng", value="cpu-96-spot")],
+            tolerations=[
+                V1Toleration(effect="NoSchedule", key="ng", value="cpu-96-spot")
+            ],
         ),
         primary_container_name="primary",
     )
+
 
 def _get_medium_pod() -> Pod:
     """Returns a pod which will be scheduled on a node with at least 8 cpus and 32 gigs of memory"""
@@ -306,6 +309,7 @@ def cached_small_task(cache_version):
         raise ValueError("Must provide a cache version to a cached task.")
     return task(cache=True, cache_version=cache_version, task_config=_get_small_pod())
 
+
 def custom_task(cpu: int, memory: int):
     """Returns a custom task configuration requesting
     the specified CPU/RAM allocations
@@ -336,6 +340,10 @@ def custom_task(cpu: int, memory: int):
                 ],
             ),
             primary_container_name="primary",
+        )
+    else:
+        raise ValueError(
+            f"One of {cpu} < 96 or {memory} < 180 is not satisfied. Task requirements are too high."
         )
 
     return task(task_config=task_config)
