@@ -49,15 +49,43 @@ def foo(fastq: LatchFile, output_dir: LatchDir) -> (LatchFile, LatchDir):
     # it will go back in your filesystem on the LatchBio console for now.
     return LatchFile("/root/foobar", "latch:///foobar.txt"), LatchDir(local_output_dir, output_dir.remote_path)
 ```
-_Writing to an existing remote LatchDir will only add or update files in it._ In the example below, it will leave the remote LatchDir untouched, rather than overwriting it and making it an empty directory.
-
+_Writing to an existing remote LatchDir will only add or update files that are in the local LatchDir._ It will not affect other files in the LatchDir. The two examples below illustrate how this works: the task updates `test.txt` without touching `foo.txt`.
 ```python 
+# This task adds test.txt to an existing LatchDir.
 @small_task
 def update_dir(
     output_dir: LatchDir,
 ) -> LatchDir:
     os.mkdir('/root/output') # An empty dir
+    os.system('touch /root/output/test.txt') # A file in the dir
     return LatchDir('/root/output', output_dir.remote_path)
+```
+```
+Case 1: there is not an existing 'test.txt' file in the LatchDir.
+. Original directory
+├── foo.txt  [Creation Time: 1/1/2022, 01:00:00 AM]
+             [Last Modified: 1/1/2022, 01:00:00 AM]
+
+. New directory
+├── foo.txt  [Creation Time: 1/1/2022, 01:00:00 AM]
+             [Last Modified: 1/1/2022, 01:00:00 AM] # Note that it doesn't touch foo.txt
+├── test.txt [Creation Time: 1/1/2022, 23:00:00 AM]
+             [Last Modified: 1/1/2022, 23:00:00 AM]
+```
+```
+Case 2: there is an existing 'test.txt' file in the LatchDir.
+. Original directory
+├── foo.txt  [Creation Time: 1/1/2022, 01:00:00 AM]
+             [Last Modified: 1/1/2022, 01:00:00 AM]
+├── test.txt [Creation Time: 1/1/2022, 01:00:00 AM]
+             [Last Modified: 1/1/2022, 01:00:00 AM]
+
+. New directory
+├── foo.txt  [Creation Time: 1/1/2022, 01:00:00 AM]
+             [Last Modified: 1/1/2022, 01:00:00 AM]
+├── test.txt [Creation Time: 1/1/2022, 01:00:00 AM]
+             [Last Modified: 1/1/2022, 23:00:00 AM]
+```
 ```
 
 ## Local Paths and Remote Paths
