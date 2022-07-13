@@ -146,7 +146,9 @@ class LatchFilePathTransformer(FlyteFilePathTransformer):
         def _downloader():
             return ctx.file_access.get_data(uri, local_path, is_multipart=False)
 
-        return LatchFile(local_path, uri, downloader=_downloader)
+        ret = LatchFile(local_path, uri, downloader=_downloader)
+        ret._remote_source = uri
+        return ret
 
 
 TypeEngine.register(LatchFilePathTransformer())
