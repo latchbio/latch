@@ -145,7 +145,9 @@ class LatchDirPathTransformer(FlyteDirToMultipartBlobTransformer):
         def _downloader():
             return ctx.file_access.get_data(uri, local_folder, is_multipart=True)
 
-        return LatchDir(local_folder, uri, downloader=_downloader)
+        ret = LatchDir(local_folder, uri, downloader=_downloader)
+        ret._remote_source = uri
+        return ret
 
 
 TypeEngine.register(LatchDirPathTransformer())
