@@ -1,24 +1,32 @@
 """Entrypoints to service functions through a latch_cli."""
 
 import re
-import traceback
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import List, Union
 
 import click
 
+import latch_cli.click_utils
 
-@click.group("latch")
+latch_cli.click_utils.patch()
+
+
+@click.group(
+    "latch",
+    context_settings={
+        "max_content_width": 160,
+    },
+)
 @click.version_option(package_name="latch")
 def main():
-    """A command line toolchain to register workflows and upload data to Latch.
-
-    Visit docs.latch.bio to learn more.
+    """
+    Collection of command line tools for using the Latch SDK and
+    interacting with the Latch platform.
     """
     ...
 
 
-@click.command("register")
+@main.command("register")
 @click.argument("pkg_root", nargs=1, type=click.Path(exists=True))
 @click.option(
     "-d",
@@ -26,13 +34,13 @@ def main():
     is_flag=True,
     default=False,
     type=bool,
-    help="Whether to automatically bump the version of the workflow each time register is called.",
+    help=(
+        "Whether to automatically bump the version of the workflow each time register"
+        " is called."
+    ),
 )
 def register(pkg_root: str, disable_auto_version: bool):
-    """Register local workflow code to Latch.
-
-    Visit docs.latch.bio to learn more.
-    """
+    """Register local workflow code to Latch."""
     from latch_cli.services.register import register
 
     try:
@@ -44,12 +52,9 @@ def register(pkg_root: str, disable_auto_version: bool):
         click.secho(f"Unable to register workflow: {str(e)}", fg="red")
 
 
-@click.command("login")
+@main.command("login")
 def login():
-    """Manually login to Latch.
-
-    Visit docs.latch.bio to learn more.
-    """
+    """Manually login to Latch."""
     from latch_cli.services.login import login
 
     try:
@@ -59,13 +64,10 @@ def login():
         click.secho(f"Unable to log in: {str(e)}", fg="red")
 
 
-@click.command("init")
+@main.command("init")
 @click.argument("pkg_name", nargs=1)
 def init(pkg_name: str):
-    """Initialize boilerplate for local workflow code.
-
-    Visit docs.latch.bio to learn more.
-    """
+    """Initialize boilerplate for local workflow code."""
     from latch_cli.services.init import init
 
     # Workflow name must not contain capitals or end in a hyphen or underscore. If it does, we should throw an error
@@ -112,7 +114,7 @@ def init(pkg_name: str):
     click.secho("To register the workflow with console.latch.bio.", fg="green")
 
 
-@click.command("cp")
+@main.command("cp")
 @click.argument("source_file", nargs=1)
 @click.argument("destination_file", nargs=1)
 def cp(source_file: str, destination_file: str):
@@ -133,14 +135,11 @@ def cp(source_file: str, destination_file: str):
         )
 
 
-@click.command("ls")
+@main.command("ls")
 # Allows the user to provide unlimited arguments (including zero)
 @click.argument("remote_directories", nargs=-1)
 def ls(remote_directories: Union[None, List[str]]):
-    """List remote files in the command line. Supports multiple directory arguments.
-
-    Visit docs.latch.bio to learn more.
-    """
+    """List remote files in the command line. Supports multiple directory arguments."""
     from latch_cli.services.ls import ls
 
     def _item_padding(k):
@@ -194,7 +193,7 @@ def ls(remote_directories: Union[None, List[str]]):
             _display(row, style)
 
 
-@click.command("local-execute")
+@main.command("local-execute")
 @click.argument("pkg_root", nargs=1, type=click.Path(exists=True))
 def local_execute(pkg_root: Path):
     """Execute a workflow within the latest registered container. Run from the
@@ -221,7 +220,7 @@ def local_execute(pkg_root: Path):
         click.secho(f"Unable to execute workflow: {str(e)}", fg="red")
 
 
-@click.command("launch")
+@main.command("launch")
 @click.argument("params_file", nargs=1, type=click.Path(exists=True))
 @click.option(
     "--version",
@@ -229,10 +228,7 @@ def local_execute(pkg_root: Path):
     help="The version of the workflow to launch. Defaults to latest.",
 )
 def launch(params_file: Path, version: Union[str, None] = None):
-    """Launch a workflow using a python parameter map.
-
-    Visit docs.latch.bio to learn more.
-    """
+    """Launch a workflow using a python parameter map."""
     from latch_cli.services.launch import launch
 
     try:
@@ -248,7 +244,7 @@ def launch(params_file: Path, version: Union[str, None] = None):
     )
 
 
-@click.command("get-params")
+@main.command("get-params")
 @click.argument("wf_name", nargs=1)
 @click.option(
     "--version",
@@ -276,17 +272,14 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
     )
 
 
-@click.command("get-wf")
+@main.command("get-wf")
 @click.option(
     "--name",
     default=None,
     help="The name of the workflow to list. Will display all versions",
 )
 def get_wf(name: Union[str, None] = None):
-    """List workflows.
-
-    Visit docs.latch.bio to learn more.
-    """
+    """List workflows."""
     from latch_cli.services.get import get_wf
 
     try:
@@ -311,13 +304,10 @@ def get_wf(name: Union[str, None] = None):
         )
 
 
-@click.command("open")
+@main.command("open")
 @click.argument("remote_file", nargs=1, type=str)
 def open_remote_file(remote_file: str):
-    """Open a remote file in the browser.
-
-    Visit docs.latch.bio to learn more.
-    """
+    """Open a remote file in the browser."""
     from latch_cli.services.open_file import open_file
 
     try:
@@ -327,13 +317,10 @@ def open_remote_file(remote_file: str):
         click.secho(f"Unable to open {remote_file}: {str(e)}", fg="red")
 
 
-@click.command("rm")
+@main.command("rm")
 @click.argument("remote_path", nargs=1, type=str)
 def rm(remote_path: str):
-    """Deletes a remote entity.
-
-    Visit docs.latch.bio to learn more.
-    """
+    """Deletes a remote entity."""
     from latch_cli.services.rm import rm
 
     try:
@@ -343,13 +330,10 @@ def rm(remote_path: str):
         click.secho(f"Unable to delete {remote_path}: {str(e)}", fg="red")
 
 
-@click.command("mkdir")
+@main.command("mkdir")
 @click.argument("remote_directory", nargs=1, type=str)
 def mkdir(remote_directory: str):
-    """Creates a new remote directory.
-
-    Visit docs.latch.bio to learn more.
-    """
+    """Creates a new remote directory."""
     from latch_cli.services.mkdir import mkdir
 
     try:
@@ -361,13 +345,10 @@ def mkdir(remote_directory: str):
         )
 
 
-@click.command("touch")
+@main.command("touch")
 @click.argument("remote_file", nargs=1, type=str)
 def touch(remote_file: str):
-    """Creates an empty text file.
-
-    Visit docs.latch.bio to learn more.
-    """
+    """Creates an empty text file."""
     from latch_cli.services.touch import touch
 
     try:
@@ -377,32 +358,13 @@ def touch(remote_file: str):
         click.secho(f"Unable to create {remote_file}: {str(e)}", fg="red")
 
 
-@click.command("exec")
+@main.command("exec")
 @click.argument("task_name", nargs=1, type=str)
 def execute(task_name: str):
-    """Drops the user into an interactive shell from within a task.
-
-    Visit docs.latch.bio to learn more.
-    """
+    """Drops the user into an interactive shell from within a task."""
     from latch_cli.services.execute import execute
 
     try:
         execute(task_name)
     except Exception as e:
         click.secho(f"Unable to exec into {task_name}", fg="red")
-
-
-main.add_command(execute)
-main.add_command(register)
-main.add_command(login)
-main.add_command(init)
-main.add_command(cp)
-main.add_command(ls)
-main.add_command(local_execute)
-main.add_command(get_wf)
-main.add_command(launch)
-main.add_command(get_params)
-main.add_command(open_remote_file)
-main.add_command(rm)
-main.add_command(touch)
-main.add_command(mkdir)
