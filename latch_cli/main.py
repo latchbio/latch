@@ -7,6 +7,7 @@ from typing import List, Union
 import click
 
 import latch_cli.click_utils
+from latch_cli.click_utils import AnsiCodes as ac
 
 latch_cli.click_utils.patch()
 
@@ -190,25 +191,29 @@ def ls(remote_directories: Union[None, List[str]]):
             _display(row, style)
 
 
-@main.command("local-execute")
-@click.argument("pkg_root", nargs=1, type=click.Path(exists=True))
-def local_execute(pkg_root: Path):
-    """Execute a workflow within the latest registered container. Run from the
-    outside the pkg root, eg. `latch local-execute myworkflow` where
-    `myworkflow` is the directory containing your workflow package.
+@main.command(
+    "local-execute",
+    help=f"""Execute a workflow within the latest registered container. Run from the
+    outside the pkg root, eg. {ac.bold}`latch local-execute myworkflow`{ac.reset} where
+    {ac.bold}`myworkflow`{ac.reset} is the directory containing your workflow package.
 
     This is the same as running:
 
-        $ python3 wf/__init__.py
+    \b
+        {ac.bold}$ python3 wf/__init__.py{ac.reset}
 
     Assuming this file contains a snippet conducive to local execution such as:
 
-        if __name__ == "__main___":
-           my_workflow(a="foo", reads=LatchFile("/users/von/neuman/machine.txt")
+    \b
+        {ac.bold}if __name__ == "__main___":
+           my_workflow(a="foo", reads=LatchFile("/users/von/neuman/machine.txt"){ac.reset}
 
-    Visit https://docs.latch.bio/basics/local_development.html to read more
+    Visit {ac.underline}https://docs.latch.bio/basics/local_development.html{ac.no_underline} to read more
     about local development.
-    """
+    """,
+)
+@click.argument("pkg_root", nargs=1, type=click.Path(exists=True))
+def local_execute(pkg_root: Path):
     from latch_cli.services.local_execute import local_execute
 
     try:

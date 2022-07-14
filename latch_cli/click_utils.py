@@ -85,3 +85,16 @@ def patch():
 
     click.ClickException.show = colored_exception_show
     click.UsageError.show = colored_usage_error_show
+
+
+class AnsiCodes:
+    bold = "\x1b[1m"
+    reset = "\x1b[22m"
+
+    underline = "\x1b[4m"
+    no_underline = "\x1b[24m"
+
+    # todo(maximsmol): use in supported terminals?
+    url_href = "\x1b]8;;"
+    url_name = "\x1b\\"
+    url_end = "\x1b]8;;\x1b\\"
