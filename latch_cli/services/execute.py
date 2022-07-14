@@ -233,16 +233,13 @@ def execute(task_name: str):
                     error = json.loads(chunk)
                     if error["status"] == "Success":
                         break
-                    print(
-                        f"Status: {error['status']} - Message: {error['message']}",
-                        file=sys.stderr,
-                        flush=True,
+                    raise websocket.WebSocketException(
+                        f"Status: {error['status']} - Message: {error['message']}"
                     )
-                    sys.exit(1)
                 else:
-                    print(f"Unexpected channel: {channel}", file=sys.stderr, flush=True)
-                    sys.exit(1)
+                    raise websocket.WebSocketException(f"Unexpected channel: {channel}")
 
             else:
-                print(f"Unexpected websocket opcode: {opcode}", file=sys.stderr)
-                sys.exit(1)
+                raise websocket.WebSocketException(
+                    f"Unexpected websocket opcode: {opcode}"
+                )
