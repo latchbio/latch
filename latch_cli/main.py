@@ -21,6 +21,7 @@ def main():
 @click.command("register")
 @click.argument("pkg_root", nargs=1, type=click.Path(exists=True))
 @click.option(
+    "-d",
     "--disable-auto-version",
     is_flag=True,
     default=False,
