@@ -118,10 +118,7 @@ def init(pkg_name: str):
 @click.argument("source_file", nargs=1)
 @click.argument("destination_file", nargs=1)
 def cp(source_file: str, destination_file: str):
-    """Copy local files to LatchData and vice versa.
-
-    Visit docs.latch.bio to learn more.
-    """
+    """Copy local files to LatchData and vice versa."""
     from latch_cli.services.cp import cp
 
     try:
@@ -252,10 +249,7 @@ def launch(params_file: Path, version: Union[str, None] = None):
     help="The version of the workflow. Defaults to latest.",
 )
 def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
-    """Generate a python parameter map for a workflow.
-
-    Visit docs.latch.bio to learn more.
-    """
+    """Generate a python parameter map for a workflow."""
     from latch_cli.services.get_params import get_params
 
     try:
