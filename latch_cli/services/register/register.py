@@ -12,6 +12,13 @@ from typing import List, Union
 
 import boto3
 import requests
+from flytekit.configuration import (
+    FastSerializationSettings,
+    Image,
+    ImageConfig,
+    SerializationSettings,
+)
+from flytekit.tools.repo import serialize
 
 from latch_cli.services.register import RegisterCtx, RegisterOutput
 
@@ -142,6 +149,7 @@ def _print_reg_resp(resp, image):
 def register(
     pkg_root: str,
     disable_auto_version: bool = False,
+    remote: bool = False,
 ) -> RegisterOutput:
     """Registers a workflow, defined as python code, with Latch.
 
@@ -199,6 +207,11 @@ def register(
 
     ctx = RegisterCtx(pkg_root, disable_auto_version=disable_auto_version)
 
+    remote = True
+    if remote is True:
+        _serialize_pkg_locally(ctx, pkg_root)
+        quit()
+
     with open(ctx.version_archive_path, "r") as f:
         registered_versions = f.read().split("\n")
         if ctx.version in registered_versions:
@@ -216,7 +229,7 @@ def register(
     with tempfile.TemporaryDirectory() as td:
         td_path = Path(td).resolve()
 
-        serialize_logs, container_id = _serialize_pkg(ctx, td_path)
+        serialize_logs, container_id = _serialize_pkg_in_container(ctx, td_path)
         _print_serialize_logs(serialize_logs, ctx.image_tagged)
         exit_status = ctx.dkr_client.wait(container_id)
         if exit_status["StatusCode"] != 0:
@@ -292,7 +305,36 @@ def build_image(
     return build_logs
 
 
-def _serialize_pkg(ctx: RegisterCtx, serialize_dir: Path) -> List[str]:
+def _serialize_pkg_locally(ctx: RegisterCtx, pkg_root: Path):
+
+    # TODO pritty print errors
+    pkgs = ["wf"]
+    serialize(
+        pkgs,
+        SerializationSettings(
+            image_config=ImageConfig(
+                default_image=Image(
+                    name="noop",
+                    fqn="noop",
+                    tag="noop",
+                ),
+                images=[
+                    Image(
+                        name="noop",
+                        fqn="noop",
+                        tag="noop",
+                    )
+                ],
+            ),
+            fast_serialization_settings=FastSerializationSettings(
+                enabled=False, destination_dir=None, distribution_location=None
+            ),
+        ),
+        str(pkg_root.resolve()),
+    )
+
+
+def _serialize_pkg_in_container(ctx: RegisterCtx, serialize_dir: Path) -> List[str]:
 
     _serialize_cmd = ["make", "serialize"]
     container = ctx.dkr_client.create_container(
