@@ -28,6 +28,7 @@ SDK_ENDPOINTS = {
     "rmdir": "/sdk/rmdir",
     "touch": "/sdk/touch",
     "pod-exec-info": "/sdk/get-pod-exec-info",
+    "preview": "/sdk/workflow-ui-preview",
 }
 
 

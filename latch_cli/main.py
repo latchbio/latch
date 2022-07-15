@@ -392,20 +392,16 @@ def execute(task_name: str):
         click.secho(f"Unable to exec into {task_name}: {str(e)}", fg="red")
 
 
-@click.command("watch")
+@click.command("preview")
 @click.argument("workflow_name", nargs=1, type=str)
-def watch(workflow_name: str):
-    """Watches workflow code for changes and provides a parameter
-    interface preview in the Latch Console in real time.
-
-    Visit docs.latch.bio to learn more.
-    """
-    from latch_cli.services.watch import watch
+def preview(workflow_name: str):
+    """Creates a preview of your workflow interface."""
+    from latch_cli.services.preview import preview
 
     try:
-        watch(workflow_name)
+        preview(workflow_name)
     except Exception as e:
-        click.secho(f"Unable to watch {workflow_name}: {str(e)}", fg="red")
+        click.secho(f"Unable to preview inputs for {workflow_name}: {str(e)}", fg="red")
 
 
 main.add_command(execute)
