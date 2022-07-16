@@ -1,6 +1,7 @@
 """Entrypoints to service functions through a latch_cli."""
 
 import re
+from collections import OrderedDict
 from pathlib import Path
 from typing import List, Union
 
@@ -138,16 +139,19 @@ def cp(source_file: str, destination_file: str):
 @click.argument("remote_directories", nargs=-1)
 def ls(remote_directories: Union[None, List[str]]):
     """List remote files in the command line. Supports multiple directory arguments."""
-    from latch_cli.services.ls import ls
+    from datetime import datetime
 
-    def _item_padding(k):
-        return 0 if k == "modifyTime" else 3
+    from latch_cli.services.ls import ls
+    from latch_cli.utils import with_si_suffix
 
     # If the user doesn't provide any arguments, default to root
     if not remote_directories:
         remote_directories = ["latch:///"]
 
     for remote_directory in remote_directories:
+        if len(remote_directories) > 1:
+            click.echo(f"{remote_directory}:")
+
         try:
             output = ls(remote_directory)
         except Exception as e:
@@ -155,40 +159,62 @@ def ls(remote_directories: Union[None, List[str]]):
                 f"Unable to display contents of {remote_directory}: {str(e)}", fg="red"
             )
             continue
+        output.sort(key=lambda row: row["name"])
 
-        header = {
-            "name": "Name:",
-            "contentType": "Type:",
-            "contentSize": "Size:",
-            "modifyTime": "Last Modified:",
-        }
-
-        max_lengths = {key: len(key) + _item_padding(key) for key in header}
+        formatted = []
         for row in output:
-            for key in header:
-                max_lengths[key] = max(
-                    len(row[key]) + _item_padding(key), max_lengths[key]
+            vals = {
+                "contentSize": click.style(
+                    with_si_suffix(int(row["contentSize"]), suffix="", styled=True),
+                    fg="bright_green",
                 )
-
-        def _display(row, style):
-            click.secho(f"{row['name']:<{max_lengths['name']}}", nl=False, **style)
-            click.secho(
-                f"{row['contentType']:<{max_lengths['contentType']}}", nl=False, **style
-            )
-            click.secho(
-                f"{row['contentSize']:<{max_lengths['contentSize']}}", nl=False, **style
-            )
-            click.secho(f"{row['modifyTime']}", **style)
-
-        _display(header, style={"underline": True})
-
-        for row in output:
-            style = {
-                "fg": "cyan" if row["type"] == "obj" else "green",
-                "bold": True,
+                if row["contentSize"] != "-" and row["type"] != "dir"
+                else click.style("-", dim=True),
+                "modifyTime": click.style(
+                    datetime.fromisoformat(row["modifyTime"]).strftime("%d %b %H:%M"),
+                    fg="blue",
+                )
+                if row["modifyTime"] != "-" and row["type"] != "dir"
+                else click.style("-", dim=True),
+                "name": row["name"],
             }
 
-            _display(row, style)
+            if row["type"] == "dir":
+                vals["name"] = click.style(row["name"], fg="bright_blue") + "/"
+
+            formatted.append(vals)
+
+        columns = OrderedDict(
+            contentSize="Size", modifyTime="Date Modified", name="Name"
+        )
+
+        column_width = {key: len(title) for key, title in columns.items()}
+        for row in formatted:
+            for key in columns:
+                column_width[key] = max(column_width[key], len(click.unstyle(row[key])))
+
+        def pad_styled(x: str, l: int, align_right=False):
+            cur = len(click.unstyle(x))
+
+            pad = " " * (l - cur)
+            if align_right:
+                return pad + x
+            return x + pad
+
+        click.echo(
+            " ".join(
+                pad_styled(
+                    click.style(title, underline=True), column_width[key], key != "name"
+                )
+                for key, title in columns.items()
+            )
+        )
+        for row in formatted:
+            click.echo(
+                " ".join(
+                    pad_styled(row[k], column_width[k], k != "name") for k in columns
+                )
+            )
 
 
 @main.command(

@@ -52,22 +52,6 @@ def ls(remote_directory: str) -> List[Dict[str, str]]:
     if response.status_code == 400:
         raise ValueError(f"The directory {remote_directory} does not exist.")
 
-    json_data = response.json()
-
-    output = []
-    for i in json_data:
-        name_data = json_data[i]
-
-        if name_data["type"] == "dir":
-            name_data["contentSize"] = "-"
-            name_data["modifyTime"] = "-"
-
-        if name_data["contentSize"] != "-":
-            name_data["contentSize"] = with_si_suffix(int(name_data["contentSize"]))
-
-        output.append(name_data)
-
-    output.sort(key=lambda x: x["name"])
-    output.sort(key=lambda x: x["type"])
+    output = list(response.json().values())
 
     return output
