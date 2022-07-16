@@ -136,9 +136,18 @@ def cp(source_file: str, destination_file: str):
 
 @main.command("ls")
 # Allows the user to provide unlimited arguments (including zero)
+@click.option(
+    "--group-directories-first",
+    "--gdf",
+    help="List directories before files.",
+    is_flag=True,
+    default=False,
+)
 @click.argument("remote_directories", nargs=-1)
-def ls(remote_directories: Union[None, List[str]]):
-    """List remote files in the command line. Supports multiple directory arguments."""
+def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]):
+    """
+    List the contents of a Latch Data directory
+    """
     from datetime import datetime
 
     from latch_cli.services.ls import ls
@@ -160,6 +169,8 @@ def ls(remote_directories: Union[None, List[str]]):
             )
             continue
         output.sort(key=lambda row: row["name"])
+        if group_directories_first:
+            output.sort(key=lambda row: row["type"])
 
         formatted = []
         for row in output:
