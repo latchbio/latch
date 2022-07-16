@@ -180,7 +180,9 @@ def ls(remote_directories: Union[None, List[str]]):
             }
 
             if row["type"] == "dir":
-                vals["name"] = click.style(row["name"], fg="bright_blue") + "/"
+                vals["name"] = (
+                    click.style(row["name"], fg="bright_blue", bold=True) + "/"
+                )
 
             formatted.append(vals)
 
