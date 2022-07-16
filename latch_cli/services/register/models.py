@@ -141,7 +141,6 @@ class RegisterCtx:
 
             with NamedTemporaryFile("w", dir="/tmp/") as f:
                 f.write(key_material)
-                f.seek(0)
                 os.chmod(f.name, int("700", base=8))
 
                 # TODO - hacky
