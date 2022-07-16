@@ -139,7 +139,7 @@ class RegisterCtx:
                     f"Malformed response from request for access token {resp}"
                 ) from e
 
-            with NamedTemporaryFile("r+", dir="/tmp/") as f:
+            with NamedTemporaryFile("w", dir="/tmp/") as f:
                 f.write(key_material)
                 f.seek(0)
                 os.chmod(f.name, int("700", base=8))
