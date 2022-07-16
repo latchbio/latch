@@ -367,3 +367,15 @@ def execute(task_name: str):
         execute(task_name)
     except Exception as e:
         click.secho(f"Unable to exec into {task_name}", fg="red")
+
+
+@main.command("preview")
+@click.argument("workflow_name", nargs=1, type=str)
+def preview(workflow_name: str):
+    """Creates a preview of your workflow interface."""
+    from latch_cli.services.preview import preview
+
+    try:
+        preview(workflow_name)
+    except Exception as e:
+        click.secho(f"Unable to preview inputs for {workflow_name}: {str(e)}", fg="red")
