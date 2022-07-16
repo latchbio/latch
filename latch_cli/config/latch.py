@@ -29,6 +29,7 @@ SDK_ENDPOINTS = {
     "touch": "/sdk/touch",
     "pod-exec-info": "/sdk/get-pod-exec-info",
     "provision-centromere": "/sdk/provision-centromere",
+    "preview": "/sdk/workflow-ui-preview",
 }
 
 
