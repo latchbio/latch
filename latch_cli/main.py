@@ -204,7 +204,9 @@ def ls(remote_directories: Union[None, List[str]]):
         click.echo(
             " ".join(
                 pad_styled(
-                    click.style(title, underline=True), column_width[key], key != "name"
+                    click.style(title, underline=True),
+                    column_width[key],
+                    key == "contentSize",
                 )
                 for key, title in columns.items()
             )
@@ -212,7 +214,8 @@ def ls(remote_directories: Union[None, List[str]]):
         for row in formatted:
             click.echo(
                 " ".join(
-                    pad_styled(row[k], column_width[k], k != "name") for k in columns
+                    pad_styled(row[k], column_width[k], k == "contentSize")
+                    for k in columns
                 )
             )
 
