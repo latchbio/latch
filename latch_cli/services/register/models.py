@@ -2,13 +2,16 @@
 
 import hashlib
 import os
+import subprocess
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import List, Optional
 
 import docker
 
+import latch_cli.tinyrequests as tinyrequests
 from latch_cli.config.latch import LatchConfig
 from latch_cli.utils import account_id_from_token, retrieve_or_login, with_si_suffix
 
@@ -60,6 +63,7 @@ class RegisterCtx:
 
     dkr_repo: Optional[str] = None
     dkr_client: docker.APIClient = None
+    key_material: Optional[str] = None
     pkg_root: Path = None  # root
     disable_auto_version: bool = False
     image_full = None
@@ -74,9 +78,36 @@ class RegisterCtx:
         pkg_root: Path,
         token: Optional[str] = None,
         disable_auto_version: bool = False,
+        remote: bool = False,
     ):
 
-        self.dkr_client = self._construct_dkr_client()
+        # create tmp ssh file
+        if remote is True:
+
+            response = tinyrequests.post
+            resp = response.json()
+            try:
+                public_ip = resp["ip"]
+                key_material = resp["keyMaterial"]
+            except KeyError as e:
+                raise ValueError(
+                    f"Malformed response from request for access token {resp}"
+                ) from e
+
+            with NamedTemporaryFile("r+", dir="/tmp/") as f:
+                f.write(key_material)
+                f.seek(0)
+                os.chmod(f.name, int("700", base=8))
+
+                # TODO - hacky
+                subprocess.run(["ssh-add", f.name])
+
+                self.dkr_client = self._construct_dkr_client(
+                    ssh_host=f"ssh://ubuntu@{public_ip}"
+                )
+        else:
+            self.dkr_client = self._construct_dkr_client()
+
         self.pkg_root = Path(pkg_root).resolve()
         self.disable_auto_version = disable_auto_version
         try:
@@ -181,11 +212,16 @@ class RegisterCtx:
         return version_archive_path
 
     @staticmethod
-    def _construct_dkr_client():
+    def _construct_dkr_client(
+        ssh_host: Optional[str] = None, ssh_key_path: Optional[str] = None
+    ):
         """Try many methods of establishing valid connection with client.
 
         This was helpful -
         https://github.com/docker/docker-py/blob/a48a5a9647761406d66e8271f19fab7fa0c5f582/docker/utils/utils.py#L321
+
+        If `ssh_host` is passed, we attempt to make a connection with a remote
+        machine.
         """
 
         def _from_env():
@@ -232,10 +268,16 @@ class RegisterCtx:
 
             return dkr_client
 
+        if ssh_host is not None:
+            try:
+                return docker.APIClient(ssh_host, use_ssh_client=True)
+            except docker.errors.DockerException as de:
+                raise OSError(
+                    f"Unable to establish a connection to remote docker host {ssh_host}."
+                ) from de
+
         environment = os.environ
-
         host = environment.get("DOCKER_HOST")
-
         if host is not None and host != "":
             return _from_env()
         else:
