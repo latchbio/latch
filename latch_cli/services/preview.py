@@ -1,21 +1,17 @@
-import glob
 import json
 import logging
-import shutil
-import sys
-import time
-from datetime import datetime
-from pathlib import Path
-from typing import List, OrderedDict
+import webbrowser
+from typing import List
 
-from watchdog.events import FileSystemEventHandler
-from watchdog.observers import Observer
+from flytekit.clis.sdk_in_container.run import load_naive_entity
 
 from latch_cli.config.latch import LatchConfig
-from latch_cli.utils import account_id_from_token, retrieve_or_login
+from latch_cli.tinyrequests import post
+from latch_cli.utils import retrieve_or_login
 
 logger = logging.Logger(name="logger")
-endpoints = LatchConfig().sdk_endpoints
+config = LatchConfig()
+endpoints = config.sdk_endpoints
 
 SIMPLE_MAP = {
     0: "NONE",
@@ -36,7 +32,7 @@ DIM_MAP = {
 }
 
 
-def deep_dict(t) -> dict:
+def _deep_dict(t) -> dict:
     if hasattr(t, "__dict__"):
         output = {}
         for k in t.__dict__:
@@ -55,22 +51,19 @@ def deep_dict(t) -> dict:
                     val = DIM_MAP.get(t.__dict__[k], None)
                 else:
                     val = t.__dict__[k]
-                output[new_key] = deep_dict(val)
+                output[new_key] = _deep_dict(val)
         return output
     elif isinstance(t, List):
         output = []
         for i in range(len(t)):
             if t[i] is not None:
-                output.append(deep_dict(t[i]))
+                output.append(_deep_dict(t[i]))
         return output
     else:
         return t
 
 
 def preview(workflow_name: str):
-
-    import requests
-    from flytekit.clis.sdk_in_container.run import load_naive_entity
 
     try:
         wf = load_naive_entity("wf.__init__", workflow_name)
@@ -80,12 +73,12 @@ def preview(workflow_name: str):
             " - make sure that the function names match."
         )
 
-    d = {k: deep_dict(wf.interface.inputs[k]) for k in wf.interface.inputs}
+    d = {k: _deep_dict(wf.interface.inputs[k]) for k in wf.interface.inputs}
 
     token = retrieve_or_login()
     headers = {"Authorization": f"Bearer {token}"}
 
-    resp = requests.post(
+    resp = post(
         url=endpoints["preview"],
         headers=headers,
         json={
@@ -98,3 +91,6 @@ def preview(workflow_name: str):
     )
 
     resp.raise_for_status()
+
+    url = f"{config.console_url}/preview/parameters"
+    webbrowser.open(url)
