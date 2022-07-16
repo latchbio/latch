@@ -198,9 +198,6 @@ def register(
         https://docs.flyte.org/en/latest/concepts/registration.html
     """
 
-    # TODO
-    remote = True
-
     pkg_root = Path(pkg_root).resolve()
     ctx = RegisterCtx(
         pkg_root, disable_auto_version=disable_auto_version, remote=remote
