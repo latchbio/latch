@@ -31,6 +31,7 @@ setup(
         "requests>=2.0",
         "click>=8.0",
         "docker>=5.0",
+        "paramiko>=2.11.0",
         "boto3>=1.24.22",
         "tqdm>=4.63.0",
         "lytekit==0.2.2",

@@ -40,12 +40,24 @@ def main():
         " is called."
     ),
 )
-def register(pkg_root: str, disable_auto_version: bool):
-    """Register local workflow code to Latch."""
+
+@click.option(
+    "-r",
+    "--remote",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Use a remote server to build workflow.",
+)
+def register(pkg_root: str, disable_auto_version: bool, remote: bool):
+    """Register local workflow code to Latch.
+
+    Visit docs.latch.bio to learn more.
+    """
     from latch_cli.services.register import register
 
     try:
-        register(pkg_root, disable_auto_version=disable_auto_version)
+        register(pkg_root, disable_auto_version=disable_auto_version, remote=remote)
         click.secho(
             "Successfully registered workflow. View @ console.latch.bio.", fg="green"
         )
