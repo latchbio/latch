@@ -72,6 +72,7 @@ class RegisterCtx:
     serialize_dir = None
     latch_register_api_url = endpoints["register-workflow"]
     latch_image_api_url = endpoints["initiate-image-upload"]
+    latch_provision_url = endpoints["provision-centromere"]
 
     def __init__(
         self,
@@ -80,33 +81,6 @@ class RegisterCtx:
         disable_auto_version: bool = False,
         remote: bool = False,
     ):
-
-        # create tmp ssh file
-        if remote is True:
-
-            response = tinyrequests.post
-            resp = response.json()
-            try:
-                public_ip = resp["ip"]
-                key_material = resp["keyMaterial"]
-            except KeyError as e:
-                raise ValueError(
-                    f"Malformed response from request for access token {resp}"
-                ) from e
-
-            with NamedTemporaryFile("r+", dir="/tmp/") as f:
-                f.write(key_material)
-                f.seek(0)
-                os.chmod(f.name, int("700", base=8))
-
-                # TODO - hacky
-                subprocess.run(["ssh-add", f.name])
-
-                self.dkr_client = self._construct_dkr_client(
-                    ssh_host=f"ssh://ubuntu@{public_ip}"
-                )
-        else:
-            self.dkr_client = self._construct_dkr_client()
 
         self.pkg_root = Path(pkg_root).resolve()
         self.disable_auto_version = disable_auto_version
@@ -150,6 +124,34 @@ class RegisterCtx:
             self.token = token
 
         self.account_id = account_id_from_token(self.token)
+
+        if remote is True:
+            headers = {"Authorization": f"Bearer {self.token}"}
+            response = tinyrequests.post(
+                self.latch_provision_url, headers=headers, json={}
+            )
+            resp = response.json()
+            try:
+                public_ip = resp["ip"]
+                key_material = resp["keyMaterial"]
+            except KeyError as e:
+                raise ValueError(
+                    f"Malformed response from request for access token {resp}"
+                ) from e
+
+            with NamedTemporaryFile("r+", dir="/tmp/") as f:
+                f.write(key_material)
+                f.seek(0)
+                os.chmod(f.name, int("700", base=8))
+
+                # TODO - hacky
+                subprocess.run(["ssh-add", f.name])
+
+                self.dkr_client = self._construct_dkr_client(
+                    ssh_host=f"ssh://ubuntu@{public_ip}"
+                )
+        else:
+            self.dkr_client = self._construct_dkr_client()
 
     @property
     def image(self):
