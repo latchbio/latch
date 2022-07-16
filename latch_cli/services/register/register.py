@@ -8,6 +8,7 @@ import re
 import shutil
 import tempfile
 from pathlib import Path
+from tempfile import TemporaryFile
 from typing import List, Union
 
 import boto3
@@ -18,7 +19,7 @@ from flytekit.configuration import (
     ImageConfig,
     SerializationSettings,
 )
-from flytekit.tools.repo import serialize
+from flytekit.tools.repo import serialize_to_folder
 
 from latch_cli.services.register import RegisterCtx, RegisterOutput
 
@@ -84,12 +85,6 @@ def _print_build_logs(build_logs, image):
                 else:
                     curr_lines = _print_window(curr_lines, line)
     _delete_lines(curr_lines)
-
-
-def _print_serialize_logs(serialize_logs, image):
-    print(f"Serializing workflow in {image}:")
-    for x in serialize_logs:
-        print(x, end="")
 
 
 def _print_upload_logs(upload_image_logs, image):
@@ -203,14 +198,13 @@ def register(
         https://docs.flyte.org/en/latest/concepts/registration.html
     """
 
-    pkg_root = Path(pkg_root).resolve()
-
-    ctx = RegisterCtx(pkg_root, disable_auto_version=disable_auto_version)
-
+    # TODO
     remote = True
-    if remote is True:
-        _serialize_pkg_locally(ctx, pkg_root)
-        quit()
+
+    pkg_root = Path(pkg_root).resolve()
+    ctx = RegisterCtx(
+        pkg_root, disable_auto_version=disable_auto_version, remote=remote
+    )
 
     with open(ctx.version_archive_path, "r") as f:
         registered_versions = f.read().split("\n")
@@ -221,21 +215,18 @@ def register(
             )
 
     print(f"Initializing registration for {pkg_root}")
-
-    dockerfile = ctx.pkg_root.joinpath("Dockerfile")
-    build_logs = build_image(ctx, dockerfile)
-    _print_build_logs(build_logs, ctx.image_tagged)
+    if remote:
+        print(f"Connecting to remote server for docker build [alpha]...")
 
     with tempfile.TemporaryDirectory() as td:
+
         td_path = Path(td).resolve()
 
-        serialize_logs, container_id = _serialize_pkg_in_container(ctx, td_path)
-        _print_serialize_logs(serialize_logs, ctx.image_tagged)
-        exit_status = ctx.dkr_client.wait(container_id)
-        if exit_status["StatusCode"] != 0:
-            raise ValueError(
-                f"Serialization exited with nonzero exit code: {exit_status['Error']}"
-            )
+        _serialize_pkg_locally(ctx, pkg_root, td)
+
+        dockerfile = ctx.pkg_root.joinpath("Dockerfile")
+        build_logs = build_image(ctx, dockerfile, remote)
+        _print_build_logs(build_logs, ctx.image_tagged)
 
         upload_image_logs = _upload_pkg_image(ctx)
         _print_upload_logs(upload_image_logs, ctx.image_tagged)
@@ -248,7 +239,7 @@ def register(
 
     return RegisterOutput(
         build_logs=build_logs,
-        serialize_logs=serialize_logs,
+        serialize_logs=None,
         registration_response=reg_resp,
     )
 
@@ -290,39 +281,46 @@ def _login(ctx: RegisterCtx):
     )
 
 
-def build_image(
-    ctx: RegisterCtx,
-    dockerfile: Path,
-) -> List[str]:
+def build_image(ctx: RegisterCtx, dockerfile: Path, remote: bool) -> List[str]:
 
-    _login(ctx)
-    build_logs = ctx.dkr_client.build(
-        path=str(dockerfile.parent),
-        buildargs={"tag": ctx.full_image_tagged},
-        tag=ctx.full_image_tagged,
-        decode=True,
-    )
+    if remote is True:
+        build_logs = ctx.dkr_client.build(
+            path=str(dockerfile.parent),
+            buildargs={"tag": ctx.full_image_tagged},
+            tag=ctx.full_image_tagged,
+            decode=True,
+        )
+    else:
+        _login(ctx)
+        build_logs = ctx.dkr_client.build(
+            path=str(dockerfile.parent),
+            buildargs={"tag": ctx.full_image_tagged},
+            tag=ctx.full_image_tagged,
+            decode=True,
+        )
     return build_logs
 
 
-def _serialize_pkg_locally(ctx: RegisterCtx, pkg_root: Path):
+def _serialize_pkg_locally(ctx: RegisterCtx, pkg_root: Path, out_dir: Path):
 
-    # TODO pritty print errors
+    # TODO pretty print errors
+
     pkgs = ["wf"]
-    serialize(
+
+    serialize_to_folder(
         pkgs,
         SerializationSettings(
             image_config=ImageConfig(
                 default_image=Image(
-                    name="noop",
-                    fqn="noop",
-                    tag="noop",
+                    name=ctx.image,
+                    fqn=ctx.dkr_repo,
+                    tag=ctx.version,
                 ),
                 images=[
                     Image(
-                        name="noop",
-                        fqn="noop",
-                        tag="noop",
+                        name=ctx.image,
+                        fqn=ctx.dkr_repo,
+                        tag=ctx.version,
                     )
                 ],
             ),
@@ -331,30 +329,8 @@ def _serialize_pkg_locally(ctx: RegisterCtx, pkg_root: Path):
             ),
         ),
         str(pkg_root.resolve()),
+        out_dir,
     )
-
-
-def _serialize_pkg_in_container(ctx: RegisterCtx, serialize_dir: Path) -> List[str]:
-
-    _serialize_cmd = ["make", "serialize"]
-    container = ctx.dkr_client.create_container(
-        ctx.full_image_tagged,
-        command=_serialize_cmd,
-        volumes=[str(serialize_dir)],
-        host_config=ctx.dkr_client.create_host_config(
-            binds={
-                str(serialize_dir): {
-                    "bind": "/tmp/output",
-                    "mode": "rw",
-                },
-            }
-        ),
-    )
-    container_id = container.get("Id")
-    ctx.dkr_client.start(container_id)
-    logs = ctx.dkr_client.logs(container_id, stream=True)
-
-    return [x.decode("utf-8") for x in logs], container_id
 
 
 def _upload_pkg_image(ctx: RegisterCtx) -> List[str]:
