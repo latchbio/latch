@@ -280,21 +280,14 @@ def _login(ctx: RegisterCtx):
 
 def build_image(ctx: RegisterCtx, dockerfile: Path, remote: bool) -> List[str]:
 
-    if remote is True:
-        build_logs = ctx.dkr_client.build(
-            path=str(dockerfile.parent),
-            buildargs={"tag": ctx.full_image_tagged},
-            tag=ctx.full_image_tagged,
-            decode=True,
-        )
-    else:
+    if remote is False:
         _login(ctx)
-        build_logs = ctx.dkr_client.build(
-            path=str(dockerfile.parent),
-            buildargs={"tag": ctx.full_image_tagged},
-            tag=ctx.full_image_tagged,
-            decode=True,
-        )
+    build_logs = ctx.dkr_client.build(
+        path=str(dockerfile.parent),
+        buildargs={"tag": ctx.full_image_tagged},
+        tag=ctx.full_image_tagged,
+        decode=True,
+    )
     return build_logs
 
 
