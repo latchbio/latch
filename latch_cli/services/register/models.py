@@ -142,6 +142,7 @@ class RegisterCtx:
             with NamedTemporaryFile("w", dir="/tmp/") as f:
                 f.write(key_material)
                 os.chmod(f.name, int("700", base=8))
+                f.seek(0)
 
                 # TODO - hacky
                 subprocess.run(["ssh-add", f.name])
