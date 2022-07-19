@@ -190,6 +190,20 @@ class RegisterCtx:
         return f"{self.image}:{self.version}"
 
     @property
+    def full_image(self):
+        """The full image to be registered (without a tag).
+
+            <repo/image>
+
+
+        An example: ::
+
+            dkr.ecr.us-west-2.amazonaws.com/pkg_name
+
+        """
+        return f"{self.dkr_repo}/{self.image}"
+
+    @property
     def full_image_tagged(self):
         """The full image to be registered.
 
