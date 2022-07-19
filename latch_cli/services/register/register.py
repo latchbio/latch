@@ -303,13 +303,13 @@ def _serialize_pkg_locally(ctx: RegisterCtx, pkg_root: Path, out_dir: Path):
             image_config=ImageConfig(
                 default_image=Image(
                     name=ctx.image,
-                    fqn=ctx.dkr_repo,
+                    fqn=ctx.full_image,
                     tag=ctx.version,
                 ),
                 images=[
                     Image(
                         name=ctx.image,
-                        fqn=ctx.dkr_repo,
+                        fqn=ctx.full_image,
                         tag=ctx.version,
                     )
                 ],
