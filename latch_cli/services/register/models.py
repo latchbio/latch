@@ -13,13 +13,11 @@ import docker
 
 import latch_cli.tinyrequests as tinyrequests
 from latch_cli.config.latch import LatchConfig
+from latch_cli.constants import MAX_FILE_SIZE
 from latch_cli.utils import account_id_from_token, retrieve_or_login, with_si_suffix
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints
-
-
-_MAX_FILE_SIZE = 4 * 2**20
 
 
 @dataclass
@@ -98,7 +96,7 @@ class RegisterCtx:
                         path = Path(containing_path).joinpath(filename)
                         m.update(str(path).encode("utf-8"))
                         file_size = os.path.getsize(path)
-                        if file_size < _MAX_FILE_SIZE:
+                        if file_size < MAX_FILE_SIZE:
                             with open(path, "rb") as f:
                                 m.update(f.read())
                         else:
