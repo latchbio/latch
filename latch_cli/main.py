@@ -432,7 +432,7 @@ def execute(task_name: str):
         execute(task_name)
     except Exception as e:
         CrashReporter.report()
-        click.secho(f"Unable to exec into {task_name}", fg="red")
+        click.secho(f"Unable to exec into {task_name}: {str(e)}", fg="red")
 
 
 @main.command("preview")
