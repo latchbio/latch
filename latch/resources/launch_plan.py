@@ -18,8 +18,6 @@ class LaunchPlan:
 
         frame = inspect.stack()[1]
         mod = inspect.getmodule(frame[0])
-        # Called twice, once when
-        # wf.__init__
         if mod.__name__ == "wf":
             str_repr = f"wf.__init__.{workflow.__name__}.{name}"
             _LaunchPlan.create(str_repr, workflow, default_params)
