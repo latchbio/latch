@@ -57,7 +57,8 @@ as another task we can assume was defined elsewhere, `sort_bam_task`.
 You must not write actual logic in the workflow function body. It can only be
 used to call task functions and pass task function return values to downstream
 task functions. Additionally all task functions must be called with keyword
-arguments.
+arguments. You also cannot access variables directly in the workflow function; 
+in the example below, you would not be able to pass in `read1=read1.local_path`.
 
 ```python
 @workflow

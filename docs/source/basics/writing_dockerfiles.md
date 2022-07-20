@@ -47,6 +47,8 @@ WORKDIR /root
 _Note that we must use the base image specified in the first line to configure
 libraries and settings for consistent task behavior._
 
+There are 3 latch-base images available as seen on [github](https://github.com/latchbio/latch-base). 
+
 ## Limitations
 
 The only limitation between a latch workflow and running your code on your linux
