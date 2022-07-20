@@ -1,8 +1,16 @@
+import json
 import os
 import platform
+import sys
+import tarfile
+import tempfile
+import traceback
+from typing import Optional
+
+from latch_cli.constants import MAX_FILE_SIZE
 
 
-class CrashReporter:
+class _CrashReporter:
 
     """Write logs + system information to disk when Exception is thrown."""
 
@@ -23,3 +31,50 @@ class CrashReporter:
         except ImportError:
             import importlib_metadata as metadata
         return metadata.version(PKG_NAME)
+
+    def report(self, pkg_path: Optional[str] = None):
+        """Constructs a zipped tarball with files needed to reproduce crashes."""
+
+        tarball_path = ".latch_report.tar.gz"
+        if os.path.exists(tarball_path):
+            os.remove(tarball_path)
+
+        # Tarball contains:
+        #   * JSON holding platform + package version metadata
+        #   * Text file holding traceback
+        #   * (If register) workflow package (python files, Dockerfile, etc.)
+        with tarfile.open(tarball_path, mode="x:gz") as tf:
+
+            # If calling stack frame is handling an exception, we want to store
+            # the traceback in a log file.
+            if sys.exc_info()[0] is not None:
+                with tempfile.NamedTemporaryFile() as ntf:
+                    traceback.print_exc(file=ntf)
+                    tarfile.add(ntf, arcname="traceback.txt")
+
+            if pkg_path is not None:
+                pkg_files = [
+                    os.path.join(dp, f)
+                    for dp, _, filenames in os.walk(pkg_path)
+                    for f in filenames
+                ]
+                for file_path in pkg_files:
+                    file_size = os.path.getsize(file_path)
+                    if file_size < MAX_FILE_SIZE:
+                        tarfile.add(file_path)
+                    else:
+                        with tempfile.NamedTemporaryFile() as ntf:
+                            ntf.write(f"# first 4 MB of {file_path}\n")
+                            ntf.write(os.read(file_path, MAX_FILE_SIZE))
+                            tarfile.add(ntf, arcname=file_path)
+
+                with tempfile.NamedTemporaryFile() as ntf:
+                    traceback.print_exc(file=ntf)
+                    tarfile.add(ntf, arcname="traceback.txt")
+
+            with tempfile.NamedTemporaryFile() as ntf:
+                json.dump(self.metadata, ntf)
+                tarfile.add(ntf, arcname="metadata.json")
+
+
+CrashReporter = _CrashReporter()
