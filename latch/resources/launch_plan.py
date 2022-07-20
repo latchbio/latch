@@ -5,6 +5,27 @@ from flytekit import LaunchPlan as _LaunchPlan
 
 
 class LaunchPlan:
+    """Construct named groups of default parameters for your workflows.
+
+    Pass a workflow function and a dictionary of parameter names mapped to
+    default python values and a set of "test data" will be populated on the
+    console upon registration.
+
+    Args:
+        workflow: The workflow function to which the values apply.
+        name: A semantic identifier to the parameter values (eg. 'Small Data')
+        default_params: A mapping of paramter names to values
+
+    ..
+        from latch.resources.launch_plan import LaunchPlan
+
+        LaunchPlan(
+            assemble_and_sort,
+            "foo",
+            {"read1": LatchFile("latch:///foobar"), "read2": LatchFile("latch:///foobar")},
+        )
+    """
+
     def __init__(self, workflow: Callable, name: str, default_params: Dict[str, Any]):
 
         # This constructor is invoked twice when task code is executed.
