@@ -9,6 +9,7 @@ import click
 
 import latch_cli.click_utils
 from latch_cli.click_utils import AnsiCodes as ac
+from latch_cli.crash_reporter import CrashReporter
 
 latch_cli.click_utils.patch()
 
@@ -41,7 +42,6 @@ def main():
         " is called."
     ),
 )
-
 @click.option(
     "-r",
     "--remote",
@@ -63,6 +63,7 @@ def register(pkg_root: str, disable_auto_version: bool, remote: bool):
             "Successfully registered workflow. View @ console.latch.bio.", fg="green"
         )
     except Exception as e:
+        CrashReporter.report(pkg_path=pkg_root)
         click.secho(f"Unable to register workflow: {str(e)}", fg="red")
 
 
@@ -75,6 +76,7 @@ def login():
         login()
         click.secho("Successfully logged into LatchBio.", fg="green")
     except Exception as e:
+        CrashReporter.report()
         click.secho(f"Unable to log in: {str(e)}", fg="red")
 
 
@@ -120,6 +122,7 @@ def init(pkg_name: str):
     try:
         init(pkg_name)
     except Exception as e:
+        CrashReporter.report()
         click.secho(f"Unable to initialize {pkg_name}: {str(e)}", fg="red")
         return
     click.secho(f"Created a latch workflow called {pkg_name}.", fg="green")
@@ -141,6 +144,7 @@ def cp(source_file: str, destination_file: str):
             f"\nSuccessfully copied {source_file} to {destination_file}.", fg="green"
         )
     except Exception as e:
+        CrashReporter.report()
         click.secho(
             f"Unable to copy {source_file} to {destination_file}: {str(e)}", fg="red"
         )
@@ -273,6 +277,7 @@ def local_execute(pkg_root: Path):
     try:
         local_execute(Path(pkg_root).resolve())
     except Exception as e:
+        CrashReporter.report()
         click.secho(f"Unable to execute workflow: {str(e)}", fg="red")
 
 
@@ -290,6 +295,7 @@ def launch(params_file: Path, version: Union[str, None] = None):
     try:
         wf_name = launch(params_file, version)
     except Exception as e:
+        CrashReporter.report()
         click.secho(f"Unable to launch workflow: {str(e)}", fg="red")
         return
     if version is None:
@@ -314,6 +320,7 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
     try:
         get_params(wf_name, version)
     except Exception as e:
+        CrashReporter.report()
         click.secho(f"Unable to generate param map for workflow: {str(e)}", fg="red")
         return
     if version is None:
@@ -338,6 +345,7 @@ def get_wf(name: Union[str, None] = None):
     try:
         wfs = get_wf(name)
     except Exception as e:
+        CrashReporter.report()
         click.secho(f"Unable to get workflows: {str(e)}", fg="red")
         return
     id_padding, name_padding, version_padding = 0, 0, 0
@@ -367,6 +375,7 @@ def open_remote_file(remote_file: str):
         open_file(remote_file)
         click.secho(f"Successfully opened {remote_file}.", fg="green")
     except Exception as e:
+        CrashReporter.report()
         click.secho(f"Unable to open {remote_file}: {str(e)}", fg="red")
 
 
@@ -393,6 +402,7 @@ def mkdir(remote_directory: str):
         mkdir(remote_directory)
         click.secho(f"Successfully created directory {remote_directory}.", fg="green")
     except Exception as e:
+        CrashReporter.report()
         click.secho(
             f"Unable to create directory {remote_directory}: {str(e)}", fg="red"
         )
@@ -408,6 +418,7 @@ def touch(remote_file: str):
         touch(remote_file)
         click.secho(f"Successfully touched {remote_file}.", fg="green")
     except Exception as e:
+        CrashReporter.report()
         click.secho(f"Unable to create {remote_file}: {str(e)}", fg="red")
 
 
@@ -420,6 +431,7 @@ def execute(task_name: str):
     try:
         execute(task_name)
     except Exception as e:
+        CrashReporter.report()
         click.secho(f"Unable to exec into {task_name}", fg="red")
 
 
@@ -432,4 +444,5 @@ def preview(workflow_name: str):
     try:
         preview(workflow_name)
     except Exception as e:
+        CrashReporter.report()
         click.secho(f"Unable to preview inputs for {workflow_name}: {str(e)}", fg="red")
