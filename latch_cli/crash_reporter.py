@@ -48,9 +48,10 @@ class _CrashReporter:
             # If calling stack frame is handling an exception, we want to store
             # the traceback in a log file.
             if sys.exc_info()[0] is not None:
-                with tempfile.NamedTemporaryFile() as ntf:
+                with tempfile.NamedTemporaryFile("w+") as ntf:
                     traceback.print_exc(file=ntf)
-                    tarfile.add(ntf, arcname="traceback.txt")
+                    ntf.seek(0)
+                    tf.add(ntf.name, arcname="traceback.txt")
 
             if pkg_path is not None:
                 pkg_files = [
@@ -61,20 +62,20 @@ class _CrashReporter:
                 for file_path in pkg_files:
                     file_size = os.path.getsize(file_path)
                     if file_size < MAX_FILE_SIZE:
-                        tarfile.add(file_path)
+                        tf.add(file_path)
                     else:
-                        with tempfile.NamedTemporaryFile() as ntf:
-                            ntf.write(f"# first 4 MB of {file_path}\n")
-                            ntf.write(os.read(file_path, MAX_FILE_SIZE))
-                            tarfile.add(ntf, arcname=file_path)
+                        with tempfile.NamedTemporaryFile("wb+") as ntf:
+                            ntf.write(f"# first 4 MB of {file_path}\n".encode("utf-8"))
+                            with open(file_path, "rb") as f:
+                                stuff = f.read(MAX_FILE_SIZE)
+                                ntf.write(stuff)
+                                ntf.seek(0)
+                            tf.add(ntf.name, arcname=file_path)
 
-                with tempfile.NamedTemporaryFile() as ntf:
-                    traceback.print_exc(file=ntf)
-                    tarfile.add(ntf, arcname="traceback.txt")
-
-            with tempfile.NamedTemporaryFile() as ntf:
+            with tempfile.NamedTemporaryFile("w+") as ntf:
                 json.dump(self.metadata, ntf)
-                tarfile.add(ntf, arcname="metadata.json")
+                ntf.seek(0)
+                tf.add(ntf.name, arcname="metadata.json")
 
 
 CrashReporter = _CrashReporter()
