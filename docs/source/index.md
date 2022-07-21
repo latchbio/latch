@@ -20,7 +20,7 @@ Bioinformatics workflows developed with the SDK automatically receive:
 
 Lacth SDK allows developers to upload workflows to the full-featured [Latch Platform](https://console.latch.bio) with ease. The platform is built with Kubernetes, ensuring containerization, portability, and scalability are available out-of-the-box. Behind the scene, Latch takes advantage of AWS spot instances, offering ultra-fast runtimes with extremely low cloud costs for teams.
 
-**Bioinformaticians need to create an intuitive user interfaces for biologists.** As a lab or R&D team grows, the number of biologists per bioinformatician increases to a point where it's no longer sustainable for the bioinformatician to manage requests and run pipelines manually from her computer. Automating pipeline runs returns valuable time to the bioinformatician to focus on writing analyses to generate scientific insights.
+**Bioinformaticians need to create intuitive user interfaces for biologists.** As a lab or R&D team grows, the number of biologists per bioinformatician increases to a point where it's no longer sustainable for the bioinformatician to manage requests and run pipelines manually from her computer. Automating pipeline runs returns valuable time to the bioinformatician to focus on writing analyses to generate scientific insights.
 
 With Latch SDK, developers can write the description to their workflow and customize input parameters using plain Markdown. Latch automatically parses the written text and Python function headers to compile a type-safe UI.
 

@@ -80,9 +80,23 @@ def _normalize_remote_path(remote_path: str):
     return remote_path
 
 
-def with_si_suffix(num, suffix="B"):
-    for unit in ["", "K", "M", "G", "T", "P", "E", "Z"]:
+def _si_number_strings(num):
+    for unit in ["", "k", "M", "G", "T", "P", "E", "Z"]:
         if abs(num) < 1000:
-            return f"{num:3.1f}{unit}{suffix}"
+            # `rstrip` remoes trailing zeroes
+            return f"{num:3.1f}".rstrip("0").rstrip("."), unit
         num /= 1000
-    return f"{num:.1f}Yi{suffix}"
+    return f"{num:.1f}", "Yi"
+
+
+def with_si_suffix(num, suffix="B", styled=False):
+    num, unit = _si_number_strings(num)
+
+    if styled:
+        import click
+
+        return click.style(num, fg="bright_green", bold=True) + click.style(
+            f"{unit}{suffix}", fg="green"
+        )
+
+    return f"{num}{unit}{suffix}"

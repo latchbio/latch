@@ -64,7 +64,7 @@ def foo(
 ```
 
 ### Enums
-
+_Note_: As expressed in the [Flyte Docs](https://docs.flyte.org/projects/cookbook/en/stable/auto/core/type_system/enums.html), Enum values can only be strings.
 ```python
 from enum import Enum
 

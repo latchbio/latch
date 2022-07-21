@@ -1,6 +1,7 @@
 """Entrypoints to service functions through a latch_cli."""
 
 import re
+from collections import OrderedDict
 from pathlib import Path
 from typing import List, Union
 
@@ -8,6 +9,7 @@ import click
 
 import latch_cli.click_utils
 from latch_cli.click_utils import AnsiCodes as ac
+from latch_cli.crash_reporter import CrashReporter
 
 latch_cli.click_utils.patch()
 
@@ -61,6 +63,7 @@ def register(pkg_root: str, disable_auto_version: bool, remote: bool):
             "Successfully registered workflow. View @ console.latch.bio.", fg="green"
         )
     except Exception as e:
+        CrashReporter.report(pkg_path=pkg_root)
         click.secho(f"Unable to register workflow: {str(e)}", fg="red")
 
 
@@ -73,6 +76,7 @@ def login():
         login()
         click.secho("Successfully logged into LatchBio.", fg="green")
     except Exception as e:
+        CrashReporter.report()
         click.secho(f"Unable to log in: {str(e)}", fg="red")
 
 
@@ -118,6 +122,7 @@ def init(pkg_name: str):
     try:
         init(pkg_name)
     except Exception as e:
+        CrashReporter.report()
         click.secho(f"Unable to initialize {pkg_name}: {str(e)}", fg="red")
         return
     click.secho(f"Created a latch workflow called {pkg_name}.", fg="green")
@@ -139,6 +144,7 @@ def cp(source_file: str, destination_file: str):
             f"\nSuccessfully copied {source_file} to {destination_file}.", fg="green"
         )
     except Exception as e:
+        CrashReporter.report()
         click.secho(
             f"Unable to copy {source_file} to {destination_file}: {str(e)}", fg="red"
         )
@@ -146,19 +152,31 @@ def cp(source_file: str, destination_file: str):
 
 @main.command("ls")
 # Allows the user to provide unlimited arguments (including zero)
+@click.option(
+    "--group-directories-first",
+    "--gdf",
+    help="List directories before files.",
+    is_flag=True,
+    default=False,
+)
 @click.argument("remote_directories", nargs=-1)
-def ls(remote_directories: Union[None, List[str]]):
-    """List remote files in the command line. Supports multiple directory arguments."""
-    from latch_cli.services.ls import ls
+def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]):
+    """
+    List the contents of a Latch Data directory
+    """
+    from datetime import datetime
 
-    def _item_padding(k):
-        return 0 if k == "modifyTime" else 3
+    from latch_cli.services.ls import ls
+    from latch_cli.utils import with_si_suffix
 
     # If the user doesn't provide any arguments, default to root
     if not remote_directories:
         remote_directories = ["latch:///"]
 
     for remote_directory in remote_directories:
+        if len(remote_directories) > 1:
+            click.echo(f"{remote_directory}:")
+
         try:
             output = ls(remote_directory)
         except Exception as e:
@@ -166,40 +184,69 @@ def ls(remote_directories: Union[None, List[str]]):
                 f"Unable to display contents of {remote_directory}: {str(e)}", fg="red"
             )
             continue
+        output.sort(key=lambda row: row["name"])
+        if group_directories_first:
+            output.sort(key=lambda row: row["type"])
 
-        header = {
-            "name": "Name:",
-            "contentType": "Type:",
-            "contentSize": "Size:",
-            "modifyTime": "Last Modified:",
-        }
-
-        max_lengths = {key: len(key) + _item_padding(key) for key in header}
+        formatted = []
         for row in output:
-            for key in header:
-                max_lengths[key] = max(
-                    len(row[key]) + _item_padding(key), max_lengths[key]
+            vals = {
+                "contentSize": click.style(
+                    with_si_suffix(int(row["contentSize"]), suffix="", styled=True),
+                    fg="bright_green",
                 )
-
-        def _display(row, style):
-            click.secho(f"{row['name']:<{max_lengths['name']}}", nl=False, **style)
-            click.secho(
-                f"{row['contentType']:<{max_lengths['contentType']}}", nl=False, **style
-            )
-            click.secho(
-                f"{row['contentSize']:<{max_lengths['contentSize']}}", nl=False, **style
-            )
-            click.secho(f"{row['modifyTime']}", **style)
-
-        _display(header, style={"underline": True})
-
-        for row in output:
-            style = {
-                "fg": "cyan" if row["type"] == "obj" else "green",
-                "bold": True,
+                if row["contentSize"] != "-" and row["type"] != "dir"
+                else click.style("-", dim=True),
+                "modifyTime": click.style(
+                    datetime.fromisoformat(row["modifyTime"]).strftime("%d %b %H:%M"),
+                    fg="blue",
+                )
+                if row["modifyTime"] != "-" and row["type"] != "dir"
+                else click.style("-", dim=True),
+                "name": row["name"],
             }
 
-            _display(row, style)
+            if row["type"] == "dir":
+                vals["name"] = (
+                    click.style(row["name"], fg="bright_blue", bold=True) + "/"
+                )
+
+            formatted.append(vals)
+
+        columns = OrderedDict(
+            contentSize="Size", modifyTime="Date Modified", name="Name"
+        )
+
+        column_width = {key: len(title) for key, title in columns.items()}
+        for row in formatted:
+            for key in columns:
+                column_width[key] = max(column_width[key], len(click.unstyle(row[key])))
+
+        def pad_styled(x: str, l: int, align_right=False):
+            cur = len(click.unstyle(x))
+
+            pad = " " * (l - cur)
+            if align_right:
+                return pad + x
+            return x + pad
+
+        click.echo(
+            " ".join(
+                pad_styled(
+                    click.style(title, underline=True),
+                    column_width[key],
+                    key == "contentSize",
+                )
+                for key, title in columns.items()
+            )
+        )
+        for row in formatted:
+            click.echo(
+                " ".join(
+                    pad_styled(row[k], column_width[k], k == "contentSize")
+                    for k in columns
+                )
+            )
 
 
 @main.command(
@@ -230,6 +277,7 @@ def local_execute(pkg_root: Path):
     try:
         local_execute(Path(pkg_root).resolve())
     except Exception as e:
+        CrashReporter.report()
         click.secho(f"Unable to execute workflow: {str(e)}", fg="red")
 
 
@@ -247,6 +295,7 @@ def launch(params_file: Path, version: Union[str, None] = None):
     try:
         wf_name = launch(params_file, version)
     except Exception as e:
+        CrashReporter.report()
         click.secho(f"Unable to launch workflow: {str(e)}", fg="red")
         return
     if version is None:
@@ -271,6 +320,7 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
     try:
         get_params(wf_name, version)
     except Exception as e:
+        CrashReporter.report()
         click.secho(f"Unable to generate param map for workflow: {str(e)}", fg="red")
         return
     if version is None:
@@ -295,6 +345,7 @@ def get_wf(name: Union[str, None] = None):
     try:
         wfs = get_wf(name)
     except Exception as e:
+        CrashReporter.report()
         click.secho(f"Unable to get workflows: {str(e)}", fg="red")
         return
     id_padding, name_padding, version_padding = 0, 0, 0
@@ -324,6 +375,7 @@ def open_remote_file(remote_file: str):
         open_file(remote_file)
         click.secho(f"Successfully opened {remote_file}.", fg="green")
     except Exception as e:
+        CrashReporter.report()
         click.secho(f"Unable to open {remote_file}: {str(e)}", fg="red")
 
 
@@ -350,6 +402,7 @@ def mkdir(remote_directory: str):
         mkdir(remote_directory)
         click.secho(f"Successfully created directory {remote_directory}.", fg="green")
     except Exception as e:
+        CrashReporter.report()
         click.secho(
             f"Unable to create directory {remote_directory}: {str(e)}", fg="red"
         )
@@ -365,6 +418,7 @@ def touch(remote_file: str):
         touch(remote_file)
         click.secho(f"Successfully touched {remote_file}.", fg="green")
     except Exception as e:
+        CrashReporter.report()
         click.secho(f"Unable to create {remote_file}: {str(e)}", fg="red")
 
 
@@ -377,7 +431,8 @@ def execute(task_name: str):
     try:
         execute(task_name)
     except Exception as e:
-        click.secho(f"Unable to exec into {task_name}", fg="red")
+        CrashReporter.report()
+        click.secho(f"Unable to exec into {task_name}: {str(e)}", fg="red")
 
 
 @main.command("preview")
@@ -389,6 +444,7 @@ def preview(workflow_name: str):
     try:
         preview(workflow_name)
     except Exception as e:
+        CrashReporter.report()
         click.secho(f"Unable to preview inputs for {workflow_name}: {str(e)}", fg="red")
 
 
