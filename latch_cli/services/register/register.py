@@ -141,6 +141,12 @@ def _print_reg_resp(resp, image):
         print(resp.get("stdout"))
 
 
+def _print_serialize_logs(serialize_logs, image):
+    print(f"Serializing workflow in {image}:")
+    for x in serialize_logs:
+        print(x, end="")
+
+
 def register(
     pkg_root: str,
     disable_auto_version: bool = False,
@@ -219,11 +225,19 @@ def register(
 
         td_path = Path(td).resolve()
 
-        _serialize_pkg_locally(ctx, pkg_root, td)
+        # _serialize_pkg_locally(ctx, pkg_root, td)
 
         dockerfile = ctx.pkg_root.joinpath("Dockerfile")
         build_logs = build_image(ctx, dockerfile, remote)
         _print_build_logs(build_logs, ctx.image_tagged)
+
+        serialize_logs, container_id = _serialize_pkg_in_container(ctx, td_path)
+        _print_serialize_logs(serialize_logs, ctx.image_tagged)
+        exit_status = ctx.dkr_client.wait(container_id)
+        if exit_status["StatusCode"] != 0:
+            raise ValueError(
+                f"Serialization exited with nonzero exit code: {exit_status['Error']}"
+            )
 
         upload_image_logs = _upload_pkg_image(ctx)
         _print_upload_logs(upload_image_logs, ctx.image_tagged)
@@ -236,7 +250,7 @@ def register(
 
     return RegisterOutput(
         build_logs=build_logs,
-        serialize_logs=None,
+        serialize_logs=serialize_logs,
         registration_response=reg_resp,
     )
 
@@ -289,6 +303,29 @@ def build_image(ctx: RegisterCtx, dockerfile: Path, remote: bool) -> List[str]:
         decode=True,
     )
     return build_logs
+
+
+def _serialize_pkg_in_container(ctx: RegisterCtx, serialize_dir: Path) -> List[str]:
+
+    _serialize_cmd = ["make", "serialize"]
+    container = ctx.dkr_client.create_container(
+        ctx.full_image_tagged,
+        command=_serialize_cmd,
+        volumes=[str(serialize_dir)],
+        host_config=ctx.dkr_client.create_host_config(
+            binds={
+                str(serialize_dir): {
+                    "bind": "/tmp/output",
+                    "mode": "rw",
+                },
+            }
+        ),
+    )
+    container_id = container.get("Id")
+    ctx.dkr_client.start(container_id)
+    logs = ctx.dkr_client.logs(container_id, stream=True)
+
+    return [x.decode("utf-8") for x in logs], container_id
 
 
 def _serialize_pkg_locally(ctx: RegisterCtx, pkg_root: Path, out_dir: Path):
