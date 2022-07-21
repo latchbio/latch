@@ -40,7 +40,6 @@ def main():
         " is called."
     ),
 )
-
 @click.option(
     "-r",
     "--remote",
@@ -391,3 +390,23 @@ def preview(workflow_name: str):
         preview(workflow_name)
     except Exception as e:
         click.secho(f"Unable to preview inputs for {workflow_name}: {str(e)}", fg="red")
+
+
+@main.command("context")
+def context():
+    from latch_cli.services.context import context
+
+    try:
+        context()
+    except Exception as e:
+        click.secho(f"Unable to fetch contexts: {str(e)}", fg="red")
+
+
+@main.command("get-executions")
+def context():
+    from latch_cli.services.get_executions import get_executions
+
+    try:
+        get_executions()
+    except Exception as e:
+        click.secho(f"Unable to fetch executions: {str(e)}", fg="red")
