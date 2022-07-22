@@ -86,6 +86,16 @@ def _print_build_logs(build_logs, image):
                     curr_lines = _print_window(curr_lines, line)
     _delete_lines(curr_lines)
 
+def _save_build_logs(build_logs, path):
+    os.makedirs(path + '/logs/', exist_ok=True) 
+    with open(path + '/logs/docker-build-logs.txt', 'w') as f:
+        for x in build_logs:
+            types = ["message", "error", "stream"]
+            for t in types:
+                msg: str = x.get(t)
+                if msg is not None:
+                    f.write(f"{msg}\n")
+
 
 def _print_upload_logs(upload_image_logs, image):
     print(f"Uploading Docker image for {image}")
@@ -229,7 +239,12 @@ def register(
 
         dockerfile = ctx.pkg_root.joinpath("Dockerfile")
         build_logs = build_image(ctx, dockerfile, remote)
-        _print_build_logs(build_logs, ctx.image_tagged)
+        
+        # build_logs is of type generator so need to convert to list to use more than once
+        temp_build_logs = list(build_logs)
+        _save_build_logs(temp_build_logs, str(pkg_root))
+        _print_build_logs(temp_build_logs, ctx.image_tagged)
+        del temp_build_logs
 
         serialize_logs, container_id = _serialize_pkg_in_container(ctx, td_path)
         _print_serialize_logs(serialize_logs, ctx.image_tagged)
