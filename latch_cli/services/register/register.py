@@ -242,8 +242,8 @@ def register(
         
         # build_logs is of type generator so need to convert to list to use more than once
         temp_build_logs = list(build_logs)
-        _save_build_logs(temp_build_logs, str(pkg_root))
         _print_build_logs(temp_build_logs, ctx.image_tagged)
+        _save_build_logs(temp_build_logs, str(pkg_root))
         del temp_build_logs
 
         serialize_logs, container_id = _serialize_pkg_in_container(ctx, td_path)
