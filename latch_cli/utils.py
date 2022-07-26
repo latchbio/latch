@@ -68,6 +68,7 @@ def _normalize_remote_path(remote_path: str):
         not remote_path.startswith("/")
         and not remote_path.startswith("shared")
         and not remote_path.startswith("account")
+        and not remote_path.startswith("mount")
     ):
         remote_path = f"/{remote_path}"
 
