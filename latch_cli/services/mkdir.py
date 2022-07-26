@@ -49,13 +49,3 @@ def mkdir(remote_directory):
 
     if not json_data["success"]:
         raise ValueError(json_data["error"]["data"]["message"])
-
-    response = tinyrequests.post(
-        endpoints["verify"], headers=headers, json={"filename": remote_directory}
-    )
-    json_data = response.json()
-
-    if not json_data["success"]:
-        raise ValueError(json_data["error"]["data"]["message"])
-    elif not json_data["exists"]:
-        raise ValueError("Unable to create directory for some reason.")
