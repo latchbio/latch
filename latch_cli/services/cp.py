@@ -15,7 +15,7 @@ config = LatchConfig()
 endpoints = config.sdk_endpoints
 
 # AWS uses this value for minimum for multipart as opposed to 5 * 10 ** 6
-_CHUNK_SIZE = 5 * 2 ** 20  # 5 MB
+_CHUNK_SIZE = 5 * 2**20  # 5 MB
 
 LOCK = threading.Lock()
 num_files = 0
@@ -127,6 +127,12 @@ def _upload_file(local_source: Path, remote_dest: str):
     response = tinyrequests.post(url, headers=headers, json=data)
 
     response_json = response.json()
+    if "success" in response_json and not response_json["success"]:
+        raise RuntimeError(
+            "Failed to initiate upload:"
+            f" {response_json.get('error', {}).get('data', {}).get('message', 'unknown error')}"
+        )
+
     path = response_json["path"]
     upload_id = response_json["upload_id"]
     urls = response_json["urls"]
@@ -134,10 +140,10 @@ def _upload_file(local_source: Path, remote_dest: str):
     parts = []
     units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
     index = 0
-    while total_bytes // (1024 ** index) > 1000:
+    while total_bytes // (1024**index) > 1000:
         index += 1
 
-    unit = 1024 ** index
+    unit = 1024**index
     total_human_readable = total_bytes // unit
     suffix = units[index]
     text = f"Copying {local_source.relative_to(Path.cwd())} -> {remote_dest}:"
@@ -175,6 +181,13 @@ def _upload_file(local_source: Path, remote_dest: str):
     url = endpoints["complete-multipart-upload"]
     headers = {"Authorization": f"Bearer {token}"}
     response = tinyrequests.post(url, headers=headers, json=data)
+    response_json = response.json()
+
+    if "success" in response_json and not response_json["success"]:
+        raise RuntimeError(
+            "Failed to complete upload:"
+            f" {response_json.get('error', {}).get('data', {}).get('message', 'unknown error')}"
+        )
 
 
 def _cp_remote_to_local(remote_source: str, local_dest: str):
@@ -281,19 +294,15 @@ def _cp_remote_to_local_dir(output_dir: Path, response_data: dict):
 
 
 def cp(source_file: str, destination_file: str):
-    if not source_file.startswith("latch://") and (
-        destination_file.startswith("latch://shared")
-        or destination_file.startswith("latch://account")
-        or destination_file.startswith("latch:///")
+    if not source_file.startswith("latch://") and destination_file.startswith(
+        "latch://"
     ):
         _cp_local_to_remote(source_file, destination_file)
         for progressbar in progressbars:
             progressbar.close()
-    elif (
-        source_file.startswith("latch:///")
-        or source_file.startswith("latch://shared")
-        or source_file.startswith("latch://account")
-    ) and not destination_file.startswith("latch://"):
+    elif source_file.startswith("latch://") and not destination_file.startswith(
+        "latch://"
+    ):
         _cp_remote_to_local(source_file, destination_file)
     else:
         raise ValueError(
