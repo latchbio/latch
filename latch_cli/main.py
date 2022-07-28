@@ -491,4 +491,4 @@ def test_data_ls():
     objects = ls()
     click.secho("Listing your managed objects by full S3 path.\n", fg="green")
     for o in objects:
-        print(f"\ts3://latch-public/{o}\n")
+        print(f"\ts3://latch-public/{o}")
