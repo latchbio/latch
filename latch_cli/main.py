@@ -2,6 +2,7 @@
 
 import re
 from collections import OrderedDict
+from functools import wraps
 from pathlib import Path
 from typing import List, Union
 
@@ -446,3 +447,21 @@ def preview(workflow_name: str):
     except Exception as e:
         CrashReporter.report()
         click.secho(f"Unable to preview inputs for {workflow_name}: {str(e)}", fg="red")
+
+
+#
+# Test data subcommands.
+
+
+@main.group(invoke_without_command=True)
+@click.version_option(package_name="latch")
+@click.pass_context
+def test_data(ctx):
+    """Subcommands to upload and delete test data objects."""
+    if ctx.invoked_subcommand is None:
+        click.secho(f"{ctx.get_help()}")
+
+
+@test_data.command()
+def upload():
+    click.secho("Perform sub command 1 operations", fg="bright_green")
