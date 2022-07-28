@@ -485,3 +485,10 @@ def test_data_remove(object_url: str):
 @test_data.command("ls")
 def test_data_ls():
     """List test data objects."""
+
+    from latch_cli.services.test_data.ls import ls
+
+    objects = ls()
+    click.secho("Listing your managed objects by full S3 path.\n", fg="green")
+    for o in objects:
+        print(f"\ts3://latch-public/{o}\n")
