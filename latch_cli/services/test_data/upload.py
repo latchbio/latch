@@ -61,6 +61,5 @@ def upload(src_path: str):
     )
 
     account_id = account_id_from_token(token)
-    s3_resource.meta.client.upload_file(
-        src_path, BUCKET, str(Path(account_id).join(src_path))
-    )
+    allowed_key = str(Path(account_id).joinpath(src_path))
+    s3_resource.meta.client.upload_file(src_path, BUCKET, allowed_key)
