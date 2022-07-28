@@ -462,6 +462,21 @@ def test_data(ctx):
         click.secho(f"{ctx.get_help()}")
 
 
-@test_data.command()
-def upload():
-    click.secho("Perform sub command 1 operations", fg="bright_green")
+@test_data.command("upload")
+@click.argument("src_path", nargs=1, type=str)
+def test_data_upload(src_path: str):
+    """Upload test data object."""
+
+    from latch_cli.services.test_data.upload import upload
+
+    upload(src_path)
+
+
+@test_data.command("remove")
+def test_data_remove():
+    """Remove test data object."""
+
+
+@test_data.command("ls")
+def test_data_ls():
+    """List test data objects."""
