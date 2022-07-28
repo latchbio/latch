@@ -473,8 +473,13 @@ def test_data_upload(src_path: str):
 
 
 @test_data.command("remove")
-def test_data_remove():
+@click.argument("object_url", nargs=1, type=str)
+def test_data_remove(object_url: str):
     """Remove test data object."""
+
+    from latch_cli.services.test_data.remove import remove
+
+    remove(object_url)
 
 
 @test_data.command("ls")
