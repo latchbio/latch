@@ -1,16 +1,10 @@
 """Service to upload test objects to a managed bucket."""
 
-import json
 from pathlib import Path
 
 import boto3
 
-import latch_cli.tinyrequests as tinyrequests
-from latch_cli.config.latch import LatchConfig
-from latch_cli.utils import account_id_from_token, retrieve_or_login
-
-config = LatchConfig()
-endpoints = config.sdk_endpoints
+from latch_cli.services.test_data.utils import _retrieve_creds
 
 BUCKET = "latch-public"
 
@@ -33,25 +27,7 @@ def upload(src_path: str):
     if src_path_p.exists() is not True:
         raise ValueError(f"{src_path} must exist.")
 
-    url = endpoints["get-test-data-creds"]
-    token = retrieve_or_login()
-    headers = {"Authorization": f"Bearer {token}"}
-
-    response = tinyrequests.post(url, headers=headers, json={})
-    if response.status_code != 200:
-        raise ValueError(
-            "Unable to retrieve upload credentials. Server responded with {response.json}."
-        )
-
-    try:
-        output = response.json()
-        session_token = output["tmp_session_token"]
-        access_key = output["tmp_access_key"]
-        secret_key = output["tmp_secret_key"]
-    except (json.decoder.JSONDecodeError, AttributeError) as e:
-        raise ValueError(
-            "Malformed response from server attempting to retrieve upload credentials."
-        ) from e
+    session_token, access_key, secret_key, account_id = _retrieve_creds()
 
     s3_resource = boto3.resource(
         "s3",
@@ -60,6 +36,5 @@ def upload(src_path: str):
         aws_session_token=session_token,
     )
 
-    account_id = account_id_from_token(token)
     allowed_key = str(Path(account_id).joinpath(src_path))
     s3_resource.meta.client.upload_file(src_path, BUCKET, allowed_key)
