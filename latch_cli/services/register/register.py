@@ -225,8 +225,6 @@ def register(
 
         td_path = Path(td).resolve()
 
-        # _serialize_pkg_locally(ctx, pkg_root, td)
-
         dockerfile = ctx.pkg_root.joinpath("Dockerfile")
         build_logs = build_image(ctx, dockerfile, remote)
         _print_build_logs(build_logs, ctx.image_tagged)
@@ -326,38 +324,6 @@ def _serialize_pkg_in_container(ctx: RegisterCtx, serialize_dir: Path) -> List[s
     logs = ctx.dkr_client.logs(container_id, stream=True)
 
     return [x.decode("utf-8") for x in logs], container_id
-
-
-def _serialize_pkg_locally(ctx: RegisterCtx, pkg_root: Path, out_dir: Path):
-
-    # TODO pretty print errors
-
-    pkgs = ["wf"]
-
-    serialize_to_folder(
-        pkgs,
-        SerializationSettings(
-            image_config=ImageConfig(
-                default_image=Image(
-                    name=ctx.image,
-                    fqn=ctx.full_image,
-                    tag=ctx.version,
-                ),
-                images=[
-                    Image(
-                        name=ctx.image,
-                        fqn=ctx.full_image,
-                        tag=ctx.version,
-                    )
-                ],
-            ),
-            fast_serialization_settings=FastSerializationSettings(
-                enabled=False, destination_dir=None, distribution_location=None
-            ),
-        ),
-        str(pkg_root.resolve()),
-        out_dir,
-    )
 
 
 def _upload_pkg_image(ctx: RegisterCtx) -> List[str]:
