@@ -26,6 +26,11 @@ def retrieve_or_login() -> str:
     return token
 
 
+def current_workspace() -> str:
+    user_conf = UserConfig()
+    return user_conf.current_workspace
+
+
 def sub_from_jwt(token: str) -> str:
     """Extract a user sub (UUID) from a JWT minted by auth0.
 

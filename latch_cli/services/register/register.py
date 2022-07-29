@@ -22,6 +22,7 @@ from flytekit.configuration import (
 from flytekit.tools.repo import serialize_to_folder
 
 from latch_cli.services.register import RegisterCtx, RegisterOutput
+from latch_cli.utils import current_workspace
 
 _MAX_LINES = 10
 
@@ -373,7 +374,10 @@ def _register_serialized_pkg(ctx: RegisterCtx, serialize_dir: Path) -> dict:
     headers = {"Authorization": f"Bearer {ctx.token}"}
 
     with contextlib.ExitStack() as stack:
-        serialize_files = {"version": ctx.version.encode("utf-8")}
+        serialize_files = {
+            "version": ctx.version.encode("utf-8"),
+            "context": current_workspace().encode("utf-8"),
+        }
         for dirname, dirnames, fnames in os.walk(serialize_dir):
             for filename in fnames + dirnames:
                 file = Path(dirname).resolve().joinpath(filename)

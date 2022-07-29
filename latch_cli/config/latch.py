@@ -32,6 +32,7 @@ SDK_ENDPOINTS = {
     "preview": "/sdk/workflow-ui-preview",
     "get-ws": "/sdk/get-ws",
     "get-executions": "/sdk/get-executions",
+    "get-workflow-graph": "/sdk/get-workflow-graph",
 }
 
 

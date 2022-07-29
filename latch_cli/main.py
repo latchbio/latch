@@ -448,14 +448,14 @@ def preview(workflow_name: str):
         click.secho(f"Unable to preview inputs for {workflow_name}: {str(e)}", fg="red")
 
 
-@main.command("context")
-def context():
-    from latch_cli.services.context import context
+@main.command("workspace")
+def workspace():
+    from latch_cli.services.workspace import workspace
 
     try:
-        context()
+        workspace()
     except Exception as e:
-        click.secho(f"Unable to fetch contexts: {str(e)}", fg="red")
+        click.secho(f"Unable to fetch workspaces: {str(e)}", fg="red")
 
 
 @main.command("get-executions")
@@ -465,4 +465,5 @@ def context():
     try:
         get_executions()
     except Exception as e:
+        CrashReporter.report()
         click.secho(f"Unable to fetch executions: {str(e)}", fg="red")
