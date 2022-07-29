@@ -10,6 +10,7 @@ from tempfile import NamedTemporaryFile
 from typing import List, Optional
 
 import docker
+import paramiko
 
 import latch_cli.tinyrequests as tinyrequests
 from latch_cli.config.latch import LatchConfig
@@ -148,6 +149,10 @@ class RegisterCtx:
                 self.dkr_client = self._construct_dkr_client(
                     ssh_host=f"ssh://ubuntu@{public_ip}"
                 )
+                self.ssh_client = self._construct_ssh_client(
+                    host_ip=public_ip, username="ubuntu"
+                )
+
         else:
             self.dkr_client = self._construct_dkr_client()
 
@@ -226,9 +231,7 @@ class RegisterCtx:
         return version_archive_path
 
     @staticmethod
-    def _construct_dkr_client(
-        ssh_host: Optional[str] = None, ssh_key_path: Optional[str] = None
-    ):
+    def _construct_dkr_client(ssh_host: Optional[str] = None):
         """Try many methods of establishing valid connection with client.
 
         This was helpful -
@@ -303,3 +306,11 @@ class RegisterCtx:
                     "Docker is not running. Make sure that"
                     " Docker is running before attempting to register a workflow."
                 ) from de
+
+    @staticmethod
+    def _construct_ssh_client(host_ip: str, username: str):
+
+        ssh = paramiko.SSHClient()
+        ssh.load_system_host_keys()
+        ssh.connect(host_ip, username=username)
+        return ssh
