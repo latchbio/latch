@@ -10,18 +10,10 @@ import shutil
 import string
 import tempfile
 from pathlib import Path
-from tempfile import TemporaryFile
-from typing import List, Union
+from typing import List
 
 import boto3
 import requests
-from flytekit.configuration import (
-    FastSerializationSettings,
-    Image,
-    ImageConfig,
-    SerializationSettings,
-)
-from flytekit.tools.repo import serialize_to_folder
 from scp import SCPClient
 
 from latch_cli.services.register import RegisterCtx, RegisterOutput
