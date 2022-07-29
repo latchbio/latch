@@ -62,6 +62,7 @@ class RegisterCtx:
 
     dkr_repo: Optional[str] = None
     dkr_client: docker.APIClient = None
+    ssh_client: paramiko.client.SSHClient = None
     key_material: Optional[str] = None
     pkg_root: Path = None  # root
     disable_auto_version: bool = False
