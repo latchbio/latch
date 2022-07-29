@@ -4,8 +4,10 @@ import base64
 import contextlib
 import functools
 import os
+import random
 import re
 import shutil
+import string
 import tempfile
 from pathlib import Path
 from tempfile import TemporaryFile
@@ -221,7 +223,11 @@ def register(
     if remote:
         print(f"Connecting to remote server for docker build [alpha]...")
 
-    with tempfile.TemporaryDirectory() as td:
+    with TemporarySerialDir(ctx.ssh_client, remote) as td:
+
+        print("name: ", td)
+
+        quit()
 
         td_path = Path(td).resolve()
 
@@ -312,7 +318,7 @@ def _serialize_pkg_in_container(ctx: RegisterCtx, serialize_dir: Path) -> List[s
         volumes=[str(serialize_dir)],
         host_config=ctx.dkr_client.create_host_config(
             binds={
-                str(serialize_dir): {
+                "/tmp/output": {
                     "bind": "/tmp/output",
                     "mode": "rw",
                 },
@@ -352,3 +358,41 @@ def _register_serialized_pkg(ctx: RegisterCtx, serialize_dir: Path) -> dict:
         )
 
     return response.json()
+
+
+class TemporarySerialDir:
+
+    """Context manager to manage temporary serialization directory.
+
+    If the docker build is remote, handles creation..
+    """
+
+    def __init__(self, ssh_client=None, remote=False):
+
+        if remote and not ssh_client:
+            raise ValueError("Must provide an ssh client if remote is True.")
+
+        self.remote = remote
+        self.ssh_client = ssh_client
+        self._tempdir = None
+
+    def __enter__(self, *args):
+        if not self.remote:
+            self._tempdir = tempfile.TemporaryDirectory()
+            return self._tempdir.name
+        else:
+            td = "".join(
+                random.choice(
+                    string.ascii_uppercase + string.ascii_lowercase + string.digits
+                )
+                for _ in range(8)
+            )
+            self._tempdir = f"/tmp/{td}"
+            self.ssh_client.exec_command(f"mkdir {self._tempdir}")
+            return self._tempdir
+
+    def __exit__(self, *args):
+        if not self.remote:
+            self._tempdir.cleanup()
+        else:
+            self.ssh_client.exec_command(f"rmdir -rf {self._tempdir}")
