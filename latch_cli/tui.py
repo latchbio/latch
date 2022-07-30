@@ -28,7 +28,7 @@ def buffered_print() -> Tuple[Callable, Callable]:
     return __print, __show
 
 
-# Allows for exactly one print per render, removing the weird flashing
+# Allows for exactly one print per render, removing any weird flashing
 # behavior and also speeding things up considerably
 _print, _show = buffered_print()
 

@@ -7,7 +7,7 @@ from flytekit.clis.sdk_in_container.run import load_naive_entity
 
 from latch_cli.config.latch import LatchConfig
 from latch_cli.tinyrequests import post
-from latch_cli.utils import retrieve_or_login
+from latch_cli.utils import current_workspace, retrieve_or_login
 
 logger = logging.Logger(name="logger")
 config = LatchConfig()
@@ -86,7 +86,8 @@ def preview(workflow_name: str):
                 {"variables": d},
                 sort_keys=True,
                 indent=2,
-            )
+            ),
+            "ws_account_id": current_workspace(),
         },
     )
 

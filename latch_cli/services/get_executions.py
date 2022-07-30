@@ -3,7 +3,10 @@ import sys
 import termios
 import textwrap
 import tty
+from pathlib import Path
 from typing import Dict, List
+
+from apscheduler.schedulers.background import BackgroundScheduler
 
 import latch_cli.tui as tui
 from latch_cli.config.latch import LatchConfig
@@ -45,10 +48,9 @@ def get_executions():
         )
 
     all_executions_tui(
-        title="Executions",
+        title="All Executions",
         column_names=display_columns,
         options=options,
-        clear_terminal=True,
     )
 
 
@@ -62,43 +64,51 @@ def all_executions_tui(
     elif len(column_names) == 0:
         raise ValueError("No column names specified")
 
+    term_width, term_height = os.get_terminal_size()
+
     def render(
         curr_selected: int,
+        hor_index: int,
         term_width: int,
         term_height: int,
-        indent: str = "    ",
-        column_spacing: str = "  ",
     ) -> int:
-        if curr_selected < 0 or curr_selected >= len(options):
-            return
+        tui.move_cursor((2, 2))
 
-        max_per_page = term_height - 4
+        max_per_page = term_height - 5
+        vert_index = max(0, curr_selected - max_per_page // 2)
 
-        start_index = max(0, curr_selected - max_per_page // 2)
+        lengths = {col: len(col) for col in column_names}
+        for j in range(len(options)):
+            values = options[j]
+            for col in column_names:
+                lengths[col] = max(lengths[col], len(values[col]))
+
+        if len(column_names) > 1:
+            column_spacing = max(
+                2,
+                (term_width - 7 - sum(lengths.values())) // (len(column_names) - 1),
+            )
+        else:
+            column_spacing = 2
+
+        max_row_len = sum(lengths.values()) + column_spacing * (len(column_names) - 1)
 
         tui._print(title)
         tui.line_down(2)
 
-        # 5 "extra" lines for header + footer
-        num_lines_rendered = 5
-
-        lengths = {col: len(col) for col in column_names}
-        for i in range(len(options)):
-            values = options[i]
-            for col in column_names:
-                lengths[col] = max(lengths[col], len(values[col]))
-
-        for i in range(start_index, start_index + max_per_page):
+        for i in range(vert_index, vert_index + max_per_page):
             if i >= len(options):
                 break
             values = options[i]
-            row_str = indent
-            for col in column_names:
+            row_str = ""
+            for j, col in enumerate(column_names):
                 item = values[col]
-                row_str = row_str + f"{item: <{lengths[col]}}" + column_spacing
+                if j == len(column_names) - 1:
+                    row_str = row_str + f"{item: <{lengths[col]}}"
+                else:
+                    row_str = row_str + f"{item: <{lengths[col] + column_spacing}}"
 
-            if len(row_str) > term_width - 4:
-                row_str = row_str[: term_width - 6] + "..."
+            row_str = row_str[hor_index : hor_index + term_width - 6]
 
             if i == curr_selected:
                 green = "\x1b[38;5;40m"
@@ -106,44 +116,35 @@ def all_executions_tui(
                 reset = "\x1b[0m"
                 row_str = f"{green}{bold}{row_str}{reset}"
 
+            tui.move_cursor_right(3)
             tui._print(row_str)
             tui.line_down(1)
-            num_lines_rendered += 1
 
-        tui.line_down(1)
-
+        tui.move_cursor_right(1)
         control_str = "[ARROW-KEYS] Navigate\t[ENTER] Select\t[Q] Quit"
         tui._print(control_str)
-        tui.line_up(num_lines_rendered - 1)
+        tui.draw_box((2, 3), term_height - 5, term_width - 4)
 
         tui._show()
-
-        return num_lines_rendered
+        return max_row_len
 
     old_settings = termios.tcgetattr(sys.stdin.fileno())
     tty.setraw(sys.stdin.fileno())
 
-    curr_selected = 0
-    term_width, term_height = os.get_terminal_size()
+    curr_selected = hor_index = 0
 
     tui.remove_cursor()
+    tui.clear_screen()
     tui.move_cursor((0, 0))
 
-    num_lines_rendered = render(
-        curr_selected,
-        term_height=term_height,
-        term_width=term_width,
-    )
+    prev = (curr_selected, hor_index, term_width, term_height)
+    max_row_len = render(curr_selected, hor_index, term_width, term_height)
 
     try:
         while True:
-            prev = (
-                term_width,
-                term_height,
-                curr_selected,
-            )
-            rerender = False
             b = tui.read_bytes(1)
+            term_width, term_height = os.get_terminal_size()
+            rerender = False
             if b == b"\r":
                 selected_execution_data = options[curr_selected]
                 resp = post(
@@ -156,28 +157,39 @@ def all_executions_tui(
             elif b == b"\x1b":
                 b = tui.read_bytes(2)
                 if b == b"[A":  # Up Arrow
-                    curr_selected = max(curr_selected - 1, 0)
+                    curr_selected = max(0, curr_selected - 1)
                 elif b == b"[B":  # Down Arrow
-                    curr_selected = min(curr_selected + 1, len(options) - 1)
+                    curr_selected = min(len(options) - 1, curr_selected + 1)
+                elif b == b"[D":  # Left Arrow
+                    if max_row_len > term_width + 7:
+                        hor_index = max(0, hor_index - 5)
+                elif b == b"[C":  # Right Arrow
+                    if max_row_len > term_width + 7:
+                        hor_index = min(max_row_len - term_width + 7, hor_index + 5)
                 else:
                     continue
-            elif b == b"k":
+            elif b in (b"k", b"K"):
                 curr_selected = max(curr_selected - 1, 0)
-            elif b == b"j":
+            elif b in (b"j", b"J"):
                 curr_selected = min(curr_selected + 1, len(options) - 1)
-            term_width, term_height = os.get_terminal_size()
-            if rerender or ((term_width, term_height, curr_selected) != prev):
-                tui.clear(num_lines_rendered)
-                num_lines_rendered = render(
-                    curr_selected,
-                    term_height=term_height,
-                    term_width=term_width,
-                )
+            elif b in (b"h", b"H"):
+                if max_row_len > term_width + 7:
+                    hor_index = max(0, hor_index - 5)
+            elif b in (b"l", b"L"):
+                if max_row_len > term_width + 7:
+                    hor_index = min(max_row_len - term_width + 7, hor_index + 5)
+            if rerender or (
+                (curr_selected, hor_index, term_width, term_height) != prev
+            ):
+                prev = (curr_selected, hor_index, term_width, term_height)
+                tui.clear_screen()
+                max_row_len = render(curr_selected, hor_index, term_width, term_height)
     except KeyboardInterrupt:
         ...
     finally:
-        tui.clear(num_lines_rendered)
+        tui.clear_screen()
         tui.reveal_cursor()
+        tui.move_cursor((0, 0))
         tui._show()
         termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, old_settings)
 
@@ -186,7 +198,11 @@ def execution_dashboard_tui(execution_data: Dict[str, str], workflow_graph: Dict
     fixed_workflow_graph = list(workflow_graph.items())
 
     def render(curr_selected: int, term_width: int, term_height: int):
-        tui.draw_box((2, 2), term_height - 4, term_width - 4)
+        tui.move_cursor((2, 2))
+        tui._print(
+            f'{execution_data["display_name"]} - {execution_data["workflow_tagged"]}'
+        )
+        tui.draw_box((2, 3), term_height - 5, term_width - 4)
 
         tui.move_cursor((2, term_height - 1))
         instructions = [
@@ -196,11 +212,11 @@ def execution_dashboard_tui(execution_data: Dict[str, str], workflow_graph: Dict
         ]
         if execution_data["status"] == "RUNNING":
             instructions.append("[A] Abort")
-        instructions.append("[Q] Quit")
+        instructions.append("[Q] Back to All Executions")
         tui._print("\t".join(instructions))
 
-        tui.move_cursor((4, 3))
-        for i, (id, task) in enumerate(fixed_workflow_graph):
+        tui.move_cursor((4, 4))
+        for i, (_, task) in enumerate(fixed_workflow_graph):
             if i == curr_selected:
                 green = "\x1b[38;5;40m"
                 bold = "\x1b[1m"
@@ -213,7 +229,6 @@ def execution_dashboard_tui(execution_data: Dict[str, str], workflow_graph: Dict
         tui._show()
 
     tui.clear_screen()
-    tui.remove_cursor()
 
     try:
         term_width, term_height = os.get_terminal_size()
@@ -239,8 +254,10 @@ def execution_dashboard_tui(execution_data: Dict[str, str], workflow_graph: Dict
                     curr_selected = max(curr_selected - 1, 0)
                 elif b == b"[B":  # Down Arrow
                     curr_selected = min(curr_selected + 1, len(workflow_graph) - 1)
-                else:
-                    continue
+                elif b == b"[D":  # Left Arrow
+                    hor_index = max(0, hor_index - 5)
+                elif b == b"[C":  # Right Arrow
+                    hor_index += 5
             elif b in (b"j", b"J"):
                 curr_selected = min(curr_selected + 1, len(workflow_graph) - 1)
             elif b in (b"k", b"K"):
@@ -254,13 +271,31 @@ def execution_dashboard_tui(execution_data: Dict[str, str], workflow_graph: Dict
         ...
     finally:
         tui.clear_screen()
-        tui.reveal_cursor()
         tui.move_cursor((0, 0))
         tui._show()
 
 
+def loading_screen(text: str):
+    term_width, term_height = os.get_terminal_size()
+
+    tui.clear_screen()
+    tui.draw_box((2, 3), term_height - 5, term_width - 4)
+
+    x = (term_width - len(text)) // 2
+    y = term_height // 2
+
+    tui.move_cursor((x, y))
+    tui._print(text)
+    tui._show()
+
+
 def log_window(execution_data, fixed_workflow_graph: list, selected: int):
-    id, selected_task = fixed_workflow_graph[selected]
+    loading_screen("Loading logs...")
+
+    _, selected_task = fixed_workflow_graph[selected]
+
+    log_file = Path(".latch_execution_log").resolve()
+    log_file.touch(exist_ok=True)
 
     def get_logs():
         resp = post(
@@ -273,37 +308,82 @@ def log_window(execution_data, fixed_workflow_graph: list, selected: int):
             },
         )
         resp.raise_for_status()
-        return resp.json()["message"]
+        with open(log_file, "w") as f:
+            f.write(resp.json()["message"].replace("\t", "    "))
 
-    def render(term_width, term_height):
-        tui.draw_box((2, 2), term_height - 4, term_width - 4)
-
-        message = get_logs()
-        with open("cache.txt", "w") as f:
-            f.write(message)
-
-        tui.move_cursor((4, 3))
-        for line in message.split("\n"):
-            tui._print(line)
-            tui.line_down(1)
-            tui.move_cursor_left(4)
+    def render(vert_index, hor_index, term_width, term_height):
+        tui.move_cursor((2, 2))
+        tui._print(
+            f'{execution_data["display_name"]} - {execution_data["workflow_tagged"]} - {selected_task["name"]}'
+        )
+        tui.draw_box((2, 3), term_height - 5, term_width - 4)
+        tui.move_cursor((4, 4))
+        with open(log_file, "r") as f:
+            for i, line in enumerate(f):
+                if i < vert_index:
+                    continue
+                elif i > vert_index + term_height - 7:
+                    break
+                line = line.strip("\n\r")
+                tui._print(line[hor_index : hor_index + term_width - 7])
+                tui.line_down(1)
+                tui.move_cursor_right(3)
+        tui.move_cursor((2, term_height - 1))
+        control_str = "[ARROW-KEYS] Navigate\t[Q] Back"
+        tui._print(control_str)
         tui._show()
 
     try:
         term_width, term_height = os.get_terminal_size()
         tui.clear_screen()
-        render(term_width, term_height)
-        prev_term_dims = (term_width, term_height)
+        get_logs()
+
+        log_sched = BackgroundScheduler()
+        log_sched.add_job(
+            get_logs,
+            "interval",
+            seconds=15,
+        )
+        log_sched.start()
+
+        vert_index = hor_index = 0
+        render(vert_index, hor_index, term_width, term_height)
+        prev_term_dims = (vert_index, hor_index, term_width, term_height)
         while True:
-            _ = tui.read_bytes(1)
+            b = tui.read_bytes(1)
+            rerender = False
+            if b in (b"r", b"R"):
+                rerender = True
+            elif b == b"\x1b":
+                b = tui.read_bytes(2)
+                if b == b"[A":  # Up Arrow
+                    vert_index = max(0, vert_index - 1)
+                elif b == b"[B":  # Down Arrow
+                    vert_index += 1
+                if b == b"[D":  # Left Arrow
+                    hor_index = max(0, hor_index - 5)
+                elif b == b"[C":  # Right Arrow
+                    hor_index += 5
+            elif b in (b"k", b"K"):
+                vert_index = max(0, vert_index - 1)
+            elif b in (b"j", b"J"):
+                vert_index += 1
+            elif b in (b"h", b"H"):
+                hor_index = max(0, hor_index - 5)
+            elif b in (b"l", b"L"):
+                hor_index += 5
             term_width, term_height = os.get_terminal_size()
-            if prev_term_dims != (term_width, term_height):
+            if rerender or (
+                prev_term_dims != (vert_index, hor_index, term_width, term_height)
+            ):
                 tui.clear_screen()
-                prev_term_dims = (term_width, term_height)
-                render(term_width, term_height)
+                prev_term_dims = (vert_index, hor_index, term_width, term_height)
+                render(vert_index, hor_index, term_width, term_height)
     except KeyboardInterrupt:
         ...
     finally:
+        log_sched.shutdown()
+        log_file.unlink(missing_ok=True)
         tui.clear_screen()
         tui.move_cursor((0, 0))
         tui._show()
