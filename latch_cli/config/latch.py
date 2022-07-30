@@ -11,6 +11,7 @@ NUCLEUS_URL = _os.environ.get("LATCH_CLI_NUCLEUS_URL", "https://nucleus.latch.bi
 
 
 SDK_ENDPOINTS = {
+    "get-test-data-creds": "/sdk/get-test-data-creds",
     "initiate-multipart-upload": "/sdk/initiate-multipart-upload",
     "complete-multipart-upload": "/sdk/complete-multipart-upload",
     "download": "/sdk/download",

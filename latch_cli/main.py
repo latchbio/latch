@@ -2,6 +2,7 @@
 
 import re
 from collections import OrderedDict
+from functools import wraps
 from pathlib import Path
 from typing import List, Union
 
@@ -450,16 +451,19 @@ def preview(workflow_name: str):
 
 @main.command("workspace")
 def workspace():
+    """Spawns an interactive terminal prompt allowing users to choose what workspace they want to work in."""
     from latch_cli.services.workspace import workspace
 
     try:
         workspace()
     except Exception as e:
+        CrashReporter.report()
         click.secho(f"Unable to fetch workspaces: {str(e)}", fg="red")
 
 
 @main.command("get-executions")
-def context():
+def get_executions():
+    """Spawns an interactive terminal UI that shows all executions in a given workspace"""
     from latch_cli.services.get_executions import get_executions
 
     try:
@@ -467,3 +471,66 @@ def context():
     except Exception as e:
         CrashReporter.report()
         click.secho(f"Unable to fetch executions: {str(e)}", fg="red")
+
+
+# Test data subcommands.
+
+
+@main.group(invoke_without_command=True)
+@click.version_option(package_name="latch")
+@click.pass_context
+def test_data(ctx):
+    """Subcommands to upload and delete test data objects."""
+    if ctx.invoked_subcommand is None:
+        click.secho(f"{ctx.get_help()}")
+
+
+@test_data.command("upload")
+@click.argument("src_path", nargs=1, type=click.Path(exists=True))
+def test_data_upload(src_path: str):
+    """Upload test data object."""
+
+    from latch_cli.services.test_data.upload import upload
+
+    try:
+        s3_url = upload(src_path)
+        click.secho(f"Successfully uploaded to {s3_url}", fg="green")
+    except Exception as e:
+        CrashReporter.report()
+        click.secho(
+            f"Unable to upload {src_path} to managed bucket : {str(e)}", fg="red"
+        )
+
+
+@test_data.command("remove")
+@click.argument("object_url", nargs=1, type=str)
+def test_data_remove(object_url: str):
+    """Remove test data object."""
+
+    from latch_cli.services.test_data.remove import remove
+
+    try:
+        remove(object_url)
+    except Exception as e:
+        CrashReporter.report()
+        click.secho(
+            f"Unable to remove {object_url} from managed bucket : {str(e)}", fg="red"
+        )
+
+
+@test_data.command("ls")
+def test_data_ls():
+    """List test data objects."""
+
+    from latch_cli.services.test_data.ls import ls
+
+    try:
+        objects = ls()
+    except Exception as e:
+        CrashReporter.report()
+        click.secho(
+            f"Unable to list objects within managed bucket : {str(e)}", fg="red"
+        )
+    click.secho("Listing your managed objects by full S3 path.\n", fg="green")
+    for o in objects:
+        print(f"\ts3://latch-public/{o}")
