@@ -60,7 +60,7 @@ def all_executions_tui(
     options: List[Dict[str, str]],
 ):
     if len(options) == 0:
-        raise ValueError("No options given")
+        raise ValueError("No executions to show.")
     elif len(column_names) == 0:
         raise ValueError("No column names specified")
 
