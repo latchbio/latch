@@ -1,8 +1,10 @@
 """Service to upload test objects to a managed bucket."""
 
+import sys
 from pathlib import Path
 
 import boto3
+import botocore
 
 from latch_cli.services.test_data.utils import _retrieve_creds
 
@@ -38,6 +40,22 @@ def upload(src_path: str) -> str:
     )
 
     allowed_key = str((Path("test-data") / account_id).joinpath(src_path))
+
+    try:
+        s3_resource.Object(BUCKET, allowed_key).load()
+    except botocore.exceptions.ClientError:
+        pass
+    else:
+        confirm = input("Object already exists, override it?  (y/n) > ")
+        if confirm in ("n", "no"):
+            print("Aborting upload.")
+            sys.exit()
+        elif confirm in ("y", "yes"):
+            pass
+        else:
+            print("Invalid response.")
+            sys.exit()
+
     s3_resource.meta.client.upload_file(src_path, BUCKET, allowed_key)
 
     return f"s3://{BUCKET}/{allowed_key}"
