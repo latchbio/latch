@@ -1,6 +1,7 @@
 """Service to remove test objects from a managed bucket."""
 
 import boto3
+import botocore
 
 from latch_cli.services.test_data.utils import _retrieve_creds
 
@@ -29,5 +30,10 @@ def remove(object_url: str):
         aws_session_token=session_token,
     )
     object_key = object_url[len(f"s3://{BUCKET}/") :]
+
+    try:
+        s3_resource.Object(BUCKET, object_key).load()
+    except botocore.exceptions.ClientError:
+        raise ValueError(f"{object_url} does not exist")
 
     s3_resource.Object(BUCKET, object_key).delete()
