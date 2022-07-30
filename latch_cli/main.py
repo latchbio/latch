@@ -463,7 +463,7 @@ def test_data(ctx):
 
 
 @test_data.command("upload")
-@click.argument("src_path", nargs=1, type=str)
+@click.argument("src_path", nargs=1, type=click.Path(exists=True))
 def test_data_upload(src_path: str):
     """Upload test data object."""
 
