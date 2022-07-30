@@ -128,7 +128,11 @@ class RegisterCtx:
         else:
             self.token = token
 
-        self.account_id = account_id_from_token(self.token)
+        ws = current_workspace()
+        if ws == "" or ws is None:
+            self.account_id = account_id_from_token(self.token)
+        else:
+            self.account_id = ws
 
         if remote is True:
             headers = {"Authorization": f"Bearer {self.token}"}

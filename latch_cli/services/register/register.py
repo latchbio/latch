@@ -376,7 +376,7 @@ def _register_serialized_pkg(ctx: RegisterCtx, serialize_dir: Path) -> dict:
     with contextlib.ExitStack() as stack:
         serialize_files = {
             "version": ctx.version.encode("utf-8"),
-            "context": current_workspace().encode("utf-8"),
+            ".latch_ws": current_workspace().encode("utf-8"),
         }
         for dirname, dirnames, fnames in os.walk(serialize_dir):
             for filename in fnames + dirnames:
