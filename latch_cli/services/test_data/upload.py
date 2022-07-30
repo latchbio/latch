@@ -27,8 +27,6 @@ def upload(src_path: str) -> str:
     """
 
     src_path_p = Path(src_path).resolve()
-    if src_path_p.exists() is not True:
-        raise ValueError(f"{src_path} must exist.")
 
     session_token, access_key, secret_key, account_id = _retrieve_creds()
 
