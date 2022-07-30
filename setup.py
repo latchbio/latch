@@ -38,6 +38,7 @@ setup(
         "lytekit==0.2.2",
         "lytekitplugins-pods==0.3.1",
         "typing-extensions==4.0.1",
+        "apscheduler==3.9.1",
     ],
     classifiers=[
         "Programming Language :: Python :: 3.7",

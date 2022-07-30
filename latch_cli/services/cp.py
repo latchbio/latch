@@ -9,13 +9,13 @@ from tqdm.auto import tqdm
 import latch_cli.tinyrequests as tinyrequests
 from latch_cli.config.latch import LatchConfig
 from latch_cli.services.mkdir import mkdir
-from latch_cli.utils import _normalize_remote_path, retrieve_or_login
+from latch_cli.utils import _normalize_remote_path, current_workspace, retrieve_or_login
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints
 
 # AWS uses this value for minimum for multipart as opposed to 5 * 10 ** 6
-_CHUNK_SIZE = 5 * 2 ** 20  # 5 MB
+_CHUNK_SIZE = 5 * 2**20  # 5 MB
 
 LOCK = threading.Lock()
 num_files = 0
@@ -114,6 +114,7 @@ def _upload_file(local_source: Path, remote_dest: str):
     nrof_parts = math.ceil(total_bytes / _CHUNK_SIZE)
 
     data = {
+        "ws_account_id": current_workspace(),
         "dest_path": remote_dest,
         "node_name": local_source.name,
         "content_type": "text/plain",
@@ -134,10 +135,10 @@ def _upload_file(local_source: Path, remote_dest: str):
     parts = []
     units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
     index = 0
-    while total_bytes // (1024 ** index) > 1000:
+    while total_bytes // (1024**index) > 1000:
         index += 1
 
-    unit = 1024 ** index
+    unit = 1024**index
     total_human_readable = total_bytes // unit
     suffix = units[index]
     text = f"Copying {local_source.relative_to(Path.cwd())} -> {remote_dest}:"
@@ -219,7 +220,7 @@ def _cp_remote_to_local(remote_source: str, local_dest: str):
 
     token = retrieve_or_login()
     headers = {"Authorization": f"Bearer {token}"}
-    data = {"source_path": remote_source}
+    data = {"source_path": remote_source, "ws_account_id": current_workspace()}
 
     url = endpoints["download"]
     response = tinyrequests.post(url, headers=headers, json=data)

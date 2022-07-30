@@ -31,6 +31,11 @@ SDK_ENDPOINTS = {
     "pod-exec-info": "/sdk/get-pod-exec-info",
     "provision-centromere": "/sdk/provision-centromere",
     "preview": "/sdk/workflow-ui-preview",
+    "get-ws": "/sdk/get-ws",
+    "get-executions": "/sdk/get-executions",
+    "get-workflow-graph": "/sdk/get-workflow-graph",
+    "get-logs": "/sdk/get-logs-for-node",
+    "abort-execution": "/sdk/abort-execution",
 }
 
 

@@ -1,5 +1,11 @@
 """Utility functions for services."""
 
+import sys
+import termios
+import time
+import tty
+from typing import Callable, List, Tuple
+
 import jwt
 
 from latch_cli.config.user import UserConfig
@@ -18,6 +24,11 @@ def retrieve_or_login() -> str:
     if token == "":
         token = login()
     return token
+
+
+def current_workspace() -> str:
+    user_conf = UserConfig()
+    return user_conf.current_workspace
 
 
 def sub_from_jwt(token: str) -> str:

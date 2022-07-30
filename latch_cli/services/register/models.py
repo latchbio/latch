@@ -15,7 +15,12 @@ import paramiko
 import latch_cli.tinyrequests as tinyrequests
 from latch_cli.config.latch import LatchConfig
 from latch_cli.constants import MAX_FILE_SIZE
-from latch_cli.utils import account_id_from_token, retrieve_or_login, with_si_suffix
+from latch_cli.utils import (
+    account_id_from_token,
+    current_workspace,
+    retrieve_or_login,
+    with_si_suffix,
+)
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints
@@ -90,6 +95,7 @@ class RegisterCtx:
                 self.version = vf.read().strip()
             if not self.disable_auto_version:
                 m = hashlib.new("sha256")
+                m.update(current_workspace().encode("utf-8"))
                 for containing_path, dirnames, fnames in os.walk(self.pkg_root):
                     # for repeatability guarantees
                     dirnames.sort()
@@ -104,7 +110,8 @@ class RegisterCtx:
                         else:
                             print(
                                 "\x1b[38;5;226m"
-                                f"WARNING: {path.relative_to(pkg_root.resolve())} is too large ({with_si_suffix(file_size)}) to checksum, skipping."
+                                f"WARNING: {path.relative_to(pkg_root.resolve())} is too large "
+                                f"({with_si_suffix(file_size)}) to checksum, skipping."
                                 "\x1b[0m"
                             )
                     for dirname in dirnames:
@@ -123,7 +130,11 @@ class RegisterCtx:
         else:
             self.token = token
 
-        self.account_id = account_id_from_token(self.token)
+        ws = current_workspace()
+        if ws == "" or ws is None:
+            self.account_id = account_id_from_token(self.token)
+        else:
+            self.account_id = ws
 
         if remote is True:
             headers = {"Authorization": f"Bearer {self.token}"}

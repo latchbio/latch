@@ -449,7 +449,30 @@ def preview(workflow_name: str):
         click.secho(f"Unable to preview inputs for {workflow_name}: {str(e)}", fg="red")
 
 
-#
+@main.command("workspace")
+def workspace():
+    """Spawns an interactive terminal prompt allowing users to choose what workspace they want to work in."""
+    from latch_cli.services.workspace import workspace
+
+    try:
+        workspace()
+    except Exception as e:
+        CrashReporter.report()
+        click.secho(f"Unable to fetch workspaces: {str(e)}", fg="red")
+
+
+@main.command("get-executions")
+def get_executions():
+    """Spawns an interactive terminal UI that shows all executions in a given workspace"""
+    from latch_cli.services.get_executions import get_executions
+
+    try:
+        get_executions()
+    except Exception as e:
+        CrashReporter.report()
+        click.secho(f"Unable to fetch executions: {str(e)}", fg="red")
+
+
 # Test data subcommands.
 
 

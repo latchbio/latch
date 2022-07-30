@@ -7,3 +7,4 @@ awscli
 
 typing_extensions
 tqdm
+apscheduler
