@@ -94,7 +94,7 @@ def select_workspace_tui(title: str, options: List[str], clear_terminal: bool = 
                 color = "\x1b[38;5;40m"
                 bold = "\x1b[1m"
                 reset = "\x1b[0m"
-                tui._print(f"{indent}{color}{bold}[{name}]{reset}\x1b[1E")
+                tui._print(f"{indent}{color}{bold}{name}{reset}\x1b[1E")
             else:
                 tui._print(f"{indent}{name}\x1b[1E")
             num_lines_rendered += 1
