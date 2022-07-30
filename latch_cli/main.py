@@ -470,7 +470,8 @@ def test_data_upload(src_path: str):
     from latch_cli.services.test_data.upload import upload
 
     try:
-        upload(src_path)
+        s3_url = upload(src_path)
+        click.secho(f"Successfully uploaded to {s3_url}", fg="green")
     except Exception as e:
         CrashReporter.report()
         click.secho(

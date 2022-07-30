@@ -9,11 +9,12 @@ from latch_cli.services.test_data.utils import _retrieve_creds
 BUCKET = "latch-public"
 
 
-def upload(src_path: str):
+def upload(src_path: str) -> str:
     """Uploads a local file to a managed bucket.
 
     Args:
         src_path: The path of the file to upload.
+    Returns: s3 URL of uploaded object.
 
     Example: ::
 
@@ -38,3 +39,5 @@ def upload(src_path: str):
 
     allowed_key = str((Path("test-data") / account_id).joinpath(src_path))
     s3_resource.meta.client.upload_file(src_path, BUCKET, allowed_key)
+
+    return f"s3://{BUCKET}/{allowed_key}"
