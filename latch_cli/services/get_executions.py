@@ -11,7 +11,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import latch_cli.tui as tui
 from latch_cli.config.latch import LatchConfig
 from latch_cli.tinyrequests import post
-from latch_cli.utils import current_workspace, retrieve_or_login
+from latch_cli.utils import account_id_from_token, current_workspace, retrieve_or_login
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints
@@ -72,6 +72,8 @@ def all_executions_tui(
         term_width: int,
         term_height: int,
     ) -> int:
+        # DISCLAIMER : MOST OF THE MAGIC NUMBERS HERE WERE THROUGH TRIAL AND ERROR
+
         tui.move_cursor((2, 2))
 
         max_per_page = term_height - 5
@@ -198,6 +200,7 @@ def execution_dashboard_tui(execution_data: Dict[str, str], workflow_graph: Dict
     fixed_workflow_graph = list(workflow_graph.items())
 
     def render(curr_selected: int, term_width: int, term_height: int):
+        # DISCLAIMER : MOST OF THE MAGIC NUMBERS HERE WERE THROUGH TRIAL AND ERROR
         tui.move_cursor((2, 2))
         tui._print(
             f'{execution_data["display_name"]} - {execution_data["workflow_tagged"]}'
@@ -208,7 +211,7 @@ def execution_dashboard_tui(execution_data: Dict[str, str], workflow_graph: Dict
         instructions = [
             "[ARROW-KEYS] Navigate",
             "[ENTER] View Task Logs",
-            "[R] Relaunch",
+            # "[R] Relaunch",
         ]
         if execution_data["status"] == "RUNNING":
             instructions.append("[A] Abort")
@@ -242,9 +245,9 @@ def execution_dashboard_tui(execution_data: Dict[str, str], workflow_graph: Dict
             if b == b"\r":
                 log_window(execution_data, fixed_workflow_graph, curr_selected)
                 rerender = True
-            elif b in (b"r", b"R"):
-                relaunch_modal(execution_data)
-                rerender = True
+            # elif b in (b"r", b"R"):
+            #     relaunch_modal(execution_data)
+            #     rerender = True
             elif b in (b"a", b"A"):
                 abort_modal(execution_data)
                 rerender = True
@@ -276,6 +279,7 @@ def execution_dashboard_tui(execution_data: Dict[str, str], workflow_graph: Dict
 
 
 def loading_screen(text: str):
+    # DISCLAIMER : MOST OF THE MAGIC NUMBERS HERE WERE THROUGH TRIAL AND ERROR
     term_width, term_height = os.get_terminal_size()
 
     tui.clear_screen()
@@ -290,6 +294,7 @@ def loading_screen(text: str):
 
 
 def log_window(execution_data, fixed_workflow_graph: list, selected: int):
+    # DISCLAIMER : MOST OF THE MAGIC NUMBERS HERE WERE THROUGH TRIAL AND ERROR
     loading_screen("Loading logs...")
 
     _, selected_task = fixed_workflow_graph[selected]
@@ -297,14 +302,18 @@ def log_window(execution_data, fixed_workflow_graph: list, selected: int):
     log_file = Path(".latch_execution_log").resolve()
     log_file.touch(exist_ok=True)
 
+    ws_id = current_workspace()
+    if ws_id is None or ws_id == "":
+        ws_id = account_id_from_token(retrieve_or_login())
+
     def get_logs():
         resp = post(
-            "https://nucleus.latch.bio/sdk/get-logs-for-node",
+            endpoints["get-logs"],
             headers={"Authorization": f"Bearer {retrieve_or_login()}"},
             json={
                 "exec_id": execution_data["id"],
                 "node_id": selected_task["node_id"],
-                "account_id": current_workspace(),
+                "account_id": ws_id,
             },
         )
         resp.raise_for_status()
@@ -465,6 +474,7 @@ def relaunch_modal(execution_data):
 
 def abort_modal(execution_data):
     def render(term_width: int, term_height: int):
+        # DISCLAIMER : MOST OF THE MAGIC NUMBERS HERE WERE THROUGH TRIAL AND ERROR
         tui.clear_screen()
 
         question = (
@@ -498,7 +508,7 @@ def abort_modal(execution_data):
             if b in (b"y", b"Y"):
                 headers = {"Authorization": f"Bearer {retrieve_or_login()}"}
                 resp = post(
-                    url="https://nucleus.latch.bio/sdk/abort-execution",
+                    url=endpoints["abort-execution"],
                     headers=headers,
                     json={"execution_id": execution_data["id"]},
                 )
