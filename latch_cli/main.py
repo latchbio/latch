@@ -469,7 +469,13 @@ def test_data_upload(src_path: str):
 
     from latch_cli.services.test_data.upload import upload
 
-    upload(src_path)
+    try:
+        upload(src_path)
+    except Exception as e:
+        CrashReporter.report()
+        click.secho(
+            f"Unable to upload {src_path} to managed bucket : {str(e)}", fg="red"
+        )
 
 
 @test_data.command("remove")
@@ -479,7 +485,13 @@ def test_data_remove(object_url: str):
 
     from latch_cli.services.test_data.remove import remove
 
-    remove(object_url)
+    try:
+        remove(object_url)
+    except Exception as e:
+        CrashReporter.report()
+        click.secho(
+            f"Unable to remove {object_url} from managed bucket : {str(e)}", fg="red"
+        )
 
 
 @test_data.command("ls")
@@ -488,7 +500,13 @@ def test_data_ls():
 
     from latch_cli.services.test_data.ls import ls
 
-    objects = ls()
+    try:
+        objects = ls()
+    except Exception as e:
+        CrashReporter.report()
+        click.secho(
+            f"Unable to list objects within managed bucket : {str(e)}", fg="red"
+        )
     click.secho("Listing your managed objects by full S3 path.\n", fg="green")
     for o in objects:
         print(f"\ts3://latch-public/{o}")
