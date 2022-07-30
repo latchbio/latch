@@ -83,6 +83,8 @@ def all_executions_tui(
         for j in range(len(options)):
             values = options[j]
             for col in column_names:
+                if values[col] is None:
+                    values[col] = ""
                 lengths[col] = max(lengths[col], len(values[col]))
 
         if len(column_names) > 1:
@@ -122,7 +124,7 @@ def all_executions_tui(
             tui._print(row_str)
             tui.line_down(1)
 
-        tui.move_cursor_right(1)
+        tui.move_cursor((2, term_height - 1))
         control_str = "[ARROW-KEYS] Navigate\t[ENTER] Select\t[Q] Quit"
         tui._print(control_str)
         tui.draw_box((2, 3), term_height - 5, term_width - 4)
@@ -152,7 +154,10 @@ def all_executions_tui(
                 resp = post(
                     endpoints["get-workflow-graph"],
                     headers={"Authorization": f"Bearer {retrieve_or_login()}"},
-                    json={"workflow_id": selected_execution_data["workflow_id"]},
+                    json={
+                        "workflow_id": selected_execution_data["workflow_id"],
+                        "execution_id": selected_execution_data["id"],
+                    },
                 )
                 execution_dashboard_tui(selected_execution_data, resp.json())
                 rerender = True
@@ -168,18 +173,40 @@ def all_executions_tui(
                 elif b == b"[C":  # Right Arrow
                     if max_row_len > term_width + 7:
                         hor_index = min(max_row_len - term_width + 7, hor_index + 5)
-                else:
-                    continue
-            elif b in (b"k", b"K"):
+                elif b == b"[1":  # Start of SHIFT + arrow keys
+                    b = tui.read_bytes(3)
+                    if b == b";2A":  # Up Arrow
+                        curr_selected = max(0, curr_selected - 20)
+                    elif b == b";2B":  # Down Arrow
+                        curr_selected = min(len(options) - 1, curr_selected + 20)
+                    elif b == b";2D":  # Left Arrow
+                        if max_row_len > term_width + 7:
+                            hor_index = max(0, hor_index - 25)
+                    elif b == b";2C":  # Right Arrow
+                        if max_row_len > term_width + 7:
+                            hor_index = min(
+                                max_row_len - term_width + 7, hor_index + 25
+                            )
+            elif b == b"k":
                 curr_selected = max(curr_selected - 1, 0)
-            elif b in (b"j", b"J"):
+            elif b == b"j":
                 curr_selected = min(curr_selected + 1, len(options) - 1)
-            elif b in (b"h", b"H"):
+            elif b == b"J":
+                curr_selected = min(curr_selected + 20, len(options) - 1)
+            elif b == b"K":
+                curr_selected = max(curr_selected - 20, 0)
+            elif b == b"h":
                 if max_row_len > term_width + 7:
                     hor_index = max(0, hor_index - 5)
-            elif b in (b"l", b"L"):
+            elif b == b"l":
                 if max_row_len > term_width + 7:
                     hor_index = min(max_row_len - term_width + 7, hor_index + 5)
+            elif b == b"H":
+                if max_row_len > term_width + 7:
+                    hor_index = max(0, hor_index - 25)
+            elif b == b"L":
+                if max_row_len > term_width + 7:
+                    hor_index = min(max_row_len - term_width + 7, hor_index + 25)
             if rerender or (
                 (curr_selected, hor_index, term_width, term_height) != prev
             ):
@@ -198,6 +225,9 @@ def all_executions_tui(
 
 def execution_dashboard_tui(execution_data: Dict[str, str], workflow_graph: Dict):
     fixed_workflow_graph = list(workflow_graph.items())
+
+    with open("cache.txt", "w") as f:
+        f.write(str(fixed_workflow_graph))
 
     def render(curr_selected: int, term_width: int, term_height: int):
         # DISCLAIMER : MOST OF THE MAGIC NUMBERS HERE WERE THROUGH TRIAL AND ERROR
@@ -220,13 +250,15 @@ def execution_dashboard_tui(execution_data: Dict[str, str], workflow_graph: Dict
 
         tui.move_cursor((4, 4))
         for i, (_, task) in enumerate(fixed_workflow_graph):
+            name, status = task["name"], task["status"]
+            row_str = "  ".join([name, status])
             if i == curr_selected:
                 green = "\x1b[38;5;40m"
                 bold = "\x1b[1m"
                 reset = "\x1b[0m"
-                tui._print(f"{green}{bold}{task['name']}{reset}")
+                tui._print(f"{green}{bold}{row_str}{reset}")
             else:
-                tui._print(task["name"])
+                tui._print(row_str)
             tui.line_down(1)
             tui.move_cursor_right(3)
         tui._show()
@@ -257,14 +289,22 @@ def execution_dashboard_tui(execution_data: Dict[str, str], workflow_graph: Dict
                     curr_selected = max(curr_selected - 1, 0)
                 elif b == b"[B":  # Down Arrow
                     curr_selected = min(curr_selected + 1, len(workflow_graph) - 1)
-                elif b == b"[D":  # Left Arrow
-                    hor_index = max(0, hor_index - 5)
-                elif b == b"[C":  # Right Arrow
-                    hor_index += 5
-            elif b in (b"j", b"J"):
+                elif b == b"[1":  # Start of SHIFT + arrow keys
+                    b = tui.read_bytes(3)
+                    if b == b";2A":  # Up Arrow
+                        curr_selected = max(0, curr_selected - 20)
+                    elif b == b";2B":  # Down Arrow
+                        curr_selected += min(
+                            curr_selected + 20, len(workflow_graph) - 1
+                        )
+            elif b == b"j":
                 curr_selected = min(curr_selected + 1, len(workflow_graph) - 1)
-            elif b in (b"k", b"K"):
+            elif b == b"k":
                 curr_selected = max(curr_selected - 1, 0)
+            elif b == b"J":
+                curr_selected = min(curr_selected + 20, len(workflow_graph) - 1)
+            elif b == b"K":
+                curr_selected = max(curr_selected - 20, 0)
             term_width, term_height = os.get_terminal_size()
             if rerender or (prev != (curr_selected, term_width, term_height)):
                 tui.clear_screen()
@@ -332,7 +372,7 @@ def log_window(execution_data, fixed_workflow_graph: list, selected: int):
                 if i < vert_index:
                     continue
                 elif i > vert_index + term_height - 7:
-                    break
+                    continue
                 line = line.strip("\n\r")
                 tui._print(line[hor_index : hor_index + term_width - 7])
                 tui.line_down(1)
@@ -369,18 +409,36 @@ def log_window(execution_data, fixed_workflow_graph: list, selected: int):
                     vert_index = max(0, vert_index - 1)
                 elif b == b"[B":  # Down Arrow
                     vert_index += 1
-                if b == b"[D":  # Left Arrow
+                elif b == b"[D":  # Left Arrow
                     hor_index = max(0, hor_index - 5)
                 elif b == b"[C":  # Right Arrow
                     hor_index += 5
-            elif b in (b"k", b"K"):
+                elif b == b"[1":  # Start of SHIFT + arrow keys
+                    b = tui.read_bytes(3)
+                    if b == b";2A":  # Up Arrow
+                        vert_index = max(0, vert_index - 20)
+                    elif b == b";2B":  # Down Arrow
+                        vert_index += 20
+                    elif b == b";2D":  # Left Arrow
+                        hor_index = max(0, hor_index - 25)
+                    elif b == b";2C":  # Right Arrow
+                        hor_index += 25
+            elif b == b"k":
                 vert_index = max(0, vert_index - 1)
-            elif b in (b"j", b"J"):
+            elif b == b"j":
                 vert_index += 1
-            elif b in (b"h", b"H"):
+            elif b == b"h":
                 hor_index = max(0, hor_index - 5)
-            elif b in (b"l", b"L"):
+            elif b == b"l":
                 hor_index += 5
+            elif b == b"K":
+                vert_index = max(0, vert_index - 20)
+            elif b == b"J":
+                vert_index += 20
+            elif b == b"H":
+                hor_index = max(0, hor_index - 25)
+            elif b == b"L":
+                hor_index += 25
             term_width, term_height = os.get_terminal_size()
             if rerender or (
                 prev_term_dims != (vert_index, hor_index, term_width, term_height)
