@@ -28,5 +28,7 @@ def ls() -> List[str]:
         aws_session_token=session_token,
     )
 
-    objects = s3_resource.Bucket(BUCKET).objects.filter(Prefix=account_id)
+    objects = s3_resource.Bucket(BUCKET).objects.filter(
+        Prefix=f"test-data/{account_id}"
+    )
     return [x.key for x in objects]

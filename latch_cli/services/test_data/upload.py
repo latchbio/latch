@@ -36,5 +36,5 @@ def upload(src_path: str):
         aws_session_token=session_token,
     )
 
-    allowed_key = str(Path(account_id).joinpath(src_path))
+    allowed_key = str((Path("test-data") / account_id).joinpath(src_path))
     s3_resource.meta.client.upload_file(src_path, BUCKET, allowed_key)
