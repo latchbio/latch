@@ -28,7 +28,10 @@ def retrieve_or_login() -> str:
 
 def current_workspace() -> str:
     user_conf = UserConfig()
-    return user_conf.current_workspace
+    ws = user_conf.current_workspace
+    if ws == "":
+        ws = account_id_from_token(retrieve_or_login())
+    return ws
 
 
 def sub_from_jwt(token: str) -> str:

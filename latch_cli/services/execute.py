@@ -5,6 +5,7 @@ import sys
 import textwrap
 from pathlib import Path
 from tty import setraw
+from typing import Tuple
 
 import kubernetes
 import requests
@@ -14,7 +15,7 @@ from kubernetes.client.api import core_v1_api
 from kubernetes.stream import stream
 
 from latch_cli.config.latch import LatchConfig
-from latch_cli.utils import account_id_from_token, retrieve_or_login
+from latch_cli.utils import account_id_from_token, current_workspace, retrieve_or_login
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints
@@ -72,10 +73,10 @@ users:
     )
 
 
-def _fetch_pod_info(token: str, task_name: str) -> (str, str, str):
+def _fetch_pod_info(token: str, task_name: str) -> Tuple[str, str, str]:
 
     headers = {"Authorization": f"Bearer {token}"}
-    data = {"task_name": task_name}
+    data = {"task_name": task_name, "ws_account_id": current_workspace()}
 
     response = requests.post(endpoints["pod-exec-info"], headers=headers, json=data)
 
@@ -160,7 +161,7 @@ def execute(task_name: str):
         def send(self, chunk: bytes):
             self._wssock.send(stdin_channel + chunk, websocket.ABNF.OPCODE_BINARY)
 
-        def get_frame(self) -> (websocket.ABNF.OPCODES, websocket.ABNF):
+        def get_frame(self) -> Tuple[websocket.ABNF.OPCODES, websocket.ABNF]:
             return self._wssock.recv_data_frame(True)
 
         @property
