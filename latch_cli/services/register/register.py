@@ -220,7 +220,7 @@ def register(
     with TemporarySerialDir(ctx.ssh_client, remote) as td:
 
         dockerfile = ctx.pkg_root.joinpath("Dockerfile")
-        build_logs = build_image(ctx, dockerfile, remote)
+        build_logs = build_image(ctx, dockerfile)
         _print_build_logs(build_logs, ctx.image_tagged)
 
         serialize_logs, container_id = _serialize_pkg_in_container(ctx, td)
@@ -258,42 +258,43 @@ def _login(ctx: RegisterCtx):
     headers = {"Authorization": f"Bearer {ctx.token}"}
     data = {"pkg_name": ctx.image}
     response = requests.post(ctx.latch_image_api_url, headers=headers, json=data)
-    try:
-        response = response.json()
-        access_key = response["tmp_access_key"]
-        secret_key = response["tmp_secret_key"]
-        session_token = response["tmp_session_token"]
-    except KeyError as err:
-        raise ValueError(f"malformed response on image upload: {response}") from err
 
-    # TODO: cache
-    try:
-        client = boto3.session.Session(
-            aws_access_key_id=access_key,
-            aws_secret_access_key=secret_key,
-            aws_session_token=session_token,
-            region_name="us-west-2",
-        ).client("ecr")
-        token = client.get_authorization_token()["authorizationData"][0][
-            "authorizationToken"
-        ]
-    except Exception as err:
-        raise ValueError(
-            f"unable to retreive an ecr login token for user {ctx.account_id}"
-        ) from err
+    if ctx.remote:
+        try:
+            response = response.json()
+            access_key = response["tmp_access_key"]
+            secret_key = response["tmp_secret_key"]
+            session_token = response["tmp_session_token"]
+        except KeyError as err:
+            raise ValueError(f"malformed response on image upload: {response}") from err
 
-    user, password = base64.b64decode(token).decode("utf-8").split(":")
-    ctx.dkr_client.login(
-        username=user,
-        password=password,
-        registry=ctx.dkr_repo,
-    )
+        # TODO: cache
+        try:
+            client = boto3.session.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+                aws_session_token=session_token,
+                region_name="us-west-2",
+            ).client("ecr")
+            token = client.get_authorization_token()["authorizationData"][0][
+                "authorizationToken"
+            ]
+        except Exception as err:
+            raise ValueError(
+                f"unable to retreive an ecr login token for user {ctx.account_id}"
+            ) from err
+
+        user, password = base64.b64decode(token).decode("utf-8").split(":")
+        ctx.dkr_client.login(
+            username=user,
+            password=password,
+            registry=ctx.dkr_repo,
+        )
 
 
-def build_image(ctx: RegisterCtx, dockerfile: Path, remote: bool) -> List[str]:
+def build_image(ctx: RegisterCtx, dockerfile: Path) -> List[str]:
 
-    if remote is False:
-        _login(ctx)
+    _login(ctx)
     build_logs = ctx.dkr_client.build(
         path=str(dockerfile.parent),
         buildargs={"tag": ctx.full_image_tagged},

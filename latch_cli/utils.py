@@ -1,14 +1,13 @@
 """Utility functions for services."""
 
-import sys
-import termios
-import time
-import tty
-from typing import Callable, List, Tuple
+import hashlib
+import os
+from pathlib import Path
 
 import jwt
 
 from latch_cli.config.user import UserConfig
+from latch_cli.constants import MAX_FILE_SIZE
 from latch_cli.services.login import login
 
 
@@ -108,3 +107,30 @@ def with_si_suffix(num, suffix="B", styled=False):
         )
 
     return f"{num}{unit}{suffix}"
+
+
+def hash_directory(dir_path: Path):
+    m = hashlib.new("sha256")
+    m.update(current_workspace().encode("utf-8"))
+    for containing_path, dirnames, fnames in os.walk(dir_path):
+        # for repeatability guarantees
+        dirnames.sort()
+        fnames.sort()
+        for filename in fnames:
+            path = Path(containing_path).joinpath(filename)
+            m.update(str(path).encode("utf-8"))
+            file_size = os.path.getsize(path)
+            if file_size < MAX_FILE_SIZE:
+                with open(path, "rb") as f:
+                    m.update(f.read())
+            else:
+                print(
+                    "\x1b[38;5;226m"
+                    f"WARNING: {path.relative_to(dir_path.resolve())} is too large "
+                    f"({with_si_suffix(file_size)}) to checksum, skipping."
+                    "\x1b[0m"
+                )
+        for dirname in dirnames:
+            path = Path(containing_path).joinpath(dirname)
+            m.update(str(path).encode("utf-8"))
+    return m.hexdigest()

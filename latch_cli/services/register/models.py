@@ -18,8 +18,8 @@ from latch_cli.constants import MAX_FILE_SIZE
 from latch_cli.utils import (
     account_id_from_token,
     current_workspace,
+    hash_directory,
     retrieve_or_login,
-    with_si_suffix,
 )
 
 config = LatchConfig()
@@ -94,36 +94,15 @@ class RegisterCtx:
             with open(version_file, "r") as vf:
                 self.version = vf.read().strip()
             if not self.disable_auto_version:
-                m = hashlib.new("sha256")
-                m.update(current_workspace().encode("utf-8"))
-                for containing_path, dirnames, fnames in os.walk(self.pkg_root):
-                    # for repeatability guarantees
-                    dirnames.sort()
-                    fnames.sort()
-                    for filename in fnames:
-                        path = Path(containing_path).joinpath(filename)
-                        m.update(str(path).encode("utf-8"))
-                        file_size = os.path.getsize(path)
-                        if file_size < MAX_FILE_SIZE:
-                            with open(path, "rb") as f:
-                                m.update(f.read())
-                        else:
-                            print(
-                                "\x1b[38;5;226m"
-                                f"WARNING: {path.relative_to(pkg_root.resolve())} is too large "
-                                f"({with_si_suffix(file_size)}) to checksum, skipping."
-                                "\x1b[0m"
-                            )
-                    for dirname in dirnames:
-                        path = Path(containing_path).joinpath(dirname)
-                        m.update(str(path).encode("utf-8"))
-                self.version = self.version + "-" + m.hexdigest()[:6]
+                hash = hash_directory(self.pkg_root)
+                self.version = self.version + "-" + hash[:6]
         except Exception as e:
             raise ValueError(
                 f"Unable to extract pkg version from {str(self.pkg_root)}"
             ) from e
 
         self.dkr_repo = LatchConfig.dkr_repo
+        self.remote = remote
 
         if token is None:
             self.token = retrieve_or_login()
