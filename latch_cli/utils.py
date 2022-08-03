@@ -10,8 +10,6 @@ from latch_cli.config.user import UserConfig
 from latch_cli.constants import MAX_FILE_SIZE
 from latch_cli.services.login import login
 
-MAX_FILE_SIZE = 2**22
-
 
 def retrieve_or_login() -> str:
     """Returns a valid JWT to access Latch, prompting a login flow if needed.

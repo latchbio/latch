@@ -20,7 +20,6 @@ from latch_cli.utils import (
     current_workspace,
     hash_directory,
     retrieve_or_login,
-    with_si_suffix,
 )
 
 config = LatchConfig()
