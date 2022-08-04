@@ -67,10 +67,10 @@ def preview(workflow_name: str):
 
     try:
         wf = load_naive_entity("wf.__init__", workflow_name)
-    except:
+    except ImportError as e:
         raise ValueError(
-            f"Unable to find wf.__init__.{workflow_name}"
-            " - make sure that the function names match."
+            f"Unable to find {e.name} - make sure that all necessary packages"
+            " are installed and you have the correct function name."
         )
 
     d = {k: _deep_dict(wf.interface.inputs[k]) for k in wf.interface.inputs}
