@@ -167,7 +167,10 @@ def cached_large_gpu_task(cache_version):
     if cache_version is None:
         raise ValueError("Must provide a cache version to a cached task.")
     return task(
-        cache=True, cache_version=cache_version, task_config=_get_large_gpu_pod()
+        cache=True,
+        cache_version=cache_version,
+        task_config=_get_large_gpu_pod(),
+        retries=3,
     )
 
 
@@ -204,7 +207,10 @@ def cached_small_gpu_task(cache_version):
     if cache_version is None:
         raise ValueError("Must provide a cache version to a cached task.")
     return task(
-        cache=True, cache_version=cache_version, task_config=_get_small_gpu_pod()
+        cache=True,
+        cache_version=cache_version,
+        task_config=_get_small_gpu_pod(),
+        retries=3,
     )
 
 
@@ -240,7 +246,9 @@ def cached_large_task(cache_version):
     """Provides caching with resources defined by `large_task`."""
     if cache_version is None:
         raise ValueError("Must provide a cache version to a cached task.")
-    return task(cache=True, cache_version=cache_version, task_config=_get_large_pod())
+    return task(
+        cache=True, cache_version=cache_version, task_config=_get_large_pod(), retries=3
+    )
 
 
 medium_task = task(task_config=_get_medium_pod(), retries=3)
@@ -275,7 +283,12 @@ def cached_medium_task(cache_version):
     """Provides caching with resources defined by `medium_task`."""
     if cache_version is None:
         raise ValueError("Must provide a cache version to a cached task.")
-    return task(cache=True, cache_version=cache_version, task_config=_get_medium_pod())
+    return task(
+        cache=True,
+        cache_version=cache_version,
+        task_config=_get_medium_pod(),
+        retries=3,
+    )
 
 
 small_task = task(task_config=_get_small_pod(), retries=3)
@@ -307,7 +320,9 @@ def cached_small_task(cache_version):
     """Provides caching with resources defined by `small_task`."""
     if cache_version is None:
         raise ValueError("Must provide a cache version to a cached task.")
-    return task(cache=True, cache_version=cache_version, task_config=_get_small_pod())
+    return task(
+        cache=True, cache_version=cache_version, task_config=_get_small_pod(), retries=3
+    )
 
 
 def custom_task(cpu: int, memory: int):
