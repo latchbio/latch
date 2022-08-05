@@ -134,7 +134,7 @@ def _get_small_pod() -> Pod:
     )
 
 
-large_gpu_task = task(task_config=_get_large_gpu_pod())
+large_gpu_task = task(task_config=_get_large_gpu_pod(), retries=3)
 """This task will get scheduled on a large GPU-enabled node.
 
 This node is not necessarily dedicated to the task, but the node itself will be
@@ -171,7 +171,7 @@ def cached_large_gpu_task(cache_version):
     )
 
 
-small_gpu_task = task(task_config=_get_small_gpu_pod())
+small_gpu_task = task(task_config=_get_small_gpu_pod(), retries=3)
 """This task will get scheduled on a small GPU-enabled node.
 
 This node will be dedicated to the task. No other tasks will be allowed to run
@@ -208,7 +208,7 @@ def cached_small_gpu_task(cache_version):
     )
 
 
-large_task = task(task_config=_get_large_pod())
+large_task = task(task_config=_get_large_pod(), retries=3)
 """This task will get scheduled on a large node.
 
 This node will be dedicated to the task. No other tasks will be allowed to run
@@ -243,7 +243,7 @@ def cached_large_task(cache_version):
     return task(cache=True, cache_version=cache_version, task_config=_get_large_pod())
 
 
-medium_task = task(task_config=_get_medium_pod())
+medium_task = task(task_config=_get_medium_pod(), retries=3)
 """This task will get scheduled on a medium node.
 
 This node will be dedicated to the task. No other tasks will be allowed to run
@@ -278,7 +278,7 @@ def cached_medium_task(cache_version):
     return task(cache=True, cache_version=cache_version, task_config=_get_medium_pod())
 
 
-small_task = task(task_config=_get_small_pod())
+small_task = task(task_config=_get_small_pod(), retries=3)
 """This task will get scheduled on a small node.
 
 .. list-table:: Title
