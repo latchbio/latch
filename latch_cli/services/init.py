@@ -101,6 +101,7 @@ def _gen__init__(pkg_name: str):
 
             from latch import small_task, workflow
             from latch.types import LatchFile
+            from latch.resources.launch_plan import LaunchPlan
 
 
             @small_task
@@ -191,6 +192,21 @@ def _gen__init__(pkg_name: str):
                 """
                 sam = assembly_task(read1=read1, read2=read2)
                 return sort_bam_task(sam=sam)
+
+
+                """
+                Add test data with a LaunchPlan. Provide default values in a dictionary with
+                the parameter names as the keys. These default values will be available under
+                the 'Test Data' dropdown at console.latch.bio.
+                """
+                LaunchPlan(
+                    assemble_and_sort,
+                    "Test Data",
+                    {
+                        "read1": LatchFile("s3://latch-public/init/r1.fastq"),
+                        "read2": LatchFile("s3://latch-public/init/r2.fastq"),
+                    },
+                )
                 '''
     ).lstrip()
 
