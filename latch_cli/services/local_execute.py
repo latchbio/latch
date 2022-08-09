@@ -7,7 +7,11 @@ import docker.errors
 from latch_cli.services.register import RegisterCtx, _print_build_logs, build_image
 
 
-def local_execute(pkg_root: Path):
+def local_execute(
+    pkg_root: Path, 
+    use_auto_version: bool,
+    output_dir: str,
+) -> None:
     """Executes a workflow locally within its latest registered container.
 
     Will stream in-container local execution stdout to terminal from which the
@@ -15,7 +19,14 @@ def local_execute(pkg_root: Path):
 
     Args:
         pkg_root: A path pointing to to the workflow package to be executed
-        locally.
+            locally.
+        use_auto_version: A bool indicating whether to use the default
+            auto-versioning of the workflow. Recommended to be set to False for
+            local execution so that previous images can be reused. Only really need
+            to set to True for local execution if you update the Dockerfile.
+        output_dir: The name of the output directory that the workflow writes to.
+            In the workflow that means it will write to /root/{output_dir}.
+
 
     Example: ::
 
@@ -23,23 +34,33 @@ def local_execute(pkg_root: Path):
         # Where `myworkflow` is a directory with workflow code.
     """
 
-    ctx = RegisterCtx(pkg_root)
+    ctx = RegisterCtx(pkg_root, disable_auto_version=(not use_auto_version))
 
     dockerfile = ctx.pkg_root.joinpath("Dockerfile")
 
     def _create_container(image_name: str):
+        # Copy contents of workflow package to container's root directory to 
+        # emulate natve workflow execution, rather than running from 
+        # /root/local_execute.
+        cmd = f"cp -r /root/local_execute/!({output_dir}) /root ;" + \
+              "python3 /root/wf/__init__.py"
         container = ctx.dkr_client.create_container(
             image_name,
-            command=["python3", "/root/wf/__init__.py"],
+            command=["bash", "-O", "extglob", "-c", cmd],
             volumes=[str(ctx.pkg_root)],
             host_config=ctx.dkr_client.create_host_config(
                 binds={
                     str(ctx.pkg_root): {
-                        "bind": "/root",
+                        "bind": "/root/local_execute",
+                        "mode": "rw",
+                    },
+                    str(ctx.pkg_root.joinpath(output_dir)): {
+                        "bind": f"/root/{output_dir}",
                         "mode": "rw",
                     },
                 }
             ),
+            working_dir="/root",
         )
         return container
 
@@ -54,7 +75,7 @@ def local_execute(pkg_root: Path):
         print("Unable to find an image associated to this version of your workflow")
         print("Building from scratch:")
 
-        build_logs = build_image(ctx, dockerfile)
+        build_logs = build_image(ctx, dockerfile, False)
         _print_build_logs(build_logs, ctx.full_image_tagged)
 
         container = _create_container(ctx.full_image_tagged)
