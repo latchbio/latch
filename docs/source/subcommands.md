@@ -233,3 +233,19 @@ $ latch rm sample # deletes the entity called sample in the user's root director
 $ latch rm welcome/sample # creates an empty file called sample in latch:///welcome/
 $ latch rm latch:///welcome/sample # same result as above
 ```
+
+## `latch test-data`
+
+A set of subcommands to manipulate managed test data.
+
+### `latch test-data ls`
+
+List test data objects as full S3 paths.
+
+### `latch test-data remove <s3 path>`
+
+Remove a test data object by passing an S3 path.
+
+### `latch test-data upload <local path>`
+
+Upload an object to a managed S3 bucket by passing a local path.
