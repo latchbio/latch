@@ -180,6 +180,8 @@ def register(
             register. The path can be absolute or relative. The path is always
             a directory, with its structure exactly as constructed and
             described in the `cli.services.init` function.
+        disable_auto_version: A bool indicating whether to disable the default
+            auto-versioning of the workflow.
 
 
     Example: ::
