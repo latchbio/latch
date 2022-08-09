@@ -56,7 +56,7 @@ def init(pkg_name: Path):
     with open(docker_f, "w") as f:
         f.write(_gen_dockerfile())
 
-    data_root = pkg_root.joinpath("data")
+    data_root = pkg_root.joinpath("reference")
     data_root.mkdir(exist_ok=True)
 
     ref_ids = [
@@ -230,18 +230,18 @@ def _gen_dockerfile():
             apt-get install -y autoconf samtools
 
 
-        # You can use local data to construct your workflow image.  Here we copy a
+        # You can use local files to construct your workflow image.  Here we copy a
         # pre-indexed reference to a path that our workflow can reference.
-        COPY data /root/reference
+        COPY reference /root/reference
         ENV BOWTIE2_INDEXES="reference"
 
         # STOP HERE:
         # The following lines are needed to ensure your build environement works
         # correctly with latch.
+        RUN python3 -m pip install --upgrade latch
         COPY wf /root/wf
         ARG tag
         ENV FLYTE_INTERNAL_IMAGE $tag
-        RUN python3 -m pip install --upgrade latch
         WORKDIR /root
         """
     ).lstrip()
