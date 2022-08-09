@@ -100,8 +100,8 @@ def _gen__init__(pkg_name: str):
             from pathlib import Path
 
             from latch import small_task, workflow
-            from latch.types import LatchFile
             from latch.resources.launch_plan import LaunchPlan
+            from latch.types import LatchAuthor, LatchDir, LatchFile, LatchMetadata, LatchParameter
 
 
             @small_task
@@ -149,7 +149,33 @@ def _gen__init__(pkg_name: str):
                 return LatchFile(str(bam_file), "latch:///covid_sorted.bam")
 
 
-            @workflow
+            """The metadata included here will be injected into your interface."""
+            metadata = LatchMetadata(
+                display_name="Assemble and Sort FastQ Files",
+                documentation="your-docs.dev",
+                author=LatchAuthor(
+                    name="John von Neumann",
+                    email="hungarianpapi4@gmail.com",
+                    github="github.com/fluid-dynamix",
+                ),
+                repository="https://github.com/your-repo",
+                license="MIT",
+                parameters={
+                    "read1": LatchParameter(
+                        display_name="Read 1",
+                        description="Paired-end read 1 file to be assembled.",
+                        batch_table_column=True,  # Show this parameter in batched mode.
+                    ),
+                    "read2": LatchParameter(
+                        display_name="Read 2",
+                        description="Paired-end read 2 file to be assembled.",
+                        batch_table_column=True,  # Show this parameter in batched mode.
+                    ),
+                },
+            )
+
+
+            @workflow(metadata)
             def assemble_and_sort(read1: LatchFile, read2: LatchFile) -> LatchFile:
                 """Description...
 
@@ -165,48 +191,24 @@ def _gen__init__(pkg_name: str):
 
                 * content1
                 * content2
-
-                __metadata__:
-                    display_name: Assemble and Sort FastQ Files
-                    author:
-                        name:
-                        email:
-                        github:
-                    repository:
-                    license:
-                        id: MIT
-
-                Args:
-
-                    read1:
-                      Paired-end read 1 file to be assembled.
-
-                      __metadata__:
-                        display_name: Read1
-
-                    read2:
-                      Paired-end read 2 file to be assembled.
-
-                      __metadata__:
-                        display_name: Read2
                 """
                 sam = assembly_task(read1=read1, read2=read2)
                 return sort_bam_task(sam=sam)
 
 
-                """
-                Add test data with a LaunchPlan. Provide default values in a dictionary with
-                the parameter names as the keys. These default values will be available under
-                the 'Test Data' dropdown at console.latch.bio.
-                """
-                LaunchPlan(
-                    assemble_and_sort,
-                    "Test Data",
-                    {
-                        "read1": LatchFile("s3://latch-public/init/r1.fastq"),
-                        "read2": LatchFile("s3://latch-public/init/r2.fastq"),
-                    },
-                )
+            """
+            Add test data with a LaunchPlan. Provide default values in a dictionary with
+            the parameter names as the keys. These default values will be available under
+            the 'Test Data' dropdown at console.latch.bio.
+            """
+            LaunchPlan(
+                assemble_and_sort,
+                "Test Data",
+                {
+                    "read1": LatchFile("s3://latch-public/init/r1.fastq"),
+                    "read2": LatchFile("s3://latch-public/init/r2.fastq"),
+                },
+            )
                 '''
     ).lstrip()
 
