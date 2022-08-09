@@ -249,3 +249,17 @@ Remove a test data object by passing an S3 path.
 ### `latch test-data upload <local path>`
 
 Upload an object to a managed S3 bucket by passing a local path.
+
+## `latch exec`
+
+Drops the user into an interactive shell from within a task.
+
+## `latch preview`
+
+Creates a preview of your workflow interface without re-registration.
+
+## `latch workspace`
+
+Spawns an interactive terminal prompt allowing users to choose what workspace
+they want to work in. Allows users to choose between, eg. personal and team
+workspaces to upload files or register workflows.
