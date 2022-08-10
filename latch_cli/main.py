@@ -271,12 +271,37 @@ def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]
     about local development.
     """,
 )
-@click.argument("pkg_root", nargs=1, type=click.Path(exists=True))
-def local_execute(pkg_root: Path):
+@click.argument("pkg_root", nargs=1, type=click.Path(exists=True))@click.option(
+    "-u",
+    "--use-auto-version",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help=(
+        "Whether to automatically bump the version of the workflow each time register"
+        " is called. This should only be used if you update the Dockerfile, but don't"
+        " want to permanently register those changes to Latch."
+    ),
+)
+@click.option(
+    "-o",
+    "--output-dir",
+    default="outputs",
+    type=str,
+    help=(
+        "The directory in which the outputs will be written to by the workflow. "
+        "(/root/{output_dir}). Defaults to 'outputs'."
+    )
+)
+def local_execute(pkg_root: Path, use_auto_version: bool, output_dir: str):
     from latch_cli.services.local_execute import local_execute
 
     try:
-        local_execute(Path(pkg_root).resolve())
+        local_execute(
+            Path(pkg_root).resolve(), 
+            use_auto_version=use_auto_version,
+            output_dir=output_dir
+        )
     except Exception as e:
         CrashReporter.report()
         click.secho(f"Unable to execute workflow: {str(e)}", fg="red")

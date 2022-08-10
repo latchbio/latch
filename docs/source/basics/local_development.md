@@ -71,3 +71,33 @@ When a workflow is executing locally, remote path handling will be ignored. This
 means there will be no attempt to copy data from remote paths when ingesting or
 returning parameter values. Workflow logic will strictly read and write from the
 `local_path` property of the `LatchFile`/`LatchDir` type (first argument).
+
+## Outputs
+
+To save and view outputs during local execution, you have to store files locally and 
+then return either a `LatchFile` or `LatchDir` object pointing to that local path. Due to
+the way local-execute works under the hood, you have to return this in a specified 
+directory. This default directory is `/root/{output_dir}`, where `output_dir` is by default
+`'outputs'` and can be changed with the `--output-dir` flag.
+
+For example, if you run 
+```bash
+latch local-execute . --output-dir my_outputs
+```
+then in the workflow you will need to write output files and directories to `/root/my_outputs`.
+You don't technically need to return a `LatchFile` or `LatchDir` object pointing
+to `/root/my_outputs` during local execution to get the files, but your implementation
+should be consistent with how you would return a `LatchFile` or `LatchDir` object in the 
+LatchBio platform. For example, if you consistently write output files to `/root/my_outputs`, 
+then returning `LatchDir("/root/my_outputs", "latch:///my_outputs")` will have identical 
+behavior locally and in the LatchBio platform.
+
+
+## Versioning
+
+With local-execution, you are using images that you have built locally to test new workflow 
+code. This means that the only time you need to build a new image during local-execution is 
+when you make changes to that image. Generally this only applies if you are changing the
+dependencies downloaded or PATH in the image. If you do need to make a change but don't want
+to commit changes to the image on the LatchBio platform yet, use the `-u` or `--use-auto-version` 
+flag.
