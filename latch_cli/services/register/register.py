@@ -259,37 +259,36 @@ def _login(ctx: RegisterCtx):
     data = {"pkg_name": ctx.image, "ws_account_id": current_workspace()}
     response = requests.post(ctx.latch_image_api_url, headers=headers, json=data)
 
-    if ctx.remote:
-        try:
-            response = response.json()
-            access_key = response["tmp_access_key"]
-            secret_key = response["tmp_secret_key"]
-            session_token = response["tmp_session_token"]
-        except KeyError as err:
-            raise ValueError(f"malformed response on image upload: {response}") from err
+    try:
+        response = response.json()
+        access_key = response["tmp_access_key"]
+        secret_key = response["tmp_secret_key"]
+        session_token = response["tmp_session_token"]
+    except KeyError as err:
+        raise ValueError(f"malformed response on image upload: {response}") from err
 
-        # TODO: cache
-        try:
-            client = boto3.session.Session(
-                aws_access_key_id=access_key,
-                aws_secret_access_key=secret_key,
-                aws_session_token=session_token,
-                region_name="us-west-2",
-            ).client("ecr")
-            token = client.get_authorization_token()["authorizationData"][0][
-                "authorizationToken"
-            ]
-        except Exception as err:
-            raise ValueError(
-                f"unable to retreive an ecr login token for user {ctx.account_id}"
-            ) from err
+    # TODO: cache
+    try:
+        client = boto3.session.Session(
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            aws_session_token=session_token,
+            region_name="us-west-2",
+        ).client("ecr")
+        token = client.get_authorization_token()["authorizationData"][0][
+            "authorizationToken"
+        ]
+    except Exception as err:
+        raise ValueError(
+            f"unable to retreive an ecr login token for user {ctx.account_id}"
+        ) from err
 
-        user, password = base64.b64decode(token).decode("utf-8").split(":")
-        ctx.dkr_client.login(
-            username=user,
-            password=password,
-            registry=ctx.dkr_repo,
-        )
+    user, password = base64.b64decode(token).decode("utf-8").split(":")
+    ctx.dkr_client.login(
+        username=user,
+        password=password,
+        registry=ctx.dkr_repo,
+    )
 
 
 def build_image(ctx: RegisterCtx, dockerfile: Path) -> List[str]:
