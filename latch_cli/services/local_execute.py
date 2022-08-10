@@ -5,12 +5,13 @@ from pathlib import Path
 import docker.errors
 
 from latch_cli.services.register import RegisterCtx, _print_build_logs, build_image
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 
 
 def local_execute(
     pkg_root: Path, 
     use_auto_version: bool,
-    output_dir: str,
+    output_dir: Path,
 ) -> None:
     """Executes a workflow locally within its latest registered container.
 
@@ -25,7 +26,8 @@ def local_execute(
             local execution so that previous images can be reused. Only really need
             to set to True for local execution if you update the Dockerfile.
         output_dir: The name of the output directory that the workflow writes to.
-            In the workflow that means it will write to /root/{output_dir}.
+            In the workflow that means it will write to {output_dir}. These files will
+            be visible in the 'outputs' folder locally.
 
 
     Example: ::
@@ -42,7 +44,7 @@ def local_execute(
         # Copy contents of workflow package to container's root directory to 
         # emulate natve workflow execution, rather than running from 
         # /root/local_execute, and rather than binding to /root.
-        cmd = f"cp -r /root/local_execute/!({output_dir}) /root ;" + \
+        cmd = f"cp -r /root/local_execute/!({output_dir.stem}) /root ;" + \
               "python3 /root/wf/__init__.py"
         container = ctx.dkr_client.create_container(
             image_name,
@@ -54,8 +56,8 @@ def local_execute(
                         "bind": "/root/local_execute",
                         "mode": "rw",
                     },
-                    str(ctx.pkg_root.joinpath(output_dir)): {
-                        "bind": f"/root/{output_dir}",
+                    str(ctx.pkg_root.joinpath('outputs')): {
+                        "bind": output_dir,
                         "mode": "rw",
                     },
                 }

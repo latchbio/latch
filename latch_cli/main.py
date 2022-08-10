@@ -271,7 +271,8 @@ def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]
     about local development.
     """,
 )
-@click.argument("pkg_root", nargs=1, type=click.Path(exists=True))@click.option(
+@click.argument("pkg_root", nargs=1, type=click.Path(exists=True))
+@click.option(
     "-u",
     "--use-auto-version",
     is_flag=True,
@@ -286,11 +287,12 @@ def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]
 @click.option(
     "-o",
     "--output-dir",
-    default="outputs",
-    type=str,
+    default=Path("/root/outputs"),
+    type=click.Path(),
     help=(
-        "The directory in which the outputs will be written to by the workflow. "
-        "(/root/{output_dir}). Defaults to 'outputs'."
+        "The directory in which the outputs will be written to within the workflow. "
+        "Defaults to '/root/outputs'. These outputs can be seen locally in the 'outputs' "
+        "directory."
     )
 )
 def local_execute(pkg_root: Path, use_auto_version: bool, output_dir: str):
