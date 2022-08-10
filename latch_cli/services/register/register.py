@@ -256,7 +256,7 @@ def register(
 def _login(ctx: RegisterCtx):
 
     headers = {"Authorization": f"Bearer {ctx.token}"}
-    data = {"pkg_name": ctx.image}
+    data = {"pkg_name": ctx.image, "ws_account_id": current_workspace()}
     response = requests.post(ctx.latch_image_api_url, headers=headers, json=data)
 
     if ctx.remote:
