@@ -41,6 +41,7 @@ class _CrashReporter:
 
         # Tarball contains:
         #   * JSON holding platform + package version metadata
+        #   * logs directory holding docker build logs
         #   * Text file holding traceback
         #   * (If register) workflow package (python files, Dockerfile, etc.)
         with tarfile.open(tarball_path, mode="x:gz") as tf:
@@ -52,6 +53,10 @@ class _CrashReporter:
                     traceback.print_exc(file=ntf)
                     ntf.seek(0)
                     tf.add(ntf.name, arcname="traceback.txt")
+
+            # Add logs/
+            if os.path.exists(pkg_path + 'logs/'):
+                tf.add(pkg_path + 'logs/', arcname= 'logs')
 
             if pkg_path is not None:
                 pkg_files = [

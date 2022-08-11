@@ -4,6 +4,7 @@ import re
 from collections import OrderedDict
 from pathlib import Path
 from typing import List, Union
+import shutil
 
 import click
 
@@ -65,6 +66,9 @@ def register(pkg_root: str, disable_auto_version: bool, remote: bool):
     except Exception as e:
         CrashReporter.report(pkg_path=pkg_root)
         click.secho(f"Unable to register workflow: {str(e)}", fg="red")
+    
+    # remove cached crash-report logs
+    shutil.rmtree(pkg_root + 'logs/')
 
 
 @main.command("login")
