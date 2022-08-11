@@ -4,10 +4,11 @@ config.latch
 Platform wide configuration, eg. api endpoints, callback server ports...
 """
 
-import os as _os
+import os
 
-CONSOLE_URL = _os.environ.get("LATCH_CLI_CONSOLE_URL", "https://console.latch.bio")
-NUCLEUS_URL = _os.environ.get("LATCH_CLI_NUCLEUS_URL", "https://nucleus.latch.bio")
+DOMAIN = os.environ.get("LATCH_SDK_DOMAIN", "latch.bio")
+CONSOLE_URL = f"https://console.{DOMAIN}"
+NUCLEUS_URL = f"https://nucleus.{DOMAIN}"
 
 
 SDK_ENDPOINTS = {
