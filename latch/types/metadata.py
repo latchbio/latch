@@ -160,6 +160,8 @@ class LatchMetadata:
     repository: Optional[str] = None
     license: str = "MIT"
     parameters: Dict[str, LatchParameter] = field(default_factory=dict)
+    wiki_url: Optional[str] = None
+    video_tutorial: Optional[str] = None
 
     @property
     def dict(self):

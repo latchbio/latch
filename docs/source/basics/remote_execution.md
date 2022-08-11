@@ -1,7 +1,15 @@
-# What is a Workflow?
+# Remote Execution
 
-A workflow is an analysis that takes in some input, processes it in one or more
-steps and produces some output.
+It is frequently desirable to be able to access a shell from within a running
+task of a workflow, to debug a misbehaving program or inspect some files for
+example. 
+
+_This feature is in alpha, please contact hannah@latch.bio to gain access._
+
+When inspecting a running task in the Console (console.latch.bio), simply click
+on the node representing the desired task and copy and paste the `latch exec
+<hash>` subcommand in the right sidebar into your terminal to retrieve a live
+shell from within the running task.
 
 ---
 

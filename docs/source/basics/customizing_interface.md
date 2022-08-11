@@ -13,6 +13,13 @@ docstring of the workflow function, you can specify:
 
 ---
 
+### Using `latch preview`
+
+The `latch preview` command on the CLI allows you to preview your workflow
+interface without the sometimes lengthy process of registration. Keep this in
+mind as you follow the rest of this documentation as this will allow you to
+rapidly make changes and iterate on the layout of your workflow's front-end.
+
 ## One Line Description
 
 The first line of the workflow function docstring will get rendered in the

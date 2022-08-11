@@ -50,4 +50,4 @@ def file_glob(
         wd = target_dir
     matched = sorted(wd.glob(pattern))
 
-    return [LatchFile(file, remote_directory + file.name) for file in matched]
+    return [LatchFile(str(file), remote_directory + file.name) for file in matched]

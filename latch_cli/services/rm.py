@@ -1,7 +1,7 @@
 import requests
 
 from latch_cli.config.latch import LatchConfig
-from latch_cli.utils import _normalize_remote_path, retrieve_or_login
+from latch_cli.utils import _normalize_remote_path, current_workspace, retrieve_or_login
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints
@@ -39,7 +39,7 @@ def rm(remote_path: str):
     token = retrieve_or_login()
     remote_path = _normalize_remote_path(remote_path)
 
-    data = {"filename": remote_path}
+    data = {"filename": remote_path, "ws_account_id": current_workspace()}
     headers = {"Authorization": f"Bearer {token}"}
     response = requests.post(url=endpoints["remove"], headers=headers, json=data)
 

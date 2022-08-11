@@ -3,7 +3,7 @@
 import importlib.util
 import typing
 from pathlib import Path
-from typing import Union
+from typing import Tuple, Union
 
 import google.protobuf.json_format as gpjson
 import requests
@@ -14,7 +14,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 from latch_cli.config.latch import LatchConfig
-from latch_cli.utils import retrieve_or_login
+from latch_cli.utils import current_workspace, retrieve_or_login
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints
@@ -143,14 +143,18 @@ def _guess_python_type(v: any) -> typing.T:
 
 def _get_workflow_interface(
     token: str, wf_name: str, version: Union[None, str]
-) -> (int, dict):
+) -> Tuple[int, dict]:
     """Retrieves the set of idl parameter values for a given workflow by name.
 
     Returns workflow id + interface as JSON string.
     """
 
     headers = {"Authorization": f"Bearer {token}"}
-    _interface_request = {"workflow_name": wf_name, "version": version}
+    _interface_request = {
+        "workflow_name": wf_name,
+        "version": version,
+        "ws_account_id": current_workspace(),
+    }
 
     url = endpoints["get-workflow-interface"]
 
@@ -212,7 +216,11 @@ def _launch_workflow(token: str, wf_id: str, params: dict) -> bool:
         ),
     }
 
-    _interface_request = {"workflow_id": str(wf_id), "params": params}
+    _interface_request = {
+        "workflow_id": str(wf_id),
+        "params": params,
+        "ws_account_id": current_workspace(),
+    }
     url = endpoints["execute-workflow"]
 
     response = requests.post(url, headers=headers, json=_interface_request)

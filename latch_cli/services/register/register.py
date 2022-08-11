@@ -4,23 +4,20 @@ import base64
 import contextlib
 import functools
 import os
+import random
 import re
 import shutil
+import string
 import tempfile
 from pathlib import Path
-from typing import List, Union
+from typing import List
 
 import boto3
 import requests
-from flytekit.configuration import (
-    FastSerializationSettings,
-    Image,
-    ImageConfig,
-    SerializationSettings,
-)
-from flytekit.tools.repo import serialize_to_folder
+from scp import SCPClient
 
 from latch_cli.services.register import RegisterCtx, RegisterOutput
+from latch_cli.utils import current_workspace
 
 _MAX_LINES = 10
 
@@ -222,19 +219,15 @@ def register(
 
     print(f"Initializing registration for {pkg_root}")
     if remote:
-        print(f"Connecting to remote server for docker build [alpha]...")
+        print("Connecting to remote server for docker build [alpha]...")
 
-    with tempfile.TemporaryDirectory() as td:
-
-        td_path = Path(td).resolve()
-
-        # _serialize_pkg_locally(ctx, pkg_root, td)
+    with TemporarySerialDir(ctx.ssh_client, remote) as td:
 
         dockerfile = ctx.pkg_root.joinpath("Dockerfile")
         build_logs = build_image(ctx, dockerfile, remote)
         _print_and_save_build_logs(build_logs, ctx.image_tagged, str(pkg_root))
 
-        serialize_logs, container_id = _serialize_pkg_in_container(ctx, td_path)
+        serialize_logs, container_id = _serialize_pkg_in_container(ctx, td)
         _print_serialize_logs(serialize_logs, ctx.image_tagged)
         exit_status = ctx.dkr_client.wait(container_id)
         if exit_status["StatusCode"] != 0:
@@ -245,7 +238,13 @@ def register(
         upload_image_logs = _upload_pkg_image(ctx)
         _print_upload_logs(upload_image_logs, ctx.image_tagged)
 
-        reg_resp = _register_serialized_pkg(ctx, td_path)
+        if remote:
+            with tempfile.TemporaryDirectory() as local_td:
+                scp = SCPClient(ctx.ssh_client.get_transport(), sanitize=lambda x: x)
+                scp.get(f"{td}/*", local_path=local_td, recursive=True)
+                reg_resp = _register_serialized_pkg(ctx, local_td)
+        else:
+            reg_resp = _register_serialized_pkg(ctx, td)
         _print_reg_resp(reg_resp, ctx.image_tagged)
 
     with open(ctx.version_archive_path, "a") as f:
@@ -261,8 +260,9 @@ def register(
 def _login(ctx: RegisterCtx):
 
     headers = {"Authorization": f"Bearer {ctx.token}"}
-    data = {"pkg_name": ctx.image}
+    data = {"pkg_name": ctx.image, "ws_account_id": current_workspace()}
     response = requests.post(ctx.latch_image_api_url, headers=headers, json=data)
+
     try:
         response = response.json()
         access_key = response["tmp_access_key"]
@@ -295,10 +295,9 @@ def _login(ctx: RegisterCtx):
     )
 
 
-def build_image(ctx: RegisterCtx, dockerfile: Path, remote: bool) -> List[str]:
+def build_image(ctx: RegisterCtx, dockerfile: Path) -> List[str]:
 
-    if remote is False:
-        _login(ctx)
+    _login(ctx)
     build_logs = ctx.dkr_client.build(
         path=str(dockerfile.parent),
         buildargs={"tag": ctx.full_image_tagged},
@@ -331,38 +330,6 @@ def _serialize_pkg_in_container(ctx: RegisterCtx, serialize_dir: Path) -> List[s
     return [x.decode("utf-8") for x in logs], container_id
 
 
-def _serialize_pkg_locally(ctx: RegisterCtx, pkg_root: Path, out_dir: Path):
-
-    # TODO pretty print errors
-
-    pkgs = ["wf"]
-
-    serialize_to_folder(
-        pkgs,
-        SerializationSettings(
-            image_config=ImageConfig(
-                default_image=Image(
-                    name=ctx.image,
-                    fqn=ctx.full_image,
-                    tag=ctx.version,
-                ),
-                images=[
-                    Image(
-                        name=ctx.image,
-                        fqn=ctx.full_image,
-                        tag=ctx.version,
-                    )
-                ],
-            ),
-            fast_serialization_settings=FastSerializationSettings(
-                enabled=False, destination_dir=None, distribution_location=None
-            ),
-        ),
-        str(pkg_root.resolve()),
-        out_dir,
-    )
-
-
 def _upload_pkg_image(ctx: RegisterCtx) -> List[str]:
 
     return ctx.dkr_client.push(
@@ -376,7 +343,10 @@ def _register_serialized_pkg(ctx: RegisterCtx, serialize_dir: Path) -> dict:
     headers = {"Authorization": f"Bearer {ctx.token}"}
 
     with contextlib.ExitStack() as stack:
-        serialize_files = {"version": ctx.version.encode("utf-8")}
+        serialize_files = {
+            "version": ctx.version.encode("utf-8"),
+            ".latch_ws": current_workspace().encode("utf-8"),
+        }
         for dirname, dirnames, fnames in os.walk(serialize_dir):
             for filename in fnames + dirnames:
                 file = Path(dirname).resolve().joinpath(filename)
@@ -389,3 +359,41 @@ def _register_serialized_pkg(ctx: RegisterCtx, serialize_dir: Path) -> dict:
         )
 
     return response.json()
+
+
+class TemporarySerialDir:
+
+    """Context manager to manage temporary serialization directory.
+
+    If the docker build is remote, handles creation..
+    """
+
+    def __init__(self, ssh_client=None, remote=False):
+
+        if remote and not ssh_client:
+            raise ValueError("Must provide an ssh client if remote is True.")
+
+        self.remote = remote
+        self.ssh_client = ssh_client
+        self._tempdir = None
+
+    def __enter__(self, *args):
+        if not self.remote:
+            self._tempdir = tempfile.TemporaryDirectory()
+            return Path(self._tempdir.name).resolve()
+        else:
+            td = "".join(
+                random.choice(
+                    string.ascii_uppercase + string.ascii_lowercase + string.digits
+                )
+                for _ in range(8)
+            )
+            self._tempdir = f"/tmp/{td}"
+            self.ssh_client.exec_command(f"mkdir {self._tempdir}")
+            return self._tempdir
+
+    def __exit__(self, *args):
+        if not self.remote:
+            self._tempdir.cleanup()
+        else:
+            self.ssh_client.exec_command(f"rmdir -rf {self._tempdir}")

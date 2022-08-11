@@ -10,11 +10,17 @@ from tempfile import NamedTemporaryFile
 from typing import List, Optional
 
 import docker
+import paramiko
 
 import latch_cli.tinyrequests as tinyrequests
 from latch_cli.config.latch import LatchConfig
 from latch_cli.constants import MAX_FILE_SIZE
-from latch_cli.utils import account_id_from_token, retrieve_or_login, with_si_suffix
+from latch_cli.utils import (
+    account_id_from_token,
+    current_workspace,
+    hash_directory,
+    retrieve_or_login,
+)
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints
@@ -61,6 +67,7 @@ class RegisterCtx:
 
     dkr_repo: Optional[str] = None
     dkr_client: docker.APIClient = None
+    ssh_client: paramiko.client.SSHClient = None
     key_material: Optional[str] = None
     pkg_root: Path = None  # root
     disable_auto_version: bool = False
@@ -87,41 +94,26 @@ class RegisterCtx:
             with open(version_file, "r") as vf:
                 self.version = vf.read().strip()
             if not self.disable_auto_version:
-                m = hashlib.new("sha256")
-                for containing_path, dirnames, fnames in os.walk(self.pkg_root):
-                    # for repeatability guarantees
-                    dirnames.sort()
-                    fnames.sort()
-                    for filename in fnames:
-                        path = Path(containing_path).joinpath(filename)
-                        m.update(str(path).encode("utf-8"))
-                        file_size = os.path.getsize(path)
-                        if file_size < MAX_FILE_SIZE:
-                            with open(path, "rb") as f:
-                                m.update(f.read())
-                        else:
-                            print(
-                                "\x1b[38;5;226m"
-                                f"WARNING: {path.relative_to(pkg_root.resolve())} is too large ({with_si_suffix(file_size)}) to checksum, skipping."
-                                "\x1b[0m"
-                            )
-                    for dirname in dirnames:
-                        path = Path(containing_path).joinpath(dirname)
-                        m.update(str(path).encode("utf-8"))
-                self.version = self.version + "-" + m.hexdigest()[:6]
+                hash = hash_directory(self.pkg_root)
+                self.version = self.version + "-" + hash[:6]
         except Exception as e:
             raise ValueError(
                 f"Unable to extract pkg version from {str(self.pkg_root)}"
             ) from e
 
         self.dkr_repo = LatchConfig.dkr_repo
+        self.remote = remote
 
         if token is None:
             self.token = retrieve_or_login()
         else:
             self.token = token
 
-        self.account_id = account_id_from_token(self.token)
+        ws = current_workspace()
+        if ws == "" or ws is None:
+            self.account_id = account_id_from_token(self.token)
+        else:
+            self.account_id = ws
 
         if remote is True:
             headers = {"Authorization": f"Bearer {self.token}"}
@@ -148,6 +140,10 @@ class RegisterCtx:
                 self.dkr_client = self._construct_dkr_client(
                     ssh_host=f"ssh://ubuntu@{public_ip}"
                 )
+                self.ssh_client = self._construct_ssh_client(
+                    host_ip=public_ip, username="ubuntu"
+                )
+
         else:
             self.dkr_client = self._construct_dkr_client()
 
@@ -226,9 +222,7 @@ class RegisterCtx:
         return version_archive_path
 
     @staticmethod
-    def _construct_dkr_client(
-        ssh_host: Optional[str] = None, ssh_key_path: Optional[str] = None
-    ):
+    def _construct_dkr_client(ssh_host: Optional[str] = None):
         """Try many methods of establishing valid connection with client.
 
         This was helpful -
@@ -303,3 +297,11 @@ class RegisterCtx:
                     "Docker is not running. Make sure that"
                     " Docker is running before attempting to register a workflow."
                 ) from de
+
+    @staticmethod
+    def _construct_ssh_client(host_ip: str, username: str):
+
+        ssh = paramiko.SSHClient()
+        ssh.load_system_host_keys()
+        ssh.connect(host_ip, username=username)
+        return ssh

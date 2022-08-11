@@ -80,6 +80,7 @@ getting_started/quick_start
 basics/what_is_a_workflow
 basics/parameter_types
 basics/working_with_files
+basics/uploading_test_data
 basics/customizing_interface
 basics/defining_cloud_resources
 basics/writing_dockerfiles

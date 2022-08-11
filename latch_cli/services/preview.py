@@ -7,7 +7,7 @@ from flytekit.clis.sdk_in_container.run import load_naive_entity
 
 from latch_cli.config.latch import LatchConfig
 from latch_cli.tinyrequests import post
-from latch_cli.utils import retrieve_or_login
+from latch_cli.utils import current_workspace, retrieve_or_login
 
 logger = logging.Logger(name="logger")
 config = LatchConfig()
@@ -67,10 +67,10 @@ def preview(workflow_name: str):
 
     try:
         wf = load_naive_entity("wf.__init__", workflow_name)
-    except:
+    except ImportError as e:
         raise ValueError(
-            f"Unable to find wf.__init__.{workflow_name}"
-            " - make sure that the function names match."
+            f"Unable to find {e.name} - make sure that all necessary packages"
+            " are installed and you have the correct function name."
         )
 
     d = {k: _deep_dict(wf.interface.inputs[k]) for k in wf.interface.inputs}
@@ -86,7 +86,8 @@ def preview(workflow_name: str):
                 {"variables": d},
                 sort_keys=True,
                 indent=2,
-            )
+            ),
+            "ws_account_id": current_workspace(),
         },
     )
 

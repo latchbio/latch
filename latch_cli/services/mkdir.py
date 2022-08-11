@@ -1,6 +1,6 @@
 import latch_cli.tinyrequests as tinyrequests
 from latch_cli.config.latch import LatchConfig
-from latch_cli.utils import _normalize_remote_path, retrieve_or_login
+from latch_cli.utils import _normalize_remote_path, current_workspace, retrieve_or_login
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints
@@ -42,20 +42,10 @@ def mkdir(remote_directory):
     remote_directory = _normalize_remote_path(remote_directory)
 
     headers = {"Authorization": f"Bearer {token}"}
-    data = {"directory": remote_directory}
+    data = {"directory": remote_directory, "ws_account_id": current_workspace()}
 
     response = tinyrequests.post(endpoints["mkdir"], headers=headers, json=data)
     json_data = response.json()
 
     if not json_data["success"]:
         raise ValueError(json_data["error"]["data"]["message"])
-
-    response = tinyrequests.post(
-        endpoints["verify"], headers=headers, json={"filename": remote_directory}
-    )
-    json_data = response.json()
-
-    if not json_data["success"]:
-        raise ValueError(json_data["error"]["data"]["message"])
-    elif not json_data["exists"]:
-        raise ValueError("Unable to create directory for some reason.")
