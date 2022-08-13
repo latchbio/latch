@@ -57,7 +57,7 @@ def workspace():
         click.secho(f"Already in context {selected_option}.", fg="green")
 
 
-def select_workspace_tui(title: str, options: List[str], clear_terminal: bool = False):
+def select_workspace_tui(title: str, options: List[str], clear_terminal: bool = True):
     """
     Renders a terminal UI that allows users to select one of the options
     listed in `options`
