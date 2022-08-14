@@ -284,17 +284,6 @@ def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]
         " want to permanently register those changes to Latch."
     ),
 )
-@click.option(
-    "-o",
-    "--output-dir",
-    default=Path("/root/outputs"),
-    type=click.Path(),
-    help=(
-        "The directory in which the outputs will be written to within the workflow. "
-        "Defaults to '/root/outputs'. These outputs can be seen locally in the 'outputs' "
-        "directory."
-    )
-)
 def local_execute(pkg_root: Path, use_auto_version: bool, output_dir: str):
     from latch_cli.services.local_execute import local_execute
 
@@ -302,7 +291,6 @@ def local_execute(pkg_root: Path, use_auto_version: bool, output_dir: str):
         local_execute(
             Path(pkg_root).resolve(), 
             use_auto_version=use_auto_version,
-            output_dir=output_dir
         )
     except Exception as e:
         CrashReporter.report()
