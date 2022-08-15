@@ -90,7 +90,7 @@ Execute a workflow within the latest registered container. Run from the
 outside the pkg root, eg. `latch local-execute myworkflow` where
 `myworkflow` is the directory containing your workflow package.
 
-This is the same as running `$ python3 wf/__init__.py` within the latest
+This is the same as running `$ python -c "from wf import main; main()"` within the latest
 registered container. Workflow code is overlayed on the latest registered
 container as a volume available at container runtime, meaning that changes to
 python code do not require full Docker rebuilds. This is ideal for rapid local
@@ -101,7 +101,7 @@ As an aside, we assume the workflow file contains a snippet conducive to local
 execution such as:
 
 ```python
-    if __name__ == "__main___":
+    def main():
        my_workflow(a="foo", reads=LatchFile("/users/von/neumann/machine.txt")
 ```
 
