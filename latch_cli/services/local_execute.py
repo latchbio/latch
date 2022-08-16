@@ -2,17 +2,27 @@
 
 from pathlib import Path
 import os
-import sys
 from typing import Optional, Tuple, Generator
 from distutils import dir_util
 from shutil import copyfile
 
 import docker.errors
+from pyparsing import java_style_comment
 
 from latch_cli.services.register import RegisterCtx, _print_build_logs, build_image
-from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
 
+# Generate local paths to mock latch:/// and s3://
+# TODO: Figure out how to do this without hard-coding mock_latch, mock_s3 paths
+# For now, sticking with hard coded paths that probably won't be accessed by the user.
+# Trying to dynamically create a random folder on the host and match up the paths between
+# the host (the one that calls local_execute and establishes bind mounts) and the container
+# is not straightforward and not worth the effort. It would only be protecting the user 
+# from accidentally deleting some files in the mock folders. 
+mock_latch_path = '/root/_mock_latch'
+mock_s3_path = '/root/_mock_s3'
+
+# Create local persistence class
 class LocalExecutePersistence(DataPersistence):
     """
     The simplest form of persistence that is available with default flytekit - Disk-based persistence.
@@ -38,8 +48,8 @@ class LocalExecutePersistence(DataPersistence):
         """
         Drops latch:/// or s3:// if it exists from the file
         """
-        for protocol, prefix in [('latch://', '/root/mock_latch/'), 
-                                 ('s3://', '/root/mock_s3/')]:
+        for protocol, prefix in [('latch://', mock_latch_path), 
+                                 ('s3://', mock_s3_path)]:
             if path.startswith(protocol):
                 return path.replace(protocol, prefix, 1)
         return path
@@ -71,9 +81,7 @@ class LocalExecutePersistence(DataPersistence):
             if recursive:
                 dir_util.copy_tree(self.strip_file_header(from_path), self.strip_file_header(to_path))
             else:
-                # Emulate s3's flat storage by automatically creating directory path
                 self._make_local_path(os.path.dirname(self.strip_file_header(to_path)))
-                # Write the object to a local file in the temp local folder
                 copyfile(self.strip_file_header(from_path), self.strip_file_header(to_path))
 
     def construct_path(self, _: bool, add_prefix: bool, *args: str) -> str:
@@ -83,20 +91,13 @@ class LocalExecutePersistence(DataPersistence):
             return os.path.join(prefix, *args)
         return os.path.join(*args)
 
-# def create_latch_s3_paths() -> Tuple[str, str]:
-#     flyte_ctx = FlyteContextManager.current_context()
-#     mock_latch_path = flyte_ctx.file_access.get_random_local_directory()
-#     mock_s3_path = flyte_ctx.file_access.get_random_local_directory()
-#     return mock_latch_path, mock_s3_path
-
-def prep_container_for_local_exec():
+def prep_container_for_local_exec() -> None:
     DataPersistencePlugins.register_plugin("latch://", LocalExecutePersistence, force=True)
     DataPersistencePlugins.register_plugin("s3://", LocalExecutePersistence, force=True)
 
 def local_execute(
     pkg_root: Path, 
     use_auto_version: bool,
-    output_dir: Path,
 ) -> None:
     """Executes a workflow locally within its latest registered container.
 
@@ -110,9 +111,6 @@ def local_execute(
             auto-versioning of the workflow. Recommended to be set to False for
             local execution so that previous images can be reused. Only really need
             to set to True for local execution if you update the Dockerfile.
-        output_dir: The name of the output directory that the workflow writes to.
-            In the workflow that means it will write to {output_dir}. These files will
-            be visible in the 'outputs' folder locally.
 
 
     Example: ::
@@ -129,7 +127,6 @@ def local_execute(
         # emulate natve workflow execution, rather than running from 
         # /root/local_execute, and rather than binding to /root.
         # Then call local_execute module to register the local latch/s3 plugins.
-        # TODO: Figure out how to do this without hard-coding mock_latch, mock_s3 paths
         cmd =   "cp -r /root/local_execute/!(mock_latch|mock_s3) /root ;" + \
                 "python3 -c " + \
                 "'from latch_cli.services.local_execute import prep_container_for_local_exec; " + \
@@ -143,14 +140,14 @@ def local_execute(
                 binds={
                     str(ctx.pkg_root): {
                         "bind": "/root/local_execute",
-                        "mode": "rw",
+                        "mode": "ro",
                     },
                     str(ctx.pkg_root.joinpath('mock_latch')): {
-                        "bind": '/root/mock_latch',
+                        "bind": mock_latch_path,
                         "mode": "rw",
                     },
                     str(ctx.pkg_root.joinpath('mock_s3')): {
-                        "bind": '/root/mock_s3',
+                        "bind": mock_s3_path,
                         "mode": "rw",
                     },
                 }

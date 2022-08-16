@@ -264,7 +264,7 @@ def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]
     Assuming this file contains a snippet conducive to local execution such as:
 
     \b
-        {ac.bold}if __name__ == "__main___":
+        {ac.bold}def main():
            my_workflow(a="foo", reads=LatchFile("/users/von/neuman/machine.txt"){ac.reset}
 
     Visit {ac.underline}https://docs.latch.bio/basics/local_development.html{ac.no_underline} to read more
@@ -284,7 +284,7 @@ def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]
         " want to permanently register those changes to Latch."
     ),
 )
-def local_execute(pkg_root: Path, use_auto_version: bool, output_dir: str):
+def local_execute(pkg_root: Path, use_auto_version: bool):
     from latch_cli.services.local_execute import local_execute
 
     try:

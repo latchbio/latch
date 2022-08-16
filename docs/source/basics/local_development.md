@@ -74,7 +74,7 @@ When a workflow is executing locally, folders named `mock_latch` and `mock_s3`
 will be mounted into the container, and created if they don't exist yet. These folders
 will be local versions of `latch:///` and `s3://` respectively. For example, if you 
 want to test a workflow using a LatchFile 'data.txt' as input, you can place the file
-in `my_workflow/mock_latch/data.txt` and pass the path to the workflow as `latch:///data.txt`.
+in `my_workflow/mock_latch/data.txt` and pass the file to the workflow as `LatchFile('latch:///data.txt')`.
 Similarly, if you are returning or creating LatchFiles or LatchDirs in your tasks or workflows,
 they will be created in these `mock_latch` and `mock_s3` folders. For example, if your workflow
 returns `LatchDir('outputs', 'latch:///outputs')`, the outputs will be created in
