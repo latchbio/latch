@@ -224,7 +224,7 @@ def register(
     with TemporarySerialDir(ctx.ssh_client, remote) as td:
 
         dockerfile = ctx.pkg_root.joinpath("Dockerfile")
-        build_logs = build_image(ctx, dockerfile, remote)
+        build_logs = build_image(ctx, dockerfile)
         _print_and_save_build_logs(build_logs, ctx.image_tagged, str(pkg_root))
 
         serialize_logs, container_id = _serialize_pkg_in_container(ctx, td)
