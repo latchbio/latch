@@ -52,7 +52,10 @@ class LatchFile(FlyteFile):
     """
 
     def __init__(
-        self, path: Union[str, PathLike], remote_path: PathLike = None, **kwargs
+        self,
+        path: Union[str, PathLike],
+        remote_path: Optional[PathLike] = None,
+        **kwargs,
     ):
         if _is_valid_url(path) and remote_path is None:
             self._remote_path = path
