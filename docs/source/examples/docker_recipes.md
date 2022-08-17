@@ -43,6 +43,26 @@ RUN conda install -c defaults -c conda-forge -c bioconda -y -n base --debug -c b
 ```
 
 ---
+## Installing R
+<br>
+
+```Dockerfile
+# Install R version 4.2.1
+RUN apt install -y dirmngr apt-transport-https ca-certificates software-properties-common gnupg2
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-key '95C0FAF38DB3CCAD0C080A7BDC78B2DDEABC47B7'
+RUN add-apt-repository 'deb https://cloud.r-project.org/bin/linux/debian buster-cran40/'
+RUN apt update
+RUN apt install -y r-base build-essential
+RUN apt-get install libcurl4-openssl-dev
+
+# Example R packages
+RUN R -e "install.packages('Rcpp')"
+RUN R -e "install.packages('curl')"
+RUN R -e "install.packages('RCurl')"
+RUN R -e "install.packages('BiocManager')"
+```
+
+---
 ## Build binaries from source
 <br>
 
