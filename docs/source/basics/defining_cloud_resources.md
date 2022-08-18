@@ -16,7 +16,6 @@ represented as decorators:
 * `small_task`: 2 cpus, 4 gigs of memory, 0 gpus
 * `medium_task`: 8 cpus, 32 gigs of memory, 0 gpus
 * `large_task`: 31 cpus, 120 gigs of memory, 0 gpus
-* `medium_gpu_task`: 7 cpus, 30 gigs of memory, 1 gpu (16 gigs of VRAM, 2,560 cuda cores)
 * `large_gpu_task`: 31 cpus, 120 gigs of memory, 1 gpu (24 gigs of VRAM, 9,216 cuda cores)
 
 We use the tasks as follows:
