@@ -55,32 +55,38 @@ def _print_window(curr_lines: List[str], line: str):
         return curr_lines
 
 
-def _print_build_logs(build_logs, image):
+def _print_and_save_build_logs(build_logs, image, path):
     print(f"Building Docker image for {image}")
-    r = re.compile("^Step [0-9]+/[0-9]+ :")
-    curr_lines = []
-    for x in build_logs:
-        # for dockerfile parse errors
-        message: str = x.get("message")
-        if message is not None:
-            raise ValueError(message)
+    os.makedirs(path + "/.logs/", exist_ok=True)
 
-        lines: str = x.get("stream")
-        error: str = x.get("error")
-        if error is not None:
-            raise OSError(f"Error when building image ~ {error}")
-        if lines:
-            for line in lines.split("\n"):
-                curr_terminal_width = shutil.get_terminal_size()[0]
-                if len(line) > curr_terminal_width:
-                    line = line[: curr_terminal_width - 3] + "..."
+    with open(path + "/.logs/docker-build-logs.txt", "w") as save_file:
+        r = re.compile("^Step [0-9]+/[0-9]+ :")
+        curr_lines = []
+        for x in build_logs:
+            # for dockerfile parse errors
+            message: str = x.get("message")
+            if message is not None:
+                save_file.write(f"{message}\n")
+                raise ValueError(message)
 
-                if r.match(line):
-                    curr_lines = _delete_lines(curr_lines)
-                    print("\x1b[38;5;33m" + line + "\x1b[0m")
-                else:
-                    curr_lines = _print_window(curr_lines, line)
-    _delete_lines(curr_lines)
+            lines: str = x.get("stream")
+            error: str = x.get("error")
+            if error is not None:
+                save_file.write(f"{error}\n")
+                raise OSError(f"Error when building image ~ {error}")
+            if lines:
+                save_file.write(f"{lines}\n")
+                for line in lines.split("\n"):
+                    curr_terminal_width = shutil.get_terminal_size()[0]
+                    if len(line) > curr_terminal_width:
+                        line = line[: curr_terminal_width - 3] + "..."
+
+                    if r.match(line):
+                        curr_lines = _delete_lines(curr_lines)
+                        print("\x1b[38;5;33m" + line + "\x1b[0m")
+                    else:
+                        curr_lines = _print_window(curr_lines, line)
+        _delete_lines(curr_lines)
 
 
 def _print_upload_logs(upload_image_logs, image):
@@ -221,7 +227,7 @@ def register(
 
         dockerfile = ctx.pkg_root.joinpath("Dockerfile")
         build_logs = build_image(ctx, dockerfile)
-        _print_build_logs(build_logs, ctx.image_tagged)
+        _print_and_save_build_logs(build_logs, ctx.image_tagged, str(pkg_root))
 
         serialize_logs, container_id = _serialize_pkg_in_container(ctx, td)
         _print_serialize_logs(serialize_logs, ctx.image_tagged)
