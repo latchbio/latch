@@ -1,12 +1,13 @@
 """Entrypoints to service functions through a latch_cli."""
 
+import os
 import re
+import shutil
 from collections import OrderedDict
 from functools import wraps
 from pathlib import Path
 from typing import List, Union
-import shutil
-import os
+
 import click
 
 import latch_cli.click_utils
@@ -69,8 +70,8 @@ def register(pkg_root: str, disable_auto_version: bool, remote: bool):
         click.secho(f"Unable to register workflow: {str(e)}", fg="red")
     finally:
         # remove cached crash-report logs
-        if os.path.isdir(pkg_root + 'logs/'):
-            shutil.rmtree(pkg_root + 'logs/')
+        if os.path.isdir(pkg_root + ".logs/"):
+            shutil.rmtree(pkg_root + ".logs/")
 
 
 @main.command("login")

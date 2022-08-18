@@ -54,11 +54,12 @@ def _print_window(curr_lines: List[str], line: str):
         curr_lines.append(line)
         return curr_lines
 
+
 def _print_and_save_build_logs(build_logs, image, path):
     print(f"Building Docker image for {image}")
-    os.makedirs(path + '/logs/', exist_ok=True) 
-    
-    with open(path + '/logs/docker-build-logs.txt', 'w') as save_file:
+    os.makedirs(path + "/.logs/", exist_ok=True)
+
+    with open(path + "/.logs/docker-build-logs.txt", "w") as save_file:
         r = re.compile("^Step [0-9]+/[0-9]+ :")
         curr_lines = []
         for x in build_logs:
@@ -86,6 +87,7 @@ def _print_and_save_build_logs(build_logs, image, path):
                     else:
                         curr_lines = _print_window(curr_lines, line)
         _delete_lines(curr_lines)
+
 
 def _print_upload_logs(upload_image_logs, image):
     print(f"Uploading Docker image for {image}")
