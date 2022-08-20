@@ -108,9 +108,6 @@ def _get_medium_pod() -> Pod:
     return Pod(
         pod_spec=V1PodSpec(
             containers=[primary_container],
-            tolerations=[
-                V1Toleration(effect="NoSchedule", key="ng", value="on-demand-medium")
-            ],
         ),
         primary_container_name="primary",
     )
