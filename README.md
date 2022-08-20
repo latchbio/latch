@@ -12,7 +12,7 @@ workflow orchestration framework provides - task-level type-safety and
 containerization, independent task scheduling, and heterogeneous & highly
 scalable computing infrastructure.
 
-[Docs](https://docs.latch.bio) • [Installation](#installation) •
+[Slack Community](https://join.slack.com/t/latchbiosdk/shared_invite/zt-193ibmedi-WB6mBu2GJ2WejUHhxMOuwg) • [Docs](https://docs.latch.bio) • [Installation](#installation) •
 [Quickstart](#configuration) • [Latch](https://latch.bio) • [Latch Verified](https://github.com/latch-verified)
 
 
