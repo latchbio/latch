@@ -54,11 +54,12 @@ class _CrashReporter:
                     ntf.seek(0)
                     tf.add(ntf.name, arcname="traceback.txt")
 
-            # Add logs/
-            if os.path.exists(pkg_path + ".logs/"):
-                tf.add(pkg_path + "logs/", arcname="logs")
-
             if pkg_path is not None:
+
+                # Add logs/
+                if os.path.exists(pkg_path + ".logs/"):
+                    tf.add(pkg_path + "logs/", arcname="logs")
+
                 pkg_files = [
                     os.path.join(dp, f)
                     for dp, _, filenames in os.walk(pkg_path)
