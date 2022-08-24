@@ -54,9 +54,9 @@ class PKCE:
        it to "t(code_verifier)" from (B).  Access is denied if they are
        not equal.
 
-    _An attacker who intercepts the authorization code at (B) is unable to_
-    _redeem it for an access token, as they are not in possession of the_
-    _"code_verifier" secret._
+    An attacker who intercepts the authorization code at (B) is unable to
+    redeem it for an access token, as they are not in possession of the
+    "code_verifier" secret.
 
     Example usage: ::
 
@@ -71,10 +71,11 @@ class PKCE:
     challenge_method = "S256"
     """The challenge method used to encode the code verifier.
 
-    ::
-        'If the client is capable of using "S256", it MUST use "S256", as
-        "S256" is Mandatory To Implement (MTI) on the server.'
-            ~ RFC7636#section-4.2.
+    'If the client is capable of using "S256", it MUST use "S256", as
+    "S256" is Mandatory To Implement (MTI) on the server.'
+        
+    .. _RFC7636#section-4.2:
+        https://datatracker.ietf.org/doc/html/rfc7636#section-4.2
 
     Thus this value is hardcoded.
     """
@@ -97,7 +98,7 @@ class PKCE:
             code verifier: A cryptographically random string that is used to
                 correlate the authorization request to the token request.
             code challenge: A challenge derived from the code verifier that is
-            sent in the authorization request, to be verified against later.
+                sent in the authorization request, to be verified against later.
 
         .. _RFC7636:
             https://datatracker.ietf.org/doc/html/rfc7636

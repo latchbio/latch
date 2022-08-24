@@ -1,8 +1,8 @@
 # Conditional Sections and Map Tasks
 
----
-
 Two key limitations with the vanilla task-workflow model is the inability to (a) conditionally run tasks (and thus save on resources) and (b) run identical copies of the same task on many different inputs in parallel. The Latch SDK supports constructs on top of tasks/workflows to make these possible.
+
+---
 
 ## Conditional Sections
 

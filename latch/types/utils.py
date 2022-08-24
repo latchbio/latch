@@ -1,13 +1,15 @@
+from pathlib import Path
+from typing import Union
 from urllib.parse import urlparse
 
 
-def _is_valid_url(raw_url: str) -> bool:
+def _is_valid_url(raw_url: Union[str, Path]) -> bool:
     """A valid URL (as a source or destination of a LatchFile) must:
     * contain a latch or s3 scheme
     * contain an absolute path
     """
     try:
-        parsed = urlparse(raw_url)
+        parsed = urlparse(str(raw_url))
     except ValueError:
         return False
     if parsed.scheme not in ("latch", "s3"):

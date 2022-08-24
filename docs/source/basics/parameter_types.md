@@ -1,13 +1,13 @@
 # Parameter Types
 
----
-
 The Latch SDK supports first-class static typing. All input parameters and
 output values must be annotated with types in the function signature.
 
 These type annotations validate task values and guide construction of
 parameter-specific frontend components when your interface is generated at
 registration.
+
+---
 
 ## Supported Types
 
@@ -64,7 +64,7 @@ def foo(
 ```
 
 ### Enums
-
+_Note_: As expressed in the [Flyte Docs](https://docs.flyte.org/projects/cookbook/en/stable/auto/core/type_system/enums.html), Enum values can only be strings.
 ```python
 from enum import Enum
 

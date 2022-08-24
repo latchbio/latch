@@ -1,6 +1,6 @@
 """
 config.user
-~~~~~~
+~~~~~~~~~~~
 Repository for retrieving + updating user config values.
 """
 
@@ -38,7 +38,19 @@ class UserConfig:
         except FileNotFoundError:
             return ""
 
+    @property
+    def current_workspace(self) -> str:
+        try:
+            with open(self.root_dir.joinpath("workspace"), "r") as f:
+                return f.read().strip()
+        except FileNotFoundError:
+            return ""
+
     def update_token(self, token: str):
         """Updates user config with new token regardless if one exists."""
         with open(self.root_dir.joinpath("token"), "w") as f:
             f.write(token)
+
+    def update_workspace(self, workspace: str):
+        with open(self.root_dir.joinpath("workspace"), "w") as f:
+            f.write(workspace)

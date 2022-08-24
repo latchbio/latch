@@ -2,50 +2,113 @@
 
 import base64
 import contextlib
+import functools
 import os
+import random
+import re
+import shutil
+import string
 import tempfile
 from pathlib import Path
-from typing import List, Union
+from typing import List
 
 import boto3
 import requests
+from scp import SCPClient
 
 from latch_cli.services.register import RegisterCtx, RegisterOutput
+from latch_cli.utils import current_workspace
+
+_MAX_LINES = 10
+
+# for parsing out ansi escape codes
+_ANSI_REGEX = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
 
 
-def _print_build_logs(build_logs, image):
-    print(f"\tBuilding Docker image for {image}")
-    for x in build_logs:
-        line = x.get("stream")
-        error = x.get("error")
-        if error is not None:
-            print(f"\t\t{x}")
-            raise OSError(f"Error when building image ~ {x}")
-        elif line is not None:
-            print(f"\t\t{line}", end="")
+print = functools.partial(print, flush=True)
 
 
-def _print_serialize_logs(serialize_logs, image):
-    print(f"\tSerializing workflow in {image}:")
-    for x in serialize_logs:
-        print(f"\t\t{x}", end="")
+def _delete_lines(lines: List[str]):
+    """Deletes the previous len(lines) lines, assuming cursor is on a
+    new line just below the first line to be deleted"""
+    for _ in lines:
+        print("\x1b[1F\x1b[0G\x1b[2K", end="")
+    return []
+
+
+def _print_window(curr_lines: List[str], line: str):
+    """Prints the lines curr_lines[1:] and line, overwriting curr_lines
+    in the process"""
+    if line == "":
+        return curr_lines
+    elif len(curr_lines) >= _MAX_LINES:
+        line = _ANSI_REGEX.sub("", line)
+        new_lines = curr_lines[len(curr_lines) - _MAX_LINES + 1 :]
+        new_lines.append(line)
+        _delete_lines(curr_lines)
+        for s in new_lines:
+            print("\x1b[38;5;245m" + s + "\x1b[0m")
+        return new_lines
+    else:
+        print("\x1b[38;5;245m" + line + "\x1b[0m")
+        curr_lines.append(line)
+        return curr_lines
+
+
+def _print_and_save_build_logs(build_logs, image, path):
+    print(f"Building Docker image for {image}")
+    os.makedirs(path + "/.logs/", exist_ok=True)
+
+    with open(path + "/.logs/docker-build-logs.txt", "w") as save_file:
+        r = re.compile("^Step [0-9]+/[0-9]+ :")
+        curr_lines = []
+        for x in build_logs:
+            # for dockerfile parse errors
+            message: str = x.get("message")
+            if message is not None:
+                save_file.write(f"{message}\n")
+                raise ValueError(message)
+
+            lines: str = x.get("stream")
+            error: str = x.get("error")
+            if error is not None:
+                save_file.write(f"{error}\n")
+                raise OSError(f"Error when building image ~ {error}")
+            if lines:
+                save_file.write(f"{lines}\n")
+                for line in lines.split("\n"):
+                    curr_terminal_width = shutil.get_terminal_size()[0]
+                    if len(line) > curr_terminal_width:
+                        line = line[: curr_terminal_width - 3] + "..."
+
+                    if r.match(line):
+                        curr_lines = _delete_lines(curr_lines)
+                        print("\x1b[38;5;33m" + line + "\x1b[0m")
+                    else:
+                        curr_lines = _print_window(curr_lines, line)
+        _delete_lines(curr_lines)
 
 
 def _print_upload_logs(upload_image_logs, image):
-    print(f"\tUploading Docker image for {image}")
+    print(f"Uploading Docker image for {image}")
     prog_map = {}
 
-    def _pp_prog_map(m):
+    def _pp_prog_map(prog_map, prev_lines):
+        if prev_lines > 0:
+            print("\x1b[2K\x1b[1E" * prev_lines + f"\x1b[{prev_lines}F", end="")
         prog_chunk = ""
         i = 0
-        for id, prog in m.items():
+        for id, prog in prog_map.items():
             if prog is None:
                 continue
-            prog_chunk += f"\t\t{id} ~ {prog}\n"
+            prog_chunk += f"{id} ~ {prog}\n"
             i += 1
         if prog_chunk == "":
-            return
+            return 0
         print(prog_chunk, end=f"\x1B[{i}A")
+        return i
+
+    prev_lines = 0
 
     for x in upload_image_logs:
         if (
@@ -54,26 +117,46 @@ def _print_upload_logs(upload_image_logs, image):
         ):
             raise OSError(f"Docker authorization for {image} is expired.")
         prog_map[x.get("id")] = x.get("progress")
-        _pp_prog_map(prog_map)
+        prev_lines = _pp_prog_map(prog_map, prev_lines)
 
 
 def _print_reg_resp(resp, image):
-    print(f"\tRegistering {image} with LatchBio.")
-    print("\tstdout:")
-    for x in resp["stdout"].split("\n"):
-        print(f"\t\t{x}")
-    print("\tstderr:")
-    for x in resp["stderr"].split("\n"):
-        print(f"\t\t{x}")
+    print(f"Registering {image} with LatchBio.")
+    version = image.split(":")[1]
+
+    if not resp.get("success"):
+        error_str = f"Error registering {image}\n\n"
+        if resp.get("stderr") is not None:
+            for line in resp.get("stderr").split("\n"):
+                if line and not line.startswith('{"json"'):
+                    error_str += line + "\n"
+        if "task with different structure already exists" in error_str:
+            error_str = f"This version ({version}) already exists."
+            " Make sure that you've saved any changes you made."
+        raise ValueError(error_str)
+    elif not "Successfully registered file" in resp["stdout"]:
+        raise ValueError(
+            f"This version ({version}) already exists."
+            " Make sure that you've saved any changes you made."
+        )
+    else:
+        print(resp.get("stdout"))
+
+
+def _print_serialize_logs(serialize_logs, image):
+    print(f"Serializing workflow in {image}:")
+    for x in serialize_logs:
+        print(x, end="")
 
 
 def register(
     pkg_root: str,
-    remote: Union[str, None] = None,
+    disable_auto_version: bool = False,
+    remote: bool = False,
 ) -> RegisterOutput:
     """Registers a workflow, defined as python code, with Latch.
 
-    Kicks off a three-legged OAuth2.0 flow outlined in `this RFC`_.  Logic
+    Kicks off a three-legged OAuth2.0 flow outlined in `RFC6749`_.  Logic
     scaffolding this flow and detailed documentation can be found in the
     `latch.auth` package
 
@@ -81,7 +164,7 @@ def register(
     login. The SDK meanwhile spins up a callback server on a separate thread
     that will be hit when the browser login is successful with an access token.
 
-    .. _this RFC
+    .. _RFC6749:
         https://datatracker.ietf.org/doc/html/rfc6749
 
     The major constituent steps are:
@@ -105,13 +188,7 @@ def register(
             register. The path can be absolute or relative. The path is always
             a directory, with its structure exactly as constructed and
             described in the `cli.services.init` function.
-        dockerfile: An optional valid path pointing to `Dockerfile`_ to define
-            a custom container. If passed, the resulting container will be used
-            as the environment to execute the registered workflow, allowing
-            arbitrary binaries and libraries to be called from workflow code.
-            However, be warned, this Dockerfile will be used *as is* - files
-            must be copied correctly and shell variables must be set to ensure
-            correct execution. See examples (TODO) for guidance.
+
 
     Example: ::
 
@@ -129,25 +206,51 @@ def register(
         https://docs.flyte.org/en/latest/concepts/registration.html
     """
 
-    ctx = RegisterCtx(pkg_root)
-    ctx.remote = remote
+    pkg_root = Path(pkg_root).resolve()
+    ctx = RegisterCtx(
+        pkg_root, disable_auto_version=disable_auto_version, remote=remote
+    )
+
+    with open(ctx.version_archive_path, "r") as f:
+        registered_versions = f.read().split("\n")
+        if ctx.version in registered_versions:
+            raise ValueError(
+                f"This version ({ctx.version}) already exists."
+                " Make sure that you've saved any changes you made."
+            )
+
     print(f"Initializing registration for {pkg_root}")
+    if remote:
+        print("Connecting to remote server for docker build [alpha]...")
 
-    dockerfile = ctx.pkg_root.joinpath("Dockerfile")
-    build_logs = build_image(ctx, dockerfile)
-    _print_build_logs(build_logs, ctx.image_tagged)
+    with TemporarySerialDir(ctx.ssh_client, remote) as td:
 
-    with tempfile.TemporaryDirectory() as td:
-        td_path = Path(td).resolve()
+        dockerfile = ctx.pkg_root.joinpath("Dockerfile")
+        build_logs = build_image(ctx, dockerfile)
+        _print_and_save_build_logs(build_logs, ctx.image_tagged, str(pkg_root))
 
-        serialize_logs = _serialize_pkg(ctx, td_path)
+        serialize_logs, container_id = _serialize_pkg_in_container(ctx, td)
         _print_serialize_logs(serialize_logs, ctx.image_tagged)
+        exit_status = ctx.dkr_client.wait(container_id)
+        if exit_status["StatusCode"] != 0:
+            raise ValueError(
+                f"Serialization exited with nonzero exit code: {exit_status['Error']}"
+            )
 
         upload_image_logs = _upload_pkg_image(ctx)
         _print_upload_logs(upload_image_logs, ctx.image_tagged)
 
-        reg_resp = _register_serialized_pkg(ctx, td_path)
+        if remote:
+            with tempfile.TemporaryDirectory() as local_td:
+                scp = SCPClient(ctx.ssh_client.get_transport(), sanitize=lambda x: x)
+                scp.get(f"{td}/*", local_path=local_td, recursive=True)
+                reg_resp = _register_serialized_pkg(ctx, local_td)
+        else:
+            reg_resp = _register_serialized_pkg(ctx, td)
         _print_reg_resp(reg_resp, ctx.image_tagged)
+
+    with open(ctx.version_archive_path, "a") as f:
+        f.write(ctx.version + "\n")
 
     return RegisterOutput(
         build_logs=build_logs,
@@ -159,8 +262,9 @@ def register(
 def _login(ctx: RegisterCtx):
 
     headers = {"Authorization": f"Bearer {ctx.token}"}
-    data = {"pkg_name": ctx.image}
+    data = {"pkg_name": ctx.image, "ws_account_id": current_workspace()}
     response = requests.post(ctx.latch_image_api_url, headers=headers, json=data)
+
     try:
         response = response.json()
         access_key = response["tmp_access_key"]
@@ -193,10 +297,7 @@ def _login(ctx: RegisterCtx):
     )
 
 
-def build_image(
-    ctx: RegisterCtx,
-    dockerfile: Path,
-) -> List[str]:
+def build_image(ctx: RegisterCtx, dockerfile: Path) -> List[str]:
 
     _login(ctx)
     build_logs = ctx.dkr_client.build(
@@ -208,7 +309,7 @@ def build_image(
     return build_logs
 
 
-def _serialize_pkg(ctx: RegisterCtx, serialize_dir: Path) -> List[str]:
+def _serialize_pkg_in_container(ctx: RegisterCtx, serialize_dir: Path) -> List[str]:
 
     _serialize_cmd = ["make", "serialize"]
     container = ctx.dkr_client.create_container(
@@ -228,7 +329,7 @@ def _serialize_pkg(ctx: RegisterCtx, serialize_dir: Path) -> List[str]:
     ctx.dkr_client.start(container_id)
     logs = ctx.dkr_client.logs(container_id, stream=True)
 
-    return [x.decode("utf-8") for x in logs]
+    return [x.decode("utf-8") for x in logs], container_id
 
 
 def _upload_pkg_image(ctx: RegisterCtx) -> List[str]:
@@ -244,7 +345,10 @@ def _register_serialized_pkg(ctx: RegisterCtx, serialize_dir: Path) -> dict:
     headers = {"Authorization": f"Bearer {ctx.token}"}
 
     with contextlib.ExitStack() as stack:
-        serialize_files = {"version": ctx.version.encode("utf-8")}
+        serialize_files = {
+            "version": ctx.version.encode("utf-8"),
+            ".latch_ws": current_workspace().encode("utf-8"),
+        }
         for dirname, dirnames, fnames in os.walk(serialize_dir):
             for filename in fnames + dirnames:
                 file = Path(dirname).resolve().joinpath(filename)
@@ -257,3 +361,41 @@ def _register_serialized_pkg(ctx: RegisterCtx, serialize_dir: Path) -> dict:
         )
 
     return response.json()
+
+
+class TemporarySerialDir:
+
+    """Context manager to manage temporary serialization directory.
+
+    If the docker build is remote, handles creation..
+    """
+
+    def __init__(self, ssh_client=None, remote=False):
+
+        if remote and not ssh_client:
+            raise ValueError("Must provide an ssh client if remote is True.")
+
+        self.remote = remote
+        self.ssh_client = ssh_client
+        self._tempdir = None
+
+    def __enter__(self, *args):
+        if not self.remote:
+            self._tempdir = tempfile.TemporaryDirectory()
+            return Path(self._tempdir.name).resolve()
+        else:
+            td = "".join(
+                random.choice(
+                    string.ascii_uppercase + string.ascii_lowercase + string.digits
+                )
+                for _ in range(8)
+            )
+            self._tempdir = f"/tmp/{td}"
+            self.ssh_client.exec_command(f"mkdir {self._tempdir}")
+            return self._tempdir
+
+    def __exit__(self, *args):
+        if not self.remote:
+            self._tempdir.cleanup()
+        else:
+            self.ssh_client.exec_command(f"rmdir -rf {self._tempdir}")

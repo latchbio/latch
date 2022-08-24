@@ -1,9 +1,9 @@
 # What is a Workflow?
 
----
-
 A workflow is an analysis that takes in some input, processes it in one or more
 steps and produces some output.
+
+---
 
 Formally, a workflow can be described as a [directed acyclic graph](https://en.wikipedia.org/wiki/Directed_acyclic_graph) (DAG), where each
 node in the graph is called a task. This computational graph is a flexible model
@@ -57,7 +57,8 @@ as another task we can assume was defined elsewhere, `sort_bam_task`.
 You must not write actual logic in the workflow function body. It can only be
 used to call task functions and pass task function return values to downstream
 task functions. Additionally all task functions must be called with keyword
-arguments.
+arguments. You also cannot access variables directly in the workflow function; 
+in the example below, you would not be able to pass in `read1=read1.local_path`.
 
 ```python
 @workflow
@@ -313,3 +314,21 @@ The registration process requires a local installation of Docker.
 To re-register changes, make sure you update the value in the version file. (The
 value of the version is not important, only that it is distinct from previously
 registered versions).
+
+### Remote Registration [Alpha]
+
+If you do not have access to Docker on your local machine, lack space on your
+local filesystem for image layers, or lack fast internet to facilitate timely
+registration, you can use the `--remote` flag with `latch register` to build and
+upload your workflow's images from a managed and speedy machine.
+
+
+```
+$ latch register newtest --remote
+Initializing registration for /Users/kenny/latch/latch/newtest
+Connecting to remote server for docker build [alpha]...
+
+```
+
+The registration process will behave as usual but the build/upload will not
+occur on your local machine.

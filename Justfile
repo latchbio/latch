@@ -3,7 +3,7 @@ local_install:
 
 build:
   rm -rf __pycache__ dist build latch.egg-info
-  python setup.py sdist bdist_wheel
+  python3 setup.py sdist bdist_wheel
 
 publish:
   twine upload dist/*
@@ -18,7 +18,7 @@ dev-requirements:
   pip-compile dev-requirements.in
 
 build-api-docs:
-  sphinx-apidoc latch -o docs/source/api/
+  sphinx-apidoc . -o docs/source/api/
 
 build-docs:
   rm -rf docs/build

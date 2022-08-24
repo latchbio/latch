@@ -14,3 +14,6 @@ class OAuth2Constants:
 
     redirect_url: str = "http://127.0.0.1:5050/callback"
     """Redirect URL registered with authentication server."""
+
+
+MAX_FILE_SIZE = 4 * 2**20

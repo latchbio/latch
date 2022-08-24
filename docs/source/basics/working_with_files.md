@@ -1,7 +1,5 @@
 # Working with Files
 
----
-
 When working with bioinformatics workflows, we are often passing around large
 files or directories between our tasks. These files are usually located in
 cloud object stores and are copied to the file systems of the machines
@@ -10,6 +8,8 @@ on which the task is scheduled.
 The Latch SDK provides a convenient means of referencing files or directories
 within task functions without worrying about how or when the passed file objects
 are copied to the task's machine at execution.
+
+---
 
 Let's look at an example.
 
@@ -28,7 +28,7 @@ def foo(fastq: LatchFile, output_dir: LatchDir) -> (LatchFile, LatchDir):
     # downstream use.
 
     local_fastq = Path(fastq).resolve()
-    local_output_dir = Path(dir).resolve()
+    local_output_dir = Path(output_dir).resolve()
 
     # It's now easy to reference the contents of the file in a subprocessed
     # program. Notice how we're 'placing' outputs in a directory we will return.
@@ -48,6 +48,44 @@ def foo(fastq: LatchFile, output_dir: LatchDir) -> (LatchFile, LatchDir):
     # going. We'll discuss the latch URL scheme in a moment, but just understand
     # it will go back in your filesystem on the LatchBio console for now.
     return LatchFile("/root/foobar", "latch:///foobar.txt"), LatchDir(local_output_dir, output_dir.remote_path)
+```
+_Writing to an existing remote LatchDir will only add or update files that are in the local LatchDir._ It will not affect other files in the LatchDir. The two examples below illustrate how this works: the task updates `test.txt` without touching `foo.txt`.
+```python 
+# This task adds test.txt to an existing LatchDir.
+@small_task
+def update_dir(
+    output_dir: LatchDir,
+) -> LatchDir:
+    os.mkdir('/root/output') # An empty dir
+    os.system('touch /root/output/test.txt') # A file in the dir
+    return LatchDir('/root/output', output_dir.remote_path)
+```
+```
+Case 1: there is not an existing 'test.txt' file in the LatchDir.
+. Original directory
+├── foo.txt  [Creation Time: 1/1/2022, 01:00:00 AM]
+             [Last Modified: 1/1/2022, 01:00:00 AM]
+
+. New directory
+├── foo.txt  [Creation Time: 1/1/2022, 01:00:00 AM]
+             [Last Modified: 1/1/2022, 01:00:00 AM] # Note that it doesn't touch foo.txt
+├── test.txt [Creation Time: 1/1/2022, 23:00:00 AM]
+             [Last Modified: 1/1/2022, 23:00:00 AM]
+```
+```
+Case 2: there is an existing 'test.txt' file in the LatchDir.
+. Original directory
+├── foo.txt  [Creation Time: 1/1/2022, 01:00:00 AM]
+             [Last Modified: 1/1/2022, 01:00:00 AM]
+├── test.txt [Creation Time: 1/1/2022, 01:00:00 AM]
+             [Last Modified: 1/1/2022, 01:00:00 AM]
+
+. New directory
+├── foo.txt  [Creation Time: 1/1/2022, 01:00:00 AM]
+             [Last Modified: 1/1/2022, 01:00:00 AM]
+├── test.txt [Creation Time: 1/1/2022, 01:00:00 AM]
+             [Last Modified: 1/1/2022, 23:00:00 AM]
+```
 ```
 
 ## Local Paths and Remote Paths
@@ -75,8 +113,8 @@ local and remote path associated with them.
 ```
 
 `local_path` will always be the absolute path on the task's machine where the
-file has been copied.  `remote_path` will be a remote object URL with `s3` or
-`latch` as its host.
+file has been copied to (the machine that your code is running on).  
+`remote_path` will be a remote object URL with `s3` or `latch` as its host.
 
 There are cases when we would want
 to access these `local_path` and `remote_path` attributes directly:
@@ -94,7 +132,7 @@ pattern. For instance, you may wish to return all files that end with a
 task has been run.
 
 To do this in the SDK, you can leverage the `file_glob` function to construct
-lists of `LachFile`s defined by a pattern.
+lists of `LatchFile`s defined by a pattern.
 
 The class of allowed patterns are defined as
 [globs](https://en.wikipedia.org/wiki/Glob_(programming)). It is likely you've
@@ -107,7 +145,7 @@ be the remote location of returned `LatchFile` constructed with this utility.
 In this example, all files ending with `.fastq.gz` in the working directory of
 the task will be returned to the `latch:///fastqc_outputs` directory:
 
-```
+```python
 @small_task
 def task():
 

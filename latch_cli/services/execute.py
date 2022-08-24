@@ -1,232 +1,246 @@
-"""Service to execute a workflow."""
-
-import importlib.util
-import typing
+import json
+import os
+import select
+import sys
+import textwrap
 from pathlib import Path
-from typing import Union
+from tty import setraw
+from typing import Tuple
 
-import google.protobuf.json_format as gpjson
+import kubernetes
 import requests
-from flyteidl.core.types_pb2 import LiteralType
-from flytekit.core.context_manager import FlyteContextManager
-from flytekit.core.type_engine import TypeEngine
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
+import websocket
+from kubernetes.client import Configuration
+from kubernetes.client.api import core_v1_api
+from kubernetes.stream import stream
 
 from latch_cli.config.latch import LatchConfig
-from latch_cli.utils import retrieve_or_login
+from latch_cli.utils import account_id_from_token, current_workspace, retrieve_or_login
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints
 
 
-def execute(params_file: Path, version: Union[None, str] = None) -> str:
-    """Executes a versioned workflow with parameters specified in python.
+def _construct_kubeconfig(
+    cert_auth_data: str,
+    cluster_endpoint: str,
+    account_id: str,
+    access_key: str,
+    secret_key: str,
+    session_token: str,
+) -> str:
 
-    Args:
-        params_file: A path pointing to a python file with a function call
-            representing the workflow execution with valid parameter values.
-        version: An optional workflow version to execute, defaults to latest if
-            None is provided
+    open_brack = "{"
+    close_brack = "}"
+    region_code = "us-west-2"
+    cluster_name = "prion-prod"
 
-        Parameters for the workflow execution are specified in plain python as
-        a dictionary, as the syntax is highly legible and easier to work
-        with than alternatives such as YAML, JSON. This file is passed to the
-        `execute` service.
-
-    Returns:
-        The name of the workflow if successful
-
-    Example: ::
-
-        # A minimal parameter file used to execute the boilerplate
-
-        from latch.types import LatchFile
-
-        params = {
-            "_name": "wf.assemble_and_sort",
-            "read1": LatchFile("latch:///read1"),
-            "read2": LatchFile("latch:///read2"),
-        }
-    """
-
-    token = retrieve_or_login()
-
-    with open(params_file, "r") as pf:
-
-        param_code = pf.read()
-        spec = importlib.util.spec_from_loader("wf_params", loader=None)
-        param_module = importlib.util.module_from_spec(spec)
-        exec(param_code, param_module.__dict__)
-
-    module_vars = vars(param_module)
-    try:
-        wf_params = module_vars["params"]
-    except KeyError as e:
-        raise ValueError(
-            f"Execution file {params_file.name} needs to have"
-            " a parameter value dictionary named 'params'"
-        ) from e
-
-    wf_name = wf_params.get("_name")
-    if wf_name is None:
-        raise ValueError(
-            f"The dictionary of parameters in the launch file lacks the"
-            f" _name key used to identify the workflow. Make sure a _name"
-            f" key with the workflow name exists in the dictionary."
-        )
-
-    wf_id, wf_interface, _ = _get_workflow_interface(token, wf_name, version)
-
-    wf_vars = wf_interface["variables"]
-    wf_literals = {}
-    for key, value in wf_vars.items():
-
-        ctx = FlyteContextManager.current_context()
-        literal_type_json = value["type"]
-        literal_type = gpjson.ParseDict(literal_type_json, LiteralType())
-
-        if key in wf_params:
-
-            python_value = wf_params[key]
-            # Recover parameterized generics for TypeTransformer.
-            python_type = _guess_python_type(python_value)
-
-            python_type_literal = TypeEngine.to_literal(
-                ctx, python_value, python_type, literal_type
-            )
-
-            wf_literals[key] = gpjson.MessageToDict(python_type_literal.to_flyte_idl())
-
-    _execute_workflow(token, wf_id, wf_literals)
-    return wf_name
+    return textwrap.dedent(
+        f"""apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: {cert_auth_data}
+    server: {cluster_endpoint}
+  name: arn:aws:eks:{region_code}:{account_id}:cluster/{cluster_name}
+contexts:
+- context:
+    cluster: arn:aws:eks:{region_code}:{account_id}:cluster/{cluster_name}
+    user: arn:aws:eks:{region_code}:{account_id}:cluster/{cluster_name}
+  name: arn:aws:eks:{region_code}:{account_id}:cluster/{cluster_name}
+current-context: arn:aws:eks:{region_code}:{account_id}:cluster/{cluster_name}
+kind: Config
+preferences: {open_brack}{close_brack}
+users:
+- name: arn:aws:eks:{region_code}:{account_id}:cluster/{cluster_name}
+  user:
+    exec:
+      apiVersion: client.authentication.k8s.io/v1beta1
+      command: aws
+      args:
+        - --region
+        - {region_code}
+        - eks
+        - get-token
+        - --cluster-name
+        - {cluster_name}
+      env:
+        - name: 'AWS_ACCESS_KEY_ID'
+          value: '{access_key}'
+        - name: 'AWS_SECRET_ACCESS_KEY'
+          value: '{secret_key}'
+        - name: 'AWS_SESSION_TOKEN'
+          value: '{session_token}'"""
+    )
 
 
-def _guess_python_type(v: any) -> typing.T:
-    """Python literal guesser.
-
-    We will attempt to construct the correct python type representation from the
-    value and JSON type representation and rely on the TypeTransformer to produce
-    the correct flyte literal for execution (FlyteIDL representation of the value).
-    This is essentially how flytekit does it.
-
-    Using the type() function alone is not sufficient because flyte interprets
-    the python list literal as a generic collection type and needs a
-    parameterization.
-
-    For example:
-
-    ..
-       >> type(["AUG", "AAA"]) = list
-       <class 'list'>
-
-    Becomes List[str] s.t.
-
-    ..
-       >> TypeEngine.to_literal(ctx, ["AUG", "AAA"], List[str], type_literal)
-
-    Returns our desired flyte literal.
-    """
-
-    if type(v) is list:
-        if len(v) == 0:
-            return typing.List[None]
-        elif type(v[0]) is list:
-            return typing.List[_guess_python_type(v[0])]
-        else:
-            return typing.List[type(v[0])]
-
-    # TODO: maps, Records, future complex types
-
-    return type(v)
-
-
-def _get_workflow_interface(
-    token: str, wf_name: str, version: Union[None, str]
-) -> (int, dict):
-    """Retrieves the set of idl parameter values for a given workflow by name.
-
-    Returns workflow id + interface as JSON string.
-    """
+def _fetch_pod_info(token: str, task_name: str) -> Tuple[str, str, str]:
 
     headers = {"Authorization": f"Bearer {token}"}
-    _interface_request = {"workflow_name": wf_name, "version": version}
+    data = {"task_name": task_name, "ws_account_id": current_workspace()}
 
-    url = endpoints["get-workflow-interface"]
+    response = requests.post(endpoints["pod-exec-info"], headers=headers, json=data)
 
-    # TODO - use retry logic in all requests + figure out why timeout happens
-    # within this endpoint only.
-    session = requests.Session()
-    retries = 5
-    retry = Retry(
-        total=retries,
-        read=retries,
-        connect=retries,
-        method_whitelist=False,
+    try:
+        response = response.json()
+        access_key = response["tmp_access_key"]
+        secret_key = response["tmp_secret_key"]
+        session_token = response["tmp_session_token"]
+        cert_auth_data = response["cert_auth_data"]
+        cluster_endpoint = response["cluster_endpoint"]
+        namespace = response["namespace"]
+        aws_account_id = response["aws_account_id"]
+    except KeyError as err:
+        raise ValueError(f"malformed response on image upload: {response}") from err
+
+    return (
+        access_key,
+        secret_key,
+        session_token,
+        cert_auth_data,
+        cluster_endpoint,
+        namespace,
+        aws_account_id,
     )
-    adapter = HTTPAdapter(max_retries=retry)
-    session.mount("http://", adapter)
-    session.mount("https://", adapter)
 
-    response = session.post(url, headers=headers, json=_interface_request)
 
-    wf_interface_resp = response.json()
+def execute(task_name: str):
 
-    wf_id, wf_interface, wf_default_params = (
-        wf_interface_resp.get("id"),
-        wf_interface_resp.get("interface"),
-        wf_interface_resp.get("default_params"),
+    token = retrieve_or_login()
+    (
+        access_key,
+        secret_key,
+        session_token,
+        cert_auth_data,
+        cluster_endpoint,
+        namespace,
+        aws_account_id,
+    ) = _fetch_pod_info(token, task_name)
+
+    account_id = account_id_from_token(token)
+    if int(account_id) < 10:
+        account_id = f"x{account_id}"
+
+    config_data = _construct_kubeconfig(
+        cert_auth_data,
+        cluster_endpoint,
+        aws_account_id,
+        access_key,
+        secret_key,
+        session_token,
     )
-    if wf_interface is None:
-        raise ValueError(
-            "Could not find interface. Nucleus returned a malformed JSON response -"
-            f" {wf_interface_resp}"
-        )
-    if wf_id is None:
-        raise ValueError(
-            "Could not find wf ID. Nucleus returned a malformed JSON response -"
-            f" {wf_interface_resp}"
-        )
-    if wf_default_params is None:
-        raise ValueError(
-            "Could not find wf default parameters. Nucleus returned a malformed JSON"
-            f" response - {wf_interface_resp}"
-        )
+    config_file = Path("config").resolve()
 
-    return int(wf_id), wf_interface, wf_default_params
+    with open(config_file, "w") as c:
+        c.write(config_data)
 
+    kubernetes.config.load_kube_config("config")
 
-def _execute_workflow(token: str, wf_id: str, params: dict) -> bool:
-    """Execute the workflow of given id with parameter map.
+    core_v1 = core_v1_api.CoreV1Api()
 
-    Return True if success
-    """
+    # TODO
+    pod_name = task_name
 
-    # TODO (kenny) - pull out to consolidated requests class
-    # Server sometimes stalls on requests with python user-agent
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like"
-            " Gecko) Chrome/72.0.3626.119 Safari/537.36"
-        ),
-    }
+    stdin_channel = bytes([kubernetes.stream.ws_client.STDIN_CHANNEL])
+    stdout_channel = kubernetes.stream.ws_client.STDOUT_CHANNEL
+    stderr_channel = kubernetes.stream.ws_client.STDERR_CHANNEL
 
-    _interface_request = {"workflow_id": str(wf_id), "params": params}
-    url = endpoints["execute-workflow"]
+    class WSStream:
+        def __init__(self):
+            self._wssock = stream(
+                core_v1.connect_get_namespaced_pod_exec,
+                pod_name,
+                namespace,
+                command=["/bin/sh"],
+                stderr=True,
+                stdin=True,
+                stdout=True,
+                tty=True,
+                _preload_content=False,
+            ).sock
 
-    response = requests.post(url, headers=headers, json=_interface_request)
+        def send(self, chunk: bytes):
+            self._wssock.send(stdin_channel + chunk, websocket.ABNF.OPCODE_BINARY)
 
-    if response.status_code == 403:
-        raise PermissionError(
-            "You need access to the latch sdk beta ~ join the waitlist @"
-            " https://latch.bio/sdk"
-        )
-    elif response.status_code == 401:
-        raise ValueError(
-            "your token has expired - please run latch login to refresh your token and"
-            " try again."
-        )
-    wf_interface_resp = response.json()
+        def get_frame(self) -> Tuple[websocket.ABNF.OPCODES, websocket.ABNF]:
+            return self._wssock.recv_data_frame(True)
 
-    return wf_interface_resp.get("success") is True
+        @property
+        def socket(self):
+            return self._wssock.sock
+
+        def close(self):
+            self._wssock.close()
+
+    class TTY:
+        def __init__(
+            self, in_stream: int, out_stream: int, err_stream: int, raw: bool = True
+        ):
+
+            if raw is True:
+                setraw(in_stream)
+
+            self._stdin = in_stream
+            self._stdout = out_stream
+            self._stderr = err_stream
+
+        def flush(self) -> bytes:
+            return os.read(self._stdin, 32 * 1024)
+
+        def write_out(self, chunk: bytes):
+            os.write(self._stdout, chunk)
+
+        def write_err(self, chunk: bytes):
+            os.write(self._stderr, chunk)
+
+        @property
+        def in_stream(self):
+            return self._stdin
+
+    tty_ = TTY(
+        sys.stdin.fileno(),
+        sys.stdout.fileno(),
+        sys.stderr.fileno(),
+    )
+    wsstream = WSStream()
+
+    rlist = [wsstream.socket, tty_.in_stream]
+
+    while True:
+
+        rs, _, _ = select.select(rlist, [], [])
+
+        if tty_.in_stream in rs:
+            chunk = tty_.flush()
+            if len(chunk):
+                wsstream.send(chunk)
+
+        if wsstream.socket in rs:
+
+            opcode, frame = wsstream.get_frame()
+            if opcode == websocket.ABNF.OPCODE_CLOSE:
+                rlist.remove(wsstream.socket)
+
+            elif opcode == websocket.ABNF.OPCODE_BINARY:
+                channel = frame.data[0]
+                chunk = frame.data[1:]
+                if channel in (stdout_channel, stderr_channel):
+                    if len(chunk):
+                        if channel == stdout_channel:
+                            tty_.write_out(chunk)
+                        else:
+                            tty_.write_err(chunk)
+                elif channel == kubernetes.stream.ws_client.ERROR_CHANNEL:
+                    wsstream.close()
+                    error = json.loads(chunk)
+                    if error["status"] == "Success":
+                        break
+                    raise websocket.WebSocketException(
+                        f"Status: {error['status']} - Message: {error['message']}"
+                    )
+                else:
+                    raise websocket.WebSocketException(f"Unexpected channel: {channel}")
+
+            else:
+                raise websocket.WebSocketException(
+                    f"Unexpected websocket opcode: {opcode}"
+                )

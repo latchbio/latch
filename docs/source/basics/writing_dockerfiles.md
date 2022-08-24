@@ -1,7 +1,5 @@
 # Writing Dockerfiles
 
----
-
 Dockerfiles allow you to define the computing environment that your task will
 execute in.
 
@@ -9,6 +7,8 @@ To write a Dockerfile, you simply write the commands that you want executed and
 specify the files that you want available before your task is run. A Dockerfile
 defines your task's "image" (the recipe for its virtual computing environment)
 which will become a container that it will execute within at runtime.
+
+---
 
 Here is an example of a Dockerfile used earlier:
 
@@ -46,6 +46,8 @@ WORKDIR /root
 
 _Note that we must use the base image specified in the first line to configure
 libraries and settings for consistent task behavior._
+
+There are 3 latch-base images available as seen on [github](https://github.com/latchbio/latch-base). 
 
 ## Limitations
 

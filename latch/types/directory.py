@@ -51,12 +51,15 @@ class LatchDir(FlyteDirectory):
     """
 
     def __init__(
-        self, path: Union[str, PathLike], remote_path: PathLike = None, **kwargs
+        self,
+        path: Union[str, PathLike],
+        remote_path: Optional[PathLike] = None,
+        **kwargs,
     ):
-        if remote_path is not None:
-            self._remote_directory = remote_path
-        elif _is_valid_url(path) and remote_path is None:
+        if _is_valid_url(path) and remote_path is None:
             self._remote_directory = path
+        else:
+            self._remote_directory = remote_path
 
         if kwargs.get("downloader") is not None:
             super().__init__(path, kwargs["downloader"], remote_path)
@@ -64,9 +67,12 @@ class LatchDir(FlyteDirectory):
 
             def downloader():
                 ctx = FlyteContextManager.current_context()
-                if ctx is not None and hasattr(self, "_remote_directory"):
-                    local_folder = ctx.file_access.get_random_local_directory()
-                    self.path = local_folder
+                if (
+                    ctx is not None
+                    and hasattr(self, "_remote_directory")
+                    and self._remote_directory is not None
+                ):
+                    self.path = ctx.file_access.get_random_local_directory()
                     return ctx.file_access.get_data(
                         self._remote_directory,
                         self.path,
@@ -91,7 +97,7 @@ class LatchDir(FlyteDirectory):
         return self._remote_directory
 
     def __str__(self):
-        return f'LatchDir("{self.local_path}")'
+        return f'LatchDir("{self.remote_path}")'
 
 
 LatchOutputDir = Annotated[
@@ -142,7 +148,9 @@ class LatchDirPathTransformer(FlyteDirToMultipartBlobTransformer):
         def _downloader():
             return ctx.file_access.get_data(uri, local_folder, is_multipart=True)
 
-        return LatchDir(local_folder, uri, downloader=_downloader)
+        ret = LatchDir(local_folder, uri, downloader=_downloader)
+        ret._remote_source = uri
+        return ret
 
 
 TypeEngine.register(LatchDirPathTransformer())

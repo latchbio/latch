@@ -15,7 +15,7 @@ from flytekit.models.literals import Literal
 from flytekit.models.types import LiteralType
 
 from latch.types import LatchDir, LatchFile
-from latch_cli.services.execute import _get_workflow_interface
+from latch_cli.services.launch import _get_workflow_interface
 from latch_cli.utils import retrieve_or_login
 
 
@@ -148,7 +148,7 @@ def get_params(wf_name: Union[None, str], wf_version: Union[None, str] = None):
     with open(f"{wf_name}.params.py", "w") as f:
 
         f.write(
-            f'"""Run `latch execute {wf_name}.params.py` to execute this workflow"""\n'
+            f'"""Run `latch launch {wf_name}.params.py` to launch this workflow"""\n'
         )
 
         for t in import_types:

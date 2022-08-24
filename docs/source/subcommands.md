@@ -1,7 +1,5 @@
 # CLI Reference
 
----
-
 ## `latch init`
 
 ```shell-session
@@ -38,7 +36,7 @@ This command turns a workflow directory into a cloud native workflow executable 
 $ latch register PATH_TO_WORKFLOW_DIRECTORY
 ```
 
-The first argument specifies the local path in which to look for workflow objects. Inside the local path should be a single directory called `wf` containing `__init__.py`, any helper python files, a `Dockerfile`, and a `version` files. See [here](basics/what_is_a_workflow.html#workflow-code-structure) for more info.
+The first argument specifies the local path in which to look for workflow objects. Inside the local path should be a single directory called `wf` containing `__init__.py`, any helper python files, a `Dockerfile`, and a `version` files. See [here](basics/what_is_a_workflow.md) for more info.
 
 ## `latch get-params`
 
@@ -46,7 +44,8 @@ The first argument specifies the local path in which to look for workflow object
 $ latch get-params WORKFLOW_NAME
 ```
 
-This command will generate a dictionary of python-native parameters from the workflow `WORKFLOW_NAME`, which can then be passed to `latch execute` (documented below). For example, running
+This command will generate a dictionary of python-native parameters from the
+workflow `WORKFLOW_NAME`, which can then be passed to `latch launch` (documented below). For example, running
 
 ```shell-session
 $ latch get-params latch.alphafold_wf
@@ -55,7 +54,7 @@ $ latch get-params latch.alphafold_wf
 will generate a param file called `latch.alphafold_wf.params.py` whose contents are as below:
 
 ```python
-"""Run `latch execute latch.alphafold_wf.params.py` to execute this workflow"""
+"""Run `latch launch latch.alphafold_wf.params.py` to launch this workflow"""
 
 from latch.types import LatchFile
 from latch.types import LatchDir
@@ -73,13 +72,13 @@ params = {
 }
 ```
 
-## `latch execute`
+## `latch launch`
 
 ```shell-session
-$ latch execute [--version=VERSION] PARAM_FILE
+$ latch launch [--version=VERSION] PARAM_FILE
 ```
 
-This command allows a user to execute the workflow and parameters described in `PARAM_FILE`. If `--version` is provided, then that particular version will be executed. If it isn't provided, then it will default to the latest version. See `latch get-params` for more info on parameter files.
+This command allows a user to launch the workflow and parameters described in `PARAM_FILE`. If `--version` is provided, then that particular version will be executed. If it isn't provided, then it will default to the latest version. See `latch get-params` for more info on parameter files.
 
 ## `latch local-execute`
 
@@ -234,3 +233,33 @@ $ latch rm sample # deletes the entity called sample in the user's root director
 $ latch rm welcome/sample # creates an empty file called sample in latch:///welcome/
 $ latch rm latch:///welcome/sample # same result as above
 ```
+
+## `latch test-data`
+
+A set of subcommands to manipulate managed test data.
+
+### `latch test-data ls`
+
+List test data objects as full S3 paths.
+
+### `latch test-data remove <s3 path>`
+
+Remove a test data object by passing an S3 path.
+
+### `latch test-data upload <local path>`
+
+Upload an object to a managed S3 bucket by passing a local path.
+
+## `latch exec`
+
+Drops the user into an interactive shell from within a task.
+
+## `latch preview`
+
+Creates a preview of your workflow interface without re-registration.
+
+## `latch workspace`
+
+Spawns an interactive terminal prompt allowing users to choose what workspace
+they want to work in. Allows users to choose between, eg. personal and team
+workspaces to upload files or register workflows.

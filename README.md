@@ -4,15 +4,17 @@
 
 # Latch SDK
 
-The Latch SDK is a toolchain to define serverless bioinformatics workflows and
-dynamically generate no-code interfaces using python functions.
+The Latch SDK is a framework to build and deploy bioinformatics workflows, and
+dynamically generate associated interfaces, with a handful of python functions.
 
 It is built directly on [Flyte](https://docs.flyte.org) for all the benefits that the Kubernetes-native
 workflow orchestration framework provides - task-level type-safety and
 containerization, independent task scheduling, and heterogeneous & highly
 scalable computing infrastructure.
 
-[Docs](https://docs.latch.bio) • [Installation](#installation) • [Quickstart](#configuration) • [Latch](https://latch.bio)
+[Slack Community](https://join.slack.com/t/latchbiosdk/shared_invite/zt-193ibmedi-WB6mBu2GJ2WejUHhxMOuwg) • [Docs](https://docs.latch.bio) • [Installation](#installation) •
+[Quickstart](#configuration) • [Latch](https://latch.bio) • [Latch Verified](https://github.com/latch-verified)
+
 
 ![side-by-side](static/side-by-side.png)
 
@@ -26,7 +28,9 @@ Workflows developed with the SDK feature:
   * Reliable + scalable managed cloud infrastructure
   * Singe line definition of arbitrary resource requirements (eg. CPU, GPU) for serverless execution
 
-
+The Latch SDK is a framework to build workflows. A collection of existing and
+maintained workflows for common biological assays can be found at [Latch
+Verified](https://github.com/latch-verified).
 
 ### Quickstart
 
@@ -89,6 +93,9 @@ _Note that a local installation of docker is required to register workflows_.
 ---
 
 ### Examples
+
+[Latch Verified](https://github.com/latch-verified) should be the first source
+to look for reference workflows.
 
 We'll maintain a growing list of well documented examples here. Please open a
 pull request to feature your own:

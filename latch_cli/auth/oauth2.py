@@ -59,11 +59,10 @@ class OAuth2:
                 # With token, we can do E + F...
 
 
-    Params:
+    Args:
         pkce: Object managing PKCE values.
         csrf_state: Object managing state for CSRF mitigation.
-        oauth2_constants: Object holding constants to identify Latch's authz
-            server.
+        oauth2_constants: Object holding constants to identify Latch's authz server.
 
     .. _RFC5849:
         https://datatracker.ietf.org/doc/html/rfc6749
