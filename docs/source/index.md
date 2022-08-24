@@ -70,6 +70,7 @@ self
 :maxdepth: 2
 :caption: Getting Started
 getting_started/quick_start
+getting_started/authoring_your_workflow
 ```
 
 ```{toctree}
