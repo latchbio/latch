@@ -56,7 +56,6 @@ class _CrashReporter:
 
             if pkg_path is not None:
 
-                # Add logs/
                 if os.path.exists(pkg_path + ".logs/"):
                     tf.add(pkg_path + "logs/", arcname="logs")
 
