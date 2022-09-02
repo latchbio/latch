@@ -94,13 +94,16 @@ _Note that a local installation of docker is required to register workflows_.
 
 ### Examples
 
-[Latch Verified](https://github.com/latch-verified) should be the first source
-to look for reference workflows.
+[Latch Verified](https://github.com/latch-verified) features list of well-curated workflows developed by the Latch engineering team. 
+* [Bulk RNA-seq](https://github.com/latch-verified/bulk-rnaseq)
+* [Differential Expression](https://github.com/latch-verified/diff-exp)
+* [Pathway Analysis](https://github.com/latch-verified/pathway)
 
-We'll maintain a growing list of well documented examples here. Please open a
-pull request to feature your own:
+We'll maintain a growing list of well documented examples developed by our community members here. Please open a pull request to feature your own:
 
   * [Guide Counter](https://github.com/latchbio/wf-guide_counter)
   * [Batch-GE](https://github.com/latchbio/wf-batch_ge)
   * [Seq-to-tree](https://github.com/JLSteenwyk/latch_wf_seq_to_tree)
   * [Codon optimization estimation](https://github.com/JLSteenwyk/latch_wf_codon_optimization)
+  * [ArchR: R package for processing and analyzing single-cell ATAC-seq data](https://github.com/aa20g217/Archr-Latch-Wf)
+  
