@@ -6,7 +6,7 @@ import shutil
 from collections import OrderedDict
 from functools import wraps
 from pathlib import Path
-from typing import List, Union
+from typing import List, Optional, Union
 
 import click
 
@@ -75,12 +75,18 @@ def register(pkg_root: str, disable_auto_version: bool, remote: bool):
 
 
 @main.command("login")
-def login():
+@click.option(
+    "--connection",
+    type=str,
+    default=None,
+    help=("Specific AuthO connection name e.g. for SSO."),
+)
+def login(connection: Optional[str]):
     """Manually login to Latch."""
     from latch_cli.services.login import login
 
     try:
-        login()
+        login(connection)
         click.secho("Successfully logged into LatchBio.", fg="green")
     except Exception as e:
         CrashReporter.report()
