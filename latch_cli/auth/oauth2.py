@@ -4,6 +4,7 @@ import ssl
 import urllib
 import urllib.request
 import webbrowser
+from typing import Optional
 
 import certifi
 
@@ -77,7 +78,7 @@ class OAuth2:
         self.authz_server_host = oauth2_constants.authz_server_host
         self.redirect_url = oauth2_constants.redirect_url
 
-    def authorization_request(self) -> str:
+    def authorization_request(self, connection: Optional[str]) -> str:
         """Request authorization code from Latch authz server.
 
         Returns:
@@ -139,6 +140,9 @@ class OAuth2:
             "code_challenge_method": self.pkce.challenge_method,
             "state": self.csrf_state.state,
         }
+        if connection is not None:
+            url_parameters["connection"] = connection
+
         base_url = self.authz_server_host + "/authorize?"
         url = base_url + urllib.parse.urlencode(url_parameters)
         webbrowser.open_new(url)

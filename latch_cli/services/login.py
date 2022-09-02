@@ -1,7 +1,10 @@
 """Service to login."""
 
 
-def login() -> str:
+from typing import Optional
+
+
+def login(connection: Optional[str]) -> str:
     """Authenticates user with Latch and persists an access token.
 
     Kicks off a three-legged OAuth2.0 flow outlined in `this RFC`_.  Logic
@@ -28,7 +31,7 @@ def login() -> str:
         with CSRFState() as csrf_state:
 
             oauth2_flow = OAuth2(pkce, csrf_state, OAuth2Constants)
-            auth_code = oauth2_flow.authorization_request()
+            auth_code = oauth2_flow.authorization_request(connection)
             jwt = oauth2_flow.access_token_request(auth_code)
 
             # Exchange JWT from Auth0 for a persistent token issued by
