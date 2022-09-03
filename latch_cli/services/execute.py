@@ -5,12 +5,11 @@ import sys
 import textwrap
 from pathlib import Path
 from tty import setraw
-from typing import Tuple, Union
+from typing import Tuple
 
 import kubernetes
 import requests
 import websocket
-from kubernetes.client import Configuration
 from kubernetes.client.api import core_v1_api
 from kubernetes.stream import stream
 
