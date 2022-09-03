@@ -5,7 +5,7 @@ import sys
 import textwrap
 from pathlib import Path
 from tty import setraw
-from typing import Tuple
+from typing import Tuple, Union
 
 import kubernetes
 import requests
@@ -161,7 +161,9 @@ def execute(task_name: str):
         def send(self, chunk: bytes):
             self._wssock.send(stdin_channel + chunk, websocket.ABNF.OPCODE_BINARY)
 
-        def get_frame(self) -> Tuple[websocket.ABNF.OPCODES, websocket.ABNF]:
+        def get_frame(
+            self,
+        ) -> Tuple[int, websocket.ABNF]:
             return self._wssock.recv_data_frame(True)
 
         @property
