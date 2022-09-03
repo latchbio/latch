@@ -17,23 +17,22 @@ def conda_task(input_file: LatchFile) -> LatchFile:
 
 """Minimal metadata object - fill in fields with your own values"""
 metadata = LatchMetadata(
-    display_name="",
-    # documentation="",
+    display_name="CHANGE ME",
+    documentation="CHANGE ME",
     author=LatchAuthor(
-        name="",
-        email="",
-        github="",
+        name="CHANGE ME",
+        email="CHANGE ME",
+        github="CHANGE ME",
     ),
-    # repository="",
-    # license="",
+    repository="CHANGE ME",
+    license="CHANGE ME",
     parameters={
         "input_file": LatchParameter(
             display_name="Input File",
-            # description="",
             batch_table_column=True,  # Show this parameter in batched mode.
         ),
     },
-    # tags=[],
+    tags=[],
 )
 
 
