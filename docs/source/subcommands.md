@@ -101,7 +101,7 @@ As an aside, we assume the workflow file contains a snippet conducive to local
 execution such as:
 
 ```python
-    if __name__ == "__main___":
+    if __name__ == "__main__":
        my_workflow(a="foo", reads=LatchFile("/users/von/neumann/machine.txt")
 ```
 
@@ -254,7 +254,7 @@ Upload an object to a managed S3 bucket by passing a local path.
 
 Drops the user into an interactive shell from within a task.
 
-## `latch preview`
+## `latch preview <workflow name>`
 
 Creates a preview of your workflow interface without re-registration.
 
