@@ -4,6 +4,7 @@ import os
 import shutil
 from enum import Enum, auto
 from pathlib import Path
+from typing import Optional
 
 
 class Templates(Enum):
@@ -12,7 +13,7 @@ class Templates(Enum):
     conda = auto()
 
 
-def init(pkg_name: Path, template: Templates = Templates.default):
+def init(pkg_name: Path, template: Optional[str] = None):
     """Creates boilerplate workflow files in the user's working directory.
 
     Args:
@@ -34,8 +35,11 @@ def init(pkg_name: Path, template: Templates = Templates.default):
 
 
     """
-
     # click doesn't support enums for options hence '.name' madness
+
+    if template is None:
+        template = Templates.default.name
+
     if template not in [t.name for t in Templates]:
         raise ValueError(
             f"Invalid template name. valid options are {[t.name for t in Templates]}"

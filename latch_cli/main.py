@@ -6,7 +6,7 @@ import shutil
 from collections import OrderedDict
 from functools import wraps
 from pathlib import Path
-from typing import List, Union
+from typing import List, Optional, Union
 
 import click
 
@@ -100,7 +100,7 @@ def login():
         case_sensitive=False,
     ),
 )
-def init(pkg_name: str, template: Templates = Templates.default):
+def init(pkg_name: str, template: Optional[str] = None):
     """Initialize boilerplate for local workflow code."""
     from latch_cli.services.init import init
 
