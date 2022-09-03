@@ -18,6 +18,7 @@ setup(
     author_email="kenny@latch.bio",
     description="latch sdk",
     packages=find_packages(),
+    include_package_data=True,
     python_requires=">=3.7",
     entry_points={
         "console_scripts": [
