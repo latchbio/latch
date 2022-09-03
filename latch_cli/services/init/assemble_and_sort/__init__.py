@@ -78,6 +78,7 @@ metadata = LatchMetadata(
             batch_table_column=True,  # Show this parameter in batched mode.
         ),
     },
+    tags=[],
 )
 
 
