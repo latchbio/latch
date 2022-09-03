@@ -101,6 +101,15 @@ examples/docker_recipes
 ```{toctree}
 :hidden:
 :maxdepth: 2
+:caption: Tutorials
+tutorials/overview
+tutorials/rnaseq
+tutorials/metamage
+```
+
+```{toctree}
+:hidden:
+:maxdepth: 2
 :caption: API Docs
 subcommands
 api/modules
