@@ -6,12 +6,13 @@ RUN apt-get install -y software-properties-common &&\
     add-apt-repository "deb http://cloud.r-project.org/bin/linux/debian buster-cran40/" &&\
     apt-get install -y r-base r-base-dev libxml2-dev libcurl4-openssl-dev libssl-dev wget
 
-# Import packages necessary for your workflow
-COPY imports.R /root/imports.R
-RUN chmod +x /root/imports.R && /root/imports.R
+# Install some packages (replace with your own)
+RUN R -e "install.packages('RCurl')"
+RUN R -e "install.packages('BiocManager')"
+RUN R -e "BiocManager::install('S4Vectors', force = TRUE)"
 
-# You can add other R files here by copying them over,
-# and you can then run them within your tasks. Don't forget shebangs!
+# You can add other R files here by copying them over.
+# You can then run them within your tasks.
 
 # STOP HERE:
 # The following lines are needed to ensure your build environement works

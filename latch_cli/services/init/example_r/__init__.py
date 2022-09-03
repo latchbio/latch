@@ -17,6 +17,7 @@ def r_task(input_file: LatchFile) -> LatchFile:
 
         subprocess.run(
             [
+                "Rscript",
                 "path/to/your_script.R",
                 "command_line_arg_1",
                 "command_line_arg_2",
@@ -24,9 +25,6 @@ def r_task(input_file: LatchFile) -> LatchFile:
             ],
             check=True,
         )
-
-    *** Make sure your R scripts have a shebang! ***
-
     """
     ...
 
