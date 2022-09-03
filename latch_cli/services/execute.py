@@ -10,7 +10,6 @@ from typing import Tuple
 import kubernetes
 import requests
 import websocket
-from kubernetes.client import Configuration
 from kubernetes.client.api import core_v1_api
 from kubernetes.stream import stream
 
@@ -161,7 +160,9 @@ def execute(task_name: str):
         def send(self, chunk: bytes):
             self._wssock.send(stdin_channel + chunk, websocket.ABNF.OPCODE_BINARY)
 
-        def get_frame(self) -> Tuple[websocket.ABNF.OPCODES, websocket.ABNF]:
+        def get_frame(
+            self,
+        ) -> Tuple[int, websocket.ABNF]:
             return self._wssock.recv_data_frame(True)
 
         @property
