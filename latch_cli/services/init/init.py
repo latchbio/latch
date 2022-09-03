@@ -42,7 +42,7 @@ def init(pkg_name: Path, template: Templates = Templates.default):
         )
 
     cwd = Path(os.getcwd()).resolve()
-    pkg_root = cwd.joinpath(pkg_name)
+    pkg_root = cwd / pkg_name
     try:
         pkg_root.mkdir(parents=True)
     except FileExistsError:
@@ -64,17 +64,17 @@ def init(pkg_name: Path, template: Templates = Templates.default):
 
 
 def _get_boilerplate(pkg_root: Path, source_path: Path):
-    wf_root = pkg_root.joinpath("wf")
+    wf_root = pkg_root / "wf"
     wf_root.mkdir(exist_ok=True)
-    init_f = wf_root.joinpath("__init__.py")
+    init_f = wf_root / "__init__.py"
     init_source = source_path / "__init__.py"
     shutil.copy(init_source, init_f)
 
-    version_f = pkg_root.joinpath("version")
+    version_f = pkg_root / "version"
     with open(version_f, "w") as f:
         f.write("0.0.0")
 
-    docker_f = pkg_root.joinpath("Dockerfile")
+    docker_f = pkg_root / "Dockerfile"
     docker_source = source_path / "Dockerfile"
     shutil.copy(docker_source, docker_f)
 
@@ -88,7 +88,7 @@ def _gen_assemble_and_sort(pkg_root: Path):
 
     _get_boilerplate(pkg_root, source_path)
 
-    data_root = pkg_root.joinpath("reference")
+    data_root = pkg_root / "reference"
     data_root.mkdir(exist_ok=True)
 
     ref_ids = [
@@ -106,7 +106,7 @@ def _gen_assemble_and_sort(pkg_root: Path):
     print("Downloading workflow data ", flush=True, end="")
     for id in ref_ids:
         print(".", flush=True, end="")
-        with open(data_root.joinpath(id), "wb") as f:
+        with open(data_root / id, "wb") as f:
             s3.download_fileobj("latch-public", f"sdk/{id}", f)
     print()
 
