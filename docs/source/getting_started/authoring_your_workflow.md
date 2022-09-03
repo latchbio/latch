@@ -334,3 +334,7 @@ $ latch get-executions
 
 ---
 # Next Steps
+* Read the [Concepts](../basics/what_is_a_workflow.md) page
+* Visit [Examples](../examples/workflows_examples.md) to see real-world bioinformatics workflows being built using Latch SDK
+* Learn through examples with [Tutorials](../tutorials/rnaseq.md)
+* Join the SDK open-source community on Slack [here](https://forms.gle/sCjr8tdjzx5HjVW27)! 

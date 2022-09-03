@@ -101,7 +101,7 @@ As an aside, we assume the workflow file contains a snippet conducive to local
 execution such as:
 
 ```python
-    if __name__ == "__main___":
+    if __name__ == "__main__":
        my_workflow(a="foo", reads=LatchFile("/users/von/neumann/machine.txt")
 ```
 
