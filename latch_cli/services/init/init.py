@@ -68,6 +68,9 @@ def init(pkg_name: Path, template: Optional[str] = None):
 
 
 def _get_boilerplate(pkg_root: Path, source_path: Path):
+    pkg_root = pkg_root.resolve()
+    source_path = source_path.resolve()
+
     wf_root = pkg_root / "wf"
     wf_root.mkdir(exist_ok=True)
     init_f = wf_root / "__init__.py"
@@ -88,6 +91,7 @@ def _gen_assemble_and_sort(pkg_root: Path):
     from botocore import UNSIGNED
     from botocore.config import Config
 
+    pkg_root = pkg_root.resolve()
     source_path = Path(__file__).parent / "assemble_and_sort"
 
     _get_boilerplate(pkg_root, source_path)
@@ -116,6 +120,7 @@ def _gen_assemble_and_sort(pkg_root: Path):
 
 
 def _gen_example_r(pkg_root: Path):
+    pkg_root = pkg_root.resolve()
     source_path = Path(__file__).parent / "example_r"
 
     _get_boilerplate(pkg_root, source_path)
@@ -126,6 +131,7 @@ def _gen_example_r(pkg_root: Path):
 
 
 def _gen_example_conda(pkg_root: Path):
+    pkg_root = pkg_root.resolve()
     source_path = Path(__file__).parent / "example_conda"
 
     _get_boilerplate(pkg_root, source_path)

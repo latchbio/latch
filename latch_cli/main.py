@@ -13,9 +13,6 @@ import click
 import latch_cli.click_utils
 from latch_cli.click_utils import AnsiCodes as ac
 from latch_cli.crash_reporter import CrashReporter
-
-# lightweight import that only pulls in stdlib, but still not clean
-# todo(ayush) refactor to eliminate this
 from latch_cli.services.init.init import Templates
 
 latch_cli.click_utils.patch()
