@@ -13,6 +13,7 @@ import click
 import latch_cli.click_utils
 from latch_cli.click_utils import AnsiCodes as ac
 from latch_cli.crash_reporter import CrashReporter
+from latch_cli.services.init.init import Templates
 
 latch_cli.click_utils.patch()
 
@@ -95,7 +96,15 @@ def login(connection: Optional[str]):
 
 @main.command("init")
 @click.argument("pkg_name", nargs=1)
-def init(pkg_name: str):
+@click.option(
+    "--template",
+    "-t",
+    type=click.Choice(
+        [t.name for t in Templates],
+        case_sensitive=False,
+    ),
+)
+def init(pkg_name: str, template: Optional[str] = None):
     """Initialize boilerplate for local workflow code."""
     from latch_cli.services.init import init
 
@@ -133,7 +142,7 @@ def init(pkg_name: str):
         return
 
     try:
-        init(pkg_name)
+        init(pkg_name, template)
     except Exception as e:
         CrashReporter.report()
         click.secho(f"Unable to initialize {pkg_name}: {str(e)}", fg="red")
