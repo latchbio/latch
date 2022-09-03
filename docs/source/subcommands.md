@@ -254,7 +254,7 @@ Upload an object to a managed S3 bucket by passing a local path.
 
 Drops the user into an interactive shell from within a task.
 
-## `latch preview`
+## `latch preview <workflow name>`
 
 Creates a preview of your workflow interface without re-registration.
 

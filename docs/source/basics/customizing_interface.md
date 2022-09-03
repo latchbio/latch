@@ -13,12 +13,21 @@ docstring of the workflow function, you can specify:
 
 ---
 
-### Using `latch preview`
+### Previewing your Workflow
 
-The `latch preview` command on the CLI allows you to preview your workflow
-interface without the sometimes lengthy process of registration. Keep this in
-mind as you follow the rest of this documentation as this will allow you to
-rapidly make changes and iterate on the layout of your workflow's front-end.
+To quickly reiterate on the user interface of your workflow, you can use `latch preview` to preview your workflow locally without registering them on Latch. 
+
+First, verify that you are inside the workflow directory: 
+```shell-session
+$ ls
+
+Dockerfile      reference       wf      version
+```
+
+Then, use `latch preview` with the name of your workflow function: 
+```shell-session
+$ latch preview <workflow_function_name>
+```
 
 ## One Line Description
 
