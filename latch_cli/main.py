@@ -95,6 +95,7 @@ def login():
 @click.argument("pkg_name", nargs=1)
 @click.option(
     "--template",
+    "-t",
     type=click.Choice(
         [t.name for t in Templates],
         case_sensitive=False,
