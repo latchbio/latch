@@ -1,9 +1,6 @@
 # Customizing Your Interface
 
-The Latch SDK will dynamically construct interfaces from your python code.
-
-You have a great deal of control over the constructed interface.  Within the
-docstring of the workflow function, you can specify:
+The Latch SDK will dynamically construct parameter interfaces from your python code. With these you can specify
 
 * markdown formatted long form documentation
 * sidebar presentation of contact email, repository, social media links, etc.
@@ -11,9 +8,11 @@ docstring of the workflow function, you can specify:
 * parameter tooltip descriptions
 * parameter display names
 
+You use the `LatchMetadata`, `LatchParameter`, etc. constructs to create your parameter interface, with a docstring specifying a short and long description.
+
 ---
 
-### Previewing your Workflow
+## Previewing your Workflow
 
 To quickly reiterate on the user interface of your workflow, you can use `latch preview` to preview your workflow locally without registering them on Latch. 
 
@@ -29,10 +28,13 @@ Then, use `latch preview` with the name of your workflow function:
 $ latch preview <workflow_function_name>
 ```
 
-## One Line Description
+## Using `LatchMetdata` objects
 
-The first line of the workflow function docstring will get rendered in the
-sidebar and the workflow expore tab as a brief description of your workflow's functionality.
+While most of the metadata of a workflow will be encapsulated in a `LatchMetadata` object, we still require a docstring in the body of the workflow function which specifies both a short and long-form description.
+
+### One Line Description
+
+The first line of the workflow function docstring will get rendered in the sidebar of the workflow and the workflow explore tab as a brief description of your workflow's functionality. Think of this as summarizing the entirety of your workflow's significance into a single line.
 
 ```python
 @workflow
@@ -46,11 +48,9 @@ def foo(
     ...
 ```
 
-## Markdown Documentation
+### Long Form Description
 
-The body of the workflow function docstring is where you write long-form
-markdown documentation. This markdown will get rendered in the dedicated
-workflow "About" tab on your interface.
+The body of the workflow function docstring is where you write long-form markdown documentation. This markdown will get rendered in the dedicated workflow "About" tab on your interface. Feel free to include links, lists, code blocks, and more.
 
 ```python
 @workflow
@@ -67,473 +67,84 @@ def foo(
     - item2
     - item3
 
-    ## headers
+    ### headers
 
-    paragraphs
-    
-    The line starting in `__metadata__:` signals the end of the long workflow description
-
-    __metadata__:
-        ...
+    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod 
+    tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, 
+    quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo 
+    consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse 
+    cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat 
+    non proident, sunt in culpa qui officia deserunt mollit anim id est 
+    laborum.
     """
     ...
 ```
 
-## Sidebar Customization
+### The `LatchMetadata` Object
 
-After the long workflow description, you have the opportunity to specify
-standard workflow metadata that will get rendered in the sidebar. The currently
-supported metadata fields are `display_name`, `documentation`, `author` (`name`, `email`,
-`github`), `repository`, and `license`. The only constrained field is `license`, which
-should be an identifier from [spdx](https://spdx.org/licenses/).
-
-```yaml
-__metadata__:
-    display_name: My Workflow
-    documentation: https://github.com/author/my_workflow/README.md
-    author:
-        name: Workflow Author
-        email: licensing@company.com
-        github: https://github.com/author
-    repository: https://github.com/author/my_workflow
-    license:
-        id: MIT
-```
-
-## Customizing Parameter Presentation
-
-When a workflow is registered, a each parameter will receive a frontend
-component to ingest values in the browser. These components will perform
-HTML-native type validation on inputted values and can be customized from
-the python code.
-
-The LatchBio Console currently supports customized parameter presentation in the
-following ways:
-
-* display names
-* sections
-* hidden parameters
-* custom component presentations (eg. line vs paragraph presentation of `str`)
-
-Developers can modify this custom presentation by writing statements in
-[DSL](https://en.wikipedia.org/wiki/Domain-specific_language), either in YAML
-format in the workflow function docstring or as JSON format specified in line
-with Python's `typing.Annotated`.
-
-Reading this documentation and browsing examples is the best way to become
-familiar with this DSL.
-
-### Display Name
-
-This must be filled out for each parameter or the parameter will not render in
-the interface. _This option must be specified in the docstring only._
+The main object that organizes the metadata for a workflow is the `LatchMetadata` object. To use, create a singleton instance of a `LatchMetadata` object as follows:
 
 ```python
-@workflow
-def test(
-    sample_size: int,
-    sample_name: str,
-    ...
-):
-    """
-    ...
-    Short description and long description
-    ...
-    
-    Args:
-        sample_size:
-            __metadata__:
-                display_name: Sample Size
-        sample_name:
-            __metadata__:
-                display_name: Sample Name
-    """
-  ...
+from latch.types import LatchMetadata, LatchAuthor
+
+metadata = LatchMetadata(
+    display_name="My Workflow",
+    documentation="https://github.com/author/my_workflow/README.md",
+    author=LatchAuthor(
+        name="Workflow Author",
+        email="licensing@company.com",
+        github="https://github.com/author",
+    ),
+    repository="https://github.com/author/my_workflow",
+    license="MIT",
+)
 ```
 
-### Hidden Parameters
+The information given here will be rendered in the sidebar of the workflow in the Latch Console. Here's a brief description of each of the fields of the LatchMetadata object:
 
-This option will move the parameter into the "hidden" section of the interface,
-requiring a user to toggle a collapsed section to view and interact with it.
+* `display_name`: The name of the workflow, e.g. CRISPResso2,
+* `documentation`: A URL that leads to documentation for the workflow itself,
+* `author`: This must be a `LatchAuthor` objects, whose fields are:
+  * `name`: The name of the author;
+  * `email`: The author's email;
+  * `github`: A link to the author's Github profile,
+* `repository`: A link to the Github repository where the code for the workflow lives,
+* `license`: The license that the workflow code falls under - must be a [SPDX](https://spdx.dev/) identifier.
+
+### Customizing Parameter Presentation
+
+When a workflow is registered, each parameter will receive a frontend component to ingest values in the browser. These components will perform HTML-native type validation on inputted values and can be customized from the python code. You can add a parameter to the interface by adding a `LatchParameter` object to your `LatchMetadata` object's parameter dictionary as below:
 
 ```python
-@workflow
-def test(
-    sample_size: int,
-    sample_name: str,
+from latch.types import LatchParameter, LatchAppearanceType, LatchRule
+
+...
+
+# Assuming you have created a LatchMetadata object named `metadata`
+metadata.parameters['param_0'] = LatchParameter(
+    display_name="Parameter 0",
+    description="This is parameter 0",
+    hidden=False,
+)
+
+...
+
+@workflow(metadata)
+def wf(
+    param_0: int, # any of the supported types would also work here
     ...
-    email: Optional[str] = None,
-):
-    """
-    ...
-    Short description and long description
-    ...
-    
-    Args:
-        sample_size:
-            __metadata__:
-                display_name: "Sample Size"
-        sample_name:
-            __metadata__:
-                display_name: "Sample Name"
-        ...
-        email:
-            __metadata__:
-                display_name: "Email"
-                _tmp:
-                    hidden: true
-    """
-  ...
+)
 ```
 
-### Section Titles
+Each key in `metadata.parameters` must be the name of one of the parameters of the workflow, and so the corresponding `LatchParameter` object describes that specific parameter. A `LatchParameter` can take a myriad of keyword arguments at construction time, each of which are briefly described below.
 
-This adds a header before the specified parameter, indicating a semantic
-grouping amongst the parameters that follow.
-
-```python
-@workflow
-def test(
-    sample_size: int,
-    sample_name: str,
-    ...
-    email: Optional[str] = None,
-):
-    """
-    ...
-    Short description and long description
-    ...
-    
-    Args:
-        sample_size:
-            __metadata__:
-                display_name: "Sample Size"
-                _tmp:
-                    section_title: Sample Parameters
-        sample_name:
-            __metadata__:
-                display_name: "Sample Name"
-        ...
-        email:
-            __metadata__:
-                display_name: "Email"
-                _tmp:
-                    hidden: true
-                    section_title: Notification Options
-    """
-  ...
-```
-
-### Placeholders
-
-An indication of sample input before user inputs anything.
-
-Note that this is not a default value, as the user still needs to input a value
-if one does not exist. The placeholder is strictly visual.
-
-```python
-@workflow
-def test(
-    sample_size: int,
-    sample_name: str,
-    ...
-    email: Optional[str] = None,
-):
-    """
-    ...
-    Short description and long description
-    ...
-    
-    Args:
-        sample_size:
-            __metadata__:
-                display_name: "Sample Size"
-                _tmp:
-                    section_title: Sample Parameters
-                appearance:
-                    placeholder: 10
-        sample_name:
-            __metadata__:
-                display_name: "Sample Name"
-                appearance:
-                    placeholder: "my sample name"
-        ...
-        email:
-            __metadata__:
-                display_name: "Email"
-                _tmp:
-                    hidden: true
-                    section_title: Output Parameters
-                appearance:
-                    placeholder: "aidan@latch.bio"
-    """
-  ...
-```
-
-### Comments
-
-A clarification to be displayed next to the parameter name in parenthesis.
-
-```python
-@workflow
-def test(
-    sample_size: int,
-    sample_name: str,
-    sample_ph: Optional[float] = None,
-    ...
-    email: Optional[str] = None,
-):
-    """
-    ...
-    Short description and long description
-    ...
-    
-    Args:
-        sample_size:
-            __metadata__:
-                display_name: "Sample Size"
-                _tmp:
-                    section_title: Sample Parameters
-                appearance:
-                    placeholder: 10
-        sample_name:
-            __metadata__:
-                display_name: "Sample Name"
-                appearance:
-                    placeholder: "my sample name"
-        sample_ph:
-            __metadata__:
-                display_name: "pH"
-                appearance:
-                    comment: "1-14 pH scale"
-        ...
-        email:
-            __metadata__:
-                display_name: "Email"
-                _tmp:
-                    hidden: true
-                    section_title: Output Parameters
-                appearance:
-                    placeholder: "aidan@latch.bio"
-    """
-  ...
-```
-
-### Output
-
-Signals that a `LatchFile` or `LatchDir` is the output location of the workflow,
-disabling path existence checks within the LatchBio console.
-
-```python
-@workflow
-def test(
-    sample_size: int,
-    sample_name: str,
-    sample_ph: Optional[float] = None,
-    output_dir: LatchDir,
-    ...
-    email: Optional[str] = None,
-):
-    """
-    ...
-    Short description and long description
-    ...
-    
-    Args:
-        sample_size:
-            __metadata__:
-                display_name: "Sample Size"
-                _tmp:
-                    section_title: Sample Parameters
-                appearance:
-                    placeholder: 10
-        sample_name:
-            __metadata__:
-                display_name: "Sample Name"
-                appearance:
-                    placeholder: "my sample name"
-        sample_ph:
-            __metadata__:
-                display_name: "pH"
-                appearance:
-                    comment: "1-14 pH scale"
-        output_dir:
-            __metadata__:
-                display_name: "Output Directory"
-                output: true
-        ...
-        email:
-            __metadata__:
-                display_name: "Email"
-                _tmp:
-                    hidden: true
-                    section_title: Output Parameters
-                appearance:
-                    placeholder: "aidan@latch.bio"
-    """
-  ...
-```
-
-### Batch Table Column
-
-Signals that a parameter should be displayed in the parameter preview when an
-input row is collapsed in the batch view.
-
-```python
-@workflow
-def test(
-    sample_size: int,
-    sample_name: str,
-    sample_ph: Optional[float] = None,
-    output_dir: LatchDir,
-    ...
-    email: Optional[str] = None,
-):
-    """
-    ...
-    Short description and long description
-    ...
-    
-    Args:
-        sample_size:
-            __metadata__:
-                display_name: "Sample Size"
-                batch_table_column: true
-                _tmp:
-                    section_title: Sample Parameters
-                appearance:
-                    placeholder: 10
-        sample_name:
-            __metadata__:
-                display_name: "Sample Name"
-                batch_table_column: true
-                appearance:
-                    placeholder: "my sample name"
-        sample_ph:
-            __metadata__:
-                display_name: "pH"
-                appearance:
-                    comment: "1-14 pH scale"
-        output_dir:
-            __metadata__:
-                display_name: "Output Directory"
-                output: true
-        ...
-        email:
-            __metadata__:
-                display_name: "Email"
-                _tmp:
-                    hidden: true
-                    section_title: Output Parameters
-                appearance:
-                    placeholder: "aidan@latch.bio"
-    """
-  ...
-```
-
-### Additional `str` Type Customizations
-
-The default presentation of a `str` component is a "line". You can optionally
-present the component as a "paragraph".
-
-```python
-@workflow
-def test(
-    sample_size: int,
-    sample_name: str,
-    sample_ph: Optional[float] = None,
-    sample_description: Optional[str] = None,
-    output_dir: LatchDir,
-    ...
-    email: Optional[str] = None,
-):
-    """
-    ...
-    Short description and long description
-    ...
-    
-    Args:
-        sample_size:
-            __metadata__:
-                display_name: "Sample Size"
-                batch_table_column: true
-                _tmp:
-                    section_title: Sample Parameters
-                appearance:
-                    placeholder: 10
-        sample_name:
-            __metadata__:
-                display_name: "Sample Name"
-                batch_table_column: true
-                appearance:
-                    placeholder: "my sample name"
-        sample_ph:
-            __metadata__:
-                display_name: "pH"
-                appearance:
-                    comment: "1-14 pH scale"
-        sample_description:
-            __metadata__:
-                display_name: "Sample Description"
-                appearance:
-                    type: paragraph
-        output_dir:
-            __metadata__:
-                display_name: "Output Directory"
-                output: true
-        ...
-        email:
-            __metadata__:
-                display_name: "Email"
-                _tmp:
-                    hidden: true
-                    section_title: Output Parameters
-                appearance:
-                    placeholder: "aidan@latch.bio"
-    """
-  ...
-```
-
-## Additional Rule-Based Validation
-
-In addition to the HTML-native validation that each parameter component will
-perform by default, developers can specify additional rule-based validation to
-further restrict the set of accepted values. Rule-based validation is currently
-specified with a [regex](https://docs.python.org/3/library/re.html#regular-expression-syntax) pattern.
-
-Here is an example of how using rule-based validation can be used to construct a
-"FastQ type" that only accepts a subset of semantic paths:
-
-```python
-from flytekit.core.annotation import FlyteAnnotation
-from typing import Annotated
-
-@workflow
-def test(
-    sample_list: List[
-        Annotated[
-            FlyteFile,
-            FlyteAnnotation(
-                {
-                    "rules": [
-                        {
-                            "regex": "(.fasta|.fa|.faa)$",
-                            "message": "Only .fasta, .fa, or .faa extensions are valid",
-                        }
-                    ]
-                }
-            ),
-        ]
-    ]
-):
-    """
-    ...
-    Short description and long description
-    ...
-    Args:
-            sample_list:
-                    __metadata__:
-                            display_name: "Sample List"
-    """
-    ...
-```
+* `display_name`: A human-readable, descriptive name of the parameter,
+* `description`: A short description of the role of the parameter within the workflow, to be displayed when hovered over in a tooltip,
+* `hidden`: A boolean for whether or not the parameter should be hidden by default,
+* `section_title`: If provided, the specified parameter will start a new section of the given name,
+* `placeholder`: What placeholder to put inside the input form for the parameter if no value is present,
+* `comment`: A comment about the parameter,
+* `output`: Whether this parameter is an output directory (to disable path existence checks),
+* `batch_table_column`: Whether this parameter should have a column to itself in the batch table at the top of the parameters page,
+* `appearance_type`: Either `LatchAppearanceType.line` or `LatchAppearanceType.paragraph`, which style to render text inputs as.
+* `rules`: A list of `LatchRule`s which consist of a regular expression and a message. If provided, an input must match all given regexes in order to appear valid in the front end - if it fails to match one of the regexes, the corresponding message is displayed.
