@@ -4,16 +4,17 @@ import select
 import sys
 import textwrap
 from pathlib import Path
+from tty import setraw
+from typing import Tuple
 
 import kubernetes
 import requests
 import websocket
-from kubernetes.client import Configuration
 from kubernetes.client.api import core_v1_api
 from kubernetes.stream import stream
 
 from latch_cli.config.latch import LatchConfig
-from latch_cli.utils import account_id_from_token, retrieve_or_login
+from latch_cli.utils import account_id_from_token, current_workspace, retrieve_or_login
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints
@@ -71,10 +72,10 @@ users:
     )
 
 
-def _fetch_pod_info(token: str, task_name: str) -> (str, str, str):
+def _fetch_pod_info(token: str, task_name: str) -> Tuple[str, str, str]:
 
     headers = {"Authorization": f"Bearer {token}"}
-    data = {"task_name": task_name}
+    data = {"task_name": task_name, "ws_account_id": current_workspace()}
 
     response = requests.post(endpoints["pod-exec-info"], headers=headers, json=data)
 
@@ -138,74 +139,109 @@ def execute(task_name: str):
     # TODO
     pod_name = task_name
 
-    wssock = stream(
-        core_v1.connect_get_namespaced_pod_exec,
-        pod_name,
-        namespace,
-        command=["/bin/sh"],
-        stderr=True,
-        stdin=True,
-        stdout=True,
-        tty=True,
-        _preload_content=False,
-    ).sock
-
     stdin_channel = bytes([kubernetes.stream.ws_client.STDIN_CHANNEL])
     stdout_channel = kubernetes.stream.ws_client.STDOUT_CHANNEL
     stderr_channel = kubernetes.stream.ws_client.STDERR_CHANNEL
 
-    stdin = sys.stdin.fileno()
-    stdout = sys.stdout.fileno()
-    stderr = sys.stderr.fileno()
+    class WSStream:
+        def __init__(self):
+            self._wssock = stream(
+                core_v1.connect_get_namespaced_pod_exec,
+                pod_name,
+                namespace,
+                command=["/bin/sh"],
+                stderr=True,
+                stdin=True,
+                stdout=True,
+                tty=True,
+                _preload_content=False,
+            ).sock
 
-    rlist = [wssock.sock, stdin]
+        def send(self, chunk: bytes):
+            self._wssock.send(stdin_channel + chunk, websocket.ABNF.OPCODE_BINARY)
+
+        def get_frame(
+            self,
+        ) -> Tuple[int, websocket.ABNF]:
+            return self._wssock.recv_data_frame(True)
+
+        @property
+        def socket(self):
+            return self._wssock.sock
+
+        def close(self):
+            self._wssock.close()
+
+    class TTY:
+        def __init__(
+            self, in_stream: int, out_stream: int, err_stream: int, raw: bool = True
+        ):
+
+            if raw is True:
+                setraw(in_stream)
+
+            self._stdin = in_stream
+            self._stdout = out_stream
+            self._stderr = err_stream
+
+        def flush(self) -> bytes:
+            return os.read(self._stdin, 32 * 1024)
+
+        def write_out(self, chunk: bytes):
+            os.write(self._stdout, chunk)
+
+        def write_err(self, chunk: bytes):
+            os.write(self._stderr, chunk)
+
+        @property
+        def in_stream(self):
+            return self._stdin
+
+    tty_ = TTY(
+        sys.stdin.fileno(),
+        sys.stdout.fileno(),
+        sys.stderr.fileno(),
+    )
+    wsstream = WSStream()
+
+    rlist = [wsstream.socket, tty_.in_stream]
 
     while True:
 
-        rs, _ws, _xs = select.select(rlist, [], [])
+        rs, _, _ = select.select(rlist, [], [])
 
-        if stdin in rs:
-            data = os.read(stdin, 32 * 1024)
-            if len(data) > 0:
-                wssock.send(stdin_channel + data, websocket.ABNF.OPCODE_BINARY)
+        if tty_.in_stream in rs:
+            chunk = tty_.flush()
+            if len(chunk):
+                wsstream.send(chunk)
 
-        if wssock.sock in rs:
-            opcode, frame = wssock.recv_data_frame(True)
+        if wsstream.socket in rs:
+
+            opcode, frame = wsstream.get_frame()
             if opcode == websocket.ABNF.OPCODE_CLOSE:
-                rlist.remove(wssock.sock)
+                rlist.remove(wsstream.socket)
+
             elif opcode == websocket.ABNF.OPCODE_BINARY:
                 channel = frame.data[0]
-                data = frame.data[1:]
+                chunk = frame.data[1:]
                 if channel in (stdout_channel, stderr_channel):
-                    if len(data):
+                    if len(chunk):
                         if channel == stdout_channel:
-                            os.write(stdout, data)
+                            tty_.write_out(chunk)
                         else:
-                            os.write(stderr, data)
+                            tty_.write_err(chunk)
                 elif channel == kubernetes.stream.ws_client.ERROR_CHANNEL:
-                    wssock.close()
-                    error = json.loads(data)
+                    wsstream.close()
+                    error = json.loads(chunk)
                     if error["status"] == "Success":
-                        return 0
-                    if error["reason"] == "NonZeroExitCode":
-                        for cause in error["details"]["causes"]:
-                            if cause["reason"] == "ExitCode":
-                                return int(cause["message"])
-                    print(file=sys.stderr)
-                    print(
-                        f"Status: {error['status']} - Message: {error['message']}",
-                        file=sys.stderr,
+                        break
+                    raise websocket.WebSocketException(
+                        f"Status: {error['status']} - Message: {error['message']}"
                     )
-                    print(file=sys.stderr, flush=True)
-                    sys.exit(1)
                 else:
-                    print(file=sys.stderr)
-                    print(f"Unexpected channel: {channel}", file=sys.stderr)
-                    print(f"Data: {data}", file=sys.stderr)
-                    print(file=sys.stderr, flush=True)
-                    sys.exit(1)
+                    raise websocket.WebSocketException(f"Unexpected channel: {channel}")
+
             else:
-                print(file=sys.stderr)
-                print(f"Unexpected websocket opcode: {opcode}", file=sys.stderr)
-                print(file=sys.stderr, flush=True)
-                sys.exit(1)
+                raise websocket.WebSocketException(
+                    f"Unexpected websocket opcode: {opcode}"
+                )

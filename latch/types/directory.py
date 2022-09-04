@@ -51,7 +51,10 @@ class LatchDir(FlyteDirectory):
     """
 
     def __init__(
-        self, path: Union[str, PathLike], remote_path: PathLike = None, **kwargs
+        self,
+        path: Union[str, PathLike],
+        remote_path: Optional[PathLike] = None,
+        **kwargs,
     ):
         if _is_valid_url(path) and remote_path is None:
             self._remote_directory = path
@@ -94,7 +97,7 @@ class LatchDir(FlyteDirectory):
         return self._remote_directory
 
     def __str__(self):
-        return f'LatchDir(remote_path="{self.remote_path}")'
+        return f'LatchDir("{self.remote_path}")'
 
 
 LatchOutputDir = Annotated[

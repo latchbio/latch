@@ -4,7 +4,12 @@ from typing import Dict, List
 
 import latch_cli.tinyrequests as tinyrequests
 from latch_cli.config.latch import LatchConfig
-from latch_cli.utils import _normalize_remote_path, retrieve_or_login, with_si_suffix
+from latch_cli.utils import (
+    _normalize_remote_path,
+    current_workspace,
+    retrieve_or_login,
+    with_si_suffix,
+)
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints
@@ -45,29 +50,13 @@ def ls(remote_directory: str) -> List[Dict[str, str]]:
     url = endpoints["list-files"]
     token = retrieve_or_login()
     headers = {"Authorization": f"Bearer {token}"}
-    data = {"directory": remote_directory}
+    data = {"directory": remote_directory, "ws_account_id": current_workspace()}
 
     response = tinyrequests.post(url, headers=headers, json=data)
 
     if response.status_code == 400:
         raise ValueError(f"The directory {remote_directory} does not exist.")
 
-    json_data = response.json()
-
-    output = []
-    for i in json_data:
-        name_data = json_data[i]
-
-        if name_data["type"] == "dir":
-            name_data["contentSize"] = "-"
-            name_data["modifyTime"] = "-"
-
-        if name_data["contentSize"] != "-":
-            name_data["contentSize"] = with_si_suffix(int(name_data["contentSize"]))
-
-        output.append(name_data)
-
-    output.sort(key=lambda x: x["name"])
-    output.sort(key=lambda x: x["type"])
+    output = list(response.json().values())
 
     return output

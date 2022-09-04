@@ -4,13 +4,15 @@ config.latch
 Platform wide configuration, eg. api endpoints, callback server ports...
 """
 
-import os as _os
+import os
 
-CONSOLE_URL = _os.environ.get("LATCH_CLI_CONSOLE_URL", "https://console.latch.bio")
-NUCLEUS_URL = _os.environ.get("LATCH_CLI_NUCLEUS_URL", "https://nucleus.latch.bio")
+DOMAIN = os.environ.get("LATCH_SDK_DOMAIN", "latch.bio")
+CONSOLE_URL = f"https://console.{DOMAIN}"
+NUCLEUS_URL = f"https://nucleus.{DOMAIN}"
 
 
 SDK_ENDPOINTS = {
+    "get-test-data-creds": "/sdk/get-test-data-creds",
     "initiate-multipart-upload": "/sdk/initiate-multipart-upload",
     "complete-multipart-upload": "/sdk/complete-multipart-upload",
     "download": "/sdk/download",
@@ -28,6 +30,13 @@ SDK_ENDPOINTS = {
     "rmdir": "/sdk/rmdir",
     "touch": "/sdk/touch",
     "pod-exec-info": "/sdk/get-pod-exec-info",
+    "provision-centromere": "/sdk/provision-centromere",
+    "preview": "/sdk/workflow-ui-preview",
+    "get-ws": "/sdk/get-ws",
+    "get-executions": "/sdk/get-executions",
+    "get-workflow-graph": "/sdk/get-workflow-graph",
+    "get-logs": "/sdk/get-logs-for-node",
+    "abort-execution": "/sdk/abort-execution",
 }
 
 

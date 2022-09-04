@@ -12,6 +12,22 @@ You use the `LatchMetadata`, `LatchParameter`, etc. constructs to create your pa
 
 ---
 
+## Previewing your Workflow
+
+To quickly reiterate on the user interface of your workflow, you can use `latch preview` to preview your workflow locally without registering them on Latch. 
+
+First, verify that you are inside the workflow directory: 
+```shell-session
+$ ls
+
+Dockerfile      reference       wf      version
+```
+
+Then, use `latch preview` with the name of your workflow function: 
+```shell-session
+$ latch preview <workflow_function_name>
+```
+
 ## Using `LatchMetdata` objects
 
 While most of the metadata of a workflow will be encapsulated in a `LatchMetadata` object, we still require a docstring in the body of the workflow function which specifies both a short and long-form description.

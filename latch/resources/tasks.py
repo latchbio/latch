@@ -75,7 +75,7 @@ def _get_small_gpu_pod() -> Pod:
 
 
 def _get_large_pod() -> Pod:
-    """md5n.12xlarge on-demand"""
+    """[ "c6i.24xlarge", "c5.24xlarge", "c5.metal", "c5d.24xlarge", "c5d.metal" ]"""
 
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
@@ -96,12 +96,12 @@ def _get_large_pod() -> Pod:
 
 
 def _get_medium_pod() -> Pod:
-    """Returns a pod which will be scheduled on a node with at least 8 cpus and 32 gigs of memory"""
+    """[ "m5.8xlarge", "m5ad.8xlarge", "m5d.8xlarge", "m5n.8xlarge", "m5dn.8xlarge", "m5a.8xlarge" ]"""
 
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
-        requests={"cpu": "8", "memory": "32Gi"},
-        limits={"cpu": "12", "memory": "64Gi"},
+        requests={"cpu": "28", "memory": "100Gi"},
+        limits={"cpu": "32", "memory": "128Gi"},
     )
     primary_container.resources = resources
 
@@ -109,7 +109,7 @@ def _get_medium_pod() -> Pod:
         pod_spec=V1PodSpec(
             containers=[primary_container],
             tolerations=[
-                V1Toleration(effect="NoSchedule", key="ng", value="on-demand-medium")
+                V1Toleration(effect="NoSchedule", key="ng", value="cpu-32-spot")
             ],
         ),
         primary_container_name="primary",

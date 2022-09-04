@@ -2,21 +2,28 @@
 
 import hashlib
 import os
+import subprocess
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import List, Optional
 
 import docker
+import paramiko
 
+import latch_cli.tinyrequests as tinyrequests
 from latch_cli.config.latch import LatchConfig
-from latch_cli.utils import account_id_from_token, retrieve_or_login, with_si_suffix
+from latch_cli.constants import MAX_FILE_SIZE
+from latch_cli.utils import (
+    account_id_from_token,
+    current_workspace,
+    hash_directory,
+    retrieve_or_login,
+)
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints
-
-
-_MAX_FILE_SIZE = 4 * 2**20
 
 
 @dataclass
@@ -60,6 +67,8 @@ class RegisterCtx:
 
     dkr_repo: Optional[str] = None
     dkr_client: docker.APIClient = None
+    ssh_client: paramiko.client.SSHClient = None
+    key_material: Optional[str] = None
     pkg_root: Path = None  # root
     disable_auto_version: bool = False
     image_full = None
@@ -68,15 +77,16 @@ class RegisterCtx:
     serialize_dir = None
     latch_register_api_url = endpoints["register-workflow"]
     latch_image_api_url = endpoints["initiate-image-upload"]
+    latch_provision_url = endpoints["provision-centromere"]
 
     def __init__(
         self,
         pkg_root: Path,
         token: Optional[str] = None,
         disable_auto_version: bool = False,
+        remote: bool = False,
     ):
 
-        self.dkr_client = self._construct_dkr_client()
         self.pkg_root = Path(pkg_root).resolve()
         self.disable_auto_version = disable_auto_version
         try:
@@ -84,41 +94,58 @@ class RegisterCtx:
             with open(version_file, "r") as vf:
                 self.version = vf.read().strip()
             if not self.disable_auto_version:
-                m = hashlib.new("sha256")
-                for containing_path, dirnames, fnames in os.walk(self.pkg_root):
-                    # for repeatability guarantees
-                    dirnames.sort()
-                    fnames.sort()
-                    for filename in fnames:
-                        path = Path(containing_path).joinpath(filename)
-                        m.update(str(path).encode("utf-8"))
-                        file_size = os.path.getsize(path)
-                        if file_size < _MAX_FILE_SIZE:
-                            with open(path, "rb") as f:
-                                m.update(f.read())
-                        else:
-                            print(
-                                "\x1b[38;5;226m"
-                                f"WARNING: {path.relative_to(pkg_root.resolve())} is too large ({with_si_suffix(file_size)}) to checksum, skipping."
-                                "\x1b[0m"
-                            )
-                    for dirname in dirnames:
-                        path = Path(containing_path).joinpath(dirname)
-                        m.update(str(path).encode("utf-8"))
-                self.version = self.version + "-" + m.hexdigest()[:6]
+                hash = hash_directory(self.pkg_root)
+                self.version = self.version + "-" + hash[:6]
         except Exception as e:
             raise ValueError(
                 f"Unable to extract pkg version from {str(self.pkg_root)}"
             ) from e
 
         self.dkr_repo = LatchConfig.dkr_repo
+        self.remote = remote
 
         if token is None:
             self.token = retrieve_or_login()
         else:
             self.token = token
 
-        self.account_id = account_id_from_token(self.token)
+        ws = current_workspace()
+        if ws == "" or ws is None:
+            self.account_id = account_id_from_token(self.token)
+        else:
+            self.account_id = ws
+
+        if remote is True:
+            headers = {"Authorization": f"Bearer {self.token}"}
+            response = tinyrequests.post(
+                self.latch_provision_url, headers=headers, json={}
+            )
+            resp = response.json()
+            try:
+                public_ip = resp["ip"]
+                key_material = resp["keyMaterial"]
+            except KeyError as e:
+                raise ValueError(
+                    f"Malformed response from request for access token {resp}"
+                ) from e
+
+            with NamedTemporaryFile("w", dir="/tmp/") as f:
+                f.write(key_material)
+                os.chmod(f.name, int("700", base=8))
+                f.seek(0)
+
+                # TODO - hacky
+                subprocess.run(["ssh-add", f.name])
+
+                self.dkr_client = self._construct_dkr_client(
+                    ssh_host=f"ssh://ubuntu@{public_ip}"
+                )
+                self.ssh_client = self._construct_ssh_client(
+                    host_ip=public_ip, username="ubuntu"
+                )
+
+        else:
+            self.dkr_client = self._construct_dkr_client()
 
     @property
     def image(self):
@@ -157,6 +184,20 @@ class RegisterCtx:
         return f"{self.image}:{self.version}"
 
     @property
+    def full_image(self):
+        """The full image to be registered (without a tag).
+
+            <repo/image>
+
+
+        An example: ::
+
+            dkr.ecr.us-west-2.amazonaws.com/pkg_name
+
+        """
+        return f"{self.dkr_repo}/{self.image}"
+
+    @property
     def full_image_tagged(self):
         """The full image to be registered.
 
@@ -181,11 +222,14 @@ class RegisterCtx:
         return version_archive_path
 
     @staticmethod
-    def _construct_dkr_client():
+    def _construct_dkr_client(ssh_host: Optional[str] = None):
         """Try many methods of establishing valid connection with client.
 
         This was helpful -
         https://github.com/docker/docker-py/blob/a48a5a9647761406d66e8271f19fab7fa0c5f582/docker/utils/utils.py#L321
+
+        If `ssh_host` is passed, we attempt to make a connection with a remote
+        machine.
         """
 
         def _from_env():
@@ -232,10 +276,16 @@ class RegisterCtx:
 
             return dkr_client
 
+        if ssh_host is not None:
+            try:
+                return docker.APIClient(ssh_host, use_ssh_client=True)
+            except docker.errors.DockerException as de:
+                raise OSError(
+                    f"Unable to establish a connection to remote docker host {ssh_host}."
+                ) from de
+
         environment = os.environ
-
         host = environment.get("DOCKER_HOST")
-
         if host is not None and host != "":
             return _from_env()
         else:
@@ -247,3 +297,11 @@ class RegisterCtx:
                     "Docker is not running. Make sure that"
                     " Docker is running before attempting to register a workflow."
                 ) from de
+
+    @staticmethod
+    def _construct_ssh_client(host_ip: str, username: str):
+
+        ssh = paramiko.SSHClient()
+        ssh.load_system_host_keys()
+        ssh.connect(host_ip, username=username)
+        return ssh
