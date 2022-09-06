@@ -84,8 +84,20 @@ basics/defining_cloud_resources
 basics/customizing_interface
 basics/caching
 basics/conditional_and_map_tasks
+```
+
+```{toctree}
+:hidden:
+:maxdepth: 2
+:caption: Testing and Debugging a Workflow
 basics/local_development
 basics/remote_execution
+```
+
+```{toctree}
+:hidden:
+:maxdepth: 2
+:caption: Publishing a Workflow
 basics/uploading_test_data
 ```
 
