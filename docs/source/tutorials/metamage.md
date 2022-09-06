@@ -24,38 +24,36 @@ The workflow is composed of:
 
 ### Read pre-processing and host read removal
 
-- [fastp](https://github.com/OpenGene/fastp) for read trimming
-    and other general pre-processing [^9]
-- [BowTie2](https://github.com/BenLangmead/bowtie2) for mapping
-    to the host genome and extracting unaligned reads [^10]
+- [fastp](https://github.com/OpenGene/fastp) for read trimming and other general pre-processing 
+- [BowTie2](https://github.com/BenLangmead/bowtie2) for mapping to the host genome and extracting unaligned reads 
 
 ### Assembly
 
-- [MEGAHIT](https://github.com/voutcn/megahit) for assembly [^1]
+- [MEGAHIT](https://github.com/voutcn/megahit) for assembly 
 - [MetaQuast](https://github.com/ablab/quast) for assembly evaluation
 
 ### Functional annotation
 
 - [Macrel](https://github.com/BigDataBiology/macrel) for predicting Antimicrobial Peptide
-    (AMP)-like sequences from contigs [^6]
+    (AMP)-like sequences from contigs 
 - [fARGene](https://github.com/fannyhb/fargene) for identifying Antimicrobial Resistance Genes
-    (ARGs) from contigs [^7]
+    (ARGs) from contigs 
 - [Gecco](https://github.com/zellerlab/GECCO) for predicting biosynthetic gene clusters
-    (BCGs) from contigs [^8]
+    (BCGs) from contigs 
 - [Prodigal](https://github.com/hyattpd/Prodigal) for protein-coding
-    gene prediction from contigs. [^5]
+    gene prediction from contigs. 
 
 ### Binning
 
-- BowTie2 and [Samtools](https://github.com/samtools/samtools)[^11] to
+- BowTie2 and [Samtools](https://github.com/samtools/samtools) to
     building depth files for binning.
 - [MetaBAT2](https://bitbucket.org/berkeleylab/metabat/src/master/) for
-    binning [^2]
+    binning 
 
 ### Taxonomic classification of reads
 
 - [Kaiju](https://github.com/bioinformatics-centre/kaiju) for
-    taxonomic classification [^3]
+    taxonomic classification
 - [KronaTools](https://github.com/marbl/Krona/wiki/KronaTools) for
     visualizing taxonomic classification results
 
