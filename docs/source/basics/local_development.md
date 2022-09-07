@@ -1,31 +1,13 @@
 # Local Development
 
-Executing workflows on the LatchBio platform is heavily encouraged for
-consistent behavior.
+Executing workflows on the LatchBio platform is heavily encouraged for consistent behavior.
 
-Workflows often deal with enormous files that are too large for local
-development environments and sometimes require computing resources that cannot
-be accommodated by local machines or are just unavailable (eg. GPUs).  Thus,
-there are many cases when local executions with smaller files or reduced
-resources may behave differently than on properly configured cloud
-infrastructure. Local execution should never be a substitute for testing
-workflow logic on the platform itself.
+Workflows often deal with enormous files that are too large for local development environments and sometimes require computing resources that cannot be accommodated by local machines or are just unavailable (eg. GPUs).  Thus, there are many cases when local executions with smaller files or reduced resources may behave differently than on properly configured cloud infrastructure. Local execution should never be a substitute for testing workflow logic on the platform itself.
 
 However, the ability to quickly iterate and debug task logic locally is
 certainly useful for teasing out many types of bugs.
 
-Using a `if __name__ == "__main__":` clause is a useful way to tag local
-function calls with sample values. Running `python3 wf/__init__.py` will become
-an entrypoint for quick debugging.
-
-To run the same entrypoint _within_ the latest registered container, one can run
-`latch local-execute <PATH_TO_WORKFLOW_DIR>`. This gives the same confidence in
-reproducible behavior one would usually receive post registration but with the
-benefits of fast local development. Note that workflow code is
-mounted inside the latest container build so that rebuilds are not consistently
-made with rapid changes.
-
-More information [here](https://docs.latch.bio/subcommands.html#latch-local-execute).
+Using a `if __name__ == "__main__":` clause is a useful way to tag local function calls with sample values. Running `python3 wf/__init__.py` will become an entrypoint for quick debugging.
 
 Here is an example of a minimal `wf/__init__.py` file that demonstrates local
 execution:
