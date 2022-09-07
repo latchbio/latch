@@ -1,9 +1,9 @@
-import os as _os
+import os
 from typing import Any, Dict
 
 import requests
 
-NUCLEUS_URL = _os.environ.get("LATCH_CLI_NUCLEUS_URL", "https://nucleus.latch.bio")
+NUCLEUS_URL = os.environ.get("LATCH_CLI_NUCLEUS_URL", "https://nucleus.latch.bio")
 ADD_MESSAGE_ENDPOINT = f"{NUCLEUS_URL}/sdk/add-task-execution-message"
 
 
@@ -41,14 +41,15 @@ def message(typ: str, data: Dict[str, Any]) -> None:
 
             ...
     """
-    try:
-        task_project = _os.environ["FLYTE_INTERNAL_TASK_PROJECT"]
-        task_domain = _os.environ["FLYTE_INTERNAL_TASK_DOMAIN"]
-        task_name = _os.environ["FLYTE_INTERNAL_TASK_NAME"]
-        task_version = _os.environ["FLYTE_INTERNAL_TASK_VERSION"]
-        task_attempt_number = _os.environ["FLYTE_ATTEMPT_NUMBER"]
-        execution_token = _os.environ["FLYTE_INTERNAL_EXECUTION_ID"]
-    except KeyError:
+    task_project = os.environ.get("FLYTE_INTERNAL_TASK_PROJECT")
+    task_domain = os.environ.get("FLYTE_INTERNAL_TASK_DOMAIN")
+    task_name = os.environ.get("FLYTE_INTERNAL_TASK_NAME")
+    task_version = os.environ.get("FLYTE_INTERNAL_TASK_VERSION")
+    task_attempt_number = os.environ.get("FLYTE_ATTEMPT_NUMBER")
+    execution_token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
+    array_index = os.environ.get("FLYTE_K8S_ARRAY_INDEX")
+
+    if task_project is None:
         print(f"Local execution message:\n[{typ}]: {data}")
         return
 
@@ -63,6 +64,7 @@ def message(typ: str, data: Dict[str, Any]) -> None:
                 "version": task_version,
             },
             "task_attempt_number": task_attempt_number,
+            "task_array_index": array_index,
             "type": typ,
             "data": data,
         },
