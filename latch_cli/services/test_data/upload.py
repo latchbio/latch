@@ -80,7 +80,7 @@ def upload_file(
             confirm = input(f"{key} already exists, override it?  (y/n) > ")
             if confirm in ("n", "no"):
                 print("Aborting upload.")
-                break
+                return
             elif confirm in ("y", "yes"):
                 break
             else:
