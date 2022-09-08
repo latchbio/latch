@@ -1,21 +1,21 @@
 """Service to upload test objects to a managed bucket."""
 
-import sys
 from pathlib import Path
 
 import boto3
 import botocore
+import click
 
 from latch_cli.services.test_data.utils import _retrieve_creds
 
 BUCKET = "latch-public"
 
 
-def upload(src_path: str) -> str:
-    """Uploads a local file to a managed bucket.
+def upload(src_path: str, dont_confirm_overwrite: bool = True) -> str:
+    """Uploads a local file/folder to a managed bucket.
 
     Args:
-        src_path: The path of the file to upload.
+        src_path: The path of the file/folder to upload.
     Returns: s3 URL of uploaded object.
 
     Example: ::
@@ -26,11 +26,9 @@ def upload(src_path: str) -> str:
             accesible S3 URL.
     """
 
-    src_path_p = Path(src_path).resolve()
-
     session_token, access_key, secret_key, account_id = _retrieve_creds()
 
-    s3_resource = boto3.resource(
+    s3_resource = boto3.client(
         "s3",
         aws_access_key_id=access_key,
         aws_secret_access_key=secret_key,
@@ -39,21 +37,54 @@ def upload(src_path: str) -> str:
 
     allowed_key = str((Path("test-data") / account_id).joinpath(src_path))
 
+    upload_helper(
+        Path(src_path).resolve(),
+        allowed_key,
+        s3_resource,
+        dont_confirm_overwrite,
+    )
+
+    return f"s3://{BUCKET}/{allowed_key}"
+
+
+def upload_helper(
+    src_path: Path,
+    key: str,
+    s3_resource,
+    dont_confirm_overwrite: bool,
+):
+    if not src_path.exists():
+        raise ValueError(f"Path {src_path} doesn't exist.")
+
+    if src_path.is_dir():
+        for sub_path in src_path.iterdir():
+            upload_helper(
+                sub_path, f"{key}/{sub_path.name}", s3_resource, dont_confirm_overwrite
+            )
+    else:
+        upload_file(src_path, key, s3_resource, dont_confirm_overwrite)
+
+
+def upload_file(
+    src_path: Path,
+    key: str,
+    s3_resource,
+    dont_confirm_overwrite: bool,
+):
     try:
-        s3_resource.Object(BUCKET, allowed_key).load()
+        s3_resource.head_object(Bucket=BUCKET, Key=key)
     except botocore.exceptions.ClientError:
         pass
     else:
-        confirm = input("Object already exists, override it?  (y/n) > ")
-        if confirm in ("n", "no"):
-            print("Aborting upload.")
-            sys.exit()
-        elif confirm in ("y", "yes"):
-            pass
-        else:
-            print("Invalid response.")
-            sys.exit()
+        while True and not dont_confirm_overwrite:
+            confirm = input(f"{key} already exists, override it?  (y/n) > ")
+            if confirm in ("n", "no"):
+                print("Aborting upload.")
+                break
+            elif confirm in ("y", "yes"):
+                break
+            else:
+                print("Invalid response.")
 
-    s3_resource.meta.client.upload_file(src_path, BUCKET, allowed_key)
-
-    return f"s3://{BUCKET}/{allowed_key}"
+    s3_resource.upload_file(str(src_path), BUCKET, key)
+    click.secho(f"Successfully uploaded {key}", fg="green")
