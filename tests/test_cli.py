@@ -1,6 +1,5 @@
 import os
 import secrets
-import shutil
 import string
 import subprocess
 import textwrap
@@ -11,8 +10,7 @@ import pytest
 import requests
 
 from latch_cli.config.latch import LatchConfig
-
-from .fixtures import project_name, test_account_jwt
+from tests.fixtures import test_account_jwt
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints
@@ -124,21 +122,6 @@ def _run_cp_and_clean_up(token, remote_dir: str, filename: str):
             os.remove(initial)
         if os.path.isfile(final):
             os.remove(final)
-
-
-def test_init_and_register(test_account_jwt, project_name):
-    # Originally two separate tests: test_init and test_register.
-
-    # Combined into one test because pytest randomizes the order of tests, meaning
-    # half the time test_register would fail because the project had not been created
-    # by test_init yet.
-
-    _cmd = ["latch", "init", project_name]
-    _run_and_verify(_cmd, f"Created a latch workflow called {project_name}.")
-
-    _cmd = ["latch", "register", project_name]
-    _run_and_verify(_cmd, "Successfully registered workflow.")
-    shutil.rmtree(str(Path(project_name).resolve()))
 
 
 def test_cp_home_robustness(test_account_jwt):

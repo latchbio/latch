@@ -25,3 +25,6 @@ We'll maintain a growing list of well documented examples developed by our commu
 **Protein Engineering**
   * [UniRep: mLSTM "babbler" deep representation learner for protein engineering](https://github.com/matteobolner/unirep_latch)
   * [FAMSA: Multiple sequence protein alignment](https://github.com/shivaramakrishna99/famsa-latch)
+
+  **Nextflow**
+  * [A Nextflow workflow to process FastQs](https://github.com/latchbio/wf-rejuvenome-nf_redun_06)

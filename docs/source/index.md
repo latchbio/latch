@@ -36,8 +36,6 @@ Latch SDK containerizes and versions the code in the background each time a work
 * **Workflows monitoring**: For batched runs of workflows, we'll aim to provide better dashboard, logs, traces, metrics, and alerting for observability.
 
 ## What the Latch SDK is not
-
-* **A pure workflow orchestration engine**: There are many popular workflow orchestration engines, such as Nextflow or Snakemake, that can be run locally from a bioinformatician's machine. Although workflow orchestration is a feature of Latch SDK, Latch also provides managed infrastructure and no-code interface generation. You can also easily bring existing workflow script of any language to Latch (See examples [here](./examples/workflows_examples.md)).
 * **A self-hosted solution**: Currently, you cannot write your workflow using Latch SDK and host it in your own AWS instance or an HPC. The infrastructure serving bioinformatics pipelines is fully managed by Latch. This allows us to rapidly iterate to bring on high quality features, give cost and performance guarantees, and ensure that security is offered out-of-the-box.
 
 ## Examples
@@ -77,17 +75,30 @@ getting_started/authoring_your_workflow
 ```{toctree}
 :hidden:
 :maxdepth: 2
-:caption: Concepts
+:caption: Defining a Workflow
 basics/what_is_a_workflow
-basics/parameter_types
-basics/working_with_files
-basics/uploading_test_data
-basics/customizing_interface
-basics/defining_cloud_resources
 basics/writing_dockerfiles
-basics/local_development
+basics/working_with_files
+basics/parameter_types
+basics/defining_cloud_resources
+basics/customizing_interface
 basics/caching
 basics/conditional_and_map_tasks
+```
+
+```{toctree}
+:hidden:
+:maxdepth: 2
+:caption: Testing and Debugging a Workflow
+basics/local_development
+basics/remote_execution
+```
+
+```{toctree}
+:hidden:
+:maxdepth: 2
+:caption: Publishing a Workflow
+basics/uploading_test_data
 ```
 
 ```{toctree}

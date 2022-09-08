@@ -304,7 +304,19 @@ To test your first workflow on Console, select the **Test Data** and click Launc
 ![Interface UI](../assets/interface.png)
 
 ### Using Latch CLI
-To launch the workflow on Latch Console from the CLI, first generate a parameters file: 
+Using `latch get-wf`, you can view the names of all workflows available in your workspace: 
+```shell-session
+$ latch get-wf
+
+ID     	Name                                          	Version             
+65047	wf.deseqf.deseq2_wf                       	0.0.1r       
+67056	wf.__init__.aggregate_bulk_rna_seq_counts 	0.0.2-eb5e84 
+67649	wf.__init__.align_with_salmon             	0.0.0-4cd8db 
+67628	wf.__init__.alphafold_wf                  	v2.2.3+46
+67617   wf.__init__.assemble_and_sort               0.0.1
+```
+
+To launch the workflow on Latch Console from the CLI, first generate a parameters file by using `latch get-params` and passing in the name of your workflow like so:
 ```shell-session
 $ latch get-params wf.__init__.assemble_and_sort
 ```
@@ -331,6 +343,10 @@ You can view execution statuses from the CLI, run:
 ```shell-session
 $ latch get-executions
 ```
+
+![Executions TUI](../assets/executions-tui.png)
+
+The command will open up a Terminal UI with the same capabilities on the Executions page on the Latch Platform, where you will see a list of executions, tasks, and logs for easy debugging. 
 
 ---
 # Next Steps
