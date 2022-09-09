@@ -4,7 +4,7 @@
 from typing import Optional
 
 
-def login(connection: Optional[str]) -> str:
+def login(connection: Optional[str] = None) -> str:
     """Authenticates user with Latch and persists an access token.
 
     Kicks off a three-legged OAuth2.0 flow outlined in `this RFC`_.  Logic
