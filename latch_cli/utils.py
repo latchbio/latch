@@ -109,7 +109,7 @@ def with_si_suffix(num, suffix="B", styled=False):
     return f"{num}{unit}{suffix}"
 
 
-def hash_directory(dir_path: Path):
+def hash_directory(dir_path: Path) -> str:
     m = hashlib.new("sha256")
     m.update(current_workspace().encode("utf-8"))
     for containing_path, dirnames, fnames in os.walk(dir_path):

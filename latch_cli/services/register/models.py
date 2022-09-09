@@ -87,6 +87,17 @@ class RegisterCtx:
         remote: bool = False,
     ):
 
+        if token is None:
+            self.token = retrieve_or_login()
+        else:
+            self.token = token
+
+        ws = current_workspace()
+        if ws == "" or ws is None:
+            self.account_id = account_id_from_token(self.token)
+        else:
+            self.account_id = ws
+
         self.pkg_root = Path(pkg_root).resolve()
         self.disable_auto_version = disable_auto_version
         try:
@@ -103,17 +114,6 @@ class RegisterCtx:
 
         self.dkr_repo = LatchConfig.dkr_repo
         self.remote = remote
-
-        if token is None:
-            self.token = retrieve_or_login()
-        else:
-            self.token = token
-
-        ws = current_workspace()
-        if ws == "" or ws is None:
-            self.account_id = account_id_from_token(self.token)
-        else:
-            self.account_id = ws
 
         if remote is True:
             headers = {"Authorization": f"Bearer {self.token}"}
