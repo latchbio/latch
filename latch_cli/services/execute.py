@@ -2,6 +2,7 @@ import json
 import os
 import select
 import sys
+import termios
 import textwrap
 from pathlib import Path
 from tty import setraw
@@ -89,7 +90,7 @@ def _fetch_pod_info(token: str, task_name: str) -> Tuple[str, str, str]:
         namespace = response["namespace"]
         aws_account_id = response["aws_account_id"]
     except KeyError as err:
-        raise ValueError(f"malformed response on image upload: {response}") from err
+        raise ValueError(f"malformed response: {response}") from err
 
     return (
         access_key,
@@ -174,11 +175,14 @@ def execute(task_name: str):
 
     class TTY:
         def __init__(
-            self, in_stream: int, out_stream: int, err_stream: int, raw: bool = True
+            self,
+            in_stream: int,
+            out_stream: int,
+            err_stream: int,
+            raw: bool = True,
         ):
-
-            if raw is True:
-                setraw(in_stream)
+            if raw:
+                setraw(sys.stdin.fileno())
 
             self._stdin = in_stream
             self._stdout = out_stream
@@ -197,51 +201,60 @@ def execute(task_name: str):
         def in_stream(self):
             return self._stdin
 
-    tty_ = TTY(
-        sys.stdin.fileno(),
-        sys.stdout.fileno(),
-        sys.stderr.fileno(),
-    )
-    wsstream = WSStream()
+    try:
+        old_settings = termios.tcgetattr(sys.stdin.fileno())
 
-    rlist = [wsstream.socket, tty_.in_stream]
+        tty_ = TTY(
+            sys.stdin.fileno(),
+            sys.stdout.fileno(),
+            sys.stderr.fileno(),
+        )
+        try:
+            wsstream = WSStream()
+        except kubernetes.client.rest.ApiException:
+            raise ValueError(
+                "Unable to find requested task name - make sure that you are in the correct workspace."
+            )
 
-    while True:
+        rlist = [wsstream.socket, tty_.in_stream]
+        while True:
+            rs, _, _ = select.select(rlist, [], [])
 
-        rs, _, _ = select.select(rlist, [], [])
+            if tty_.in_stream in rs:
+                chunk = tty_.flush()
+                if len(chunk) > 0:
+                    wsstream.send(chunk)
 
-        if tty_.in_stream in rs:
-            chunk = tty_.flush()
-            if len(chunk):
-                wsstream.send(chunk)
+            if wsstream.socket in rs:
+                opcode, frame = wsstream.get_frame()
+                if opcode == websocket.ABNF.OPCODE_CLOSE:
+                    rlist.remove(wsstream.socket)
 
-        if wsstream.socket in rs:
+                elif opcode == websocket.ABNF.OPCODE_BINARY:
+                    channel = frame.data[0]
+                    chunk = frame.data[1:]
+                    if channel in (stdout_channel, stderr_channel):
+                        if len(chunk):
+                            if channel == stdout_channel:
+                                tty_.write_out(chunk)
+                            else:
+                                tty_.write_err(chunk)
+                    elif channel == kubernetes.stream.ws_client.ERROR_CHANNEL:
+                        wsstream.close()
+                        error = json.loads(chunk)
+                        if error["status"] == "Success":
+                            break
+                        raise websocket.WebSocketException(
+                            f"Status: {error['status']} - Message: {error['message']}"
+                        )
+                    else:
+                        raise websocket.WebSocketException(
+                            f"Unexpected channel: {channel}"
+                        )
 
-            opcode, frame = wsstream.get_frame()
-            if opcode == websocket.ABNF.OPCODE_CLOSE:
-                rlist.remove(wsstream.socket)
-
-            elif opcode == websocket.ABNF.OPCODE_BINARY:
-                channel = frame.data[0]
-                chunk = frame.data[1:]
-                if channel in (stdout_channel, stderr_channel):
-                    if len(chunk):
-                        if channel == stdout_channel:
-                            tty_.write_out(chunk)
-                        else:
-                            tty_.write_err(chunk)
-                elif channel == kubernetes.stream.ws_client.ERROR_CHANNEL:
-                    wsstream.close()
-                    error = json.loads(chunk)
-                    if error["status"] == "Success":
-                        break
-                    raise websocket.WebSocketException(
-                        f"Status: {error['status']} - Message: {error['message']}"
-                    )
                 else:
-                    raise websocket.WebSocketException(f"Unexpected channel: {channel}")
-
-            else:
-                raise websocket.WebSocketException(
-                    f"Unexpected websocket opcode: {opcode}"
-                )
+                    raise websocket.WebSocketException(
+                        f"Unexpected websocket opcode: {opcode}"
+                    )
+    finally:
+        termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, old_settings)
