@@ -174,7 +174,16 @@ def execute(task_name: str):
             self._wssock.close()
 
     class TTY:
-        def __init__(self, in_stream: int, out_stream: int, err_stream: int):
+        def __init__(
+            self,
+            in_stream: int,
+            out_stream: int,
+            err_stream: int,
+            raw: bool = True,
+        ):
+            if raw:
+                setraw(sys.stdin.fileno())
+
             self._stdin = in_stream
             self._stdout = out_stream
             self._stderr = err_stream
@@ -194,7 +203,6 @@ def execute(task_name: str):
 
     try:
         old_settings = termios.tcgetattr(sys.stdin.fileno())
-        setraw(sys.stdin.fileno())
 
         tty_ = TTY(
             sys.stdin.fileno(),

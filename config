@@ -1,0 +1,34 @@
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUM1ekNDQWMrZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJeU1EVXpNREEwTURJME5sb1hEVE15TURVeU56QTBNREkwTmxvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBTHptCkdkaGhBNDNzTHBrUnl3TlpJOUNtMWpXd1B2QTloRTNyWjVYWTRha2Ewb05uOFBlMSt4TVptZDg5ZHR3SjVVdFUKQ1AwR055cWd6NEtzbUxDOTMrVW8vcSs2eWxnMXZNRUV5bHFzNGt5WVN2dWhpaHVsbmZtODBBeE5xT0RQOEtDZgplSmRtTnM1cXo4MXpDamg1Y1NnNldFakJYVnhQSDQyQWdpcnZjYVUxbEJUd0VZV3gwQTdQRWlBd0I2NUtjUXB6CkRqOUFiZ0lYTjR0QjV6alhCZzNLemtJOFRDMWJvaElTbUxIa0NTTy9NUEd3RFpEdXN3RlFpYnpDSTdkVDlCTkEKaXBzZDNOTVcrd1kxV00zV2J6ZGNaSldib3NWUE5SUHNDTHlFSzFLZkpVbXFESGZGOWRMMUNjWFQ1QnFlY3B2cQpOVGdHRGZzZklJeVdJL2ZoMWpNQ0F3RUFBYU5DTUVBd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4R0ExVWRFd0VCCi93UUZNQU1CQWY4d0hRWURWUjBPQkJZRUZFKzJpT3RFRVhIS3VzaU5oUGoweE44ZElKUExNQTBHQ1NxR1NJYjMKRFFFQkN3VUFBNElCQVFBQVZlK28ybVN0M01CT04rdmRiNzIxWmRsY3IyZG5kNzBScjFyTlI4ME1DUTMwRVlFagpSSTdidUgvTUZhTzBaVjFZbjdYSGdUbVhNMWNPTk9DcTdLdXF6NURyVG5IN1c3VGQzbi80NjBPeFpOcWo4MUR1CnZZRlF6eHltbHZQMEx3dkVIQlliK1RWOUNsc2pCU1Vod1N3aXUrQWQrTHp6Wks0NWh0R2ZvdlJyeDYvR1pEVnEKYUFDQUZVTGgrVHRnMzFZdXdUQ0RZYmZZOC9QOUhma3psSTgraGY3UGxjZmp4Wmg5MTJUUk1VUTdkS1ZJMHF3TQo4NnFLK3ZmQktWOG5IQW1JMEEzVmp6cWQ4OWlHMkhQTHlhNDJXTkZmM0t3SCsxZC9IVHBYUEVBTk80WHpST1BQClJ6UHJHc21ZRmlZTGN2alA3RG5IZi9GYkViSFdYTXRWVjRSZgotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+    server: https://C629A20F0E69D7DA6849ED877A3048EC.gr7.us-west-2.eks.amazonaws.com
+  name: arn:aws:eks:us-west-2:812206152185:cluster/prion-prod
+contexts:
+- context:
+    cluster: arn:aws:eks:us-west-2:812206152185:cluster/prion-prod
+    user: arn:aws:eks:us-west-2:812206152185:cluster/prion-prod
+  name: arn:aws:eks:us-west-2:812206152185:cluster/prion-prod
+current-context: arn:aws:eks:us-west-2:812206152185:cluster/prion-prod
+kind: Config
+preferences: {}
+users:
+- name: arn:aws:eks:us-west-2:812206152185:cluster/prion-prod
+  user:
+    exec:
+      apiVersion: client.authentication.k8s.io/v1beta1
+      command: aws
+      args:
+        - --region
+        - us-west-2
+        - eks
+        - get-token
+        - --cluster-name
+        - prion-prod
+      env:
+        - name: 'AWS_ACCESS_KEY_ID'
+          value: 'ASIA32G2CLH43QBM2OQB'
+        - name: 'AWS_SECRET_ACCESS_KEY'
+          value: '9eF1LUVFjDOTlAfHafC6OdJXXp/xhpDtupEFyx04'
+        - name: 'AWS_SESSION_TOKEN'
+          value: 'FwoGZXIvYXdzEMD//////////wEaDHKaXFymNSUndgadKiLkAYqWG54V8N5Kmp/Ks5/xokcwd1//ye+M5huUDBg5jwdgfgTTRgTavU8JX+K77cTxqxBtvGYPZ+hCIFmhNPR15S1aMUP+edNkyUop3TnXUxaF5nDzjKLd0N2ks0eMu79zltbmuJT8lcZvMqkxbV4O6RxGXq+b60RkXhp/o0xGeeKwDb7Srr4uluTJN3oBjkQd+wmC21Gc4iiPxN/nOTD/wF3vs4en/m+5H03l/GgjTEQj+N04lvWFBCi2zY0g4XpBpnjdg3sHv7Wveqiwnb5uqOk6BdfP/lKsnwE/HCJPL/ScH71PSSiIlu2YBjIporBbdSynLhuhr3hE2X7Cs3OSSFekW4efqoDNJvObOxKRbwfdZ4LsI3U='
