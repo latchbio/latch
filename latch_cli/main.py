@@ -508,18 +508,26 @@ def test_data(ctx):
 
 @test_data.command("upload")
 @click.argument("src_path", nargs=1, type=click.Path(exists=True))
-def test_data_upload(src_path: str):
+@click.option(
+    "--dont-confirm-overwrite",
+    "-d",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help=("Automatically overwrite any files without asking for confirmation."),
+)
+def test_data_upload(src_path: str, dont_confirm_overwrite: bool):
     """Upload test data object."""
 
     from latch_cli.services.test_data.upload import upload
 
     try:
-        s3_url = upload(src_path)
+        s3_url = upload(src_path, dont_confirm_overwrite)
         click.secho(f"Successfully uploaded to {s3_url}", fg="green")
     except Exception as e:
         CrashReporter.report()
         click.secho(
-            f"Unable to upload {src_path} to managed bucket : {str(e)}", fg="red"
+            f"Unable to upload {src_path} to managed bucket: {str(e)}", fg="red"
         )
 
 
