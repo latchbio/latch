@@ -1,9 +1,20 @@
 # Docker Recipes
 
-This page contains some common implementation patterns used in Dockerfiles when building images for workflows.
+## Templates
 
-## Installing Python Dependencies
-### Solution 1:
+The Latch SDK  supports creating two new template workflows automatically, namely one already with a Dockerfile that installs R, and one already with a Dockerfile that installs conda. To generate these, simply use latch init with the `--template` option like so:
+
+```shell-session
+$ latch init [package_root] --template=[...]
+```
+Valid values for the template option as of now are `r`, `conda`, and `default`. In particular, the default option (as well as just not providing the flag itself) creates the default `assemble_and_sort` workflow, where the Dockerfile contains instructions for building binaries from source.
+
+---
+
+## Common Dockerfile patterns
+
+### Installing Python Dependencies
+**Solution 1**:
 * Create a `requirements.txt` document in the same directory as your Dockerfile.
 * Specify the Python packages and their versions like so.
 ```
@@ -19,13 +30,13 @@ COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt
 ```
 
-### Solution 2: 
+**Solution 2**:
 ```Dockerfile
 # Install cialign package using pip
 RUN pip3 install cialign
 ```
 ---
-## Installing packages from Anaconda Cloud
+### Installing packages from Anaconda Cloud
 <br>
 
 ```Dockerfile
@@ -43,7 +54,7 @@ RUN conda install -c defaults -c conda-forge -c bioconda -y -n base --debug -c b
 ```
 
 ---
-## Installing R
+### Installing R
 <br>
 
 ```Dockerfile
@@ -63,7 +74,7 @@ RUN R -e "install.packages('BiocManager')"
 ```
 
 ---
-## Build binaries from source
+### Build binaries from source
 <br>
 
 ```Dockerfile
