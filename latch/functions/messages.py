@@ -37,7 +37,7 @@ def message(typ: str, data: Dict[str, Any]) -> None:
             catch ValueError:
                 title = 'Invalid sample ID column selected'
                 body = 'Your file indicates that sample columns a, b are valid'
-                message(typ='error', data={'title': title, 'body': body})
+                message(type='error', data={'title': title, 'body': body})
 
             ...
     """
