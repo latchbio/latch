@@ -117,32 +117,46 @@ class RegisterCtx:
 
         if remote is True:
             headers = {"Authorization": f"Bearer {self.token}"}
+
+            try:
+                user_agent = paramiko.Agent()
+            except paramiko.SSHException as e:
+                raise ValueError(
+                    "Your SSH protocol is incompatible. Please use local register."
+                ) from e
+            keys = user_agent.get_keys()
+            if len(keys) == 0:
+                raise ValueError(
+                    "It seems you don't have any SSH keys set up. "
+                    "Use a utility like `ssh-keygen` to set them up and try again."
+                )
+
+            pub_key = keys[0].get_base64()
+
             response = tinyrequests.post(
-                self.latch_provision_url, headers=headers, json={}
+                self.latch_provision_url,
+                headers=headers,
+                json={
+                    "public_key": pub_key,
+                },
             )
+
             resp = response.json()
             try:
                 public_ip = resp["ip"]
-                key_material = resp["keyMaterial"]
+                username = resp["username"]
             except KeyError as e:
                 raise ValueError(
                     f"Malformed response from request for access token {resp}"
                 ) from e
 
-            with NamedTemporaryFile("w", dir="/tmp/") as f:
-                f.write(key_material)
-                os.chmod(f.name, int("700", base=8))
-                f.seek(0)
-
-                # TODO - hacky
-                subprocess.run(["ssh-add", f.name])
-
-                self.dkr_client = self._construct_dkr_client(
-                    ssh_host=f"ssh://ubuntu@{public_ip}"
-                )
-                self.ssh_client = self._construct_ssh_client(
-                    host_ip=public_ip, username="ubuntu"
-                )
+            self.dkr_client = self._construct_dkr_client(
+                ssh_host=f"ssh://{username}@{public_ip}"
+            )
+            self.ssh_client = self._construct_ssh_client(
+                host_ip=public_ip,
+                username=username,
+            )
 
         else:
             self.dkr_client = self._construct_dkr_client()

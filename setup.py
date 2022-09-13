@@ -14,7 +14,7 @@ if CURRENT_PYTHON < MIN_PYTHON_VERSION:
 
 setup(
     name="latch",
-    version="v2.0.0",
+    version="v2.0.1",
     author_email="kenny@latch.bio",
     description="latch sdk",
     packages=find_packages(),
@@ -38,7 +38,7 @@ setup(
         "tqdm>=4.63.0",
         "lytekit==0.4.0",
         "lytekitplugins-pods==0.3.1",
-        "typing-extensions==4.0.1",
+        "typing-extensions==4.3.0",
         "apscheduler==3.9.1",
     ],
     classifiers=[

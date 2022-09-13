@@ -6,7 +6,7 @@ Platform wide configuration, eg. api endpoints, callback server ports...
 
 import os
 
-DOMAIN = os.environ.get("LATCH_SDK_DOMAIN", "latch.bio")
+DOMAIN = os.environ.get("LATCH_SDK_DOMAIN", "ligma.ai")
 CONSOLE_URL = f"https://console.{DOMAIN}"
 NUCLEUS_URL = f"https://nucleus.{DOMAIN}"
 
