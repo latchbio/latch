@@ -1,12 +1,8 @@
 """Models used in the register service."""
 
-import hashlib
 import os
-import subprocess
-import traceback
 from dataclasses import dataclass
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 from typing import List, Optional
 
 import docker
@@ -14,7 +10,6 @@ import paramiko
 
 import latch_cli.tinyrequests as tinyrequests
 from latch_cli.config.latch import LatchConfig
-from latch_cli.constants import MAX_FILE_SIZE
 from latch_cli.utils import (
     account_id_from_token,
     current_workspace,
@@ -122,13 +117,16 @@ class RegisterCtx:
                 user_agent = paramiko.Agent()
             except paramiko.SSHException as e:
                 raise ValueError(
-                    "Your SSH protocol is incompatible. Please use local register."
+                    "An error occurred during SSH protocol negotiation. "
+                    "This is due to a problem with your system. "
+                    "Please use `latch register` without the `--remote` flag."
                 ) from e
             keys = user_agent.get_keys()
             if len(keys) == 0:
                 raise ValueError(
-                    "It seems you don't have any SSH keys set up. "
-                    "Use a utility like `ssh-keygen` to set them up and try again."
+                    "It seems you don't have any (valid) SSH keys set up. "
+                    "Check that any keys that you have are valid, or use "
+                    "a utility like `ssh-keygen` to set one up and try again."
                 )
 
             pub_key = keys[0].get_base64()
