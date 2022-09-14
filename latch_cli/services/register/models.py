@@ -129,9 +129,6 @@ class RegisterCtx:
                     "a utility like `ssh-keygen` to set one up and try again."
                 )
 
-            for k in keys:
-                print(k.get_base64())
-
             pub_key = keys[0]
 
             alg = pub_key.get_name()
