@@ -1,20 +1,20 @@
 """Models used in the register service."""
 
-import hashlib
 import os
 import subprocess
-import traceback
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import docker
 import paramiko
+from flytekit.core.base_task import PythonTask
+from flytekit.core.context_manager import FlyteEntities
+from flytekit.tools import module_loader
 
 import latch_cli.tinyrequests as tinyrequests
 from latch_cli.config.latch import LatchConfig
-from latch_cli.constants import MAX_FILE_SIZE
 from latch_cli.utils import (
     account_id_from_token,
     current_workspace,
@@ -78,6 +78,7 @@ class RegisterCtx:
     latch_register_api_url = endpoints["register-workflow"]
     latch_image_api_url = endpoints["initiate-image-upload"]
     latch_provision_url = endpoints["provision-centromere"]
+    container_map: Dict[str, Path] = {}  # Map task names to container paths
 
     def __init__(
         self,
@@ -99,6 +100,17 @@ class RegisterCtx:
             self.account_id = ws
 
         self.pkg_root = Path(pkg_root).resolve()
+
+        with module_loader.add_sys_path(str(self.pkg_root)):
+            module_loader.just_load_modules(["wf"])
+
+        container_map = {}
+        # Global object holds all serializable objects after they are imported.
+        for entity in FlyteEntities.entities:
+            if isinstance(entity, PythonTask):
+                if entity.dockerfile_path:
+                    container_map[entity.name] = entity.dockerfile_path
+
         self.disable_auto_version = disable_auto_version
         try:
             version_file = self.pkg_root.joinpath("version")
