@@ -3,6 +3,7 @@
 import os
 import re
 import shutil
+import textwrap
 from collections import OrderedDict
 from functools import wraps
 from pathlib import Path
@@ -225,7 +226,9 @@ def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]
                 )
                 if row["modifyTime"] != "-" and row["type"] != "dir"
                 else click.style("-", dim=True),
-                "name": row["name"],
+                "name": row["name"]
+                if len(row["name"]) <= 50
+                else f"{row['name'][:47]}...",
             }
 
             if row["type"] == "dir":
