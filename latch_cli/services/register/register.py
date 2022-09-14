@@ -195,13 +195,11 @@ def register(
         register("./foo")
         register("/root/home/foo")
 
-        register("/root/home/foo", dockerfile="./Dockerfile")
+        register("/root/home/foo")
         register("/root/home/foo", requirements="./requirements.txt")
 
     .. _Flyte:
         https://docs.flyte.org
-    .. _Dockerfile:
-        https://docs.docker.com/engine/reference/builder/
     .. _flytekit documentation:
         https://docs.flyte.org/en/latest/concepts/registration.html
     """
@@ -229,7 +227,7 @@ def register(
         build_logs = build_image(ctx, dockerfile)
         _print_and_save_build_logs(build_logs, ctx.image_tagged, str(pkg_root))
 
-        serialize_logs, container_id = _serialize_pkg_in_container(ctx, td)
+        serialize_logs, container_id = serialize_pkg_in_container(ctx, td)
         _print_serialize_logs(serialize_logs, ctx.image_tagged)
         exit_status = ctx.dkr_client.wait(container_id)
         if exit_status["StatusCode"] != 0:
@@ -309,7 +307,7 @@ def build_image(ctx: RegisterCtx, dockerfile: Path) -> List[str]:
     return build_logs
 
 
-def _serialize_pkg_in_container(ctx: RegisterCtx, serialize_dir: Path) -> List[str]:
+def serialize_pkg_in_container(ctx: RegisterCtx, serialize_dir: Path) -> List[str]:
 
     _serialize_cmd = ["make", "serialize"]
     container = ctx.dkr_client.create_container(
