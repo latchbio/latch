@@ -129,13 +129,19 @@ class RegisterCtx:
                     "a utility like `ssh-keygen` to set one up and try again."
                 )
 
-            pub_key = keys[0].get_base64()
+            for k in keys:
+                print(k.get_base64())
+
+            pub_key = keys[0]
+
+            alg = pub_key.get_name()
+            material = pub_key.get_base64()
 
             response = tinyrequests.post(
                 self.latch_provision_url,
                 headers=headers,
                 json={
-                    "public_key": pub_key,
+                    "public_key": f"{alg} {material}",
                 },
             )
 
