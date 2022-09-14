@@ -24,6 +24,8 @@ exported decorators.
     https://docs.flyte.org/en/latest/
 """
 
+import functools
+
 from flytekit import task
 from flytekitplugins.pod import Pod
 from kubernetes.client.models import (
@@ -134,9 +136,7 @@ def _get_small_pod() -> Pod:
     )
 
 
-large_gpu_task = task(
-    task_config=_get_large_gpu_pod(), retries=0, cache=False, cache_version=""
-)
+large_gpu_task = functools.partial(task, task_config=_get_large_gpu_pod())
 """This task will get scheduled on a large GPU-enabled node.
 
 This node is not necessarily dedicated to the task, but the node itself will be
@@ -164,9 +164,7 @@ on-demand.
 """
 
 
-small_gpu_task = task(
-    task_config=_get_small_gpu_pod(), retries=0, cache=False, cache_version=""
-)
+small_gpu_task = functools.partial(task, task_config=_get_small_gpu_pod())
 """This task will get scheduled on a small GPU-enabled node.
 
 This node will be dedicated to the task. No other tasks will be allowed to run
@@ -194,9 +192,7 @@ on it.
 """
 
 
-large_task = task(
-    task_config=_get_large_pod(), retries=3, cache=False, cache_version=""
-)
+large_task = functools.partial(task, task_config=_get_large_pod())
 """This task will get scheduled on a large node.
 
 This node will be dedicated to the task. No other tasks will be allowed to run
@@ -224,9 +220,7 @@ on it.
 """
 
 
-medium_task = task(
-    task_config=_get_medium_pod(), retries=3, cache=False, cache_version=""
-)
+medium_task = functools.partial(task, task_config=_get_medium_pod())
 """This task will get scheduled on a medium node.
 
 This node will be dedicated to the task. No other tasks will be allowed to run
@@ -254,9 +248,7 @@ on it.
 """
 
 
-small_task = task(
-    task_config=_get_small_pod(), retries=0, cache=False, cache_version=""
-)
+small_task = functools.partial(task, task_config=_get_small_pod())
 """This task will get scheduled on a small node.
 
 .. list-table:: Title
