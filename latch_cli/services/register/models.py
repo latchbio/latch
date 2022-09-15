@@ -130,7 +130,6 @@ class RegisterCtx:
                 )
 
             pub_key = keys[0]
-
             alg = pub_key.get_name()
             material = pub_key.get_base64()
 
