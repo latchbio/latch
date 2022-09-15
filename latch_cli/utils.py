@@ -2,13 +2,17 @@
 
 import hashlib
 import os
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import jwt
 
 from latch_cli.config.user import UserConfig
-from latch_cli.constants import MAX_FILE_SIZE
+from latch_cli.constants import MAX_FILE_SIZE, PKG_NAME
 from latch_cli.services.login import login
+from latch_cli.tinyrequests import get
+
+user_conf = UserConfig()
 
 
 def retrieve_or_login() -> str:
@@ -18,7 +22,6 @@ def retrieve_or_login() -> str:
         A JWT
     """
 
-    user_conf = UserConfig()
     token = user_conf.token
     if token == "":
         token = login()
@@ -26,7 +29,6 @@ def retrieve_or_login() -> str:
 
 
 def current_workspace() -> str:
-    user_conf = UserConfig()
     ws = user_conf.current_workspace
     if ws == "":
         ws = account_id_from_token(retrieve_or_login())
@@ -134,3 +136,34 @@ def hash_directory(dir_path: Path) -> str:
             path = Path(containing_path).joinpath(dirname)
             m.update(str(path).encode("utf-8"))
     return m.hexdigest()
+
+
+def get_local_package_version() -> str:
+    try:
+        from importlib import metadata
+    except ImportError:
+        import importlib_metadata as metadata
+    return metadata.version(PKG_NAME)
+
+
+def get_latest_package_version_request() -> str:
+    cache_location = user_conf.root_dir / "cached_version"
+    resp = get(f"https://pypi.org/pypi/{PKG_NAME}/json")
+    version = resp.json()["info"]["version"]
+    with open(cache_location, "w") as f:
+        f.write(f"{version} {datetime.now().isoformat()}")
+    return version
+
+
+def get_latest_package_version() -> str:
+    version = None
+    cache_location = user_conf.root_dir / "cached_version"
+    try:
+        with open(cache_location, "r") as f:
+            version, timestamp = f.read().split(" ")
+        if datetime.now() > datetime.fromisoformat(timestamp) + timedelta(days=1):
+            version = get_latest_package_version_request()
+    except FileNotFoundError:
+        version = get_latest_package_version_request()
+
+    return version
