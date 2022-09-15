@@ -7,7 +7,7 @@ from pathlib import Path
 import jwt
 
 from latch_cli.config.user import UserConfig
-from latch_cli.constants import MAX_FILE_SIZE
+from latch_cli.constants import MAX_FILE_SIZE, PKG_NAME
 from latch_cli.services.login import login
 from latch_cli.tinyrequests import get
 
@@ -138,7 +138,6 @@ def hash_directory(dir_path: Path) -> str:
 
 
 def get_local_package_version() -> str:
-    PKG_NAME = "latch"
     try:
         from importlib import metadata
     except ImportError:
@@ -147,6 +146,5 @@ def get_local_package_version() -> str:
 
 
 def get_latest_package_version() -> str:
-    PKG_NAME = "latch"
     resp = get(f"https://pypi.org/pypi/{PKG_NAME}/json")
     return resp.json()["info"]["version"]
