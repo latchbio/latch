@@ -126,7 +126,8 @@ class RegisterCtx:
             if isinstance(entity, PythonTask):
                 if entity.dockerfile_path:
                     self.container_map[entity.name] = Container(
-                        dockerfile=entity.dockerfile_path, image_name=self.image_tagged
+                        dockerfile=entity.dockerfile_path,
+                        image_name=self.task_image_name(entity.name),
                     )
 
         if remote is True:
@@ -196,6 +197,9 @@ class RegisterCtx:
                 " logging in or extracting the package version."
             )
         return f"{self.image}:{self.version}"
+
+    def task_image_name(self, task_name: str) -> str:
+        return f"{self.image_tagged}-{task_name}"
 
     @property
     def full_image(self):
