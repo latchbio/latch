@@ -221,31 +221,42 @@ def register(
     if remote:
         print("Connecting to remote server for docker build [alpha]...")
 
+    print(ctx.container_map)
     with TemporarySerialDir(ctx.ssh_client, remote) as td:
 
-        dockerfile = ctx.pkg_root.joinpath("Dockerfile")
-        build_logs = build_image(ctx, dockerfile)
-        _print_and_save_build_logs(build_logs, ctx.image_tagged, str(pkg_root))
+        for task_name, payload in ctx.container_map.items():
 
-        serialize_logs, container_id = serialize_pkg_in_container(ctx, td)
-        _print_serialize_logs(serialize_logs, ctx.image_tagged)
-        exit_status = ctx.dkr_client.wait(container_id)
-        if exit_status["StatusCode"] != 0:
-            raise ValueError(
-                f"Serialization exited with nonzero exit code: {exit_status['Error']}"
+            print(payload, type(payload))
+            dockerfile, image_name = payload
+            if task_name != "DEFAULT":
+                continue
+
+            build_logs = build_image(ctx, image_name, dockerfile)
+            _print_and_save_build_logs(build_logs, image_name, str(pkg_root))
+
+            serialize_logs, container_id = serialize_pkg_in_container(
+                ctx, image_name, td
             )
+            _print_serialize_logs(serialize_logs, image_name)
+            exit_status = ctx.dkr_client.wait(container_id)
+            if exit_status["StatusCode"] != 0:
+                raise ValueError(
+                    f"Serialization exited with nonzero exit code: {exit_status['Error']}"
+                )
 
-        upload_image_logs = _upload_pkg_image(ctx)
-        _print_upload_logs(upload_image_logs, ctx.image_tagged)
+            upload_image_logs = upload_pkg_image(ctx, image_name)
+            _print_upload_logs(upload_image_logs, image_name)
 
-        if remote:
-            with tempfile.TemporaryDirectory() as local_td:
-                scp = SCPClient(ctx.ssh_client.get_transport(), sanitize=lambda x: x)
-                scp.get(f"{td}/*", local_path=local_td, recursive=True)
-                reg_resp = _register_serialized_pkg(ctx, local_td)
-        else:
-            reg_resp = _register_serialized_pkg(ctx, td)
-        _print_reg_resp(reg_resp, ctx.image_tagged)
+            if remote:
+                with tempfile.TemporaryDirectory() as local_td:
+                    scp = SCPClient(
+                        ctx.ssh_client.get_transport(), sanitize=lambda x: x
+                    )
+                    scp.get(f"{td}/*", local_path=local_td, recursive=True)
+                    reg_resp = _register_serialized_pkg(ctx, local_td)
+            else:
+                reg_resp = _register_serialized_pkg(ctx, td)
+            _print_reg_resp(reg_resp, image_name)
 
     with open(ctx.version_archive_path, "a") as f:
         f.write(ctx.version + "\n")
@@ -295,23 +306,25 @@ def _login(ctx: RegisterCtx):
     )
 
 
-def build_image(ctx: RegisterCtx, dockerfile: Path) -> List[str]:
+def build_image(ctx: RegisterCtx, image_name: str, dockerfile: Path) -> List[str]:
 
     _login(ctx)
     build_logs = ctx.dkr_client.build(
         path=str(dockerfile.parent),
-        buildargs={"tag": ctx.full_image_tagged},
-        tag=ctx.full_image_tagged,
+        buildargs={"tag": f"{ctx.dkr_repo}/{image_name}"},
+        tag=f"{ctx.dkr_repo}/{image_name}",
         decode=True,
     )
     return build_logs
 
 
-def serialize_pkg_in_container(ctx: RegisterCtx, serialize_dir: Path) -> List[str]:
+def serialize_pkg_in_container(
+    ctx: RegisterCtx, image_name: str, serialize_dir: Path
+) -> List[str]:
 
     _serialize_cmd = ["make", "serialize"]
     container = ctx.dkr_client.create_container(
-        ctx.full_image_tagged,
+        f"{ctx.dkr_repo}/{image_name}",
         command=_serialize_cmd,
         volumes=[str(serialize_dir)],
         host_config=ctx.dkr_client.create_host_config(
@@ -330,10 +343,10 @@ def serialize_pkg_in_container(ctx: RegisterCtx, serialize_dir: Path) -> List[st
     return [x.decode("utf-8") for x in logs], container_id
 
 
-def _upload_pkg_image(ctx: RegisterCtx) -> List[str]:
+def upload_pkg_image(ctx: RegisterCtx, image_name: str) -> List[str]:
 
     return ctx.dkr_client.push(
-        repository=ctx.full_image_tagged,
+        repository=f"{ctx.dkr_repo}/{image_name}",
         stream=True,
         decode=True,
     )
