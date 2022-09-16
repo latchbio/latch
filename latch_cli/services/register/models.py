@@ -5,7 +5,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import docker
 import paramiko
@@ -78,7 +78,8 @@ class RegisterCtx:
     latch_register_api_url = endpoints["register-workflow"]
     latch_image_api_url = endpoints["initiate-image-upload"]
     latch_provision_url = endpoints["provision-centromere"]
-    container_map: Dict[str, Path] = {}  # Map task names to container paths
+    # Map task names to container paths
+    container_map: Dict[str, Tuple[Path, Optional[str]]] = {}
 
     def __init__(
         self,
@@ -100,17 +101,6 @@ class RegisterCtx:
             self.account_id = ws
 
         self.pkg_root = Path(pkg_root).resolve()
-
-        with module_loader.add_sys_path(str(self.pkg_root)):
-            module_loader.just_load_modules(["wf"])
-
-        container_map = {}
-        # Global object holds all serializable objects after they are imported.
-        for entity in FlyteEntities.entities:
-            if isinstance(entity, PythonTask):
-                if entity.dockerfile_path:
-                    container_map[entity.name] = entity.dockerfile_path
-
         self.disable_auto_version = disable_auto_version
         try:
             version_file = self.pkg_root.joinpath("version")
@@ -126,6 +116,23 @@ class RegisterCtx:
 
         self.dkr_repo = LatchConfig.dkr_repo
         self.remote = remote
+
+        with module_loader.add_sys_path(str(self.pkg_root)):
+            try:
+                module_loader.just_load_modules(["wf"])
+            except ModuleNotFoundError as e:
+                raise FileNotFoundError(
+                    "Make sure you are passing a directory that contains a ",
+                    "package called 'wf' with valid latch code in it to '$latch register'.",
+                ) from e
+
+        default_dockerfile = self.pkg_root.joinpath("Dockerfile")
+        self.container_map["DEFAULT"] = (default_dockerfile, self.image_tagged)
+        # Global FlyteEntities object holds all serializable objects after they are imported.
+        for entity in FlyteEntities.entities:
+            if isinstance(entity, PythonTask):
+                if entity.dockerfile_path:
+                    self.container_map[entity.name] = (entity.dockerfile_path, None)
 
         if remote is True:
             headers = {"Authorization": f"Bearer {self.token}"}
@@ -185,12 +192,12 @@ class RegisterCtx:
         # TODO (kenny): check version is valid for docker
         if self.version is None:
             raise ValueError(
-                "Attempting to create a tagged image name without first"
+                "Attempting to create a tagged image name without first "
                 "extracting the package version."
             )
         if self.image is None or self.version is None:
             raise ValueError(
-                "Attempting to create a tagged image name without first"
+                "Attempting to create a tagged image name without first "
                 " logging in or extracting the package version."
             )
         return f"{self.image}:{self.version}"
@@ -208,21 +215,6 @@ class RegisterCtx:
 
         """
         return f"{self.dkr_repo}/{self.image}"
-
-    @property
-    def full_image_tagged(self):
-        """The full image to be registered.
-
-            - Registry name
-            - Repository name
-            - Version/tag name
-
-        An example: ::
-
-            dkr.ecr.us-west-2.amazonaws.com/pkg_name:version
-
-        """
-        return f"{self.dkr_repo}/{self.image_tagged}"
 
     @property
     def version_archive_path(self):
