@@ -16,7 +16,7 @@ import boto3
 import requests
 from scp import SCPClient
 
-from latch_cli.services.register import RegisterCtx, RegisterOutput
+from latch_cli.services.register import RegisterCtx
 from latch_cli.utils import current_workspace
 
 _MAX_LINES = 10
@@ -55,11 +55,13 @@ def _print_window(curr_lines: List[str], line: str):
         return curr_lines
 
 
-def _print_and_save_build_logs(build_logs, image, path):
+def _print_and_save_build_logs(build_logs, image: str, pkg_root: Path):
     print(f"Building Docker image for {image}")
-    os.makedirs(path + "/.logs/", exist_ok=True)
 
-    with open(path + "/.logs/docker-build-logs.txt", "w") as save_file:
+    os.makedirs(str(pkg_root) + f"/.logs/{image}", exist_ok=True)
+    with open(
+        str(pkg_root) + f"/.logs/{image}/docker-build-logs.txt", "w"
+    ) as save_file:
         r = re.compile("^Step [0-9]+/[0-9]+ :")
         curr_lines = []
         for x in build_logs:
@@ -149,11 +151,37 @@ def _print_serialize_logs(serialize_logs, image):
         print(x, end="")
 
 
+def build_and_serialize(
+    ctx: RegisterCtx, image_name: str, dockerfile: Path, tmp_dir: Path
+):
+    """Encapsulates build, serialize, push flow needed for each dockerfile
+
+    - Build image
+    - Serialize workflow in image
+    - Save proto files to passed temporary directory
+    - Push image
+    """
+
+    build_logs = build_image(ctx, image_name, dockerfile)
+    _print_and_save_build_logs(build_logs, image_name, ctx.pkg_root)
+
+    serialize_logs, container_id = serialize_pkg_in_container(ctx, image_name, tmp_dir)
+    _print_serialize_logs(serialize_logs, image_name)
+    exit_status = ctx.dkr_client.wait(container_id)
+    if exit_status["StatusCode"] != 0:
+        raise ValueError(
+            f"Serialization exited with nonzero exit code: {exit_status['Error']}"
+        )
+
+    upload_image_logs = upload_pkg_image(ctx, image_name)
+    _print_upload_logs(upload_image_logs, image_name)
+
+
 def register(
     pkg_root: str,
     disable_auto_version: bool = False,
     remote: bool = False,
-) -> RegisterOutput:
+):
     """Registers a workflow, defined as python code, with Latch.
 
     Kicks off a three-legged OAuth2.0 flow outlined in `RFC6749`_.  Logic
@@ -221,51 +249,34 @@ def register(
     if remote:
         print("Connecting to remote server for docker build [alpha]...")
 
-    print(ctx.container_map)
-    with TemporarySerialDir(ctx.ssh_client, remote) as td:
+    with TemporarySerialDir(ssh_client=ctx.ssh_client, remote=remote) as td:
 
-        for task_name, payload in ctx.container_map.items():
-
-            print(payload, type(payload))
-            dockerfile, image_name = payload
-            if task_name != "DEFAULT":
-                continue
-
-            build_logs = build_image(ctx, image_name, dockerfile)
-            _print_and_save_build_logs(build_logs, image_name, str(pkg_root))
-
-            serialize_logs, container_id = serialize_pkg_in_container(
-                ctx, image_name, td
-            )
-            _print_serialize_logs(serialize_logs, image_name)
-            exit_status = ctx.dkr_client.wait(container_id)
-            if exit_status["StatusCode"] != 0:
+        build_and_serialize(
+            ctx, ctx.default_container.image_name, ctx.default_container.dockerfile, td
+        )
+        for task_name, container in ctx.container_map.items():
+            task_td = TemporarySerialDir(ssh_client=ctx.ssh_client, remote=remote)
+            d = task_td.create()
+            try:
+                build_and_serialize(ctx, container.image_name, container.dockerfile, d)
+            except TypeError as e:
                 raise ValueError(
-                    f"Serialization exited with nonzero exit code: {exit_status['Error']}"
-                )
+                    "The path to your provided dockerfile ",
+                    f"{container.dockerfile} given to {task_name} is invalid.",
+                ) from e
+            task_td.cleanup()
 
-            upload_image_logs = upload_pkg_image(ctx, image_name)
-            _print_upload_logs(upload_image_logs, image_name)
-
-            if remote:
-                with tempfile.TemporaryDirectory() as local_td:
-                    scp = SCPClient(
-                        ctx.ssh_client.get_transport(), sanitize=lambda x: x
-                    )
-                    scp.get(f"{td}/*", local_path=local_td, recursive=True)
-                    reg_resp = _register_serialized_pkg(ctx, local_td)
-            else:
-                reg_resp = _register_serialized_pkg(ctx, td)
-            _print_reg_resp(reg_resp, image_name)
+        if remote:
+            with tempfile.TemporaryDirectory() as local_td:
+                scp = SCPClient(ctx.ssh_client.get_transport(), sanitize=lambda x: x)
+                scp.get(f"{td}/*", local_path=local_td, recursive=True)
+                reg_resp = _register_serialized_pkg(ctx, local_td)
+        else:
+            reg_resp = _register_serialized_pkg(ctx, td)
+        _print_reg_resp(reg_resp, ctx.default_container.image_name)
 
     with open(ctx.version_archive_path, "a") as f:
         f.write(ctx.version + "\n")
-
-    return RegisterOutput(
-        build_logs=build_logs,
-        serialize_logs=serialize_logs,
-        registration_response=reg_resp,
-    )
 
 
 def _login(ctx: RegisterCtx):
@@ -376,10 +387,7 @@ def _register_serialized_pkg(ctx: RegisterCtx, serialize_dir: Path) -> dict:
 
 class TemporarySerialDir:
 
-    """Context manager to manage temporary serialization directory.
-
-    If the docker build is remote, handles creation..
-    """
+    """Represents a temporary directory that can be local or on a remote machine."""
 
     def __init__(self, ssh_client=None, remote=False):
 
@@ -391,6 +399,12 @@ class TemporarySerialDir:
         self._tempdir = None
 
     def __enter__(self, *args):
+        return self.create(*args)
+
+    def __exit__(self, *args):
+        self.cleanup(*args)
+
+    def create(self, *args):
         if not self.remote:
             self._tempdir = tempfile.TemporaryDirectory()
             return Path(self._tempdir.name).resolve()
@@ -405,7 +419,7 @@ class TemporarySerialDir:
             self.ssh_client.exec_command(f"mkdir {self._tempdir}")
             return self._tempdir
 
-    def __exit__(self, *args):
+    def cleanup(self, *args):
         if not self.remote:
             self._tempdir.cleanup()
         else:
