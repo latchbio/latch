@@ -177,6 +177,14 @@ def build_and_serialize(
     _print_upload_logs(upload_image_logs, image_name)
 
 
+def recursive_list(directory: Path) -> List[Path]:
+    files = []
+    for dirname, dirnames, fnames in os.walk(directory):
+        for filename in fnames + dirnames:
+            files.append(Path(dirname).resolve().joinpath(filename))
+    return files
+
+
 def register(
     pkg_root: str,
     disable_auto_version: bool = False,
@@ -249,30 +257,52 @@ def register(
     if remote:
         print("Connecting to remote server for docker build [alpha]...")
 
-    with TemporarySerialDir(ssh_client=ctx.ssh_client, remote=remote) as td:
+    with contextlib.ExitStack() as stack:
 
+        td = stack.enter_context(
+            TemporarySerialDir(ssh_client=ctx.ssh_client, remote=remote)
+        )
         build_and_serialize(
             ctx, ctx.default_container.image_name, ctx.default_container.dockerfile, td
         )
+        protos = recursive_list(td)
+        print(protos)
+
         for task_name, container in ctx.container_map.items():
-            task_td = TemporarySerialDir(ssh_client=ctx.ssh_client, remote=remote)
-            d = task_td.create()
+            task_td = stack.enter_context(
+                TemporarySerialDir(ssh_client=ctx.ssh_client, remote=remote)
+            )
             try:
-                build_and_serialize(ctx, container.image_name, container.dockerfile, d)
+                build_and_serialize(
+                    ctx, container.image_name, container.dockerfile, task_td
+                )
+                new_protos = recursive_list(task_td)
+                try:
+                    split_task_name = task_name.split(".")
+                    task_name = ".".join(split_task_name[split_task_name.index("wf") :])
+                except ValueError as e:
+                    raise ValueError(
+                        f"Unable to match {task_name} to any of the protobuf files in {new_protos}"
+                    ) from e
+                for new_proto in new_protos:
+                    if task_name in f.name:
+                        protos = [
+                            new_proto if new_proto.name == f.name else f for f in protos
+                        ]
+                print([(task_name, f.name, task_name in f.name) for f in new_protos])
             except TypeError as e:
                 raise ValueError(
                     "The path to your provided dockerfile ",
                     f"{container.dockerfile} given to {task_name} is invalid.",
                 ) from e
-            task_td.cleanup()
 
         if remote:
             with tempfile.TemporaryDirectory() as local_td:
                 scp = SCPClient(ctx.ssh_client.get_transport(), sanitize=lambda x: x)
                 scp.get(f"{td}/*", local_path=local_td, recursive=True)
-                reg_resp = _register_serialized_pkg(ctx, local_td)
+                reg_resp = register_serialized_pkg(ctx, local_td, protos)
         else:
-            reg_resp = _register_serialized_pkg(ctx, td)
+            reg_resp = register_serialized_pkg(ctx, td, protos)
         _print_reg_resp(reg_resp, ctx.default_container.image_name)
 
     with open(ctx.version_archive_path, "a") as f:
@@ -363,18 +393,20 @@ def upload_pkg_image(ctx: RegisterCtx, image_name: str) -> List[str]:
     )
 
 
-def _register_serialized_pkg(ctx: RegisterCtx, serialize_dir: Path) -> dict:
+def register_serialized_pkg(
+    ctx: RegisterCtx, serialize_dir: Path, files: List[Path]
+) -> dict:
+
     headers = {"Authorization": f"Bearer {ctx.token}"}
 
+    serialize_files = {
+        "version": ctx.version.encode("utf-8"),
+        ".latch_ws": current_workspace().encode("utf-8"),
+    }
     with contextlib.ExitStack() as stack:
-        serialize_files = {
-            "version": ctx.version.encode("utf-8"),
-            ".latch_ws": current_workspace().encode("utf-8"),
-        }
-        for dirname, dirnames, fnames in os.walk(serialize_dir):
-            for filename in fnames + dirnames:
-                file = Path(dirname).resolve().joinpath(filename)
-                serialize_files[file.name] = stack.enter_context(open(file, "rb"))
+        file_handlers = [stack.enter_context(open(file, "rb")) for file in files]
+        for fh in file_handlers:
+            serialize_files[fh.name] = fh
 
         response = requests.post(
             ctx.latch_register_api_url,
