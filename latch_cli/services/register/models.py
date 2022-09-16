@@ -5,7 +5,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 import docker
 import paramiko
@@ -27,19 +27,9 @@ endpoints = config.sdk_endpoints
 
 
 @dataclass
-class RegisterOutput:
-    """A typed structure to consolidate relevant values from the registration
-    process.
-    """
-
-    build_logs: List[str] = None
-    """Stdout/stderr from the container construction process."""
-    serialize_logs: List[str] = None
-    """Stdout/stderr from in-container serialization of workflow code."""
-    registration_response: dict = None
-    """JSON returned from the Latch API from a request to register serialized
-    workflow code.
-    """
+class Container:
+    dockerfile: Path
+    image_name: str
 
 
 class RegisterCtx:
@@ -78,8 +68,9 @@ class RegisterCtx:
     latch_register_api_url = endpoints["register-workflow"]
     latch_image_api_url = endpoints["initiate-image-upload"]
     latch_provision_url = endpoints["provision-centromere"]
-    # Map task names to container paths
-    container_map: Dict[str, Tuple[Path, Optional[str]]] = {}
+    default_container: Container
+    # Used to asscociate alternate containers with tasks
+    container_map: Dict[str, Container] = {}
 
     def __init__(
         self,
@@ -127,12 +118,16 @@ class RegisterCtx:
                 ) from e
 
         default_dockerfile = self.pkg_root.joinpath("Dockerfile")
-        self.container_map["DEFAULT"] = (default_dockerfile, self.image_tagged)
+        self.default_container = Container(
+            dockerfile=default_dockerfile, image_name=self.image_tagged
+        )
         # Global FlyteEntities object holds all serializable objects after they are imported.
         for entity in FlyteEntities.entities:
             if isinstance(entity, PythonTask):
                 if entity.dockerfile_path:
-                    self.container_map[entity.name] = (entity.dockerfile_path, None)
+                    self.container_map[entity.name] = Container(
+                        dockerfile=entity.dockerfile_path, image_name=self.image_tagged
+                    )
 
         if remote is True:
             headers = {"Authorization": f"Bearer {self.token}"}
