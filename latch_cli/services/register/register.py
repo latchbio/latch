@@ -266,7 +266,6 @@ def register(
             ctx, ctx.default_container.image_name, ctx.default_container.dockerfile, td
         )
         protos = recursive_list(td)
-        print(protos)
 
         for task_name, container in ctx.container_map.items():
             task_td = stack.enter_context(
@@ -285,11 +284,10 @@ def register(
                         f"Unable to match {task_name} to any of the protobuf files in {new_protos}"
                     ) from e
                 for new_proto in new_protos:
-                    if task_name in f.name:
+                    if task_name in new_proto.name:
                         protos = [
                             new_proto if new_proto.name == f.name else f for f in protos
                         ]
-                print([(task_name, f.name, task_name in f.name) for f in new_protos])
             except TypeError as e:
                 raise ValueError(
                     "The path to your provided dockerfile ",
