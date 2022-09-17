@@ -14,7 +14,7 @@ Conditional sections are akin to ternary operators -- they return the output of 
 
 It is possible to consume the outputs from conditional nodes. And to pass in outputs from other tasks to conditional nodes.
 
-The boolean expressions in the condition use `&` and `|` as and / or operators. Additionally, unary expressions are not allowed. Thus if a task returns a boolean and we wish to use it in a condition of a conditional block, we must use built in truth checks: `result.is_true()` or `result.is_false()`
+The boolean expressions in the condition use `&` and `|` as and / or operators. Additionally, binary expressions are not allowed. Thus if a task returns a boolean and we wish to use it in a condition of a conditional block, we must use built in truth checks: `result.is_true()` or `result.is_false()`
 
 ```python
 @small_task
@@ -55,7 +55,9 @@ def multiplier(my_input: float) -> float:
 
 ## Map Tasks
 
-This construct allows a user to run a specific task on any number of different inputs in parallel, provided as a list. To map a task across a list of inputs, call the `map_task` on the task function to get new "mapped task" function which now accepts a list of inputs as a parameter. See below for an example:
+This construct allows a user to run a specific task on any number of different inputs in parallel, provided as a list. To map a task across a list of inputs, call the `map_task` on the task function to get new "mapped task" function which now accepts a list of inputs as a parameter. A task can only be mapped if it accepts one input and produces one output.
+
+See below for an example:
 
 ```python
 @task
@@ -75,5 +77,3 @@ def my_map_workflow(a: typing.List[int]) -> str:
     coalesced = coalesce(b=mapped_out)
     return coalesced
 ```
-
-A task can only be mapped if it accepts one input and produces one output.
