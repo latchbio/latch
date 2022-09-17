@@ -4,12 +4,7 @@ from typing import Dict, List
 
 import latch_cli.tinyrequests as tinyrequests
 from latch_cli.config.latch import LatchConfig
-from latch_cli.utils import (
-    _normalize_remote_path,
-    current_workspace,
-    retrieve_or_login,
-    with_si_suffix,
-)
+from latch_cli.utils import _normalize_remote_path, current_workspace, retrieve_or_login
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints

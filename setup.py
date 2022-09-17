@@ -38,7 +38,7 @@ setup(
         "tqdm>=4.63.0",
         "lytekit==0.5.0",
         "lytekitplugins-pods==0.3.1",
-        "typing-extensions==4.0.1",
+        "typing-extensions==4.3.0",
         "apscheduler==3.9.1",
     ],
     classifiers=[

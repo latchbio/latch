@@ -3,6 +3,7 @@
 import os
 import re
 import shutil
+import textwrap
 from collections import OrderedDict
 from pathlib import Path
 from typing import List, Optional, Union
@@ -13,6 +14,7 @@ import latch_cli.click_utils
 from latch_cli.click_utils import AnsiCodes as ac
 from latch_cli.crash_reporter import CrashReporter
 from latch_cli.services.init.init import Templates
+from latch_cli.utils import get_latest_package_version, get_local_package_version
 
 latch_cli.click_utils.patch()
 
@@ -29,7 +31,18 @@ def main():
     Collection of command line tools for using the Latch SDK and
     interacting with the Latch platform.
     """
-    ...
+    local_ver = get_local_package_version()
+    latest_ver = get_latest_package_version()
+    if local_ver != latest_ver:
+        click.secho(
+            textwrap.dedent(
+                f"""
+                WARN: Your local version of latch ({local_ver}) is out of date. This may result in unexpected behavior.
+                Please upgrade to the latest version ({latest_ver}) using `python3 -m pip install --upgrade latch`.
+                """
+            ).strip("\n"),
+            fg="yellow",
+        )
 
 
 @main.command("register")
@@ -224,7 +237,9 @@ def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]
                 )
                 if row["modifyTime"] != "-" and row["type"] != "dir"
                 else click.style("-", dim=True),
-                "name": row["name"],
+                "name": row["name"]
+                if len(row["name"]) <= 50
+                else f"{row['name'][:47]}...",
             }
 
             if row["type"] == "dir":

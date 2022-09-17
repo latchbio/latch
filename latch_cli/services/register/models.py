@@ -1,11 +1,9 @@
 """Models used in the register service."""
 
 import os
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from tempfile import NamedTemporaryFile
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 import docker
 import paramiko
@@ -132,32 +130,51 @@ class RegisterCtx:
 
         if remote is True:
             headers = {"Authorization": f"Bearer {self.token}"}
+
+            try:
+                user_agent = paramiko.Agent()
+            except paramiko.SSHException as e:
+                raise ValueError(
+                    "An error occurred during SSH protocol negotiation. "
+                    "This is due to a problem with your system. "
+                    "Please use `latch register` without the `--remote` flag."
+                ) from e
+            keys = user_agent.get_keys()
+            if len(keys) == 0:
+                raise ValueError(
+                    "It seems you don't have any (valid) SSH keys set up. "
+                    "Check that any keys that you have are valid, or use "
+                    "a utility like `ssh-keygen` to set one up and try again."
+                )
+
+            pub_key = keys[0]
+            alg = pub_key.get_name()
+            material = pub_key.get_base64()
+
             response = tinyrequests.post(
-                self.latch_provision_url, headers=headers, json={}
+                self.latch_provision_url,
+                headers=headers,
+                json={
+                    "public_key": f"{alg} {material}",
+                },
             )
+
             resp = response.json()
             try:
                 public_ip = resp["ip"]
-                key_material = resp["keyMaterial"]
+                username = resp["username"]
             except KeyError as e:
                 raise ValueError(
                     f"Malformed response from request for access token {resp}"
                 ) from e
 
-            with NamedTemporaryFile("w", dir="/tmp/") as f:
-                f.write(key_material)
-                os.chmod(f.name, int("700", base=8))
-                f.seek(0)
-
-                # TODO - hacky
-                subprocess.run(["ssh-add", f.name])
-
-                self.dkr_client = self._construct_dkr_client(
-                    ssh_host=f"ssh://ubuntu@{public_ip}"
-                )
-                self.ssh_client = self._construct_ssh_client(
-                    host_ip=public_ip, username="ubuntu"
-                )
+            self.dkr_client = self._construct_dkr_client(
+                ssh_host=f"ssh://{username}@{public_ip}"
+            )
+            self.ssh_client = self._construct_ssh_client(
+                host_ip=public_ip,
+                username=username,
+            )
 
         else:
             self.dkr_client = self._construct_dkr_client()
