@@ -30,11 +30,6 @@ With Latch SDK, developers can write the description to their workflow and custo
 
 Latch SDK containerizes and versions the code in the background each time a workflow is registered to the Latch platform. Container images are constructed by parsing user-defined [Dockerfiles](https://docs.docker.com/engine/reference/builder/). Similarly, versions are user-specified as any unique plaintext string. This behavior is a strict requirement of the toolchain and gives us remarkable guarantees with respect to code reproducibility, portability and scalability.
 
-## Problems that the Latch SDK does not yet solve
-
-* **Workflows chaining**: We'll aim to support easy installation and reuse of other Latch SDK workflows in your own workflow.
-* **Workflows monitoring**: For batched runs of workflows, we'll aim to provide better dashboard, logs, traces, metrics, and alerting for observability.
-
 ## What the Latch SDK is not
 * **A self-hosted solution**: Currently, you cannot write your workflow using Latch SDK and host it in your own AWS instance or an HPC. The infrastructure serving bioinformatics pipelines is fully managed by Latch. This allows us to rapidly iterate to bring on high quality features, give cost and performance guarantees, and ensure that security is offered out-of-the-box.
 
