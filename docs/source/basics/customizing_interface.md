@@ -215,14 +215,14 @@ When a workflow is registered, each workflow parameter will receive a frontend c
 
 Each key in `metadata.parameters` must be the name of one of the parameters of the workflow, and so the corresponding `LatchParameter` object describes that specific parameter. A `LatchParameter` can take a myriad of keyword arguments at construction time, each of which are briefly described below.
 
-* `display_name`: A human-readable, descriptive name of the parameter,
-* `description`: A short description of the role of the parameter within the workflow, to be displayed when hovered over in a tooltip,
-* `hidden`: A boolean for whether or not the parameter should be hidden by default,
-* `section_title`: If provided, the specified parameter will start a new section of the given name,
-* `placeholder`: What placeholder to put inside the input form for the parameter if no value is present,
-* `comment`: A comment about the parameter,
-* `output`: Whether this parameter is an output directory (to disable path existence checks),
-* `batch_table_column`: Whether this parameter should have a column to itself in the batch table at the top of the parameters page,
+* `display_name` (str): A human-readable, descriptive name of the parameter,
+* `description` (str): A short description of the role of the parameter within the workflow, to be displayed when hovered over in a tooltip,
+* `hidden` (boolean): A boolean for whether or not the parameter should be hidden by default,
+* `section_title` (str): If provided, the specified parameter will start a new section of the given name,
+* `placeholder` (str): What placeholder to put inside the input form for the parameter if no value is present,
+* `comment` (str): A comment about the parameter,
+* `output` (boolean): Whether this parameter is an output directory (to disable path existence checks),
+* `batch_table_column` (boolean): Whether this parameter should have a column to itself in the batch table at the top of the parameters page,
 * `appearance_type`: Either `LatchAppearanceType.line` or `LatchAppearanceType.paragraph`, which style to render text inputs as.
 * `rules`: A list of `LatchRule`s which consist of a regular expression and a message. If provided, an input must match all given regexes in order to appear valid in the front end - if it fails to match one of the regexes, the corresponding message is displayed.
 
