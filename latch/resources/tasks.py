@@ -315,13 +315,13 @@ def custom_task(cpu: int, memory: int):
     the specified CPU/RAM allocations
 
     Args:
-        cpu: An integer number of cores to request, up to 48 cores
-        memory: An integer number of Gigabytes of RAM to request, up to 128 Gi
+        cpu: An integer number of cores to request, up to 95 cores
+        memory: An integer number of Gibibytes of RAM to request, up to 179 GiB
     """
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
         requests={"cpu": str(cpu), "memory": f"{memory}Gi"},
-        limits={"cpu": "48", "memory": "128Gi"},
+        limits={"cpu": str(cpu), "memory": f"{memory}Gi"},
     )
     primary_container.resources = resources
     if cpu < 48 and memory < 128:
@@ -342,8 +342,15 @@ def custom_task(cpu: int, memory: int):
             primary_container_name="primary",
         )
     else:
-        raise ValueError(
-            f"One of {cpu} < 96 or {memory} < 180 is not satisfied. Task requirements are too high."
-        )
+        if cpu >= 96:
+            raise ValueError(f"custom task requires too many CPU cores: {cpu} (max 95)")
+        elif memory >= 180:
+            raise ValueError(
+                f"custom task requires too much RAM: {memory} GiB (max 179 GiB)"
+            )
+        else:
+            raise ValueError(
+                f"custom task resource limit is too high: {cpu} (max 95) or {memory} GiB (max 179 GiB)"
+            )
 
     return task(task_config=task_config)
