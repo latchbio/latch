@@ -14,7 +14,7 @@ if CURRENT_PYTHON < MIN_PYTHON_VERSION:
 
 setup(
     name="latch",
-    version="v2.1.2",
+    version="v2.1.3",
     author_email="kenny@latch.bio",
     description="latch sdk",
     packages=find_packages(),
