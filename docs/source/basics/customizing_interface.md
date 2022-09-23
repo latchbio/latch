@@ -28,6 +28,12 @@ Then, use `latch preview` with the name of your workflow function:
 $ latch preview <workflow_function_name>
 ```
 
+After using `latch preview`, a new button with your workflow name will also be generated on the top right corner of the workflow page. 
+
+![Preview](../assets/ui/previewer.png)
+
+You can click on the button to preview the interface. 
+
 ---
 
 ## The `LatchMetadata` Object
@@ -70,11 +76,119 @@ The information given here will be rendered in the sidebar of the workflow in th
 
 ![Sidebar](../assets/ui/sidebar.png)
 
+---
+## Adding Documentation to your Workflow
+While most of the metadata of a workflow will be encapsulated in a LatchMetadata object, we still require a docstring in the body of the workflow function which specifies both a short and long-form description.
+
+
+
+### One Line Description
+
+The first line of the workflow function docstring will get rendered in the sidebar of the workflow and the workflow explore tab as a brief description of your workflow's functionality. Think of this as summarizing the entirety of your workflow's significance into a single line.
+
+We recommend limiting your workflow description to one sentence, as longer descriptions are only partially rendered on the Workflows page. 
+
+```python
+@workflow
+def foo(
+    ...
+):
+    """This line is a short workflow description, displayed in the explore tab and sidebar.
+
+    ...
+    """
+    ...
+```
+
+Example: 
+```python
+@workflow
+def rnaseq(
+    ...
+):
+    """Perform alignment and quantification on Bulk RNA-Sequencing reads.
+
+    ...
+    """
+    ...
+```
+![Short Description](../assets/ui/one-line%20description.png)
+
+### Long Form Description
+
+The body of the workflow function docstring is where you write long-form markdown documentation. This markdown will get rendered in the dedicated workflow "About" tab on your interface. Feel free to include links, lists, code blocks, and more.
+
+```python
+@workflow
+def foo(
+    ...
+):
+    """This line is a short workflow description, displayed in the explore tab
+
+    This line starts the long workflow description in markdown, displayed in
+    this workflow's about tab
+
+    Lists
+    - item1
+    - item2
+    - item3
+
+    ### headers
+
+    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod 
+    tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, 
+    quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo 
+    consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse 
+    cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat 
+    non proident, sunt in culpa qui officia deserunt mollit anim id est 
+    laborum.
+    """
+    ...
+```
+
+Example: 
+```python
+@workflow 
+def rnaseq(
+    ...
+):
+    """Perform alignment and quantification on Bulk RNA-Sequencing reads
+
+    Bulk RNA-Seq (Alignment and Quantification)
+    ----
+    This workflow will produce gene and transcript counts from bulk RNA-seq
+    sample reads.
+
+    # Workflow Anatomy
+    
+    # Disclaimer
+    
+    This workflow assumes that your sequencing reads were derived from *short-read
+    cDNA seqeuncing* ...
+    
+    # Brief Summary of RNA-seq
+
+    This workflow ingests short-read sequencing files (in FastQ format) that came
+    from the following sequence of steps[^1]:
+      - RNA extraction from sample
+      - cDNA synthesis from extracted RNA
+      - adaptor ligation / library prep
+      - (likely) PCR amplification of library
+      - sequencing of library
+    You will likely end up with one or more FastQ files from this process that hold
+    the sequencing reads in raw text form. This will be the starting point of our
+    workflow.
+    ...
+    """
+```
+
+![Long Description](../assets/ui/long-form%20description.png)
+
+---
+
 ### Customizing Parameter Presentation
 
-When a workflow is registered, each workflow parameter will receive a frontend component to ingest values in the browser. 
-
-You can add a parameter to the interface by adding a `LatchParameter` object to your `LatchMetadata` object's parameter dictionary as below:
+Any input of the main `@workflow` function can be added & customized on the front end display for ingesting user values in the browser. To add a workflow parameter to the front end simply add a `LatchParameter` object to your `LatchMetadata` object's parameter dictionary:
 
 ```python
 from latch.types import LatchParameter, LatchAppearanceType, LatchRule
@@ -96,6 +210,8 @@ def wf(
     ...
 )
 ```
+
+When a workflow is registered, each workflow parameter will receive a frontend component to ingest values in the browser. 
 
 Each key in `metadata.parameters` must be the name of one of the parameters of the workflow, and so the corresponding `LatchParameter` object describes that specific parameter. A `LatchParameter` can take a myriad of keyword arguments at construction time, each of which are briefly described below.
 
@@ -276,111 +392,6 @@ def rnaseq(
 
 Here, we are passing a list of `Sample`s as the input. On the Latch interface, when a user clicks the `+ Sample` button, a new block will be added with two parameters of the Python class `name` and `fastq`.
 
----
-## Adding Documentation to your Workflow
-While most of the metadata of a workflow will be encapsulated in a LatchMetadata object, we still require a docstring in the body of the workflow function which specifies both a short and long-form description.
-
-
-
-### One Line Description
-
-The first line of the workflow function docstring will get rendered in the sidebar of the workflow and the workflow explore tab as a brief description of your workflow's functionality. Think of this as summarizing the entirety of your workflow's significance into a single line.
-
-```python
-@workflow
-def foo(
-    ...
-):
-    """This line is a short workflow description, displayed in the explore tab and sidebar.
-
-    ...
-    """
-    ...
-```
-
-Example: 
-```python
-@workflow
-def rnaseq(
-    ...
-):
-    """Perform alignment and quantification on Bulk RNA-Sequencing reads.
-
-    ...
-    """
-    ...
-```
-![Short Description](../assets/ui/one-line%20description.png)
-
-### Long Form Description
-
-The body of the workflow function docstring is where you write long-form markdown documentation. This markdown will get rendered in the dedicated workflow "About" tab on your interface. Feel free to include links, lists, code blocks, and more.
-
-```python
-@workflow
-def foo(
-    ...
-):
-    """This line is a short workflow description, displayed in the explore tab
-
-    This line starts the long workflow description in markdown, displayed in
-    this workflow's about tab
-
-    Lists
-    - item1
-    - item2
-    - item3
-
-    ### headers
-
-    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod 
-    tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, 
-    quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo 
-    consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse 
-    cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat 
-    non proident, sunt in culpa qui officia deserunt mollit anim id est 
-    laborum.
-    """
-    ...
-```
-
-Example: 
-```python
-@workflow 
-def rnaseq(
-    ...
-):
-    """Perform alignment and quantification on Bulk RNA-Sequencing reads
-
-    Bulk RNA-Seq (Alignment and Quantification)
-    ----
-    This workflow will produce gene and transcript counts from bulk RNA-seq
-    sample reads.
-
-    # Workflow Anatomy
-    
-    # Disclaimer
-    
-    This workflow assumes that your sequencing reads were derived from *short-read
-    cDNA seqeuncing* ...
-    
-    # Brief Summary of RNA-seq
-
-    This workflow ingests short-read sequencing files (in FastQ format) that came
-    from the following sequence of steps[^1]:
-      - RNA extraction from sample
-      - cDNA synthesis from extracted RNA
-      - adaptor ligation / library prep
-      - (likely) PCR amplification of library
-      - sequencing of library
-    You will likely end up with one or more FastQ files from this process that hold
-    the sequencing reads in raw text form. This will be the starting point of our
-    workflow.
-    ...
-    """
-```
-
-![Long Description](../assets/ui/long-form%20description.png)
 
 ---
 ## Adding your workflow to a biological domain on Latch
@@ -392,9 +403,21 @@ To do so, you can use the `tags` property of `LatchMetadata`.
 ```python
 metadata = LatchMetadata(
     ...
-    tags=["NGS", "MAG", "metagenomics", "taxonomy"],
+    tags=["NGS", "MAG"],
     ...
 )
 ```
+
+Below is a list of commonly used domains on Latch. For best practices, you should tag your workflow with an existing domain instead of creating a new one. 
+
+* Aggregator
+* COVID
+* CRISPR
+* Epigenetics
+* Guide Design
+* Library Screen
+* MAG
+* NGS
+* Nextflow
 
 ![Tags](../assets/ui/tags.png)
