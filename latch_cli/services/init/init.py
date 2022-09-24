@@ -125,10 +125,6 @@ def _gen_example_r(pkg_root: Path):
 
     _get_boilerplate(pkg_root, source_path)
 
-    imports_dest = pkg_root / "imports.R"
-    imports_source = source_path / "imports.R"
-    shutil.copy(imports_source, imports_dest)
-
 
 def _gen_example_conda(pkg_root: Path):
     pkg_root = pkg_root.resolve()
