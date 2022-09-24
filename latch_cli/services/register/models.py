@@ -285,7 +285,7 @@ class RegisterCtx:
         return f"{self.image}:{self.version}"
 
     def task_image_name(self, task_name: str) -> str:
-        return f"{self.image}-{task_name}:{self.version}"
+        return f"{self.image}:{task_name}-{self.version}"
 
     @property
     def full_image(self):
