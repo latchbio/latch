@@ -173,7 +173,6 @@ class RegisterCtx:
             builtins.__import__ = real_import
 
         # Global FlyteEntities object holds all serializable objects after they are imported.
-        print(FlyteEntities.entities)
         for entity in FlyteEntities.entities:
             if isinstance(entity, PythonTask):
                 if (
@@ -270,11 +269,7 @@ class RegisterCtx:
         #   or a dash and may contain a maximum of 128 characters.
 
         match = re.match("^[a-zA-Z0-9_][a-zA-Z0-9._-]{,127}", self.version)
-        if (
-            not match
-            or match.span()[0] != 0
-            or match.span()[1] != len(self.version) - 1
-        ):
+        if not match or match.span()[0] != 0 or match.span()[1] != len(self.version):
             raise ValueError(
                 f"{self.version} is an invalid version for AWS "
                 "ECR. Please provide a version that accomodates the ",
