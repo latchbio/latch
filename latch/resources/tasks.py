@@ -24,6 +24,8 @@ exported decorators.
     https://docs.flyte.org/en/latest/
 """
 
+import functools
+
 from flytekit import task
 from flytekitplugins.pod import Pod
 from kubernetes.client.models import (
@@ -134,7 +136,7 @@ def _get_small_pod() -> Pod:
     )
 
 
-large_gpu_task = task(task_config=_get_large_gpu_pod())
+large_gpu_task = functools.partial(task, task_config=_get_large_gpu_pod())
 """This task will get scheduled on a large GPU-enabled node.
 
 This node is not necessarily dedicated to the task, but the node itself will be
@@ -162,16 +164,7 @@ on-demand.
 """
 
 
-def cached_large_gpu_task(cache_version):
-    """Provides caching with resources defined by `large_gpu_task`."""
-    if cache_version is None:
-        raise ValueError("Must provide a cache version to a cached task.")
-    return task(
-        cache=True, cache_version=cache_version, task_config=_get_large_gpu_pod()
-    )
-
-
-small_gpu_task = task(task_config=_get_small_gpu_pod())
+small_gpu_task = functools.partial(task, task_config=_get_small_gpu_pod())
 """This task will get scheduled on a small GPU-enabled node.
 
 This node will be dedicated to the task. No other tasks will be allowed to run
@@ -199,16 +192,7 @@ on it.
 """
 
 
-def cached_small_gpu_task(cache_version):
-    """Provides caching with resources defined by `small_gpu_task`."""
-    if cache_version is None:
-        raise ValueError("Must provide a cache version to a cached task.")
-    return task(
-        cache=True, cache_version=cache_version, task_config=_get_small_gpu_pod()
-    )
-
-
-large_task = task(task_config=_get_large_pod())
+large_task = functools.partial(task, task_config=_get_large_pod())
 """This task will get scheduled on a large node.
 
 This node will be dedicated to the task. No other tasks will be allowed to run
@@ -236,14 +220,7 @@ on it.
 """
 
 
-def cached_large_task(cache_version):
-    """Provides caching with resources defined by `large_task`."""
-    if cache_version is None:
-        raise ValueError("Must provide a cache version to a cached task.")
-    return task(cache=True, cache_version=cache_version, task_config=_get_large_pod())
-
-
-medium_task = task(task_config=_get_medium_pod())
+medium_task = functools.partial(task, task_config=_get_medium_pod())
 """This task will get scheduled on a medium node.
 
 This node will be dedicated to the task. No other tasks will be allowed to run
@@ -271,14 +248,7 @@ on it.
 """
 
 
-def cached_medium_task(cache_version):
-    """Provides caching with resources defined by `medium_task`."""
-    if cache_version is None:
-        raise ValueError("Must provide a cache version to a cached task.")
-    return task(cache=True, cache_version=cache_version, task_config=_get_medium_pod())
-
-
-small_task = task(task_config=_get_small_pod())
+small_task = functools.partial(task, task_config=_get_small_pod())
 """This task will get scheduled on a small node.
 
 .. list-table:: Title
@@ -301,13 +271,6 @@ small_task = task(task_config=_get_small_pod())
      - 0
      - False
 """
-
-
-def cached_small_task(cache_version):
-    """Provides caching with resources defined by `small_task`."""
-    if cache_version is None:
-        raise ValueError("Must provide a cache version to a cached task.")
-    return task(cache=True, cache_version=cache_version, task_config=_get_small_pod())
 
 
 def custom_task(cpu: int, memory: int):
