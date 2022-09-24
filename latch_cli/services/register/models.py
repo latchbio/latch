@@ -175,7 +175,10 @@ class RegisterCtx:
         print(FlyteEntities.entities)
         for entity in FlyteEntities.entities:
             if isinstance(entity, PythonTask):
-                if hasattr(entity, "dockerfile_path") and entity.dockerfile_path:
+                if (
+                    hasattr(entity, "dockerfile_path")
+                    and entity.dockerfile_path is not None
+                ):
                     self.container_map[entity.name] = Container(
                         dockerfile=entity.dockerfile_path,
                         image_name=self.task_image_name(entity.name),
@@ -255,7 +258,6 @@ class RegisterCtx:
         eg. dkr.ecr.us-west-2.amazonaws.com/pkg_name:version
         """
 
-        # TODO (kenny): check version is valid for docker
         if self.version is None:
             raise ValueError(
                 "Attempting to create a tagged image name without first "
@@ -269,7 +271,7 @@ class RegisterCtx:
         return f"{self.image}:{self.version}"
 
     def task_image_name(self, task_name: str) -> str:
-        return f"{self.image_tagged}-{task_name}"
+        return f"{self.image}-{task_name}:{self.version}"
 
     @property
     def full_image(self):
