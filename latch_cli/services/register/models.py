@@ -2,6 +2,7 @@
 
 import builtins
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
@@ -257,12 +258,32 @@ class RegisterCtx:
 
         eg. dkr.ecr.us-west-2.amazonaws.com/pkg_name:version
         """
-
         if self.version is None:
             raise ValueError(
                 "Attempting to create a tagged image name without first "
                 "extracting the package version."
             )
+
+        # From AWS:
+        #   A tag name must be valid ASCII and may contain lowercase and uppercase letters,
+        #   digits, underscores, periods and dashes. A tag name may not start with a period
+        #   or a dash and may contain a maximum of 128 characters.
+
+        print("foo: ", self.version)
+
+        match = re.match("^[a-zA-Z0-9_][a-zA-Z0-9._-]{,127}", self.version)
+        if (
+            not match
+            or match.span()[0] != 0
+            or match.span()[1] != len(self.version) - 1
+        ):
+            raise ValueError(
+                f"{self.version} is an invalid version for AWS "
+                "ECR. Please provide a version that accomodates the ",
+                "tag restrictions listed here - ",
+                "https://docs.aws.amazon.com/AmazonECR/latest/userguide/ecr-using-tags.html",
+            )
+
         if self.image is None or self.version is None:
             raise ValueError(
                 "Attempting to create a tagged image name without first "
