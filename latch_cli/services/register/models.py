@@ -1,8 +1,10 @@
 """Models used in the register service."""
 
+import builtins
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from types import ModuleType
 from typing import Dict, Optional
 
 import docker
@@ -108,8 +110,59 @@ class RegisterCtx:
 
         with module_loader.add_sys_path(str(self.pkg_root)):
             try:
+
+                # (kenny) Documenting weird failure modes of importing modules:
+                #   1. Calling attribute of FakeModule in some nested import
+                #
+                #   ```
+                #   # This is submodule or nested import of top level import
+                #   import foo
+                #   def new_func(a=foo.something):
+                #       ...
+                #   ```
+                #
+                #   The potentially weird workaround is to silence attribute
+                #   errors during import, which I don't see as swallowing problems
+                #   associated with the strict task here of retrieving attributes
+                #   from tasks, but idk.
+                #
+                #   2. Calling FakeModule directly in nested import
+                #
+                #   ```
+                #   # This is submodule or nested import of top level import
+                #   from foo import bar
+                #
+                #   a = bar()
+                #   ```
+                #
+                #   This is why we return a callable from our FakeModule
+
+                class FakeModule(ModuleType):
+                    def __getattr__(self, key):
+                        return lambda: None
+
+                    __all__ = []
+
+                real_import = builtins.__import__
+
+                def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+                    try:
+                        return real_import(
+                            name,
+                            globals=globals,
+                            locals=locals,
+                            fromlist=fromlist,
+                            level=level,
+                        )
+                    except (ModuleNotFoundError, AttributeError) as e:
+                        return FakeModule(name)
+
+                builtins.__import__ = fake_import
                 module_loader.just_load_modules(["wf"])
+                builtins.__import__ = real_import
+
             except ModuleNotFoundError as e:
+                print(e)
                 raise FileNotFoundError(
                     "Make sure you are passing a directory that contains a ",
                     "package called 'wf' with valid latch code in it to '$latch register'.",
@@ -120,9 +173,10 @@ class RegisterCtx:
             dockerfile=default_dockerfile, image_name=self.image_tagged
         )
         # Global FlyteEntities object holds all serializable objects after they are imported.
+        print(FlyteEntities.entities)
         for entity in FlyteEntities.entities:
             if isinstance(entity, PythonTask):
-                if entity.dockerfile_path:
+                if hasattr(entity, "dockerfile_path") and entity.dockerfile_path:
                     self.container_map[entity.name] = Container(
                         dockerfile=entity.dockerfile_path,
                         image_name=self.task_image_name(entity.name),
