@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 import jwt
+import paramiko
 
 from latch_cli.config.user import UserConfig
 from latch_cli.constants import MAX_FILE_SIZE
@@ -134,3 +135,28 @@ def hash_directory(dir_path: Path) -> str:
             path = Path(containing_path).joinpath(dirname)
             m.update(str(path).encode("utf-8"))
     return m.hexdigest()
+
+
+def get_client_public_ssh_key():
+    try:
+        user_agent = paramiko.Agent()
+    except paramiko.SSHException as e:
+        raise ValueError(
+            "An error occurred during SSH protocol negotiation. "
+            "This is due to a problem with your system. "
+            "Please use `latch register` without the `--remote` flag."
+        ) from e
+    keys = user_agent.get_keys()
+    if len(keys) == 0:
+        raise ValueError(
+            "It seems you don't have any (valid) SSH keys set up. "
+            "Check that any keys that you have are valid, or use "
+            "a utility like `ssh-keygen` to set one up and try again."
+        )
+
+    pub_key = keys[0]
+
+    alg = pub_key.get_name()
+    material = pub_key.get_base64()
+
+    return f"{alg} {material}"

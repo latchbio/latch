@@ -13,6 +13,7 @@ from latch_cli.config.latch import LatchConfig
 from latch_cli.utils import (
     account_id_from_token,
     current_workspace,
+    get_client_public_ssh_key,
     hash_directory,
     retrieve_or_login,
 )
@@ -113,32 +114,11 @@ class RegisterCtx:
         if remote is True:
             headers = {"Authorization": f"Bearer {self.token}"}
 
-            try:
-                user_agent = paramiko.Agent()
-            except paramiko.SSHException as e:
-                raise ValueError(
-                    "An error occurred during SSH protocol negotiation. "
-                    "This is due to a problem with your system. "
-                    "Please use `latch register` without the `--remote` flag."
-                ) from e
-            keys = user_agent.get_keys()
-            if len(keys) == 0:
-                raise ValueError(
-                    "It seems you don't have any (valid) SSH keys set up. "
-                    "Check that any keys that you have are valid, or use "
-                    "a utility like `ssh-keygen` to set one up and try again."
-                )
-
-            pub_key = keys[0]
-
-            alg = pub_key.get_name()
-            material = pub_key.get_base64()
-
             response = tinyrequests.post(
                 self.latch_provision_url,
                 headers=headers,
                 json={
-                    "public_key": f"{alg} {material}",
+                    "public_key": get_client_public_ssh_key(),
                 },
             )
 

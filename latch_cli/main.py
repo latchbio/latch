@@ -76,6 +76,22 @@ def register(pkg_root: str, disable_auto_version: bool, remote: bool):
             shutil.rmtree(pkg_root + ".logs/")
 
 
+@main.command("develop")
+@click.argument("pkg_root", nargs=1, type=click.Path(exists=True, path_type=Path))
+def local_development(pkg_root: Path):
+    """Develop workflows "locally"
+
+    Visit docs.latch.bio to learn more.
+    """
+    from latch_cli.services.local_dev import local_development
+
+    try:
+        local_development(pkg_root.resolve())
+    except Exception as e:
+        CrashReporter.report(pkg_path=str(pkg_root))
+        click.secho(f"Error during local development session: {str(e)}", fg="red")
+
+
 @main.command("login")
 @click.option(
     "--connection",

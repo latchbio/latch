@@ -37,6 +37,7 @@ SDK_ENDPOINTS = {
     "get-workflow-graph": "/sdk/get-workflow-graph",
     "get-logs": "/sdk/get-logs-for-node",
     "abort-execution": "/sdk/abort-execution",
+    "local-development": "/sdk/initiate-local-development-session",
 }
 
 
