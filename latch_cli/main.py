@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import List, Optional, Union
 
 import click
+from packaging.version import parse as parse_version
 
 import latch_cli.click_utils
 from latch_cli.click_utils import AnsiCodes as ac
@@ -31,9 +32,9 @@ def main():
     Collection of command line tools for using the Latch SDK and
     interacting with the Latch platform.
     """
-    local_ver = get_local_package_version()
-    latest_ver = get_latest_package_version()
-    if local_ver != latest_ver:
+    local_ver = parse_version(get_local_package_version())
+    latest_ver = parse_version(get_latest_package_version())
+    if local_ver < latest_ver:
         click.secho(
             textwrap.dedent(
                 f"""

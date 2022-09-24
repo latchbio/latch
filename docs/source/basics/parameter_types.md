@@ -132,7 +132,7 @@ how these inputs translate into a user interface, check out
 
 ```python
 @large_task
-def bactopia_tsk(
+def bactopia_task(
     fastq_one: Optional[LatchFile],
     fastq_two: Optional[LatchFile],
     input_dir: Optional[LatchDir],
@@ -199,7 +199,7 @@ def bactopia_wf(
     min_contig_length: int = 500,
 ) -> LatchDir:
 
-    return bactopia_tsk(
+    return bactopia_task(
         fastq_one=fastq_one,
         fastq_two=fastq_two,
         input_dir=input_dir,
