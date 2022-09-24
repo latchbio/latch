@@ -108,70 +108,69 @@ class RegisterCtx:
         self.dkr_repo = LatchConfig.dkr_repo
         self.remote = remote
 
-        with module_loader.add_sys_path(str(self.pkg_root)):
-            try:
-
-                # (kenny) Documenting weird failure modes of importing modules:
-                #   1. Calling attribute of FakeModule in some nested import
-                #
-                #   ```
-                #   # This is submodule or nested import of top level import
-                #   import foo
-                #   def new_func(a=foo.something):
-                #       ...
-                #   ```
-                #
-                #   The potentially weird workaround is to silence attribute
-                #   errors during import, which I don't see as swallowing problems
-                #   associated with the strict task here of retrieving attributes
-                #   from tasks, but idk.
-                #
-                #   2. Calling FakeModule directly in nested import
-                #
-                #   ```
-                #   # This is submodule or nested import of top level import
-                #   from foo import bar
-                #
-                #   a = bar()
-                #   ```
-                #
-                #   This is why we return a callable from our FakeModule
-
-                class FakeModule(ModuleType):
-                    def __getattr__(self, key):
-                        return lambda: None
-
-                    __all__ = []
-
-                real_import = builtins.__import__
-
-                def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
-                    try:
-                        return real_import(
-                            name,
-                            globals=globals,
-                            locals=locals,
-                            fromlist=fromlist,
-                            level=level,
-                        )
-                    except (ModuleNotFoundError, AttributeError) as e:
-                        return FakeModule(name)
-
-                builtins.__import__ = fake_import
-                module_loader.just_load_modules(["wf"])
-                builtins.__import__ = real_import
-
-            except ModuleNotFoundError as e:
-                print(e)
-                raise FileNotFoundError(
-                    "Make sure you are passing a directory that contains a ",
-                    "package called 'wf' with valid latch code in it to '$latch register'.",
-                ) from e
-
         default_dockerfile = self.pkg_root.joinpath("Dockerfile")
+        if not default_dockerfile.exists():
+            raise FileNotFoundError(
+                "Make sure you are passing a directory that contains a ",
+                "valid dockerfile to '$latch register'.",
+            )
+
         self.default_container = Container(
             dockerfile=default_dockerfile, image_name=self.image_tagged
         )
+
+        with module_loader.add_sys_path(str(self.pkg_root)):
+
+            # (kenny) Documenting weird failure modes of importing modules:
+            #   1. Calling attribute of FakeModule in some nested import
+            #
+            #   ```
+            #   # This is submodule or nested import of top level import
+            #   import foo
+            #   def new_func(a=foo.something):
+            #       ...
+            #   ```
+            #
+            #   The potentially weird workaround is to silence attribute
+            #   errors during import, which I don't see as swallowing problems
+            #   associated with the strict task here of retrieving attributes
+            #   from tasks, but idk.
+            #
+            #   2. Calling FakeModule directly in nested import
+            #
+            #   ```
+            #   # This is submodule or nested import of top level import
+            #   from foo import bar
+            #
+            #   a = bar()
+            #   ```
+            #
+            #   This is why we return a callable from our FakeModule
+
+            class FakeModule(ModuleType):
+                def __getattr__(self, key):
+                    return lambda: None
+
+                __all__ = []
+
+            real_import = builtins.__import__
+
+            def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+                try:
+                    return real_import(
+                        name,
+                        globals=globals,
+                        locals=locals,
+                        fromlist=fromlist,
+                        level=level,
+                    )
+                except (ModuleNotFoundError, AttributeError) as e:
+                    return FakeModule(name)
+
+            builtins.__import__ = fake_import
+            module_loader.just_load_modules(["wf"])
+            builtins.__import__ = real_import
+
         # Global FlyteEntities object holds all serializable objects after they are imported.
         print(FlyteEntities.entities)
         for entity in FlyteEntities.entities:
