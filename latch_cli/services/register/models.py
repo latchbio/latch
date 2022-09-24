@@ -269,8 +269,6 @@ class RegisterCtx:
         #   digits, underscores, periods and dashes. A tag name may not start with a period
         #   or a dash and may contain a maximum of 128 characters.
 
-        print("foo: ", self.version)
-
         match = re.match("^[a-zA-Z0-9_][a-zA-Z0-9._-]{,127}", self.version)
         if (
             not match
