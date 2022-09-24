@@ -232,7 +232,6 @@ def register(
         register("/root/home/foo")
 
         register("/root/home/foo")
-        register("/root/home/foo", requirements="./requirements.txt")
 
     .. _Flyte:
         https://docs.flyte.org
@@ -279,15 +278,16 @@ def register(
                 try:
                     split_task_name = task_name.split(".")
                     task_name = ".".join(split_task_name[split_task_name.index("wf") :])
+                    for new_proto in new_protos:
+                        if task_name in new_proto.name:
+                            protos = [
+                                new_proto if new_proto.name == f.name else f
+                                for f in protos
+                            ]
                 except ValueError as e:
                     raise ValueError(
                         f"Unable to match {task_name} to any of the protobuf files in {new_protos}"
                     ) from e
-                for new_proto in new_protos:
-                    if task_name in new_proto.name:
-                        protos = [
-                            new_proto if new_proto.name == f.name else f for f in protos
-                        ]
             except TypeError as e:
                 raise ValueError(
                     "The path to your provided dockerfile ",
