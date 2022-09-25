@@ -226,9 +226,6 @@ def all_executions_tui(
 def execution_dashboard_tui(execution_data: Dict[str, str], workflow_graph: Dict):
     fixed_workflow_graph = list(workflow_graph.items())
 
-    with open("cache.txt", "w") as f:
-        f.write(str(fixed_workflow_graph))
-
     def render(curr_selected: int, term_width: int, term_height: int):
         # DISCLAIMER : MOST OF THE MAGIC NUMBERS HERE WERE THROUGH TRIAL AND ERROR
         tui.move_cursor((2, 2))
@@ -250,7 +247,7 @@ def execution_dashboard_tui(execution_data: Dict[str, str], workflow_graph: Dict
 
         tui.move_cursor((4, 4))
         for i, (_, task) in enumerate(fixed_workflow_graph):
-            name, status = task["name"], task["status"]
+            name, status = task["name"] or task["sub_wf_name"], task["status"]
             row_str = "  ".join([name, status])
             if i == curr_selected:
                 green = "\x1b[38;5;40m"
