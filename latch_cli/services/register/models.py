@@ -1,12 +1,18 @@
 """Models used in the register service."""
 
+import builtins
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from types import ModuleType
+from typing import Dict, Optional
 
 import docker
 import paramiko
+from flytekit.core.base_task import PythonTask
+from flytekit.core.context_manager import FlyteEntities
+from flytekit.tools import module_loader
 
 import latch_cli.tinyrequests as tinyrequests
 from latch_cli.config.latch import LatchConfig
@@ -23,19 +29,9 @@ endpoints = config.sdk_endpoints
 
 
 @dataclass
-class RegisterOutput:
-    """A typed structure to consolidate relevant values from the registration
-    process.
-    """
-
-    build_logs: List[str] = None
-    """Stdout/stderr from the container construction process."""
-    serialize_logs: List[str] = None
-    """Stdout/stderr from in-container serialization of workflow code."""
-    registration_response: dict = None
-    """JSON returned from the Latch API from a request to register serialized
-    workflow code.
-    """
+class Container:
+    dockerfile: Path
+    image_name: str
 
 
 class RegisterCtx:
@@ -74,6 +70,9 @@ class RegisterCtx:
     latch_register_api_url = endpoints["register-workflow"]
     latch_image_api_url = endpoints["initiate-image-upload"]
     latch_provision_url = endpoints["provision-centromere"]
+    default_container: Container
+    # Used to asscociate alternate containers with tasks
+    container_map: Dict[str, Container] = {}
 
     def __init__(
         self,
@@ -110,6 +109,81 @@ class RegisterCtx:
 
         self.dkr_repo = LatchConfig.dkr_repo
         self.remote = remote
+
+        default_dockerfile = self.pkg_root.joinpath("Dockerfile")
+        if not default_dockerfile.exists():
+            raise FileNotFoundError(
+                "Make sure you are passing a directory that contains a ",
+                "valid dockerfile to '$latch register'.",
+            )
+
+        self.default_container = Container(
+            dockerfile=default_dockerfile, image_name=self.image_tagged
+        )
+
+        with module_loader.add_sys_path(str(self.pkg_root)):
+
+            # (kenny) Documenting weird failure modes of importing modules:
+            #   1. Calling attribute of FakeModule in some nested import
+            #
+            #   ```
+            #   # This is submodule or nested import of top level import
+            #   import foo
+            #   def new_func(a=foo.something):
+            #       ...
+            #   ```
+            #
+            #   The potentially weird workaround is to silence attribute
+            #   errors during import, which I don't see as swallowing problems
+            #   associated with the strict task here of retrieving attributes
+            #   from tasks, but idk.
+            #
+            #   2. Calling FakeModule directly in nested import
+            #
+            #   ```
+            #   # This is submodule or nested import of top level import
+            #   from foo import bar
+            #
+            #   a = bar()
+            #   ```
+            #
+            #   This is why we return a callable from our FakeModule
+
+            class FakeModule(ModuleType):
+                def __getattr__(self, key):
+                    return lambda: None
+
+                __all__ = []
+
+            real_import = builtins.__import__
+
+            def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+                try:
+                    return real_import(
+                        name,
+                        globals=globals,
+                        locals=locals,
+                        fromlist=fromlist,
+                        level=level,
+                    )
+                except (ModuleNotFoundError, AttributeError) as e:
+                    return FakeModule(name)
+
+            builtins.__import__ = fake_import
+            module_loader.just_load_modules(["wf"])
+            builtins.__import__ = real_import
+
+        # Global FlyteEntities object holds all serializable objects after they are imported.
+        for entity in FlyteEntities.entities:
+            if isinstance(entity, PythonTask):
+                if (
+                    hasattr(entity, "dockerfile_path")
+                    and entity.dockerfile_path is not None
+                ):
+                    self.container_map[entity.name] = Container(
+                        dockerfile=entity.dockerfile_path,
+                        image_name=self.task_image_name(entity.name),
+                    )
 
         if remote is True:
             headers = {"Authorization": f"Bearer {self.token}"}
@@ -164,19 +238,35 @@ class RegisterCtx:
 
         eg. dkr.ecr.us-west-2.amazonaws.com/pkg_name:version
         """
-
-        # TODO (kenny): check version is valid for docker
         if self.version is None:
             raise ValueError(
-                "Attempting to create a tagged image name without first"
+                "Attempting to create a tagged image name without first "
                 "extracting the package version."
             )
+
+        # From AWS:
+        #   A tag name must be valid ASCII and may contain lowercase and uppercase letters,
+        #   digits, underscores, periods and dashes. A tag name may not start with a period
+        #   or a dash and may contain a maximum of 128 characters.
+
+        match = re.match("^[a-zA-Z0-9_][a-zA-Z0-9._-]{,127}", self.version)
+        if not match or match.span()[0] != 0 or match.span()[1] != len(self.version):
+            raise ValueError(
+                f"{self.version} is an invalid version for AWS "
+                "ECR. Please provide a version that accomodates the ",
+                "tag restrictions listed here - ",
+                "https://docs.aws.amazon.com/AmazonECR/latest/userguide/ecr-using-tags.html",
+            )
+
         if self.image is None or self.version is None:
             raise ValueError(
-                "Attempting to create a tagged image name without first"
+                "Attempting to create a tagged image name without first "
                 " logging in or extracting the package version."
             )
         return f"{self.image}:{self.version}"
+
+    def task_image_name(self, task_name: str) -> str:
+        return f"{self.image}:{task_name}-{self.version}"
 
     @property
     def full_image(self):
@@ -191,21 +281,6 @@ class RegisterCtx:
 
         """
         return f"{self.dkr_repo}/{self.image}"
-
-    @property
-    def full_image_tagged(self):
-        """The full image to be registered.
-
-            - Registry name
-            - Repository name
-            - Version/tag name
-
-        An example: ::
-
-            dkr.ecr.us-west-2.amazonaws.com/pkg_name:version
-
-        """
-        return f"{self.dkr_repo}/{self.image_tagged}"
 
     @property
     def version_archive_path(self):

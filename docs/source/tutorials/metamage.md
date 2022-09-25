@@ -59,7 +59,7 @@ The workflow is composed of:
 
 ---
 
-## How the Workflow is Represented in Latch SDK
+## How the Workflow is Represented in the Latch SDK
 
 Let's inspect the workflow directory: 
 

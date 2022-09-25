@@ -24,6 +24,8 @@ exported decorators.
     https://docs.flyte.org/en/latest/
 """
 
+import functools
+
 from flytekit import task
 from flytekitplugins.pod import Pod
 from kubernetes.client.models import (
@@ -134,7 +136,7 @@ def _get_small_pod() -> Pod:
     )
 
 
-large_gpu_task = task(task_config=_get_large_gpu_pod())
+large_gpu_task = functools.partial(task, task_config=_get_large_gpu_pod())
 """This task will get scheduled on a large GPU-enabled node.
 
 This node is not necessarily dedicated to the task, but the node itself will be
@@ -162,16 +164,7 @@ on-demand.
 """
 
 
-def cached_large_gpu_task(cache_version):
-    """Provides caching with resources defined by `large_gpu_task`."""
-    if cache_version is None:
-        raise ValueError("Must provide a cache version to a cached task.")
-    return task(
-        cache=True, cache_version=cache_version, task_config=_get_large_gpu_pod()
-    )
-
-
-small_gpu_task = task(task_config=_get_small_gpu_pod())
+small_gpu_task = functools.partial(task, task_config=_get_small_gpu_pod())
 """This task will get scheduled on a small GPU-enabled node.
 
 This node will be dedicated to the task. No other tasks will be allowed to run
@@ -199,16 +192,7 @@ on it.
 """
 
 
-def cached_small_gpu_task(cache_version):
-    """Provides caching with resources defined by `small_gpu_task`."""
-    if cache_version is None:
-        raise ValueError("Must provide a cache version to a cached task.")
-    return task(
-        cache=True, cache_version=cache_version, task_config=_get_small_gpu_pod()
-    )
-
-
-large_task = task(task_config=_get_large_pod())
+large_task = functools.partial(task, task_config=_get_large_pod())
 """This task will get scheduled on a large node.
 
 This node will be dedicated to the task. No other tasks will be allowed to run
@@ -236,14 +220,7 @@ on it.
 """
 
 
-def cached_large_task(cache_version):
-    """Provides caching with resources defined by `large_task`."""
-    if cache_version is None:
-        raise ValueError("Must provide a cache version to a cached task.")
-    return task(cache=True, cache_version=cache_version, task_config=_get_large_pod())
-
-
-medium_task = task(task_config=_get_medium_pod())
+medium_task = functools.partial(task, task_config=_get_medium_pod())
 """This task will get scheduled on a medium node.
 
 This node will be dedicated to the task. No other tasks will be allowed to run
@@ -271,14 +248,7 @@ on it.
 """
 
 
-def cached_medium_task(cache_version):
-    """Provides caching with resources defined by `medium_task`."""
-    if cache_version is None:
-        raise ValueError("Must provide a cache version to a cached task.")
-    return task(cache=True, cache_version=cache_version, task_config=_get_medium_pod())
-
-
-small_task = task(task_config=_get_small_pod())
+small_task = functools.partial(task, task_config=_get_small_pod())
 """This task will get scheduled on a small node.
 
 .. list-table:: Title
@@ -303,25 +273,18 @@ small_task = task(task_config=_get_small_pod())
 """
 
 
-def cached_small_task(cache_version):
-    """Provides caching with resources defined by `small_task`."""
-    if cache_version is None:
-        raise ValueError("Must provide a cache version to a cached task.")
-    return task(cache=True, cache_version=cache_version, task_config=_get_small_pod())
-
-
 def custom_task(cpu: int, memory: int):
     """Returns a custom task configuration requesting
     the specified CPU/RAM allocations
 
     Args:
-        cpu: An integer number of cores to request, up to 48 cores
-        memory: An integer number of Gigabytes of RAM to request, up to 128 Gi
+        cpu: An integer number of cores to request, up to 95 cores
+        memory: An integer number of Gibibytes of RAM to request, up to 179 GiB
     """
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
         requests={"cpu": str(cpu), "memory": f"{memory}Gi"},
-        limits={"cpu": "48", "memory": "128Gi"},
+        limits={"cpu": str(cpu), "memory": f"{memory}Gi"},
     )
     primary_container.resources = resources
     if cpu < 48 and memory < 128:
@@ -342,8 +305,15 @@ def custom_task(cpu: int, memory: int):
             primary_container_name="primary",
         )
     else:
-        raise ValueError(
-            f"One of {cpu} < 96 or {memory} < 180 is not satisfied. Task requirements are too high."
-        )
+        if cpu >= 96:
+            raise ValueError(f"custom task requires too many CPU cores: {cpu} (max 95)")
+        elif memory >= 180:
+            raise ValueError(
+                f"custom task requires too much RAM: {memory} GiB (max 179 GiB)"
+            )
+        else:
+            raise ValueError(
+                f"custom task resource limit is too high: {cpu} (max 95) or {memory} GiB (max 179 GiB)"
+            )
 
     return task(task_config=task_config)

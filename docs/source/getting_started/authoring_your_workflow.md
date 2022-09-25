@@ -268,10 +268,19 @@ Now, you can use Latch `LaunchPlan` to add test data to your workflow.
 ```python
 from latch.resources.launch_plan import LaunchPlan
 
-...
+# Add launch plans at the end of your wf/__init__.py
 LaunchPlan(
     assemble_and_sort,
-    "Test Data",
+    "Protocol Template 1",
+    {
+        "read1": LatchFile("s3://latch-public/init/r1.fastq"),
+        "read2": LatchFile("s3://latch-public/init/r2.fastq"),
+    },
+)
+
+LaunchPlan(
+    assemble_and_sort,
+    "Protocol Template 2",
     {
         "read1": LatchFile("s3://latch-public/init/r1.fastq"),
         "read2": LatchFile("s3://latch-public/init/r2.fastq"),
@@ -281,6 +290,8 @@ LaunchPlan(
 ```
 
 These default values will be available under the 'Test Data' dropdown at Latch Console. 
+
+![Launch Plan](../assets/launchplan.png)
 
 ## 7. Register your workflow to Latch
 You can release a live version of your workflow by registering it on Latch: 

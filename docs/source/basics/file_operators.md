@@ -1,6 +1,6 @@
 # Operators
 
-The Latch SDK offers several operators for grouping and organizing data, in a similar flavor to NextFlow.
+The Latch SDK offers several operators for grouping and organizing data.
 
 ---
 

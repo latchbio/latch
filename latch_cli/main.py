@@ -5,16 +5,17 @@ import re
 import shutil
 import textwrap
 from collections import OrderedDict
-from functools import wraps
 from pathlib import Path
 from typing import List, Optional, Union
 
 import click
+from packaging.version import parse as parse_version
 
 import latch_cli.click_utils
 from latch_cli.click_utils import AnsiCodes as ac
 from latch_cli.crash_reporter import CrashReporter
 from latch_cli.services.init.init import Templates
+from latch_cli.utils import get_latest_package_version, get_local_package_version
 
 latch_cli.click_utils.patch()
 
@@ -31,7 +32,18 @@ def main():
     Collection of command line tools for using the Latch SDK and
     interacting with the Latch platform.
     """
-    ...
+    local_ver = parse_version(get_local_package_version())
+    latest_ver = parse_version(get_latest_package_version())
+    if local_ver < latest_ver:
+        click.secho(
+            textwrap.dedent(
+                f"""
+                WARN: Your local version of latch ({local_ver}) is out of date. This may result in unexpected behavior.
+                Please upgrade to the latest version ({latest_ver}) using `python3 -m pip install --upgrade latch`.
+                """
+            ).strip("\n"),
+            fg="yellow",
+        )
 
 
 @main.command("register")

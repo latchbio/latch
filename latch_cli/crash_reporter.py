@@ -8,6 +8,7 @@ import traceback
 from typing import Optional
 
 from latch_cli.constants import MAX_FILE_SIZE
+from latch_cli.utils import get_local_package_version
 
 
 class _CrashReporter:
@@ -25,12 +26,7 @@ class _CrashReporter:
 
     @property
     def version(self) -> str:
-        PKG_NAME = "latch"
-        try:
-            from importlib import metadata
-        except ImportError:
-            import importlib_metadata as metadata
-        return metadata.version(PKG_NAME)
+        return get_local_package_version()
 
     def report(self, pkg_path: Optional[str] = None):
         """Constructs a zipped tarball with files needed to reproduce crashes."""
