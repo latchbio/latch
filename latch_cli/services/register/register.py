@@ -152,7 +152,7 @@ def _print_serialize_logs(serialize_logs, image):
 
 
 def build_and_serialize(
-    ctx: RegisterCtx, image_name: str, dockerfile: Path, tmp_dir: Path
+    ctx: RegisterCtx, image_name: str, context_path: Path, tmp_dir: Path
 ):
     """Encapsulates build, serialize, push flow needed for each dockerfile
 
@@ -162,7 +162,7 @@ def build_and_serialize(
     - Push image
     """
 
-    build_logs = build_image(ctx, image_name, dockerfile)
+    build_logs = build_image(ctx, image_name, context_path)
     _print_and_save_build_logs(build_logs, image_name, ctx.pkg_root)
 
     serialize_logs, container_id = serialize_pkg_in_container(ctx, image_name, tmp_dir)
@@ -262,7 +262,10 @@ def register(
             TemporarySerialDir(ssh_client=ctx.ssh_client, remote=remote)
         )
         build_and_serialize(
-            ctx, ctx.default_container.image_name, ctx.default_container.dockerfile, td
+            ctx,
+            ctx.default_container.image_name,
+            ctx.default_container.dockerfile.parent,
+            td,
         )
         protos = recursive_list(td)
 
@@ -271,9 +274,29 @@ def register(
                 TemporarySerialDir(ssh_client=ctx.ssh_client, remote=remote)
             )
             try:
-                build_and_serialize(
-                    ctx, container.image_name, container.dockerfile, task_td
+
+                default_dfile = ctx.default_container.dockerfile
+                default_dfile = default_dfile.rename(
+                    default_dfile.parent / "OLD_Dockerfile"
                 )
+                new_dockerfile = Path(container.dockerfile)
+                old_name = new_dockerfile.name
+                new_dockerfile = new_dockerfile.rename(
+                    new_dockerfile.parent / "Dockerfile"
+                )
+
+                build_and_serialize(
+                    ctx,
+                    container.image_name,
+                    ctx.default_container.dockerfile.parent,
+                    task_td,
+                )
+
+                new_dockerfile = new_dockerfile.rename(new_dockerfile.parent / old_name)
+                default_dfile = default_dfile.rename(
+                    default_dfile.parent / "Dockerfile"
+                )
+
                 new_protos = recursive_list(task_td)
                 try:
                     split_task_name = task_name.split(".")
@@ -345,15 +368,16 @@ def _login(ctx: RegisterCtx):
     )
 
 
-def build_image(ctx: RegisterCtx, image_name: str, dockerfile: Path) -> List[str]:
+def build_image(ctx: RegisterCtx, image_name: str, context_path: Path) -> List[str]:
 
     _login(ctx)
     build_logs = ctx.dkr_client.build(
-        path=str(dockerfile.parent),
+        path=str(context_path),
         buildargs={"tag": f"{ctx.dkr_repo}/{image_name}"},
         tag=f"{ctx.dkr_repo}/{image_name}",
         decode=True,
     )
+
     return build_logs
 
 
