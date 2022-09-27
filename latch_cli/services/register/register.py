@@ -272,6 +272,13 @@ def register(
             td,
         )
         protos = recursive_list(td)
+        if remote:
+            local_td = stack.enter_context(tempfile.TemporaryDirectory())
+            scp = SCPClient(ctx.ssh_client.get_transport(), sanitize=lambda x: x)
+            scp.get(f"{td}/*", local_path=local_td, recursive=True)
+            protos = recursive_list(local_td)
+        else:
+            protos = recursive_list(td)
 
         for task_name, container in ctx.container_map.items():
             task_td = stack.enter_context(
@@ -288,7 +295,15 @@ def register(
                     dockerfile=container.dockerfile,
                 )
 
-                new_protos = recursive_list(task_td)
+                if remote:
+                    local_td = stack.enter_context(tempfile.TemporaryDirectory())
+                    scp = SCPClient(
+                        ctx.ssh_client.get_transport(), sanitize=lambda x: x
+                    )
+                    scp.get(f"{task_td}/*", local_path=local_td, recursive=True)
+                    new_protos = recursive_list(local_td)
+                else:
+                    new_protos = recursive_list(task_td)
                 try:
                     split_task_name = task_name.split(".")
                     task_name = ".".join(split_task_name[split_task_name.index("wf") :])
@@ -308,13 +323,7 @@ def register(
                     f"{container.dockerfile} given to {task_name} is invalid.",
                 ) from e
 
-        if remote:
-            with tempfile.TemporaryDirectory() as local_td:
-                scp = SCPClient(ctx.ssh_client.get_transport(), sanitize=lambda x: x)
-                scp.get(f"{td}/*", local_path=local_td, recursive=True)
-                reg_resp = register_serialized_pkg(ctx, protos)
-        else:
-            reg_resp = register_serialized_pkg(ctx, protos)
+        reg_resp = register_serialized_pkg(ctx, protos)
         _print_reg_resp(reg_resp, ctx.default_container.image_name)
 
     with open(ctx.version_archive_path, "a") as f:
