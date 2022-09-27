@@ -312,9 +312,9 @@ def register(
             with tempfile.TemporaryDirectory() as local_td:
                 scp = SCPClient(ctx.ssh_client.get_transport(), sanitize=lambda x: x)
                 scp.get(f"{td}/*", local_path=local_td, recursive=True)
-                reg_resp = register_serialized_pkg(ctx, local_td, protos)
+                reg_resp = register_serialized_pkg(ctx, protos)
         else:
-            reg_resp = register_serialized_pkg(ctx, td, protos)
+            reg_resp = register_serialized_pkg(ctx, protos)
         _print_reg_resp(reg_resp, ctx.default_container.image_name)
 
     with open(ctx.version_archive_path, "a") as f:
@@ -414,9 +414,7 @@ def upload_pkg_image(ctx: RegisterCtx, image_name: str) -> List[str]:
     )
 
 
-def register_serialized_pkg(
-    ctx: RegisterCtx, serialize_dir: Path, files: List[Path]
-) -> dict:
+def register_serialized_pkg(ctx: RegisterCtx, files: List[Path]) -> dict:
 
     headers = {"Authorization": f"Bearer {ctx.token}"}
 
