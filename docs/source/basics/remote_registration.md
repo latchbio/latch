@@ -16,7 +16,7 @@ Connecting to remote server for docker build [alpha]...
 The registration process will behave as usual, but the build/upload will not occur on your local machine and instead will happen on a remote instance.
 
 ## Troubleshooting
-
+Here are a few common bugs users have run into while using remote registration, as well as some suggestions on how to fix them.
 1. Permission denied
 
 ```
