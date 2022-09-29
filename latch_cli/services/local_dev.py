@@ -102,7 +102,7 @@ async def run_local_dev_session(pkg_root: Path):
     )
 
     exit_signal = str(random.getrandbits(256))
-    async with websockets.connect(f"ws://{centromere_ip}/1234/ws") as ws:
+    async with websockets.connect(f"ws://{centromere_ip}:8080/1234/ws") as ws:
         await ws.send(exit_signal)
 
         await ws.send(dockerAccessToken)
@@ -112,7 +112,7 @@ async def run_local_dev_session(pkg_root: Path):
         print("Image successfully pulled.", end="\n")
 
         for _ in range(5):
-            cmd = input("\x1b[38;5;8m>>> \x1b[0m")
+            cmd = await input("\x1b[38;5;8m>>> \x1b[0m")
             scp_client.put(pkg_root, f"/home/{centromere_username}/workflow")
 
             await ws.send(cmd)
