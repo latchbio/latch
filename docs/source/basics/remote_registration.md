@@ -8,7 +8,7 @@ upload your workflow's images from a latch-managed, performant, remote machine.
 
 ```
 $ latch register myworkflow --remote
-Initializing registration for /Users/kenny/latch/latch/myworkflow
+Initializing registration for /path/to/myworkflow
 Connecting to remote server for docker build [alpha]...
 
 ```
