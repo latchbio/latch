@@ -3,7 +3,7 @@
 If you do not have access to Docker on your local machine, lack space on your
 local filesystem for image layers, or lack fast internet to facilitate timely
 registration, you can use the `--remote` flag with `latch register` to build and
-upload your workflow's images from a managed and speedy machine.
+upload your workflow's images from a latch-managed, performant, remote machine.
 
 
 ```
