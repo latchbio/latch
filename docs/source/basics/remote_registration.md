@@ -13,7 +13,7 @@ Connecting to remote server for docker build [alpha]...
 
 ```
 
-The registration process will behave as usual but the build/upload will not occur on your local machine.
+The registration process will behave as usual, but the build/upload will not occur on your local machine and instead will happen on a remote instance.
 
 ## Troubleshooting
 
