@@ -94,6 +94,7 @@ basics/remote_execution
 :maxdepth: 2
 :caption: Publishing a Workflow
 basics/uploading_test_data
+basics/remote_registration
 ```
 
 ```{toctree}
