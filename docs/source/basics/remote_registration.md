@@ -37,7 +37,7 @@ ssh-add
 ```
 Unable to register workflow: It seems you don't have any (valid) SSH keys set up. Check that any keys that you have are valid, or use a utility like `ssh-keygen` to set one up and try again.
 ```
-Latch uses your SSH key pair for authentication to the remote machine for Docker image build. This error means you either don't have an SSH key pair on your machine or your keys are corrupted. 
+Latch uses your SSH key pair for authentication to the remote machine when building your workflow's docker image. This error means you either don't have an SSH key pair on your machine or your keys are corrupted. 
 
 **Solution 1**: Verify that you have an SSH key pair by inspecting the `~/.ssh` folder:
 ```
