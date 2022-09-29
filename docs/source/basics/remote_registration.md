@@ -1,8 +1,7 @@
 # Remote Registration
 
-If you do not have access to Docker on your local machine, lack space on your
-local filesystem for image layers, or lack fast internet to facilitate timely
-registration, you can use the `--remote` flag with `latch register` to build and
+If you do not have access to Docker on your local machine, lack space on your local filesystem for image layers, or lack
+fast internet to facilitate timely registration, you can use the `--remote` flag with `latch register` to build and
 upload your workflow's images from a latch-managed, performant, remote machine.
 
 ```console
@@ -66,17 +65,15 @@ valid, or use a utility like `ssh-keygen` to set one up and try again.
 Latch uses your SSH key pair for authentication to the remote machine when building your workflow's docker image. This
 error means you either don't have an SSH key pair on your machine or your keys are corrupted.
 
-**Solution 1**:
-
-Verify that you have an SSH key pair by inspecting the `~/.ssh` folder:
+First, verify that you have an SSH key pair by inspecting the `~/.ssh` folder:
 
 ```console
 $ ls ~/.ssh
 config  id_rsa  id_rsa.pub  known_hosts
 ```
 
-If you don't see `id_rsa` or `id_rsa.pub` which represent your private and public key, you have to generate a key pair
-using `ssh-keygen`:
+If you don't see something of the form `id_*` and `id_*.pub` (in this case `id_rsa` and `id_rsa.pub`), this means that
+you don't have any public/private key pairs on this computer, so you'll have to make some using `ssh-keygen`:
 
 ```console
 $ ssh-keygen
@@ -84,15 +81,14 @@ Generating public/private rsa key pair.
 ...
 ```
 
-**Solution 2**:
-
-Try to use ssh-keygen again to validate the key.
+If you do have an identity file, try to use ssh-keygen again to validate the key.
 
 ```console
 ssh-keygen -l -f id_rsa.pub
 ```
 
-At this point, you should have a response indicating if the key is invalid.
+At this point, you should have a response indicating if the key is invalid. If the key isn't invalid, make sure the
+SSH Agent has loaded it (see above).
 
 ---
 *Still can't find a working solution for your issue? Please join our SDK support slack*
