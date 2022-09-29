@@ -28,7 +28,7 @@ Unable to register workflow: Unable to establish a connection to remote docker h
 An SSH agent is used for SSH public key authentication. The error means that an SSH agent may not be running on your computer. You can add an agent with: 
 
 ```
-eval `ssh-add -s`
+eval `ssh-agent -s`
 ssh-add
 ```
 
