@@ -1,65 +1,99 @@
-# Remote Registration 
+# Remote Registration
 
 If you do not have access to Docker on your local machine, lack space on your
 local filesystem for image layers, or lack fast internet to facilitate timely
 registration, you can use the `--remote` flag with `latch register` to build and
 upload your workflow's images from a latch-managed, performant, remote machine.
 
-
-```
+```console
 $ latch register myworkflow --remote
 Initializing registration for /path/to/myworkflow
 Connecting to remote server for docker build [alpha]...
-
 ```
 
-The registration process will behave as usual, but the build/upload will not occur on your local machine and instead will happen on a remote instance.
+The registration process will behave as usual, but the build/upload will not occur on your local machine and instead
+will happen on a remote instance.
 
 ## Troubleshooting
-Here are a few common bugs users have run into while using remote registration, as well as some suggestions on how to fix them.
-1. Permission denied
 
-```
+Here are a few common bugs users have run into while using remote registration, as well as some suggestions on how to
+fix them.
+
+### Permission denied
+
+```console
+$ latch register myworkflow --remote
+...
 Could not open a connection to your authentication agent.
 ubuntu@52.38.67.53: Permission denied (publickey).
 Unable to register workflow: Unable to establish a connection to remote docker host ssh://ubuntu@52.38.67.53.
 ```
 
-An SSH agent is used for SSH public key authentication. The error means that an SSH agent may not be running on your computer. You can add an agent with: 
+This error happens if either (a) your SSH Agent is not running, or (b) none of your SSH identities (public/private key
+pairs) are loaded into your agent.
 
-```
-eval `ssh-agent -s`
-ssh-add
+To (re)start your SSH Agent on a Unix/macOS system, simply run
+
+```console
+$ eval `ssh-agent -s`
+...
 ```
 
-2. Unable to find a valid key
+To see what identities are loaded into your agent, run
 
+```console
+$ ssh-add -l
+...
 ```
-Unable to register workflow: It seems you don't have any (valid) SSH keys set up. Check that any keys that you have are valid, or use a utility like `ssh-keygen` to set one up and try again.
-```
-Latch uses your SSH key pair for authentication to the remote machine when building your workflow's docker image. This error means you either don't have an SSH key pair on your machine or your keys are corrupted. 
 
-**Solution 1**: Verify that you have an SSH key pair by inspecting the `~/.ssh` folder:
-```
-$ ls ~/.ssh 
-config		id_rsa		id_rsa.pub	known_hosts
-``` 
+If you don't see your identity file show up, run
 
-If you don't see `id_rsa` or `id_rsa.pub` which represent your private and public key, you have to generate a key pair using `ssh-keygen`:
+```console
+ssh-add ~/.ssh/identity
 ```
+
+to add it. If you don't have an identity file set up, see the section below.
+
+### Unable to find a valid key
+
+```console
+$ latch register myworkflow --remote
+...
+Unable to register workflow: It seems you don\'t have any (valid) SSH keys set up. Check that any keys that you have are
+valid, or use a utility like `ssh-keygen` to set one up and try again.
+```
+
+Latch uses your SSH key pair for authentication to the remote machine when building your workflow's docker image. This
+error means you either don't have an SSH key pair on your machine or your keys are corrupted.
+
+**Solution 1**:
+
+Verify that you have an SSH key pair by inspecting the `~/.ssh` folder:
+
+```console
+$ ls ~/.ssh
+config  id_rsa  id_rsa.pub  known_hosts
+```
+
+If you don't see `id_rsa` or `id_rsa.pub` which represent your private and public key, you have to generate a key pair
+using `ssh-keygen`:
+
+```console
 $ ssh-keygen
-
 Generating public/private rsa key pair.
 ...
 ```
 
-**Solution 2**: 
+**Solution 2**:
+
 Try to use ssh-keygen again to validate the key.
-```
+
+```console
 ssh-keygen -l -f id_rsa.pub
 ```
+
 At this point, you should have a response indicating if the key is invalid.
 
-
 ---
-*Still can't find a working solution for your issue? Please send an email to hannah@latch.bio, and we will get back to you ASAP!*
+*Still can't find a working solution for your issue? Please join our SDK support slack*
+*[here](https://join.slack.com/t/latchbiosdk/shared_invite/zt-1hapxysts-Rxf_EA4cuAMNyQKEbGNqrA).*
