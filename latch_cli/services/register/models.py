@@ -3,8 +3,12 @@
 import builtins
 import os
 import re
+import shutil
+import subprocess
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from types import ModuleType
 from typing import Dict, Optional
 
@@ -59,8 +63,8 @@ class RegisterCtx:
     dkr_repo: Optional[str] = None
     dkr_client: docker.APIClient = None
     ssh_client: paramiko.client.SSHClient = None
-    key_material: Optional[str] = None
     pkg_root: Path = None  # root
+    ssh_key_path: Path = None
     disable_auto_version: bool = False
     image_full = None
     token = None
@@ -187,31 +191,41 @@ class RegisterCtx:
         if remote is True:
             headers = {"Authorization": f"Bearer {self.token}"}
 
-            try:
-                user_agent = paramiko.Agent()
-            except paramiko.SSHException as e:
-                raise ValueError(
-                    "An error occurred during SSH protocol negotiation. "
-                    "This is due to a problem with your system. "
-                    "Please use `latch register` without the `--remote` flag."
-                ) from e
-            keys = user_agent.get_keys()
-            if len(keys) == 0:
-                raise ValueError(
-                    "It seems you don't have any (valid) SSH keys set up. "
-                    "Check that any keys that you have are valid, or use "
-                    "a utility like `ssh-keygen` to set one up and try again."
-                )
+            # try:
+            #     user_agent = paramiko.Agent()
+            # except paramiko.SSHException as e:
+            #     raise ValueError(
+            #         "An error occurred during SSH protocol negotiation. "
+            #         "This is due to a problem with your system. "
+            #         "Please use `latch register` without the `--remote` flag."
+            #     ) from e
+            # keys = user_agent.get_keys()
+            # if len(keys) == 0:
+            #     raise ValueError(
+            #         "It seems you don't have any (valid) SSH keys set up. "
+            #         "Check that any keys that you have are valid, or use "
+            #         "a utility like `ssh-keygen` to set one up and try again."
+            #     )
 
-            pub_key = keys[0]
-            alg = pub_key.get_name()
-            material = pub_key.get_base64()
+            self.ssh_key_path = Path(self.pkg_root) / "ssh_key"
+            cmd = ["ssh-keygen", "-f", self.ssh_key_path, "-N", "", "-q"]
+            subprocess.run(cmd, check=True)
+            os.chmod(self.ssh_key_path, int("700", base=8))
+            cmd = ["ssh-add", self.ssh_key_path]
+            subprocess.run(cmd, check=True)
+            cmd = ["ssh-keygen", "-y", "-f", self.ssh_key_path]
+            out = subprocess.run(cmd, capture_output=True)
+            public_key = out.stdout.decode("utf-8").strip("\n")
+
+            shutil.copy(
+                self.ssh_key_path, "/Users/ayush/Desktop/workflows/print-file/key.pem"
+            )
 
             response = tinyrequests.post(
                 self.latch_provision_url,
                 headers=headers,
                 json={
-                    "public_key": f"{alg} {material}",
+                    "public_key": public_key,
                 },
             )
 
@@ -394,3 +408,14 @@ class RegisterCtx:
         ssh.load_system_host_keys()
         ssh.connect(host_ip, username=username)
         return ssh
+
+    # utils for context management
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        if self.ssh_key_path is not None:
+            cmd = ["ssh-add", "-d", self.ssh_key_path]
+            subprocess.run(cmd)
+            self.ssh_key_path.unlink(missing_ok=True)
+            self.ssh_key_path.with_suffix(".pub").unlink(missing_ok=True)
