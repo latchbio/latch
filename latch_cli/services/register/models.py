@@ -3,6 +3,7 @@
 import builtins
 import os
 import re
+import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -81,156 +82,183 @@ class RegisterCtx:
         disable_auto_version: bool = False,
         remote: bool = False,
     ):
-
-        if token is None:
-            self.token = retrieve_or_login()
-        else:
-            self.token = token
-
-        ws = current_workspace()
-        if ws == "" or ws is None:
-            self.account_id = account_id_from_token(self.token)
-        else:
-            self.account_id = ws
-
-        self.pkg_root = Path(pkg_root).resolve()
-        self.disable_auto_version = disable_auto_version
         try:
-            version_file = self.pkg_root.joinpath("version")
-            with open(version_file, "r") as vf:
-                self.version = vf.read().strip()
-            if not self.disable_auto_version:
-                hash = hash_directory(self.pkg_root)
-                self.version = self.version + "-" + hash[:6]
-        except Exception as e:
-            raise ValueError(
-                f"Unable to extract pkg version from {str(self.pkg_root)}"
-            ) from e
+            if token is None:
+                self.token = retrieve_or_login()
+            else:
+                self.token = token
 
-        self.dkr_repo = LatchConfig.dkr_repo
-        self.remote = remote
+            ws = current_workspace()
+            if ws == "" or ws is None:
+                self.account_id = account_id_from_token(self.token)
+            else:
+                self.account_id = ws
 
-        default_dockerfile = self.pkg_root.joinpath("Dockerfile")
-        if not default_dockerfile.exists():
-            raise FileNotFoundError(
-                "Make sure you are passing a directory that contains a ",
-                "valid dockerfile to '$latch register'.",
-            )
-
-        self.default_container = Container(
-            dockerfile=default_dockerfile, image_name=self.image_tagged
-        )
-
-        with module_loader.add_sys_path(str(self.pkg_root)):
-
-            # (kenny) Documenting weird failure modes of importing modules:
-            #   1. Calling attribute of FakeModule in some nested import
-            #
-            #   ```
-            #   # This is submodule or nested import of top level import
-            #   import foo
-            #   def new_func(a=foo.something):
-            #       ...
-            #   ```
-            #
-            #   The potentially weird workaround is to silence attribute
-            #   errors during import, which I don't see as swallowing problems
-            #   associated with the strict task here of retrieving attributes
-            #   from tasks, but idk.
-            #
-            #   2. Calling FakeModule directly in nested import
-            #
-            #   ```
-            #   # This is submodule or nested import of top level import
-            #   from foo import bar
-            #
-            #   a = bar()
-            #   ```
-            #
-            #   This is why we return a callable from our FakeModule
-
-            class FakeModule(ModuleType):
-                def __getattr__(self, key):
-                    return lambda: None
-
-                __all__ = []
-
-            real_import = builtins.__import__
-
-            def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
-                try:
-                    return real_import(
-                        name,
-                        globals=globals,
-                        locals=locals,
-                        fromlist=fromlist,
-                        level=level,
-                    )
-                except (ModuleNotFoundError, AttributeError) as e:
-                    return FakeModule(name)
-
-            builtins.__import__ = fake_import
-            module_loader.just_load_modules(["wf"])
-            builtins.__import__ = real_import
-
-        # Global FlyteEntities object holds all serializable objects after they are imported.
-        for entity in FlyteEntities.entities:
-            if isinstance(entity, PythonTask):
-                if (
-                    hasattr(entity, "dockerfile_path")
-                    and entity.dockerfile_path is not None
-                ):
-                    self.container_map[entity.name] = Container(
-                        dockerfile=entity.dockerfile_path,
-                        image_name=self.task_image_name(entity.name),
-                    )
-
-        if remote is True:
-            headers = {"Authorization": f"Bearer {self.token}"}
-
-            self.ssh_key_path = Path(self.pkg_root) / "ssh_key"
-
-            # generate private key
-            cmd = ["ssh-keygen", "-f", self.ssh_key_path, "-N", "", "-q"]
-            subprocess.run(cmd, check=True)
-            os.chmod(self.ssh_key_path, int("700", base=8))
-
-            # make key available to ssh-agent daemon
-            cmd = ["ssh-add", self.ssh_key_path]
-            subprocess.run(cmd, check=True)
-
-            # decode private key into public key
-            cmd = ["ssh-keygen", "-y", "-f", self.ssh_key_path]
-            out = subprocess.run(cmd, capture_output=True)
-            public_key = out.stdout.decode("utf-8").strip("\n")
-
-            response = tinyrequests.post(
-                self.latch_provision_url,
-                headers=headers,
-                json={
-                    "public_key": public_key,
-                },
-            )
-
-            resp = response.json()
+            self.pkg_root = Path(pkg_root).resolve()
+            self.disable_auto_version = disable_auto_version
             try:
-                public_ip = resp["ip"]
-                username = resp["username"]
-            except KeyError as e:
+                version_file = self.pkg_root.joinpath("version")
+                with open(version_file, "r") as vf:
+                    self.version = vf.read().strip()
+                if not self.disable_auto_version:
+                    hash = hash_directory(self.pkg_root)
+                    self.version = self.version + "-" + hash[:6]
+            except Exception as e:
                 raise ValueError(
-                    f"Malformed response from request for access token {resp}"
+                    f"Unable to extract pkg version from {str(self.pkg_root)}"
                 ) from e
 
-            self.dkr_client = self._construct_dkr_client(
-                ssh_host=f"ssh://{username}@{public_ip}"
-            )
-            self.ssh_client = self._construct_ssh_client(
-                host_ip=public_ip,
-                username=username,
+            self.dkr_repo = LatchConfig.dkr_repo
+            self.remote = remote
+
+            default_dockerfile = self.pkg_root.joinpath("Dockerfile")
+            if not default_dockerfile.exists():
+                raise FileNotFoundError(
+                    "Make sure you are passing a directory that contains a ",
+                    "valid dockerfile to '$latch register'.",
+                )
+
+            self.default_container = Container(
+                dockerfile=default_dockerfile, image_name=self.image_tagged
             )
 
-        else:
-            self.dkr_client = self._construct_dkr_client()
+            with module_loader.add_sys_path(str(self.pkg_root)):
+
+                # (kenny) Documenting weird failure modes of importing modules:
+                #   1. Calling attribute of FakeModule in some nested import
+                #
+                #   ```
+                #   # This is submodule or nested import of top level import
+                #   import foo
+                #   def new_func(a=foo.something):
+                #       ...
+                #   ```
+                #
+                #   The potentially weird workaround is to silence attribute
+                #   errors during import, which I don't see as swallowing problems
+                #   associated with the strict task here of retrieving attributes
+                #   from tasks, but idk.
+                #
+                #   2. Calling FakeModule directly in nested import
+                #
+                #   ```
+                #   # This is submodule or nested import of top level import
+                #   from foo import bar
+                #
+                #   a = bar()
+                #   ```
+                #
+                #   This is why we return a callable from our FakeModule
+
+                class FakeModule(ModuleType):
+                    def __getattr__(self, key):
+                        return lambda: None
+
+                    __all__ = []
+
+                real_import = builtins.__import__
+
+                def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+                    try:
+                        return real_import(
+                            name,
+                            globals=globals,
+                            locals=locals,
+                            fromlist=fromlist,
+                            level=level,
+                        )
+                    except (ModuleNotFoundError, AttributeError) as e:
+                        return FakeModule(name)
+
+                builtins.__import__ = fake_import
+                module_loader.just_load_modules(["wf"])
+                builtins.__import__ = real_import
+
+            # Global FlyteEntities object holds all serializable objects after they are imported.
+            for entity in FlyteEntities.entities:
+                if isinstance(entity, PythonTask):
+                    if (
+                        hasattr(entity, "dockerfile_path")
+                        and entity.dockerfile_path is not None
+                    ):
+                        self.container_map[entity.name] = Container(
+                            dockerfile=entity.dockerfile_path,
+                            image_name=self.task_image_name(entity.name),
+                        )
+
+            if remote is True:
+                headers = {"Authorization": f"Bearer {self.token}"}
+
+                self.ssh_key_path = Path(self.pkg_root) / ".ssh_key"
+
+                # generate private key
+                cmd = ["ssh-keygen", "-f", self.ssh_key_path, "-N", "", "-q"]
+                try:
+                    subprocess.run(cmd, check=True)
+                except subprocess.CalledProcessError as e:
+                    raise ValueError(
+                        "There was a problem creating temporary SSH credentials. Please ensure that "
+                        "`ssh-keygen` is installed and available in your PATH."
+                    )
+                os.chmod(self.ssh_key_path, int("700", base=8))
+
+                # make key available to ssh-agent daemon
+                cmd = ["ssh-add", self.ssh_key_path]
+                try:
+                    subprocess.run(cmd, check=True)
+                except subprocess.CalledProcessError as e:
+                    raise ValueError(
+                        "There was an issue adding temporary SSH credentials to your SSH Agent. Please ensure "
+                        "that your SSH Agent is running, or (re)start it manually by running\n\n    $ eval `ssh-agent -s`"
+                        "\n\n"
+                    )
+
+                # decode private key into public key
+                cmd = ["ssh-keygen", "-y", "-f", self.ssh_key_path]
+                try:
+                    out = subprocess.run(cmd, check=True, capture_output=True)
+                except subprocess.CalledProcessError as e:
+                    cmd = ["cat", self.ssh_key_path.with_suffix(".pub")]
+                    try:
+                        out = subprocess.run(cmd, check=True, capture_output=True)
+                    except subprocess.CalledProcessError as e:
+                        raise ValueError(
+                            "There was a problem decoding your temporary credentials. Please ensure that "
+                            "`ssh-keygen` is installed and available in your PATH."
+                        )
+
+                public_key = out.stdout.decode("utf-8").strip("\n")
+
+                response = tinyrequests.post(
+                    self.latch_provision_url,
+                    headers=headers,
+                    json={
+                        "public_key": public_key,
+                    },
+                )
+
+                resp = response.json()
+                try:
+                    public_ip = resp["ip"]
+                    username = resp["username"]
+                except KeyError as e:
+                    raise ValueError(
+                        f"Malformed response from request for access token {resp}"
+                    ) from e
+
+                self.dkr_client = self._construct_dkr_client(
+                    ssh_host=f"ssh://{username}@{public_ip}"
+                )
+                self.ssh_client = self._construct_ssh_client(
+                    host_ip=public_ip,
+                    username=username,
+                )
+
+            else:
+                self.dkr_client = self._construct_dkr_client()
+        except Exception as e:
+            self.cleanup()
+            raise e
 
     @property
     def image(self):
@@ -396,9 +424,12 @@ class RegisterCtx:
     def __enter__(self):
         return self
 
-    def __exit__(self, type, value, traceback):
+    def cleanup(self):
         if self.ssh_key_path is not None:
             cmd = ["ssh-add", "-d", self.ssh_key_path]
             subprocess.run(cmd)
             self.ssh_key_path.unlink(missing_ok=True)
             self.ssh_key_path.with_suffix(".pub").unlink(missing_ok=True)
+
+    def __exit__(self, type, value, traceback):
+        self.cleanup()

@@ -249,7 +249,6 @@ def register(
         disable_auto_version=disable_auto_version,
         remote=remote,
     ) as ctx:
-
         with open(ctx.version_archive_path, "r") as f:
             registered_versions = f.read().split("\n")
             if ctx.version in registered_versions:
@@ -263,7 +262,6 @@ def register(
             print("Connecting to remote server for docker build [alpha]...")
 
         with contextlib.ExitStack() as stack:
-
             td = stack.enter_context(
                 TemporarySerialDir(
                     ssh_client=ctx.ssh_client,
@@ -290,7 +288,6 @@ def register(
                     TemporarySerialDir(ssh_client=ctx.ssh_client, remote=remote)
                 )
                 try:
-
                     build_and_serialize(
                         ctx,
                         container.image_name,
@@ -303,7 +300,8 @@ def register(
                     if remote:
                         local_td = stack.enter_context(tempfile.TemporaryDirectory())
                         scp = SCPClient(
-                            ctx.ssh_client.get_transport(), sanitize=lambda x: x
+                            ctx.ssh_client.get_transport(),
+                            sanitize=lambda x: x,
                         )
                         scp.get(f"{task_td}/*", local_path=local_td, recursive=True)
                         new_protos = recursive_list(local_td)
