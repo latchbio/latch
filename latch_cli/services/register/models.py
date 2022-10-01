@@ -3,12 +3,9 @@
 import builtins
 import os
 import re
-import shutil
 import subprocess
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from tempfile import NamedTemporaryFile
 from types import ModuleType
 from typing import Dict, Optional
 
@@ -193,14 +190,16 @@ class RegisterCtx:
 
             self.ssh_key_path = Path(self.pkg_root) / "ssh_key"
 
+            # generate private key
             cmd = ["ssh-keygen", "-f", self.ssh_key_path, "-N", "", "-q"]
             subprocess.run(cmd, check=True)
-
             os.chmod(self.ssh_key_path, int("700", base=8))
 
+            # make key available to ssh-agent daemon
             cmd = ["ssh-add", self.ssh_key_path]
             subprocess.run(cmd, check=True)
 
+            # decode private key into public key
             cmd = ["ssh-keygen", "-y", "-f", self.ssh_key_path]
             out = subprocess.run(cmd, capture_output=True)
             public_key = out.stdout.decode("utf-8").strip("\n")
