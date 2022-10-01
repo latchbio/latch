@@ -136,7 +136,7 @@ def _get_small_pod() -> Pod:
     )
 
 
-large_gpu_task = functools.partial(task, task_config=_get_large_gpu_pod())
+large_gpu_task = functools.partial(task, cache=True, task_config=_get_large_gpu_pod())
 """This task will get scheduled on a large GPU-enabled node.
 
 This node is not necessarily dedicated to the task, but the node itself will be
@@ -164,7 +164,7 @@ on-demand.
 """
 
 
-small_gpu_task = functools.partial(task, task_config=_get_small_gpu_pod())
+small_gpu_task = functools.partial(task, cache=True, task_config=_get_small_gpu_pod())
 """This task will get scheduled on a small GPU-enabled node.
 
 This node will be dedicated to the task. No other tasks will be allowed to run
@@ -192,7 +192,7 @@ on it.
 """
 
 
-large_task = functools.partial(task, task_config=_get_large_pod())
+large_task = functools.partial(task, cache=True, task_config=_get_large_pod())
 """This task will get scheduled on a large node.
 
 This node will be dedicated to the task. No other tasks will be allowed to run
@@ -220,7 +220,7 @@ on it.
 """
 
 
-medium_task = functools.partial(task, task_config=_get_medium_pod())
+medium_task = functools.partial(task, cache=True, task_config=_get_medium_pod())
 """This task will get scheduled on a medium node.
 
 This node will be dedicated to the task. No other tasks will be allowed to run
@@ -248,7 +248,7 @@ on it.
 """
 
 
-small_task = functools.partial(task, task_config=_get_small_pod())
+small_task = functools.partial(task, cache=True, task_config=_get_small_pod())
 """This task will get scheduled on a small node.
 
 .. list-table:: Title
@@ -316,4 +316,4 @@ def custom_task(cpu: int, memory: int):
                 f"custom task resource limit is too high: {cpu} (max 95) or {memory} GiB (max 179 GiB)"
             )
 
-    return task(task_config=task_config)
+    return functools.partial(task(cache=True, task_config=task_config))
