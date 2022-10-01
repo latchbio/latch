@@ -137,7 +137,7 @@ def _get_small_pod() -> Pod:
 
 
 large_gpu_task = functools.partial(
-    task, cache=True, cach_version="default", task_config=_get_large_gpu_pod()
+    task, cache=True, cache_version="default", task_config=_get_large_gpu_pod()
 )
 """This task will get scheduled on a large GPU-enabled node.
 
@@ -167,7 +167,7 @@ on-demand.
 
 
 small_gpu_task = functools.partial(
-    task, cache=True, cach_version="default", task_config=_get_small_gpu_pod()
+    task, cache=True, cache_version="default", task_config=_get_small_gpu_pod()
 )
 """This task will get scheduled on a small GPU-enabled node.
 
@@ -197,7 +197,7 @@ on it.
 
 
 large_task = functools.partial(
-    task, cache=True, cach_version="default", task_config=_get_large_pod()
+    task, cache=True, cache_version="default", task_config=_get_large_pod()
 )
 """This task will get scheduled on a large node.
 
@@ -227,7 +227,7 @@ on it.
 
 
 medium_task = functools.partial(
-    task, cache=True, cach_version="default", task_config=_get_medium_pod()
+    task, cache=True, cache_version="default", task_config=_get_medium_pod()
 )
 """This task will get scheduled on a medium node.
 
@@ -257,7 +257,7 @@ on it.
 
 
 small_task = functools.partial(
-    task, cache=True, cach_version="default", task_config=_get_small_pod()
+    task, cache=True, cache_version="default", task_config=_get_small_pod()
 )
 """This task will get scheduled on a small node.
 
@@ -327,5 +327,5 @@ def custom_task(cpu: int, memory: int):
             )
 
     return functools.partial(
-        task(cache=True, cach_version="default", task_config=task_config)
+        task(cache=True, cache_version="default", task_config=task_config)
     )
