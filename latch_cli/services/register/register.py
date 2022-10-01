@@ -244,90 +244,95 @@ def register(
     """
 
     pkg_root = Path(pkg_root).resolve()
-    ctx = RegisterCtx(
-        pkg_root, disable_auto_version=disable_auto_version, remote=remote
-    )
-
-    with open(ctx.version_archive_path, "r") as f:
-        registered_versions = f.read().split("\n")
-        if ctx.version in registered_versions:
-            raise ValueError(
-                f"This version ({ctx.version}) already exists."
-                " Make sure that you've saved any changes you made."
-            )
-
-    print(f"Initializing registration for {pkg_root}")
-    if remote:
-        print("Connecting to remote server for docker build [alpha]...")
-
-    with contextlib.ExitStack() as stack:
-
-        td = stack.enter_context(
-            TemporarySerialDir(ssh_client=ctx.ssh_client, remote=remote)
-        )
-        build_and_serialize(
-            ctx,
-            ctx.default_container.image_name,
-            ctx.default_container.dockerfile.parent,
-            td,
-        )
-        protos = recursive_list(td)
-        if remote:
-            local_td = stack.enter_context(tempfile.TemporaryDirectory())
-            scp = SCPClient(ctx.ssh_client.get_transport(), sanitize=lambda x: x)
-            scp.get(f"{td}/*", local_path=local_td, recursive=True)
-            protos = recursive_list(local_td)
-        else:
-            protos = recursive_list(td)
-
-        for task_name, container in ctx.container_map.items():
-            task_td = stack.enter_context(
-                TemporarySerialDir(ssh_client=ctx.ssh_client, remote=remote)
-            )
-            try:
-
-                build_and_serialize(
-                    ctx,
-                    container.image_name,
-                    # always use root as build context
-                    ctx.default_container.dockerfile.parent,
-                    task_td,
-                    dockerfile=container.dockerfile,
+    with RegisterCtx(
+        pkg_root,
+        disable_auto_version=disable_auto_version,
+        remote=remote,
+    ) as ctx:
+        with open(ctx.version_archive_path, "r") as f:
+            registered_versions = f.read().split("\n")
+            if ctx.version in registered_versions:
+                raise ValueError(
+                    f"This version ({ctx.version}) already exists."
+                    " Make sure that you've saved any changes you made."
                 )
 
-                if remote:
-                    local_td = stack.enter_context(tempfile.TemporaryDirectory())
-                    scp = SCPClient(
-                        ctx.ssh_client.get_transport(), sanitize=lambda x: x
-                    )
-                    scp.get(f"{task_td}/*", local_path=local_td, recursive=True)
-                    new_protos = recursive_list(local_td)
-                else:
-                    new_protos = recursive_list(task_td)
+        print(f"Initializing registration for {pkg_root}")
+        if remote:
+            print("Connecting to remote server for docker build [alpha]...")
+
+        with contextlib.ExitStack() as stack:
+            td = stack.enter_context(
+                TemporarySerialDir(
+                    ssh_client=ctx.ssh_client,
+                    remote=remote,
+                )
+            )
+            build_and_serialize(
+                ctx,
+                ctx.default_container.image_name,
+                ctx.default_container.dockerfile.parent,
+                td,
+            )
+            protos = recursive_list(td)
+            if remote:
+                local_td = stack.enter_context(tempfile.TemporaryDirectory())
+                scp = SCPClient(ctx.ssh_client.get_transport(), sanitize=lambda x: x)
+                scp.get(f"{td}/*", local_path=local_td, recursive=True)
+                protos = recursive_list(local_td)
+            else:
+                protos = recursive_list(td)
+
+            for task_name, container in ctx.container_map.items():
+                task_td = stack.enter_context(
+                    TemporarySerialDir(ssh_client=ctx.ssh_client, remote=remote)
+                )
                 try:
-                    split_task_name = task_name.split(".")
-                    task_name = ".".join(split_task_name[split_task_name.index("wf") :])
-                    for new_proto in new_protos:
-                        if task_name in new_proto.name:
-                            protos = [
-                                new_proto if new_proto.name == f.name else f
-                                for f in protos
-                            ]
-                except ValueError as e:
+                    build_and_serialize(
+                        ctx,
+                        container.image_name,
+                        # always use root as build context
+                        ctx.default_container.dockerfile.parent,
+                        task_td,
+                        dockerfile=container.dockerfile,
+                    )
+
+                    if remote:
+                        local_td = stack.enter_context(tempfile.TemporaryDirectory())
+                        scp = SCPClient(
+                            ctx.ssh_client.get_transport(),
+                            sanitize=lambda x: x,
+                        )
+                        scp.get(f"{task_td}/*", local_path=local_td, recursive=True)
+                        new_protos = recursive_list(local_td)
+                    else:
+                        new_protos = recursive_list(task_td)
+                    try:
+                        split_task_name = task_name.split(".")
+                        task_name = ".".join(
+                            split_task_name[split_task_name.index("wf") :]
+                        )
+                        for new_proto in new_protos:
+                            if task_name in new_proto.name:
+                                protos = [
+                                    new_proto if new_proto.name == f.name else f
+                                    for f in protos
+                                ]
+                    except ValueError as e:
+                        raise ValueError(
+                            f"Unable to match {task_name} to any of the protobuf files in {new_protos}"
+                        ) from e
+                except TypeError as e:
                     raise ValueError(
-                        f"Unable to match {task_name} to any of the protobuf files in {new_protos}"
+                        "The path to your provided dockerfile ",
+                        f"{container.dockerfile} given to {task_name} is invalid.",
                     ) from e
-            except TypeError as e:
-                raise ValueError(
-                    "The path to your provided dockerfile ",
-                    f"{container.dockerfile} given to {task_name} is invalid.",
-                ) from e
 
-        reg_resp = register_serialized_pkg(ctx, protos)
-        _print_reg_resp(reg_resp, ctx.default_container.image_name)
+            reg_resp = register_serialized_pkg(ctx, protos)
+            _print_reg_resp(reg_resp, ctx.default_container.image_name)
 
-    with open(ctx.version_archive_path, "a") as f:
-        f.write(ctx.version + "\n")
+        with open(ctx.version_archive_path, "a") as f:
+            f.write(ctx.version + "\n")
 
 
 def _login(ctx: RegisterCtx):

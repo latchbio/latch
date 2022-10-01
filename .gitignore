@@ -13,3 +13,4 @@ docs/build
 /twine_creds.sh
 .vscode
 scratch.py
+/scratch
