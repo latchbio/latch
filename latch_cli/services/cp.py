@@ -141,7 +141,10 @@ def _upload_file(local_source: Path, remote_dest: str):
     unit = 1024**index
     total_human_readable = total_bytes // unit
     suffix = units[index]
-    text = f"Copying {local_source.relative_to(Path.cwd())} -> {remote_dest}:"
+    if Path.cwd() in local_source.parents:
+        text = f"Copying {local_source.relative_to(Path.cwd())} -> {remote_dest}:"
+    else:
+        text = f"Copying {local_source} -> {remote_dest}:"
 
     with LOCK:
         global num_files
