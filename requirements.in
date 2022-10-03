@@ -13,3 +13,4 @@ scp
 tqdm
 typing-extensions
 packaging
+aioconsole

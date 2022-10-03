@@ -20,6 +20,7 @@ from latch_cli.config.latch import LatchConfig
 from latch_cli.utils import (
     account_id_from_token,
     current_workspace,
+    generate_temporary_ssh_credentials,
     get_client_public_ssh_key,
     hash_directory,
     retrieve_or_login,
@@ -190,44 +191,7 @@ class RegisterCtx:
                 headers = {"Authorization": f"Bearer {self.token}"}
 
                 self.ssh_key_path = Path(self.pkg_root) / ".ssh_key"
-
-                # generate private key
-                cmd = ["ssh-keygen", "-f", self.ssh_key_path, "-N", "", "-q"]
-                try:
-                    subprocess.run(cmd, check=True)
-                except subprocess.CalledProcessError as e:
-                    raise ValueError(
-                        "There was a problem creating temporary SSH credentials. Please ensure that "
-                        "`ssh-keygen` is installed and available in your PATH."
-                    )
-                os.chmod(self.ssh_key_path, int("700", base=8))
-
-                # make key available to ssh-agent daemon
-                cmd = ["ssh-add", self.ssh_key_path]
-                try:
-                    subprocess.run(cmd, check=True)
-                except subprocess.CalledProcessError as e:
-                    raise ValueError(
-                        "There was an issue adding temporary SSH credentials to your SSH Agent. Please ensure "
-                        "that your SSH Agent is running, or (re)start it manually by running\n\n    $ eval `ssh-agent -s`"
-                        "\n\n"
-                    )
-
-                # decode private key into public key
-                cmd = ["ssh-keygen", "-y", "-f", self.ssh_key_path]
-                try:
-                    out = subprocess.run(cmd, check=True, capture_output=True)
-                except subprocess.CalledProcessError as e:
-                    cmd = ["cat", self.ssh_key_path.with_suffix(".pub")]
-                    try:
-                        out = subprocess.run(cmd, check=True, capture_output=True)
-                    except subprocess.CalledProcessError as e:
-                        raise ValueError(
-                            "There was a problem decoding your temporary credentials. Please ensure that "
-                            "`ssh-keygen` is installed and available in your PATH."
-                        )
-
-                public_key = out.stdout.decode("utf-8").strip("\n")
+                public_key = generate_temporary_ssh_credentials(self.ssh_key_path)
 
                 response = tinyrequests.post(
                     self.latch_provision_url,

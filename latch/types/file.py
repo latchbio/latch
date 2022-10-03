@@ -1,6 +1,8 @@
 from os import PathLike
 from typing import Optional, Type, Union
 
+from latch_cli.services.cp import _cp_remote_to_local
+
 try:
     from typing import Annotated
 except ImportError:
@@ -74,11 +76,14 @@ class LatchFile(FlyteFile):
                     and self._remote_path is not None
                 ):
                     self.path = ctx.file_access.get_random_local_path(self._remote_path)
-                    return ctx.file_access.get_data(
-                        self._remote_path,
-                        self.path,
-                        is_multipart=False,
-                    )
+                    try:
+                        return ctx.file_access.get_data(
+                            self._remote_path,
+                            self.path,
+                            is_multipart=False,
+                        )
+                    except:
+                        _cp_remote_to_local(self._remote_path, self.path)
 
             super().__init__(path, downloader, self._remote_path)
 

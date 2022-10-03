@@ -2,8 +2,8 @@ import asyncio
 import functools
 import random
 from pathlib import Path
-from re import A
 
+import aioconsole
 import boto3
 import paramiko
 import scp
@@ -13,12 +13,11 @@ from latch_cli.config.latch import LatchConfig
 from latch_cli.tinyrequests import post
 from latch_cli.utils import (
     current_workspace,
-    get_client_public_ssh_key,
+    generate_temporary_ssh_credentials,
     retrieve_or_login,
 )
 
 sdk_endpoints = LatchConfig().sdk_endpoints
-print = functools.partial(print, end="", flush=True)
 
 
 async def print_response(ws, exit_signal):
@@ -26,7 +25,7 @@ async def print_response(ws, exit_signal):
     async for message in ws:
         if message == exit_signal:
             return
-        print(message)
+        await aioconsole.aprint(message, end="", flush=True)
 
 
 async def flush_response(ws, exit_signal):
@@ -41,13 +40,16 @@ async def flush_response(ws, exit_signal):
 async def run_local_dev_session(pkg_root: Path):
     headers = {"Authorization": f"Bearer {retrieve_or_login()}"}
 
+    key_path = pkg_root / ".ssh_key"
+
     cent_resp = post(
         sdk_endpoints["provision-centromere"],
         headers=headers,
         json={
-            "public_key": get_client_public_ssh_key(),
+            "public_key": generate_temporary_ssh_credentials(key_path),
         },
     )
+
     resp = post(
         sdk_endpoints["local-development"],
         headers=headers,
@@ -63,11 +65,21 @@ async def run_local_dev_session(pkg_root: Path):
     secret_key = resp_data["tmp_secret_key"]
     session_token = resp_data["tmp_session_token"]
 
-    # ssh setup
+    # scp setup
     ssh_client = paramiko.SSHClient()
     ssh_client.load_system_host_keys()
     ssh_client.connect(centromere_ip, username=centromere_username)
     scp_client = scp.SCPClient(ssh_client.get_transport())
+
+    await aioconsole.aprint("Copying your local changes... ")
+    # TODO(ayush) do something more sophisticated/only send over
+    # diffs or smth to make this more efficient
+    scp_client.put(
+        files=pkg_root,
+        remote_path=f"~/workflow",
+        recursive=True,
+    )
+    await aioconsole.aprint("Done.\n")
 
     # ecr setup
     try:
@@ -102,21 +114,25 @@ async def run_local_dev_session(pkg_root: Path):
     )
 
     exit_signal = str(random.getrandbits(256))
-    async with websockets.connect(f"ws://{centromere_ip}:8080/1234/ws") as ws:
+    async with websockets.connect(f"ws://{centromere_ip}:8080/ws") as ws:
         await ws.send(exit_signal)
 
         await ws.send(dockerAccessToken)
         await ws.send(image_name_tagged)
-        print(f"Pulling {image_name}, this will only take a moment...", end="\n")
+        await aioconsole.aprint(
+            f"Pulling {image_name}, this will only take a moment...", end="\n"
+        )
         await flush_response(ws, exit_signal)
-        print("Image successfully pulled.", end="\n")
+        await aioconsole.aprint("Image successfully pulled.", end="\n")
 
         for _ in range(5):
-            cmd = await input("\x1b[38;5;8m>>> \x1b[0m")
-            scp_client.put(pkg_root, f"/home/{centromere_username}/workflow")
-
+            cmd = await aioconsole.ainput(prompt="\x1b[38;5;8m>>> \x1b[0m")
             await ws.send(cmd)
+
+            # scp_client.put(pkg_root, f"~/workflow")
             await print_response(ws, exit_signal)
+
+        return
 
 
 def local_development(pkg_root: Path):

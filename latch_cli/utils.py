@@ -2,6 +2,7 @@
 
 import hashlib
 import os
+import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -139,29 +140,45 @@ def hash_directory(dir_path: Path) -> str:
     return m.hexdigest()
 
 
-def get_client_public_ssh_key():
+def generate_temporary_ssh_credentials(ssh_key_path: Path) -> str:
+    # generate private key
+    cmd = ["ssh-keygen", "-f", ssh_key_path, "-N", "", "-q"]
     try:
-        user_agent = paramiko.Agent()
-    except paramiko.SSHException as e:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as e:
         raise ValueError(
-            "An error occurred during SSH protocol negotiation. "
-            "This is due to a problem with your system. "
-            "Please use `latch register` without the `--remote` flag."
-        ) from e
-    keys = user_agent.get_keys()
-    if len(keys) == 0:
+            "There was a problem creating temporary SSH credentials. Please ensure that "
+            "`ssh-keygen` is installed and available in your PATH."
+        )
+    os.chmod(ssh_key_path, int("700", base=8))
+
+    # make key available to ssh-agent daemon
+    cmd = ["ssh-add", ssh_key_path]
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as e:
         raise ValueError(
-            "It seems you don't have any (valid) SSH keys set up. "
-            "Check that any keys that you have are valid, or use "
-            "a utility like `ssh-keygen` to set one up and try again."
+            "There was an issue adding temporary SSH credentials to your SSH Agent. Please ensure "
+            "that your SSH Agent is running, or (re)start it manually by running\n\n    $ eval `ssh-agent -s`"
+            "\n\n"
         )
 
-    pub_key = keys[0]
+    # decode private key into public key
+    cmd = ["ssh-keygen", "-y", "-f", ssh_key_path]
+    try:
+        out = subprocess.run(cmd, check=True, capture_output=True)
+    except subprocess.CalledProcessError as e:
+        cmd = ["cat", ssh_key_path.with_suffix(".pub")]
+        try:
+            out = subprocess.run(cmd, check=True, capture_output=True)
+        except subprocess.CalledProcessError as e:
+            raise ValueError(
+                "There was a problem decoding your temporary credentials. Please ensure that "
+                "`ssh-keygen` is installed and available in your PATH."
+            )
 
-    alg = pub_key.get_name()
-    material = pub_key.get_base64()
-
-    return f"{alg} {material}"
+    public_key = out.stdout.decode("utf-8").strip("\n")
+    return public_key
 
 
 def get_local_package_version() -> str:
