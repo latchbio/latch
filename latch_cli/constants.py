@@ -16,5 +16,9 @@ class OAuth2Constants:
     """Redirect URL registered with authentication server."""
 
 
-MAX_FILE_SIZE = 4 * 2**20
+MB = 2**20
+
+FILE_MAX_SIZE = 4 * MB
+FILE_CHUNK_SIZE = 64 * MB
+
 PKG_NAME = "latch"

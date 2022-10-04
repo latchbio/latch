@@ -7,7 +7,7 @@ import tempfile
 import traceback
 from typing import Optional
 
-from latch_cli.constants import MAX_FILE_SIZE
+from latch_cli.constants import FILE_MAX_SIZE
 from latch_cli.utils import get_local_package_version
 
 
@@ -62,13 +62,13 @@ class _CrashReporter:
                 ]
                 for file_path in pkg_files:
                     file_size = os.path.getsize(file_path)
-                    if file_size < MAX_FILE_SIZE:
+                    if file_size < FILE_MAX_SIZE:
                         tf.add(file_path)
                     else:
                         with tempfile.NamedTemporaryFile("wb+") as ntf:
                             ntf.write(f"# first 4 MB of {file_path}\n".encode("utf-8"))
                             with open(file_path, "rb") as f:
-                                stuff = f.read(MAX_FILE_SIZE)
+                                stuff = f.read(FILE_MAX_SIZE)
                                 ntf.write(stuff)
                                 ntf.seek(0)
                             tf.add(ntf.name, arcname=file_path)

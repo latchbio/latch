@@ -8,7 +8,7 @@ from pathlib import Path
 import jwt
 
 from latch_cli.config.user import UserConfig
-from latch_cli.constants import MAX_FILE_SIZE, PKG_NAME
+from latch_cli.constants import FILE_MAX_SIZE, PKG_NAME
 from latch_cli.services.login import login
 from latch_cli.tinyrequests import get
 
@@ -122,7 +122,7 @@ def hash_directory(dir_path: Path) -> str:
             path = Path(containing_path).joinpath(filename)
             m.update(str(path).encode("utf-8"))
             file_size = os.path.getsize(path)
-            if file_size < MAX_FILE_SIZE:
+            if file_size < FILE_MAX_SIZE:
                 with open(path, "rb") as f:
                     m.update(f.read())
             else:

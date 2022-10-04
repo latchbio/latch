@@ -1,25 +1,27 @@
 """Service to copy files. """
 
+import concurrent.futures as cf
 import math
+import os
 import threading
 from pathlib import Path
+from typing import List
 
+import tqdm as _tqdm
 from tqdm.auto import tqdm
 
 import latch_cli.tinyrequests as tinyrequests
 from latch_cli.config.latch import LatchConfig
+from latch_cli.constants import FILE_CHUNK_SIZE
 from latch_cli.services.mkdir import mkdir
 from latch_cli.utils import _normalize_remote_path, current_workspace, retrieve_or_login
 
 config = LatchConfig()
 endpoints = config.sdk_endpoints
 
-# AWS uses this value for minimum for multipart as opposed to 5 * 10 ** 6
-_CHUNK_SIZE = 5 * 2**20  # 5 MB
-
-LOCK = threading.Lock()
+# tqdm progress bars aren't thread safe so restrict so that only one can update at a time
+PROGRESS_BAR_LOCK = threading.Lock()
 num_files = 0
-progressbars = []
 
 
 def _dir_exists(remote_dir: str) -> bool:
@@ -36,7 +38,11 @@ def _dir_exists(remote_dir: str) -> bool:
     return response.json()["exists"]
 
 
-def _cp_local_to_remote(local_source: str, remote_dest: str):
+def _upload(
+    local_source: str,
+    remote_dest: str,
+    executor: cf.ThreadPoolExecutor,
+):
     """Allows movement of files from local machines -> Latch.
 
     Args:
@@ -84,104 +90,118 @@ def _cp_local_to_remote(local_source: str, remote_dest: str):
     if local_source_p.is_dir():
         if not _dir_exists(remote_dest):
             mkdir(remote_directory=remote_dest)
-        tasks = []
         for sub_dir in local_source_p.iterdir():
-            tasks.append(
-                threading.Thread(
-                    target=_cp_local_to_remote,
-                    kwargs={
-                        "local_source": sub_dir,
-                        "remote_dest": f"{remote_dest}/{sub_dir.name}",
-                    },
-                )
-            )
-
-        for task in tasks:
-            task.start()
-
-        for task in tasks:
-            task.join()
+            # do files in serial for now to prevent deadlocks
+            _upload(sub_dir, f"{remote_dest}/{sub_dir.name}", executor)
 
     else:
-        _upload_file(local_source_p, remote_dest)
+        _upload_file(local_source_p, remote_dest, executor)
 
 
-def _upload_file(local_source: Path, remote_dest: str):
+def _upload_file(
+    local_source: Path,
+    remote_dest: str,
+    executor: cf.ThreadPoolExecutor,
+):
     with open(local_source, "rb") as f:
         f.seek(0, 2)
         total_bytes = f.tell()
+        num_parts = math.ceil(total_bytes / FILE_CHUNK_SIZE)
 
-    nrof_parts = math.ceil(total_bytes / _CHUNK_SIZE)
-
-    data = {
-        "ws_account_id": current_workspace(),
-        "dest_path": remote_dest,
-        "node_name": local_source.name,
-        "content_type": "text/plain",
-        "nrof_parts": nrof_parts,
-    }
-
-    token = retrieve_or_login()
-
-    url = endpoints["initiate-multipart-upload"]
-    headers = {"Authorization": f"Bearer {token}"}
-    response = tinyrequests.post(url, headers=headers, json=data)
+    response = tinyrequests.post(
+        endpoints["initiate-multipart-upload"],
+        headers={"Authorization": f"Bearer {retrieve_or_login()}"},
+        json={
+            "ws_account_id": current_workspace(),
+            "dest_path": remote_dest,
+            "node_name": local_source.name,
+            "content_type": "text/plain",
+            "nrof_parts": num_parts,
+        },
+    )
 
     response_json = response.json()
     path = response_json["path"]
     upload_id = response_json["upload_id"]
     urls = response_json["urls"]
 
-    parts = []
     units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
-    index = 0
-    while total_bytes // (1024**index) > 1000:
-        index += 1
+    exponent = 0
+    while total_bytes // (1000**exponent) > 1000:
+        exponent += 1
 
-    unit = 1024**index
-    total_human_readable = total_bytes // unit
-    suffix = units[index]
+    scaling_factor = 1000**exponent
+    total_human_readable = total_bytes // scaling_factor
+    unit = units[exponent]
+
     if Path.cwd() in local_source.parents:
         text = f"Copying {local_source.relative_to(Path.cwd())} -> {remote_dest}:"
     else:
         text = f"Copying {local_source} -> {remote_dest}:"
 
-    with LOCK:
+    with PROGRESS_BAR_LOCK:
         global num_files
-        file_index = num_files
+        progress_bar = tqdm(
+            total=total_human_readable,
+            position=num_files,
+            desc=text,
+            unit=unit,
+            leave=False,
+            colour="green",
+        )
         num_files += 1
-        progressbars.append(
-            tqdm(
-                total=total_human_readable,
-                position=file_index,
-                desc=text,
-                unit=suffix,
-                leave=False,
-                colour="green",
+
+    parts_futures: List[cf.Future] = []
+    for i in range(num_parts):
+        parts_futures.append(
+            executor.submit(
+                _upload_file_chunk,
+                url=urls[str(i)],
+                local_source=local_source,
+                part_index=i,
+                progress_bar=progress_bar,
+                unit=scaling_factor,
             )
         )
 
-    import requests
+    parts = []
+    for part in cf.as_completed(parts_futures):
+        parts.append(part.result())
 
-    for i in range(nrof_parts):
+    with PROGRESS_BAR_LOCK:
+        progress_bar.close()
 
-        url = urls[str(i)]
-        with open(local_source, "rb") as f:
-            f.seek(i * _CHUNK_SIZE, 0)
-            resp = requests.put(url, f.read(_CHUNK_SIZE))
-            etag = resp.headers["ETag"]
-            parts.append({"ETag": etag, "PartNumber": i + 1})
-
-        with LOCK:
-            progressbars[file_index].update(_CHUNK_SIZE / unit)
-
-    data = {"path": path, "upload_id": upload_id, "parts": parts}
-    url = endpoints["complete-multipart-upload"]
-    headers = {"Authorization": f"Bearer {token}"}
-    response = tinyrequests.post(url, headers=headers, json=data)
+    response = tinyrequests.post(
+        endpoints["complete-multipart-upload"],
+        headers={"Authorization": f"Bearer {retrieve_or_login()}"},
+        json={
+            "path": path,
+            "upload_id": upload_id,
+            "parts": parts,
+        },
+    )
 
 
-def _cp_remote_to_local(remote_source: str, local_dest: str):
+def _upload_file_chunk(
+    url: str,
+    local_source: Path,
+    part_index: int,
+    progress_bar: _tqdm.tqdm,
+    unit: int,
+):
+    with open(local_source, "rb") as f:
+        f.seek(part_index * FILE_CHUNK_SIZE, 0)
+        payload = f.read(FILE_CHUNK_SIZE)
+        resp = tinyrequests.request("PUT", url, data=payload)
+        etag = resp.headers["ETag"]
+
+    with PROGRESS_BAR_LOCK:
+        progress_bar.update(len(payload) / unit)
+
+    return {"ETag": etag, "PartNumber": part_index + 1}
+
+
+def _download(remote_source: str, local_dest: str):
     """Allows movement of files from Latch -> local machines.
 
     Args:
@@ -244,7 +264,7 @@ def _cp_remote_to_local(remote_source: str, local_dest: str):
         with tinyrequests.get(url, stream=True) as r:
             r.raise_for_status()
             with open(local_dest_p, "wb") as f:
-                for chunk in r.iter_content(chunk_size=_CHUNK_SIZE):
+                for chunk in r.iter_content(chunk_size=FILE_CHUNK_SIZE):
                     f.write(chunk)
 
 
@@ -258,7 +278,7 @@ def _cp_remote_to_local_dir_helper(output_dir: Path, name: str, response_data: d
         with tinyrequests.get(url, stream=True) as r:
             r.raise_for_status()
             with open(output_dir.resolve().joinpath(name), "wb") as f:
-                for chunk in r.iter_content(chunk_size=_CHUNK_SIZE):
+                for chunk in r.iter_content(chunk_size=FILE_CHUNK_SIZE):
                     f.write(chunk)
 
 
@@ -285,20 +305,21 @@ def _cp_remote_to_local_dir(output_dir: Path, response_data: dict):
 
 
 def cp(source_file: str, destination_file: str):
+    # by default, max_workers (i.e. maximum number of concurrent jobs) = 5 * cpu_count
+    executor = cf.ThreadPoolExecutor()
+
     if not source_file.startswith("latch://") and (
         destination_file.startswith("latch://shared")
         or destination_file.startswith("latch://account")
         or destination_file.startswith("latch:///")
     ):
-        _cp_local_to_remote(source_file, destination_file)
-        for progressbar in progressbars:
-            progressbar.close()
+        _upload(source_file, destination_file, executor)
     elif (
         source_file.startswith("latch:///")
         or source_file.startswith("latch://shared")
         or source_file.startswith("latch://account")
     ) and not destination_file.startswith("latch://"):
-        _cp_remote_to_local(source_file, destination_file)
+        _download(source_file, destination_file)
     else:
         raise ValueError(
             "latch cp can only be used to either copy remote -> local or local ->"
