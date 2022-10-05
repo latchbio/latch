@@ -16,6 +16,10 @@ class TinyResponse:
             self._content = self._resp.read()
 
     @property
+    def headers(self):
+        return self._resp.headers
+
+    @property
     def status_code(self):
         return self._resp.status
 
@@ -67,6 +71,7 @@ def request(
     url: str,
     *,
     headers: Dict[str, str] = {},
+    data: Optional[bytes] = None,
     json: Optional[Any] = None,
     stream: bool = False,
 ):
@@ -75,6 +80,9 @@ def request(
         raise ValueError(f"could not extract hostname from {url}")
 
     body = None
+    if data is not None:
+        body = data
+
     if json is not None:
         body = _json.dumps(json)
         headers["Content-Type"] = "application/json"
