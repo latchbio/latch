@@ -1,11 +1,10 @@
 """Service to copy files. """
 
 import concurrent.futures as cf
+import json
 import math
-import os
 import threading
 from pathlib import Path
-from typing import List
 
 import tqdm as _tqdm
 from tqdm.auto import tqdm
@@ -20,7 +19,7 @@ config = LatchConfig()
 endpoints = config.sdk_endpoints
 
 # tqdm progress bars aren't thread safe so restrict so that only one can update at a time
-PROGRESS_BAR_LOCK = threading.Lock()
+IO_LOCK = threading.Lock()
 num_files = 0
 
 
@@ -131,7 +130,7 @@ def _upload_file(
         exponent += 1
 
     scaling_factor = 1000**exponent
-    total_human_readable = total_bytes // scaling_factor
+    total_human_readable = total_bytes / scaling_factor
     unit = units[exponent]
 
     if Path.cwd() in local_source.parents:
@@ -139,7 +138,7 @@ def _upload_file(
     else:
         text = f"Copying {local_source} -> {remote_dest}:"
 
-    with PROGRESS_BAR_LOCK:
+    with IO_LOCK:
         global num_files
         progress_bar = tqdm(
             total=total_human_readable,
@@ -151,7 +150,7 @@ def _upload_file(
         )
         num_files += 1
 
-    parts_futures: List[cf.Future] = []
+    parts_futures = []
     for i in range(num_parts):
         parts_futures.append(
             executor.submit(
@@ -168,7 +167,7 @@ def _upload_file(
     for part in cf.as_completed(parts_futures):
         parts.append(part.result())
 
-    with PROGRESS_BAR_LOCK:
+    with IO_LOCK:
         progress_bar.close()
 
     response = tinyrequests.post(
@@ -195,13 +194,13 @@ def _upload_file_chunk(
         resp = tinyrequests.request("PUT", url, data=payload)
         etag = resp.headers["ETag"]
 
-    with PROGRESS_BAR_LOCK:
+    with IO_LOCK:
         progress_bar.update(len(payload) / unit)
 
     return {"ETag": etag, "PartNumber": part_index + 1}
 
 
-def _download(remote_source: str, local_dest: str):
+def _download(remote_source: str, local_dest: str, executor: cf.ThreadPoolExecutor):
     """Allows movement of files from Latch -> local machines.
 
     Args:
@@ -236,72 +235,67 @@ def _download(remote_source: str, local_dest: str):
     """
     remote_source = _normalize_remote_path(remote_source)
 
-    local_dest_p = Path(local_dest).resolve()
-    if local_dest_p.is_dir():
+    output_dir = Path(local_dest).resolve()
+    if output_dir.is_dir():
         last_slash = remote_source.rfind("/")
-        local_dest_p = local_dest_p / remote_source[last_slash + 1 :]
+        output_dir = output_dir / remote_source[last_slash + 1 :]
 
-    token = retrieve_or_login()
-    headers = {"Authorization": f"Bearer {token}"}
-    data = {"source_path": remote_source, "ws_account_id": current_workspace()}
-
-    url = endpoints["download"]
-    response = tinyrequests.post(url, headers=headers, json=data)
+    response = tinyrequests.post(
+        endpoints["download"],
+        headers={"Authorization": f"Bearer {retrieve_or_login()}"},
+        json={
+            "source_path": remote_source,
+            "ws_account_id": current_workspace(),
+        },
+    )
 
     response_data = response.json()
-
-    if response.status_code == 400:
-        raise ValueError(response_data["error"]["data"]["message"])
-
-    is_dir = response_data["dir"]
-
-    if is_dir:
-        output_dir = local_dest_p
-        output_dir.mkdir(exist_ok=True)
-        _cp_remote_to_local_dir(output_dir, response_data)
-    else:
-        url = response_data["url"]
-        with tinyrequests.get(url, stream=True) as r:
-            r.raise_for_status()
-            with open(local_dest_p, "wb") as f:
-                for chunk in r.iter_content(chunk_size=FILE_CHUNK_SIZE):
-                    f.write(chunk)
-
-
-def _cp_remote_to_local_dir_helper(output_dir: Path, name: str, response_data: dict):
     if response_data["dir"]:
-        sub_dir = output_dir.resolve().joinpath(name)
-        sub_dir.mkdir(exist_ok=True)
-        _cp_remote_to_local_dir(sub_dir, response_data)
+        _download_dir(output_dir, response_data, executor)
     else:
-        url = response_data["url"]
-        with tinyrequests.get(url, stream=True) as r:
-            r.raise_for_status()
-            with open(output_dir.resolve().joinpath(name), "wb") as f:
-                for chunk in r.iter_content(chunk_size=FILE_CHUNK_SIZE):
-                    f.write(chunk)
+        _download_file(response_data["url"], output_dir)
 
 
-def _cp_remote_to_local_dir(output_dir: Path, response_data: dict):
+def _download_dir(
+    output_dir: Path,
+    response_data: dict,
+    executor: cf.ThreadPoolExecutor,
+):
+    output_dir.mkdir(exist_ok=True)
     urls = response_data["url"]
-    tasks = []
+
+    futures = []
     for name in urls:
-        tasks.append(
-            threading.Thread(
-                target=_cp_remote_to_local_dir_helper,
-                kwargs={
-                    "output_dir": output_dir,
-                    "name": name,
-                    "response_data": urls[name],
-                },
+        sub_path = output_dir.joinpath(name)
+        if urls[name]["dir"]:
+            futures.append(
+                executor.submit(
+                    target=_download_dir,
+                    output_dir=sub_path,
+                    response_data=urls[name],
+                    executor=executor,
+                )
             )
-        )
+        else:
+            futures.append(
+                executor.submit(
+                    _download_file,
+                    url=urls[name]["url"],
+                    output_path=sub_path,
+                )
+            )
 
-    for task in tasks:
-        task.start()
 
-    for task in tasks:
-        task.join()
+def _download_file(url: str, output_path: Path):
+    with tinyrequests.get(url, stream=True) as r:
+        r.raise_for_status()
+        with open(output_path.resolve(), "wb") as f:
+            for chunk in r.iter_content(chunk_size=FILE_CHUNK_SIZE):
+                f.write(chunk)
+
+    # TODO(ayush) send over size info in response and properly use progress bars
+    with IO_LOCK:
+        print(f"Finished downloading {output_path.name}", flush=True)
 
 
 def cp(source_file: str, destination_file: str):
@@ -319,7 +313,7 @@ def cp(source_file: str, destination_file: str):
         or source_file.startswith("latch://shared")
         or source_file.startswith("latch://account")
     ) and not destination_file.startswith("latch://"):
-        _download(source_file, destination_file)
+        _download(source_file, destination_file, executor)
     else:
         raise ValueError(
             "latch cp can only be used to either copy remote -> local or local ->"
