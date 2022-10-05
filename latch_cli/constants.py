@@ -19,6 +19,6 @@ class OAuth2Constants:
 MB = 2**20
 
 FILE_MAX_SIZE = 4 * MB
-FILE_CHUNK_SIZE = 64 * MB
+FILE_CHUNK_SIZE = 5 * MB
 
 PKG_NAME = "latch"
