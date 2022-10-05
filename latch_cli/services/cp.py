@@ -13,6 +13,7 @@ import latch_cli.tinyrequests as tinyrequests
 from latch_cli.config.latch import LatchConfig
 from latch_cli.constants import FILE_CHUNK_SIZE
 from latch_cli.services.mkdir import mkdir
+from latch_cli.services.touch import touch
 from latch_cli.utils import _normalize_remote_path, current_workspace, retrieve_or_login
 
 config = LatchConfig()
@@ -20,7 +21,6 @@ endpoints = config.sdk_endpoints
 
 # tqdm progress bars aren't thread safe so restrict so that only one can update at a time
 IO_LOCK = threading.Lock()
-num_files = 0
 
 
 def _dir_exists(remote_dir: str) -> bool:
@@ -92,7 +92,6 @@ def _upload(
         for sub_dir in local_source_p.iterdir():
             # do files in serial for now to prevent deadlocks
             _upload(sub_dir, f"{remote_dest}/{sub_dir.name}", executor)
-
     else:
         _upload_file(local_source_p, remote_dest, executor)
 
@@ -106,6 +105,10 @@ def _upload_file(
         f.seek(0, 2)
         total_bytes = f.tell()
         num_parts = math.ceil(total_bytes / FILE_CHUNK_SIZE)
+
+    if total_bytes == 0:
+        touch(remote_dest)
+        return
 
     response = tinyrequests.post(
         endpoints["initiate-multipart-upload"],
@@ -124,31 +127,21 @@ def _upload_file(
     upload_id = response_json["upload_id"]
     urls = response_json["urls"]
 
-    units = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
-    exponent = 0
-    while total_bytes // (1000**exponent) > 1000:
-        exponent += 1
-
-    scaling_factor = 1000**exponent
-    total_human_readable = total_bytes / scaling_factor
-    unit = units[exponent]
-
     if Path.cwd() in local_source.parents:
         text = f"Copying {local_source.relative_to(Path.cwd())} -> {remote_dest}:"
     else:
         text = f"Copying {local_source} -> {remote_dest}:"
 
     with IO_LOCK:
-        global num_files
         progress_bar = tqdm(
-            total=total_human_readable,
-            position=num_files,
+            total=total_bytes,
             desc=text,
-            unit=unit,
+            unit="B",
+            unit_scale=True,
+            unit_divisor=1000,
             leave=False,
             colour="green",
         )
-        num_files += 1
 
     parts_futures = []
     for i in range(num_parts):
@@ -159,7 +152,6 @@ def _upload_file(
                 local_source=local_source,
                 part_index=i,
                 progress_bar=progress_bar,
-                unit=scaling_factor,
             )
         )
 
@@ -167,8 +159,7 @@ def _upload_file(
     for part in cf.as_completed(parts_futures):
         parts.append(part.result())
 
-    with IO_LOCK:
-        progress_bar.close()
+    parts.sort(key=lambda res: res["PartNumber"])
 
     response = tinyrequests.post(
         endpoints["complete-multipart-upload"],
@@ -180,13 +171,18 @@ def _upload_file(
         },
     )
 
+    response.raise_for_status()
+
+    with IO_LOCK:
+        progress_bar.close()
+        print(text.replace("Copying", "Copied"))
+
 
 def _upload_file_chunk(
     url: str,
     local_source: Path,
     part_index: int,
     progress_bar: _tqdm.tqdm,
-    unit: int,
 ):
     with open(local_source, "rb") as f:
         f.seek(part_index * FILE_CHUNK_SIZE, 0)
@@ -195,7 +191,7 @@ def _upload_file_chunk(
         etag = resp.headers["ETag"]
 
     with IO_LOCK:
-        progress_bar.update(len(payload) / unit)
+        progress_bar.update(len(payload))
 
     return {"ETag": etag, "PartNumber": part_index + 1}
 
@@ -300,22 +296,21 @@ def _download_file(url: str, output_path: Path):
 
 def cp(source_file: str, destination_file: str):
     # by default, max_workers (i.e. maximum number of concurrent jobs) = 5 * cpu_count
-    executor = cf.ThreadPoolExecutor()
-
-    if not source_file.startswith("latch://") and (
-        destination_file.startswith("latch://shared")
-        or destination_file.startswith("latch://account")
-        or destination_file.startswith("latch:///")
-    ):
-        _upload(source_file, destination_file, executor)
-    elif (
-        source_file.startswith("latch:///")
-        or source_file.startswith("latch://shared")
-        or source_file.startswith("latch://account")
-    ) and not destination_file.startswith("latch://"):
-        _download(source_file, destination_file, executor)
-    else:
-        raise ValueError(
-            "latch cp can only be used to either copy remote -> local or local ->"
-            " remote"
-        )
+    with cf.ThreadPoolExecutor() as executor:
+        if not source_file.startswith("latch://") and (
+            destination_file.startswith("latch://shared")
+            or destination_file.startswith("latch://account")
+            or destination_file.startswith("latch:///")
+        ):
+            _upload(source_file, destination_file, executor)
+        elif (
+            source_file.startswith("latch:///")
+            or source_file.startswith("latch://shared")
+            or source_file.startswith("latch://account")
+        ) and not destination_file.startswith("latch://"):
+            _download(source_file, destination_file, executor)
+        else:
+            raise ValueError(
+                "latch cp can only be used to either copy remote -> local or local ->"
+                " remote"
+            )
