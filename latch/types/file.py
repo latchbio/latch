@@ -1,7 +1,7 @@
 from os import PathLike
 from typing import Optional, Type, Union
 
-from latch_cli.services.cp import _cp_remote_to_local
+from latch_cli.services.cp import _download
 
 try:
     from typing import Annotated
@@ -83,7 +83,7 @@ class LatchFile(FlyteFile):
                             is_multipart=False,
                         )
                     except:
-                        _cp_remote_to_local(self._remote_path, self.path)
+                        _download(self._remote_path, self.path)
 
             super().__init__(path, downloader, self._remote_path)
 

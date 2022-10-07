@@ -141,16 +141,38 @@ def hash_directory(dir_path: Path) -> str:
 
 
 def generate_temporary_ssh_credentials(ssh_key_path: Path) -> str:
+    # check if there is already a valid key at that path, and if so, use that
+    # otherwise, if its not valid, remove it
+    if ssh_key_path.exists():
+        try:
+            # check if file is valid + print out a fingerprint for the key
+            cmd = ["ssh-keygen", "-l", "-f", ssh_key_path]
+            valid_private_key = subprocess.run(cmd, check=True)
+            cmd = ["ssh-keygen", "-l", "-f", ssh_key_path.with_suffix(".pub")]
+            valid_public_key = subprocess.run(cmd, check=True)
+            if valid_private_key.stdout != valid_public_key.stdout:
+                raise
+            else:
+                # if both files are valid and their fingerprints match, use them instead of generating a new pair
+                with open(ssh_key_path.with_suffix(".pub"), "r") as f:
+                    public_key = f.read()
+                print(f"Found existing key pair at {ssh_key_path}.")
+        except:
+            print(f"Found malformed key-pair at {ssh_key_path}. Overwriting.")
+            ssh_key_path.unlink(missing_ok=True)
+            ssh_key_path.with_suffix(".pub").unlink(missing_ok=True)
+
     # generate private key
-    cmd = ["ssh-keygen", "-f", ssh_key_path, "-N", "", "-q"]
-    try:
-        subprocess.run(cmd, check=True)
-    except subprocess.CalledProcessError as e:
-        raise ValueError(
-            "There was a problem creating temporary SSH credentials. Please ensure that "
-            "`ssh-keygen` is installed and available in your PATH."
-        )
-    os.chmod(ssh_key_path, int("700", base=8))
+    if not ssh_key_path.exists():
+        cmd = ["ssh-keygen", "-f", ssh_key_path, "-N", "", "-q"]
+        try:
+            subprocess.run(cmd, check=True)
+        except subprocess.CalledProcessError as e:
+            raise ValueError(
+                "There was a problem creating temporary SSH credentials. Please ensure that "
+                "`ssh-keygen` is installed and available in your PATH."
+            )
+        os.chmod(ssh_key_path, int("700", base=8))
 
     # make key available to ssh-agent daemon
     cmd = ["ssh-add", ssh_key_path]
@@ -210,3 +232,36 @@ def get_latest_package_version() -> str:
         version = get_latest_package_version_request()
 
     return version
+
+
+class TemporarySSHCredentials:
+    def __init__(self, ssh_key_path: Path):
+        self._ssh_key_path = ssh_key_path
+        self._public_key = None
+
+    def generate(self):
+        if self._public_key is None:
+            self._public_key = generate_temporary_ssh_credentials(self._ssh_key_path)
+
+    def cleanup(self):
+        subprocess.run(["ssh-add", "-d", self._ssh_key_path], check=True)
+        self._ssh_key_path.unlink(missing_ok=True)
+        self._ssh_key_path.with_suffix(".pub").unlink(missing_ok=True)
+
+    @property
+    def public_key(self):
+        self.generate()
+        return self._public_key
+
+    @property
+    def private_key(self):
+        self.generate()
+        with open(self._ssh_key_path, "r") as f:
+            return f.read()
+
+    def __enter__(self):
+        self.generate()
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.cleanup()
