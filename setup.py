@@ -12,11 +12,15 @@ if CURRENT_PYTHON < MIN_PYTHON_VERSION:
     )
     sys.exit(-1)
 
+with open("README.md", "r") as f:
+    long_description = f.read()
+
 setup(
     name="latch",
     version="v2.4.2",
     author_email="kenny@latch.bio",
-    description="latch sdk",
+    description="The Latchbio SDK",
+    long_description=long_description,
     packages=find_packages(),
     include_package_data=True,
     python_requires=">=3.7",
