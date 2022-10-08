@@ -188,14 +188,10 @@ def generate_temporary_ssh_credentials(ssh_key_path: Path) -> str:
     try:
         out = subprocess.run(cmd, check=True, capture_output=True)
     except subprocess.CalledProcessError as e:
-        cmd = ["cat", ssh_key_path.with_suffix(".pub")]
-        try:
-            out = subprocess.run(cmd, check=True, capture_output=True)
-        except subprocess.CalledProcessError as e:
-            raise ValueError(
-                "There was a problem decoding your temporary credentials. Please ensure that "
-                "`ssh-keygen` is installed and available in your PATH."
-            )
+        raise ValueError(
+            "There was a problem decoding your temporary credentials. Please ensure that "
+            "`ssh-keygen` is installed and available in your PATH."
+        )
 
     public_key = out.stdout.decode("utf-8").strip("\n")
     return public_key
