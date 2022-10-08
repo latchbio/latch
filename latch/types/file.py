@@ -76,14 +76,11 @@ class LatchFile(FlyteFile):
                     and self._remote_path is not None
                 ):
                     self.path = ctx.file_access.get_random_local_path(self._remote_path)
-                    try:
-                        return ctx.file_access.get_data(
-                            self._remote_path,
-                            self.path,
-                            is_multipart=False,
-                        )
-                    except:
-                        _download(self._remote_path, self.path)
+                    return ctx.file_access.get_data(
+                        self._remote_path,
+                        self.path,
+                        is_multipart=False,
+                    )
 
             super().__init__(path, downloader, self._remote_path)
 
