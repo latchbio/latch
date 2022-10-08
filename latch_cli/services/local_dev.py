@@ -63,6 +63,9 @@ async def run_local_dev_session(pkg_root: Path):
             },
         )
 
+        if init_local_dev_resp.status_code == 403:
+            raise ValueError("You are not authorized to use this feature.")
+
         cent_data = cent_resp.json()
         centromere_ip = cent_data["ip"]
         centromere_username = cent_data["username"]
@@ -112,7 +115,7 @@ async def run_local_dev_session(pkg_root: Path):
         ssh_client = paramiko.SSHClient()
         ssh_client.load_system_host_keys()
         ssh_client.connect(centromere_ip, username=centromere_username)
-        scp_client = scp.SCPClient(ssh_client.get_transport())
+        scp_client = scp.SCPClient(ssh_client.get_transport(), buff_size=5 * 2**20)
 
         await aioconsole.aprint("Copying your local changes... ")
         # TODO(ayush) do something more sophisticated/only send over
@@ -133,7 +136,7 @@ async def run_local_dev_session(pkg_root: Path):
             await aioconsole.aprint(
                 f"Pulling {image_name}, this will only take a moment...", end="\n"
             )
-            await print_response(ws, exit_signal)
+            await flush_response(ws, exit_signal)
             await aioconsole.aprint("Image successfully pulled.", end="\n")
 
             while True:
