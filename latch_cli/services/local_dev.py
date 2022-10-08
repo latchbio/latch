@@ -14,12 +14,13 @@ from latch_cli.tinyrequests import post
 from latch_cli.utils import (
     TemporarySSHCredentials,
     current_workspace,
-    generate_temporary_ssh_credentials,
     retrieve_or_login,
 )
 
 config = LatchConfig()
 sdk_endpoints = config.sdk_endpoints
+
+QUIT_COMMANDS = ["quit", "exit"]
 
 
 async def print_response(ws, exit_signal):
@@ -71,22 +72,7 @@ async def run_local_dev_session(pkg_root: Path):
         secret_key = init_local_dev_data["docker"]["tmp_secret_key"]
         session_token = init_local_dev_data["docker"]["tmp_session_token"]
         port = init_local_dev_data["port"]
-
-        # scp setup
-        ssh_client = paramiko.SSHClient()
-        ssh_client.load_system_host_keys()
-        ssh_client.connect(centromere_ip, username=centromere_username)
-        scp_client = scp.SCPClient(ssh_client.get_transport())
-
-        await aioconsole.aprint("Copying your local changes... ")
-        # TODO(ayush) do something more sophisticated/only send over
-        # diffs or smth to make this more efficient (rsync?)
-        scp_client.put(
-            files=pkg_root,
-            remote_path=f"~/",
-            recursive=True,
-        )
-        await aioconsole.aprint("Done.\n")
+        command = init_local_dev_data["cmd"]
 
         # ecr setup
         try:
@@ -107,14 +93,36 @@ async def run_local_dev_session(pkg_root: Path):
         if int(ws_id) < 10:
             ws_id = f"x{ws_id}"
 
-        image_name = f"{ws_id}_{pkg_root.name}"
+        try:
+            image_name = f"{ws_id}_{pkg_root.name}"
+            jmespath_expr = (
+                "sort_by(imageDetails, &to_string(imagePushedAt))[-1].imageTags"
+            )
+            paginator = ecr_client.get_paginator("describe_images")
+            iterator = paginator.paginate(repositoryName=image_name)
+            filter_iterator = iterator.search(jmespath_expr)
+            latest = next(filter_iterator)
+            image_name_tagged = f"{config.dkr_repo}/{image_name}:{latest}"
+        except:
+            raise ValueError(
+                "This workflow hasn't been registered yet. Please register at least once to use this feature."
+            )
 
-        jmespath_expr = "sort_by(imageDetails, &to_string(imagePushedAt))[-1].imageTags"
-        paginator = ecr_client.get_paginator("describe_images")
-        iterator = paginator.paginate(repositoryName=image_name)
-        filter_iterator = iterator.search(jmespath_expr)
-        latest = next(filter_iterator)
-        image_name_tagged = f"{config.dkr_repo}/{image_name}:{latest}"
+        # scp setup
+        ssh_client = paramiko.SSHClient()
+        ssh_client.load_system_host_keys()
+        ssh_client.connect(centromere_ip, username=centromere_username)
+        scp_client = scp.SCPClient(ssh_client.get_transport())
+
+        await aioconsole.aprint("Copying your local changes... ")
+        # TODO(ayush) do something more sophisticated/only send over
+        # diffs or smth to make this more efficient (rsync?)
+        scp_client.put(
+            files=pkg_root,
+            remote_path=f"~/",
+            recursive=True,
+        )
+        await aioconsole.aprint("Done.\n")
 
         exit_signal = str(random.getrandbits(256))
         async with websockets.connect(f"ws://{centromere_ip}:{port}/ws") as ws:
@@ -125,11 +133,14 @@ async def run_local_dev_session(pkg_root: Path):
             await aioconsole.aprint(
                 f"Pulling {image_name}, this will only take a moment...", end="\n"
             )
-            await flush_response(ws, exit_signal)
+            await print_response(ws, exit_signal)
             await aioconsole.aprint("Image successfully pulled.", end="\n")
 
-            for _ in range(5):
+            while True:
                 cmd = await aioconsole.ainput(prompt="\x1b[38;5;8m>>> \x1b[0m")
+                if cmd in QUIT_COMMANDS:
+                    await aioconsole.aprint("Exiting local development session")
+                    break
 
                 if cmd.startswith("run"):
                     await aioconsole.aprint("Syncing your local changes...", end="\n")
@@ -139,8 +150,15 @@ async def run_local_dev_session(pkg_root: Path):
                 await ws.send(cmd)
                 await print_response(ws, exit_signal)
 
-            return
+        close_resp = post(
+            sdk_endpoints["close-local-development"],
+            headers={"Authorization": f"Bearer {retrieve_or_login()}"},
+            json={"command": command},
+        )
+
+        print(close_resp.status_code)
 
 
 def local_development(pkg_root: Path):
-    asyncio.run(run_local_dev_session(pkg_root))
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(run_local_dev_session(pkg_root))

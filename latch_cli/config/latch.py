@@ -38,6 +38,7 @@ SDK_ENDPOINTS = {
     "get-logs": "/sdk/get-logs-for-node",
     "abort-execution": "/sdk/abort-execution",
     "local-development": "/sdk/initiate-local-development-session",
+    "close-local-development": "/sdk/close-local-development-session",
 }
 
 

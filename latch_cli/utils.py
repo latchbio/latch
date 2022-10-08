@@ -154,8 +154,6 @@ def generate_temporary_ssh_credentials(ssh_key_path: Path) -> str:
                 raise
             else:
                 # if both files are valid and their fingerprints match, use them instead of generating a new pair
-                with open(ssh_key_path.with_suffix(".pub"), "r") as f:
-                    public_key = f.read()
                 print(f"Found existing key pair at {ssh_key_path}.")
         except:
             print(f"Found malformed key-pair at {ssh_key_path}. Overwriting.")

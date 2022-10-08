@@ -21,7 +21,6 @@ from latch_cli.utils import (
     account_id_from_token,
     current_workspace,
     generate_temporary_ssh_credentials,
-    get_client_public_ssh_key,
     hash_directory,
     retrieve_or_login,
 )
