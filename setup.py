@@ -31,6 +31,7 @@ setup(
     },
     install_requires=[
         "awscli==1.25.22",
+        "aioconsole==0.5.1",
         "kubernetes>=24.2.0",
         "pyjwt>=0.2.0",
         "requests>=2.0",
