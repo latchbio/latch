@@ -26,7 +26,7 @@ exported decorators.
 
 import functools
 
-from flytekit import task as _task
+from flytekit import task
 from flytekitplugins.pod import Pod
 from kubernetes.client.models import (
     V1Container,
