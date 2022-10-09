@@ -17,7 +17,7 @@ with open("README.md", "r") as f:
 
 setup(
     name="latch",
-    version="v2.4.3",
+    version="v2.4.4",
     author_email="kenny@latch.bio",
     description="The Latchbio SDK",
     packages=find_packages(),
