@@ -116,7 +116,7 @@ class Fork(FlowBase):
     display_name: str
     flows: Dict[str, ForkBranch]
 
-    def __init__(self, fork: str, display_name: str, /, **flows: ForkBranch):
+    def __init__(self, fork: str, display_name: str, **flows: ForkBranch):
         object.__setattr__(self, "fork", fork)
         object.__setattr__(self, "display_name", display_name)
         object.__setattr__(self, "flows", flows)
@@ -170,7 +170,7 @@ class LatchParameter:
     _custom_ingestion: Optional[str] = None
 
     def __str__(self):
-        metadata_yaml = yaml.safe_dump(self.dict, sort_keys=False)
+        metadata_yaml = yaml.safe_dump(self.dict)
         if self.description is not None:
             return f"{self.description}\n{metadata_yaml}"
         return metadata_yaml
@@ -254,7 +254,7 @@ class LatchMetadata:
                 str(parameter_meta), "  ", lambda _: True
             )
 
-        metadata_yaml = yaml.safe_dump(self.dict, sort_keys=False)
+        metadata_yaml = yaml.safe_dump(self.dict)
         parameter_yaml = "".join(map(_parameter_str, self.parameters.items()))
         return (
             metadata_yaml + "Args:\n" + indent(parameter_yaml, "  ", lambda _: True)
