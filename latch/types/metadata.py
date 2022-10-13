@@ -57,6 +57,71 @@ class LatchAuthor:
     github: Optional[str] = None
 
 
+@dataclass(frozen=True)
+class FlowBase:
+    ...
+
+
+@dataclass(frozen=True, init=False)
+class Section(FlowBase):
+    section: str
+    flow: List[FlowBase]
+
+    def __init__(self, section: str, *flow: FlowBase):
+        object.__setattr__(self, "section", section)
+        object.__setattr__(self, "flow", list(flow))
+
+
+@dataclass(frozen=True)
+class Text(FlowBase):
+    text: str
+
+
+@dataclass(frozen=True)
+class Title(FlowBase):
+    title: str
+
+
+@dataclass(frozen=True, init=False)
+class Params(FlowBase):
+    params: List[str]
+
+    def __init__(self, *args: str):
+        object.__setattr__(self, "params", list(args))
+
+
+@dataclass(frozen=True, init=False)
+class Spoiler(FlowBase):
+    spoiler: str
+    flow: List[FlowBase]
+
+    def __init__(self, spoiler: str, *flow: FlowBase):
+        object.__setattr__(self, "spoiler", spoiler)
+        object.__setattr__(self, "flow", list(flow))
+
+
+@dataclass(frozen=True, init=False)
+class ForkBranch:
+    display_name: str
+    flow: List[FlowBase]
+
+    def __init__(self, display_name: str, *flow: FlowBase):
+        object.__setattr__(self, "display_name", display_name)
+        object.__setattr__(self, "flow", list(flow))
+
+
+@dataclass(frozen=True, init=False)
+class Fork(FlowBase):
+    fork: str
+    display_name: str
+    flows: Dict[str, ForkBranch]
+
+    def __init__(self, fork: str, display_name: str, **flows: ForkBranch):
+        object.__setattr__(self, "fork", fork)
+        object.__setattr__(self, "display_name", display_name)
+        object.__setattr__(self, "flows", flows)
+
+
 @dataclass
 class LatchParameter:
     """Class for organizing parameter metadata
@@ -101,10 +166,14 @@ class LatchParameter:
     batch_table_column: bool = False
     appearance_type: LatchAppearanceType = LatchAppearanceType.line
     rules: List[LatchRule] = field(default_factory=list)
+    detail: Optional[str] = None
+    _custom_ingestion: Optional[str] = None
 
     def __str__(self):
-        metadata_yaml = yaml.dump(yaml.safe_load(json.dumps(self.dict)))
-        return f"{self.description}\n{metadata_yaml}"
+        metadata_yaml = yaml.safe_dump(self.dict)
+        if self.description is not None:
+            return f"{self.description}\n{metadata_yaml}"
+        return metadata_yaml
 
     @property
     def dict(self):
@@ -117,6 +186,9 @@ class LatchParameter:
         temp_dict = {"hidden": self.hidden}
         if self.section_title is not None:
             temp_dict["section_title"] = self.section_title
+        if self._custom_ingestion is not None:
+            temp_dict["custom_ingestion"] = self._custom_ingestion
+
         parameter_dict["_tmp"] = temp_dict
 
         appearance_dict = {"type": self.appearance_type.value}
@@ -124,6 +196,8 @@ class LatchParameter:
             appearance_dict["placeholder"] = self.placeholder
         if self.comment is not None:
             appearance_dict["comment"] = self.comment
+        if self.detail is not None:
+            appearance_dict["detail"] = self.detail
         parameter_dict["appearance"] = appearance_dict
 
         if len(self.rules) > 0:
@@ -163,6 +237,7 @@ class LatchMetadata:
     wiki_url: Optional[str] = None
     video_tutorial: Optional[str] = None
     tags: List[str] = field(default_factory=list)
+    flow: List[FlowBase] = field(default_factory=list)
 
     @property
     def dict(self):
@@ -179,8 +254,8 @@ class LatchMetadata:
                 str(parameter_meta), "  ", lambda _: True
             )
 
-        metadata_yaml = yaml.dump(yaml.safe_load(json.dumps(self.dict)))
-        parameter_yaml = "\n".join(map(_parameter_str, self.parameters.items()))
+        metadata_yaml = yaml.safe_dump(self.dict)
+        parameter_yaml = "".join(map(_parameter_str, self.parameters.items()))
         return (
             metadata_yaml + "Args:\n" + indent(parameter_yaml, "  ", lambda _: True)
         ).strip("\n ")
