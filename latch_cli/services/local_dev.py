@@ -1,5 +1,4 @@
 import asyncio
-import functools
 import random
 from pathlib import Path
 
@@ -7,6 +6,7 @@ import aioconsole
 import boto3
 import paramiko
 import scp
+import uvloop
 import websockets
 
 from latch_cli.config.latch import LatchConfig
@@ -54,8 +54,6 @@ async def run_local_dev_session(pkg_root: Path):
             },
         )
 
-        await aioconsole.aprint(cent_resp)
-
         init_local_dev_resp = post(
             sdk_endpoints["local-development"],
             headers=headers,
@@ -64,8 +62,6 @@ async def run_local_dev_session(pkg_root: Path):
                 "pkg_root": pkg_root.name,
             },
         )
-
-        await aioconsole.aprint(init_local_dev_resp)
 
         if init_local_dev_resp.status_code == 403:
             raise ValueError("You are not authorized to use this feature.")
@@ -79,7 +75,6 @@ async def run_local_dev_session(pkg_root: Path):
         secret_key = init_local_dev_data["docker"]["tmp_secret_key"]
         session_token = init_local_dev_data["docker"]["tmp_session_token"]
         port = init_local_dev_data["port"]
-        command = init_local_dev_data["cmd"]
 
         # ecr setup
         try:
@@ -112,7 +107,8 @@ async def run_local_dev_session(pkg_root: Path):
             image_name_tagged = f"{config.dkr_repo}/{image_name}:{latest}"
         except:
             raise ValueError(
-                "This workflow hasn't been registered yet. Please register at least once to use this feature."
+                "This workflow hasn't been registered yet. "
+                "Please register at least once to use this feature."
             )
 
         # scp setup
@@ -132,40 +128,45 @@ async def run_local_dev_session(pkg_root: Path):
         await aioconsole.aprint("Done.\n")
 
         exit_signal = str(random.getrandbits(256))
-        async with websockets.connect(f"ws://{centromere_ip}:{port}/ws") as ws:
-            await ws.send(exit_signal)
+        try:
+            async with websockets.connect(
+                f"ws://{centromere_ip}:{port}/ws", close_timeout=0
+            ) as ws:
+                await ws.send(exit_signal)
 
-            await ws.send(dockerAccessToken)
-            await ws.send(image_name_tagged)
-            await aioconsole.aprint(
-                f"Pulling {image_name}, this will only take a moment...", end="\n"
+                await ws.send(dockerAccessToken)
+                await ws.send(image_name_tagged)
+                await aioconsole.aprint(
+                    f"Pulling {image_name}, this will only take a moment...", end="\n"
+                )
+                await flush_response(ws, exit_signal)
+                await aioconsole.aprint("Image successfully pulled.", end="\n")
+
+                while True:
+                    cmd = await aioconsole.ainput(prompt="\x1b[38;5;8m>>> \x1b[0m")
+                    if cmd in QUIT_COMMANDS:
+                        await aioconsole.aprint("Exiting local development session")
+                        break
+
+                    if cmd.startswith("run"):
+                        await aioconsole.aprint(
+                            "Syncing your local changes...", end="\n"
+                        )
+                        scp_client.put(pkg_root, f"~/", recursive=True)
+                        await aioconsole.aprint("Finished. Streaming logs:", end="\n")
+
+                    await ws.send(cmd)
+                    await print_response(ws, exit_signal)
+        finally:
+            close_resp = post(
+                sdk_endpoints["close-local-development"],
+                headers={"Authorization": f"Bearer {retrieve_or_login()}"},
             )
-            await flush_response(ws, exit_signal)
-            await aioconsole.aprint("Image successfully pulled.", end="\n")
-
-            while True:
-                cmd = await aioconsole.ainput(prompt="\x1b[38;5;8m>>> \x1b[0m")
-                if cmd in QUIT_COMMANDS:
-                    await aioconsole.aprint("Exiting local development session")
-                    break
-
-                if cmd.startswith("run"):
-                    await aioconsole.aprint("Syncing your local changes...", end="\n")
-                    scp_client.put(pkg_root, f"~/", recursive=True)
-                    await aioconsole.aprint("Finished. Streaming logs:", end="\n")
-
-                await ws.send(cmd)
-                await print_response(ws, exit_signal)
-
-        close_resp = post(
-            sdk_endpoints["close-local-development"],
-            headers={"Authorization": f"Bearer {retrieve_or_login()}"},
-            json={"command": command},
-        )
 
         close_resp.raise_for_status()
 
 
 def local_development(pkg_root: Path):
+    uvloop.install()
     loop = asyncio.get_event_loop()
     loop.run_until_complete(run_local_dev_session(pkg_root))
