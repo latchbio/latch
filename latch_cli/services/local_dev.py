@@ -54,6 +54,8 @@ async def run_local_dev_session(pkg_root: Path):
             },
         )
 
+        await aioconsole.aprint(cent_resp)
+
         init_local_dev_resp = post(
             sdk_endpoints["local-development"],
             headers=headers,
@@ -62,6 +64,8 @@ async def run_local_dev_session(pkg_root: Path):
                 "pkg_root": pkg_root.name,
             },
         )
+
+        await aioconsole.aprint(init_local_dev_resp)
 
         if init_local_dev_resp.status_code == 403:
             raise ValueError("You are not authorized to use this feature.")
@@ -159,7 +163,7 @@ async def run_local_dev_session(pkg_root: Path):
             json={"command": command},
         )
 
-        print(close_resp.status_code)
+        close_resp.raise_for_status()
 
 
 def local_development(pkg_root: Path):
