@@ -1,6 +1,5 @@
 """Models used in the register service."""
 
-import os
 import re
 import subprocess
 from dataclasses import dataclass
@@ -14,12 +13,16 @@ from flytekit.core.context_manager import FlyteEntities
 
 import latch_cli.tinyrequests as tinyrequests
 from latch_cli.config.latch import LatchConfig
+from latch_cli.services.utils import (
+    construct_dkr_client,
+    construct_ssh_client,
+    import_flyte_objects,
+)
 from latch_cli.utils import (
     account_id_from_token,
     current_workspace,
     generate_temporary_ssh_credentials,
     hash_directory,
-    import_flyte_objects,
     retrieve_or_login,
 )
 
@@ -156,16 +159,15 @@ class RegisterCtx:
                         f"Malformed response from request for access token {resp}"
                     ) from e
 
-                self.dkr_client = self._construct_dkr_client(
+                self.dkr_client = construct_dkr_client(
                     ssh_host=f"ssh://{username}@{public_ip}"
                 )
-                self.ssh_client = self._construct_ssh_client(
+                self.ssh_client = construct_ssh_client(
                     host_ip=public_ip,
                     username=username,
                 )
-
             else:
-                self.dkr_client = self._construct_dkr_client()
+                self.dkr_client = construct_dkr_client()
         except Exception as e:
             self.cleanup()
             raise e
@@ -235,91 +237,6 @@ class RegisterCtx:
 
         """
         return f"{self.dkr_repo}/{self.image}"
-
-    @staticmethod
-    def _construct_dkr_client(ssh_host: Optional[str] = None):
-        """Try many methods of establishing valid connection with client.
-
-        This was helpful -
-        https://github.com/docker/docker-py/blob/a48a5a9647761406d66e8271f19fab7fa0c5f582/docker/utils/utils.py#L321
-
-        If `ssh_host` is passed, we attempt to make a connection with a remote
-        machine.
-        """
-
-        def _from_env():
-
-            host = environment.get("DOCKER_HOST")
-
-            # empty string for cert path is the same as unset.
-            cert_path = environment.get("DOCKER_CERT_PATH") or None
-
-            # empty string for tls verify counts as "false".
-            # Any value or 'unset' counts as true.
-            tls_verify = environment.get("DOCKER_TLS_VERIFY")
-            if tls_verify == "":
-                tls_verify = False
-            else:
-                tls_verify = tls_verify is not None
-
-            enable_tls = cert_path or tls_verify
-
-            dkr_client = None
-            try:
-                if not enable_tls:
-                    dkr_client = docker.APIClient(host)
-                else:
-                    if not cert_path:
-                        cert_path = os.path.join(os.path.expanduser("~"), ".docker")
-
-                    tls_config = docker.tls.TLSConfig(
-                        client_cert=(
-                            os.path.join(cert_path, "cert.pem"),
-                            os.path.join(cert_path, "key.pem"),
-                        ),
-                        ca_cert=os.path.join(cert_path, "ca.pem"),
-                        verify=tls_verify,
-                    )
-                    dkr_client = docker.APIClient(host, tls=tls_config)
-
-            except docker.errors.DockerException as de:
-                raise OSError(
-                    "Unable to establish a connection to Docker. Make sure that"
-                    " Docker is running and properly configured before attempting"
-                    " to register a workflow."
-                ) from de
-
-            return dkr_client
-
-        if ssh_host is not None:
-            try:
-                return docker.APIClient(ssh_host, use_ssh_client=True)
-            except docker.errors.DockerException as de:
-                raise OSError(
-                    f"Unable to establish a connection to remote docker host {ssh_host}."
-                ) from de
-
-        environment = os.environ
-        host = environment.get("DOCKER_HOST")
-        if host is not None and host != "":
-            return _from_env()
-        else:
-            try:
-                # TODO: platform specific socket defaults
-                return docker.APIClient(base_url="unix://var/run/docker.sock")
-            except docker.errors.DockerException as de:
-                raise OSError(
-                    "Docker is not running. Make sure that"
-                    " Docker is running before attempting to register a workflow."
-                ) from de
-
-    @staticmethod
-    def _construct_ssh_client(host_ip: str, username: str):
-
-        ssh = paramiko.SSHClient()
-        ssh.load_system_host_keys()
-        ssh.connect(host_ip, username=username)
-        return ssh
 
     # utils for context management
     def __enter__(self):
