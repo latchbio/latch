@@ -1,24 +1,21 @@
 "Utilites for registration." ""
 
 import base64
-import builtins
 import contextlib
+import random
+import string
 import tempfile
 from pathlib import Path
-from types import ModuleType
 from typing import List, Optional
 
 import boto3
 import requests
-from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.data_persistence import FileAccessProvider
-from flytekit.tools import module_loader
 
-from latch_cli.services.register import RegisterCtx
+from latch_cli.centromere.models import CentromereCtx
 from latch_cli.utils import current_workspace
 
 
-def _login(ctx: RegisterCtx):
+def _login(ctx: CentromereCtx):
 
     headers = {"Authorization": f"Bearer {ctx.token}"}
     data = {"pkg_name": ctx.image, "ws_account_id": current_workspace()}
@@ -32,7 +29,6 @@ def _login(ctx: RegisterCtx):
     except KeyError as err:
         raise ValueError(f"malformed response on image upload: {response}") from err
 
-    # TODO: cache
     try:
         client = boto3.session.Session(
             aws_access_key_id=access_key,
@@ -57,7 +53,7 @@ def _login(ctx: RegisterCtx):
 
 
 def build_image(
-    ctx: RegisterCtx,
+    ctx: CentromereCtx,
     image_name: str,
     context_path: Path,
     dockerfile: Optional[Path] = None,
@@ -77,7 +73,7 @@ def build_image(
     return build_logs
 
 
-def upload_image(ctx: RegisterCtx, image_name: str) -> List[str]:
+def upload_image(ctx: CentromereCtx, image_name: str) -> List[str]:
 
     return ctx.dkr_client.push(
         repository=f"{ctx.dkr_repo}/{image_name}",
@@ -87,7 +83,7 @@ def upload_image(ctx: RegisterCtx, image_name: str) -> List[str]:
 
 
 def serialize_pkg_in_container(
-    ctx: RegisterCtx, image_name: str, serialize_dir: Path
+    ctx: CentromereCtx, image_name: str, serialize_dir: Path
 ) -> List[str]:
 
     _serialize_cmd = ["make", "serialize"]
@@ -111,7 +107,7 @@ def serialize_pkg_in_container(
     return [x.decode("utf-8") for x in logs], container_id
 
 
-def register_serialized_pkg(ctx: RegisterCtx, files: List[Path]) -> dict:
+def register_serialized_pkg(ctx: CentromereCtx, files: List[Path]) -> dict:
 
     headers = {"Authorization": f"Bearer {ctx.token}"}
 
@@ -133,67 +129,42 @@ def register_serialized_pkg(ctx: RegisterCtx, files: List[Path]) -> dict:
     return response.json()
 
 
-def import_flyte_objects(path: Path, module_name: str = "wf"):
+class TemporarySerialDir:
 
-    with module_loader.add_sys_path(str(path)):
+    """Represents a temporary directory that can be local or on a remote machine."""
 
-        # (kenny) Documenting weird failure modes of importing modules:
-        #   1. Calling attribute of FakeModule in some nested import
-        #
-        #   ```
-        #   # This is submodule or nested import of top level import
-        #   import foo
-        #   def new_func(a=foo.something):
-        #       ...
-        #   ```
-        #
-        #   The potentially weird workaround is to silence attribute
-        #   errors during import, which I don't see as swallowing problems
-        #   associated with the strict task here of retrieving attributes
-        #   from tasks, but idk.
-        #
-        #   2. Calling FakeModule directly in nested import
-        #
-        #   ```
-        #   # This is submodule or nested import of top level import
-        #   from foo import bar
-        #
-        #   a = bar()
-        #   ```
-        #
-        #   This is why we return a callable from our FakeModule
+    def __init__(self, ssh_client=None, remote=False):
 
-        class FakeModule(ModuleType):
-            def __getattr__(self, key):
-                return lambda: None
+        if remote and not ssh_client:
+            raise ValueError("Must provide an ssh client if remote is True.")
 
-            __all__ = []
+        self.remote = remote
+        self.ssh_client = ssh_client
+        self._tempdir = None
 
-        real_import = builtins.__import__
+    def __enter__(self, *args):
+        return self.create(*args)
 
-        def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
-            try:
-                return real_import(
-                    name,
-                    globals=globals,
-                    locals=locals,
-                    fromlist=fromlist,
-                    level=level,
+    def __exit__(self, *args):
+        self.cleanup(*args)
+
+    def create(self, *args):
+        if not self.remote:
+            self._tempdir = tempfile.TemporaryDirectory()
+            return Path(self._tempdir.name).resolve()
+        else:
+            td = "".join(
+                random.choice(
+                    string.ascii_uppercase + string.ascii_lowercase + string.digits
                 )
-            except (ModuleNotFoundError, AttributeError):
-                return FakeModule(name)
+                for _ in range(8)
+            )
+            self._tempdir = f"/tmp/{td}"
+            self.ssh_client.exec_command(f"mkdir {self._tempdir}")
+            return self._tempdir
 
-        # Temporary ctx tells lytekit to skip local execution when
-        # inspecting objects
-        fap = FileAccessProvider(
-            local_sandbox_dir=tempfile.mkdtemp(prefix="foo"),
-            raw_output_prefix="bar",
-        )
-        tmp_context = FlyteContext(fap, inspect_objects_only=True)
-        FlyteContextManager.push_context(tmp_context)
-
-        builtins.__import__ = fake_import
-        module_loader.just_load_modules([module_name])
-        builtins.__import__ = real_import
-
-        FlyteContextManager.pop_context()
+    def cleanup(self, *args):
+        if not self.remote:
+            self._tempdir.cleanup()
+        else:
+            self.ssh_client.exec_command(f"rmdir -rf {self._tempdir}")

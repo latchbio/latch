@@ -3,29 +3,23 @@
 import contextlib
 import functools
 import os
-import random
 import re
 import shutil
-import string
 import tempfile
 from pathlib import Path
 from typing import List, Optional
 
 from scp import SCPClient
 
-from latch_cli.services.register import RegisterCtx
+from latch_cli.centromere.ctx import CentromereCtx
+from latch_cli.services.register.constants import ANSI_REGEX, MAX_LINES
 from latch_cli.services.register.utils import (
+    TemporarySerialDir,
     build_image,
     register_serialized_pkg,
     serialize_pkg_in_container,
     upload_image,
 )
-
-_MAX_LINES = 10
-
-# for parsing out ansi escape codes
-_ANSI_REGEX = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
-
 
 print = functools.partial(print, flush=True)
 
@@ -43,9 +37,9 @@ def _print_window(curr_lines: List[str], line: str):
     in the process"""
     if line == "":
         return curr_lines
-    elif len(curr_lines) >= _MAX_LINES:
-        line = _ANSI_REGEX.sub("", line)
-        new_lines = curr_lines[len(curr_lines) - _MAX_LINES + 1 :]
+    elif len(curr_lines) >= MAX_LINES:
+        line = ANSI_REGEX.sub("", line)
+        new_lines = curr_lines[len(curr_lines) - MAX_LINES + 1 :]
         new_lines.append(line)
         _delete_lines(curr_lines)
         for s in new_lines:
@@ -154,7 +148,7 @@ def _print_serialize_logs(serialize_logs, image):
 
 
 def build_and_serialize(
-    ctx: RegisterCtx,
+    ctx: CentromereCtx,
     image_name: str,
     context_path: Path,
     tmp_dir: Path,
@@ -246,17 +240,17 @@ def register(
     """
 
     pkg_root = Path(pkg_root).resolve()
-    with RegisterCtx(
+    with CentromereCtx(
         pkg_root,
         disable_auto_version=disable_auto_version,
         remote=remote,
     ) as ctx:
 
-        # TODO - version check
-
         print(f"Initializing registration for {pkg_root}")
         if remote:
             print("Connecting to remote server for docker build [alpha]...")
+
+        # TODO - check versions properly against vacuole
 
         with contextlib.ExitStack() as stack:
             td = stack.enter_context(
@@ -327,44 +321,3 @@ def register(
 
             reg_resp = register_serialized_pkg(ctx, protos)
             _print_reg_resp(reg_resp, ctx.default_container.image_name)
-
-
-class TemporarySerialDir:
-
-    """Represents a temporary directory that can be local or on a remote machine."""
-
-    def __init__(self, ssh_client=None, remote=False):
-
-        if remote and not ssh_client:
-            raise ValueError("Must provide an ssh client if remote is True.")
-
-        self.remote = remote
-        self.ssh_client = ssh_client
-        self._tempdir = None
-
-    def __enter__(self, *args):
-        return self.create(*args)
-
-    def __exit__(self, *args):
-        self.cleanup(*args)
-
-    def create(self, *args):
-        if not self.remote:
-            self._tempdir = tempfile.TemporaryDirectory()
-            return Path(self._tempdir.name).resolve()
-        else:
-            td = "".join(
-                random.choice(
-                    string.ascii_uppercase + string.ascii_lowercase + string.digits
-                )
-                for _ in range(8)
-            )
-            self._tempdir = f"/tmp/{td}"
-            self.ssh_client.exec_command(f"mkdir {self._tempdir}")
-            return self._tempdir
-
-    def cleanup(self, *args):
-        if not self.remote:
-            self._tempdir.cleanup()
-        else:
-            self.ssh_client.exec_command(f"rmdir -rf {self._tempdir}")
