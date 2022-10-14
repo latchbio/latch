@@ -12,7 +12,6 @@ import click
 from packaging.version import parse as parse_version
 
 import latch_cli.click_utils
-from latch_cli.click_utils import AnsiCodes as ac
 from latch_cli.crash_reporter import CrashReporter
 from latch_cli.services.init.init import Templates
 from latch_cli.utils import get_latest_package_version, get_local_package_version
@@ -303,33 +302,17 @@ def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]
 
 
 @main.command(
-    "local-execute",
-    help=f"""Execute a workflow within the latest registered container. Run from the
-    outside the pkg root, eg. {ac.bold}`latch local-execute myworkflow`{ac.reset} where
-    {ac.bold}`myworkflow`{ac.reset} is the directory containing your workflow package.
-
-    This is the same as running:
-
-    \b
-        {ac.bold}$ python3 wf/__init__.py{ac.reset}
-
-    Assuming this file contains a snippet conducive to local execution such as:
-
-    \b
-        {ac.bold}if __name__ == "__main___":
-           my_workflow(a="foo", reads=LatchFile("/users/von/neuman/machine.txt"){ac.reset}
-
-    Visit {ac.underline}https://docs.latch.bio/basics/local_development.html{ac.no_underline} to read more
-    about local development.
-    """,
+    "execute",
+    help="""TODO""",
 )
 @click.argument("pkg_root", nargs=1, type=click.Path(exists=True))
-def local_execute(pkg_root: Path):
-    from latch_cli.services.local_execute import local_execute
+def execute(pkg_root: Path):
+    from latch_cli.services.execute import execute
 
     try:
-        local_execute(Path(pkg_root).resolve())
+        execute(Path(pkg_root).resolve())
     except Exception as e:
+        raise e
         CrashReporter.report()
         click.secho(f"Unable to execute workflow: {str(e)}", fg="red")
 
