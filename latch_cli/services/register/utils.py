@@ -2,16 +2,13 @@
 
 import base64
 import contextlib
-import random
-import string
-import tempfile
 from pathlib import Path
 from typing import List, Optional
 
 import boto3
 import requests
 
-from latch_cli.centromere.models import CentromereCtx
+from latch_cli.centromere.ctx import CentromereCtx
 from latch_cli.utils import current_workspace
 
 
@@ -127,44 +124,3 @@ def register_serialized_pkg(ctx: CentromereCtx, files: List[Path]) -> dict:
         )
 
     return response.json()
-
-
-class TemporarySerialDir:
-
-    """Represents a temporary directory that can be local or on a remote machine."""
-
-    def __init__(self, ssh_client=None, remote=False):
-
-        if remote and not ssh_client:
-            raise ValueError("Must provide an ssh client if remote is True.")
-
-        self.remote = remote
-        self.ssh_client = ssh_client
-        self._tempdir = None
-
-    def __enter__(self, *args):
-        return self.create(*args)
-
-    def __exit__(self, *args):
-        self.cleanup(*args)
-
-    def create(self, *args):
-        if not self.remote:
-            self._tempdir = tempfile.TemporaryDirectory()
-            return Path(self._tempdir.name).resolve()
-        else:
-            td = "".join(
-                random.choice(
-                    string.ascii_uppercase + string.ascii_lowercase + string.digits
-                )
-                for _ in range(8)
-            )
-            self._tempdir = f"/tmp/{td}"
-            self.ssh_client.exec_command(f"mkdir {self._tempdir}")
-            return self._tempdir
-
-    def cleanup(self, *args):
-        if not self.remote:
-            self._tempdir.cleanup()
-        else:
-            self.ssh_client.exec_command(f"rmdir -rf {self._tempdir}")

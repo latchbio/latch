@@ -12,9 +12,9 @@ from typing import List, Optional
 from scp import SCPClient
 
 from latch_cli.centromere.ctx import CentromereCtx
+from latch_cli.centromere.utils import TmpDir
 from latch_cli.services.register.constants import ANSI_REGEX, MAX_LINES
 from latch_cli.services.register.utils import (
-    TemporarySerialDir,
     build_image,
     register_serialized_pkg,
     serialize_pkg_in_container,
@@ -254,7 +254,7 @@ def register(
 
         with contextlib.ExitStack() as stack:
             td = stack.enter_context(
-                TemporarySerialDir(
+                TmpDir(
                     ssh_client=ctx.ssh_client,
                     remote=remote,
                 )
@@ -276,7 +276,7 @@ def register(
 
             for task_name, container in ctx.container_map.items():
                 task_td = stack.enter_context(
-                    TemporarySerialDir(ssh_client=ctx.ssh_client, remote=remote)
+                    TmpDir(ssh_client=ctx.ssh_client, remote=remote)
                 )
                 try:
                     build_and_serialize(
