@@ -8,13 +8,13 @@ from flytekit.core.context_manager import FlyteEntities
 from scp import SCPClient
 
 from latch_cli.centromere.ctx import CentromereCtx
-from latch_cli.centromere.utils import TmpDir
-from latch_cli.services.utils import import_flyte_objects
+from latch_cli.centromere.utils import TmpDir, import_flyte_objects
 
 
 def execute(local_script: Path):
     """Executes tasks and workflows on remote servers in their containers."""
 
+    # TODO - verify this is root of workflow directory
     wd = Path().absolute()
     with CentromereCtx(
         wd,
@@ -22,10 +22,14 @@ def execute(local_script: Path):
         remote=True,
     ) as ctx:
 
-        import_flyte_objects(wd)
+        import_flyte_objects([wd])
         for entity in FlyteEntities.entities:
             if isinstance(entity, PythonTask):
                 print(entity.name)
+
+        mods = import_flyte_objects([wd, local_script.parent], local_script.stem)
+        for m in mods:
+            print(m)
 
         # nucleus: get latest version associated with task name and later allow
         # version passed

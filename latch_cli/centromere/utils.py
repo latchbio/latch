@@ -1,11 +1,13 @@
 import builtins
+import contextlib
 import os
 import random
 import string
+import sys
 import tempfile
 from pathlib import Path
 from types import ModuleType
-from typing import Optional
+from typing import Iterator, List, Optional
 
 import docker
 import paramiko
@@ -14,9 +16,21 @@ from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.tools import module_loader
 
 
-def import_flyte_objects(path: Path, module_name: str = "wf"):
+@contextlib.contextmanager
+def add_sys_paths(paths: List[Path]) -> Iterator[None]:
+    paths = [os.fspath(p) for p in paths]
+    try:
+        for p in paths:
+            sys.path.insert(0, p)
+        yield
+    finally:
+        for p in paths:
+            sys.path.remove(p)
 
-    with module_loader.add_sys_path(str(path)):
+
+def import_flyte_objects(paths: List[Path], module_name: str = "wf"):
+
+    with add_sys_paths(paths):
 
         # (kenny) Documenting weird failure modes of importing modules:
         #   1. Calling attribute of FakeModule in some nested import
@@ -71,13 +85,17 @@ def import_flyte_objects(path: Path, module_name: str = "wf"):
             raw_output_prefix="bar",
         )
         tmp_context = FlyteContext(fap, inspect_objects_only=True)
+
         FlyteContextManager.push_context(tmp_context)
-
         builtins.__import__ = fake_import
-        module_loader.just_load_modules([module_name])
-        builtins.__import__ = real_import
 
+        print(sys.path, module_name)
+        mods = list(module_loader.iterate_modules([module_name]))
+
+        builtins.__import__ = real_import
         FlyteContextManager.pop_context()
+
+        return mods
 
 
 def construct_dkr_client(ssh_host: Optional[str] = None):

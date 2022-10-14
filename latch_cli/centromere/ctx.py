@@ -107,7 +107,7 @@ class CentromereCtx:
                 dockerfile=default_dockerfile, image_name=self.image_tagged
             )
 
-            import_flyte_objects(self.pkg_root)
+            import_flyte_objects([self.pkg_root])
             # Global FlyteEntities object holds all serializable objects after they are imported.
             for entity in FlyteEntities.entities:
                 if isinstance(entity, PythonTask):
