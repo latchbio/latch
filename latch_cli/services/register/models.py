@@ -306,15 +306,6 @@ class RegisterCtx:
         """
         return f"{self.dkr_repo}/{self.image}"
 
-    @property
-    def version_archive_path(self):
-        version_archive_path = (
-            Path.home() / ".latch" / self.image / "registered_versions"
-        )
-        version_archive_path.parent.mkdir(parents=True, exist_ok=True)
-        version_archive_path.touch(exist_ok=True)
-        return version_archive_path
-
     @staticmethod
     def _construct_dkr_client(ssh_host: Optional[str] = None):
         """Try many methods of establishing valid connection with client.
