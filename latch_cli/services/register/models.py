@@ -4,6 +4,7 @@ import builtins
 import os
 import re
 import subprocess
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
@@ -12,7 +13,12 @@ from typing import Dict, Optional
 import docker
 import paramiko
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import FlyteEntities
+from flytekit.core.context_manager import (
+    FlyteContext,
+    FlyteContextManager,
+    FlyteEntities,
+)
+from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.tools import module_loader
 
 import latch_cli.tinyrequests as tinyrequests
@@ -167,12 +173,23 @@ class RegisterCtx:
                             fromlist=fromlist,
                             level=level,
                         )
-                    except (ModuleNotFoundError, AttributeError) as e:
+                    except (ModuleNotFoundError, AttributeError):
                         return FakeModule(name)
+
+                # Temporary ctx tells lytekit to skip local execution when
+                # inspecting objects
+                fap = FileAccessProvider(
+                    local_sandbox_dir=tempfile.mkdtemp(prefix="foo"),
+                    raw_output_prefix="bar",
+                )
+                tmp_context = FlyteContext(fap, inspect_objects_only=True)
+                FlyteContextManager.push_context(tmp_context)
 
                 builtins.__import__ = fake_import
                 module_loader.just_load_modules(["wf"])
                 builtins.__import__ = real_import
+
+                FlyteContextManager.pop_context()
 
             # Global FlyteEntities object holds all serializable objects after they are imported.
             for entity in FlyteEntities.entities:
