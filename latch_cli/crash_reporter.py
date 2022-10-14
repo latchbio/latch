@@ -78,5 +78,7 @@ class _CrashReporter:
                 ntf.seek(0)
                 tf.add(ntf.name, arcname="metadata.json")
 
+            print(">> Crash report written to .latch_report.tar.gz")
+
 
 CrashReporter = _CrashReporter()
