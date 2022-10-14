@@ -23,6 +23,25 @@ sdk_endpoints = config.sdk_endpoints
 QUIT_COMMANDS = ["quit", "exit"]
 
 
+def copy_files(scp_client: scp.SCPClient, pkg_root: Path):
+    if pkg_root.joinpath("wf").exists():
+        scp_client.put(
+            files=pkg_root.joinpath("wf"),
+            remote_path=f"~/{pkg_root.name}/",
+            recursive=True,
+        )
+    else:
+        print(f"Could not find {pkg_root.joinpath('wf')} - skipping")
+    if pkg_root.joinpath("data").exists():
+        scp_client.put(
+            files=pkg_root.joinpath("data"),
+            remote_path=f"~/{pkg_root.name}/",
+            recursive=True,
+        )
+    else:
+        print(f"Could not find {pkg_root.joinpath('data')} - skipping")
+
+
 async def print_response(ws, exit_signal):
     """Consumes messages from the WS and prints them to stdout"""
     async for message in ws:
@@ -120,11 +139,7 @@ async def run_local_dev_session(pkg_root: Path):
         await aioconsole.aprint("Copying your local changes... ")
         # TODO(ayush) do something more sophisticated/only send over
         # diffs or smth to make this more efficient (rsync?)
-        scp_client.put(
-            files=pkg_root,
-            remote_path=f"~/",
-            recursive=True,
-        )
+        copy_files(scp_client, pkg_root)
         await aioconsole.aprint("Done.\n")
 
         exit_signal = str(random.getrandbits(256))
@@ -133,9 +148,9 @@ async def run_local_dev_session(pkg_root: Path):
                 f"ws://{centromere_ip}:{port}/ws", close_timeout=0
             ) as ws:
                 await ws.send(exit_signal)
-
                 await ws.send(dockerAccessToken)
                 await ws.send(image_name_tagged)
+
                 await aioconsole.aprint(
                     f"Pulling {image_name}, this will only take a moment...", end="\n"
                 )
@@ -143,7 +158,7 @@ async def run_local_dev_session(pkg_root: Path):
                 await aioconsole.aprint("Image successfully pulled.", end="\n")
 
                 while True:
-                    cmd = await aioconsole.ainput(prompt="\x1b[38;5;8m>>> \x1b[0m")
+                    cmd: str = await aioconsole.ainput(prompt="\x1b[38;5;8m>>> \x1b[0m")
                     if cmd in QUIT_COMMANDS:
                         await aioconsole.aprint("Exiting local development session")
                         break
@@ -152,7 +167,7 @@ async def run_local_dev_session(pkg_root: Path):
                         await aioconsole.aprint(
                             "Syncing your local changes...", end="\n"
                         )
-                        scp_client.put(pkg_root, f"~/", recursive=True)
+                        copy_files(scp_client, pkg_root)
                         await aioconsole.aprint("Finished. Streaming logs:", end="\n")
 
                     await ws.send(cmd)
