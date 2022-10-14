@@ -1,25 +1,16 @@
 """Models used in the register service."""
 
-import builtins
 import os
 import re
 import subprocess
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from types import ModuleType
 from typing import Dict, Optional
 
 import docker
 import paramiko
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import (
-    FlyteContext,
-    FlyteContextManager,
-    FlyteEntities,
-)
-from flytekit.core.data_persistence import FileAccessProvider
-from flytekit.tools import module_loader
+from flytekit.core.context_manager import FlyteEntities
 
 import latch_cli.tinyrequests as tinyrequests
 from latch_cli.config.latch import LatchConfig
@@ -28,6 +19,7 @@ from latch_cli.utils import (
     current_workspace,
     generate_temporary_ssh_credentials,
     hash_directory,
+    import_flyte_objects,
     retrieve_or_login,
 )
 
@@ -128,69 +120,7 @@ class RegisterCtx:
                 dockerfile=default_dockerfile, image_name=self.image_tagged
             )
 
-            with module_loader.add_sys_path(str(self.pkg_root)):
-
-                # (kenny) Documenting weird failure modes of importing modules:
-                #   1. Calling attribute of FakeModule in some nested import
-                #
-                #   ```
-                #   # This is submodule or nested import of top level import
-                #   import foo
-                #   def new_func(a=foo.something):
-                #       ...
-                #   ```
-                #
-                #   The potentially weird workaround is to silence attribute
-                #   errors during import, which I don't see as swallowing problems
-                #   associated with the strict task here of retrieving attributes
-                #   from tasks, but idk.
-                #
-                #   2. Calling FakeModule directly in nested import
-                #
-                #   ```
-                #   # This is submodule or nested import of top level import
-                #   from foo import bar
-                #
-                #   a = bar()
-                #   ```
-                #
-                #   This is why we return a callable from our FakeModule
-
-                class FakeModule(ModuleType):
-                    def __getattr__(self, key):
-                        return lambda: None
-
-                    __all__ = []
-
-                real_import = builtins.__import__
-
-                def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
-                    try:
-                        return real_import(
-                            name,
-                            globals=globals,
-                            locals=locals,
-                            fromlist=fromlist,
-                            level=level,
-                        )
-                    except (ModuleNotFoundError, AttributeError):
-                        return FakeModule(name)
-
-                # Temporary ctx tells lytekit to skip local execution when
-                # inspecting objects
-                fap = FileAccessProvider(
-                    local_sandbox_dir=tempfile.mkdtemp(prefix="foo"),
-                    raw_output_prefix="bar",
-                )
-                tmp_context = FlyteContext(fap, inspect_objects_only=True)
-                FlyteContextManager.push_context(tmp_context)
-
-                builtins.__import__ = fake_import
-                module_loader.just_load_modules(["wf"])
-                builtins.__import__ = real_import
-
-                FlyteContextManager.pop_context()
-
+            import_flyte_objects(self.pkg_root)
             # Global FlyteEntities object holds all serializable objects after they are imported.
             for entity in FlyteEntities.entities:
                 if isinstance(entity, PythonTask):

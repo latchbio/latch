@@ -1,12 +1,18 @@
 "Utilites for registration." ""
 
 import base64
+import builtins
 import contextlib
+import tempfile
 from pathlib import Path
+from types import ModuleType
 from typing import List, Optional
 
 import boto3
 import requests
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
+from flytekit.core.data_persistence import FileAccessProvider
+from flytekit.tools import module_loader
 
 from latch_cli.services.register import RegisterCtx
 from latch_cli.utils import current_workspace
@@ -125,3 +131,69 @@ def register_serialized_pkg(ctx: RegisterCtx, files: List[Path]) -> dict:
         )
 
     return response.json()
+
+
+def import_flyte_objects(path: Path, module_name: str = "wf"):
+
+    with module_loader.add_sys_path(str(path)):
+
+        # (kenny) Documenting weird failure modes of importing modules:
+        #   1. Calling attribute of FakeModule in some nested import
+        #
+        #   ```
+        #   # This is submodule or nested import of top level import
+        #   import foo
+        #   def new_func(a=foo.something):
+        #       ...
+        #   ```
+        #
+        #   The potentially weird workaround is to silence attribute
+        #   errors during import, which I don't see as swallowing problems
+        #   associated with the strict task here of retrieving attributes
+        #   from tasks, but idk.
+        #
+        #   2. Calling FakeModule directly in nested import
+        #
+        #   ```
+        #   # This is submodule or nested import of top level import
+        #   from foo import bar
+        #
+        #   a = bar()
+        #   ```
+        #
+        #   This is why we return a callable from our FakeModule
+
+        class FakeModule(ModuleType):
+            def __getattr__(self, key):
+                return lambda: None
+
+            __all__ = []
+
+        real_import = builtins.__import__
+
+        def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+            try:
+                return real_import(
+                    name,
+                    globals=globals,
+                    locals=locals,
+                    fromlist=fromlist,
+                    level=level,
+                )
+            except (ModuleNotFoundError, AttributeError):
+                return FakeModule(name)
+
+        # Temporary ctx tells lytekit to skip local execution when
+        # inspecting objects
+        fap = FileAccessProvider(
+            local_sandbox_dir=tempfile.mkdtemp(prefix="foo"),
+            raw_output_prefix="bar",
+        )
+        tmp_context = FlyteContext(fap, inspect_objects_only=True)
+        FlyteContextManager.push_context(tmp_context)
+
+        builtins.__import__ = fake_import
+        module_loader.just_load_modules([module_name])
+        builtins.__import__ = real_import
+
+        FlyteContextManager.pop_context()
