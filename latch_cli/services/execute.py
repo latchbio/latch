@@ -1,7 +1,8 @@
 """Service to execute a workflow in a container."""
 
+from inspect import getmembers
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteEntities
@@ -22,14 +23,41 @@ def execute(local_script: Path):
         remote=True,
     ) as ctx:
 
+        mod = import_flyte_objects([wd, local_script.parent], local_script.stem)[0]
+
+        found_task = False
+        task_name: Optional[str] = None
+        for name, o in getmembers(mod):
+            if isinstance(o, PythonTask):
+                if found_task:
+                    raise ValueError(
+                        "Identified more than one task in the "
+                        "script provided to execute. Please provide "
+                        "a single task per script as assigning a "
+                        "container is ambiguous otherwise. "
+                    )
+                task_name = name
+                found_task = True
+
+        if task_name is None:
+            raise ValueError("Could not identify valid task in provided script.")
+
         import_flyte_objects([wd])
+        found: Optional[str] = None
         for entity in FlyteEntities.entities:
             if isinstance(entity, PythonTask):
-                print(entity.name)
+                if task_name in entity.name.split(".")[-1]:
+                    found = entity.name  # fqn of registered task
+                    break
 
-        mods = import_flyte_objects([wd, local_script.parent], local_script.stem)
-        for m in mods:
-            print(m)
+        if not found:
+            raise ValueError(
+                f"The task provided in your script {task_name} is not defined "
+                "in the 'wf' package in your working directory."
+            )
+
+        print(f"found: {found}")
+        quit()
 
         # nucleus: get latest version associated with task name and later allow
         # version passed

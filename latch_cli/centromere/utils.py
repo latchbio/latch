@@ -89,7 +89,6 @@ def import_flyte_objects(paths: List[Path], module_name: str = "wf"):
         FlyteContextManager.push_context(tmp_context)
         builtins.__import__ = fake_import
 
-        print(sys.path, module_name)
         mods = list(module_loader.iterate_modules([module_name]))
 
         builtins.__import__ = real_import
