@@ -12,6 +12,31 @@ from latch_cli.centromere.ctx import CentromereCtx
 from latch_cli.centromere.utils import TmpDir, import_flyte_objects
 
 
+def run_script_in_container(
+    ctx: CentromereCtx, image_name: str, script_name: str, remote_tmp_dir: Path
+) -> (List[str], str):
+
+    _serialize_cmd = ["python3", script_name]
+    container = ctx.dkr_client.create_container(
+        image_name,
+        command=_serialize_cmd,
+        volumes=[str(remote_tmp_dir)],
+        host_config=ctx.dkr_client.create_host_config(
+            binds={
+                str(remote_tmp_dir): {
+                    "bind": "/root",
+                    "mode": "rw",
+                },
+            }
+        ),
+    )
+    container_id = container.get("Id")
+    ctx.dkr_client.start(container_id)
+    logs = ctx.dkr_client.logs(container_id, stream=True)
+
+    return [x.decode("utf-8") for x in logs], container_id
+
+
 def execute(local_script: Path):
     """Executes tasks and workflows on remote servers in their containers."""
 
@@ -56,40 +81,10 @@ def execute(local_script: Path):
                 "in the 'wf' package in your working directory."
             )
 
-        print(f"found: {found}")
-        quit()
-
-        # nucleus: get latest version associated with task name and later allow
-        # version passed
-
-        # then recover container - want to recover container from idl
-        # definition of task and fallback to default workflow container
-
-        #  taskname opt[version] -> image
-
-        def run_script_in_container(
-            ctx: CentromereCtx, image_name: str, script_name: str, remote_tmp_dir: Path
-        ) -> List[str]:
-
-            _serialize_cmd = ["python3", script_name]
-            container = ctx.dkr_client.create_container(
-                image_name,
-                command=_serialize_cmd,
-                volumes=[str(remote_tmp_dir)],
-                host_config=ctx.dkr_client.create_host_config(
-                    binds={
-                        str(remote_tmp_dir): {
-                            "bind": "/root",
-                            "mode": "rw",
-                        },
-                    }
-                ),
-            )
-            container_id = container.get("Id")
-            ctx.dkr_client.start(container_id)
-            logs = ctx.dkr_client.logs(container_id, stream=True)
-
-            return [x.decode("utf-8") for x in logs], container_id
+        # image_name = ctx.nucleus_get_image(task_name, version=None)
+        image_name = (
+            "812206152185.dkr.ecr.us-west-2.amazonaws.com/4107_bulk-rnaseq:1.0.5-498ac7"
+        )
 
         with TmpDir(ssh_client=ctx.ssh_client, remote=True) as td:
 
@@ -98,7 +93,7 @@ def execute(local_script: Path):
 
             logs, container_id = run_script_in_container(
                 ctx,
-                "812206152185.dkr.ecr.us-west-2.amazonaws.com/4107_bulk-rnaseq:1.0.5-498ac7",
+                image_name,
                 local_script.name,
                 td,
             )

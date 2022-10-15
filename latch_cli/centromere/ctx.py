@@ -59,6 +59,7 @@ class CentromereCtx:
     latch_register_api_url = endpoints["register-workflow"]
     latch_image_api_url = endpoints["initiate-image-upload"]
     latch_provision_url = endpoints["provision-centromere"]
+    latch_get_image_url = endpoints["get-image-from-task"]
 
     def __init__(
         self,
@@ -228,7 +229,26 @@ class CentromereCtx:
             ) from e
         return public_ip, username
 
-    # utils for context management
+    def nucleus_get_image(self, task_name: str, version: Optional[str] = None) -> str:
+        """Retrieve fq container name for a task and optional version."""
+
+        headers = {"Authorization": f"Bearer {self.token}"}
+        response = tinyrequests.post(
+            self.latch_get_image_url,
+            headers=headers,
+            json={
+                "task_name": task_name,
+            },
+        )
+
+        resp = response.json()
+        try:
+            image_name = resp["image_name"]
+        except KeyError as e:
+            raise ValueError(
+                f"Malformed response from request for access token {resp}"
+            ) from e
+        return image_name
 
     def __enter__(self):
         return self
