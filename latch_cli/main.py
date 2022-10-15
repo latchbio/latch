@@ -302,19 +302,20 @@ def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]
 
 
 @main.command(
-    "debug",
-    help="""TODO""",
+    "scratch",
+    help="""Quickly run a script executing task functions within a task
+    container on a remote machine.""",
 )
 @click.argument("task_name", nargs=1)
-def debug(task_name: Path):
-    from latch_cli.services.debug import debug
+def scratch(task_name: Path):
+    from latch_cli.services.scratch import scratch
 
     try:
-        debug(Path(task_name).resolve())
+        scratch(Path(task_name).resolve())
     except Exception as e:
         raise e
         CrashReporter.report()
-        click.secho(f"Unable to debug workflow: {str(e)}", fg="red")
+        click.secho(f"Unable to launch scratch script: {str(e)}", fg="red")
 
 
 @main.command("launch")
