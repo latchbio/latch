@@ -302,19 +302,19 @@ def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]
 
 
 @main.command(
-    "execute",
+    "debug",
     help="""TODO""",
 )
-@click.argument("pkg_root", nargs=1, type=click.Path(exists=True))
-def execute(pkg_root: Path):
-    from latch_cli.services.execute import execute
+@click.argument("task_name", nargs=1)
+def debug(task_name: Path):
+    from latch_cli.services.debug import debug
 
     try:
-        execute(Path(pkg_root).resolve())
+        debug(Path(task_name).resolve())
     except Exception as e:
         raise e
         CrashReporter.report()
-        click.secho(f"Unable to execute workflow: {str(e)}", fg="red")
+        click.secho(f"Unable to debug workflow: {str(e)}", fg="red")
 
 
 @main.command("launch")
