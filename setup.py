@@ -17,7 +17,7 @@ with open("README.md", "r") as f:
 
 setup(
     name="latch",
-    version="v2.4.5",
+    version="v2.4.6",
     author_email="kenny@latch.bio",
     description="The Latchbio SDK",
     packages=find_packages(),
@@ -41,7 +41,7 @@ setup(
         "boto3>=1.24.22",
         "tqdm>=4.63.0",
         "lytekit==0.9.1",
-        "lytekitplugins-pods==0.3.1",
+        "lytekitplugins-pods==0.4.0",
         "typing-extensions==4.3.0",
         "apscheduler==3.9.1",
         "uvloop==0.17.0",
