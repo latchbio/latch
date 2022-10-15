@@ -121,27 +121,7 @@ class CentromereCtx:
                         )
 
             if remote is True:
-                headers = {"Authorization": f"Bearer {self.token}"}
-
-                self.ssh_key_path = Path(self.pkg_root) / ".ssh_key"
-                public_key = generate_temporary_ssh_credentials(self.ssh_key_path)
-
-                response = tinyrequests.post(
-                    self.latch_provision_url,
-                    headers=headers,
-                    json={
-                        "public_key": public_key,
-                    },
-                )
-
-                resp = response.json()
-                try:
-                    public_ip = resp["ip"]
-                    username = resp["username"]
-                except KeyError as e:
-                    raise ValueError(
-                        f"Malformed response from request for access token {resp}"
-                    ) from e
+                public_ip, username = self.nucleus_provision_url()
 
                 self.dkr_client = construct_dkr_client(
                     ssh_host=f"ssh://{username}@{public_ip}"
@@ -222,7 +202,34 @@ class CentromereCtx:
         """
         return f"{self.dkr_repo}/{self.image}"
 
+    def nucleus_provision_url(self) -> (str, str):
+        """Retrieve centromere IP + username."""
+
+        headers = {"Authorization": f"Bearer {self.token}"}
+
+        self.ssh_key_path = Path(self.pkg_root) / ".ssh_key"
+        public_key = generate_temporary_ssh_credentials(self.ssh_key_path)
+
+        response = tinyrequests.post(
+            self.latch_provision_url,
+            headers=headers,
+            json={
+                "public_key": public_key,
+            },
+        )
+
+        resp = response.json()
+        try:
+            public_ip = resp["ip"]
+            username = resp["username"]
+        except KeyError as e:
+            raise ValueError(
+                f"Malformed response from request for access token {resp}"
+            ) from e
+        return public_ip, username
+
     # utils for context management
+
     def __enter__(self):
         return self
 
