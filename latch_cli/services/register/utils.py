@@ -12,7 +12,7 @@ from latch_cli.centromere.ctx import CentromereCtx
 from latch_cli.utils import current_workspace
 
 
-def _login(ctx: CentromereCtx):
+def docker_login(ctx: CentromereCtx):
 
     headers = {"Authorization": f"Bearer {ctx.token}"}
     data = {"pkg_name": ctx.image, "ws_account_id": current_workspace()}
@@ -56,7 +56,7 @@ def build_image(
     dockerfile: Optional[Path] = None,
 ) -> List[str]:
 
-    _login(ctx)
+    docker_login(ctx)
     if dockerfile is not None:
         dockerfile = str(dockerfile)
     build_logs = ctx.dkr_client.build(

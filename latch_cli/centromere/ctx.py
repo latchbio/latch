@@ -17,9 +17,9 @@ from latch_cli.centromere.utils import (
 )
 from latch_cli.config.latch import LatchConfig
 from latch_cli.utils import (
+    TemporarySSHCredentials,
     account_id_from_token,
     current_workspace,
-    generate_temporary_ssh_credentials,
     hash_directory,
     retrieve_or_login,
 )
@@ -209,25 +209,25 @@ class CentromereCtx:
         headers = {"Authorization": f"Bearer {self.token}"}
 
         self.ssh_key_path = Path(self.pkg_root) / ".ssh_key"
-        public_key = generate_temporary_ssh_credentials(self.ssh_key_path)
+        with TemporarySSHCredentials(key_path) as ssh:
 
-        response = tinyrequests.post(
-            self.latch_provision_url,
-            headers=headers,
-            json={
-                "public_key": public_key,
-            },
-        )
+            response = tinyrequests.post(
+                self.latch_provision_url,
+                headers=headers,
+                json={
+                    "public_key": ssh.public_key,
+                },
+            )
 
-        resp = response.json()
-        try:
-            public_ip = resp["ip"]
-            username = resp["username"]
-        except KeyError as e:
-            raise ValueError(
-                f"Malformed response from request for access token {resp}"
-            ) from e
-        return public_ip, username
+            resp = response.json()
+            try:
+                public_ip = resp["ip"]
+                username = resp["username"]
+            except KeyError as e:
+                raise ValueError(
+                    f"Malformed response from request for access token {resp}"
+                ) from e
+            return public_ip, username
 
     def nucleus_get_image(self, task_name: str, version: Optional[str] = None) -> str:
         """Retrieve fq container name for a task and optional version."""
