@@ -54,13 +54,17 @@ class LatchFile(FlyteFile):
     def __init__(
         self,
         path: Union[str, PathLike],
-        remote_path: Optional[PathLike] = None,
+        remote_path: Optional[Union[str, PathLike]] = None,
         **kwargs,
     ):
+        # Cast PathLike objects so that LatchFile has consistent JSON
+        # representation.
+        self.path = str(path)
+
         if _is_valid_url(path) and remote_path is None:
-            self._remote_path = path
+            self._remote_path = str(path)
         else:
-            self._remote_path = remote_path
+            self._remote_path = str(remote_path)
 
         if kwargs.get("downloader") is not None:
             super().__init__(path, kwargs["downloader"], remote_path)
