@@ -105,7 +105,10 @@ class LatchDir(FlyteDirectory):
         return self._remote_directory
 
     def __str__(self):
-        return f'LatchDir("{self.remote_path}")'
+        if self.remote_path is None:
+            return "LatchDir()"
+        else:
+            return f'LatchDir("{self.remote_path}")'
 
 
 LatchOutputDir = Annotated[
