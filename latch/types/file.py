@@ -57,6 +57,9 @@ class LatchFile(FlyteFile):
         remote_path: Optional[Union[str, PathLike]] = None,
         **kwargs,
     ):
+        if path is None:
+            raise ValueError("Unable to instantiate LatchFile with None")
+
         # Cast PathLike objects so that LatchFile has consistent JSON
         # representation.
         self.path = str(path)

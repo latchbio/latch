@@ -57,6 +57,9 @@ class LatchDir(FlyteDirectory):
         **kwargs,
     ):
 
+        if path is None:
+            raise ValueError("Unable to instantiate LatchDir with None")
+
         # Cast PathLike objects so that LatchDir has consistent JSON
         # representation.
         self.path = str(path)
