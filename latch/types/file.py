@@ -104,11 +104,15 @@ class LatchFile(FlyteFile):
         """A url referencing in object in LatchData or s3."""
         return self._remote_path
 
+    def __repr__(self):
+        if self.remote_path is None:
+            return f'LatchFile("{self.local_path}")'
+        return f'LatchFile("{self.local_path}", remote_path="{self.remote_path}")'
+
     def __str__(self):
         if self.remote_path is None:
             return "LatchFile()"
-        else:
-            return f'LatchFile("{self.remote_path}")'
+        return f'LatchFile("{self.remote_path}")'
 
 
 LatchOutputFile = Annotated[

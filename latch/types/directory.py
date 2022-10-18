@@ -104,11 +104,15 @@ class LatchDir(FlyteDirectory):
         """A url referencing in object in LatchData or s3."""
         return self._remote_directory
 
+    def __repr__(self):
+        if self.remote_path is None:
+            return f'LatchDir("{self.local_path}")'
+        return f'LatchDir("{self.local_path}", remote_path="{self.remote_path}")'
+
     def __str__(self):
         if self.remote_path is None:
             return "LatchDir()"
-        else:
-            return f'LatchDir("{self.remote_path}")'
+        return f'LatchDir("{self.remote_path}")'
 
 
 LatchOutputDir = Annotated[
