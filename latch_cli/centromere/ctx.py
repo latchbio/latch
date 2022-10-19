@@ -81,19 +81,6 @@ class CentromereCtx:
                 self.account_id = ws
 
             self.pkg_root = Path(pkg_root).resolve()
-            self.disable_auto_version = disable_auto_version
-            try:
-                version_file = self.pkg_root.joinpath("version")
-                with open(version_file, "r") as vf:
-                    self.version = vf.read().strip()
-                if not self.disable_auto_version:
-                    hash = hash_directory(self.pkg_root)
-                    self.version = self.version + "-" + hash[:6]
-            except Exception as e:
-                raise ValueError(
-                    f"Unable to extract pkg version from {str(self.pkg_root)}"
-                ) from e
-
             self.dkr_repo = LatchConfig.dkr_repo
             self.remote = remote
 
@@ -120,6 +107,19 @@ class CentromereCtx:
                             dockerfile=entity.dockerfile_path,
                             image_name=self.task_image_name(entity.name),
                         )
+
+            self.disable_auto_version = disable_auto_version
+            try:
+                version_file = self.pkg_root.joinpath("version")
+                with open(version_file, "r") as vf:
+                    self.version = vf.read().strip()
+                if not self.disable_auto_version:
+                    hash = hash_directory(self.pkg_root)
+                    self.version = self.version + "-" + hash[:6]
+            except Exception as e:
+                raise ValueError(
+                    f"Unable to extract pkg version from {str(self.pkg_root)}"
+                ) from e
 
             if remote is True:
 
