@@ -12,9 +12,6 @@ if CURRENT_PYTHON < MIN_PYTHON_VERSION:
     )
     sys.exit(-1)
 
-with open("README.md", "r") as f:
-    long_description = f.read()
-
 setup(
     name="latch",
     version="v2.4.6",
