@@ -12,12 +12,9 @@ if CURRENT_PYTHON < MIN_PYTHON_VERSION:
     )
     sys.exit(-1)
 
-with open("README.md", "r") as f:
-    long_description = f.read()
-
 setup(
     name="latch",
-    version="v2.4.4",
+    version="v2.5.0",
     author_email="kenny@latch.bio",
     description="The Latchbio SDK",
     packages=find_packages(),
@@ -40,7 +37,7 @@ setup(
         "scp>=0.14.0",
         "boto3>=1.24.22",
         "tqdm>=4.63.0",
-        "lytekit==0.10.0",
+        "lytekit==0.12.0",
         "lytekitplugins-pods==0.3.1",
         "typing-extensions==4.3.0",
         "apscheduler==3.9.1",

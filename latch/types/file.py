@@ -56,13 +56,20 @@ class LatchFile(FlyteFile):
     def __init__(
         self,
         path: Union[str, PathLike],
-        remote_path: Optional[PathLike] = None,
+        remote_path: Optional[Union[str, PathLike]] = None,
         **kwargs,
     ):
+        if path is None:
+            raise ValueError("Unable to instantiate LatchFile with None")
+
+        # Cast PathLike objects so that LatchFile has consistent JSON
+        # representation.
+        self.path = str(path)
+
         if _is_valid_url(path) and remote_path is None:
-            self._remote_path = path
+            self._remote_path = str(path)
         else:
-            self._remote_path = remote_path
+            self._remote_path = None if remote_path is None else str(remote_path)
 
         if kwargs.get("downloader") is not None:
             super().__init__(path, kwargs["downloader"], remote_path)
@@ -99,7 +106,14 @@ class LatchFile(FlyteFile):
         """A url referencing in object in LatchData or s3."""
         return self._remote_path
 
+    def __repr__(self):
+        if self.remote_path is None:
+            return f'LatchFile("{self.local_path}")'
+        return f'LatchFile("{self.local_path}", remote_path="{self.remote_path}")'
+
     def __str__(self):
+        if self.remote_path is None:
+            return "LatchFile()"
         return f'LatchFile("{self.remote_path}")'
 
 
