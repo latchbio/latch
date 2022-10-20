@@ -90,12 +90,8 @@ class CentromereCtx:
                     "Make sure you are passing a directory that contains a ",
                     "valid dockerfile to '$latch register'.",
                 )
-
-            self.default_container = Container(
-                dockerfile=default_dockerfile, image_name=self.image_tagged
-            )
-
             import_flyte_objects([self.pkg_root])
+
             # Global FlyteEntities object holds all serializable objects after they are imported.
             for entity in FlyteEntities.entities:
                 if isinstance(entity, PythonTask):
@@ -120,6 +116,10 @@ class CentromereCtx:
                 raise ValueError(
                     f"Unable to extract pkg version from {str(self.pkg_root)}"
                 ) from e
+
+            self.default_container = Container(
+                dockerfile=default_dockerfile, image_name=self.image_tagged
+            )
 
             if remote is True:
 
