@@ -15,6 +15,8 @@ class _CrashReporter:
 
     """Write logs + system information to disk when Exception is thrown."""
 
+    IGNORE_PATHS = (".git/",)
+
     def __init__(self):
 
         self.metadata = {
@@ -59,8 +61,10 @@ class _CrashReporter:
                     os.path.join(dp, f)
                     for dp, _, filenames in os.walk(pkg_path)
                     for f in filenames
+                    if not (any([x in dp for x in self.IGNORE_PATHS]))
                 ]
                 for file_path in pkg_files:
+                    print(file_path)
                     file_size = os.path.getsize(file_path)
                     if file_size < FILE_MAX_SIZE:
                         tf.add(file_path)
