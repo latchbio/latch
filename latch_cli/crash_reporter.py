@@ -64,7 +64,6 @@ class _CrashReporter:
                     if not (any([x in dp for x in self.IGNORE_PATHS]))
                 ]
                 for file_path in pkg_files:
-                    print(file_path)
                     file_size = os.path.getsize(file_path)
                     if file_size < FILE_MAX_SIZE:
                         tf.add(file_path)
