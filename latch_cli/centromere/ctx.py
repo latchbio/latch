@@ -274,7 +274,7 @@ class CentromereCtx:
             headers=headers,
             json={
                 "version": version,
-                "wf_name": workflow_name,
+                "workflow_name": workflow_name,
                 "ws_account_id": ws_id,
             },
         )
