@@ -15,6 +15,8 @@ class _CrashReporter:
 
     """Write logs + system information to disk when Exception is thrown."""
 
+    IGNORE_PATHS = (".git/",)
+
     def __init__(self):
 
         self.metadata = {
@@ -59,6 +61,7 @@ class _CrashReporter:
                     os.path.join(dp, f)
                     for dp, _, filenames in os.walk(pkg_path)
                     for f in filenames
+                    if not (any([x in dp for x in self.IGNORE_PATHS]))
                 ]
                 for file_path in pkg_files:
                     file_size = os.path.getsize(file_path)
@@ -77,6 +80,8 @@ class _CrashReporter:
                 json.dump(self.metadata, ntf)
                 ntf.seek(0)
                 tf.add(ntf.name, arcname="metadata.json")
+
+            print(">> Crash report written to .latch_report.tar.gz")
 
 
 CrashReporter = _CrashReporter()

@@ -14,7 +14,7 @@ if CURRENT_PYTHON < MIN_PYTHON_VERSION:
 
 setup(
     name="latch",
-    version="v2.4.6",
+    version="v2.6.0",
     author_email="kenny@latch.bio",
     description="The Latchbio SDK",
     packages=find_packages(),
@@ -37,7 +37,7 @@ setup(
         "scp>=0.14.0",
         "boto3>=1.24.22",
         "tqdm>=4.63.0",
-        "lytekit==0.11.1",
+        "lytekit==0.13.0",
         "lytekitplugins-pods==0.4.0",
         "typing-extensions==4.3.0",
         "apscheduler==3.9.1",
