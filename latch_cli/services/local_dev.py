@@ -31,7 +31,7 @@ async def copy_files(scp_client: scp.SCPClient, pkg_root: Path):
     if pkg_root.joinpath("wf").exists():
         scp_client.put(
             files=pkg_root.joinpath("wf"),
-            remote_path=f"~/{pkg_root.name}/",
+            remote_path=f"~/{pkg_root.name}",
             recursive=True,
         )
     else:
@@ -39,7 +39,7 @@ async def copy_files(scp_client: scp.SCPClient, pkg_root: Path):
     if pkg_root.joinpath("data").exists():
         scp_client.put(
             files=pkg_root.joinpath("data"),
-            remote_path=f"~/{pkg_root.name}/",
+            remote_path=f"~/{pkg_root.name}",
             recursive=True,
         )
     else:
@@ -49,7 +49,7 @@ async def copy_files(scp_client: scp.SCPClient, pkg_root: Path):
     if pkg_root.joinpath("scripts").exists():
         scp_client.put(
             files=pkg_root.joinpath("scripts"),
-            remote_path=f"~/{pkg_root.name}/",
+            remote_path=f"~/{pkg_root.name}",
             recursive=True,
         )
     else:
@@ -182,7 +182,9 @@ async def run_local_dev_session(pkg_root: Path, executable_file: Optional[Path] 
                     if cmd.startswith("run"):
                         await aioconsole.aprint("Syncing your local changes... ")
                         await copy_files(scp_client, pkg_root)
-                        await aioconsole.aprint("Finished. Streaming logs:")
+                        await aioconsole.aprint(
+                            "Finished syncing. Beginning execution and streaming logs:"
+                        )
 
                     await ws.send(cmd)
                     await print_response(ws, exit_signal)
