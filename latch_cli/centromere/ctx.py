@@ -8,6 +8,7 @@ import docker
 import paramiko
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteEntities
+from flytekit.core.workflow import PythonFunctionWorkflow
 
 import latch_cli.tinyrequests as tinyrequests
 from latch_cli.centromere.utils import (
@@ -55,6 +56,7 @@ class CentromereCtx:
     default_container: Container
     # Used to asscociate alternate containers with tasks
     container_map: Dict[str, Container] = {}
+    workflow_name: Optional[str]
 
     latch_register_api_url = endpoints["register-workflow"]
     latch_image_api_url = endpoints["initiate-image-upload"]
@@ -106,12 +108,10 @@ class CentromereCtx:
                     f"Unable to extract pkg version from {str(self.pkg_root)}"
                 ) from e
 
-            if self.nucleus_check_version(self.version) is True:
-                raise ValueError(f"Version {self.version} has already been registered.")
-
             # Global FlyteEntities object holds all serializable objects after they are imported.
             for entity in FlyteEntities.entities:
-                print(type(entity))
+                if isinstance(entity, PythonFunctionWorkflow):
+                    self.workflow_name = entity.name
                 if isinstance(entity, PythonTask):
                     if (
                         hasattr(entity, "dockerfile_path")
@@ -122,7 +122,9 @@ class CentromereCtx:
                             image_name=self.task_image_name(entity.name),
                         )
 
-            quit()
+            if self.nucleus_check_version(self.version, self.workflow_name) is True:
+                raise ValueError(f"Version {self.version} has already been registered.")
+
             self.default_container = Container(
                 dockerfile=default_dockerfile, image_name=self.image_tagged
             )
@@ -258,7 +260,7 @@ class CentromereCtx:
             ) from e
         return image_name
 
-    def nucleus_check_version(self, version: str) -> bool:
+    def nucleus_check_version(self, version: str, workflow_name: str) -> bool:
         """Check if version has already been registered for given workflow"""
 
         headers = {"Authorization": f"Bearer {self.token}"}
@@ -272,6 +274,7 @@ class CentromereCtx:
             headers=headers,
             json={
                 "version": version,
+                "wf_name": workflow_name,
                 "ws_account_id": ws_id,
             },
         )
