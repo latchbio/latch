@@ -301,23 +301,6 @@ def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]
             )
 
 
-@main.command(
-    "scratch",
-    help="""Quickly run a script executing task functions within a task
-    container on a remote machine.""",
-)
-@click.argument("task_name", nargs=1)
-def scratch(task_name: Path):
-    from latch_cli.services.scratch import scratch
-
-    try:
-        scratch(Path(task_name).resolve())
-    except Exception as e:
-        raise e
-        CrashReporter.report()
-        click.secho(f"Unable to launch scratch script: {str(e)}", fg="red")
-
-
 @main.command("launch")
 @click.argument("params_file", nargs=1, type=click.Path(exists=True))
 @click.option(
