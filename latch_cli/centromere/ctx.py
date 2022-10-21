@@ -93,18 +93,6 @@ class CentromereCtx:
                 )
             import_flyte_objects([self.pkg_root])
 
-            # Global FlyteEntities object holds all serializable objects after they are imported.
-            for entity in FlyteEntities.entities:
-                if isinstance(entity, PythonTask):
-                    if (
-                        hasattr(entity, "dockerfile_path")
-                        and entity.dockerfile_path is not None
-                    ):
-                        self.container_map[entity.name] = Container(
-                            dockerfile=entity.dockerfile_path,
-                            image_name=self.task_image_name(entity.name),
-                        )
-
             self.disable_auto_version = disable_auto_version
             try:
                 version_file = self.pkg_root.joinpath("version")
@@ -118,9 +106,23 @@ class CentromereCtx:
                     f"Unable to extract pkg version from {str(self.pkg_root)}"
                 ) from e
 
-            if self.nucleus_check_version(self.version):
+            if self.nucleus_check_version(self.version) is True:
                 raise ValueError(f"Version {self.version} has already been registered.")
 
+            # Global FlyteEntities object holds all serializable objects after they are imported.
+            for entity in FlyteEntities.entities:
+                print(type(entity))
+                if isinstance(entity, PythonTask):
+                    if (
+                        hasattr(entity, "dockerfile_path")
+                        and entity.dockerfile_path is not None
+                    ):
+                        self.container_map[entity.name] = Container(
+                            dockerfile=entity.dockerfile_path,
+                            image_name=self.task_image_name(entity.name),
+                        )
+
+            quit()
             self.default_container = Container(
                 dockerfile=default_dockerfile, image_name=self.image_tagged
             )
