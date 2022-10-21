@@ -60,6 +60,7 @@ class CentromereCtx:
     latch_image_api_url = endpoints["initiate-image-upload"]
     latch_provision_url = endpoints["provision-centromere"]
     latch_get_image_url = endpoints["get-image-from-task"]
+    latch_check_version_url = endpoints["check-workflow-version"]
 
     def __init__(
         self,
@@ -265,7 +266,7 @@ class CentromereCtx:
             ws_id = account_id_from_token(retrieve_or_login())
 
         response = tinyrequests.post(
-            self.latch_check_workflow_version,
+            self.latch_check_version_url,
             headers=headers,
             json={
                 "version": version,
