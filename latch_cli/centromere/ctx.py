@@ -117,6 +117,9 @@ class CentromereCtx:
                     f"Unable to extract pkg version from {str(self.pkg_root)}"
                 ) from e
 
+            if self.nucleus_check_version(self.version):
+                raise ValueError(f"Version {self.version} has already been registered.")
+
             self.default_container = Container(
                 dockerfile=default_dockerfile, image_name=self.image_tagged
             )
@@ -232,7 +235,7 @@ class CentromereCtx:
         return public_ip, username
 
     def nucleus_get_image(self, task_name: str, version: Optional[str] = None) -> str:
-        """Retrieve fq container name for a task and optional version."""
+        """Retrieve fqn of the container for a task and optional version."""
 
         headers = {"Authorization": f"Bearer {self.token}"}
         response = tinyrequests.post(
@@ -251,6 +254,33 @@ class CentromereCtx:
                 f"Malformed response from request for access token {resp}"
             ) from e
         return image_name
+
+    def nucleus_check_version(self, version: str) -> bool:
+        """Check if version has already been registered for given workflow"""
+
+        headers = {"Authorization": f"Bearer {self.token}"}
+
+        ws_id = current_workspace()
+        if ws_id is None or ws_id == "":
+            ws_id = account_id_from_token(retrieve_or_login())
+
+        response = tinyrequests.post(
+            self.latch_check_workflow_version,
+            headers=headers,
+            json={
+                "version": version,
+                "ws_account_id": ws_id,
+            },
+        )
+
+        resp = response.json()
+        try:
+            exists = resp["exists"]
+        except KeyError as e:
+            raise ValueError(
+                f"Malformed response from request for access token {resp}"
+            ) from e
+        return exists
 
     def __enter__(self):
         return self
