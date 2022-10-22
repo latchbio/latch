@@ -1,5 +1,6 @@
 import asyncio
 import random
+import sys
 from pathlib import Path
 from typing import Optional
 
@@ -12,6 +13,8 @@ import scp
 import uvloop
 import websockets
 import websockets.typing
+from prompt_toolkit.patch_stdout import patch_stdout
+from prompt_toolkit.shortcuts import PromptSession
 
 from latch_cli.config.latch import LatchConfig
 from latch_cli.tinyrequests import post
@@ -75,9 +78,10 @@ async def flush_response(ws, exit_signal):
             return
 
 
-async def run_local_dev_session(pkg_root: Path, executable_file: Optional[Path] = None):
-    headers = {"Authorization": f"Bearer {retrieve_or_login()}"}
+async def run_local_dev_session(pkg_root: Path):
+    session = PromptSession(">>> ")
 
+    headers = {"Authorization": f"Bearer {retrieve_or_login()}"}
     key_path = pkg_root / ".ssh_key"
 
     with TemporarySSHCredentials(key_path) as ssh:
@@ -174,7 +178,7 @@ async def run_local_dev_session(pkg_root: Path, executable_file: Optional[Path] 
                 await aioconsole.aprint("Image successfully pulled.")
 
                 while True:
-                    cmd: str = await aioconsole.ainput(prompt="\x1b[38;5;8m>>> \x1b[0m")
+                    cmd: str = await session.prompt_async()
                     if cmd in QUIT_COMMANDS:
                         await aioconsole.aprint("Exiting local development session")
                         break
@@ -197,7 +201,8 @@ async def run_local_dev_session(pkg_root: Path, executable_file: Optional[Path] 
         close_resp.raise_for_status()
 
 
-def local_development(pkg_root: Path, executable_file: Optional[Path] = None):
-    uvloop.install()
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(run_local_dev_session(pkg_root, executable_file))
+def local_development(pkg_root: Path):
+    # uvloop.install()
+    with patch_stdout():
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(run_local_dev_session(pkg_root))

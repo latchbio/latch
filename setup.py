@@ -43,7 +43,7 @@ setup(
         "apscheduler==3.9.1",
         "uvloop==0.17.0",
         "websockets==10.3",
-        # "asyncssh==2.12.0",
+        "prompt-toolkit==3.0.29",
     ],
     classifiers=[
         "Programming Language :: Python :: 3.7",
