@@ -245,6 +245,11 @@ class LatchMetadata:
         # remove parameters since that will be handled by each parameters' dict() method
         del metadata_dict["parameters"]
         metadata_dict["license"] = {"id": self.license}
+
+        # flows override all other rendering, so disable them entirely if not provided
+        if len(self.flow) == 0:
+            del metadata_dict["flow"]
+
         return {"__metadata__": metadata_dict}
 
     def __str__(self):
