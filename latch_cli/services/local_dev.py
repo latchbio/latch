@@ -10,9 +10,17 @@ import aioconsole
 import boto3
 import paramiko
 import scp
-import uvloop
 import websockets
 import websockets.typing
+from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+from prompt_toolkit.completion import (
+    Completer,
+    Completion,
+    NestedCompleter,
+    PathCompleter,
+    WordCompleter,
+)
+from prompt_toolkit.history import FileHistory
 from prompt_toolkit.patch_stdout import patch_stdout
 from prompt_toolkit.shortcuts import PromptSession
 
@@ -28,6 +36,17 @@ config = LatchConfig()
 sdk_endpoints = config.sdk_endpoints
 
 QUIT_COMMANDS = ["quit", "exit"]
+RUN_COMMANDS = ["run", "run-script"]
+LIST_COMMANDS = ["ls", "list-tasks"]
+
+METADATA = {
+    "run": "Run a task with default arguments specified in the task definition. Ex: `run assembly_task`",
+    "run-script": "Run a script located in the `scripts` folder. Ex: `run-script scripts/test_trimgalore.py`",
+    "ls": "List filesystem contents within the container, with an optional path argument. Ex: `ls`, `ls wf`",
+    "list-tasks": "List all available tasks that can be run using `run`. Ex: `list-tasks`",
+}
+
+COMMANDS = QUIT_COMMANDS + RUN_COMMANDS + LIST_COMMANDS
 
 
 async def copy_files(scp_client: scp.SCPClient, pkg_root: Path):
@@ -79,7 +98,33 @@ async def flush_response(ws, exit_signal):
 
 
 async def run_local_dev_session(pkg_root: Path):
-    session = PromptSession(">>> ")
+    scripts_dir = pkg_root.joinpath("scripts").resolve()
+
+    def file_filter(filename: str) -> bool:
+        file_path = Path(filename).resolve()
+
+        return file_path == scripts_dir or scripts_dir in file_path.parents
+
+    completer = NestedCompleter(
+        {
+            "run-script": PathCompleter(
+                get_paths=lambda: [str(pkg_root)],
+                file_filter=file_filter,
+            ),
+            "run": None,
+            "ls": None,
+            "list-tasks": None,
+        },
+        ignore_case=True,
+        # meta_dict=METADATA,
+    )
+    session = PromptSession(
+        ">>> ",
+        completer=completer,
+        complete_while_typing=True,
+        auto_suggest=AutoSuggestFromHistory(),
+        history=FileHistory(pkg_root.joinpath(".latch_history")),
+    )
 
     headers = {"Authorization": f"Bearer {retrieve_or_login()}"}
     key_path = pkg_root / ".ssh_key"
@@ -202,7 +247,7 @@ async def run_local_dev_session(pkg_root: Path):
 
 
 def local_development(pkg_root: Path):
-    # uvloop.install()
     with patch_stdout():
+        # uvloop.install()
         loop = asyncio.get_event_loop()
         loop.run_until_complete(run_local_dev_session(pkg_root))
