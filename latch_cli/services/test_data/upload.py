@@ -7,6 +7,7 @@ import botocore
 import click
 
 from latch_cli.services.test_data.utils import _retrieve_creds
+from latch_cli.utils import account_id_from_token, retrieve_or_login
 
 BUCKET = "latch-public"
 
@@ -34,6 +35,9 @@ def upload(src_path: str, dont_confirm_overwrite: bool = True) -> str:
         aws_secret_access_key=secret_key,
         aws_session_token=session_token,
     )
+
+    if account_id is None or account_id == "":
+        account_id = account_id_from_token(retrieve_or_login())
 
     allowed_key = str((Path("test-data") / account_id).joinpath(src_path))
 
