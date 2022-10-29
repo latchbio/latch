@@ -250,8 +250,6 @@ def register(
         if remote:
             print("Connecting to remote server for docker build [alpha]...")
 
-        # TODO - check versions properly against vacuole
-
         with contextlib.ExitStack() as stack:
             td = stack.enter_context(
                 TmpDir(

@@ -222,18 +222,30 @@ async def run_local_dev_session(pkg_root: Path):
                 await flush_response(ws, exit_signal)
                 await aioconsole.aprint("Image successfully pulled.")
 
+                in_shell = False
                 while True:
                     cmd: str = await session.prompt_async()
-                    if cmd in QUIT_COMMANDS:
-                        await aioconsole.aprint("Exiting local development session")
-                        break
 
-                    if cmd.startswith("run"):
-                        await aioconsole.aprint("Syncing your local changes... ")
-                        await copy_files(scp_client, pkg_root)
-                        await aioconsole.aprint(
-                            "Finished syncing. Beginning execution and streaming logs:"
-                        )
+                    if cmd in QUIT_COMMANDS:
+                        if in_shell:
+                            await aioconsole.aprint("Exiting shell session.")
+                            session.message = ">>> "
+                            in_shell = False
+                        else:
+                            await aioconsole.aprint("Exiting local development session")
+                            break
+
+                    if not in_shell:
+                        if cmd == "shell":
+                            session.message = "# "
+                            in_shell = True
+
+                        if cmd.startswith("run"):
+                            await aioconsole.aprint("Syncing your local changes... ")
+                            await copy_files(scp_client, pkg_root)
+                            await aioconsole.aprint(
+                                "Finished syncing. Beginning execution and streaming logs:"
+                            )
 
                     await ws.send(cmd)
                     await print_response(ws, exit_signal)

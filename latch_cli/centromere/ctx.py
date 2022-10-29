@@ -2,7 +2,7 @@ import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 import docker
 import paramiko
@@ -216,7 +216,7 @@ class CentromereCtx:
         """
         return f"{self.dkr_repo}/{self.image}"
 
-    def nucleus_provision_url(self) -> (str, str):
+    def nucleus_provision_url(self) -> Tuple[str, str]:
         """Retrieve centromere IP + username."""
 
         headers = {"Authorization": f"Bearer {self.token}"}
