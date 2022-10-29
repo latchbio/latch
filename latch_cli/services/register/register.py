@@ -61,7 +61,7 @@ def _print_and_save_build_logs(build_logs, image: str, pkg_root: Path):
     logs_path = Path(pkg_root).joinpath(".logs").joinpath(image).resolve()
     logs_path.mkdir(exist_ok=True)
     with open(
-        str(pkg_root) + f"/.logs/{image.replace(':', '_')}/docker-build-logs.txt", "w"
+        logs_path.joinpath("docker-build-logs.txt"), "w"
     ) as save_file:
         r = re.compile("^Step [0-9]+/[0-9]+ :")
         curr_lines = []
