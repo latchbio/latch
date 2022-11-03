@@ -1,8 +1,11 @@
 import asyncio
+import logging
 import random
 import sys
+import termios
+import tty
 from pathlib import Path
-from typing import Optional
+from typing import Tuple
 
 import aioconsole
 
@@ -10,16 +13,9 @@ import aioconsole
 import boto3
 import paramiko
 import scp
-import websockets
-import websockets.typing
+import websockets.client as websockets
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
-from prompt_toolkit.completion import (
-    Completer,
-    Completion,
-    NestedCompleter,
-    PathCompleter,
-    WordCompleter,
-)
+from prompt_toolkit.completion import NestedCompleter, PathCompleter
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit.patch_stdout import patch_stdout
 from prompt_toolkit.shortcuts import PromptSession
@@ -36,17 +32,10 @@ config = LatchConfig()
 sdk_endpoints = config.sdk_endpoints
 
 QUIT_COMMANDS = ["quit", "exit"]
-RUN_COMMANDS = ["run", "run-script"]
+EXEC_COMMANDS = ["shell", "run", "run-script"]
 LIST_COMMANDS = ["ls", "list-tasks"]
 
-METADATA = {
-    "run": "Run a task with default arguments specified in the task definition. Ex: `run assembly_task`",
-    "run-script": "Run a script located in the `scripts` folder. Ex: `run-script scripts/test_trimgalore.py`",
-    "ls": "List filesystem contents within the container, with an optional path argument. Ex: `ls`, `ls wf`",
-    "list-tasks": "List all available tasks that can be run using `run`. Ex: `list-tasks`",
-}
-
-COMMANDS = QUIT_COMMANDS + RUN_COMMANDS + LIST_COMMANDS
+COMMANDS = QUIT_COMMANDS + EXEC_COMMANDS + LIST_COMMANDS
 
 
 async def copy_files(scp_client: scp.SCPClient, pkg_root: Path):
@@ -102,7 +91,6 @@ async def run_local_dev_session(pkg_root: Path):
 
     def file_filter(filename: str) -> bool:
         file_path = Path(filename).resolve()
-
         return file_path == scripts_dir or scripts_dir in file_path.parents
 
     completer = NestedCompleter(
@@ -116,7 +104,6 @@ async def run_local_dev_session(pkg_root: Path):
             "list-tasks": None,
         },
         ignore_case=True,
-        # meta_dict=METADATA,
     )
     session = PromptSession(
         ">>> ",
@@ -207,48 +194,41 @@ async def run_local_dev_session(pkg_root: Path):
         await copy_files(scp_client, pkg_root)
         await aioconsole.aprint("Done.\n")
 
-        exit_signal = str(random.getrandbits(256))
+        message_boundary = str(random.getrandbits(256))
         try:
             async with websockets.connect(
                 f"ws://{centromere_ip}:{port}/ws", close_timeout=0
             ) as ws:
-                await ws.send(exit_signal)
+                await ws.send(message_boundary)
                 await ws.send(docker_access_token)
                 await ws.send(image_name_tagged)
 
                 await aioconsole.aprint(
                     f"Pulling {image_name}, this will only take a moment... "
                 )
-                await flush_response(ws, exit_signal)
+                await flush_response(ws, message_boundary)
                 await aioconsole.aprint("Image successfully pulled.")
 
-                in_shell = False
                 while True:
                     cmd: str = await session.prompt_async()
 
                     if cmd in QUIT_COMMANDS:
-                        if in_shell:
-                            await aioconsole.aprint("Exiting shell session.")
-                            session.message = ">>> "
-                            in_shell = False
-                        else:
-                            await aioconsole.aprint("Exiting local development session")
-                            break
+                        await aioconsole.aprint("Exiting local development session")
+                        break
 
-                    if not in_shell:
-                        if cmd == "shell":
-                            session.message = "# "
-                            in_shell = True
-
-                        if cmd.startswith("run"):
-                            await aioconsole.aprint("Syncing your local changes... ")
-                            await copy_files(scp_client, pkg_root)
-                            await aioconsole.aprint(
-                                "Finished syncing. Beginning execution and streaming logs:"
-                            )
+                    if cmd.startswith("run"):
+                        await aioconsole.aprint("Syncing your local changes... ")
+                        await copy_files(scp_client, pkg_root)
+                        await aioconsole.aprint(
+                            "Finished syncing. Beginning execution and streaming logs:"
+                        )
 
                     await ws.send(cmd)
-                    await print_response(ws, exit_signal)
+                    await print_response(ws, message_boundary)
+
+                    if cmd == "shell":
+                        await shell(ws, message_boundary)
+                        # await aioconsole.aprint("exited from shell")
         finally:
             close_resp = post(
                 sdk_endpoints["close-local-development"],
@@ -258,8 +238,64 @@ async def run_local_dev_session(pkg_root: Path):
         close_resp.raise_for_status()
 
 
+async def get_stdin_io() -> Tuple[asyncio.StreamReader, asyncio.StreamWriter]:
+    loop = asyncio.get_event_loop()
+
+    reader = asyncio.StreamReader(loop=loop)
+    await loop.connect_read_pipe(
+        lambda: asyncio.StreamReaderProtocol(
+            reader,
+            loop=loop,
+        ),
+        sys.stdin,
+    )
+
+    writer_transport, writer_protocol = await loop.connect_write_pipe(
+        lambda: asyncio.streams.FlowControlMixin(loop=loop),
+        sys.stdout,
+    )
+    writer = asyncio.streams.StreamWriter(
+        writer_transport,
+        writer_protocol,
+        None,
+        loop,
+    )
+
+    return reader, writer
+
+
+async def shell(ws: websockets.WebSocketClientProtocol, exit_signal: str):
+    old_settings_stdin = termios.tcgetattr(sys.stdin.fileno())
+    old_settings_stdout = termios.tcgetattr(sys.stdout.fileno())
+
+    tty.setraw(sys.stdin)
+
+    try:
+        reader, writer = await get_stdin_io()
+
+        async def input_task():
+            while True:
+                message = await reader.read(1)
+                await ws.send(message)
+
+        async def output_task():
+            async for output in ws:
+                if str(output) == str(exit_signal):
+                    io_task.cancel()
+                    return
+                writer.write(output.encode("utf-8"))
+
+        io_task = asyncio.gather(input_task(), output_task())
+        await io_task
+
+    except asyncio.CancelledError:
+        ...
+    finally:
+        termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, old_settings_stdin)
+        termios.tcsetattr(sys.stdout.fileno(), termios.TCSANOW, old_settings_stdout)
+
+
 def local_development(pkg_root: Path):
     with patch_stdout():
-        # uvloop.install()
         loop = asyncio.get_event_loop()
         loop.run_until_complete(run_local_dev_session(pkg_root))
