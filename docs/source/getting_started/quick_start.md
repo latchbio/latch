@@ -54,7 +54,7 @@ The command creates a folder in your current working directory called `covid-wf`
 ```
 covid-wf
 ├── Dockerfile
-├── data
+├── reference
 │   ├── wuhan.1.bt2
 │   ├── wuhan.2.bt2
 │   ├── wuhan.3.bt2
@@ -67,7 +67,7 @@ covid-wf
     └── __init__.py
 ```
 
-All these files (excluding the `data` folder) are required for you to successfully register and upload your workflow to Latch Console. 
+All these files (excluding the `reference` folder) are required for you to successfully register and upload your workflow to Latch Console. 
 
 ## Step 4: Register your first workflow
 To get a live version of your workflow on Latch, simply type:

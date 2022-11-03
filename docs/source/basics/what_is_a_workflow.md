@@ -169,7 +169,7 @@ RUN apt-get update -y &&\
 
 # You can use local data to construct your workflow image.  Here we copy a
 # pre-indexed reference to a path that our workflow can reference.
-COPY data /root/reference
+COPY reference /root/reference
 ENV BOWTIE2_INDEXES="reference"
 
 COPY wf /root/wf
