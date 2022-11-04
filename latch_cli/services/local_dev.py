@@ -1,11 +1,12 @@
 import asyncio
-import logging
+import contextlib
+import io
 import random
 import sys
 import termios
 import tty
 from pathlib import Path
-from typing import Tuple
+from typing import AsyncIterator, Tuple, Union
 
 import aioconsole
 
@@ -16,6 +17,7 @@ import scp
 import websockets.client as websockets
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import NestedCompleter, PathCompleter
+from prompt_toolkit.eventloop.inputhook import set_eventloop_with_inputhook
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit.patch_stdout import patch_stdout
 from prompt_toolkit.shortcuts import PromptSession
@@ -69,7 +71,7 @@ async def copy_files(scp_client: scp.SCPClient, pkg_root: Path):
         )
 
 
-async def print_response(ws, exit_signal):
+async def print_response(ws: websockets.WebSocketClientProtocol, exit_signal: str):
     """Consumes messages from the WS and prints them to stdout"""
     async for message in ws:
         if message == exit_signal:
@@ -77,13 +79,23 @@ async def print_response(ws, exit_signal):
         await aioconsole.aprint(message, end="", flush=True)
 
 
-async def flush_response(ws, exit_signal):
+async def flush_response(ws: websockets.WebSocketClientProtocol, exit_signal: str):
     """Consumes messages from the WS and does not print them"""
 
     # TODO(ayush) pretty print this for docker logs
     async for message in ws:
         if message == exit_signal:
             return
+
+
+async def send_message(
+    ws: websockets.WebSocketClientProtocol,
+    message: Union[str, bytes],
+):
+    await ws.send(message)
+    # yield control back to the event loop,
+    # see https://github.com/aaugustin/websockets/issues/867
+    await asyncio.sleep(0)
 
 
 async def run_local_dev_session(pkg_root: Path):
@@ -120,9 +132,7 @@ async def run_local_dev_session(pkg_root: Path):
         cent_resp = post(
             sdk_endpoints["provision-centromere"],
             headers=headers,
-            json={
-                "public_key": ssh.public_key,
-            },
+            json={"public_key": ssh.public_key},
         )
 
         init_local_dev_resp = post(
@@ -197,11 +207,12 @@ async def run_local_dev_session(pkg_root: Path):
         message_boundary = str(random.getrandbits(256))
         try:
             async with websockets.connect(
-                f"ws://{centromere_ip}:{port}/ws", close_timeout=0
+                f"ws://{centromere_ip}:{port}/ws",
+                close_timeout=0,
             ) as ws:
-                await ws.send(message_boundary)
-                await ws.send(docker_access_token)
-                await ws.send(image_name_tagged)
+                await send_message(ws, message_boundary)
+                await send_message(ws, docker_access_token)
+                await send_message(ws, image_name_tagged)
 
                 await aioconsole.aprint(
                     f"Pulling {image_name}, this will only take a moment... "
@@ -210,6 +221,9 @@ async def run_local_dev_session(pkg_root: Path):
                 await aioconsole.aprint("Image successfully pulled.")
 
                 while True:
+                    # await aioconsole.aprint("something else")
+                    # cmd: str = await aioconsole.ainput(">>> ")
+                    # await aioconsole.aprint("something")
                     cmd: str = await session.prompt_async()
 
                     if cmd in QUIT_COMMANDS:
@@ -223,12 +237,13 @@ async def run_local_dev_session(pkg_root: Path):
                             "Finished syncing. Beginning execution and streaming logs:"
                         )
 
-                    await ws.send(cmd)
+                    await send_message(ws, cmd)
                     await print_response(ws, message_boundary)
 
                     if cmd == "shell":
-                        await shell(ws, message_boundary)
-                        # await aioconsole.aprint("exited from shell")
+                        with session.input.raw_mode():
+                            with session.input.detach():
+                                await shell_session(ws, message_boundary)
         finally:
             close_resp = post(
                 sdk_endpoints["close-local-development"],
@@ -238,45 +253,59 @@ async def run_local_dev_session(pkg_root: Path):
         close_resp.raise_for_status()
 
 
-async def get_stdin_io() -> Tuple[asyncio.StreamReader, asyncio.StreamWriter]:
-    loop = asyncio.get_event_loop()
+@contextlib.asynccontextmanager
+async def async_stdin_io() -> AsyncIterator[
+    Tuple[
+        asyncio.StreamReader,
+        asyncio.StreamWriter,
+    ]
+]:
+    try:
+        loop = asyncio.get_event_loop()
+        reader = asyncio.StreamReader(loop=loop)
+        await loop.connect_read_pipe(
+            lambda: asyncio.StreamReaderProtocol(
+                reader,
+                loop=loop,
+            ),
+            sys.stdin,
+        )
 
-    reader = asyncio.StreamReader(loop=loop)
-    await loop.connect_read_pipe(
-        lambda: asyncio.StreamReaderProtocol(
-            reader,
-            loop=loop,
-        ),
-        sys.stdin,
-    )
+        writer_transport, writer_protocol = await loop.connect_write_pipe(
+            lambda: asyncio.streams.FlowControlMixin(loop=loop),
+            sys.stdout,
+        )
+        writer = asyncio.streams.StreamWriter(
+            writer_transport,
+            writer_protocol,
+            None,
+            loop,
+        )
 
-    writer_transport, writer_protocol = await loop.connect_write_pipe(
-        lambda: asyncio.streams.FlowControlMixin(loop=loop),
-        sys.stdout,
-    )
-    writer = asyncio.streams.StreamWriter(
-        writer_transport,
-        writer_protocol,
-        None,
-        loop,
-    )
-
-    return reader, writer
+        yield reader, writer
+    finally:
+        ...
+        # reader.feed_eof()
+        # sys.stderr.write(str(await reader.read()))
+        # sys.stderr.flush()
+        # writer.close()
+        # loop.remove_writer(sys.stdout)
+        # loop.remove_reader(sys.stdin)
 
 
-async def shell(ws: websockets.WebSocketClientProtocol, exit_signal: str):
+async def shell_session(ws: websockets.WebSocketClientProtocol, exit_signal: str):
     old_settings_stdin = termios.tcgetattr(sys.stdin.fileno())
-    old_settings_stdout = termios.tcgetattr(sys.stdout.fileno())
-
+    # io.TextIOWrapper.reconfigure(sys.stdin, line_buffering=False)
     tty.setraw(sys.stdin)
 
-    try:
-        reader, writer = await get_stdin_io()
+    async with async_stdin_io() as (reader, writer):
 
         async def input_task():
             while True:
                 message = await reader.read(1)
-                await ws.send(message)
+                sys.stderr.write(str(message))
+                sys.stderr.flush()
+                await send_message(ws, message)
 
         async def output_task():
             async for output in ws:
@@ -284,18 +313,36 @@ async def shell(ws: websockets.WebSocketClientProtocol, exit_signal: str):
                     io_task.cancel()
                     return
                 writer.write(output.encode("utf-8"))
+                await writer.drain()
+                await asyncio.sleep(0)
 
-        io_task = asyncio.gather(input_task(), output_task())
-        await io_task
-
-    except asyncio.CancelledError:
-        ...
-    finally:
-        termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, old_settings_stdin)
-        termios.tcsetattr(sys.stdout.fileno(), termios.TCSANOW, old_settings_stdout)
+        try:
+            io_task = asyncio.gather(input_task(), output_task())
+            await io_task
+        except asyncio.CancelledError:
+            ...
+        finally:
+            termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, old_settings_stdin)
+            # termios.tcdrain(sys.stdin.fileno())
+            # sys.stdin.flush()
+            # io.TextIOWrapper.reconfigure(sys.stdin, line_buffering=True)
 
 
 def local_development(pkg_root: Path):
+    def inputhook(inputhook_context):
+        # At this point, we run the other loop. This loop is supposed to run
+        # until either `inputhook_context.fileno` becomes ready for reading or
+        # `inputhook_context.input_is_ready()` returns True.
+
+        # A good way is to register this file descriptor in this other event
+        # loop with a callback that stops this loop when this FD becomes ready.
+        # There is no need to actually read anything from the FD.
+
+        while True:
+            ...
+
+    set_eventloop_with_inputhook(inputhook)
+
     with patch_stdout():
         loop = asyncio.get_event_loop()
         loop.run_until_complete(run_local_dev_session(pkg_root))
