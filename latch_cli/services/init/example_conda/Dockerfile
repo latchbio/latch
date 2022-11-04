@@ -1,4 +1,4 @@
-FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:6839-main
+FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:dd8f-main
 
 # The series of commands below installs 'Miniconda', which provides conda
 ENV CONDA_DIR /opt/conda
