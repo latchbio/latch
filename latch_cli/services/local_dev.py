@@ -329,19 +329,19 @@ async def shell_session(ws: websockets.WebSocketClientProtocol, exit_signal: str
 
 
 def local_development(pkg_root: Path):
-    def inputhook(inputhook_context):
-        # At this point, we run the other loop. This loop is supposed to run
-        # until either `inputhook_context.fileno` becomes ready for reading or
-        # `inputhook_context.input_is_ready()` returns True.
+    # def inputhook(inputhook_context):
+    #     # At this point, we run the other loop. This loop is supposed to run
+    #     # until either `inputhook_context.fileno` becomes ready for reading or
+    #     # `inputhook_context.input_is_ready()` returns True.
 
-        # A good way is to register this file descriptor in this other event
-        # loop with a callback that stops this loop when this FD becomes ready.
-        # There is no need to actually read anything from the FD.
+    #     # A good way is to register this file descriptor in this other event
+    #     # loop with a callback that stops this loop when this FD becomes ready.
+    #     # There is no need to actually read anything from the FD.
 
-        while True:
-            ...
+    #     while True:
+    #         ...
 
-    set_eventloop_with_inputhook(inputhook)
+    # set_eventloop_with_inputhook(inputhook)
 
     with patch_stdout():
         loop = asyncio.get_event_loop()
