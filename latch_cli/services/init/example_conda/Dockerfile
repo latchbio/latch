@@ -4,13 +4,13 @@ FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:dd8f-main
 ENV CONDA_DIR /opt/conda
 ENV PATH=$CONDA_DIR/bin:$PATH
 
-RUN apt-get update
-RUN apt-get install -y curl \
-    && curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
-    && mkdir /root/.conda \
-    && bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda \
-    && rm -f Miniconda3-latest-Linux-x86_64.sh \
-    && conda init bash
+RUN apt-get update -y &&\
+    apt-get install -y curl &&\
+    curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh &&\
+    mkdir /root/.conda &&\
+    bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda &&\
+    rm -f Miniconda3-latest-Linux-x86_64.sh &&\
+    conda init bash
 
 # The line below creates your environment and installs whatever packages you want.
 # Fill up 'requirements.txt' with the names of the packages you want to install.
