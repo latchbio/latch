@@ -10,6 +10,8 @@ process.
 
 ---
 
+## Prespecified Task Resourcce
+
 The Latch SDK currently supports a set of prespecified task resource requests
 represented as decorators:
 
@@ -32,6 +34,19 @@ def my_task(
 
 @large_gpu_task
 def inference(
+    ...
+):
+    ...
+```
+
+## Custom Task Resource
+
+You can also arbitrarily specify task resources using `@custom_task`:
+```python
+from latch import custom_task
+
+@custom_task(cpu, memory) # cpu: int, memory: int
+def my_task(
     ...
 ):
     ...
