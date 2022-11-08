@@ -55,7 +55,7 @@ def _print_and_save_build_logs(build_logs, image: str, pkg_root: Path):
     print(f"Building Docker image for {image}")
 
     logs_path = Path(pkg_root).joinpath(".logs").joinpath(image).resolve()
-    logs_path.mkdir(exist_ok=True)
+    logs_path.mkdir(parents=True, exist_ok=True)
     with open(
         logs_path.joinpath("docker-build-logs.txt"), "w"
     ) as save_file:
