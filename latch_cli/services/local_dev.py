@@ -229,6 +229,7 @@ async def run_local_dev_session(pkg_root: Path):
                         f"Pulling {image_name}, this will only take a moment... "
                     )
                     await get_message(ws, show_output=False)
+                    await get_message(ws, show_output=False)
                     await aioconsole.aprint("Image successfully pulled.")
 
                     while True:
@@ -249,9 +250,10 @@ async def run_local_dev_session(pkg_root: Path):
                         await get_message(ws, show_output=True)
 
                         if cmd == "shell":
-                            with patch_stdout(raw=True):
-                                await shell_session(ws)
-                                await ws.drain()
+                            with session.input.detach():
+                                with patch_stdout(raw=True):
+                                    await shell_session(ws)
+                                    await ws.drain()
                 except websockets.exceptions.ConnectionClosed:
                     continue
         finally:
