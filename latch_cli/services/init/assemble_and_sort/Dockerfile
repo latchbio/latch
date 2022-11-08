@@ -1,6 +1,7 @@
 FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:dd8f-main
 
-RUN apt-get install -y curl unzip
+RUN apt-get update -y &&\
+    apt-get install -y curl unzip
 
 # Its easy to build binaries from source that you can later reference as
 # subprocesses within your workflow.
@@ -10,8 +11,7 @@ RUN curl -L https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.4.4/bowt
 
 # Or use managed library distributions through the container OS's package
 # manager.
-RUN apt-get update -y &&\
-    apt-get install -y autoconf samtools
+RUN apt-get install -y autoconf samtools
 
 
 # You can use local files to construct your workflow image.  Here we copy a
