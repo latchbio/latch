@@ -216,9 +216,6 @@ async def run_local_dev_session(pkg_root: Path):
         await copy_files(scp_client, pkg_root)
         await aioconsole.aprint("Done.\n")
 
-        centromere_ip = "127.0.0.1"
-        port = 2744
-
         try:
             async for ws in websockets.connect(
                 f"ws://{centromere_ip}:{port}/ws",
