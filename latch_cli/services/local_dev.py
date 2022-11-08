@@ -34,13 +34,6 @@ from latch_cli.utils import (
     retrieve_or_login,
 )
 
-logging.basicConfig(
-    format="%(message)s",
-    filename="/Users/ayush/Desktop/workflows/test-local-dev/socket-logs.txt",
-    level=logging.DEBUG,
-)
-
-
 config = LatchConfig()
 sdk_endpoints = config.sdk_endpoints
 
@@ -237,7 +230,7 @@ async def run_local_dev_session(pkg_root: Path):
 
                         if cmd in QUIT_COMMANDS:
                             await aioconsole.aprint("Exiting local development session")
-                            break
+                            return
 
                         if cmd.startswith("run"):
                             await aioconsole.aprint("Syncing your local changes... ")
