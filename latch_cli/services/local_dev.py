@@ -83,7 +83,7 @@ async def get_message(ws: websockets.WebSocketClientProtocol, show_output: bool)
             return
         if show_output:
             await aioconsole.aprint(
-                msg.get("Body").encode("utf-8"),
+                msg.get("Body"),
                 end="",
                 flush=True,
             )
@@ -230,6 +230,7 @@ async def run_local_dev_session(pkg_root: Path):
 
                         if cmd in QUIT_COMMANDS:
                             await aioconsole.aprint("Exiting local development session")
+                            await ws.close()
                             return
 
                         if cmd.startswith("run"):
