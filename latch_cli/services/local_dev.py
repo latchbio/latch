@@ -1,19 +1,14 @@
 import asyncio
-import contextlib
-import io
 import json
-import logging
 import os
-import random
 import sys
 import termios
 import tty
 from pathlib import Path
-from typing import AsyncIterator, Tuple, Union
+from typing import Union
 
 import aioconsole
-
-# import asyncssh
+import asyncssh
 import boto3
 import paramiko
 import scp
@@ -44,38 +39,31 @@ LIST_COMMANDS = ["ls", "list-tasks"]
 COMMANDS = QUIT_COMMANDS + EXEC_COMMANDS + LIST_COMMANDS
 
 
-async def copy_files(scp_client: scp.SCPClient, pkg_root: Path):
-    if pkg_root.joinpath("wf").exists():
-        scp_client.put(
-            files=pkg_root.joinpath("wf"),
-            remote_path=f"~/{pkg_root.name}",
-            recursive=True,
-        )
-    else:
-        await aioconsole.aprint(f"Could not find {pkg_root.joinpath('wf')} - skipping")
-    if pkg_root.joinpath("data").exists():
-        scp_client.put(
-            files=pkg_root.joinpath("data"),
-            remote_path=f"~/{pkg_root.name}",
-            recursive=True,
-        )
-    else:
-        await aioconsole.aprint(
-            f"Could not find {pkg_root.joinpath('data')} - skipping"
-        )
-    if pkg_root.joinpath("scripts").exists():
-        scp_client.put(
-            files=pkg_root.joinpath("scripts"),
-            remote_path=f"~/{pkg_root.name}",
-            recursive=True,
-        )
-    else:
-        await aioconsole.aprint(
-            f"Could not find {pkg_root.joinpath('scripts')} - skipping"
-        )
+async def copy_files(ssh_conn: asyncssh.SSHClientConnection, pkg_root: Path):
+    coroutines = []
+
+    for path in [
+        pkg_root.joinpath("wf"),
+        pkg_root.joinpath("data"),
+        pkg_root.joinpath("scripts"),
+    ]:
+        if path.exists():
+            coroutines.append(
+                asyncssh.scp(
+                    path,
+                    (ssh_conn, f"~/{pkg_root.name}"),
+                    recurse=True,
+                    block_size=16384,
+                )
+            )
+        else:
+            await aioconsole.aprint(f"Could not find {path} - skipping")
+
+    if len(coroutines) > 0:
+        await asyncio.gather(*coroutines)
 
 
-async def get_message(ws: websockets.WebSocketClientProtocol, show_output: bool):
+async def get_messages(ws: websockets.WebSocketClientProtocol, show_output: bool):
     """Consumes messages from the WS and prints them to stdout"""
     async for message in ws:
         msg = json.loads(message)
@@ -171,9 +159,9 @@ async def run_local_dev_session(pkg_root: Path):
                 region_name="us-west-2",
             ).client("ecr")
 
-            docker_access_token = ecr_client.get_authorization_token()[
-                "authorizationData"
-            ][0]["authorizationToken"]
+            ecr_auth = ecr_client.get_authorization_token()
+            docker_access_token = ecr_auth["authorizationData"][0]["authorizationToken"]
+
         except Exception as err:
             raise ValueError(f"unable to retrieve an ecr login token") from err
 
@@ -197,66 +185,70 @@ async def run_local_dev_session(pkg_root: Path):
                 "Please register at least once to use this feature."
             )
 
-        # scp setup
-        ssh_client = paramiko.SSHClient()
-        ssh_client.load_system_host_keys()
-        ssh_client.connect(centromere_ip, username=centromere_username)
-        scp_client = scp.SCPClient(ssh_client.get_transport(), buff_size=5 * 2**20)
+        async with asyncssh.connect(
+            centromere_ip, username=centromere_username
+        ) as ssh_conn:
+            await aioconsole.aprint("Copying your local changes... ")
+            # TODO(ayush) do something more sophisticated/only send over
+            # diffs or smth to make this more efficient (rsync?)
+            await copy_files(ssh_conn, pkg_root)
+            await aioconsole.aprint("Done.")
 
-        await aioconsole.aprint("Copying your local changes... ")
-        # TODO(ayush) do something more sophisticated/only send over
-        # diffs or smth to make this more efficient (rsync?)
-        await copy_files(scp_client, pkg_root)
-        await aioconsole.aprint("Done.\n")
-
-        try:
-            async for ws in websockets.connect(
-                f"ws://{centromere_ip}:{port}/ws",
-                close_timeout=0,
-            ):
-                try:
-                    await send_message(ws, docker_access_token)
-                    await send_message(ws, image_name_tagged)
-
+            try:
+                async for ws in websockets.connect(
+                    f"ws://{centromere_ip}:{port}/ws",
+                    close_timeout=0,
+                    extra_headers=headers,
+                ):
                     await aioconsole.aprint(
-                        f"Pulling {image_name}, this will only take a moment... "
+                        "Successfully connected to remote instance."
                     )
-                    await get_message(ws, show_output=False)
-                    await get_message(ws, show_output=False)
-                    await aioconsole.aprint("Image successfully pulled.")
+                    try:
+                        await send_message(ws, docker_access_token)
+                        await send_message(ws, image_name_tagged)
 
-                    while True:
-                        cmd: str = await session.prompt_async()
+                        await aioconsole.aprint(
+                            f"Pulling {image_name}, this will only take a moment... "
+                        )
+                        await get_messages(ws, show_output=False)
+                        await get_messages(ws, show_output=False)
+                        await aioconsole.aprint("Image successfully pulled.")
 
-                        if cmd in QUIT_COMMANDS:
-                            await aioconsole.aprint("Exiting local development session")
-                            await ws.close()
-                            return
+                        while True:
+                            cmd: str = await session.prompt_async()
 
-                        if cmd.startswith("run"):
-                            await aioconsole.aprint("Syncing your local changes... ")
-                            await copy_files(scp_client, pkg_root)
-                            await aioconsole.aprint(
-                                "Finished syncing. Beginning execution and streaming logs:"
-                            )
+                            if cmd in QUIT_COMMANDS:
+                                await aioconsole.aprint(
+                                    "Exiting local development session"
+                                )
+                                await ws.close()
+                                return
 
-                        await send_message(ws, cmd)
-                        await get_message(ws, show_output=True)
+                            if cmd.startswith("run"):
+                                await aioconsole.aprint(
+                                    "Syncing your local changes... "
+                                )
+                                await copy_files(ssh_conn, pkg_root)
+                                await aioconsole.aprint(
+                                    "Finished syncing. Beginning execution and streaming logs:"
+                                )
 
-                        if cmd == "shell":
-                            with session.input.detach():
-                                with patch_stdout(raw=True):
-                                    await shell_session(ws)
-                                    await ws.drain()
-                except websockets.exceptions.ConnectionClosed:
-                    continue
-        finally:
-            close_resp = post(
-                sdk_endpoints["close-local-development"],
-                headers={"Authorization": f"Bearer {retrieve_or_login()}"},
-            )
+                            await send_message(ws, cmd)
+                            await get_messages(ws, show_output=True)
 
-        close_resp.raise_for_status()
+                            if cmd == "shell":
+                                with session.input.detach():
+                                    with patch_stdout(raw=True):
+                                        await shell_session(ws)
+                                        await ws.drain()
+                    except websockets.exceptions.ConnectionClosed:
+                        continue
+            finally:
+                close_resp = post(
+                    sdk_endpoints["close-local-development"],
+                    headers={"Authorization": f"Bearer {retrieve_or_login()}"},
+                )
+                close_resp.raise_for_status()
 
 
 async def shell_session(
