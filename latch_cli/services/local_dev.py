@@ -10,13 +10,10 @@ from typing import Union
 import aioconsole
 import asyncssh
 import boto3
-import paramiko
-import scp
 import websockets.client as websockets
 import websockets.exceptions
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import NestedCompleter, PathCompleter
-from prompt_toolkit.eventloop.inputhook import set_eventloop_with_inputhook
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit.patch_stdout import patch_stdout
 from prompt_toolkit.shortcuts import PromptSession
@@ -40,8 +37,10 @@ COMMANDS = QUIT_COMMANDS + EXEC_COMMANDS + LIST_COMMANDS
 
 
 async def copy_files(ssh_conn: asyncssh.SSHClientConnection, pkg_root: Path):
-    coroutines = []
+    # TODO(ayush) do something more sophisticated/only send over
+    # diffs or smth to make this more efficient (rsync?)
 
+    coroutines = []
     for path in [
         pkg_root.joinpath("wf"),
         pkg_root.joinpath("data"),
@@ -64,7 +63,6 @@ async def copy_files(ssh_conn: asyncssh.SSHClientConnection, pkg_root: Path):
 
 
 async def get_messages(ws: websockets.WebSocketClientProtocol, show_output: bool):
-    """Consumes messages from the WS and prints them to stdout"""
     async for message in ws:
         msg = json.loads(message)
         if msg.get("Type") == "exit":
@@ -106,6 +104,7 @@ async def run_local_dev_session(pkg_root: Path):
             "run": None,
             "ls": None,
             "list-tasks": None,
+            "shell": None,
         },
         ignore_case=True,
     )
@@ -151,6 +150,10 @@ async def run_local_dev_session(pkg_root: Path):
         port = init_local_dev_data["port"]
 
         # ecr setup
+        ws_id = current_workspace()
+        if int(ws_id) < 10:
+            ws_id = f"x{ws_id}"
+
         try:
             ecr_client = boto3.session.Session(
                 aws_access_key_id=access_key,
@@ -165,18 +168,13 @@ async def run_local_dev_session(pkg_root: Path):
         except Exception as err:
             raise ValueError(f"unable to retrieve an ecr login token") from err
 
-        ws_id = current_workspace()
-        if int(ws_id) < 10:
-            ws_id = f"x{ws_id}"
-
         try:
+            paginator = ecr_client.get_paginator("describe_images")
             image_name = f"{ws_id}_{pkg_root.name}"
-            jmespath_expr = (
+            iterator = paginator.paginate(repositoryName=image_name)
+            filter_iterator = iterator.search(
                 "sort_by(imageDetails, &to_string(imagePushedAt))[-1].imageTags"
             )
-            paginator = ecr_client.get_paginator("describe_images")
-            iterator = paginator.paginate(repositoryName=image_name)
-            filter_iterator = iterator.search(jmespath_expr)
             latest = next(filter_iterator)
             image_name_tagged = f"{config.dkr_repo}/{image_name}:{latest}"
         except:
@@ -188,18 +186,16 @@ async def run_local_dev_session(pkg_root: Path):
         async with asyncssh.connect(
             centromere_ip, username=centromere_username
         ) as ssh_conn:
-            await aioconsole.aprint("Copying your local changes... ")
-            # TODO(ayush) do something more sophisticated/only send over
-            # diffs or smth to make this more efficient (rsync?)
+            await aioconsole.aprint("Copying your local changes... ", end="")
             await copy_files(ssh_conn, pkg_root)
             await aioconsole.aprint("Done.")
 
-            try:
-                async for ws in websockets.connect(
-                    f"ws://{centromere_ip}:{port}/ws",
-                    close_timeout=0,
-                    extra_headers=headers,
-                ):
+            async for ws in websockets.connect(
+                f"ws://{centromere_ip}:{port}/ws",
+                close_timeout=0,
+                extra_headers=headers,
+            ):
+                try:
                     await aioconsole.aprint(
                         "Successfully connected to remote instance."
                     )
@@ -212,10 +208,14 @@ async def run_local_dev_session(pkg_root: Path):
                         )
                         await get_messages(ws, show_output=False)
                         await get_messages(ws, show_output=False)
-                        await aioconsole.aprint("Image successfully pulled.")
+                        await aioconsole.aprint("Image successfully pulled.\n")
 
                         while True:
-                            cmd: str = await session.prompt_async()
+                            with session.input.raw_mode():
+                                cmd: str = await session.prompt_async()
+
+                            if cmd == "":
+                                continue
 
                             if cmd in QUIT_COMMANDS:
                                 await aioconsole.aprint(
@@ -243,12 +243,16 @@ async def run_local_dev_session(pkg_root: Path):
                                         await ws.drain()
                     except websockets.exceptions.ConnectionClosed:
                         continue
-            finally:
-                close_resp = post(
-                    sdk_endpoints["close-local-development"],
-                    headers={"Authorization": f"Bearer {retrieve_or_login()}"},
-                )
-                close_resp.raise_for_status()
+                except (KeyboardInterrupt, EOFError):
+                    await aioconsole.aprint("Exiting local development session")
+                    await ws.close()
+                    return
+                finally:
+                    close_resp = post(
+                        sdk_endpoints["close-local-development"],
+                        headers={"Authorization": f"Bearer {retrieve_or_login()}"},
+                    )
+                    close_resp.raise_for_status()
 
 
 async def shell_session(

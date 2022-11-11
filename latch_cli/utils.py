@@ -175,7 +175,7 @@ def generate_temporary_ssh_credentials(ssh_key_path: Path) -> str:
     # make key available to ssh-agent daemon
     cmd = ["ssh-add", ssh_key_path]
     try:
-        subprocess.run(cmd, check=True)
+        subprocess.run(cmd, check=True, stderr=subprocess.DEVNULL)
     except subprocess.CalledProcessError as e:
         raise ValueError(
             "There was an issue adding temporary SSH credentials to your SSH Agent. Please ensure "
@@ -238,7 +238,11 @@ class TemporarySSHCredentials:
             self._public_key = generate_temporary_ssh_credentials(self._ssh_key_path)
 
     def cleanup(self):
-        subprocess.run(["ssh-add", "-d", self._ssh_key_path], check=True)
+        subprocess.run(
+            ["ssh-add", "-d", self._ssh_key_path],
+            check=True,
+            stderr=subprocess.DEVNULL,
+        )
         self._ssh_key_path.unlink(missing_ok=True)
         self._ssh_key_path.with_suffix(".pub").unlink(missing_ok=True)
 
