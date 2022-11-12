@@ -5,6 +5,7 @@ from pathlib import Path
 import boto3
 import botocore
 import click
+import os
 
 from latch_cli.services.test_data.utils import _retrieve_creds
 from latch_cli.utils import account_id_from_token, retrieve_or_login
@@ -12,7 +13,7 @@ from latch_cli.utils import account_id_from_token, retrieve_or_login
 BUCKET = "latch-public"
 
 
-def upload(src_path: str, dont_confirm_overwrite: bool = True) -> str:
+def upload(src_path: str, s3_path: str = None, dont_confirm_overwrite: bool = True) -> str:
     """Uploads a local file/folder to a managed bucket.
 
     Args:
@@ -39,7 +40,10 @@ def upload(src_path: str, dont_confirm_overwrite: bool = True) -> str:
     if account_id is None or account_id == "":
         account_id = account_id_from_token(retrieve_or_login())
 
-    allowed_key = str((Path("test-data") / account_id).joinpath(src_path))
+    if s3_path is None:
+        allowed_key = str((Path("test-data") / account_id).joinpath(src_path))
+    else:
+        allowed_key = str((Path("test-data") / account_id).joinpath(s3_path))
 
     upload_helper(
         Path(src_path).resolve(),
