@@ -1,29 +1,25 @@
 """Service to register workflows."""
 
-import base64
 import contextlib
 import functools
 import os
-import random
 import re
 import shutil
-import string
 import tempfile
 from pathlib import Path
 from typing import List, Optional
 
-import boto3
-import requests
 from scp import SCPClient
 
-from latch_cli.services.register import RegisterCtx
-from latch_cli.utils import current_workspace
-
-_MAX_LINES = 10
-
-# for parsing out ansi escape codes
-_ANSI_REGEX = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
-
+from latch_cli.centromere.ctx import CentromereCtx
+from latch_cli.centromere.utils import TmpDir
+from latch_cli.services.register.constants import ANSI_REGEX, MAX_LINES
+from latch_cli.services.register.utils import (
+    build_image,
+    register_serialized_pkg,
+    serialize_pkg_in_container,
+    upload_image,
+)
 
 print = functools.partial(print, flush=True)
 
@@ -41,9 +37,9 @@ def _print_window(curr_lines: List[str], line: str):
     in the process"""
     if line == "":
         return curr_lines
-    elif len(curr_lines) >= _MAX_LINES:
-        line = _ANSI_REGEX.sub("", line)
-        new_lines = curr_lines[len(curr_lines) - _MAX_LINES + 1 :]
+    elif len(curr_lines) >= MAX_LINES:
+        line = ANSI_REGEX.sub("", line)
+        new_lines = curr_lines[len(curr_lines) - MAX_LINES + 1 :]
         new_lines.append(line)
         _delete_lines(curr_lines)
         for s in new_lines:
@@ -59,7 +55,7 @@ def _print_and_save_build_logs(build_logs, image: str, pkg_root: Path):
     print(f"Building Docker image for {image}")
 
     logs_path = Path(pkg_root).joinpath(".logs").joinpath(image).resolve()
-    logs_path.mkdir(exist_ok=True)
+    logs_path.mkdir(parents=True, exist_ok=True)
     with open(
         logs_path.joinpath("docker-build-logs.txt"), "w"
     ) as save_file:
@@ -153,7 +149,7 @@ def _print_serialize_logs(serialize_logs, image):
 
 
 def build_and_serialize(
-    ctx: RegisterCtx,
+    ctx: CentromereCtx,
     image_name: str,
     context_path: Path,
     tmp_dir: Path,
@@ -178,7 +174,7 @@ def build_and_serialize(
             f"Serialization exited with nonzero exit code: {exit_status['Error']}"
         )
 
-    upload_image_logs = upload_pkg_image(ctx, image_name)
+    upload_image_logs = upload_image(ctx, image_name)
     _print_upload_logs(upload_image_logs, image_name)
 
 
@@ -245,18 +241,11 @@ def register(
     """
 
     pkg_root = Path(pkg_root).resolve()
-    with RegisterCtx(
+    with CentromereCtx(
         pkg_root,
         disable_auto_version=disable_auto_version,
         remote=remote,
     ) as ctx:
-        with open(ctx.version_archive_path, "r") as f:
-            registered_versions = f.read().split("\n")
-            if ctx.version in registered_versions:
-                raise ValueError(
-                    f"This version ({ctx.version}) already exists."
-                    " Make sure that you've saved any changes you made."
-                )
 
         print(f"Initializing registration for {pkg_root}")
         if remote:
@@ -264,7 +253,7 @@ def register(
 
         with contextlib.ExitStack() as stack:
             td = stack.enter_context(
-                TemporarySerialDir(
+                TmpDir(
                     ssh_client=ctx.ssh_client,
                     remote=remote,
                 )
@@ -286,7 +275,7 @@ def register(
 
             for task_name, container in ctx.container_map.items():
                 task_td = stack.enter_context(
-                    TemporarySerialDir(ssh_client=ctx.ssh_client, remote=remote)
+                    TmpDir(ssh_client=ctx.ssh_client, remote=remote)
                 )
                 try:
                     build_and_serialize(
@@ -331,162 +320,3 @@ def register(
 
             reg_resp = register_serialized_pkg(ctx, protos)
             _print_reg_resp(reg_resp, ctx.default_container.image_name)
-
-        with open(ctx.version_archive_path, "a") as f:
-            f.write(ctx.version + "\n")
-
-
-def _login(ctx: RegisterCtx):
-
-    headers = {"Authorization": f"Bearer {ctx.token}"}
-    data = {"pkg_name": ctx.image, "ws_account_id": current_workspace()}
-    response = requests.post(ctx.latch_image_api_url, headers=headers, json=data)
-
-    try:
-        response = response.json()
-        access_key = response["tmp_access_key"]
-        secret_key = response["tmp_secret_key"]
-        session_token = response["tmp_session_token"]
-    except KeyError as err:
-        raise ValueError(f"malformed response on image upload: {response}") from err
-
-    # TODO: cache
-    try:
-        client = boto3.session.Session(
-            aws_access_key_id=access_key,
-            aws_secret_access_key=secret_key,
-            aws_session_token=session_token,
-            region_name="us-west-2",
-        ).client("ecr")
-        token = client.get_authorization_token()["authorizationData"][0][
-            "authorizationToken"
-        ]
-    except Exception as err:
-        raise ValueError(
-            f"unable to retreive an ecr login token for user {ctx.account_id}"
-        ) from err
-
-    user, password = base64.b64decode(token).decode("utf-8").split(":")
-    ctx.dkr_client.login(
-        username=user,
-        password=password,
-        registry=ctx.dkr_repo,
-    )
-
-
-def build_image(
-    ctx: RegisterCtx,
-    image_name: str,
-    context_path: Path,
-    dockerfile: Optional[Path] = None,
-) -> List[str]:
-
-    _login(ctx)
-    if dockerfile is not None:
-        dockerfile = str(dockerfile)
-    build_logs = ctx.dkr_client.build(
-        path=str(context_path),
-        dockerfile=dockerfile,
-        buildargs={"tag": f"{ctx.dkr_repo}/{image_name}"},
-        tag=f"{ctx.dkr_repo}/{image_name}",
-        decode=True,
-    )
-
-    return build_logs
-
-
-def serialize_pkg_in_container(
-    ctx: RegisterCtx, image_name: str, serialize_dir: Path
-) -> List[str]:
-
-    _serialize_cmd = ["make", "serialize"]
-    container = ctx.dkr_client.create_container(
-        f"{ctx.dkr_repo}/{image_name}",
-        command=_serialize_cmd,
-        volumes=[str(serialize_dir)],
-        host_config=ctx.dkr_client.create_host_config(
-            binds={
-                str(serialize_dir): {
-                    "bind": "/tmp/output",
-                    "mode": "rw",
-                },
-            }
-        ),
-    )
-    container_id = container.get("Id")
-    ctx.dkr_client.start(container_id)
-    logs = ctx.dkr_client.logs(container_id, stream=True)
-
-    return [x.decode("utf-8") for x in logs], container_id
-
-
-def upload_pkg_image(ctx: RegisterCtx, image_name: str) -> List[str]:
-
-    return ctx.dkr_client.push(
-        repository=f"{ctx.dkr_repo}/{image_name}",
-        stream=True,
-        decode=True,
-    )
-
-
-def register_serialized_pkg(ctx: RegisterCtx, files: List[Path]) -> dict:
-
-    headers = {"Authorization": f"Bearer {ctx.token}"}
-
-    serialize_files = {
-        "version": ctx.version.encode("utf-8"),
-        ".latch_ws": current_workspace().encode("utf-8"),
-    }
-    with contextlib.ExitStack() as stack:
-        file_handlers = [stack.enter_context(open(file, "rb")) for file in files]
-        for fh in file_handlers:
-            serialize_files[fh.name] = fh
-
-        response = requests.post(
-            ctx.latch_register_api_url,
-            headers=headers,
-            files=serialize_files,
-        )
-
-    return response.json()
-
-
-class TemporarySerialDir:
-
-    """Represents a temporary directory that can be local or on a remote machine."""
-
-    def __init__(self, ssh_client=None, remote=False):
-
-        if remote and not ssh_client:
-            raise ValueError("Must provide an ssh client if remote is True.")
-
-        self.remote = remote
-        self.ssh_client = ssh_client
-        self._tempdir = None
-
-    def __enter__(self, *args):
-        return self.create(*args)
-
-    def __exit__(self, *args):
-        self.cleanup(*args)
-
-    def create(self, *args):
-        if not self.remote:
-            self._tempdir = tempfile.TemporaryDirectory()
-            return Path(self._tempdir.name).resolve()
-        else:
-            td = "".join(
-                random.choice(
-                    string.ascii_uppercase + string.ascii_lowercase + string.digits
-                )
-                for _ in range(8)
-            )
-            self._tempdir = f"/tmp/{td}"
-            self.ssh_client.exec_command(f"mkdir {self._tempdir}")
-            return self._tempdir
-
-    def cleanup(self, *args):
-        if not self.remote:
-            self._tempdir.cleanup()
-        else:
-            self.ssh_client.exec_command(f"rmdir -rf {self._tempdir}")

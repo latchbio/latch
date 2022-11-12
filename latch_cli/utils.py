@@ -2,10 +2,12 @@
 
 import hashlib
 import os
+import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import jwt
+import paramiko
 
 from latch_cli.config.user import UserConfig
 from latch_cli.constants import FILE_MAX_SIZE, PKG_NAME
@@ -138,6 +140,64 @@ def hash_directory(dir_path: Path) -> str:
     return m.hexdigest()
 
 
+def generate_temporary_ssh_credentials(ssh_key_path: Path) -> str:
+    # check if there is already a valid key at that path, and if so, use that
+    # otherwise, if its not valid, remove it
+    if ssh_key_path.exists():
+        try:
+            # check if file is valid + print out a fingerprint for the key
+            cmd = ["ssh-keygen", "-l", "-f", ssh_key_path]
+            valid_private_key = subprocess.run(cmd, check=True, capture_output=True)
+            cmd = ["ssh-keygen", "-l", "-f", ssh_key_path.with_suffix(".pub")]
+            valid_public_key = subprocess.run(cmd, check=True, capture_output=True)
+
+            if valid_private_key.stdout != valid_public_key.stdout:
+                raise
+
+            # if both files are valid and their fingerprints match, use them instead of generating a new pair
+            print(f"Found existing key pair at {ssh_key_path}.")
+        except:
+            print(f"Found malformed key-pair at {ssh_key_path}. Overwriting.")
+            ssh_key_path.unlink(missing_ok=True)
+            ssh_key_path.with_suffix(".pub").unlink(missing_ok=True)
+
+    # generate private key
+    if not ssh_key_path.exists():
+        cmd = ["ssh-keygen", "-f", ssh_key_path, "-N", "", "-q"]
+        try:
+            subprocess.run(cmd, check=True)
+        except subprocess.CalledProcessError as e:
+            raise ValueError(
+                "There was a problem creating temporary SSH credentials. Please ensure that "
+                "`ssh-keygen` is installed and available in your PATH."
+            ) from e
+        os.chmod(ssh_key_path, 0o700)
+
+    # make key available to ssh-agent daemon
+    cmd = ["ssh-add", ssh_key_path]
+    try:
+        subprocess.run(cmd, check=True, stderr=subprocess.DEVNULL)
+    except subprocess.CalledProcessError as e:
+        raise ValueError(
+            "There was an issue adding temporary SSH credentials to your SSH Agent. Please ensure "
+            "that your SSH Agent is running, or (re)start it manually by running\n\n    $ eval `ssh-agent -s`"
+            "\n\n"
+        ) from e
+
+    # decode private key into public key
+    cmd = ["ssh-keygen", "-y", "-f", ssh_key_path]
+    try:
+        out = subprocess.run(cmd, check=True, capture_output=True)
+    except subprocess.CalledProcessError as e:
+        raise ValueError(
+            "There was a problem decoding your temporary credentials. Please ensure that "
+            "`ssh-keygen` is installed and available in your PATH."
+        ) from e
+
+    public_key = out.stdout.decode("utf-8").strip("\n")
+    return public_key
+
+
 def get_local_package_version() -> str:
     try:
         from importlib import metadata
@@ -167,3 +227,41 @@ def get_latest_package_version() -> str:
         version = get_latest_package_version_request()
 
     return version
+
+
+class TemporarySSHCredentials:
+    def __init__(self, ssh_key_path: Path):
+        self._ssh_key_path = ssh_key_path
+        self._public_key = None
+
+    def generate(self):
+        if self._public_key is not None:
+            return
+        self._public_key = generate_temporary_ssh_credentials(self._ssh_key_path)
+
+    def cleanup(self):
+        subprocess.run(
+            ["ssh-add", "-d", self._ssh_key_path],
+            check=True,
+            stderr=subprocess.DEVNULL,
+        )
+        self._ssh_key_path.unlink(missing_ok=True)
+        self._ssh_key_path.with_suffix(".pub").unlink(missing_ok=True)
+
+    @property
+    def public_key(self):
+        self.generate()
+        return self._public_key
+
+    @property
+    def private_key(self):
+        self.generate()
+        with open(self._ssh_key_path, "r") as f:
+            return f.read()
+
+    def __enter__(self):
+        self.generate()
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.cleanup()

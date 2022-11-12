@@ -1,6 +1,7 @@
 import json
 import os
 import platform
+import re
 import sys
 import tarfile
 import tempfile
@@ -14,6 +15,10 @@ from latch_cli.utils import get_local_package_version
 class _CrashReporter:
 
     """Write logs + system information to disk when Exception is thrown."""
+
+    IGNORE_REGEX = re.compile(
+        "(\.git|\.latch_report\.tar\.gz|traceback\.txt|metadata\.json)"
+    )
 
     def __init__(self):
 
@@ -59,6 +64,7 @@ class _CrashReporter:
                     os.path.join(dp, f)
                     for dp, _, filenames in os.walk(pkg_path)
                     for f in filenames
+                    if not (self.IGNORE_REGEX.match(os.path.join(dp, f)))
                 ]
                 for file_path in pkg_files:
                     file_size = os.path.getsize(file_path)
@@ -77,6 +83,8 @@ class _CrashReporter:
                 json.dump(self.metadata, ntf)
                 ntf.seek(0)
                 tf.add(ntf.name, arcname="metadata.json")
+
+            print(">> Crash report written to .latch_report.tar.gz")
 
 
 CrashReporter = _CrashReporter()

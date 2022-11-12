@@ -1,6 +1,8 @@
 from os import PathLike
 from typing import Optional, Type, Union
 
+from latch_cli.services.cp import _download
+
 try:
     from typing import Annotated
 except ImportError:
@@ -79,6 +81,8 @@ class LatchFile(FlyteFile):
                     ctx is not None
                     and hasattr(self, "_remote_path")
                     and self._remote_path is not None
+                    # todo(kenny) is this necessary?
+                    and ctx.inspect_objects_only is False
                 ):
                     self.path = ctx.file_access.get_random_local_path(self._remote_path)
                     return ctx.file_access.get_data(
@@ -107,7 +111,7 @@ class LatchFile(FlyteFile):
     def __repr__(self):
         if self.remote_path is None:
             return f'LatchFile("{self.local_path}")'
-        return f'LatchFile("{self.local_path}", remote_path="{self.remote_path}")'
+        return f'LatchFile("{self.path}", remote_path="{self.remote_path}")'
 
     def __str__(self):
         if self.remote_path is None:

@@ -14,7 +14,7 @@ if CURRENT_PYTHON < MIN_PYTHON_VERSION:
 
 setup(
     name="latch",
-    version="v2.5.1",
+    version="v2.8.0",
     author_email="kenny@latch.bio",
     description="The Latchbio SDK",
     packages=find_packages(),
@@ -27,6 +27,8 @@ setup(
     },
     install_requires=[
         "awscli==1.25.22",
+        "asyncssh==2.12.0",
+        "aioconsole==0.5.1",
         "kubernetes>=24.2.0",
         "pyjwt>=0.2.0",
         "requests>=2.0",
@@ -36,10 +38,13 @@ setup(
         "scp>=0.14.0",
         "boto3>=1.24.22",
         "tqdm>=4.63.0",
-        "lytekit==0.9.0",
-        "lytekitplugins-pods==0.3.1",
+        "lytekit==0.13.5",
+        "lytekitplugins-pods==0.4.0",
         "typing-extensions==4.3.0",
         "apscheduler==3.9.1",
+        "uvloop==0.17.0",
+        "websockets==10.3",
+        "prompt-toolkit==3.0.29",
     ],
     classifiers=[
         "Programming Language :: Python :: 3.7",

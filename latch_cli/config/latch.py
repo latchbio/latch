@@ -15,6 +15,7 @@ SDK_ENDPOINTS = {
     "get-test-data-creds": "/sdk/get-test-data-creds",
     "initiate-multipart-upload": "/sdk/initiate-multipart-upload",
     "complete-multipart-upload": "/sdk/complete-multipart-upload",
+    "check-workflow-version": "/sdk/check-workflow-version",
     "download": "/sdk/download",
     "list-files": "/sdk/list",
     "initiate-image-upload": "/sdk/initiate-image-upload",
@@ -31,12 +32,16 @@ SDK_ENDPOINTS = {
     "touch": "/sdk/touch",
     "pod-exec-info": "/sdk/get-pod-exec-info",
     "provision-centromere": "/sdk/provision-centromere",
+    "get-image-from-task": "/sdk/get-image-from-task",
     "preview": "/sdk/workflow-ui-preview",
     "get-ws": "/sdk/get-ws",
     "get-executions": "/sdk/get-executions",
     "get-workflow-graph": "/sdk/get-workflow-graph",
     "get-logs": "/sdk/get-logs-for-node",
     "abort-execution": "/sdk/abort-execution",
+    "local-development": "/sdk/initiate-local-development-session",
+    "close-local-development": "/sdk/close-local-development-session",
+    "get-latest-version": "/sdk/get-latest-version",
 }
 
 

@@ -79,6 +79,8 @@ class LatchDir(FlyteDirectory):
                     ctx is not None
                     and hasattr(self, "_remote_directory")
                     and self._remote_directory is not None
+                    # todo(kenny) is this necessary?
+                    and ctx.inspect_objects_only is False
                 ):
                     self.path = ctx.file_access.get_random_local_directory()
                     return ctx.file_access.get_data(
@@ -107,7 +109,7 @@ class LatchDir(FlyteDirectory):
     def __repr__(self):
         if self.remote_path is None:
             return f'LatchDir("{self.local_path}")'
-        return f'LatchDir("{self.local_path}", remote_path="{self.remote_path}")'
+        return f'LatchDir("{self.path}", remote_path="{self.remote_path}")'
 
     def __str__(self):
         if self.remote_path is None:
