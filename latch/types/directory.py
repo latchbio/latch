@@ -79,6 +79,7 @@ class LatchDir(FlyteDirectory):
                     ctx is not None
                     and hasattr(self, "_remote_directory")
                     and self._remote_directory is not None
+                    # todo(kenny) is this necessary?
                     and ctx.inspect_objects_only is False
                 ):
                     self.path = ctx.file_access.get_random_local_directory()

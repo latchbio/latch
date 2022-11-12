@@ -1,9 +1,9 @@
 FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:dd8f-main
 
 # Install R
-RUN apt-get update -y &&\
-    apt-get install -y software-properties-common &&\
-    add-apt-repository "deb http://cloud.r-project.org/bin/linux/debian buster-cran40/" &&\
+RUN apt-get update -y && \
+    apt-get install -y software-properties-common && \
+    add-apt-repository "deb http://cloud.r-project.org/bin/linux/debian buster-cran40/" && \
     apt-get install -y r-base r-base-dev libxml2-dev libcurl4-openssl-dev libssl-dev wget
 
 # Install some packages (replace with your own)

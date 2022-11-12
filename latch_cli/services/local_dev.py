@@ -52,7 +52,7 @@ async def copy_files(ssh_conn: asyncssh.SSHClientConnection, pkg_root: Path):
                     path,
                     (ssh_conn, f"~/{pkg_root.name}"),
                     recurse=True,
-                    block_size=16384,
+                    block_size=16 * 1024,
                 )
             )
         else:
@@ -121,33 +121,47 @@ async def run_local_dev_session(pkg_root: Path):
     with TemporarySSHCredentials(key_path) as ssh:
         headers = {"Authorization": f"Bearer {retrieve_or_login()}"}
 
-        cent_resp = post(
-            sdk_endpoints["provision-centromere"],
-            headers=headers,
-            json={"public_key": ssh.public_key},
-        )
+        try:
+            cent_resp = post(
+                sdk_endpoints["provision-centromere"],
+                headers=headers,
+                json={"public_key": ssh.public_key},
+            )
+            cent_resp.raise_for_status()
 
-        init_local_dev_resp = post(
-            sdk_endpoints["local-development"],
-            headers=headers,
-            json={
-                "ws_account_id": current_workspace(),
-                "pkg_root": pkg_root.name,
-            },
-        )
+            init_local_dev_resp = post(
+                sdk_endpoints["local-development"],
+                headers=headers,
+                json={
+                    "ws_account_id": current_workspace(),
+                    "pkg_root": pkg_root.name,
+                },
+            )
+            init_local_dev_resp.raise_for_status()
+        except Exception as e:
+            raise ValueError(f"Unable to provision a remote instance: {e}")
 
         if init_local_dev_resp.status_code == 403:
             raise ValueError("You are not authorized to use this feature.")
 
-        cent_data = cent_resp.json()
-        centromere_ip = cent_data["ip"]
-        centromere_username = cent_data["username"]
+        try:
+            cent_data = cent_resp.json()
+            centromere_ip = cent_data["ip"]
+            centromere_username = cent_data["username"]
+        except KeyError as e:
+            raise ValueError(f"Malformed response from provision endpoint: missing {e}")
 
-        init_local_dev_data = init_local_dev_resp.json()
-        access_key = init_local_dev_data["docker"]["tmp_access_key"]
-        secret_key = init_local_dev_data["docker"]["tmp_secret_key"]
-        session_token = init_local_dev_data["docker"]["tmp_session_token"]
-        port = init_local_dev_data["port"]
+        try:
+            init_local_dev_data = init_local_dev_resp.json()
+            docker_info = init_local_dev_data["docker"]
+            access_key = docker_info["tmp_access_key"]
+            secret_key = docker_info["tmp_secret_key"]
+            session_token = docker_info["tmp_session_token"]
+            port = init_local_dev_data["port"]
+        except KeyError as e:
+            raise ValueError(
+                f"Malformed response from initialization endpoint: missing {e}"
+            )
 
         # ecr setup
         ws_id = current_workspace()
@@ -169,6 +183,7 @@ async def run_local_dev_session(pkg_root: Path):
             raise ValueError(f"unable to retrieve an ecr login token") from err
 
         try:
+            # todo(ayush) make this use the endpoint instead and figure out a way to not create the image_name again
             paginator = ecr_client.get_paginator("describe_images")
             image_name = f"{ws_id}_{pkg_root.name}"
             iterator = paginator.paginate(repositoryName=image_name)
@@ -177,11 +192,11 @@ async def run_local_dev_session(pkg_root: Path):
             )
             latest = next(filter_iterator)
             image_name_tagged = f"{config.dkr_repo}/{image_name}:{latest}"
-        except:
+        except StopIteration as e:
             raise ValueError(
                 "This workflow hasn't been registered yet. "
                 "Please register at least once to use this feature."
-            )
+            ) from e
 
         async with asyncssh.connect(
             centromere_ip, username=centromere_username
@@ -315,5 +330,4 @@ async def shell_session(
 
 
 def local_development(pkg_root: Path):
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(run_local_dev_session(pkg_root))
+    asyncio.run(run_local_dev_session(pkg_root))

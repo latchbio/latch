@@ -81,6 +81,7 @@ class LatchFile(FlyteFile):
                     ctx is not None
                     and hasattr(self, "_remote_path")
                     and self._remote_path is not None
+                    # todo(kenny) is this necessary?
                     and ctx.inspect_objects_only is False
                 ):
                     self.path = ctx.file_access.get_random_local_path(self._remote_path)

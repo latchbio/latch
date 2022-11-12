@@ -147,14 +147,15 @@ def generate_temporary_ssh_credentials(ssh_key_path: Path) -> str:
         try:
             # check if file is valid + print out a fingerprint for the key
             cmd = ["ssh-keygen", "-l", "-f", ssh_key_path]
-            valid_private_key = subprocess.run(cmd, check=True)
+            valid_private_key = subprocess.run(cmd, check=True, capture_output=True)
             cmd = ["ssh-keygen", "-l", "-f", ssh_key_path.with_suffix(".pub")]
-            valid_public_key = subprocess.run(cmd, check=True)
+            valid_public_key = subprocess.run(cmd, check=True, capture_output=True)
+
             if valid_private_key.stdout != valid_public_key.stdout:
                 raise
-            else:
-                # if both files are valid and their fingerprints match, use them instead of generating a new pair
-                print(f"Found existing key pair at {ssh_key_path}.")
+
+            # if both files are valid and their fingerprints match, use them instead of generating a new pair
+            print(f"Found existing key pair at {ssh_key_path}.")
         except:
             print(f"Found malformed key-pair at {ssh_key_path}. Overwriting.")
             ssh_key_path.unlink(missing_ok=True)
@@ -169,8 +170,8 @@ def generate_temporary_ssh_credentials(ssh_key_path: Path) -> str:
             raise ValueError(
                 "There was a problem creating temporary SSH credentials. Please ensure that "
                 "`ssh-keygen` is installed and available in your PATH."
-            )
-        os.chmod(ssh_key_path, int("700", base=8))
+            ) from e
+        os.chmod(ssh_key_path, 0o700)
 
     # make key available to ssh-agent daemon
     cmd = ["ssh-add", ssh_key_path]
@@ -181,7 +182,7 @@ def generate_temporary_ssh_credentials(ssh_key_path: Path) -> str:
             "There was an issue adding temporary SSH credentials to your SSH Agent. Please ensure "
             "that your SSH Agent is running, or (re)start it manually by running\n\n    $ eval `ssh-agent -s`"
             "\n\n"
-        )
+        ) from e
 
     # decode private key into public key
     cmd = ["ssh-keygen", "-y", "-f", ssh_key_path]
@@ -191,7 +192,7 @@ def generate_temporary_ssh_credentials(ssh_key_path: Path) -> str:
         raise ValueError(
             "There was a problem decoding your temporary credentials. Please ensure that "
             "`ssh-keygen` is installed and available in your PATH."
-        )
+        ) from e
 
     public_key = out.stdout.decode("utf-8").strip("\n")
     return public_key
@@ -234,8 +235,9 @@ class TemporarySSHCredentials:
         self._public_key = None
 
     def generate(self):
-        if self._public_key is None:
-            self._public_key = generate_temporary_ssh_credentials(self._ssh_key_path)
+        if self._public_key is not None:
+            return
+        self._public_key = generate_temporary_ssh_credentials(self._ssh_key_path)
 
     def cleanup(self):
         subprocess.run(

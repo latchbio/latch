@@ -112,17 +112,15 @@ def construct_dkr_client(ssh_host: Optional[str] = None):
         host = environment.get("DOCKER_HOST")
 
         # empty string for cert path is the same as unset.
-        cert_path = environment.get("DOCKER_CERT_PATH") or None
+        cert_path = environment.get("DOCKER_CERT_PATH")
+        if cert_path == "":
+            cert_path = None
 
         # empty string for tls verify counts as "false".
         # Any value or 'unset' counts as true.
-        tls_verify = environment.get("DOCKER_TLS_VERIFY")
-        if tls_verify == "":
-            tls_verify = False
-        else:
-            tls_verify = tls_verify is not None
+        tls_verify = environment.get("DOCKER_TLS_VERIFY") is not ""
 
-        enable_tls = cert_path or tls_verify
+        enable_tls = tls_verify or cert_path is not None
 
         dkr_client = None
         try:
@@ -207,10 +205,9 @@ class TmpDir:
             return Path(self._tempdir.name).resolve()
         else:
             td = "".join(
-                random.choice(
-                    string.ascii_uppercase + string.ascii_lowercase + string.digits
+                random.choices(
+                    string.ascii_uppercase + string.ascii_lowercase + string.digits, k=8
                 )
-                for _ in range(8)
             )
             self._tempdir = f"/tmp/{td}"
             self.ssh_client.exec_command(f"mkdir {self._tempdir}")
@@ -220,4 +217,4 @@ class TmpDir:
         if not self.remote:
             self._tempdir.cleanup()
         else:
-            self.ssh_client.exec_command(f"rmdir -rf {self._tempdir}")
+            self.ssh_client.exec_command(f"rm -rf {self._tempdir}")

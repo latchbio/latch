@@ -54,8 +54,8 @@ class CentromereCtx:
     version = None
     serialize_dir = None
     default_container: Container
-    # Used to asscociate alternate containers with tasks
-    container_map: Dict[str, Container] = {}
+    # Used to associate alternate containers with tasks
+    container_map: Dict[str, Container]
     workflow_name: Optional[str]
 
     latch_register_api_url = endpoints["register-workflow"]
@@ -86,12 +86,13 @@ class CentromereCtx:
             self.pkg_root = Path(pkg_root).resolve()
             self.dkr_repo = LatchConfig.dkr_repo
             self.remote = remote
+            self.container_map = {}
 
             default_dockerfile = self.pkg_root.joinpath("Dockerfile")
             if not default_dockerfile.exists():
                 raise FileNotFoundError(
                     "Make sure you are passing a directory that contains a ",
-                    "valid dockerfile to '$latch register'.",
+                    "valid dockerfile to `$ latch register`.",
                 )
             import_flyte_objects([self.pkg_root])
 
@@ -183,8 +184,8 @@ class CentromereCtx:
         #   digits, underscores, periods and dashes. A tag name may not start with a period
         #   or a dash and may contain a maximum of 128 characters.
 
-        match = re.match("^[a-zA-Z0-9_][a-zA-Z0-9._-]{,127}", self.version)
-        if not match or match.span()[0] != 0 or match.span()[1] != len(self.version):
+        match = re.match("^[a-zA-Z0-9_][a-zA-Z0-9._-]{,127}$", self.version)
+        if match is None:
             raise ValueError(
                 f"{self.version} is an invalid version for AWS "
                 "ECR. Please provide a version that accomodates the ",
@@ -253,12 +254,11 @@ class CentromereCtx:
 
         resp = response.json()
         try:
-            image_name = resp["image_name"]
+            return resp["image_name"]
         except KeyError as e:
             raise ValueError(
                 f"Malformed response from request for access token {resp}"
             ) from e
-        return image_name
 
     def nucleus_check_version(self, version: str, workflow_name: str) -> bool:
         """Check if version has already been registered for given workflow"""
@@ -281,20 +281,22 @@ class CentromereCtx:
 
         resp = response.json()
         try:
-            exists = resp["exists"]
+            return resp["exists"]
         except KeyError as e:
             raise ValueError(
                 f"Malformed response from request for access token {resp}"
             ) from e
-        return exists
 
     def __enter__(self):
         return self
 
     def cleanup(self):
-        if self.ssh_key_path is not None:
+        if self.ssh_key_path is None:
+            return
+        try:
             cmd = ["ssh-add", "-d", self.ssh_key_path]
             subprocess.run(cmd)
+        finally:
             self.ssh_key_path.unlink(missing_ok=True)
             self.ssh_key_path.with_suffix(".pub").unlink(missing_ok=True)
 
