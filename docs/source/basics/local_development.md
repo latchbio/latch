@@ -3,7 +3,7 @@
 Ideas: 
 - Sandbox environment for testing and debugging
 
-It is often helpful to iteratively test and debug your workflow before registering them to Latch. The Latch SDK provides the command `latch develop` to enable fast local testing and debugging of workflows on Latch. 
+It is often helpful to iteratively test and debug your workflow before registering them to Latch. The Latch SDK provides the command `latch develop` to enable fast local testing and debugging of workflows on Latch. With `latch develop`, you can start a sandbox environment that is identical to the environment your workflow will be run in.
 
 To open up a session for debugging, first navigate to your workflow directory: 
 ```
@@ -44,6 +44,8 @@ To demonstrate how to use `latch develop`, we will walk through an end-to-end fl
 * Have a conceptual understanding of how Latch workflows work through reading the [Quickstart](../getting_started/quick_start.md) and [Authoring your own workflow](../getting_started/authoring_your_workflow.md)
 
 ## Building a Simple Variant Calling Workflow 
+
+* Clone the code 
 
 
 
