@@ -1,4 +1,56 @@
-# Local Development
+# Iterative development
+
+Ideas: 
+- Sandbox environment for testing and debugging
+
+It is often helpful to iteratively test and debug your workflow before registering them to Latch. The Latch SDK provides the command `latch develop` to enable fast local testing and debugging of workflows on Latch. 
+
+To open up a session for debugging, first navigate to your workflow directory: 
+```
+$ ls
+covid-wf
+
+$ cd covid-wf
+```
+
+Make sure that your workflow is first registered on Latch: 
+```
+$ latch register --remote .
+```
+
+Then, you can open a development session with: 
+```
+$ latch develop .
+```
+Output: 
+```
+Copying your local changes... 
+Could not find /Users/hannahle/Documents/GitHub/covid-wf/data - skipping
+Could not find /Users/hannahle/Documents/GitHub/covid-wf/scripts - skipping
+Done.
+Successfully connected to remote instance.
+Pulling 4034_covid-wf, this will only take a moment... 
+Image successfully pulled.
+
+>>>
+```
+
+
+## Example Iterative Development Flow
+To demonstrate how to use `latch develop`, we will walk through an end-to-end flow of building and debugging a workflow from scratch. 
+
+## Prerequisites
+* Install [Latch](../getting_started/quick_start.md)
+* Have a conceptual understanding of how Latch workflows work through reading the [Quickstart](../getting_started/quick_start.md) and [Authoring your own workflow](../getting_started/authoring_your_workflow.md)
+
+## Building a Simple Variant Calling Workflow 
+
+
+
+### The difference between `latch develop` and calling a script from Python
+
+### What happens behind when you run `latch develop`
+
 
 Executing workflows on the LatchBio platform is heavily encouraged for consistent behavior.
 
