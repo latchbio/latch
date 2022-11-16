@@ -1,11 +1,11 @@
-# Iterative development
+<!-- # Iterative development
 
-Ideas: 
+Ideas:
 - Sandbox environment for testing and debugging
 
-It is often helpful to iteratively test and debug your workflow before registering them to Latch. The Latch SDK provides the command `latch develop` to enable fast local testing and debugging of workflows on Latch. 
+It is often helpful to iteratively test and debug your workflow before registering them to Latch. The Latch SDK provides the command `latch develop` to enable fast local testing and debugging of workflows on Latch.
 
-To open up a session for debugging, first navigate to your workflow directory: 
+To open up a session for debugging, first navigate to your workflow directory:
 ```
 $ ls
 covid-wf
@@ -13,23 +13,23 @@ covid-wf
 $ cd covid-wf
 ```
 
-Make sure that your workflow is first registered on Latch: 
+Make sure that your workflow is first registered on Latch:
 ```
 $ latch register --remote .
 ```
 
-Then, you can open a development session with: 
+Then, you can open a development session with:
 ```
 $ latch develop .
 ```
-Output: 
+Output:
 ```
-Copying your local changes... 
+Copying your local changes...
 Could not find /Users/hannahle/Documents/GitHub/covid-wf/data - skipping
 Could not find /Users/hannahle/Documents/GitHub/covid-wf/scripts - skipping
 Done.
 Successfully connected to remote instance.
-Pulling 4034_covid-wf, this will only take a moment... 
+Pulling 4034_covid-wf, this will only take a moment...
 Image successfully pulled.
 
 >>>
@@ -37,13 +37,13 @@ Image successfully pulled.
 
 
 ## Example Iterative Development Flow
-To demonstrate how to use `latch develop`, we will walk through an end-to-end flow of building and debugging a workflow from scratch. 
+To demonstrate how to use `latch develop`, we will walk through an end-to-end flow of building and debugging a workflow from scratch.
 
 ## Prerequisites
 * Install [Latch](../getting_started/quick_start.md)
 * Have a conceptual understanding of how Latch workflows work through reading the [Quickstart](../getting_started/quick_start.md) and [Authoring your own workflow](../getting_started/authoring_your_workflow.md)
 
-## Building a Simple Variant Calling Workflow 
+## Building a Simple Variant Calling Workflow
 
 
 
@@ -101,7 +101,36 @@ parameter values given the respective parameter type.
 
 ## File Behavior
 
+This is false - ayush
+`
 When a workflow is executing locally, remote path handling will be ignored. This
 means there will be no attempt to copy data from remote paths when ingesting or
 returning parameter values. Workflow logic will strictly read and write from the
-`local_path` property of the `LatchFile`/`LatchDir` type (first argument).
+`local_path` property of the `LatchFile`/`LatchDir` type (first argument). -->
+
+# Development and debugging
+
+When developing a workflow, its useful to be able to easily run your task functions so that you can debug issues more
+effectively and overall, iterate faster. However, since tasks and workflows need to run in a highly custom, specified
+environment (namely, the one defined in your Dockerfile(s)), it isn't always feasible to simply run your workflow
+locally.
+
+Say for instance you are writing a workflow that uses Google's [DeepVariant](https://github.com/google/deepvariant)
+model - running this locally would be nearly impossible (unless your daily driver is a supercomputer). This means that
+debugging this workflow as you are writing it would be difficult and time consuming, as you would have to register it
+anew *every time you needed to make an edit*.
+
+To address this, the Latch SDK comes with a command that allows you to quickly run tasks and debug your environment
+without having to wait for registration every time. Navigate to a workflow directory you would like to work on and run
+ `latch develop .`:
+
+```console
+ayush@mbp:~$ latch init test-wf
+Downloading workflow data .......
+Created a latch workflow called test-wf.
+Run
+    $ latch register test-wf
+To register the workflow with console.latch.bio.
+ayush@mbp:~$ cd test-wf
+ayush@mbp:~/test-wf$ latch develop .
+```
