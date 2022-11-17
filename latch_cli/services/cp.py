@@ -247,7 +247,11 @@ def _download(remote_source: str, local_dest: str, executor: cf.ThreadPoolExecut
 
     response_data = response.json()
     if response_data["dir"]:
-        _download_dir(output_dir, response_data, executor)
+        futures = []
+        _download_dir(output_dir, response_data, futures, executor)
+        for fut in cf.as_completed(futures):
+            # TODO(ayush) send over size info in response and properly use progress bars
+            print(f"Finished downloading {fut.result()}", flush=True)
     else:
         _download_file(response_data["url"], output_dir)
 
@@ -255,22 +259,20 @@ def _download(remote_source: str, local_dest: str, executor: cf.ThreadPoolExecut
 def _download_dir(
     output_dir: Path,
     response_data: dict,
+    futures: list,
     executor: cf.ThreadPoolExecutor,
 ):
     output_dir.mkdir(exist_ok=True)
     urls = response_data["url"]
 
-    futures = []
     for name in urls:
         sub_path = output_dir.joinpath(name)
         if urls[name]["dir"]:
-            futures.append(
-                executor.submit(
-                    target=_download_dir,
-                    output_dir=sub_path,
-                    response_data=urls[name],
-                    executor=executor,
-                )
+            _download_dir(
+                output_dir=sub_path,
+                response_data=urls[name],
+                futures=futures,
+                executor=executor,
             )
         else:
             futures.append(
@@ -288,10 +290,7 @@ def _download_file(url: str, output_path: Path):
         with open(output_path.resolve(), "wb") as f:
             for chunk in r.iter_content(chunk_size=FILE_CHUNK_SIZE):
                 f.write(chunk)
-
-    # TODO(ayush) send over size info in response and properly use progress bars
-    with IO_LOCK:
-        print(f"Finished downloading {output_path.name}", flush=True)
+    return output_path
 
 
 def cp(source_file: str, destination_file: str):
