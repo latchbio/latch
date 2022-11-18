@@ -1,8 +1,8 @@
-# Iterative development
+Iterative development
 
 It is often helpful to iteratively test and debug your workflow before registering them to Latch. The Latch SDK provides the command `latch develop` to enable fast local testing and debugging of workflows on Latch. With `latch develop`, you can start a sandbox environment that is identical to the environment your workflow will be run in.
 
-To open up a session for debugging, first navigate to your workflow directory: 
+To open up a session for debugging, first navigate to your workflow directory:
 ```
 $ ls
 covid-wf
@@ -10,28 +10,27 @@ covid-wf
 $ cd covid-wf
 ```
 
-Make sure that your workflow is first registered on Latch: 
+Make sure that your workflow is first registered on Latch:
 ```
 $ latch register --remote .
 ```
 
-Then, you can open a development session with: 
+Then, you can open a development session with:
 ```
 $ latch develop .
 ```
-Output: 
+Output:
 ```
-Copying your local changes... 
+Copying your local changes...
 Could not find /Users/hannahle/Documents/GitHub/covid-wf/data - skipping
 Could not find /Users/hannahle/Documents/GitHub/covid-wf/scripts - skipping
 Done.
 Successfully connected to remote instance.
-Pulling 4034_covid-wf, this will only take a moment... 
+Pulling 4034_covid-wf, this will only take a moment...
 Image successfully pulled.
 
 >>>
 ```
-
 ## Learning through An Example
 To demonstrate how to use `latch develop`, we will walk through an end-to-end flow of testing and debugging an existing workflow
 
@@ -39,7 +38,7 @@ To demonstrate how to use `latch develop`, we will walk through an end-to-end fl
 * Install [Latch](../getting_started/quick_start.md)
 * Have a conceptual understanding of how Latch workflows work through reading the [Quickstart](../getting_started/quick_start.md) and [Authoring your own workflow](../getting_started/authoring_your_workflow.md)
 
-## Building a Simple Variant Calling Workflow 
+## Building a Simple Variant Calling Workflow
 
 In this tutorial, we will be building a simple variant calling workflow. To follow along, you can clone the example code here: 
 ```
@@ -280,3 +279,150 @@ From the tutorial, you learned:
 * How to open a development session with `latch develop`
 * How to open an interactive bash for quick debugging of commands 
 * How to call a task and run a test script 
+
+# Development and debugging
+
+When developing a workflow, its useful to be able to easily run your task functions so that you can debug issues more
+effectively and overall, iterate faster. However, since tasks and workflows need to run in a highly custom, specified
+environment (namely, the one defined in your Dockerfile(s)), it isn't always feasible to simply run your workflow
+locally.
+
+Say for instance you are writing a workflow that uses Google's [DeepVariant](https://github.com/google/deepvariant)
+model - running this locally would be nearly impossible (unless your daily driver is a supercomputer). This means that
+debugging this workflow as you are writing it would be difficult and time consuming, as you would have to register it
+anew *every time you needed to make an edit*.
+
+To address this, the Latch SDK comes with a command that allows you to quickly run tasks and debug your environment
+without having to wait for registration every time. Navigate to a workflow directory you would like to work on and run
+ `latch develop .`:
+
+```console
+ayush@mbp:~$ latch init test-wf
+Downloading workflow data .......
+Created a latch workflow called test-wf.
+Run
+    $ latch register test-wf
+To register the workflow with console.latch.bio.
+ayush@mbp:~$ cd test-wf
+ayush@mbp:~/test-wf$ latch develop .
+```
+
+This command will drop you into a [REPL](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop) in which
+you can do several things.
+
+## Running tasks
+
+If you want to run a task quickly, simply type `run <task_name>` into the prompt. This will run the specified task in a
+container with the correct environment and stream all output to your terminal, allowing for quick debugging at the task
+level. Since this is running in the Docker container you created with your Dockerfile, you don't have to worry about not
+having any of the binaries or the dependencies that you need.
+
+You can configure which inputs the task runs on by changing the default values of the arguments in the task definition.
+For example, for the below task definition (taken from the boilerplate generated from `latch init`), running
+`run assembly_task` would result in `assembly_task` being run on `LatchFile("latch:///read1.txt")` and
+`LatchFile("latch:///read2.txt")`.
+
+```python
+@small_task
+def assembly_task(
+    read1: LatchFile = LatchFile("latch:///read1.txt"), # <== these are what the task will be run on
+    read2: LatchFile = LatchFile("latch:///read2.txt"), # <==
+) -> LatchFile:
+
+    # A reference to our output.
+    sam_file = Path("covid_assembly.sam").resolve()
+
+    _bowtie2_cmd = [
+        "bowtie2/bowtie2",
+        "--local",
+        "-x",
+        "wuhan",
+        "-1",
+        read1.local_path,
+        "-2",
+        read2.local_path,
+        "--very-sensitive-local",
+        "-S",
+        str(sam_file),
+    ]
+
+    subprocess.run(_bowtie2_cmd)
+
+    return LatchFile(str(sam_file), "latch:///covid_assembly.sam")
+```
+
+You can then make changes to the task function and run the new function without any hassle by repeating the above
+command.
+
+## Running scripts
+
+If you want to debug multiple tasks at once, you can again do so very easily by using scripts. Simply create a
+`scripts` folder and write python scripts in there.
+
+```console
+ayush@mbp:~/test-wf$ mkdir scripts
+ayush@mbp:~/test-wf$ echo 'print("hello world")' > scripts/hello_world.py
+```
+
+You can run any script in the `scripts` folder by using the command `run-script` in the local develop REPL.
+
+```console
+>>> run-script scripts/hello_world.py
+hello world
+```
+
+To use your tasks, simply import them from the `wf` module. For example, the following script runs the same task that
+was defined above.
+
+```python
+# filename: test.py
+#
+# Run this as below
+#
+# >>> run-script scripts/test.py
+
+from latch.types import LatchFile
+
+import wf
+
+wf.assembly_task(
+    read1=LatchFile("latch:///read1.txt"),
+    read2=LatchFile("latch:///read2.txt"),
+)
+```
+
+Running this script will run `assembly_task`, just the same as the previous `run` command. You can add to this though,
+and run multiple tasks in the same script, as below.
+
+```python
+# filename: test.py
+
+from latch.types import LatchFile
+
+import wf
+
+sam = wf.assembly_task(
+    read1=LatchFile("latch:///read1.txt"),
+    read2=LatchFile("latch:///read2.txt"),
+)
+
+wf.sort_bam_task(sam=sam)
+```
+
+Hence using scripts, you can rapidly test the interactions between tasks, making workflow development faster and less
+frustrating.
+
+## Exploring the environment
+
+If you are running into issues with your environment (say, for example, a binary isn't where you expect it to be), you can see for yourself exactly what the environment looks like. Simply run `shell` in the REPL to get a fully functional bash session in the Docker container you created.
+
+```console
+>>> shell
+
+root@ip-10-0-11-243:~$
+```
+
+Now you can explore the environment as you would like, test out programs, and more.
+
+
+
