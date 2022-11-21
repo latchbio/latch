@@ -86,6 +86,7 @@ basics/conditional_and_map_tasks
 :maxdepth: 2
 :caption: Testing and Debugging a Workflow
 basics/local_development
+basics/latch_develop_example
 basics/remote_execution
 ```
 

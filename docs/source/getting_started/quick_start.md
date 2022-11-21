@@ -94,6 +94,7 @@ The next time your scientists want to reconstruct COVID genome from sequencing r
 
 ## Next Steps
 * Understand [how to author your own workflow](../getting_started/authoring_your_workflow.md). 
+* Understand [how to test and debug your workflow](../basics/local_development.md).
 * Read the [Concepts](../basics/what_is_a_workflow.md) page
 * Visit [Examples](../examples/workflows_examples.md) to see real-world bioinformatics workflows being built using Latch SDK
 * Join the SDK open-source community on Slack [here](https://forms.gle/sCjr8tdjzx5HjVW27)! 
