@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import re
 import sys
 import termios
 import tty
@@ -12,12 +13,15 @@ import asyncssh
 import boto3
 import websockets.client as websockets
 import websockets.exceptions
+from flytekit.core.context_manager import FlyteEntities
+from flytekit.core.workflow import PythonFunctionWorkflow
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import NestedCompleter, PathCompleter
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit.patch_stdout import patch_stdout
 from prompt_toolkit.shortcuts import PromptSession
 
+from latch_cli.centromere.utils import import_flyte_objects
 from latch_cli.config.latch import LatchConfig
 from latch_cli.tinyrequests import post
 from latch_cli.utils import (
@@ -33,7 +37,35 @@ QUIT_COMMANDS = ["quit", "exit"]
 EXEC_COMMANDS = ["shell", "run", "run-script"]
 LIST_COMMANDS = ["ls", "list-tasks"]
 
+COMMAND_EXPRESSION = re.compile("^(run\s.+|run-script\s.+|shell|list-tasks|ls.*)$")
+
 COMMANDS = QUIT_COMMANDS + EXEC_COMMANDS + LIST_COMMANDS
+
+
+def get_latest_image(pkg_root: Path) -> str:
+    import_flyte_objects(paths=[pkg_root])
+
+    wf_name = ""
+    for entity in FlyteEntities.entities:
+        if isinstance(entity, PythonFunctionWorkflow):
+            wf_name = entity.name
+
+    if wf_name == "":
+        raise ValueError("Package root does not contain a workflow definition.")
+
+    resp = post(
+        sdk_endpoints["get-latest-version"],
+        headers={"Authorization": f"Bearer {retrieve_or_login()}"},
+        json={
+            "wf_name": wf_name,
+            "ws_account_id": current_workspace(),
+        },
+    )
+
+    resp.raise_for_status()
+    latest_version = resp.json()["version"]
+
+    return f"{config.dkr_repo}/{current_workspace()}_{pkg_root.name}:{latest_version}"
 
 
 async def copy_files(ssh_conn: asyncssh.SSHClientConnection, pkg_root: Path):
@@ -62,7 +94,10 @@ async def copy_files(ssh_conn: asyncssh.SSHClientConnection, pkg_root: Path):
         await asyncio.gather(*coroutines)
 
 
-async def get_messages(ws: websockets.WebSocketClientProtocol, show_output: bool):
+async def get_messages(
+    ws: websockets.WebSocketClientProtocol,
+    show_output: bool,
+):
     async for message in ws:
         msg = json.loads(message)
         if msg.get("Type") == "exit":
@@ -182,22 +217,6 @@ async def run_local_dev_session(pkg_root: Path):
         except Exception as err:
             raise ValueError(f"unable to retrieve an ecr login token") from err
 
-        try:
-            # todo(ayush) make this use the endpoint instead and figure out a way to not create the image_name again
-            paginator = ecr_client.get_paginator("describe_images")
-            image_name = f"{ws_id}_{pkg_root.name}"
-            iterator = paginator.paginate(repositoryName=image_name)
-            filter_iterator = iterator.search(
-                "sort_by(imageDetails, &to_string(imagePushedAt))[-1].imageTags"
-            )
-            latest = next(filter_iterator)
-            image_name_tagged = f"{config.dkr_repo}/{image_name}:{latest}"
-        except StopIteration as e:
-            raise ValueError(
-                "This workflow hasn't been registered yet. "
-                "Please register at least once to use this feature."
-            ) from e
-
         async with asyncssh.connect(
             centromere_ip, username=centromere_username
         ) as ssh_conn:
@@ -215,16 +234,6 @@ async def run_local_dev_session(pkg_root: Path):
                         "Successfully connected to remote instance."
                     )
                     try:
-                        await send_message(ws, docker_access_token)
-                        await send_message(ws, image_name_tagged)
-
-                        await aioconsole.aprint(
-                            f"Pulling {image_name}, this will only take a moment... "
-                        )
-                        await get_messages(ws, show_output=False)
-                        await get_messages(ws, show_output=False)
-                        await aioconsole.aprint("Image successfully pulled.\n")
-
                         while True:
                             with session.input.raw_mode():
                                 cmd: str = await session.prompt_async()
@@ -233,22 +242,32 @@ async def run_local_dev_session(pkg_root: Path):
                                 continue
 
                             if cmd in QUIT_COMMANDS:
-                                await aioconsole.aprint(
-                                    "Exiting local development session"
-                                )
-                                await ws.close()
-                                return
+                                raise EOFError
 
-                            if cmd.startswith("run"):
-                                await aioconsole.aprint(
-                                    "Syncing your local changes... "
-                                )
+                            if not COMMAND_EXPRESSION.match(cmd):
+                                await aioconsole.aprint("Invalid command")
+                                continue
+
+                            if (
+                                cmd.startswith("run")
+                                or cmd == "list-tasks"
+                                or cmd == "shell"
+                            ):
+                                await aioconsole.aprint("Syncing local changes... ")
                                 await copy_files(ssh_conn, pkg_root)
-                                await aioconsole.aprint(
-                                    "Finished syncing. Beginning execution and streaming logs:"
-                                )
+                                await aioconsole.aprint("Finished syncing.")
 
                             await send_message(ws, cmd)
+
+                            image_name_tagged = get_latest_image(pkg_root)
+                            await send_message(ws, docker_access_token)
+                            await send_message(ws, image_name_tagged)
+                            await aioconsole.aprint(f"Pulling {image_name_tagged}... ")
+
+                            await get_messages(ws, show_output=False)
+                            await get_messages(ws, show_output=False)
+                            await aioconsole.aprint("Image successfully pulled.\n")
+
                             await get_messages(ws, show_output=True)
 
                             if cmd == "shell":
