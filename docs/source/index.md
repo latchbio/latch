@@ -100,6 +100,13 @@ basics/remote_registration
 ```{toctree}
 :hidden:
 :maxdepth: 2
+:caption: Reusing a Workflow
+basics/reuse_workflows
+```
+
+```{toctree}
+:hidden:
+:maxdepth: 2
 :caption: Examples
 examples/workflows_examples
 examples/docker_recipes
