@@ -1,4 +1,3 @@
-
 # Learning through An Example
 To demonstrate how to use `latch develop`, we will walk through an end-to-end flow of testing and debugging an existing variant calling workflow.
 
@@ -9,7 +8,7 @@ To demonstrate how to use `latch develop`, we will walk through an end-to-end fl
 ## Building a Simple Variant Calling Workflow
 
 In this tutorial, we will be building a simple variant calling workflow. To follow along, you can clone the example code here:
-```
+```console
 $ git clone https://github.com/hannahle/simple-variant-calling.git
 
 $ cd simple-variant-calling
@@ -32,7 +31,7 @@ To do so, you can navigate to [console.latch.bio](https://console.latch.bio), an
 ![Upload](../assets/latch-develop-example/data-upload.png)
 
 Once your data has finished uploading, you can verify whether it exists on Latch by using `latch ls` like so:
-```
+```console
 $ latch ls
 
 Size Date Modified Name
@@ -41,27 +40,28 @@ Size Date Modified Name
 ```
 
 ## Overview of the variant calling workflow
-The data we are working with is part of a long-term evolution experiment by Richard Lenski. The experiment was designed to assess adaptation of _E. coli_. A population was propgated for more than 40,000 generations in a glucose-limited minimal medium that was supplemented with citrate. Sequencing of the populations at differnt time points revealed that that spontaneous citrate-using variant (Cit+) appeared between 31,000 and 31,500 generations, causing an increase in population size and diversity.
+The data we are working with is part of a long-term evolution experiment by [Richard Lenski](https://lenski.mmg.msu.edu/), which was designed to assess the adaptation of _E. coli_ in various environments. 
 
-Variant calling is a common workflow used to see
-how the population of _E. coli_ changed over time relative to the original population, _E. coli_ strain REL606. Therefore, we will align each of our samples to the _E. coli_ strain REL606 reference genome to determine what differences exist between our reads versus the genome.
+A population of these bacteria was propagated for over 40,000 generations in a glucose-limited minimal medium which was supplemented with citrate. Sequencing of the populations at different time points revealed that a spontaneous citrate-using variant (Cit+) appeared between 31,000 and 31,500 generations, causing an increase in population size and diversity. 
+
+Variant calling is a common workflow that can be used to observe the change in a population over successive generations. We can use this to analyze how the population of _E. coli_ in this experiment changed over time relative to the original population, _E. coli_ strain REL606. To do so, we will align each of our samples to the original _E. coli_ strain's (REL606) reference genome to determine what differences exist between our reads after 40,000 generations versus the original genome. 
 
 ![Upload](../assets/latch-develop-example/variant-calling-wf.png)
 
-Our variant calling pipeline consists of five sequential steps:
+Our variant calling pipeline will consist of five steps: 
 1. Index the reference genome
-2. Align reads to reference genome
-3. Convert SAM to BAM format
-4. Sort BAM file by coordinates
-5. Variant calling
+2. Align our reads to the reference genome
+3. Convert our aligned reads from SAM to BAM format 
+4. Sort our BAM file by coordinates
+5. Perform variant calling
 
-Correspondingly, the Latch SDK workflow contains five tasks (`_build_index`, `align_reads`, `convert_to_bam`, `sort_bam`, and `variant_calling`).
+Hence, our workflow will contain five tasks: `build_index`, `align_reads`, `convert_to_bam`, `sort_bam`, and `variant_calling`.
 
-We've provided the code for the five tasks above for you in the `buggy-wf`, which you will now test and debug!
+We've provided some (buggy) code for the five tasks above for you in the `buggy-wf`, which you will now test and debug!
 
 ## Testing and Debugging the Workflow
 * First, enter the `buggy-wf` folder and register it to Latch:
-```
+```console
 $ ls
 buggy-wf        good-wf         wgs
 
@@ -71,10 +71,10 @@ $ latch register --remote .
 ```
 
 ## Defining a test script
-* Before testing the workflow end-to-end, it is helpful to run and test each task individually. To do so, you can create a folder called `scripts`, which contain a Python file that calls each of your task functions.
+* Before testing the workflow end-to-end, it is helpful to run and test each task individually. To do so, create a folder called `scripts`, which will contain Python files that can call your task functions. 
 
-```
-# Folder structure inside buggy-wf
+```console
+$ tree .
 .
 ├── Dockerfile
 ├── README.md
@@ -82,9 +82,7 @@ $ latch register --remote .
 │   └── main.py
 ├── version
 └── wf
-    ├── __init__.py
-    └── __pycache__
-        └── __init__.cpython-39.pyc
+    └── __init__.py
 
 3 directories, 6 files
 ```
@@ -93,27 +91,26 @@ For example, our `main.py` script can look like:
 
 ```python
 # Import task functions from our workflow
-from wf import _build_index, align_reads, convert_to_bam, sort_bam, variant_calling
+from wf import build_index, align_reads, convert_to_bam, sort_bam, variant_calling
 from latch.types import LatchFile, LatchDir
 
 # Call task function
-_build_index(ref_genome = LatchFile("latch:///wgs/ref_genome/ecoli_rel606.fasta"))
+build_index(ref_genome = LatchFile("latch:///wgs/ref_genome/ecoli_rel606.fasta"))
 ```
 
-* The first line imports all tasks from `wf/__init__.py` to `scripts/main.py`
-* The second line imports the appropriate Latch types
-* The third line calls the task function to index the reference genome, `_build_index`.
+* The first line imports all tasks defined in `wf/__init__.py` so that we can reference them in this script.
+* The second line imports the necessary Latch types.
+* The third line calls the task function to index the reference genome, `build_index`.
 
 ![Copy](../assets/latch-develop-example/copy.png)
-* To use a file on Latch as test data to the task, navigate to Latch Console, click on that file and copy the path using the "Copy" button on the sidebar. After copying the path, you can prefix it with `latch://` to specify that it is a file on Latch, and pass the whole string as a parameter to `LatchFile`.
+
+To use a file on Latch as test data to the task, navigate to the Latch Console, click on the specific file and copy the path shown on the sidebar. After copying the path, prefix it with `latch://` to specify that it is a file on Latch, and pass the whole string as a parameter to `LatchFile`. 
 
 ## Calling the test script
-* Inside `buggy-wf`, start a devleopment session with:
-```
+* Inside `buggy-wf`, start a development session by running: 
+```console
 $ latch develop .
-```
-Output:
-```
+
 Copying your local changes...
 Could not find /Users/hannahle/Documents/GitHub/simple-variant-calling/buggy-wf/data - skipping
 Done.
@@ -123,12 +120,10 @@ Image successfully pulled.
 >>>
 ```
 
-* To run the test script, type:
+* Run the test script as below:
 ```
 >>> run-script scripts/main.py
-```
-Output:
-```
+
 Syncing your local changes...
 Could not find /Users/hannahle/Documents/GitHub/simple-variant-calling/buggy-wf/data - skipping
 Finished syncing. Beginning execution and streaming logs:
@@ -138,79 +133,89 @@ Finished downloading ecoli_rel606.fasta
 2022-11-17 00:09:13,104 flytekit ERROR Exception occured when executing task: [Errno 2] No such file or directory: 'bwa'
 ====================
 ```
-* The logs tell us that there is no file or directory called `bwa`. One potential reason why is we might not have installed the binary `bwa` correctly.
+The logs tell us that there is no file or directory called `bwa`. One potential reason why is that we might not have installed the binary `bwa` correctly. 
 
-* To check this, let's open up a shell and check if the `bwa` command exists:
-```
+To check this, let's open up a shell and check if the `bwa` command exists:
+```console
 >>> shell
 
 account-4034-development@ip-10-0-11-243:~$
 ```
-which opens up an interactive bash session.
-```
+
+This opens up an interactive bash session into the environment in which our task is running, which we can use just like a normal terminal. Trying to run `bwa` in it yields the following output:
+
+```console
 account-4034-development@ip-10-0-11-243:~$ bwa
 bash: bwa: command not found
 ```
-* Indeed, our `bwa` binary was not installed properly!
-* Checking the Dockerfile, we noticed that the installation instruction for `bwa` was commented out. Let's uncomment it.
+Indeed, our `bwa` binary was not installed! Checking the Dockerfile, notice that the installation instruction for `bwa` is commented out. Let's uncomment it:
 ```Dockerfile
 ...
-RUN apt install bwa
+RUN apt-get install bwa
 ...
 ```
 
-* Because we made a modification to our Dockerfile, we have to rebuild the environment and enter a new development session to load in the newest changes.
-* Exit your current development session:
-```
+Because we made a modification to our Dockerfile, we have to rebuild the environment and enter a new development session to load in the newest changes. First, exit your current development session: 
+```console
 account-4034-development@ip-10-0-11-243:~$ exit
 >>> exit
 Exiting local development session
 ```
-* Re-register your workflow with the new Docker image
-```
+
+Re-register your workflow with the new Docker image
+```console
 $ latch register --remote .
 ```
-* Once your workflow finishes registering, enter a new development session:
-```
+
+Next, once your workflow finishes registering, enter a new development session:
+```console
 $ latch develop .
 ```
-* Now, re-run the test script:
+
+Now, re-run the test script:
 ```
 >>> run-script scripts/main.py
 ```
 Your script should now run successfully!
 
-**Where are my outputs?**
-* Let's inspect the return statement of the `_build_index` task inside `wf/__init__.py`:
+## Where are my outputs?
+
+To make sure that our tasks are working properly, lets look at their output files to make sure that they're correct. Where do we find them though? Let's inspect the return statement of the `build_index` task inside `wf/__init__.py`:
+
 ```python
 @small_task
-def _build_index(ref_genome: LatchFile = LatchFile("latch:///wgs/ref_genome/ecoli_rel606.fasta")) -> LatchDir:
+def build_index(ref_genome: LatchFile = LatchFile("latch:///wgs/ref_genome/ecoli_rel606.fasta")) -> LatchDir:
     _bwa_cmd = [
         "bwa",
         "index",
         ref_genome.local_path
     ]
     subprocess.run(_bwa_cmd)
-    output = os.path.dirname(os.path.abspath(ref_genome.local_path))
+    output = Path(ref_genome.local_path).resolve().parent
 
     return LatchDir(output, "latch:///wgs/ref_genome")
 ```
-* We can see the task is returning a `LatchDir` with the filepath `latch:///wgs/ref_genome`, which indicates that the output files are located inside the `/wgs/ref_genome` folder on Latch!
+We can see the task is returning a `LatchDir` with the remote path `latch:///wgs/ref_genome`, which indicates that the output files are located inside the `/wgs/ref_genome` folder in the Latch Console.
 
 ![Outputs](../assets/latch-develop-example/ref_genome.png)
 
 ## Debugging Subsequent Tasks
-* Similarly to how we tested our first task, we can also call the second task from `scripts/main.py` like so:
+Similarly to how we tested our first task, we can also call the second task from `scripts/main.py` like so:
 ```python
-from wf import _build_index, align_reads, convert_to_bam, sort_bam, variant_calling
+from wf import build_index, align_reads, convert_to_bam, sort_bam, variant_calling
 from latch.types import LatchFile, LatchDir
 
-ref_genome_dir = _build_index(ref_genome = LatchFile("latch:///wgs/ref_genome/ecoli_rel606.fasta"))
+build_index(ref_genome=LatchFile("latch:///wgs/ref_genome/ecoli_rel606.fasta"))
 
-align_reads(ref_genome_dir = ref_genome_dir, read1 = LatchFile("latch:///wgs/trimmed_fastqs/SRR2584863_1.trim.sub.fastq"), read2 = LatchFile("latch:///wgs/trimmed_fastqs/SRR2584863_2.trim.sub.fastq"))
+align_reads(
+    ref_genome_dir=LatchDir("latch:///wgs/ref_genome/"),
+    read1=LatchFile("latch:///wgs/data/SRR2584863_1.trim.sub.fastq"),
+    read2=LatchFile("latch:///wgs/data/SRR2584863_2.trim.sub.fastq"),
+)
 ```
-* Here, we are passing the output of the first task, `latch:///wgs/ref_genome`, as the input to the second task.
-* Run the test script:
+Here, we are passing the output of the first task, `latch:///wgs/ref_genome`, as the input to the second task.
+
+Run the test script:
 ```
 >>> run-script scripts/main.py
 
@@ -231,12 +236,14 @@ Original exception: failed to get presigned url for `latch:///wgs/trimmed_fastqs
 ====================
 ```
 
-* The error tells us that there is no file called `/wgs/trimmed_fastqs/SRR2584863_1.trim.sub.fastq` on Latch. Referencing the actual file paths of the trimmed FastQs, we can see that the filepath is indeeed wrong, with the correct filepath being `/wgs/data/SRR2584863_1.trim.sub.fastq`.
-* We can make this modification to our test script and re-run the task
+This error tells us that there is no file called `/wgs/trimmed_fastqs/SRR2584863_1.trim.sub.fastq` in the Latch Console. Referencing the actual file paths of the trimmed FastQs, we can see that their paths are indeed wrong, with the correct paths being `/wgs/data/SRR2584863_1.trim.sub.fastq`, etc (listed under `/wgs/data` instead of `/wgs/trimmed_fastqs`). 
+
+We can make this modification to our test script and re-run the task as below:
 ```
 >>> run-script scripts/main.py
 ```
-* The task now outputs the results to the folder `/results` on Latch!
+
+The task now outputs the results to the folder `/results` on Latch!
 
 ![Aligned](../assets/latch-develop-example/aligned.png)
 
