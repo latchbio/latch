@@ -7,7 +7,7 @@ import sys
 import termios
 import tty
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 import aioconsole
 import asyncssh
@@ -69,7 +69,10 @@ def get_latest_image(pkg_root: Path) -> str:
     return f"{config.dkr_repo}/{current_workspace()}_{pkg_root.name}:{latest_version}"
 
 
-async def copy_files(ssh_conn: asyncssh.SSHClientConnection, pkg_root: Path):
+async def copy_files(
+    ssh_conn: asyncssh.SSHClientConnection,
+    pkg_root: Path,
+):
     # TODO(ayush) do something more sophisticated/only send over
     # diffs or smth to make this more efficient (rsync?)
 
@@ -114,14 +117,34 @@ async def get_messages(
 async def send_message(
     ws: websockets.WebSocketClientProtocol,
     message: Union[str, bytes],
+    typ: Optional[str] = None,
 ):
     if isinstance(message, bytes):
         message = message.decode("utf-8")
-    body = {"Body": message, "Type": None}
+    if typ is None:
+        typ = "body"
+    body = {"Body": message, "Type": typ}
     await ws.send(json.dumps(body))
     # yield control back to the event loop,
     # see https://github.com/aaugustin/websockets/issues/867
     await asyncio.sleep(0)
+
+
+async def send_resize_message(
+    ws: websockets.WebSocketClientProtocol,
+    term_width: int,
+    term_height: int,
+):
+    await send_message(
+        ws,
+        json.dumps(
+            {
+                "Width": term_width,
+                "Height": term_height,
+            }
+        ),
+        typ="resize",
+    )
 
 
 async def run_local_dev_session(pkg_root: Path):
@@ -296,29 +319,13 @@ async def shell_session(
     old_settings_stdin = termios.tcgetattr(sys.stdin.fileno())
     tty.setraw(sys.stdin)
 
-    old_sigwinch_handler = signal.getsignal(signal.SIGWINCH)
-
-    def new_sigwinch_handler(signum, frame):
-        old_sigwinch_handler(signum, frame)
-
-        cols, lines = os.get_terminal_size()
-
-        send_message(
-            ws,
-            json.dumps(
-                {
-                    "cols": cols,
-                }
-            ),
-        )
-
-    signal.signal(signal.SIGWINCH, new_sigwinch_handler)
-
     loop = asyncio.get_event_loop()
     reader = asyncio.StreamReader(loop=loop)
 
     stdin2 = os.dup(sys.stdin.fileno())
     stdout2 = os.dup(sys.stdout.fileno())
+
+    old_sigwinch_handler = signal.getsignal(signal.SIGWINCH)
 
     await loop.connect_read_pipe(
         lambda: asyncio.StreamReaderProtocol(
@@ -339,6 +346,21 @@ async def shell_session(
         loop,
     )
 
+    resize_event_queue = asyncio.Queue()
+
+    def new_sigwinch_handler(signum, frame):
+        # old_sigwinch_handler(signum, frame)
+
+        term_width, term_height = os.get_terminal_size()
+        resize_event_queue.put_nowait((term_width, term_height))
+
+    signal.signal(signal.SIGWINCH, new_sigwinch_handler)
+
+    async def resize_task():
+        while True:
+            (term_width, term_height) = await resize_event_queue.get()
+            await send_resize_message(ws, term_width, term_height)
+
     async def input_task():
         while True:
             message = await reader.read(1)
@@ -346,12 +368,12 @@ async def shell_session(
 
     async def output_task():
         async for output in ws:
-            msg = json.loads(output)
-            if msg.get("Type") == "exit":
+            obj: dict = json.loads(output)
+            if obj.get("Type") == "exit":
                 io_task.cancel()
                 return
 
-            message = msg.get("Body")
+            message = obj.get("Body")
             if isinstance(message, str):
                 message = message.encode("utf-8")
             writer.write(message)
@@ -359,7 +381,7 @@ async def shell_session(
             await asyncio.sleep(0)
 
     try:
-        io_task = asyncio.gather(input_task(), output_task())
+        io_task = asyncio.gather(input_task(), output_task(), resize_task())
         await io_task
     except asyncio.CancelledError:
         ...
