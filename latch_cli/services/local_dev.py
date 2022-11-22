@@ -1,4 +1,5 @@
 import asyncio
+import difflib
 import json
 import os
 import re
@@ -6,6 +7,7 @@ import signal
 import sys
 import termios
 import tty
+from enum import Enum
 from pathlib import Path
 from typing import Callable, Optional, Union
 
@@ -38,7 +40,9 @@ QUIT_COMMANDS = ["quit", "exit"]
 EXEC_COMMANDS = ["shell", "run", "run-script"]
 LIST_COMMANDS = ["ls", "list-tasks"]
 
-COMMAND_EXPRESSION = re.compile("^(run\s.+|run-script\s.+|shell|list-tasks|ls.*)$")
+COMMAND_EXPRESSION = re.compile(
+    "^\s*(run\s+.+|run-script\s+.+|shell|list-tasks|ls.*)\s*$"
+)
 
 COMMANDS = QUIT_COMMANDS + EXEC_COMMANDS + LIST_COMMANDS
 
@@ -98,13 +102,19 @@ async def copy_files(
         await asyncio.gather(*coroutines)
 
 
+class MessageType(Enum):
+    resize = "resize"
+    body = "body"
+    exit = "exit"
+
+
 async def get_messages(
     ws: websockets.WebSocketClientProtocol,
     show_output: bool,
 ):
     async for message in ws:
         msg = json.loads(message)
-        if msg.get("Type") == "exit":
+        if msg.get("Type") == MessageType.exit.value:
             return
         if show_output:
             await aioconsole.aprint(
@@ -117,13 +127,13 @@ async def get_messages(
 async def send_message(
     ws: websockets.WebSocketClientProtocol,
     message: Union[str, bytes],
-    typ: Optional[str] = None,
+    typ: Optional[MessageType] = None,
 ):
     if isinstance(message, bytes):
         message = message.decode("utf-8")
     if typ is None:
-        typ = "body"
-    body = {"Body": message, "Type": typ}
+        typ = MessageType.body
+    body = {"Body": message, "Type": typ.value}
     await ws.send(json.dumps(body))
     # yield control back to the event loop,
     # see https://github.com/aaugustin/websockets/issues/867
@@ -143,7 +153,7 @@ async def send_resize_message(
                 "Height": term_height,
             }
         ),
-        typ="resize",
+        typ=MessageType.resize,
     )
 
 
@@ -261,6 +271,7 @@ async def run_local_dev_session(pkg_root: Path):
                         while True:
                             with session.input.raw_mode():
                                 cmd: str = await session.prompt_async()
+                                cmd = cmd.strip()
 
                             if cmd == "":
                                 continue
@@ -270,6 +281,14 @@ async def run_local_dev_session(pkg_root: Path):
 
                             if not COMMAND_EXPRESSION.match(cmd):
                                 await aioconsole.aprint("Invalid command")
+
+                                closest = difflib.get_close_matches(
+                                    cmd.strip().split()[0], COMMANDS, 1
+                                )
+                                if len(closest) > 0:
+                                    await aioconsole.aprint(
+                                        f"Did you mean \x1b[1m{closest[0]}\x1b[0m?"
+                                    )
                                 continue
 
                             if (
@@ -356,6 +375,10 @@ async def shell_session(
         resize_event_queue.put_nowait((term_width, term_height))
 
     signal.signal(signal.SIGWINCH, new_sigwinch_handler)
+
+    # get initial terminal size and send it over
+    term_width, term_height = os.get_terminal_size()
+    resize_event_queue.put_nowait((term_width, term_height))
 
     async def resize_task():
         while True:
