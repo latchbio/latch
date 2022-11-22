@@ -7,7 +7,7 @@ import sys
 import termios
 import tty
 from pathlib import Path
-from typing import Optional, Union
+from typing import Callable, Optional, Union
 
 import aioconsole
 import asyncssh
@@ -349,7 +349,8 @@ async def shell_session(
     resize_event_queue = asyncio.Queue()
 
     def new_sigwinch_handler(signum, frame):
-        # old_sigwinch_handler(signum, frame)
+        if isinstance(old_sigwinch_handler, Callable):
+            old_sigwinch_handler(signum, frame)
 
         term_width, term_height = os.get_terminal_size()
         resize_event_queue.put_nowait((term_width, term_height))
