@@ -77,6 +77,7 @@ basics/working_with_files
 basics/parameter_types
 basics/defining_cloud_resources
 basics/customizing_interface
+basics/messages
 basics/caching
 basics/conditional_and_map_tasks
 ```
