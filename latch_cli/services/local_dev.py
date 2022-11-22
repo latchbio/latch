@@ -2,6 +2,7 @@ import asyncio
 import json
 import os
 import re
+import signal
 import sys
 import termios
 import tty
@@ -295,6 +296,24 @@ async def shell_session(
     old_settings_stdin = termios.tcgetattr(sys.stdin.fileno())
     tty.setraw(sys.stdin)
 
+    old_sigwinch_handler = signal.getsignal(signal.SIGWINCH)
+
+    def new_sigwinch_handler(signum, frame):
+        old_sigwinch_handler(signum, frame)
+
+        cols, lines = os.get_terminal_size()
+
+        send_message(
+            ws,
+            json.dumps(
+                {
+                    "cols": cols,
+                }
+            ),
+        )
+
+    signal.signal(signal.SIGWINCH, new_sigwinch_handler)
+
     loop = asyncio.get_event_loop()
     reader = asyncio.StreamReader(loop=loop)
 
@@ -346,6 +365,7 @@ async def shell_session(
         ...
     finally:
         termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, old_settings_stdin)
+        signal.signal(signal.SIGWINCH, old_sigwinch_handler)
 
 
 def local_development(pkg_root: Path):
