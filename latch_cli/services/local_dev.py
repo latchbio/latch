@@ -287,7 +287,7 @@ async def run_local_dev_session(pkg_root: Path):
                                 )
                                 if len(closest) > 0:
                                     await aioconsole.aprint(
-                                        f"Did you mean \x1b[1m{closest[0]}\x1b[0m?"
+                                        f"Did you mean \x1b[1m{closest[0]}\x1b[22m?"
                                     )
                                 continue
 
