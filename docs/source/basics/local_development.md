@@ -22,16 +22,15 @@ Run
 To register the workflow with console.latch.bio.
 
 $ cd test-wf
-
-$ latch register --remote . 
-
+$ latch register --remote .
 $ latch develop .
 ```
 
 This command will drop you into a [REPL](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop) in which
 you can do several things.
 
-Output: 
+Output:
+
 ```console
 $ latch develop .
 
@@ -89,12 +88,13 @@ def assembly_task(
     return LatchFile(str(sam_file), "latch:///covid_assembly.sam")
 ```
 
-You can run the task like so: 
+You can run the task like so:
+
 ```console
 >>> run assembly_task
 ```
 
-You can then make changes to the task function. All local changes will be automatically synced to the development session, and you can easily run the new task function for testing. 
+You can then make changes to the task function. All local changes will be automatically synced to the development session, and you can easily run the new task function for testing.
 
 ## Running scripts
 
@@ -102,8 +102,8 @@ If you want to debug multiple tasks at once, you can again do so very easily by 
 `scripts` folder inside your workflow directory and write python scripts in there.
 
 ```console
-$ mkdir scripts
-$ echo 'print("hello world")' > scripts/hello_world.py
+mkdir scripts
+echo 'print("hello world")' > scripts/hello_world.py
 ```
 
 You can run any script in the `scripts` folder by using the command `run-script` in the local develop REPL.
@@ -166,5 +166,7 @@ root@ip-10-0-11-243:~$
 Now you can explore the environment as you would like, test out programs, and more.
 
 ---
+
 ## Next Steps
-* The best way to learn is through examples. Visit the [Learning through An Example](../basics/latch_develop_example.md) page to see an end-to-end flow of how to use `latch develop` to test and debug a simple variant calling pipeline.
+
+The best way to learn is through examples. Visit the [Learning through An Example](../basics/latch_develop_example.md) page to see an end-to-end flow of how to use `latch develop` to test and debug a simple variant calling pipeline.
