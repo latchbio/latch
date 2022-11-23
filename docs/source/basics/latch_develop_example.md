@@ -5,11 +5,13 @@ To demonstrate how to use `latch develop`, we will walk through an end-to-end fl
 ## Prerequisites
 
 * Install [Latch](../getting_started/quick_start.md)
-* Have a conceptual understanding of how Latch workflows work through reading the [Quickstart](../getting_started/quick_start.md) and [Authoring your own workflow](../getting_started/authoring_your_workflow.md)
+* Have a conceptual understanding of how Latch workflows work through reading the [Quickstart](../getting_started
+  quick_start.md) and [Authoring your own workflow](../getting_started/authoring_your_workflow.md)
 
 ## Building a Simple Variant Calling Workflow
 
-In this tutorial, we will be building a simple variant calling workflow. To follow along, you can clone the example code here:
+In this tutorial, we will be building a simple variant calling workflow. To follow along, you can clone the example
+code here:
 
 ```console
 git clone https://github.com/hannahle/simple-variant-calling.git
@@ -22,7 +24,8 @@ The repository consists of three folders:
 * `good-wf`: The final, functional workflow
 * `wgs`: Test data for the workflow
 
-After this example, you will learn how to use `latch develop` to effectively test and debug the `buggy-wf` to arrive at the `good-wf`.
+After this example, you will learn how to use `latch develop` to effectively test and debug the `buggy-wf` to arrive at
+the `good-wf`.
 
 Let's get started!
 
@@ -30,7 +33,8 @@ Let's get started!
 
 First, we have to upload our test data folder, `wgs`, to the Latch Platform.
 
-To do so, you can navigate to [console.latch.bio](https://console.latch.bio), and drag and drop the test data folder on Latch. You should see a spinning wheel which indicates the status of your data upload.
+To do so, you can navigate to [console.latch.bio](https://console.latch.bio), and drag and drop the test data folder on
+Latch. You should see a spinning wheel which indicates the status of your data upload.
 
 ![Upload](../assets/latch-develop-example/data-upload.png)
 
@@ -46,11 +50,20 @@ Size Date Modified Name
 
 ## Overview of the variant calling workflow
 
-The data we are working with is part of a long-term evolution experiment by [Richard Lenski](https://lenski.mmg.msu.edu/), which was designed to assess the adaptation of _E. coli_ in various environments.
+The data we are working with is part of a long-term evolution experiment by
+[Richard Lenski](https://lenski.mmg.msu.edu/), which was designed to assess the adaptation of _E. coli_ in various
+environments.
 
-A population of these bacteria was propagated for over 40,000 generations in a glucose-limited minimal medium which was supplemented with citrate. Sequencing of the populations at different time points revealed that a spontaneous citrate-using variant (Cit+) appeared between 31,000 and 31,500 generations, causing an increase in population size and diversity.
+A population of these bacteria was propagated for over 40,000 generations in a glucose-limited minimal medium which was
+supplemented with citrate. Sequencing of the populations at different time points revealed that a spontaneous
+citrate-using variant (Cit+) appeared between 31,000 and 31,500 generations, causing an increase in population size and
+diversity.
 
-Variant calling is a common workflow that can be used to observe the change in a population over successive generations. We can use this to analyze how the population of _E. coli_ in this experiment changed over time relative to the original population, _E. coli_ strain REL606. To do so, we will align each of our samples to the original _E. coli_ strain's (REL606) reference genome to determine what differences exist between our reads after 40,000 generations versus the original genome.
+Variant calling is a common workflow that can be used to observe the change in a population over successive
+generations. We can use this to analyze how the population of _E. coli_ in this experiment changed over time relative
+to the original population, _E. coli_ strain REL606. To do so, we will align each of our samples to the original _E.
+coli_ strain's (REL606) reference genome to determine what differences exist between our reads after 40,000 generations
+versus the original genome.
 
 ![Upload](../assets/latch-develop-example/variant-calling-wf.png)
 
@@ -62,7 +75,8 @@ Our variant calling pipeline will consist of five steps:
 4. Sort our BAM file by coordinates
 5. Perform variant calling
 
-Hence, our workflow will contain five tasks: `build_index`, `align_reads`, `convert_to_bam`, `sort_bam`, and `variant_calling`.
+Hence, our workflow will contain five tasks: `build_index`, `align_reads`, `convert_to_bam`, `sort_bam`, and
+`variant_calling`.
 
 We've provided some (buggy) code for the five tasks above for you in the `buggy-wf`, which you will now test and debug!
 
@@ -81,7 +95,8 @@ $ latch register --remote .
 
 ## Defining a test script
 
-Before testing the workflow end-to-end, it is helpful to run and test each task individually. To do so, create a folder called `scripts`, which will contain Python files that can call your task functions.
+Before testing the workflow end-to-end, it is helpful to run and test each task individually. To do so, create a folder
+called `scripts`, which will contain Python files that can call your task functions.
 
 ```console
 $ tree .
@@ -177,7 +192,8 @@ RUN apt-get install bwa
 ...
 ```
 
-Because we made a modification to our Dockerfile, we have to rebuild the environment and enter a new development session to load in the newest changes. First, exit your current development session:
+Because we made a modification to our Dockerfile, we have to rebuild the environment and enter a new development
+session to load in the newest changes. First, exit your current development session:
 
 ```console
 account-4034-development@ip-10-0-11-243:~$ exit
@@ -209,7 +225,8 @@ Your script should now run successfully!
 
 ## Where are my outputs?
 
-To make sure that our tasks are working properly, lets look at their output files to make sure that they're correct. Where do we find them though? Let's inspect the return statement of the `build_index` task inside `wf/__init__.py`:
+To make sure that our tasks are working properly, lets look at their output files to make sure that they're correct.
+Where do we find them though? Let's inspect the return statement of the `build_index` task inside `wf/__init__.py`:
 
 ```python
 @small_task
@@ -225,7 +242,8 @@ def build_index(ref_genome: LatchFile = LatchFile("latch:///wgs/ref_genome/ecoli
     return LatchDir(output, "latch:///wgs/ref_genome")
 ```
 
-We can see the task is returning a `LatchDir` with the remote path `latch:///wgs/ref_genome`, which indicates that the output files are located inside the `/wgs/ref_genome` folder in the Latch Console.
+We can see the task is returning a `LatchDir` with the remote path `latch:///wgs/ref_genome`, which indicates that the
+output files are located inside the `/wgs/ref_genome` folder in the Latch Console.
 
 ![Outputs](../assets/latch-develop-example/ref_genome.png)
 
@@ -264,13 +282,18 @@ Finished downloading ecoli_rel606.fasta
 Finished downloading ecoli_rel606.fasta.bwt
 ['/tmp/flyte-4jp7wtbm/sandbox/local_flytekit/638a02102804a22fa669f18a715b580a/ecoli_rel606.fasta']
 ====================
-2022-11-17 00:42:29,046 flytekit ERROR Exception occured when executing task: Failed to get data from latch:///wgs/trimmed_fastqs/SRR2584863_1.trim.sub.fastq to /tmp/flyte-4jp7wtbm/sandbox/local_flytekit/3b8d7234fe9c7d3e37ec78af9c592208/SRR2584863_1.trim.sub.fastq (recursive=False).
+2022-11-17 00:42:29,046 flytekit ERROR Exception occured when executing task: Failed to get data from latch:///wgs/
+trimmed_fastqs/SRR2584863_1.trim.sub.fastq to /tmp/flyte-4jp7wtbm/sandbox/local_flytekit/
+3b8d7234fe9c7d3e37ec78af9c592208/SRR2584863_1.trim.sub.fastq (recursive=False).
 
 Original exception: failed to get presigned url for `latch:///wgs/trimmed_fastqs/SRR2584863_1.trim.sub.fastq`
 ====================
 ```
 
-This error tells us that there is no file called `/wgs/trimmed_fastqs/SRR2584863_1.trim.sub.fastq` in the Latch Console. Referencing the actual file paths of the trimmed FastQs, we can see that their paths are indeed wrong, with the correct paths being `/wgs/data/SRR2584863_1.trim.sub.fastq`, etc (listed under `/wgs/data` instead of `/wgs/trimmed_fastqs`).
+This error tells us that there is no file called `/wgs/trimmed_fastqs/SRR2584863_1.trim.sub.fastq` in the Latch
+Console. Referencing the actual file paths of the trimmed FastQs, we can see that their paths are indeed wrong, with
+the correct paths being `/wgs/data/SRR2584863_1.trim.sub.fastq`, etc (listed under `/wgs/data` instead of `/wgs/
+trimmed_fastqs`).
 
 We can make this modification to our test script and re-run the task as below:
 
@@ -284,7 +307,8 @@ The task now outputs the results to the folder `/results` on Latch!
 
 ## Exercise
 
-As an exercise, you are welcome to continue and debug the final three tasks of the whole workflow. The solution of a working workflow is provided in the `good-wf` folder for reference.
+As an exercise, you are welcome to continue and debug the final three tasks of the whole workflow. The solution of a
+working workflow is provided in the `good-wf` folder for reference.
 
 ---
 
