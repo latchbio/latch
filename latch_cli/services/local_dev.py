@@ -1,23 +1,30 @@
 import asyncio
+import difflib
 import json
 import os
+import re
+import signal
 import sys
 import termios
 import tty
+from enum import Enum
 from pathlib import Path
-from typing import Union
+from typing import Callable, Optional, Union
 
 import aioconsole
 import asyncssh
 import boto3
 import websockets.client as websockets
 import websockets.exceptions
+from flytekit.core.context_manager import FlyteEntities
+from flytekit.core.workflow import PythonFunctionWorkflow
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.completion import NestedCompleter, PathCompleter
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit.patch_stdout import patch_stdout
 from prompt_toolkit.shortcuts import PromptSession
 
+from latch_cli.centromere.utils import import_flyte_objects
 from latch_cli.config.latch import LatchConfig
 from latch_cli.tinyrequests import post
 from latch_cli.utils import (
@@ -33,10 +40,43 @@ QUIT_COMMANDS = ["quit", "exit"]
 EXEC_COMMANDS = ["shell", "run", "run-script"]
 LIST_COMMANDS = ["ls", "list-tasks"]
 
+COMMAND_EXPRESSION = re.compile(
+    "^\s*(run\s+.+|run-script\s+.+|shell|list-tasks|ls.*)\s*$"
+)
+
 COMMANDS = QUIT_COMMANDS + EXEC_COMMANDS + LIST_COMMANDS
 
 
-async def copy_files(ssh_conn: asyncssh.SSHClientConnection, pkg_root: Path):
+def get_latest_image(pkg_root: Path) -> str:
+    import_flyte_objects(paths=[pkg_root])
+
+    wf_name = ""
+    for entity in FlyteEntities.entities:
+        if isinstance(entity, PythonFunctionWorkflow):
+            wf_name = entity.name
+
+    if wf_name == "":
+        raise ValueError("Package root does not contain a workflow definition.")
+
+    resp = post(
+        sdk_endpoints["get-latest-version"],
+        headers={"Authorization": f"Bearer {retrieve_or_login()}"},
+        json={
+            "wf_name": wf_name,
+            "ws_account_id": current_workspace(),
+        },
+    )
+
+    resp.raise_for_status()
+    latest_version = resp.json()["version"]
+
+    return f"{config.dkr_repo}/{current_workspace()}_{pkg_root.name}:{latest_version}"
+
+
+async def copy_files(
+    ssh_conn: asyncssh.SSHClientConnection,
+    pkg_root: Path,
+):
     # TODO(ayush) do something more sophisticated/only send over
     # diffs or smth to make this more efficient (rsync?)
 
@@ -62,10 +102,19 @@ async def copy_files(ssh_conn: asyncssh.SSHClientConnection, pkg_root: Path):
         await asyncio.gather(*coroutines)
 
 
-async def get_messages(ws: websockets.WebSocketClientProtocol, show_output: bool):
+class MessageType(Enum):
+    resize = "resize"
+    body = "body"
+    exit = "exit"
+
+
+async def get_messages(
+    ws: websockets.WebSocketClientProtocol,
+    show_output: bool,
+):
     async for message in ws:
         msg = json.loads(message)
-        if msg.get("Type") == "exit":
+        if msg.get("Type") == MessageType.exit.value:
             return
         if show_output:
             await aioconsole.aprint(
@@ -78,14 +127,34 @@ async def get_messages(ws: websockets.WebSocketClientProtocol, show_output: bool
 async def send_message(
     ws: websockets.WebSocketClientProtocol,
     message: Union[str, bytes],
+    typ: Optional[MessageType] = None,
 ):
     if isinstance(message, bytes):
         message = message.decode("utf-8")
-    body = {"Body": message, "Type": None}
+    if typ is None:
+        typ = MessageType.body
+    body = {"Body": message, "Type": typ.value}
     await ws.send(json.dumps(body))
     # yield control back to the event loop,
     # see https://github.com/aaugustin/websockets/issues/867
     await asyncio.sleep(0)
+
+
+async def send_resize_message(
+    ws: websockets.WebSocketClientProtocol,
+    term_width: int,
+    term_height: int,
+):
+    await send_message(
+        ws,
+        json.dumps(
+            {
+                "Width": term_width,
+                "Height": term_height,
+            }
+        ),
+        typ=MessageType.resize,
+    )
 
 
 async def run_local_dev_session(pkg_root: Path):
@@ -182,22 +251,6 @@ async def run_local_dev_session(pkg_root: Path):
         except Exception as err:
             raise ValueError(f"unable to retrieve an ecr login token") from err
 
-        try:
-            # todo(ayush) make this use the endpoint instead and figure out a way to not create the image_name again
-            paginator = ecr_client.get_paginator("describe_images")
-            image_name = f"{ws_id}_{pkg_root.name}"
-            iterator = paginator.paginate(repositoryName=image_name)
-            filter_iterator = iterator.search(
-                "sort_by(imageDetails, &to_string(imagePushedAt))[-1].imageTags"
-            )
-            latest = next(filter_iterator)
-            image_name_tagged = f"{config.dkr_repo}/{image_name}:{latest}"
-        except StopIteration as e:
-            raise ValueError(
-                "This workflow hasn't been registered yet. "
-                "Please register at least once to use this feature."
-            ) from e
-
         async with asyncssh.connect(
             centromere_ip, username=centromere_username
         ) as ssh_conn:
@@ -215,40 +268,49 @@ async def run_local_dev_session(pkg_root: Path):
                         "Successfully connected to remote instance."
                     )
                     try:
-                        await send_message(ws, docker_access_token)
-                        await send_message(ws, image_name_tagged)
-
-                        await aioconsole.aprint(
-                            f"Pulling {image_name}, this will only take a moment... "
-                        )
-                        await get_messages(ws, show_output=False)
-                        await get_messages(ws, show_output=False)
-                        await aioconsole.aprint("Image successfully pulled.\n")
-
                         while True:
                             with session.input.raw_mode():
                                 cmd: str = await session.prompt_async()
+                                cmd = cmd.strip()
 
                             if cmd == "":
                                 continue
 
                             if cmd in QUIT_COMMANDS:
-                                await aioconsole.aprint(
-                                    "Exiting local development session"
-                                )
-                                await ws.close()
-                                return
+                                raise EOFError
 
-                            if cmd.startswith("run"):
-                                await aioconsole.aprint(
-                                    "Syncing your local changes... "
+                            if not COMMAND_EXPRESSION.match(cmd):
+                                await aioconsole.aprint("Invalid command")
+
+                                closest = difflib.get_close_matches(
+                                    cmd.strip().split()[0], COMMANDS, 1
                                 )
+                                if len(closest) > 0:
+                                    await aioconsole.aprint(
+                                        f"Did you mean \x1b[1m{closest[0]}\x1b[22m?"
+                                    )
+                                continue
+
+                            if (
+                                cmd.startswith("run")
+                                or cmd == "list-tasks"
+                                or cmd == "shell"
+                            ):
+                                await aioconsole.aprint("Syncing local changes... ")
                                 await copy_files(ssh_conn, pkg_root)
-                                await aioconsole.aprint(
-                                    "Finished syncing. Beginning execution and streaming logs:"
-                                )
+                                await aioconsole.aprint("Finished syncing.")
 
                             await send_message(ws, cmd)
+
+                            image_name_tagged = get_latest_image(pkg_root)
+                            await send_message(ws, docker_access_token)
+                            await send_message(ws, image_name_tagged)
+                            await aioconsole.aprint(f"Pulling {image_name_tagged}... ")
+
+                            await get_messages(ws, show_output=False)
+                            await get_messages(ws, show_output=False)
+                            await aioconsole.aprint("Image successfully pulled.\n")
+
                             await get_messages(ws, show_output=True)
 
                             if cmd == "shell":
@@ -282,6 +344,8 @@ async def shell_session(
     stdin2 = os.dup(sys.stdin.fileno())
     stdout2 = os.dup(sys.stdout.fileno())
 
+    old_sigwinch_handler = signal.getsignal(signal.SIGWINCH)
+
     await loop.connect_read_pipe(
         lambda: asyncio.StreamReaderProtocol(
             reader,
@@ -301,6 +365,26 @@ async def shell_session(
         loop,
     )
 
+    resize_event_queue = asyncio.Queue()
+
+    def new_sigwinch_handler(signum, frame):
+        if isinstance(old_sigwinch_handler, Callable):
+            old_sigwinch_handler(signum, frame)
+
+        term_width, term_height = os.get_terminal_size()
+        resize_event_queue.put_nowait((term_width, term_height))
+
+    signal.signal(signal.SIGWINCH, new_sigwinch_handler)
+
+    # get initial terminal size and send it over
+    term_width, term_height = os.get_terminal_size()
+    resize_event_queue.put_nowait((term_width, term_height))
+
+    async def resize_task():
+        while True:
+            (term_width, term_height) = await resize_event_queue.get()
+            await send_resize_message(ws, term_width, term_height)
+
     async def input_task():
         while True:
             message = await reader.read(1)
@@ -308,12 +392,12 @@ async def shell_session(
 
     async def output_task():
         async for output in ws:
-            msg = json.loads(output)
-            if msg.get("Type") == "exit":
+            obj: dict = json.loads(output)
+            if obj.get("Type") == "exit":
                 io_task.cancel()
                 return
 
-            message = msg.get("Body")
+            message = obj.get("Body")
             if isinstance(message, str):
                 message = message.encode("utf-8")
             writer.write(message)
@@ -321,12 +405,13 @@ async def shell_session(
             await asyncio.sleep(0)
 
     try:
-        io_task = asyncio.gather(input_task(), output_task())
+        io_task = asyncio.gather(input_task(), output_task(), resize_task())
         await io_task
     except asyncio.CancelledError:
         ...
     finally:
         termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, old_settings_stdin)
+        signal.signal(signal.SIGWINCH, old_sigwinch_handler)
 
 
 def local_development(pkg_root: Path):

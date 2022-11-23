@@ -240,11 +240,15 @@ class TemporarySSHCredentials:
         self._public_key = generate_temporary_ssh_credentials(self._ssh_key_path)
 
     def cleanup(self):
-        subprocess.run(
-            ["ssh-add", "-d", self._ssh_key_path],
-            check=True,
-            stderr=subprocess.DEVNULL,
-        )
+        if (
+            self._ssh_key_path.exists()
+            and self._ssh_key_path.with_suffix(".pub").exists()
+        ):
+            subprocess.run(
+                ["ssh-add", "-d", self._ssh_key_path],
+                check=True,
+                capture_output=True,
+            )
         self._ssh_key_path.unlink(missing_ok=True)
         self._ssh_key_path.with_suffix(".pub").unlink(missing_ok=True)
 
