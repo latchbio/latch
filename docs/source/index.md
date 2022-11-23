@@ -77,7 +77,6 @@ basics/working_with_files
 basics/parameter_types
 basics/defining_cloud_resources
 basics/customizing_interface
-basics/messages
 basics/caching
 basics/conditional_and_map_tasks
 ```
@@ -87,6 +86,7 @@ basics/conditional_and_map_tasks
 :maxdepth: 2
 :caption: Testing and Debugging a Workflow
 basics/local_development
+basics/latch_develop_example
 basics/remote_execution
 ```
 

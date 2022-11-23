@@ -1,6 +1,6 @@
 # Messages
 
-Task executions produce logs, displayed on the Latch console to provide users visibility into their workflows. However, these logs tend to be terribly verbose. It's tedious to sift through piles of logs looking for useful signals; instead, important information, warnings, and errors should be prominently displayed. This is accomplished through the Latch SDK's messaging feature.
+Task executions produce logs, displayed on the Latch console to provide users visibility into their workflows. However, these logs tend to be terribly verbose. It's tedious to sift through piles of logs looking for useful signals; instead, important information, warnings, and errors should be prominently displayed. This is accomplished through the Latch SDK's new messaging feature.
 
 ```python
 @small_task
@@ -28,9 +28,5 @@ The `data` parameter contains the message to be displayed. It's represented as a
 
 - `title`: The title of your message
 - `body`: The contents of your message
-
-On the Latch interface, the messages will be displayed under the **Messages** tab of a specific execution. 
-
-![Message](../assets/messages.png)
 
 For more information, see `latch.functions.messages` under the API docs.

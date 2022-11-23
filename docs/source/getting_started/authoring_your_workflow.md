@@ -361,6 +361,7 @@ The command will open up a Terminal UI with the same capabilities on the Executi
 
 ---
 # Next Steps
+* Understand [how to test and debug your workflow](../basics/local_development.md).
 * Read the [Concepts](../basics/what_is_a_workflow.md) page
 * Visit [Examples](../examples/workflows_examples.md) to see real-world bioinformatics workflows being built using Latch SDK
 * Learn through examples with [Tutorials](../tutorials/rnaseq.md)
