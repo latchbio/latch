@@ -60,6 +60,10 @@ For example, for the below task definition (taken from the boilerplate generated
 `LatchFile("latch:///read2.txt")`.
 
 ```python
+import subprocess
+
+from latch.types import LatchFile
+
 @small_task
 def assembly_task(
     read1: LatchFile = LatchFile("latch:///read1.fastq"), # <== these are what the task will be run on

@@ -1,13 +1,13 @@
 # Authoring your Own Workflow
 
-In this tutorial, we will write a workflow to sort and assemble COVID sequencing data. 
+In this tutorial, we will write a workflow to sort and assemble COVID sequencing data.
 
-The tutorial aims to be an extension to the quickstart to help you better understand the structure of a workflow and how to make your own modifications. 
+The tutorial aims to be an extension to the quickstart to help you better understand the structure of a workflow and how to make your own modifications.
 
-**Prerequisite:** 
-* Complete the [Quickstart](../getting_started/quick_start.md) guide. 
+**Prerequisite:**
+* Complete the [Quickstart](../getting_started/quick_start.md) guide.
 
-**What you will learn:** 
+**What you will learn:**
 * How to write a task and create a workflow
 * How to define compute and storage requirements
 * How to manage third-party dependencies
@@ -17,7 +17,7 @@ The tutorial aims to be an extension to the quickstart to help you better unders
 ---
 
 ## 1: Initialize Workflow Directory
-Bootstrap a new workflow directory by running `latch init` from the command line. 
+Bootstrap a new workflow directory by running `latch init` from the command line.
 ```
 latch init covid-wf
 ```
@@ -41,11 +41,11 @@ covid-wf
 └── wf
     └── __init__.py
 ```
-Once your boilerplate workflow has been created successfully, you should see a folder called `covid-wf`. 
+Once your boilerplate workflow has been created successfully, you should see a folder called `covid-wf`.
 
 ## 2. Writing your First Task
 
-A task is a pure Python function that takes in inputs and returns outputs. Here, we are writing a task that takes in two sequencing reads and returns an assembled SAM file. 
+A task is a pure Python function that takes in inputs and returns outputs. Here, we are writing a task that takes in two sequencing reads and returns an assembled SAM file.
 
 ```python
 @small_task
@@ -74,9 +74,11 @@ def assembly_task(read1: LatchFile, read2: LatchFile) -> LatchFile:
 ```
 
 ### How to work with LatchFiles
-`LatchFile` refers to a remote file location on [Latch Console](console.latch.bio/data). 
 
-To make the file available to the local task's environment, you have to call `local_path` property like so: 
+`LatchFile` refers to a remote file location on
+[Latch Console](https://console.latch.bio/data).
+
+To make the file available to the local task's environment, you have to call `local_path` property like so:
 ```python
 _bowtie2_cmd = [
         "bowtie2/bowtie2",
@@ -93,9 +95,9 @@ _bowtie2_cmd = [
     ]
 ```
 
-Once the subprocess finishes executing the command above, it creates an output file (`str(sam_file)`). 
+Once the subprocess finishes executing the command above, it creates an output file (`str(sam_file)`).
 
-To make the SAM file available to Latch Console, you have to upload it using the following return statement: 
+To make the SAM file available to Latch Console, you have to upload it using the following return statement:
 ```python
     return LatchFile(str(sam_file), "latch:///covid_assembly.sam")
 ```
@@ -104,7 +106,7 @@ Here, LatchFile takes two values: the first being your local filepath and the se
 
 ## 3. Define compute and storage requirements
 
-Specifying compute and storage requirements is as easy as using a Python decorator. 
+Specifying compute and storage requirements is as easy as using a Python decorator.
 
 ```python
 from latch import small_task
@@ -129,7 +131,7 @@ To arbitrarily specify resource requirements, use:
 ```python
 from latch import custom_task
 
-@custom_task(cpu, memory) 
+@custom_task(cpu, memory)
 def my_task(
     ...
 ):
@@ -138,7 +140,7 @@ def my_task(
 
 ## 4. Manage installation for third-party dependencies
 
-Latch uses Dockerfiles for dependencies management, which allow you to define the computing environment that your task will execute in. 
+Latch uses Dockerfiles for dependencies management, which allow you to define the computing environment that your task will execute in.
 
 There's no need to create your Dockerfile from scratch as one is already provided when you initialized your workflow.
 
@@ -178,12 +180,12 @@ RUN python3 -m pip install --upgrade latch
 WORKDIR /root
 ```
 
-To write a Dockerfile for R and Python packages, visit Dockerfile recipes [here](../basics/writing_dockerfiles.md). 
+To write a Dockerfile for R and Python packages, visit Dockerfile recipes [here](../basics/writing_dockerfiles.md).
 
 ## 5. Customize user interface
-There are two pages that you can customize: the **About** page for your workflow and a **Parameters** page for workflow input parameters. 
+There are two pages that you can customize: the **About** page for your workflow and a **Parameters** page for workflow input parameters.
 
-To modify the About page, simply write your description in Markdown in the docstring of the workflow function. 
+To modify the About page, simply write your description in Markdown in the docstring of the workflow function.
 ![Description UI](../assets/description-md.png)
 
 Latch provides a suite of front-end components out-of-the-box that can be defined by using Python objects `LatchMetadata` and `LatchParameter`:
@@ -230,7 +232,7 @@ def assemble_and_sort(read1: LatchFile, read2: LatchFile) -> LatchFile:
 
 **Preview the workflow's interface**
 
-To preview the user interface for your workflow, first make sure you are inside your workflow directory. 
+To preview the user interface for your workflow, first make sure you are inside your workflow directory.
 
 ```bash
 $ ls
@@ -238,7 +240,7 @@ $ ls
 Dockerfile      reference       version         wf
 ```
 
-Then, type the following command: 
+Then, type the following command:
 ```bash
 latch preview assemble_and_sort
 ```
@@ -263,7 +265,7 @@ Listing your managed objects by full S3 path.
 s3://latch-public/test-data/<your_account_id>/<name_of_local_file>
 ```
 
-Now, you can use Latch `LaunchPlan` to add test data to your workflow. 
+Now, you can use Latch `LaunchPlan` to add test data to your workflow.
 
 ```python
 from latch.resources.launch_plan import LaunchPlan
@@ -289,15 +291,15 @@ LaunchPlan(
 
 ```
 
-These default values will be available under the 'Test Data' dropdown at Latch Console. 
+These default values will be available under the 'Test Data' dropdown at Latch Console.
 
 ![Launch Plan](../assets/launchplan.png)
 
 ## 7. Register your workflow to Latch
-You can release a live version of your workflow by registering it on Latch: 
+You can release a live version of your workflow by registering it on Latch:
 ```
 latch register --remote <path_to_workflow_dir>
-``` 
+```
 
 The registration process will:
 * Build a Docker image containing your workflow code
@@ -315,14 +317,14 @@ To test your first workflow on Console, select the **Test Data** and click Launc
 ![Interface UI](../assets/interface.png)
 
 ### Using Latch CLI
-Using `latch get-wf`, you can view the names of all workflows available in your workspace: 
+Using `latch get-wf`, you can view the names of all workflows available in your workspace:
 ```shell-session
 $ latch get-wf
 
-ID     	Name                                          	Version             
-65047	wf.deseqf.deseq2_wf                       	0.0.1r       
-67056	wf.__init__.aggregate_bulk_rna_seq_counts 	0.0.2-eb5e84 
-67649	wf.__init__.align_with_salmon             	0.0.0-4cd8db 
+ID     	Name                                          	Version
+65047	wf.deseqf.deseq2_wf                       	0.0.1r
+67056	wf.__init__.aggregate_bulk_rna_seq_counts 	0.0.2-eb5e84
+67649	wf.__init__.align_with_salmon             	0.0.0-4cd8db
 67628	wf.__init__.alphafold_wf                  	v2.2.3+46
 67617   wf.__init__.assemble_and_sort               0.0.1
 ```
@@ -331,7 +333,7 @@ To launch the workflow on Latch Console from the CLI, first generate a parameter
 ```shell-session
 $ latch get-params wf.__init__.assemble_and_sort
 ```
-which will return a parameters file called `wf.__init__.assemble_and_sort.params.py`, whose contents are as below: 
+which will return a parameters file called `wf.__init__.assemble_and_sort.params.py`, whose contents are as below:
 ```python
 """Run `latch launch wf.__init__.assemble_and_sort.params.py` to launch this workflow"""
 
@@ -350,14 +352,14 @@ To launch a workflows with parameters specified in the above file, use:
 $ latch launch [--version=VERSION] wf.__init__.assemble_and_sort.params.py
 ```
 
-You can view execution statuses from the CLI, run: 
+You can view execution statuses from the CLI, run:
 ```shell-session
 $ latch get-executions
 ```
 
 ![Executions TUI](../assets/executions-tui.png)
 
-The command will open up a Terminal UI with the same capabilities on the Executions page on the Latch Platform, where you will see a list of executions, tasks, and logs for easy debugging. 
+The command will open up a Terminal UI with the same capabilities on the Executions page on the Latch Platform, where you will see a list of executions, tasks, and logs for easy debugging.
 
 ---
 # Next Steps
@@ -365,4 +367,4 @@ The command will open up a Terminal UI with the same capabilities on the Executi
 * Read the [Concepts](../basics/what_is_a_workflow.md) page
 * Visit [Examples](../examples/workflows_examples.md) to see real-world bioinformatics workflows being built using Latch SDK
 * Learn through examples with [Tutorials](../tutorials/rnaseq.md)
-* Join the SDK open-source community on Slack [here](https://forms.gle/sCjr8tdjzx5HjVW27)! 
+* Join the SDK open-source community on Slack [here](https://forms.gle/sCjr8tdjzx5HjVW27)!

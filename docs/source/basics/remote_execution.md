@@ -4,7 +4,7 @@ It is often desirable to be able to access a shell from within a running
 task of a workflow, to debug a misbehaving program or inspect some files for
 example.
 
-When inspecting a running task in the [Console](console.latch.bio), simply click
+When inspecting a running task in the [Console](https://console.latch.bio), simply click
 on the node representing the desired task and copy and paste the `latch exec
 <hash>` subcommand in the right sidebar into your terminal to retrieve a live
 shell from within the running task.
