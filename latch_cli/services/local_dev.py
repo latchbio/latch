@@ -70,7 +70,11 @@ def _get_latest_image(pkg_root: Path) -> str:
     resp.raise_for_status()
     latest_version = resp.json()["version"]
 
-    return f"{config.dkr_repo}/{current_workspace()}_{pkg_root.name}:{latest_version}"
+    ws_id = current_workspace()
+    if int(ws_id) < 10:
+        ws_id = f"x{ws_id}"
+
+    return f"{config.dkr_repo}/{ws_id}_{pkg_root.name}:{latest_version}"
 
 
 async def _copy_files(
