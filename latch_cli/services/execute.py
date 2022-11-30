@@ -104,6 +104,24 @@ def _fetch_pod_info(token: str, task_name: str) -> Tuple[str, str, str]:
 
 
 def execute(task_name: str):
+    """Allows a user to start an interactive shell session in the remote machine
+    that a task is running on.
+
+    When running a workflow on Latch, its often helpful while debugging to have
+    a direct way of interacting with the machines on which tasks are run. Using
+    `execute`, a user can easily get a shell into the machine on which the
+    specified task is running.
+
+    Args:
+        task_name: The name of the running task you want a shell into. This is a
+            hash that can be found in the sidebar in the browser display of the
+            running workflow.
+
+    Example:
+        >>> execute("abcd1234-n0")
+            root@1.2.3.4:~$
+
+    """
 
     token = retrieve_or_login()
     (

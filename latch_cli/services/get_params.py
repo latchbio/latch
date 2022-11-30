@@ -6,7 +6,7 @@ except ImportError:
 import enum
 import json
 import typing
-from typing import Union
+from typing import Optional
 
 import google.protobuf.json_format as gpjson
 from flyteidl.core.literals_pb2 import Literal as _Literal
@@ -19,7 +19,7 @@ from latch_cli.services.launch import _get_workflow_interface
 from latch_cli.utils import retrieve_or_login
 
 
-class Unsupported:
+class _Unsupported:
     ...
 
 
@@ -29,11 +29,11 @@ _simple_table = {
     2: float,
     3: str,
     4: bool,
-    5: Unsupported,
-    6: Unsupported,
-    7: Unsupported,
-    8: Unsupported,
-    9: Unsupported,
+    5: _Unsupported,
+    6: _Unsupported,
+    7: _Unsupported,
+    8: _Unsupported,
+    9: _Unsupported,
 }
 
 _primitive_table = {
@@ -44,13 +44,29 @@ _primitive_table = {
     bool: False,
 }
 
+# TODO(ayush): fix this to
+# (1) support records,
+# (2) support fully qualified workflow names,
+# (3) show a message indicating the generated filename,
+# (4) optionally specify the output filename
+def get_params(wf_name: str, wf_version: Optional[str] = None):
+    """Constructs a parameter map for a workflow given its name and an optional
+    version.
 
-def get_params(wf_name: Union[None, str], wf_version: Union[None, str] = None):
-    """Constructs a python parameter map from a workflow name and (opt) version.
+    This function creates a python parameter file that can be used by `launch`.
+    You can specify the specific parameters by editing the file, and then launch
+    an execution on Latch using those parameters with `launch`.
 
     Args:
-        wf_name: The unique name of a workflow.
-        wf_version: Workflow version
+        wf_name: The unique name of the workflow.
+        wf_version: An optional workflow version. If this argument is not given,
+            `get_params` will default to generating a parameter map of the most
+            recent version of the workflow.
+
+    Example:
+        >>> get_params("wf.__init__.alphafold_wf")
+            # creates a file called `wf.__init__.alphafold_wf.params.py` that
+            # contains a template parameter map.
     """
 
     token = retrieve_or_login()

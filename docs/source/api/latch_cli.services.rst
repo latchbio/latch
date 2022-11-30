@@ -7,6 +7,7 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
+   latch_cli.services.deprecated
    latch_cli.services.init
    latch_cli.services.register
    latch_cli.services.test_data
@@ -86,14 +87,6 @@ latch\_cli.services.ls module
    :undoc-members:
    :show-inheritance:
 
-latch\_cli.services.mkdir module
---------------------------------
-
-.. automodule:: latch_cli.services.mkdir
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 latch\_cli.services.open\_file module
 -------------------------------------
 
@@ -106,22 +99,6 @@ latch\_cli.services.preview module
 ----------------------------------
 
 .. automodule:: latch_cli.services.preview
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-latch\_cli.services.rm module
------------------------------
-
-.. automodule:: latch_cli.services.rm
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-latch\_cli.services.touch module
---------------------------------
-
-.. automodule:: latch_cli.services.touch
    :members:
    :undoc-members:
    :show-inheritance:

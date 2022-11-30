@@ -18,8 +18,7 @@ endpoints = config.sdk_endpoints
 
 
 def workspace():
-    token = retrieve_or_login()
-    headers = {"Authorization": f"Bearer {token}"}
+    headers = {"Authorization": f"Bearer {retrieve_or_login()}"}
 
     resp = post(
         url=endpoints["get-ws"],
@@ -36,7 +35,7 @@ def workspace():
         ids[name] = id
         options.append(name)
 
-    selected_option = select_workspace_tui(
+    selected_option = _select_workspace_tui(
         title="Select Workspace",
         options=options,
     )
@@ -45,8 +44,6 @@ def workspace():
         return
 
     new_id = ids[selected_option]
-    context_file = Path.home() / ".latch" / "context"
-    context_file.touch(exist_ok=True)
 
     old_id = current_workspace()
     if old_id != new_id:
@@ -57,7 +54,7 @@ def workspace():
         click.secho(f"Already in context {selected_option}.", fg="green")
 
 
-def select_workspace_tui(title: str, options: List[str], clear_terminal: bool = True):
+def _select_workspace_tui(title: str, options: List[str], clear_terminal: bool = True):
     """
     Renders a terminal UI that allows users to select one of the options
     listed in `options`

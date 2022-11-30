@@ -3,7 +3,7 @@
 import importlib.util
 import typing
 from pathlib import Path
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 
 import google.protobuf.json_format as gpjson
 import requests
@@ -20,34 +20,30 @@ config = LatchConfig()
 endpoints = config.sdk_endpoints
 
 
-def launch(params_file: Path, version: Union[None, str] = None) -> str:
-    """Launches a versioned workflow with parameters specified in python.
+def launch(params_file: Path, version: Optional[str] = None) -> str:
+    """Launches a (versioned) workflow with parameters specified in python.
+
+    Using a parameter map written in python (this can be generated for you with
+    `get_params`), this function will launch the workflow specified in the file
+    using the parameters therein. This function also accepts an optional
+    `version` parameter to further specify the workflow to be run. If it is not
+    provided, this function will default to running the latest version of the
+    specified workflow.
 
     Args:
-        params_file: A path pointing to a python file with a function call
-            representing the workflow execution with valid parameter values.
-        version: An optional workflow version to launch, defaults to latest if
-            None is provided
-
-        Parameters for the workflow execution are specified in plain python as
-        a dictionary, as the syntax is highly legible and easier to work
-        with than alternatives such as YAML, JSON. This file is passed to the
-        `launch` service.
+        params_file: A path pointing to a python parameter file containing a
+            function call that represents the workflow execution with valid
+            parameter values.
+        version: An optional workflow version to launch, defaulting to the
+            latest if not provided.
 
     Returns:
-        The name of the workflow if successful
+        The name of the workflow.
 
-    Example: ::
-
-        # A minimal parameter file used to launch the boilerplate
-
-        from latch.types import LatchFile
-
-        params = {
-            "_name": "wf.assemble_and_sort",
-            "read1": LatchFile("latch:///read1"),
-            "read2": LatchFile("latch:///read2"),
-        }
+    Example:
+        >>> launch(Path("wf.__init__.assemble_and_sort.params.py"))
+            # Launches an execution of `wf.__init__.assemble_and_sort` with the
+            # parameters specified in the referenced file.
     """
 
     token = retrieve_or_login()
@@ -158,8 +154,7 @@ def _get_workflow_interface(
 
     url = endpoints["get-workflow-interface"]
 
-    # TODO - use retry logic in all requests + figure out why timeout happens
-    # within this endpoint only.
+    # TODO(ayush) - figure out why timeout within this endpoint only.
     session = requests.Session()
     retries = 5
     retry = Retry(

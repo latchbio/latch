@@ -63,7 +63,15 @@ def _deep_dict(t) -> dict:
         return t
 
 
+# TODO(ayush): make this import the `wf` directory and use the package root
+# instead of the workflow name. also redo the frontend
 def preview(workflow_name: str):
+    """Generate a preview of the parameter interface for a workflow.
+
+    This will allow a user to see how their parameter interface will look
+    without having to first register their workflow. Simply the name of the
+    workflow function.
+    """
 
     try:
         wf = load_naive_entity("wf.__init__", workflow_name)
