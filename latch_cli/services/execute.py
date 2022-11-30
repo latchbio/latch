@@ -14,10 +14,10 @@ import websocket
 from kubernetes.client.api import core_v1_api
 from kubernetes.stream import stream
 
-from latch_cli.config.latch import LatchConfig
+from latch_cli.config.latch import _LatchConfig
 from latch_cli.utils import account_id_from_token, current_workspace, retrieve_or_login
 
-config = LatchConfig()
+config = _LatchConfig()
 endpoints = config.sdk_endpoints
 
 

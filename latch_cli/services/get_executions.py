@@ -9,11 +9,11 @@ from typing import Dict, List
 from apscheduler.schedulers.background import BackgroundScheduler
 
 import latch_cli.tui as tui
-from latch_cli.config.latch import LatchConfig
+from latch_cli.config.latch import _LatchConfig
 from latch_cli.tinyrequests import post
 from latch_cli.utils import account_id_from_token, current_workspace, retrieve_or_login
 
-config = LatchConfig()
+config = _LatchConfig()
 endpoints = config.sdk_endpoints
 
 

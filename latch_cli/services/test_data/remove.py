@@ -14,11 +14,10 @@ def remove(object_url: str):
     Args:
         object_url: The url of the object to remove.
 
-    Example: ::
+    Example:
 
-        remove("s3://latch-public/1/foo.txt")
-
-            Removes the object at this path from your managed bucket prefix.
+        >>> remove("s3://latch-public/1/foo.txt")
+            # Removes the object at this path from your managed bucket prefix.
     """
 
     session_token, access_key, secret_key, account_id = _retrieve_creds()

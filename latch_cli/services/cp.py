@@ -10,13 +10,13 @@ import tqdm as _tqdm
 from tqdm.auto import tqdm
 
 import latch_cli.tinyrequests as tinyrequests
-from latch_cli.config.latch import LatchConfig
+from latch_cli.config.latch import _LatchConfig
 from latch_cli.constants import FILE_CHUNK_SIZE
 from latch_cli.services.deprecated.mkdir import mkdir
 from latch_cli.services.deprecated.touch import touch
 from latch_cli.utils import _normalize_remote_path, current_workspace, retrieve_or_login
 
-config = LatchConfig()
+config = _LatchConfig()
 endpoints = config.sdk_endpoints
 
 # tqdm progress bars aren't thread safe so restrict so that only one can update at a time

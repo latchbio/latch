@@ -1,6 +1,6 @@
 import secrets
 
-from latch_cli.auth.utils import base64url_encode
+from latch_cli.auth.utils import _base64url_encode
 
 
 class CSRFState:
@@ -23,7 +23,7 @@ class CSRFState:
     """
 
     def __init__(self):
-        self.state = base64url_encode(secrets.token_bytes(32))
+        self.state = _base64url_encode(secrets.token_bytes(32))
 
     def __enter__(self, *args):
         return self

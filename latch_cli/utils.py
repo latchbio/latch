@@ -9,12 +9,12 @@ from pathlib import Path
 import jwt
 import paramiko
 
-from latch_cli.config.user import UserConfig
+from latch_cli.config.user import _UserConfig
 from latch_cli.constants import FILE_MAX_SIZE, PKG_NAME
 from latch_cli.services.login import login
 from latch_cli.tinyrequests import get
 
-user_conf = UserConfig()
+user_conf = _UserConfig()
 
 
 def retrieve_or_login() -> str:

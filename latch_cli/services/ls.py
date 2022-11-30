@@ -3,10 +3,10 @@
 from typing import Dict, List
 
 import latch_cli.tinyrequests as tinyrequests
-from latch_cli.config.latch import LatchConfig
+from latch_cli.config.latch import _LatchConfig
 from latch_cli.utils import _normalize_remote_path, current_workspace, retrieve_or_login
 
-config = LatchConfig()
+config = _LatchConfig()
 endpoints = config.sdk_endpoints
 
 

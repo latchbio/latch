@@ -24,8 +24,8 @@ from prompt_toolkit.history import FileHistory
 from prompt_toolkit.patch_stdout import patch_stdout
 from prompt_toolkit.shortcuts import PromptSession
 
-from latch_cli.centromere.utils import import_flyte_objects
-from latch_cli.config.latch import LatchConfig
+from latch_cli.centromere.utils import _import_flyte_objects
+from latch_cli.config.latch import _LatchConfig
 from latch_cli.tinyrequests import post
 from latch_cli.utils import (
     TemporarySSHCredentials,
@@ -33,7 +33,7 @@ from latch_cli.utils import (
     retrieve_or_login,
 )
 
-config = LatchConfig()
+config = _LatchConfig()
 sdk_endpoints = config.sdk_endpoints
 
 QUIT_COMMANDS = ["quit", "exit"]
@@ -48,7 +48,7 @@ COMMANDS = QUIT_COMMANDS + EXEC_COMMANDS + LIST_COMMANDS
 
 
 def _get_latest_image(pkg_root: Path) -> str:
-    import_flyte_objects(paths=[pkg_root])
+    _import_flyte_objects(paths=[pkg_root])
 
     wf_name = ""
     for entity in FlyteEntities.entities:

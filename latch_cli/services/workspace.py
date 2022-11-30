@@ -8,16 +8,22 @@ from typing import List
 import click
 
 import latch_cli.tui as tui
-from latch_cli.config.latch import LatchConfig
-from latch_cli.config.user import UserConfig
+from latch_cli.config.latch import _LatchConfig
+from latch_cli.config.user import _UserConfig
 from latch_cli.tinyrequests import post
 from latch_cli.utils import current_workspace, retrieve_or_login
 
-config = LatchConfig()
+config = _LatchConfig()
 endpoints = config.sdk_endpoints
 
 
 def workspace():
+    """Opens a terminal user interface in which a user can select the workspace
+    the want to switch to.
+
+    Like `get_executions`, this function should only be called from the CLI.
+    """
+
     headers = {"Authorization": f"Bearer {retrieve_or_login()}"}
 
     resp = post(
@@ -47,7 +53,7 @@ def workspace():
 
     old_id = current_workspace()
     if old_id != new_id:
-        user_conf = UserConfig()
+        user_conf = _UserConfig()
         user_conf.update_workspace(new_id)
         click.secho(f"Successfully switched to context {selected_option}", fg="green")
     else:

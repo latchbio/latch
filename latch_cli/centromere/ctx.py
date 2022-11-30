@@ -12,11 +12,11 @@ from flytekit.core.workflow import PythonFunctionWorkflow
 
 import latch_cli.tinyrequests as tinyrequests
 from latch_cli.centromere.utils import (
-    construct_dkr_client,
-    construct_ssh_client,
-    import_flyte_objects,
+    _construct_dkr_client,
+    _construct_ssh_client,
+    _import_flyte_objects,
 )
-from latch_cli.config.latch import LatchConfig
+from latch_cli.config.latch import _LatchConfig
 from latch_cli.utils import (
     account_id_from_token,
     current_workspace,
@@ -25,17 +25,17 @@ from latch_cli.utils import (
     retrieve_or_login,
 )
 
-config = LatchConfig()
+config = _LatchConfig()
 endpoints = config.sdk_endpoints
 
 
 @dataclass
-class Container:
+class _Container:
     dockerfile: Path
     image_name: str
 
 
-class CentromereCtx:
+class _CentromereCtx:
     """Manages state for interaction with centromere.
 
     The context holds values that are relevant throughout the "lifetime" of a
@@ -53,9 +53,9 @@ class CentromereCtx:
     token = None
     version = None
     serialize_dir = None
-    default_container: Container
+    default_container: _Container
     # Used to associate alternate containers with tasks
-    container_map: Dict[str, Container]
+    container_map: Dict[str, _Container]
     workflow_name: Optional[str]
 
     latch_register_api_url = endpoints["register-workflow"]
@@ -84,7 +84,7 @@ class CentromereCtx:
                 self.account_id = ws
 
             self.pkg_root = Path(pkg_root).resolve()
-            self.dkr_repo = LatchConfig.dkr_repo
+            self.dkr_repo = _LatchConfig.dkr_repo
             self.remote = remote
             self.container_map = {}
 
@@ -94,7 +94,7 @@ class CentromereCtx:
                     "Make sure you are passing a directory that contains a ",
                     "valid dockerfile to `$ latch register`.",
                 )
-            import_flyte_objects([self.pkg_root])
+            _import_flyte_objects([self.pkg_root])
 
             self.disable_auto_version = disable_auto_version
             try:
@@ -118,7 +118,7 @@ class CentromereCtx:
                         hasattr(entity, "dockerfile_path")
                         and entity.dockerfile_path is not None
                     ):
-                        self.container_map[entity.name] = Container(
+                        self.container_map[entity.name] = _Container(
                             dockerfile=entity.dockerfile_path,
                             image_name=self.task_image_name(entity.name),
                         )
@@ -126,7 +126,7 @@ class CentromereCtx:
             if self.nucleus_check_version(self.version, self.workflow_name) is True:
                 raise ValueError(f"Version {self.version} has already been registered.")
 
-            self.default_container = Container(
+            self.default_container = _Container(
                 dockerfile=default_dockerfile, image_name=self.image_tagged
             )
 
@@ -137,16 +137,16 @@ class CentromereCtx:
 
                 public_ip, username = self.nucleus_provision_url()
 
-                self.dkr_client = construct_dkr_client(
+                self.dkr_client = _construct_dkr_client(
                     ssh_host=f"ssh://{username}@{public_ip}"
                 )
 
-                self.ssh_client = construct_ssh_client(
+                self.ssh_client = _construct_ssh_client(
                     host_ip=public_ip,
                     username=username,
                 )
             else:
-                self.dkr_client = construct_dkr_client()
+                self.dkr_client = _construct_dkr_client()
         except Exception as e:
             self.cleanup()
             raise e

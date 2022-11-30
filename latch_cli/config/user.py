@@ -7,7 +7,7 @@ Repository for retrieving + updating user config values.
 from pathlib import Path
 
 
-class UserConfig:
+class _UserConfig:
     """User specific configuration persisted in `~/.latch/`."""
 
     _root = None

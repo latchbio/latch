@@ -4,10 +4,10 @@ from typing import List, Optional, Tuple, Union
 
 import requests
 
-from latch_cli.config.latch import LatchConfig
+from latch_cli.config.latch import _LatchConfig
 from latch_cli.utils import current_workspace, retrieve_or_login
 
-config = LatchConfig()
+config = _LatchConfig()
 endpoints = config.sdk_endpoints
 
 # TODO(ayush): rewrite this to look/be better

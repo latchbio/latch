@@ -1,4 +1,6 @@
 """
+DEPRECATED
+
 Mimics channel operators from Nextflow, using the correspondence Channel --> Python Dictionary
 """
 

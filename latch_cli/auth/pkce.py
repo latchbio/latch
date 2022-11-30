@@ -2,7 +2,7 @@ import hashlib
 import secrets
 from typing import Tuple
 
-from latch_cli.auth.utils import base64url_encode
+from latch_cli.auth.utils import _base64url_encode
 
 
 class PKCE:
@@ -73,7 +73,7 @@ class PKCE:
 
     'If the client is capable of using "S256", it MUST use "S256", as
     "S256" is Mandatory To Implement (MTI) on the server.'
-        
+
     .. _RFC7636#section-4.2:
         https://datatracker.ietf.org/doc/html/rfc7636#section-4.2
 
@@ -103,6 +103,6 @@ class PKCE:
         .. _RFC7636:
             https://datatracker.ietf.org/doc/html/rfc7636
         """
-        verifier = base64url_encode(secrets.token_bytes(32))
-        challenge = base64url_encode(hashlib.sha256(verifier.encode()).digest())
+        verifier = _base64url_encode(secrets.token_bytes(32))
+        challenge = _base64url_encode(hashlib.sha256(verifier.encode()).digest())
         return verifier, challenge

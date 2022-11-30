@@ -13,7 +13,7 @@ from packaging.version import parse as parse_version
 
 import latch_cli.click_utils
 from latch_cli.crash_reporter import CrashReporter
-from latch_cli.services.init.init import Templates
+from latch_cli.services.init.init import _Templates
 from latch_cli.utils import get_latest_package_version, get_local_package_version
 
 latch_cli.click_utils.patch()
@@ -128,7 +128,7 @@ def login(connection: Optional[str]):
     "--template",
     "-t",
     type=click.Choice(
-        [t.name for t in Templates],
+        [t.name for t in _Templates],
         case_sensitive=False,
     ),
 )

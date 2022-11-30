@@ -38,9 +38,9 @@ def login(connection: Optional[str] = None) -> str:
             # LatchBio.
             access_jwt = _auth0_jwt_for_access_jwt(jwt)
 
-            from latch_cli.config.user import UserConfig
+            from latch_cli.config.user import _UserConfig
 
-            config = UserConfig()
+            config = _UserConfig()
 
             config.update_token(access_jwt)
             return access_jwt
@@ -72,9 +72,9 @@ def _auth0_jwt_for_access_jwt(token) -> str:
     Uses an Auth0 token to authenticate the user.
     """
     import latch_cli.tinyrequests as tinyrequests
-    from latch_cli.config.latch import LatchConfig
+    from latch_cli.config.latch import _LatchConfig
 
-    endpoints = LatchConfig().sdk_endpoints
+    endpoints = _LatchConfig().sdk_endpoints
 
     headers = {
         "Authorization": f"Bearer {token}",

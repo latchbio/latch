@@ -13,10 +13,10 @@ from flytekit.core.type_engine import TypeEngine
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from latch_cli.config.latch import LatchConfig
+from latch_cli.config.latch import _LatchConfig
 from latch_cli.utils import current_workspace, retrieve_or_login
 
-config = LatchConfig()
+config = _LatchConfig()
 endpoints = config.sdk_endpoints
 
 

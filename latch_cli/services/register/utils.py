@@ -8,11 +8,11 @@ from typing import List, Optional
 import boto3
 import requests
 
-from latch_cli.centromere.ctx import CentromereCtx
+from latch_cli.centromere.ctx import _CentromereCtx
 from latch_cli.utils import current_workspace
 
 
-def docker_login(ctx: CentromereCtx):
+def _docker_login(ctx: _CentromereCtx):
 
     headers = {"Authorization": f"Bearer {ctx.token}"}
     data = {"pkg_name": ctx.image, "ws_account_id": current_workspace()}
@@ -49,14 +49,14 @@ def docker_login(ctx: CentromereCtx):
     )
 
 
-def build_image(
-    ctx: CentromereCtx,
+def _build_image(
+    ctx: _CentromereCtx,
     image_name: str,
     context_path: Path,
     dockerfile: Optional[Path] = None,
 ) -> List[str]:
 
-    docker_login(ctx)
+    _docker_login(ctx)
     if dockerfile is not None:
         dockerfile = str(dockerfile)
     build_logs = ctx.dkr_client.build(
@@ -70,7 +70,7 @@ def build_image(
     return build_logs
 
 
-def upload_image(ctx: CentromereCtx, image_name: str) -> List[str]:
+def _upload_image(ctx: _CentromereCtx, image_name: str) -> List[str]:
 
     return ctx.dkr_client.push(
         repository=f"{ctx.dkr_repo}/{image_name}",
@@ -79,8 +79,8 @@ def upload_image(ctx: CentromereCtx, image_name: str) -> List[str]:
     )
 
 
-def serialize_pkg_in_container(
-    ctx: CentromereCtx, image_name: str, serialize_dir: Path
+def _serialize_pkg_in_container(
+    ctx: _CentromereCtx, image_name: str, serialize_dir: Path
 ) -> List[str]:
 
     _serialize_cmd = ["make", "serialize"]
@@ -104,7 +104,7 @@ def serialize_pkg_in_container(
     return [x.decode("utf-8") for x in logs], container_id
 
 
-def register_serialized_pkg(ctx: CentromereCtx, files: List[Path]) -> dict:
+def _register_serialized_pkg(ctx: _CentromereCtx, files: List[Path]) -> dict:
 
     headers = {"Authorization": f"Bearer {ctx.token}"}
 

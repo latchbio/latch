@@ -17,14 +17,14 @@ def upload(src_path: str, dont_confirm_overwrite: bool = True) -> str:
 
     Args:
         src_path: The path of the file/folder to upload.
-    Returns: s3 URL of uploaded object.
 
-    Example: ::
+    Returns:
+        s3 URL of uploaded object.
 
-        upload("./foo.txt")
-
-            Puts the file `foo.txt` in a managed bucket and returns a publicly
-            accesible S3 URL.
+    Example:
+        >>> upload("./foo.txt")
+            # Puts the file `foo.txt` in a managed bucket and returns a publicly
+            # accesible S3 URL.
     """
 
     session_token, access_key, secret_key, account_id = _retrieve_creds()
