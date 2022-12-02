@@ -12,7 +12,7 @@ import click
 from packaging.version import parse as parse_version
 
 import latch_cli.click_utils
-from latch_cli.crash_reporter import CrashReporter
+from latch_cli.crash_reporter import CrashHandler
 from latch_cli.services.init.init import Templates
 from latch_cli.utils import get_latest_package_version, get_local_package_version
 
@@ -79,7 +79,7 @@ def register(pkg_root: str, disable_auto_version: bool, remote: bool):
             "Successfully registered workflow. View @ console.latch.bio.", fg="green"
         )
     except Exception as e:
-        CrashReporter.report(pkg_path=pkg_root)
+        CrashHandler.report(pkg_path=pkg_root)
         click.secho(f"Unable to register workflow: {str(e)}", fg="red")
     finally:
         # remove cached crash-report logs
@@ -99,7 +99,7 @@ def local_development(pkg_root: Path):
     try:
         local_development(pkg_root.resolve())
     except Exception as e:
-        CrashReporter.report(pkg_path=str(pkg_root))
+        CrashHandler.report(pkg_path=str(pkg_root))
         click.secho(f"Error during local development session: {str(e)}", fg="red")
 
 
@@ -118,7 +118,7 @@ def login(connection: Optional[str]):
         login(connection)
         click.secho("Successfully logged into LatchBio.", fg="green")
     except Exception as e:
-        CrashReporter.report()
+        CrashHandler.report()
         click.secho(f"Unable to log in: {str(e)}", fg="red")
 
 
@@ -172,7 +172,7 @@ def init(pkg_name: str, template: Optional[str] = None):
     try:
         init(pkg_name, template)
     except Exception as e:
-        CrashReporter.report()
+        CrashHandler.report()
         click.secho(f"Unable to initialize {pkg_name}: {str(e)}", fg="red")
         return
     click.secho(f"Created a latch workflow called {pkg_name}.", fg="green")
@@ -194,7 +194,7 @@ def cp(source_file: str, destination_file: str):
             f"\nSuccessfully copied {source_file} to {destination_file}.", fg="green"
         )
     except Exception as e:
-        CrashReporter.report()
+        CrashHandler.report()
         click.secho(
             f"Unable to copy {source_file} to {destination_file}: {str(e)}", fg="red"
         )
@@ -315,7 +315,7 @@ def launch(params_file: Path, version: Union[str, None] = None):
     try:
         wf_name = launch(params_file, version)
     except Exception as e:
-        CrashReporter.report()
+        CrashHandler.report()
         click.secho(f"Unable to launch workflow: {str(e)}", fg="red")
         return
     if version is None:
@@ -340,7 +340,7 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
     try:
         get_params(wf_name, version)
     except Exception as e:
-        CrashReporter.report()
+        CrashHandler.report()
         click.secho(f"Unable to generate param map for workflow: {str(e)}", fg="red")
         return
     if version is None:
@@ -365,7 +365,7 @@ def get_wf(name: Union[str, None] = None):
     try:
         wfs = get_wf(name)
     except Exception as e:
-        CrashReporter.report()
+        CrashHandler.report()
         click.secho(f"Unable to get workflows: {str(e)}", fg="red")
         return
     id_padding, name_padding, version_padding = 0, 0, 0
@@ -395,7 +395,7 @@ def open_remote_file(remote_file: str):
         open_file(remote_file)
         click.secho(f"Successfully opened {remote_file}.", fg="green")
     except Exception as e:
-        CrashReporter.report()
+        CrashHandler.report()
         click.secho(f"Unable to open {remote_file}: {str(e)}", fg="red")
 
 
@@ -422,7 +422,7 @@ def mkdir(remote_directory: str):
         mkdir(remote_directory)
         click.secho(f"Successfully created directory {remote_directory}.", fg="green")
     except Exception as e:
-        CrashReporter.report()
+        CrashHandler.report()
         click.secho(
             f"Unable to create directory {remote_directory}: {str(e)}", fg="red"
         )
@@ -438,7 +438,7 @@ def touch(remote_file: str):
         touch(remote_file)
         click.secho(f"Successfully touched {remote_file}.", fg="green")
     except Exception as e:
-        CrashReporter.report()
+        CrashHandler.report()
         click.secho(f"Unable to create {remote_file}: {str(e)}", fg="red")
 
 
@@ -451,7 +451,7 @@ def execute(task_name: str):
     try:
         execute(task_name)
     except Exception as e:
-        CrashReporter.report()
+        CrashHandler.report()
         click.secho(f"Unable to exec into {task_name}: {str(e)}", fg="red")
 
 
@@ -464,7 +464,7 @@ def preview(workflow_name: str):
     try:
         preview(workflow_name)
     except Exception as e:
-        CrashReporter.report()
+        CrashHandler.report()
         click.secho(f"Unable to preview inputs for {workflow_name}: {str(e)}", fg="red")
 
 
@@ -476,7 +476,7 @@ def workspace():
     try:
         workspace()
     except Exception as e:
-        CrashReporter.report()
+        CrashHandler.report()
         click.secho(f"Unable to fetch workspaces: {str(e)}", fg="red")
 
 
@@ -488,7 +488,7 @@ def get_executions():
     try:
         get_executions()
     except Exception as e:
-        CrashReporter.report()
+        CrashHandler.report()
         click.secho(f"Unable to fetch executions: {str(e)}", fg="red")
 
 
@@ -523,7 +523,7 @@ def test_data_upload(src_path: str, dont_confirm_overwrite: bool):
         s3_url = upload(src_path, dont_confirm_overwrite)
         click.secho(f"Successfully uploaded to {s3_url}", fg="green")
     except Exception as e:
-        CrashReporter.report()
+        CrashHandler.report()
         click.secho(
             f"Unable to upload {src_path} to managed bucket: {str(e)}", fg="red"
         )
@@ -539,7 +539,7 @@ def test_data_remove(object_url: str):
     try:
         remove(object_url)
     except Exception as e:
-        CrashReporter.report()
+        CrashHandler.report()
         click.secho(
             f"Unable to remove {object_url} from managed bucket : {str(e)}", fg="red"
         )
@@ -554,7 +554,7 @@ def test_data_ls():
     try:
         objects = ls()
     except Exception as e:
-        CrashReporter.report()
+        CrashHandler.report()
         click.secho(
             f"Unable to list objects within managed bucket : {str(e)}", fg="red"
         )

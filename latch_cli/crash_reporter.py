@@ -12,9 +12,14 @@ from latch_cli.constants import FILE_MAX_SIZE
 from latch_cli.utils import get_local_package_version
 
 
-class _CrashReporter:
+class _CrashHandler:
 
-    """Write logs + system information to disk when Exception is thrown."""
+    """Display and store useful information when the program fails
+
+    * Display tracebacks
+    * Parse and display opaque flytekit serialization error messages
+    * Write necessary information to reproduce failure to a tarball
+    """
 
     IGNORE_REGEX = re.compile(
         "(\.git|\.latch_report\.tar\.gz|traceback\.txt|metadata\.json)"
@@ -87,4 +92,4 @@ class _CrashReporter:
             print(">> Crash report written to .latch_report.tar.gz")
 
 
-CrashReporter = _CrashReporter()
+CrashHandler = _CrashHandler()
