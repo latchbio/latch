@@ -5,11 +5,17 @@ import re
 import sys
 import tarfile
 import tempfile
-import traceback
-from typing import Optional
+from dataclasses import dataclass, field
+from pathlib import Path
+from traceback import print_exc, walk_tb
+from types import TracebackType
+from typing import Dict, List, Optional, Tuple, Type
 
 from latch_cli.constants import FILE_MAX_SIZE
 from latch_cli.utils import get_local_package_version
+
+# TODO (kenny) - use this constant everywhere where pkg_root is None
+_IMPORT_CWD = os.path.abspath(os.getcwd())
 
 
 class _CrashHandler:
@@ -38,25 +44,27 @@ class _CrashHandler:
     def version(self) -> str:
         return get_local_package_version()
 
-    def report(self, pkg_path: Optional[str] = None):
-        """Constructs a zipped tarball with files needed to reproduce crashes."""
+    def _write_state_to_tarball(self, pkg_path: Optional[str] = None):
+        """Bundles files needed to reproduce failed state into a tarball.
+
+        Tarball contains:
+          * JSON holding platform + package version metadata
+          * logs directory holding docker build logs
+          * Text file holding traceback
+          * (If register) workflow package (python files, Dockerfile, etc.)
+        """
 
         tarball_path = ".latch_report.tar.gz"
         if os.path.exists(tarball_path):
             os.remove(tarball_path)
 
-        # Tarball contains:
-        #   * JSON holding platform + package version metadata
-        #   * logs directory holding docker build logs
-        #   * Text file holding traceback
-        #   * (If register) workflow package (python files, Dockerfile, etc.)
         with tarfile.open(tarball_path, mode="x:gz") as tf:
 
             # If calling stack frame is handling an exception, we want to store
             # the traceback in a log file.
             if sys.exc_info()[0] is not None:
                 with tempfile.NamedTemporaryFile("w+") as ntf:
-                    traceback.print_exc(file=ntf)
+                    print_exc(file=ntf)
                     ntf.seek(0)
                     tf.add(ntf.name, arcname="traceback.txt")
 
@@ -90,6 +98,191 @@ class _CrashHandler:
                 tf.add(ntf.name, arcname="metadata.json")
 
             print(">> Crash report written to .latch_report.tar.gz")
+
+    def init(self, message: Optional[str], pkg_path: Optional[str] = None):
+        """Custom error handling.
+
+        When an exception is thrown:
+            - Display an optional message
+            - Pretty print the traceback
+            - Parse unintuitive errors and redisplay
+            - Store useful system information in a tarball for debugging
+        """
+
+        def _excepthook(
+            type_: Type[BaseException],
+            value: BaseException,
+            traceback: Optional[TracebackType],
+        ) -> None:
+            Traceback(
+                type_,
+                value,
+                traceback,
+            ).pretty_print()
+            # self._write_state_to_tarball(pkg_path)
+
+        sys.excepthook = _excepthook
+
+
+@dataclass
+class Frame:
+    filename: str
+    lineno: int
+    name: str
+    locals_: dict
+
+
+@dataclass
+class _SyntaxError:
+    filename: str
+    lineno: int
+    offset: int
+    text: str
+    end_lineno: int
+    end_offset: int
+
+
+class FlytekitException:
+    ...
+
+
+_CODE_CACHE: Dict[Tuple[str, int], List[str]] = {}
+
+
+@dataclass
+class Stack:
+    exc_type: str
+    exc_value: str
+    syntax_error: Optional[_SyntaxError] = None
+    flytekit_exc: Optional[FlytekitException] = None
+    frames: List[Frame] = field(default_factory=list)
+
+    def pretty_print(self, max_frames: int = 2):
+        def read_code_span(frame: Frame, line_interval: int = 3) -> str:
+
+            span: List[str] = []
+            cache_hit = _CODE_CACHE.get((frame.filename, frame.lineno))
+
+            if cache_hit:
+                return cache_hit
+
+            with open(frame.filename, "rt", encoding="utf-8") as code_file:
+                for i, line in enumerate(code_file.readlines()):
+                    if i in range(
+                        frame.lineno - line_interval, frame.lineno + line_interval + 1
+                    ):
+                        span.append((i + 1, line))
+
+            _CODE_CACHE[(frame.filename, frame.lineno)] = span
+            return span
+
+        render_full_idx = len(self.frames) - max_frames
+        for i, frame in enumerate(self.frames):
+
+            if i < render_full_idx:
+                print(f"{frame.filename}:{frame.lineno} in {frame.name}")
+                if i > 0 and i == render_full_idx - 1:
+                    print(f"{i} frames collapsed...")
+            else:
+                code_span = read_code_span(frame)
+                print()
+                print(f"--Traceback (most recent call last)--")
+                print(f"{frame.filename}:{frame.lineno} in {frame.name}")
+
+                for lineno, line in code_span:
+                    if lineno == frame.lineno:
+                        print(f"> {lineno}| {line}", end="")
+                    else:
+                        print(f"  {lineno}| {line}", end="")
+
+
+class Traceback:
+    def __init__(self, exc_type, exc_value, traceback):
+        self.stacks = self.extract_stack(exc_type, exc_value, traceback)
+
+    def extract_stack(
+        self,
+        exc_type: Type[BaseException],
+        exc_value: BaseException,
+        traceback: Optional[TracebackType],
+    ) -> List[Stack]:
+
+        stacks: List[Stack] = []
+        while True:
+
+            stack = Stack(
+                exc_type=exc_type.__name__,
+                exc_value=exc_value,
+            )
+            stacks.append(stack)
+
+            # catch flytekit errors and parse for stuff
+            if isinstance(exc_value, SyntaxError):
+                stack.syntax_error = _SyntaxError(
+                    offset=exc_value.offset or 0,
+                    filename=exc_value.filename or "?",
+                    lineno=exc_value.lineno or 0,
+                    line=exc_value.text or "",
+                    msg=exc_value.msg,
+                )
+            elif isinstance(exc_value, FlytekitException):
+                stack.flytekit_exc = FlytekitException()
+
+            for frame_summary, line_no in walk_tb(traceback):
+
+                filename = frame_summary.f_code.co_filename
+                # Frames with <frozen importlib._bootstrap> have no real debugging
+                # information and just add noise to the traceback.
+                if filename.startswith("<"):
+                    continue
+                if filename:
+                    if not os.path.isabs(filename):
+                        filename = os.path.join(_IMPORT_CWD, filename)
+                frame = Frame(
+                    filename=filename or "?",
+                    lineno=line_no,
+                    name=frame_summary.f_code.co_name,
+                    locals_={
+                        key: value for key, value in frame_summary.f_locals.items()
+                    },
+                )
+                stack.frames.append(frame)
+
+            # Explicitly chained - raise ... from
+            # https://peps.python.org/pep-3134/#motivation
+            cause = getattr(exc_value, "__cause__", None)
+            if cause:
+                exc_type = cause.__class__
+                exc_value = cause
+                traceback = cause.__traceback__
+                continue
+
+            # Implicity chained
+            cause = exc_value.__context__
+            if cause and not getattr(exc_value, "__suppress_context__", False):
+                exc_type = cause.__class__
+                exc_value = cause
+                traceback = cause.__traceback__
+                continue
+
+            break
+
+        return stacks
+
+    def pretty_print(self):
+        for i, stack in enumerate(self.stacks):
+            print(stack.exc_type)
+            stack.pretty_print()
+
+            if i < len(self.stacks) - 1:
+                if True:
+                    print(
+                        "\n[i]The above exception was the direct cause of the following exception:\n"
+                    )
+                else:
+                    print(
+                        "\n[i]During handling of the above exception, another exception occurred:\n"
+                    )
 
 
 CrashHandler = _CrashHandler()
