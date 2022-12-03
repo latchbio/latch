@@ -97,7 +97,7 @@ class _CrashHandler:
                 ntf.seek(0)
                 tf.add(ntf.name, arcname="metadata.json")
 
-            print(">> Crash report written to .latch_report.tar.gz")
+            print("\n>> Crash report written to .latch_report.tar.gz <<")
 
     def init(self, message: Optional[str], pkg_path: Optional[str] = None):
         """Custom error handling.
@@ -114,12 +114,13 @@ class _CrashHandler:
             value: BaseException,
             traceback: Optional[TracebackType],
         ) -> None:
+            print(f"{message} - printing traceback:\n")
             Traceback(
                 type_,
                 value,
                 traceback,
             ).pretty_print()
-            # self._write_state_to_tarball(pkg_path)
+            self._write_state_to_tarball(pkg_path)
 
         sys.excepthook = _excepthook
 
@@ -153,6 +154,7 @@ _CODE_CACHE: Dict[Tuple[str, int], List[str]] = {}
 class Stack:
     exc_type: str
     exc_value: str
+    is_cause: bool = False
     syntax_error: Optional[_SyntaxError] = None
     flytekit_exc: Optional[FlytekitException] = None
     frames: List[Frame] = field(default_factory=list)
@@ -186,7 +188,7 @@ class Stack:
             else:
                 code_span = read_code_span(frame)
                 print()
-                print(f"--Traceback (most recent call last)--")
+                print("--Traceback (most recent call last)--")
                 print(f"{frame.filename}:{frame.lineno} in {frame.name}")
 
                 for lineno, line in code_span:
@@ -252,17 +254,19 @@ class Traceback:
             # https://peps.python.org/pep-3134/#motivation
             cause = getattr(exc_value, "__cause__", None)
             if cause:
+                stack.is_cause = True
                 exc_type = cause.__class__
                 exc_value = cause
                 traceback = cause.__traceback__
                 continue
 
             # Implicity chained
-            cause = exc_value.__context__
-            if cause and not getattr(exc_value, "__suppress_context__", False):
-                exc_type = cause.__class__
-                exc_value = cause
-                traceback = cause.__traceback__
+            context = exc_value.__context__
+            if context and not getattr(exc_value, "__suppress_context__", False):
+                stack.is_cause = False
+                exc_type = context.__class__
+                exc_value = context
+                traceback = context.__traceback__
                 continue
 
             break
@@ -271,17 +275,17 @@ class Traceback:
 
     def pretty_print(self):
         for i, stack in enumerate(self.stacks):
-            print(stack.exc_type)
             stack.pretty_print()
+            print(f"\n{stack.exc_type}: {stack.exc_value}")
 
             if i < len(self.stacks) - 1:
-                if True:
+                if stack.is_cause:
                     print(
-                        "\n[i]The above exception was the direct cause of the following exception:\n"
+                        "\nThe above exception was the direct cause of the following exception:\n"
                     )
                 else:
                     print(
-                        "\n[i]During handling of the above exception, another exception occurred:\n"
+                        "\nDuring handling of the above exception, another exception occurred:\n"
                     )
 
 
