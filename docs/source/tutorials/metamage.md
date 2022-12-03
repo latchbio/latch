@@ -9,7 +9,7 @@ In this tutorial, we will use the Latch SDK to build **metamage**, a workflow fo
 
 ## What You Will Learn
 
-Bioinformatics workflows often deal with pipelines with tens to hundreds of potential tasks, where each task performs an analysis given some input.
+Bioinformatics workflows often deal with pipelines with tens to hundreds of tasks, where each task processes a set of input values.
 
 It is best practice to package groups of tasks into modular workflows and reuse these workflows in a larger workflow.
 
@@ -210,4 +210,4 @@ Pressing "Enter" on your keyboard allows you to view an expanded version of the 
 ## Key Takeaways
 
 * For medium to complex workflows with many tasks, it is recommended that you group tasks into a workflow.
-* Each workflow can be reused and imported into a larger workflow.
+* Each workflow can be reused as a subworkflow of a new, larger workflow.

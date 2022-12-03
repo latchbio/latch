@@ -225,7 +225,7 @@ def download(
         >>> download("latch:///sample.fa", "dne/dir2/sample.fa") # dne doesn't exist
         Creates a new file in the working directory called dne/dir2/sample.fa,
         which has the same content as the remote file. Note the nonexistent
-        directory is folded into the name of the copied file.
+        directory is created if it does not exist.
     """
     remote_source = _normalize_remote_path(remote_source)
 

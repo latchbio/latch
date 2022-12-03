@@ -15,7 +15,7 @@ def ls(remote_directory: str) -> List[Dict[str, str]]:
 
     Args:
         remote_directory: A valid path to a remote destination, of the form
-            ``[latch:///] dir_1/dir_2/.../dir_n/dir_name``, where `dir_name`
+            ``[latch://]/dir_1/dir_2/.../dir_n/dir_name``, where `dir_name`
             is the name of the directory to list under. Every directory in the
             path must already exist.
 

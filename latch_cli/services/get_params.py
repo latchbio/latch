@@ -47,6 +47,8 @@ _primitive_table = {
 # TODO(ayush): fix this to
 # (1) support records,
 # (2) support fully qualified workflow names,
+# (note from kenny) - pretty sure you intend to support the opposite,
+# fqn are supported by default, address when you get to this todo
 # (3) show a message indicating the generated filename,
 # (4) optionally specify the output filename
 def get_params(wf_name: str, wf_version: Optional[str] = None):

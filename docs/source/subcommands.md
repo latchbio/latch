@@ -203,7 +203,7 @@ $ latch workspace
 
 Spawns an interactive terminal prompt allowing users to choose what workspace
 they want to work in. Allows users to choose between, eg. personal and team
-workspaces to upload files or register workflows.
+workspaces, to upload files or register workflows.
 
 ## `latch get-executions`
 
