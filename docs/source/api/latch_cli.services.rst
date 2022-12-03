@@ -7,7 +7,10 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
+   latch_cli.services.deprecated
+   latch_cli.services.init
    latch_cli.services.register
+   latch_cli.services.test_data
 
 Submodules
 ----------
@@ -20,10 +23,10 @@ latch\_cli.services.cp module
    :undoc-members:
    :show-inheritance:
 
-latch\_cli.services.launch module
+latch\_cli.services.execute module
 ----------------------------------
 
-.. automodule:: latch_cli.services.launch
+.. automodule:: latch_cli.services.execute
    :members:
    :undoc-members:
    :show-inheritance:
@@ -36,6 +39,14 @@ latch\_cli.services.get module
    :undoc-members:
    :show-inheritance:
 
+latch\_cli.services.get\_executions module
+------------------------------------------
+
+.. automodule:: latch_cli.services.get_executions
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 latch\_cli.services.get\_params module
 --------------------------------------
 
@@ -44,18 +55,18 @@ latch\_cli.services.get\_params module
    :undoc-members:
    :show-inheritance:
 
-latch\_cli.services.init module
--------------------------------
+latch\_cli.services.launch module
+---------------------------------
 
-.. automodule:: latch_cli.services.init
+.. automodule:: latch_cli.services.launch
    :members:
    :undoc-members:
    :show-inheritance:
 
-latch\_cli.services.local\_execute module
------------------------------------------
+latch\_cli.services.local\_dev module
+-------------------------------------
 
-.. automodule:: latch_cli.services.local_execute
+.. automodule:: latch_cli.services.local_dev
    :members:
    :undoc-members:
    :show-inheritance:
@@ -76,14 +87,6 @@ latch\_cli.services.ls module
    :undoc-members:
    :show-inheritance:
 
-latch\_cli.services.mkdir module
---------------------------------
-
-.. automodule:: latch_cli.services.mkdir
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 latch\_cli.services.open\_file module
 -------------------------------------
 
@@ -92,18 +95,18 @@ latch\_cli.services.open\_file module
    :undoc-members:
    :show-inheritance:
 
-latch\_cli.services.rm module
------------------------------
+latch\_cli.services.preview module
+----------------------------------
 
-.. automodule:: latch_cli.services.rm
+.. automodule:: latch_cli.services.preview
    :members:
    :undoc-members:
    :show-inheritance:
 
-latch\_cli.services.touch module
---------------------------------
+latch\_cli.services.workspace module
+------------------------------------
 
-.. automodule:: latch_cli.services.touch
+.. automodule:: latch_cli.services.workspace
    :members:
    :undoc-members:
    :show-inheritance:

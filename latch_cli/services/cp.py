@@ -10,13 +10,13 @@ import tqdm as _tqdm
 from tqdm.auto import tqdm
 
 import latch_cli.tinyrequests as tinyrequests
-from latch_cli.config.latch import LatchConfig
+from latch_cli.config.latch import _LatchConfig
 from latch_cli.constants import FILE_CHUNK_SIZE
-from latch_cli.services.mkdir import mkdir
-from latch_cli.services.touch import touch
+from latch_cli.services.deprecated.mkdir import mkdir
+from latch_cli.services.deprecated.touch import touch
 from latch_cli.utils import _normalize_remote_path, current_workspace, retrieve_or_login
 
-config = LatchConfig()
+config = _LatchConfig()
 endpoints = config.sdk_endpoints
 
 # tqdm progress bars aren't thread safe so restrict so that only one can update at a time
@@ -37,41 +37,40 @@ def _dir_exists(remote_dir: str) -> bool:
     return response.json()["exists"]
 
 
-def _upload(
+def upload(
     local_source: str,
     remote_dest: str,
-    executor: cf.ThreadPoolExecutor,
+    _executor: cf.ThreadPoolExecutor,
 ):
-    """Allows movement of files from local machines -> Latch.
+    """Allows movement of files/directories from local machines -> Latch. Called
+    by `cp`.
 
     Args:
-        local_source:  A valid path to a local file (can be absolute or relative).
-        remote_dest:   A valid path to a LatchData file. The path must be absolute
-                       and prefixed with `latch://`. If a directory in the path
-                       doesn't exist, that directory and everything following it
-                       becomes the file name - see below.
+        local_source: A valid path to a local file (can be absolute or
+            relative).
+        remote_dest: A valid path to a LatchData file. The path must be absolute
+            and prefixed with `latch://`. If a directory in the path doesn't
+            exist, that directory and everything following it becomes the name
+            - see below.
 
     This function will initiate a `multipart upload`_ directly with AWS S3. The
     upload URLs are retrieved and presigned using credentials proxied through
     Latch's APIs.
 
-    Example: ::
+    Examples:
 
-        cp("sample.fa", "latch:///sample.fa")
+        >>> upload("sample.fa", "latch:///sample.fa")
+        Creates a new file visible in Latch Console called sample.fa, located in
+        the root of the user's Latch filesystem
 
-            Creates a new file visible in Latch Console called sample.fa, located in
-            the root of the user's Latch filesystem
+        >>> upload("sample.fa", "latch:///dir1/dir2/sample.fa")
+        Creates a new file visible in Latch Console called sample.fa, located in
+        the nested directory /dir1/dir2/
 
-        cp("sample.fa", "latch:///dir1/dir2/sample.fa")
-
-            Creates a new file visible in Latch Console called sample.fa, located in
-            the nested directory /dir1/dir2/
-
-        cp("sample.fa", "latch:///dir1/doesnt_exist/dir2/sample.fa") # doesnt_exist doesn't exist
-
-            Creates a new file visible in Latch Console called doesnt_exist/dir2/sample.fa,
-            located in the directory /dir1/. Note that 'doesnt_exist' and everything
-            following (including the `/`s) are part of the filename.
+        >>> upload("sample.fa", "latch:///dne/dir2/sample.fa") # dne doesn't exist
+        Creates a new file visible in Latch Console called dne/dir2/sample.fa.
+        Note that 'dne' and everything following (including the `/`s) are part
+        of the filename.
 
     .. _multipart upload:
         https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html
@@ -91,9 +90,9 @@ def _upload(
             mkdir(remote_directory=remote_dest)
         for sub_dir in local_source_p.iterdir():
             # do files in serial for now to prevent deadlocks
-            _upload(sub_dir, f"{remote_dest}/{sub_dir.name}", executor)
+            upload(sub_dir, f"{remote_dest}/{sub_dir.name}", _executor)
     else:
-        _upload_file(local_source_p, remote_dest, executor)
+        _upload_file(local_source_p, remote_dest, _executor)
 
 
 def _upload_file(
@@ -196,38 +195,37 @@ def _upload_file_chunk(
     return {"ETag": etag, "PartNumber": part_index + 1}
 
 
-def _download(remote_source: str, local_dest: str, executor: cf.ThreadPoolExecutor):
-    """Allows movement of files from Latch -> local machines.
+def download(
+    remote_source: str,
+    local_dest: str,
+    _executor: cf.ThreadPoolExecutor,
+):
+    """Allows movement of files/directories from Latch -> local machines. Called
+    by `cp`.
 
     Args:
         remote_source: A valid path to an existing LatchData file. The path must
-                       be absolute and prefixed with `latch://`.
-        local_dest:    A (relative or absolute) path. If a directory in the path
-                       doesn't exist, that directory and everything following it
-                       becomes the file name - see below.
+            be absolute and prefixed with `latch://`.
+        local_dest: A (relative or absolute) path. If a directory in the path
+            doesn't exist, that directory and everything following it becomes
+            the file name - see below.
 
-    This function will initiate a download using an authenticated and presigned
-    URL directly from AWS S3.
+    This function will initiate a download using a presigned URL directly from
+    AWS S3.
 
-    Example: ::
+    Examples:
+        >>> download("latch:///sample.fa", "sample.fa")
+        Creates a new file in the user's local working directory called
+        `sample.fa`, which has the same contents as the remote file.
 
-        cp("latch:///sample.fa", "sample.fa")
+        >>> download("latch:///dir1/dir2/sample.fa", "/dir3/dir4/sample.fa")
+        Creates a new file in the local directory `/dir3/dir4/` called
+        `sample.fa`, which has the same contents as the remote file.
 
-            Creates a new file in the user's local working directory called
-            sample.fa, which has the same contents as the remote file.
-
-        cp("latch:///dir1/dir2/sample.fa", "/dir3/dir4/sample.fa")
-
-            Creates a new file in the local directory /dir3/dir4/ called
-            sample.fa, which has the same contents as the remote file.
-
-        cp("latch:///sample.fa", "/dir1/doesnt_exist/dir2/sample.fa")
-        # doesnt_exist doesn't exist
-
-            Creates a new file in the local directory /dir1/ called
-            doesnt_exist/dir2/sample.fa, which has the same content as the
-            remote file. Note the nonexistent directory is folded into the
-            name of the copied file.
+        >>> download("latch:///sample.fa", "dne/dir2/sample.fa") # dne doesn't exist
+        Creates a new file in the working directory called dne/dir2/sample.fa,
+        which has the same content as the remote file. Note the nonexistent
+        directory is created if it does not exist.
     """
     remote_source = _normalize_remote_path(remote_source)
 
@@ -248,7 +246,7 @@ def _download(remote_source: str, local_dest: str, executor: cf.ThreadPoolExecut
     response_data = response.json()
     if response_data["dir"]:
         futures = []
-        _download_dir(output_dir, response_data, futures, executor)
+        _download_dir(output_dir, response_data, futures, _executor)
         for fut in cf.as_completed(futures):
             # TODO(ayush) send over size info in response and properly use progress bars
             print(f"Finished downloading {fut.result()}", flush=True)
@@ -294,6 +292,32 @@ def _download_file(url: str, output_path: Path):
 
 
 def cp(source_file: str, destination_file: str):
+    """Function called by the Latch CLI to allow files/directories to be copied
+    between local machines and Latch Data.
+
+    Depending on the direction in which the copy is happening, this function
+    calls either the helper function `upload` or the helper function `download`.
+
+    Args:
+        source_file:
+            Either a valid path to a local file/directory or a valid Latch path
+            to a file/directory available remotely. Will be treated as the
+            source to copy from.
+        destination_file:
+            Either a valid path to a local file/directory or a valid Latch path
+            to a file/directory available remotely. Will be treated as the
+            destination to copy to.
+
+    Important:
+        - Unlike Unix `cp`, this function can move directories by default - no
+          need for the `-r` option when called from the CLI.
+        - Exactly one of the parameters `source_file` and `destination_file`
+          must be a local path and the other must be a valid Latch path to a
+          remote entity
+
+    See the documentation for `upload` and `download` for more specific info.
+    """
+
     # by default, max_workers (i.e. maximum number of concurrent jobs) = 5 * cpu_count
     with cf.ThreadPoolExecutor() as executor:
         if not source_file.startswith("latch://") and (
@@ -301,13 +325,13 @@ def cp(source_file: str, destination_file: str):
             or destination_file.startswith("latch://account")
             or destination_file.startswith("latch:///")
         ):
-            _upload(source_file, destination_file, executor)
+            upload(source_file, destination_file, executor)
         elif (
             source_file.startswith("latch:///")
             or source_file.startswith("latch://shared")
             or source_file.startswith("latch://account")
         ) and not destination_file.startswith("latch://"):
-            _download(source_file, destination_file, executor)
+            download(source_file, destination_file, executor)
         else:
             raise ValueError(
                 "latch cp can only be used to either copy remote -> local or local ->"

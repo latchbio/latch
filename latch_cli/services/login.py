@@ -5,15 +5,15 @@ from typing import Optional
 
 
 def login(connection: Optional[str] = None) -> str:
-    """Authenticates user with Latch and persists an access token.
+    """Authenticates a user with Latch and persists an access token.
 
-    Kicks off a three-legged OAuth2.0 flow outlined in `this RFC`_.  Logic
-    scaffolding this flow and detailed documentation can be found in the
-    `latch.auth` package
+    Kicks off the three-legged OAuth2.0 flow outlined in `this RFC`_.  The logic
+    scaffolding this flow and detailed documentation about it can be found in
+    the `latch.auth` package.
 
-    From a high-level, the user will be redirected to a browser and prompted to
-    login. The SDK meanwhile spins up a callback server on a separate thread
-    that will be hit when the browser login is successful with an access token.
+    The user will be redirected to a browser and prompted to login. This
+    function meanwhile spins up a callback server on a separate thread that will
+    be hit when the browser login is successful with an access token.
 
     .. _this RFC:
         https://datatracker.ietf.org/doc/html/rfc6749
@@ -38,9 +38,9 @@ def login(connection: Optional[str] = None) -> str:
             # LatchBio.
             access_jwt = _auth0_jwt_for_access_jwt(jwt)
 
-            from latch_cli.config.user import UserConfig
+            from latch_cli.config.user import _UserConfig
 
-            config = UserConfig()
+            config = _UserConfig()
 
             config.update_token(access_jwt)
             return access_jwt
@@ -72,9 +72,9 @@ def _auth0_jwt_for_access_jwt(token) -> str:
     Uses an Auth0 token to authenticate the user.
     """
     import latch_cli.tinyrequests as tinyrequests
-    from latch_cli.config.latch import LatchConfig
+    from latch_cli.config.latch import _LatchConfig
 
-    endpoints = LatchConfig().sdk_endpoints
+    endpoints = _LatchConfig().sdk_endpoints
 
     headers = {
         "Authorization": f"Bearer {token}",

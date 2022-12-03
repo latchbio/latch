@@ -2,39 +2,33 @@ import webbrowser
 
 import requests
 
-from latch_cli.config.latch import LatchConfig
+from latch_cli.config.latch import _LatchConfig
 from latch_cli.utils import _normalize_remote_path, current_workspace, retrieve_or_login
 
-config = LatchConfig()
+config = _LatchConfig()
 endpoints = config.sdk_endpoints
 
 
 def open_file(remote_file: str):
     """Opens a console URL in the browser corresponding to a remote path
 
-    Args:
-        remote_file:   A valid path to a remote destination, of the form
-
-                                [latch://] [/] dir_1/dir_2/.../dir_n/filename,
-
-                       where filename is the name of a file.
-
     This function will open the specified file in console on the user's browser.
     It will error if the path is invalid, the file doesn't exist, or if the path
     points to a directory.
 
-    Example: ::
+    Args:
+        remote_file: A valid path to a remote destination, of the form
+            ``[latch://] [/] dir_1/dir_2/.../dir_n/filename``, where filename is
+            the name of a file.
 
-        open("sample.txt") # sample.txt exists
+    Examples:
+        >>> open("sample.txt") # sample.txt exists
+            # Opens the file sample.txt in the user's browser.
 
-            Opens the file sample.txt in the user's browser.
+        >>> open("latch:///dir1/dne/sample.txt") # dne does not exist
+            # Will throw an error, as we cannot open a file that does not exist.
 
-        open("latch:///dir1/doesnt_exist/sample.txt") # doesnt_exist does not exist
-
-            Will throw an error, as we cannot open a file that does not exist.
-
-        open("/dir1/dir2") # dir1/dir2 is a directory
-
+        >>> open("/dir1/dir2") # dir1/dir2 is a directory
             Will throw an error, as this operation tries to open a directory
     """
     token = retrieve_or_login()

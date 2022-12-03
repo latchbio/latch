@@ -1,32 +1,35 @@
 """Service to get workflows. """
 
-from typing import List, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import requests
 
-from latch_cli.config.latch import LatchConfig
+from latch_cli.config.latch import _LatchConfig
 from latch_cli.utils import current_workspace, retrieve_or_login
 
-config = LatchConfig()
+config = _LatchConfig()
 endpoints = config.sdk_endpoints
 
-
-def get_wf(wf_name: Union[None, str] = None, wf_id: Union[None, str] = None):
-    """Get a list of workflows a versions.
-
-    Args:
-        wf_name: The unique name of a workflow.
-        wf_id: The unique ID of a workflow.
+# TODO(ayush): rewrite this to look/be better
+def get_wf(wf_name: Optional[str] = None):
+    """Get a list of a workflow's versions.
 
     This will allow users to list all owned workflows by default. Optionally, a
-    user can provide a workflow id or a workflow name (both unique with respect
-    to a user) to list all versions associated with a workflow.
+    user can provide a workflow name (unique with respect to a user) to
+    list all versions of the specific workflow.
 
-    The subcommand naming and behavior is inspired by `kubectl get`.
+    Args:
+        wf_name: The name of the workflow.
 
-    Example: ::
-
-        get_wf()
+    Example:
+        >>> get_wf("wf.__init__.alphafold_wf")
+            ID      Name                            Version
+            61858   wf.__init__.alphafold_wf        v2.1.0+14
+            67261   wf.__init__.alphafold_wf        v2.2.3+0
+            67317   wf.__init__.alphafold_wf        v2.2.3+14
+            67341   wf.__init__.alphafold_wf        v2.2.3+19
+            67408   wf.__init__.alphafold_wf        v2.2.3+40
+            ...
     """
 
     token = retrieve_or_login()

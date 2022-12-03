@@ -9,10 +9,10 @@ from typing import List
 import pytest
 import requests
 
-from latch_cli.config.latch import LatchConfig
+from latch_cli.config.latch import _LatchConfig
 from tests.fixtures import test_account_jwt
 
-config = LatchConfig()
+config = _LatchConfig()
 endpoints = config.sdk_endpoints
 
 

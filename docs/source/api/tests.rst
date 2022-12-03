@@ -20,10 +20,10 @@ tests.test\_cli module
    :undoc-members:
    :show-inheritance:
 
-tests.test\_execute module
---------------------------
+tests.test\_launch module
+-------------------------
 
-.. automodule:: tests.test_execute
+.. automodule:: tests.test_launch
    :members:
    :undoc-members:
    :show-inheritance:
@@ -32,14 +32,6 @@ tests.test\_login module
 ------------------------
 
 .. automodule:: tests.test_login
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-tests.test\_register module
----------------------------
-
-.. automodule:: tests.test_register
    :members:
    :undoc-members:
    :show-inheritance:

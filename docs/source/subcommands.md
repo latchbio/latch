@@ -2,7 +2,7 @@
 
 ## `latch init`
 
-```shell-session
+```console
 $ latch init PACKAGE_NAME
 ```
 
@@ -32,7 +32,7 @@ This example workflow is ready for registration (see below).
 
 This command turns a workflow directory into a cloud native workflow executable from Latch Console. See [writing a workflow](basics/what_is_a_workflow.md) to get ready for this step.
 
-```shell-session
+```console
 $ latch register PATH_TO_WORKFLOW_DIRECTORY
 ```
 
@@ -40,14 +40,14 @@ The first argument specifies the local path in which to look for workflow object
 
 ## `latch get-params`
 
-```shell-session
+```console
 $ latch get-params WORKFLOW_NAME
 ```
 
 This command will generate a dictionary of python-native parameters from the
 workflow `WORKFLOW_NAME`, which can then be passed to `latch launch` (documented below). For example, running
 
-```shell-session
+```console
 $ latch get-params latch.alphafold_wf
 ```
 
@@ -74,40 +74,15 @@ params = {
 
 ## `latch launch`
 
-```shell-session
+```console
 $ latch launch [--version=VERSION] PARAM_FILE
 ```
 
 This command allows a user to launch the workflow and parameters described in `PARAM_FILE`. If `--version` is provided, then that particular version will be executed. If it isn't provided, then it will default to the latest version. See `latch get-params` for more info on parameter files.
 
-## `latch local-execute`
-
-```shell-session
-$ latch local-execute PATH_TO_WORKFLOW_DIRECTORY
-```
-
-Execute a workflow within the latest registered container. Run from the
-outside the pkg root, eg. `latch local-execute myworkflow` where
-`myworkflow` is the directory containing your workflow package.
-
-This is the same as running `$ python3 wf/__init__.py` within the latest
-registered container. Workflow code is overlayed on the latest registered
-container as a volume available at container runtime, meaning that changes to
-python code do not require full Docker rebuilds. This is ideal for rapid local
-iteration. Just ensure that code is re-registered (via `latch register x`)
-when changes need to be persisted.
-
-As an aside, we assume the workflow file contains a snippet conducive to local
-execution such as:
-
-```python
-    if __name__ == "__main__":
-       my_workflow(a="foo", reads=LatchFile("/users/von/neumann/machine.txt")
-```
-
 ## `latch get-wf`
 
-```shell-session
+```console
 $ latch get-wf [--name=NAME]
 ```
 
@@ -119,7 +94,7 @@ This command will list out all workflows (and their respective versions) that th
 
 ## `latch open`
 
-```shell-session
+```console
 $ latch open REMOTE_FILE
 ```
 
@@ -127,7 +102,7 @@ This allows a user to view any of their files in Latch Console using a single co
 
 ## `latch cp`
 
-```shell-session
+```console
 $ latch cp SOURCE_PATH DESTINATION_PATH
 ```
 
@@ -135,25 +110,25 @@ This is the main command-line utility to facilitate data transfer between local 
 
 Here are some examples:
 
-```shell-session
+```console
 $ latch cp sample.fa latch:///sample.fa
 ```
 
 This will create a new file visible in Latch Console called sample.fa, located in the root of the user's Latch filesystem
 
-```shell-session
+```console
 $ latch cp sample.fa latch:///dir1/dir2/sample.fa # where /dir1/dir2 is a valid directory
 ```
 
 This will create a new file visible in Latch Console called sample.fa, located in the nested directory /dir1/dir2/
 
-```shell-session
+```console
 $ latch cp latch:///sample.fa sample.fa
 ```
 
 This will create a new file in the user's local working directory called sample.fa, which has the same contents as the remote file.
 
-```shell-session
+```console
 $ latch cp latch:///dir1/dir2/sample.fa /dir3/dir4/sample.fa
 ```
 
@@ -161,7 +136,7 @@ This will create a new file in the local directory /dir3/dir4/ called sample.fa,
 
 ## `latch ls`
 
-```shell-session
+```console
 $ latch ls [REMOTE_DIRECTORY_PATH]
 ```
 
@@ -169,69 +144,10 @@ Similar to the `ls` command in Unix, the `latch ls` command lists the files and 
 
 Here are some examples:
 
-```shell-session
+```console
 $ latch ls # lists all files under latch:/// (i.e. root directory)
 $ latch ls welcome # lists all files under latch:///welcome/
 $ latch ls latch:///welcome/casTLE # lists all files under latch:///welcome/casTLE
-```
-
-## `latch touch`
-
-```shell-session
-$ latch touch REMOTE_FILE_PATH
-```
-
-Similar to the `touch` command in Unix, the `latch touch` command creates an empty file at the path specified. The prefix `latch:///` for signifying remote paths is optional, as all paths provided to `latch touch` are assumed remote.
-
-Here are some examples:
-
-```shell-session
-$ latch touch a.txt # creates an empty file called a.txt in the user's root directory
-$ latch touch welcome/b.txt # creates an empty file called b.txt in latch:///welcome/
-$ latch touch latch:///welcome/b.txt # same result as above
-```
-
-Note that all parent directories in the specified remote path must already exist. For example, something like `$ latch touch welcome/doesnt_exist/example.txt` will throw an error. If a file already exists at the specified remote path, this command will overwrite its contents thereby making it empty.
-
-## `latch mkdir`
-
-```shell-session
-$ latch mkdir REMOTE_DIRECTORY_PATH
-```
-
-Similar to the `mkdir` command in Unix, the `latch mkdir` command creates an empty folder at the path specified. The prefix `latch:///` for signifying remote paths is optional, as all paths provided to `latch mkdir` are assumed remote.
-
-Here are some examples:
-
-```shell-session
-$ latch mkdir sample # creates an empty folder called sample in the user's root directory
-$ latch mkdir welcome/sample # creates an empty file called sample in latch:///welcome/
-$ latch mkdir latch:///welcome/sample # same result as above
-```
-
-Note that all parent directories in the specified remote path must already exist. For example, something like `$ latch mkdir welcome/doesnt_exist/example_dir` will throw an error. Moreover, if a directory already exists at the specified remote path, this command will create an indexed version of the directory. For example, the sequence of commands
-
-```shell-session
-$ latch mkdir welcome/example_dir
-$ latch mkdir welcome/example_dir
-```
-
-will create two different directories inside of `latch:///welcome`, one called `example_dir` and the other called `example_dir 1`.
-
-## `latch rm`
-
-```shell-session
-$ latch rm REMOTE_PATH
-```
-
-Similar to the `rm` command in Unix, the `latch rm` command deletes the entity at the path specified (either a file or a folder). In the case of folders, `latch rm` behaves like `rm -r`, deleting both the folder and its contents. The prefix `latch:///` for signifying remote paths is optional, as all paths provided to `latch mkdir` are assumed remote.
-
-Here are some examples (assume every path is valid):
-
-```shell-session
-$ latch rm sample # deletes the entity called sample in the user's root directory
-$ latch rm welcome/sample # creates an empty file called sample in latch:///welcome/
-$ latch rm latch:///welcome/sample # same result as above
 ```
 
 ## `latch test-data`
@@ -240,26 +156,70 @@ A set of subcommands to manipulate managed test data.
 
 ### `latch test-data ls`
 
+```console
+$ latch test-data ls
+```
+
 List test data objects as full S3 paths.
 
-### `latch test-data remove <s3 path>`
+### `latch test-data remove`
+
+```console
+$ latch test-data remove S3_PATH
+```
 
 Remove a test data object by passing an S3 path.
 
-### `latch test-data upload <local path>`
+### `latch test-data upload`
+
+```console
+$ latch test-data upload LOCAL_PATH
+```
 
 Upload an object to a managed S3 bucket by passing a local path.
 
 ## `latch exec`
 
-Drops the user into an interactive shell from within a task.
+```console
+$ latch exec TASK_NAME
+```
 
-## `latch preview <workflow name>`
+Drops the user into an interactive shell from within a task. See [here](basics/remote_execution.md)
+for more info.
+
+## `latch preview`
+
+```console
+$ latch preview WORKFLOW_NAME
+```
 
 Creates a preview of your workflow interface without re-registration.
 
 ## `latch workspace`
 
+```console
+$ latch workspace
+```
+
 Spawns an interactive terminal prompt allowing users to choose what workspace
 they want to work in. Allows users to choose between, eg. personal and team
-workspaces to upload files or register workflows.
+workspaces, to upload files or register workflows.
+
+## `latch get-executions`
+
+```console
+$ latch get-executions
+```
+
+Spawns a terminal user interface which mimics the listing of executions found in
+the browser. Browse through your previous executions, view logs, and manage your
+running executions all without leaving your terminal.
+
+## `latch develop`
+
+```console
+$ latch develop PATH_TO_WORKFLOW_DIRECTORY
+```
+
+Creates a REPL that allows for quick iteration and debugging during workflow
+development. See [here](basics/local_development.md) for more info.

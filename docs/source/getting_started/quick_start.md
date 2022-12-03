@@ -2,14 +2,15 @@
 Get up and running with your first workflow in Python.
 ---
 
-In this quickstart, you install the Latch SDK and register a workflow to sort and assemble COVID genomes. The workflow makes use of two computational tools, SAM tools and bowtie, which will allow us to reconstruct the COVID genome from its reads. 
+In this quickstart, you install the Latch SDK and register a workflow to sort and assemble COVID genomes. The workflow makes use of two computational tools, SAM tools and bowtie, which will allow us to reconstruct the COVID genome from its reads.
 
 ## Initial setup
-Register for an account and log into the [Latch Console](console.latch.bio)
+Register for an account and log into the
+[Latch Console](https://console.latch.bio)
 
 ---
 
-## Step 1: Set up your developer environment 
+## Step 1: Set up your developer environment
 
 ### For Linux/ MacOS
 We recommend installing Latch SDK in a fresh environment for best behaviour. To do so, you can use `venv`.
@@ -45,7 +46,7 @@ python3 -m pip install latch
 ```
 
 ## Step 3: Initialize Workflow Directory
-Bootstrap a new workflow directory by running `latch init` from the command line: 
+Bootstrap a new workflow directory by running `latch init` from the command line:
 ```
 latch init covid-wf
 ```
@@ -67,7 +68,7 @@ covid-wf
     └── __init__.py
 ```
 
-All these files (excluding the `reference` folder) are required for you to successfully register and upload your workflow to Latch Console. 
+All these files (excluding the `reference` folder) are required for you to successfully register and upload your workflow to Latch Console.
 
 ## Step 4: Register your first workflow
 To get a live version of your workflow on Latch, simply type:
@@ -75,16 +76,16 @@ To get a live version of your workflow on Latch, simply type:
 latch register --remote covid-wf
 ```
 
-Now, visit [Latch Console](console.latch.bio/workflows), and you will see a live, no-code interface of your assemble and sort workflow!
+Now, visit [Latch Console](https://console.latch.bio/workflows), and you will see a live, no-code interface of your assemble and sort workflow!
 
 ![Interface UI](../assets/interface.png)
 
 ## Step 5: Running your workflow on Latch
 To launch your first workflow, make sure that you are on your workflow page in Latch Console. Then, select the Test Data and click Launch.
 
-Once the workflow finishes running, you can see both the `covid_assembly.sam` and `covid_sorted.bam` files on [Latch Console](console.latch.bio/data). The SAM file contains the sequence alignment data, and the BAM file is the binary version of the SAM file. 
+Once the workflow finishes running, you can see both the `covid_assembly.sam` and `covid_sorted.bam` files on [Latch Console](https://console.latch.bio/data). The SAM file contains the sequence alignment data, and the BAM file is the binary version of the SAM file.
 
-To further check that the genome is aligned properly, simply double click on the output file to open an IGV. 
+To further check that the genome is aligned properly, simply double click on the output file to open an IGV.
 
 ![Inputs UI](../assets/igv.png)
 
@@ -93,8 +94,8 @@ The next time your scientists want to reconstruct COVID genome from sequencing r
 ---
 
 ## Next Steps
-* Understand [how to author your own workflow](../getting_started/authoring_your_workflow.md). 
+* Understand [how to author your own workflow](../getting_started/authoring_your_workflow.md).
 * Understand [how to test and debug your workflow](../basics/local_development.md).
 * Read the [Concepts](../basics/what_is_a_workflow.md) page
 * Visit [Examples](../examples/workflows_examples.md) to see real-world bioinformatics workflows being built using Latch SDK
-* Join the SDK open-source community on Slack [here](https://forms.gle/sCjr8tdjzx5HjVW27)! 
+* Join the SDK open-source community on Slack [here](https://forms.gle/sCjr8tdjzx5HjVW27)!

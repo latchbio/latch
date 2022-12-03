@@ -12,10 +12,26 @@ latch.resources.conditional module
    :undoc-members:
    :show-inheritance:
 
+latch.resources.launch\_plan module
+-----------------------------------
+
+.. automodule:: latch.resources.launch_plan
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 latch.resources.map\_tasks module
 ---------------------------------
 
 .. automodule:: latch.resources.map_tasks
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+latch.resources.reference\_workflow module
+------------------------------------------
+
+.. automodule:: latch.resources.reference_workflow
    :members:
    :undoc-members:
    :show-inheritance:

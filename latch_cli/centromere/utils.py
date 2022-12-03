@@ -17,7 +17,7 @@ from flytekit.tools import module_loader
 
 
 @contextlib.contextmanager
-def add_sys_paths(paths: List[Path]) -> Iterator[None]:
+def _add_sys_paths(paths: List[Path]) -> Iterator[None]:
     paths = [os.fspath(p) for p in paths]
     try:
         for p in paths:
@@ -28,9 +28,9 @@ def add_sys_paths(paths: List[Path]) -> Iterator[None]:
             sys.path.remove(p)
 
 
-def import_flyte_objects(paths: List[Path], module_name: str = "wf"):
+def _import_flyte_objects(paths: List[Path], module_name: str = "wf"):
 
-    with add_sys_paths(paths):
+    with _add_sys_paths(paths):
 
         # (kenny) Documenting weird failure modes of importing modules:
         #   1. Calling attribute of FakeModule in some nested import
@@ -97,7 +97,7 @@ def import_flyte_objects(paths: List[Path], module_name: str = "wf"):
         return mods
 
 
-def construct_dkr_client(ssh_host: Optional[str] = None):
+def _construct_dkr_client(ssh_host: Optional[str] = None):
     """Try many methods of establishing valid connection with client.
 
     This was helpful -
@@ -172,7 +172,7 @@ def construct_dkr_client(ssh_host: Optional[str] = None):
             ) from de
 
 
-def construct_ssh_client(host_ip: str, username: str):
+def _construct_ssh_client(host_ip: str, username: str):
 
     ssh = paramiko.SSHClient()
     ssh.load_system_host_keys()
@@ -180,7 +180,7 @@ def construct_ssh_client(host_ip: str, username: str):
     return ssh
 
 
-class TmpDir:
+class _TmpDir:
 
     """Represents a temporary directory that can be local or on a remote machine."""
 

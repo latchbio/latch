@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Optional
 
 
-class Templates(Enum):
+class _Templates(Enum):
     default = auto()
     r = auto()
     conda = auto()
@@ -19,30 +19,42 @@ def init(pkg_name: Path, template: Optional[str] = None):
     Args:
         pkg_name: A identifier for the workflow - will name the boilerplate
             directory as well as functions within the constructed package.
+        template: Which (if any) template to use when generating the files.
+            Valid choices are 'default', 'r', or 'conda'. If `template` is None,
+            the package will be generated using the 'default' template.
 
-    Example: ::
+    Example:
 
-        init("foo")
+        >>> init("test-workflow")
 
     The resulting file structure will look like::
 
-        foo
-        ├── __init__.py
-        └── version
+        test-workflow
+        ├── Dockerfile
+        ├── reference
+        │   ├── wuhan.1.bt2
+        │   ├── wuhan.2.bt2
+        │   ├── wuhan.3.bt2
+        │   ├── wuhan.4.bt2
+        │   ├── wuhan.fasta
+        │   ├── wuhan.rev.1.bt2
+        │   └── wuhan.rev.2.bt2
+        ├── version
+        └── wf
+            └── __init__.py
 
     Where `version` holds the workflow's version in plaintext and `__init__.py`
     contains the objects needed to define the workflow.
-
 
     """
     # click doesn't support enums for options hence '.name' madness
 
     if template is None:
-        template = Templates.default.name
+        template = _Templates.default.name
 
-    if template not in [t.name for t in Templates]:
+    if template not in [t.name for t in _Templates]:
         raise ValueError(
-            f"Invalid template name. valid options are {[t.name for t in Templates]}"
+            f"Invalid template name. valid options are {[t.name for t in _Templates]}"
         )
 
     cwd = Path(os.getcwd()).resolve()
@@ -55,15 +67,15 @@ def init(pkg_name: Path, template: Optional[str] = None):
             " Remove it or pick another name for your latch workflow."
         )
 
-    if template == Templates.default.name:
+    if template == _Templates.default.name:
         _gen_assemble_and_sort(pkg_root)
-    elif template == Templates.r.name:
+    elif template == _Templates.r.name:
         _gen_example_r(pkg_root)
-    elif template == Templates.conda.name:
+    elif template == _Templates.conda.name:
         _gen_example_conda(pkg_root)
     else:
         raise ValueError(
-            f"Invalid template name. valid options are {[t.name for t in Templates]}"
+            f"Invalid template name. valid options are {[t.name for t in _Templates]}"
         )
 
 

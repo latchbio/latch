@@ -1,3 +1,5 @@
 sphinx
 sphinx-book-theme
-myst_nb
+sphinx-copybutton
+myst-parser
+furo

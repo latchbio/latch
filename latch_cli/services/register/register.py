@@ -11,14 +11,14 @@ from typing import List, Optional
 
 from scp import SCPClient
 
-from latch_cli.centromere.ctx import CentromereCtx
-from latch_cli.centromere.utils import TmpDir
+from latch_cli.centromere.ctx import _CentromereCtx
+from latch_cli.centromere.utils import _TmpDir
 from latch_cli.services.register.constants import ANSI_REGEX, MAX_LINES
 from latch_cli.services.register.utils import (
-    build_image,
-    register_serialized_pkg,
-    serialize_pkg_in_container,
-    upload_image,
+    _build_image,
+    _register_serialized_pkg,
+    _serialize_pkg_in_container,
+    _upload_image,
 )
 
 print = functools.partial(print, flush=True)
@@ -56,9 +56,7 @@ def _print_and_save_build_logs(build_logs, image: str, pkg_root: Path):
 
     logs_path = Path(pkg_root).joinpath(".logs").joinpath(image).resolve()
     logs_path.mkdir(parents=True, exist_ok=True)
-    with open(
-        logs_path.joinpath("docker-build-logs.txt"), "w"
-    ) as save_file:
+    with open(logs_path.joinpath("docker-build-logs.txt"), "w") as save_file:
         r = re.compile("^Step [0-9]+/[0-9]+ :")
         curr_lines = []
         for x in build_logs:
@@ -148,8 +146,8 @@ def _print_serialize_logs(serialize_logs, image):
         print(x, end="")
 
 
-def build_and_serialize(
-    ctx: CentromereCtx,
+def _build_and_serialize(
+    ctx: _CentromereCtx,
     image_name: str,
     context_path: Path,
     tmp_dir: Path,
@@ -163,10 +161,10 @@ def build_and_serialize(
     - Push image
     """
 
-    build_logs = build_image(ctx, image_name, context_path, dockerfile)
+    build_logs = _build_image(ctx, image_name, context_path, dockerfile)
     _print_and_save_build_logs(build_logs, image_name, ctx.pkg_root)
 
-    serialize_logs, container_id = serialize_pkg_in_container(ctx, image_name, tmp_dir)
+    serialize_logs, container_id = _serialize_pkg_in_container(ctx, image_name, tmp_dir)
     _print_serialize_logs(serialize_logs, image_name)
     exit_status = ctx.dkr_client.wait(container_id)
     if exit_status["StatusCode"] != 0:
@@ -174,11 +172,11 @@ def build_and_serialize(
             f"Serialization exited with nonzero exit code: {exit_status['Error']}"
         )
 
-    upload_image_logs = upload_image(ctx, image_name)
+    upload_image_logs = _upload_image(ctx, image_name)
     _print_upload_logs(upload_image_logs, image_name)
 
 
-def recursive_list(directory: Path) -> List[Path]:
+def _recursive_list(directory: Path) -> List[Path]:
     files = []
     for dirname, dirnames, fnames in os.walk(directory):
         for filename in fnames + dirnames:
@@ -227,12 +225,8 @@ def register(
             described in the `cli.services.init` function.
 
 
-    Example: ::
-
-        register("./foo")
-        register("/root/home/foo")
-
-        register("/root/home/foo")
+    Example:
+        >>> register("./example_workflow")
 
     .. _Flyte:
         https://docs.flyte.org
@@ -241,7 +235,7 @@ def register(
     """
 
     pkg_root = Path(pkg_root).resolve()
-    with CentromereCtx(
+    with _CentromereCtx(
         pkg_root,
         disable_auto_version=disable_auto_version,
         remote=remote,
@@ -253,32 +247,32 @@ def register(
 
         with contextlib.ExitStack() as stack:
             td = stack.enter_context(
-                TmpDir(
+                _TmpDir(
                     ssh_client=ctx.ssh_client,
                     remote=remote,
                 )
             )
-            build_and_serialize(
+            _build_and_serialize(
                 ctx,
                 ctx.default_container.image_name,
                 ctx.default_container.dockerfile.parent,
                 td,
             )
-            protos = recursive_list(td)
+            protos = _recursive_list(td)
             if remote:
                 local_td = stack.enter_context(tempfile.TemporaryDirectory())
                 scp = SCPClient(ctx.ssh_client.get_transport(), sanitize=lambda x: x)
                 scp.get(f"{td}/*", local_path=local_td, recursive=True)
-                protos = recursive_list(local_td)
+                protos = _recursive_list(local_td)
             else:
-                protos = recursive_list(td)
+                protos = _recursive_list(td)
 
             for task_name, container in ctx.container_map.items():
                 task_td = stack.enter_context(
-                    TmpDir(ssh_client=ctx.ssh_client, remote=remote)
+                    _TmpDir(ssh_client=ctx.ssh_client, remote=remote)
                 )
                 try:
-                    build_and_serialize(
+                    _build_and_serialize(
                         ctx,
                         container.image_name,
                         # always use root as build context
@@ -294,9 +288,9 @@ def register(
                             sanitize=lambda x: x,
                         )
                         scp.get(f"{task_td}/*", local_path=local_td, recursive=True)
-                        new_protos = recursive_list(local_td)
+                        new_protos = _recursive_list(local_td)
                     else:
-                        new_protos = recursive_list(task_td)
+                        new_protos = _recursive_list(task_td)
                     try:
                         split_task_name = task_name.split(".")
                         task_name = ".".join(
@@ -318,5 +312,5 @@ def register(
                         f"{container.dockerfile} given to {task_name} is invalid.",
                     ) from e
 
-            reg_resp = register_serialized_pkg(ctx, protos)
+            reg_resp = _register_serialized_pkg(ctx, protos)
             _print_reg_resp(reg_resp, ctx.default_container.image_name)

@@ -118,7 +118,7 @@ tutorials/metamage
 ```{toctree}
 :hidden:
 :maxdepth: 2
-:caption: API Docs
+:caption: API Reference
 subcommands
 api/modules
 ```

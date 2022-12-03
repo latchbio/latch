@@ -4,23 +4,25 @@ RNA-seq has become a ubiquitous tool for gaining insight into the transcriptomes
 
 In this tutorial, we will use the Latch SDK to deploy a Bulk RNA-sequencing pipeline that takes as input FastQ files and automatically trims reads and generates count matrices.
 
-## Prerequisites: 
+## Prerequisites
+
 * Install the Latch SDK.
 * Understand basic concepts of a workflow through our [Quickstart](../getting_started/quick_start.md) and [Authoring your Own Workflow](../getting_started/authoring_your_workflow.md).
 
 ## What You Will Learn
 
 Bioinformatics workflows often deal with performing operations and passing around large files. Using RNA-seq as an example, this tutorial will focus on highlighting the following key concepts:
+
 * How to run a task in parallel over a list of files using `map_task`
 * Hown to handle files with metadata
 * How to use `file_glob` to conviently put a list of output files into a directory
 * How to write a task to coalesce outputs from a map task
 
-To follow along, view source code [here](https://github.com/latch-verified/bulk-rnaseq/releases/tag/v0.0.317). 
+To follow along, view source code [here](https://github.com/latch-verified/bulk-rnaseq/releases/tag/v0.0.317).
 
 ---
 
-# Overview of the Workflow
+## Overview of the Workflow
 
 At a high level, the bulk RNA-seq workflow produces gene and transcript counts from bulk RNA-seq sample reads.
 
@@ -32,12 +34,14 @@ There are two main steps in the workflow: trimming and alignment.
 
 **Alignment**: Alignment is the process of assigning a sequencing read to a location on a reference genome or transcriptome. It is the most computationally expensive step of the workflow, requiring a comparison against the entire reference sequence for each of millions of reads. We utilize [*salmon*](https://github.com/COMBINE-lab/salmon) to implement selective alignment, which produces highly accurate estimates of transcript abundances.
 
-We additionally use [*tximport*](ps://bioconductor.org/packages/release/bioc/html/tximport.html) to perform the conversion of transcripts to read counts.
+We additionally use [*tximport*](https://bioconductor.org/packages/release/bioc/html/tximport.html) to perform the conversion of transcripts to read counts.
 
-### How a Workflow is Represented in Latch
+## How a Workflow is Represented in Latch
+
 A workflow is an analysis that takes in some input, processes it in one or more steps and produces some output. Formally, a workflow can be described as a directed acyclic graph (DAG), where each node in the graph is called a task. This computational graph is a flexible model to describe most any bioinformatics analysis.
 
 In our example, we can define the above workflow like so:
+
 ```python
 @workflow
 def rnaseq(
@@ -84,10 +88,11 @@ def rnaseq(
 
 ```
 
-The workflow code above contains 3 tasks: 
+The workflow code above contains 3 tasks:
+
 * `prepare_trimgalore_salmon_inputs`: to pre-process and prepare valid inputs for the second trimgalore_salmon task
 * `trimgalore_salmon`: to trim sample’s reads and quantify transcripts for each sample
-* `count_matrix_and_multiqc`: to create an aggregated count table for transcripts of all samples and create a MultiQC report for percentage of reads aligned. 
+* `count_matrix_and_multiqc`: to create an aggregated count table for transcripts of all samples and create a MultiQC report for percentage of reads aligned.
 
 ![DAG](../assets/rnaseq-dag.png)
 
@@ -127,7 +132,7 @@ def prepare_trimgalore_salmon_inputs(
    if custom_gtf is not None:
        custom_names.append("gtf")
        custom_files.append(custom_gtf)
- 
+
    return [
        TrimgaloreSalmonInput(
            sample_name=sample.name,
@@ -146,11 +151,11 @@ def prepare_trimgalore_salmon_inputs(
        )
        for sample in samples
    ]
- 
 ```
-In bioinformatics workflows, management of files and metadata is key. For instance, when trimming adapters from sequencing reads, we might be interested in the content of the FastQ file, whether it’s a single or paired-end read, and the reference genome to be aligned against. 
 
-To do so, we can use a Python data class. In our example, the `prepare_trimgalore_salmon_inputs` takes in parameters that are often used in addition to `samples` and return a Python data class called `TrimgaloreSalmonInput`, which has the following properties: 
+In bioinformatics workflows, management of files and metadata is key. For instance, when trimming adapters from sequencing reads, we might be interested in the content of the FastQ file, whether it’s a single or paired-end read, and the reference genome to be aligned against.
+
+To do so, we can use a Python data class. In our example, the `prepare_trimgalore_salmon_inputs` takes in parameters that are often used in addition to `samples` and return a Python data class called `TrimgaloreSalmonInput`, which has the following properties:
 
 ```python
 @dataclass_json
@@ -171,18 +176,21 @@ class TrimgaloreSalmonInput:
     save_indices: bool = False
 ```
 
-`TrimgaloreSalmonInput` will become the input to our second task - `trimgalore_salmon`. 
+`TrimgaloreSalmonInput` will become the input to our second task - `trimgalore_salmon`.
 
 ## Step 2: Running TrimGalore and Salmon on FastQs samples
 
-The `trimgalore_salmon` task has many moving parts, which we won’t examine in detail. We recommend that you review the code at the end once you’ve had a full grasp of the big picture. 
+The `trimgalore_salmon` task has many moving parts, which we won’t examine in detail. We recommend that you review the code at the end once you’ve had a full grasp of the big picture.
 
-Here, we are emphasizing two key concepts: 
+Here, we are emphasizing two key concepts:
+
 * How to run the `trimgalore_salmon` task on a list of inputs
 * How to use file globs to handle groups of files
 
 ### Running the `trimgalore_salmon` task on a list of inputs
+
 To run a specific task on a list of inputs in parallel, we use map task like so:
+
 ```python
 from latch import map_task
 ...
@@ -190,7 +198,7 @@ from latch import map_task
 ...
 ```
 
-Where `inputs` is a list of `TrimgaloreSalmonInput` that the helper task `prepare_trimgalore_salmon_inputs` returns. 
+Where `inputs` is a list of `TrimgaloreSalmonInput` that the helper task `prepare_trimgalore_salmon_inputs` returns.
 
 Note that a task can only be mapped if it accepts one input and produces one output. Here, recall how the `trimgalore_salmon` task only accepts one input.
 
@@ -203,31 +211,36 @@ def trimgalore_salmon(input: TrimgaloreSalmonInput) -> TrimgaloreSalmonOutput:
 <details>
 <summary>What if I want to map a task and pass more than one input parameter to that task? </summary>
 You would have to write a helper task, similar to our `prepare_trimgalore_salmon_input` task above which accepts multiple inputs and returns a Python data class.
-</details> 
+</details>
 
 <details>
 <summary>What’s the difference between a helper task and a helper function? When should I use a task and not a function?</summary>
-You can specify that a function is a task by using the Python decorator `@task` before the function definition. For example, `prepare_trimgalore_salmon_input` is a helper task, whereas `do_trimgalore` is a pure helper function. 
+You can specify that a function is a task by using the Python decorator `@task` before the function definition. For example, `prepare_trimgalore_salmon_input` is a helper task, whereas `do_trimgalore` is a pure helper function.
 
-It’s important to note that only tasks can be called within a workflow. For example, calling `do_trimgalore` within the `rnaseq` workflow would throw an error. 
-</details> 
+It’s important to note that only tasks can be called within a workflow. For example, calling `do_trimgalore` within the `rnaseq` workflow would throw an error.
+</details>
 
 <details>
 <summary>What’s the output type of map_task(trimgalore_salmon)(input=inputs)?</summary>
 It would be a `List` of the output type that `trimgalore_salmon` returns, i.e. `List[TrimgaloreSalmonOutput]`
-</details> 
-
+</details>
 
 ---
-### Using Globs to Move Groups of Files
+
+## Using Globs to Move Groups of Files
+
 Often times logic is needed to move groups of files together based on a shared pattern. To do this in the SDK, you can leverage the `file_glob` function to construct lists of `LatchFile`s defined by a pattern.
 
-There are many instances in our bulk RNA-seq example where [`file_glob`]() is used: 
+There are many instances in our bulk RNA-seq example where `file_glob` is used:
+
 * To group different trimming report outputted from Trimgalore:
+
 ```python
-    reports = file_glob("*trimming_report.txt", reports_directory)    
+    reports = file_glob("*trimming_report.txt", reports_directory)
 ```
+
 * To group trimmed FastQs:
+
 ```python
     if isinstance(reads, SingleEndReads):
         (r1,) = file_glob(f"{local_output}/*trimmed.fq*", reads_directory)
@@ -235,15 +248,17 @@ There are many instances in our bulk RNA-seq example where [`file_glob`]() is us
     else:
         # File glob sorts files alphanumerically
         r1, r2 = file_glob(f"{local_output}/*val*.fq*", reads_directory)
-        trimmed_replicate = PairedEndReads(r1=r1, r2=r2)    
+        trimmed_replicate = PairedEndReads(r1=r1, r2=r2)
 ```
 
 ## Step 2: Generate count matrix and a MultiQC report
+
 It is helpful to aggregate transcript quantification files for multiple samples from Salmon into a single counts table for downstream analysis like differential expression.
 
 To do this, we define a task called `count_matrix_and_multiqc` to join the various quantification files from the map task and produce a single count matrix, as well as perform MultiQC to compute the percent of reads aligned.
 
 ### Joining quantification files into a single count matrix
+
 ```python
 @small_task
 def count_matrix_and_multiqc(
@@ -311,7 +326,8 @@ def count_matrix_and_multiqc(
 ```
 
 ### Generating a MultiQC Report
-To generate a MultiQC report, we use `subprocess` to run the `multiqc` command and output the HTML report to Latch. 
+
+To generate a MultiQC report, we use `subprocess` to run the `multiqc` command and output the HTML report to Latch.
 
 ```python
 try:
@@ -334,13 +350,16 @@ try:
     return output_files
 ```
 
-The MultiQC report shows percentage of reads aligned per sample and fragment length distribution using *Salmon*. 
+The MultiQC report shows percentage of reads aligned per sample and fragment length distribution using *Salmon*.
 
-See an example MultiQC report output from the Bulk RNA-seq workflow [here](https://console.latch.bio/data/2428754). 
+See an example MultiQC report output from the Bulk RNA-seq workflow [here](https://console.latch.bio/data/2428754).
 
 ---
+
 ## Key Takeaways
-In this tutorial, you learned how to: 
+
+In this tutorial, you learned how to:
+
 * use map tasks to run Trimgalore and Salmon over a list of inputs.
 * make use of Python data classes to handle multiple `LatchFile`s and associated metadata in tasks.
 * use `file_glob` to group files according to a predefined pattern.

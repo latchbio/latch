@@ -3,7 +3,7 @@
 import base64
 
 
-def base64url_encode(bytestring: bytes) -> str:
+def _base64url_encode(bytestring: bytes) -> str:
     """Construct a "base64url" encoding of a bytestring.
 
     Not that this is a modified Base64 encoding with a url + filename safe

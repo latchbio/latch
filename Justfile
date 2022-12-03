@@ -18,7 +18,7 @@ dev-requirements:
   pip-compile dev-requirements.in
 
 build-api-docs:
-  sphinx-apidoc . -o docs/source/api/
+  sphinx-apidoc . -f -o docs/source/api/
 
 build-docs:
   rm -rf docs/build

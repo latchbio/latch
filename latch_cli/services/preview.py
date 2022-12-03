@@ -5,12 +5,12 @@ from typing import List
 
 from flytekit.clis.sdk_in_container.run import load_naive_entity
 
-from latch_cli.config.latch import LatchConfig
+from latch_cli.config.latch import _LatchConfig
 from latch_cli.tinyrequests import post
 from latch_cli.utils import current_workspace, retrieve_or_login
 
 logger = logging.Logger(name="logger")
-config = LatchConfig()
+config = _LatchConfig()
 endpoints = config.sdk_endpoints
 
 SIMPLE_MAP = {
@@ -63,7 +63,22 @@ def _deep_dict(t) -> dict:
         return t
 
 
+# TODO(ayush): make this import the `wf` directory and use the package root
+# instead of the workflow name. also redo the frontend, also make it open the
+# page
 def preview(workflow_name: str):
+    """Generate a preview of the parameter interface for a workflow.
+
+    This will allow a user to see how their parameter interface will look
+    without having to first register their workflow. Simply provide the name of
+    the workflow function.
+
+    Args:
+        workflow_name: The full name of the workflow function.
+
+    Example:
+        >>> preview("wf.__init__.alphafold_wf")
+    """
 
     try:
         wf = load_naive_entity("wf.__init__", workflow_name)

@@ -12,11 +12,10 @@ BUCKET = "latch-public"
 def ls() -> List[str]:
     """Lists test data objects.
 
-    Example: ::
+    Example:
 
-        ls()
-
-            Will return the full S3 paths of all of my objects.
+        >>> ls()
+            # Will return the full S3 paths of all of my objects.
     """
 
     session_token, access_key, secret_key, account_id = _retrieve_creds()

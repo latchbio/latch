@@ -1,7 +1,7 @@
 from os import PathLike
 from typing import Optional, Type, Union
 
-from latch_cli.services.cp import _download
+from latch_cli.services.cp import download
 
 try:
     from typing import Annotated

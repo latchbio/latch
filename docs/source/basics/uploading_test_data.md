@@ -7,11 +7,11 @@ what sample values could look like.
 To this aim, the SDK provides the ability to define sets of sample parameter
 values and to host example files.
 
-### Defining Test Data
+## Defining Test Data
 
 If we have a toy workflow:
 
-```
+```python
 @workflow
 def foo(a: int, b: string, c: LatchFile):
   ...
@@ -19,7 +19,7 @@ def foo(a: int, b: string, c: LatchFile):
 
 We can define some test data using a `LaunchPlan` like so:
 
-```
+```python
 from latch.resources.launch_plan import LaunchPlan
 
 LaunchPlan(
@@ -40,14 +40,14 @@ One just needs to re-register the workflow with this `LaunchPlan` defined in the
 same file and the `LaunchPlan` name will show up under the "Use Test Data"
 drop-down on the workflow parameters page.
 
-### Hosting Test Files
+## Hosting Test Files
 
 Notice that in the above example, our test value for the `c` parameter is a
 `LatchFile` that points to some object in S3. To upload your own objects, so
 that others can use them in their `LaunchPlan`s, we have provided some utility
 subcommands on the CLI.
 
-```
+```console
 $ latch test-data upload README.md
 Successfully uploaded to s3://latch-public/test-data/4107/README.md
 

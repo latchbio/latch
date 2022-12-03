@@ -13,7 +13,7 @@ from packaging.version import parse as parse_version
 
 import latch_cli.click_utils
 from latch_cli.crash_reporter import CrashReporter
-from latch_cli.services.init.init import Templates
+from latch_cli.services.init.init import _Templates
 from latch_cli.utils import get_latest_package_version, get_local_package_version
 
 latch_cli.click_utils.patch()
@@ -128,7 +128,7 @@ def login(connection: Optional[str]):
     "--template",
     "-t",
     type=click.Choice(
-        [t.name for t in Templates],
+        [t.name for t in _Templates],
         case_sensitive=False,
     ),
 )
@@ -403,9 +403,12 @@ def open_remote_file(remote_file: str):
 @click.argument("remote_path", nargs=1, type=str)
 def rm(remote_path: str):
     """Deletes a remote entity."""
-    from latch_cli.services.rm import rm
+    from latch_cli.services.deprecated.rm import rm
 
     try:
+        click.secho(
+            f"Warning: `latch rm` is deprecated and will be removed soon.", fg="yellow"
+        )
         rm(remote_path)
         click.secho(f"Successfully deleted {remote_path}.", fg="green")
     except Exception as e:
@@ -416,9 +419,13 @@ def rm(remote_path: str):
 @click.argument("remote_directory", nargs=1, type=str)
 def mkdir(remote_directory: str):
     """Creates a new remote directory."""
-    from latch_cli.services.mkdir import mkdir
+    from latch_cli.services.deprecated.mkdir import mkdir
 
     try:
+        click.secho(
+            f"Warning: `latch mkdir` is deprecated and will be removed soon.",
+            fg="yellow",
+        )
         mkdir(remote_directory)
         click.secho(f"Successfully created directory {remote_directory}.", fg="green")
     except Exception as e:
@@ -432,9 +439,13 @@ def mkdir(remote_directory: str):
 @click.argument("remote_file", nargs=1, type=str)
 def touch(remote_file: str):
     """Creates an empty text file."""
-    from latch_cli.services.touch import touch
+    from latch_cli.services.deprecated.touch import touch
 
     try:
+        click.secho(
+            f"Warning: `latch touch` is deprecated and will be removed soon.",
+            fg="yellow",
+        )
         touch(remote_file)
         click.secho(f"Successfully touched {remote_file}.", fg="green")
     except Exception as e:

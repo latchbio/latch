@@ -9,15 +9,28 @@ from typing import Dict, List
 from apscheduler.schedulers.background import BackgroundScheduler
 
 import latch_cli.tui as tui
-from latch_cli.config.latch import LatchConfig
+from latch_cli.config.latch import _LatchConfig
 from latch_cli.tinyrequests import post
 from latch_cli.utils import account_id_from_token, current_workspace, retrieve_or_login
 
-config = LatchConfig()
+config = _LatchConfig()
 endpoints = config.sdk_endpoints
 
 
 def get_executions():
+    """Open an interactive terminal user interface that shows all executions for
+    a particular user on Latch.
+
+    This function in many ways mimics the interface at https://console.latch.bio
+    but in a terminal. You may scroll around using either the arrow keys (or
+    [HJKL] if you like Vim) and you can hit [ENTER] to see more information
+    about the selected execution. You can see logs, and abort a running
+    execution.
+
+    This function should only be called from the CLI, as doing so in any other
+    setting will likely cause the interface to behave in an unexpected way.
+    """
+
     token = retrieve_or_login()
     context = current_workspace()
     headers = {"Authorization": f"Bearer {token}"}
@@ -47,14 +60,14 @@ def get_executions():
             }
         )
 
-    all_executions_tui(
+    _all_executions(
         title="All Executions",
         column_names=display_columns,
         options=options,
     )
 
 
-def all_executions_tui(
+def _all_executions(
     title: str,
     column_names: List[str],
     options: List[Dict[str, str]],
@@ -159,7 +172,7 @@ def all_executions_tui(
                         "execution_id": selected_execution_data["id"],
                     },
                 )
-                execution_dashboard_tui(selected_execution_data, resp.json())
+                _execution_dashboard(selected_execution_data, resp.json())
                 rerender = True
             elif b == b"\x1b":
                 b = tui.read_bytes(2)
@@ -223,7 +236,7 @@ def all_executions_tui(
         termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, old_settings)
 
 
-def execution_dashboard_tui(execution_data: Dict[str, str], workflow_graph: Dict):
+def _execution_dashboard(execution_data: Dict[str, str], workflow_graph: Dict):
     fixed_workflow_graph = list(workflow_graph.items())
 
     def render(curr_selected: int, term_width: int, term_height: int):
@@ -272,13 +285,13 @@ def execution_dashboard_tui(execution_data: Dict[str, str], workflow_graph: Dict
             b = tui.read_bytes(1)
             rerender = False
             if b == b"\r":
-                log_window(execution_data, fixed_workflow_graph, curr_selected)
+                _log_window(execution_data, fixed_workflow_graph, curr_selected)
                 rerender = True
             # elif b in (b"r", b"R"):
             #     relaunch_modal(execution_data)
             #     rerender = True
             elif b in (b"a", b"A"):
-                abort_modal(execution_data)
+                _abort_modal(execution_data)
                 rerender = True
             elif b == b"\x1b":
                 b = tui.read_bytes(2)
@@ -315,7 +328,7 @@ def execution_dashboard_tui(execution_data: Dict[str, str], workflow_graph: Dict
         tui._show()
 
 
-def loading_screen(text: str):
+def _loading_screen(text: str):
     # DISCLAIMER : MOST OF THE MAGIC NUMBERS HERE WERE THROUGH TRIAL AND ERROR
     term_width, term_height = os.get_terminal_size()
 
@@ -330,9 +343,9 @@ def loading_screen(text: str):
     tui._show()
 
 
-def log_window(execution_data, fixed_workflow_graph: list, selected: int):
+def _log_window(execution_data, fixed_workflow_graph: list, selected: int):
     # DISCLAIMER : MOST OF THE MAGIC NUMBERS HERE WERE THROUGH TRIAL AND ERROR
-    loading_screen("Loading logs...")
+    _loading_screen("Loading logs...")
 
     _, selected_task = fixed_workflow_graph[selected]
 
@@ -453,81 +466,12 @@ def log_window(execution_data, fixed_workflow_graph: list, selected: int):
         tui._show()
 
 
-def relaunch_modal(execution_data):
-    # WIP
-
-    # import google.protobuf.json_format as gpjson
-    # from flyteidl.core.literals_pb2 import LiteralMap as _LiteralMap
-    # from flyteidl.core.types_pb2 import LiteralType as _LiteralType
-    # from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-    # from flytekit.core.type_engine import TypeEngine
-    # from flytekit.models.literals import LiteralMap
-    # from flytekit.models.types import LiteralType
-
-    # from latch_cli.services.get_params import (
-    #     _get_code_literal,
-    #     _guess_python_type,
-    #     _guess_python_val,
-    # )
-
-    # token = retrieve_or_login()
-    # headers = {"Authorization": f"Bearer {token}"}
-
-    # response = post(
-    #     "https://nucleus.latch.bio/sdk/get-execution-inputs",
-    #     headers=headers,
-    #     json={"execution_id": execution_data["id"]},
-    # )
-
-    # data = response.json()
-    # url = data["url"]
-    # input_schema = json.loads(data["input_schema"])
-    # variables = input_schema["variables"]
-
-    # type_map = {}
-
-    # for var in variables.values():
-    #     try:
-    #         description_json = json.loads(var["description"])
-    #         param_name = description_json["name"]
-    #     except (json.decoder.JSONDecodeError, KeyError) as e:
-    #         ...
-
-    #     literal_type_json = var["type"]
-    #     literal_type = gpjson.ParseDict(literal_type_json, _LiteralType())
-
-    #     type_map[param_name] = LiteralType.from_flyte_idl(literal_type)
-    # relaunch_bytes = get(url).content
-    # relaunch_proto = _LiteralMap()
-    # relaunch_proto.ParseFromString(relaunch_bytes)
-
-    # literal_map = LiteralMap.from_flyte_idl(relaunch_proto)
-    # literal_names = list(literal_map.literals.keys()).copy()
-    # for param_name in literal_names:
-    #     if param_name not in type_map:
-    #         literal_map.literals.pop(param_name)
-
-    # param_map = TypeEngine.literal_map_to_kwargs(
-    #     FlyteContextManager.current_context(),
-    #     literal_map,
-    #     type_map,
-    # )
-
-    # with tempfile.NamedTemporaryFile("w") as ntf:
-    #     # ntf.write(str(literal_map.literals["param_1"].__dict__))
-    #     # ntf.write(str(literal_map))
-    #     # ntf.write("\n" * 10)
-    #     # ntf.write(str(type_map))
-    #     ntf.write(str(param_map))
-    #     ntf.seek(0)  # lol
-
-    #     subprocess.call(["vim", ntf.name])
-
-    # remove_cursor()
+# TODO(ayush): implement this
+def _relaunch_modal(execution_data):
     return
 
 
-def abort_modal(execution_data):
+def _abort_modal(execution_data):
     def render(term_width: int, term_height: int):
         # DISCLAIMER : MOST OF THE MAGIC NUMBERS HERE WERE THROUGH TRIAL AND ERROR
         tui.clear_screen()
@@ -579,13 +523,3 @@ def abort_modal(execution_data):
     finally:
         tui.clear_screen()
         tui.move_cursor((0, 0))
-
-
-if __name__ == "__main__":
-    old_settings = termios.tcgetattr(sys.stdin.fileno())
-    tty.setraw(sys.stdin.fileno())
-    tui.clear_screen()
-    x, y = tui.current_cursor_position()
-    tui._print(str(x), str(y))
-    tui._show()
-    termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, old_settings)

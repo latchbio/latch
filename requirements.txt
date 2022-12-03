@@ -10,6 +10,8 @@ apscheduler==3.9.1
     # via -r requirements.in
 arrow==1.2.3
     # via jinja2-time
+asyncssh==2.12.0
+    # via -r requirements.in
 attrs==21.4.0
     # via jsonschema
 awscli==1.25.22
@@ -53,7 +55,9 @@ cookiecutter==2.1.1
 croniter==1.1.0
     # via lytekit
 cryptography==38.0.1
-    # via paramiko
+    # via
+    #   asyncssh
+    #   paramiko
 dataclasses-json==0.5.6
     # via lytekit
 decorator==5.1.1
@@ -108,7 +112,7 @@ kubernetes==24.2.0
     #   lytekitplugins-pods
 lyteidl==0.1.0
     # via lytekit
-lytekit==0.13.3
+lytekit==0.13.5
     # via
     #   -r requirements.in
     #   lytekitplugins-pods
@@ -141,7 +145,7 @@ paramiko==2.11.0
     # via
     #   -r requirements.in
     #   scp
-prompt-toolkit==3.0.29
+prompt-toolkit==3.0.33
     # via -r requirements.in
 protobuf==3.19.3
     # via
@@ -244,6 +248,7 @@ tqdm==4.63.0
 typing-extensions==4.3.0
     # via
     #   -r requirements.in
+    #   asyncssh
     #   lytekit
     #   typing-inspect
 typing-inspect==0.7.1

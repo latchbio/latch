@@ -24,8 +24,8 @@ from prompt_toolkit.history import FileHistory
 from prompt_toolkit.patch_stdout import patch_stdout
 from prompt_toolkit.shortcuts import PromptSession
 
-from latch_cli.centromere.utils import import_flyte_objects
-from latch_cli.config.latch import LatchConfig
+from latch_cli.centromere.utils import _import_flyte_objects
+from latch_cli.config.latch import _LatchConfig
 from latch_cli.tinyrequests import post
 from latch_cli.utils import (
     TemporarySSHCredentials,
@@ -33,7 +33,7 @@ from latch_cli.utils import (
     retrieve_or_login,
 )
 
-config = LatchConfig()
+config = _LatchConfig()
 sdk_endpoints = config.sdk_endpoints
 
 QUIT_COMMANDS = ["quit", "exit"]
@@ -47,8 +47,8 @@ COMMAND_EXPRESSION = re.compile(
 COMMANDS = QUIT_COMMANDS + EXEC_COMMANDS + LIST_COMMANDS
 
 
-def get_latest_image(pkg_root: Path) -> str:
-    import_flyte_objects(paths=[pkg_root])
+def _get_latest_image(pkg_root: Path) -> str:
+    _import_flyte_objects(paths=[pkg_root])
 
     wf_name = ""
     for entity in FlyteEntities.entities:
@@ -77,12 +77,11 @@ def get_latest_image(pkg_root: Path) -> str:
     return f"{config.dkr_repo}/{ws_id}_{pkg_root.name}:{latest_version}"
 
 
-async def copy_files(
+async def _copy_files(
     ssh_conn: asyncssh.SSHClientConnection,
     pkg_root: Path,
 ):
-    # TODO(ayush) do something more sophisticated/only send over
-    # diffs or smth to make this more efficient (rsync?)
+    # TODO(ayush) rsync
 
     coroutines = []
     for path in [
@@ -106,19 +105,19 @@ async def copy_files(
         await asyncio.gather(*coroutines)
 
 
-class MessageType(Enum):
+class _MessageType(Enum):
     resize = "resize"
     body = "body"
     exit = "exit"
 
 
-async def get_messages(
+async def _get_messages(
     ws: websockets.WebSocketClientProtocol,
     show_output: bool,
 ):
     async for message in ws:
         msg = json.loads(message)
-        if msg.get("Type") == MessageType.exit.value:
+        if msg.get("Type") == _MessageType.exit.value:
             return
         if show_output:
             await aioconsole.aprint(
@@ -128,15 +127,15 @@ async def get_messages(
             )
 
 
-async def send_message(
+async def _send_message(
     ws: websockets.WebSocketClientProtocol,
     message: Union[str, bytes],
-    typ: Optional[MessageType] = None,
+    typ: Optional[_MessageType] = None,
 ):
     if isinstance(message, bytes):
         message = message.decode("utf-8")
     if typ is None:
-        typ = MessageType.body
+        typ = _MessageType.body
     body = {"Body": message, "Type": typ.value}
     await ws.send(json.dumps(body))
     # yield control back to the event loop,
@@ -144,12 +143,12 @@ async def send_message(
     await asyncio.sleep(0)
 
 
-async def send_resize_message(
+async def _send_resize_message(
     ws: websockets.WebSocketClientProtocol,
     term_width: int,
     term_height: int,
 ):
-    await send_message(
+    await _send_message(
         ws,
         json.dumps(
             {
@@ -157,11 +156,93 @@ async def send_resize_message(
                 "Height": term_height,
             }
         ),
-        typ=MessageType.resize,
+        typ=_MessageType.resize,
     )
 
 
-async def run_local_dev_session(pkg_root: Path):
+async def _shell_session(
+    ws: websockets.WebSocketClientProtocol,
+):
+    old_settings_stdin = termios.tcgetattr(sys.stdin.fileno())
+    tty.setraw(sys.stdin)
+
+    loop = asyncio.get_event_loop()
+    reader = asyncio.StreamReader(loop=loop)
+
+    stdin2 = os.dup(sys.stdin.fileno())
+    stdout2 = os.dup(sys.stdout.fileno())
+
+    old_sigwinch_handler = signal.getsignal(signal.SIGWINCH)
+
+    await loop.connect_read_pipe(
+        lambda: asyncio.StreamReaderProtocol(
+            reader,
+            loop=loop,
+        ),
+        os.fdopen(stdin2),
+    )
+
+    writer_transport, writer_protocol = await loop.connect_write_pipe(
+        lambda: asyncio.streams.FlowControlMixin(loop=loop),
+        os.fdopen(stdout2),
+    )
+    writer = asyncio.streams.StreamWriter(
+        writer_transport,
+        writer_protocol,
+        None,
+        loop,
+    )
+
+    resize_event_queue = asyncio.Queue()
+
+    def new_sigwinch_handler(signum, frame):
+        if isinstance(old_sigwinch_handler, Callable):
+            old_sigwinch_handler(signum, frame)
+
+        term_width, term_height = os.get_terminal_size()
+        resize_event_queue.put_nowait((term_width, term_height))
+
+    signal.signal(signal.SIGWINCH, new_sigwinch_handler)
+
+    # get initial terminal size and send it over
+    term_width, term_height = os.get_terminal_size()
+    resize_event_queue.put_nowait((term_width, term_height))
+
+    async def resize_task():
+        while True:
+            (term_width, term_height) = await resize_event_queue.get()
+            await _send_resize_message(ws, term_width, term_height)
+
+    async def input_task():
+        while True:
+            message = await reader.read(1)
+            await _send_message(ws, message)
+
+    async def output_task():
+        async for output in ws:
+            obj: dict = json.loads(output)
+            if obj.get("Type") == "exit":
+                io_task.cancel()
+                return
+
+            message = obj.get("Body")
+            if isinstance(message, str):
+                message = message.encode("utf-8")
+            writer.write(message)
+            await writer.drain()
+            await asyncio.sleep(0)
+
+    try:
+        io_task = asyncio.gather(input_task(), output_task(), resize_task())
+        await io_task
+    except asyncio.CancelledError:
+        ...
+    finally:
+        termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, old_settings_stdin)
+        signal.signal(signal.SIGWINCH, old_sigwinch_handler)
+
+
+async def _run_local_dev_session(pkg_root: Path):
     scripts_dir = pkg_root.joinpath("scripts").resolve()
 
     def file_filter(filename: str) -> bool:
@@ -259,7 +340,7 @@ async def run_local_dev_session(pkg_root: Path):
             centromere_ip, username=centromere_username
         ) as ssh_conn:
             await aioconsole.aprint("Copying your local changes... ", end="")
-            await copy_files(ssh_conn, pkg_root)
+            await _copy_files(ssh_conn, pkg_root)
             await aioconsole.aprint("Done.")
 
             async for ws in websockets.connect(
@@ -301,26 +382,26 @@ async def run_local_dev_session(pkg_root: Path):
                                 or cmd == "shell"
                             ):
                                 await aioconsole.aprint("Syncing local changes... ")
-                                await copy_files(ssh_conn, pkg_root)
+                                await _copy_files(ssh_conn, pkg_root)
                                 await aioconsole.aprint("Finished syncing.")
 
-                            await send_message(ws, cmd)
+                            await _send_message(ws, cmd)
 
-                            image_name_tagged = get_latest_image(pkg_root)
-                            await send_message(ws, docker_access_token)
-                            await send_message(ws, image_name_tagged)
+                            image_name_tagged = _get_latest_image(pkg_root)
+                            await _send_message(ws, docker_access_token)
+                            await _send_message(ws, image_name_tagged)
                             await aioconsole.aprint(f"Pulling {image_name_tagged}... ")
 
-                            await get_messages(ws, show_output=False)
-                            await get_messages(ws, show_output=False)
+                            await _get_messages(ws, show_output=False)
+                            await _get_messages(ws, show_output=False)
                             await aioconsole.aprint("Image successfully pulled.\n")
 
-                            await get_messages(ws, show_output=True)
+                            await _get_messages(ws, show_output=True)
 
                             if cmd == "shell":
                                 with session.input.detach():
                                     with patch_stdout(raw=True):
-                                        await shell_session(ws)
+                                        await _shell_session(ws)
                                         await ws.drain()
                     except websockets.exceptions.ConnectionClosed:
                         continue
@@ -336,87 +417,22 @@ async def run_local_dev_session(pkg_root: Path):
                     close_resp.raise_for_status()
 
 
-async def shell_session(
-    ws: websockets.WebSocketClientProtocol,
-):
-    old_settings_stdin = termios.tcgetattr(sys.stdin.fileno())
-    tty.setraw(sys.stdin)
-
-    loop = asyncio.get_event_loop()
-    reader = asyncio.StreamReader(loop=loop)
-
-    stdin2 = os.dup(sys.stdin.fileno())
-    stdout2 = os.dup(sys.stdout.fileno())
-
-    old_sigwinch_handler = signal.getsignal(signal.SIGWINCH)
-
-    await loop.connect_read_pipe(
-        lambda: asyncio.StreamReaderProtocol(
-            reader,
-            loop=loop,
-        ),
-        os.fdopen(stdin2),
-    )
-
-    writer_transport, writer_protocol = await loop.connect_write_pipe(
-        lambda: asyncio.streams.FlowControlMixin(loop=loop),
-        os.fdopen(stdout2),
-    )
-    writer = asyncio.streams.StreamWriter(
-        writer_transport,
-        writer_protocol,
-        None,
-        loop,
-    )
-
-    resize_event_queue = asyncio.Queue()
-
-    def new_sigwinch_handler(signum, frame):
-        if isinstance(old_sigwinch_handler, Callable):
-            old_sigwinch_handler(signum, frame)
-
-        term_width, term_height = os.get_terminal_size()
-        resize_event_queue.put_nowait((term_width, term_height))
-
-    signal.signal(signal.SIGWINCH, new_sigwinch_handler)
-
-    # get initial terminal size and send it over
-    term_width, term_height = os.get_terminal_size()
-    resize_event_queue.put_nowait((term_width, term_height))
-
-    async def resize_task():
-        while True:
-            (term_width, term_height) = await resize_event_queue.get()
-            await send_resize_message(ws, term_width, term_height)
-
-    async def input_task():
-        while True:
-            message = await reader.read(1)
-            await send_message(ws, message)
-
-    async def output_task():
-        async for output in ws:
-            obj: dict = json.loads(output)
-            if obj.get("Type") == "exit":
-                io_task.cancel()
-                return
-
-            message = obj.get("Body")
-            if isinstance(message, str):
-                message = message.encode("utf-8")
-            writer.write(message)
-            await writer.drain()
-            await asyncio.sleep(0)
-
-    try:
-        io_task = asyncio.gather(input_task(), output_task(), resize_task())
-        await io_task
-    except asyncio.CancelledError:
-        ...
-    finally:
-        termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, old_settings_stdin)
-        signal.signal(signal.SIGWINCH, old_sigwinch_handler)
-
-
 def local_development(pkg_root: Path):
-    asyncio.run(run_local_dev_session(pkg_root))
+    """Starts a REPL that allows a user to interactively run tasks to help with
+    debugging during workflow development.
+
+    In this REPL, you can run tasks or scripts and make edits to them without
+    having to reregister your workflow. You can also get a shell into a
+    container with the same environment as the one that the workflow runs in, to
+    help debug installation issues. See the full documentation for `Local
+    Development` for more info.
+
+    Like `get_executions`, this should only be called from the CLI for best
+    results.
+
+    Args:
+        pkg_root: A path that points to a valid workflow directory (see the
+            docs for `register`)
+
+    """
+    asyncio.run(_run_local_dev_session(pkg_root))
