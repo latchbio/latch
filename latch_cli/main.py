@@ -12,7 +12,7 @@ import click
 from packaging.version import parse as parse_version
 
 import latch_cli.click_utils
-from latch_cli.crash_reporter import CrashReporter
+from latch_cli.crash_handler import CrashHandler
 from latch_cli.services.init.init import _Templates
 from latch_cli.utils import get_latest_package_version, get_local_package_version
 
@@ -73,18 +73,11 @@ def register(pkg_root: str, disable_auto_version: bool, remote: bool):
     """
     from latch_cli.services.register import register
 
-    try:
-        register(pkg_root, disable_auto_version=disable_auto_version, remote=remote)
-        click.secho(
-            "Successfully registered workflow. View @ console.latch.bio.", fg="green"
-        )
-    except Exception as e:
-        CrashHandler.report(pkg_path=pkg_root)
-        click.secho(f"Unable to register workflow: {str(e)}", fg="red")
-    finally:
-        # remove cached crash-report logs
-        if os.path.isdir(pkg_root + ".logs/"):
-            shutil.rmtree(pkg_root + ".logs/")
+    CrashHandler.init(message="Unable to register workflow.", pkg_path=pkg_root)
+    register(pkg_root, disable_auto_version=disable_auto_version, remote=remote)
+    click.secho(
+        "Successfully registered workflow. View @ console.latch.bio.", fg="green"
+    )
 
 
 @main.command("develop")

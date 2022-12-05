@@ -6,7 +6,6 @@ import sys
 import tarfile
 import tempfile
 from dataclasses import dataclass, field
-from pathlib import Path
 from traceback import print_exc, walk_tb
 from types import TracebackType
 from typing import Dict, List, Optional, Tuple, Type
@@ -26,6 +25,8 @@ class _CrashHandler:
     * Parse and display opaque flytekit serialization error messages
     * Write necessary information to reproduce failure to a tarball
     """
+
+    message: Optional[str]
 
     IGNORE_REGEX = re.compile(
         "(\.git|\.latch_report\.tar\.gz|traceback\.txt|metadata\.json)"
@@ -99,7 +100,7 @@ class _CrashHandler:
 
             print("\n>> Crash report written to .latch_report.tar.gz <<")
 
-    def init(self, message: Optional[str], pkg_path: Optional[str] = None):
+    def init(self, message: str, pkg_path: Optional[str] = None):
         """Custom error handling.
 
         When an exception is thrown:
