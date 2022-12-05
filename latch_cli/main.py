@@ -73,6 +73,7 @@ def register(pkg_root: str, disable_auto_version: bool, remote: bool):
     """
     from latch_cli.services.register import register
 
+
     CrashHandler.init(message="Unable to register workflow.", pkg_path=pkg_root)
     register(pkg_root, disable_auto_version=disable_auto_version, remote=remote)
     click.secho(
@@ -93,7 +94,8 @@ def local_development(pkg_root: Path):
         local_development(pkg_root.resolve())
     except Exception as e:
         CrashHandler.report(pkg_path=str(pkg_root))
-        click.secho(f"Error during local development session: {str(e)}", fg="red")
+        click.secho(
+            f"Error during local development session: {str(e)}", fg="red")
 
 
 @main.command("login")
@@ -235,13 +237,15 @@ def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]
         for row in output:
             vals = {
                 "contentSize": click.style(
-                    with_si_suffix(int(row["contentSize"]), suffix="", styled=True),
+                    with_si_suffix(int(row["contentSize"]),
+                                   suffix="", styled=True),
                     fg="bright_green",
                 )
                 if row["contentSize"] != "-" and row["type"] != "dir"
                 else click.style("-", dim=True),
                 "modifyTime": click.style(
-                    datetime.fromisoformat(row["modifyTime"]).strftime("%d %b %H:%M"),
+                    datetime.fromisoformat(
+                        row["modifyTime"]).strftime("%d %b %H:%M"),
                     fg="blue",
                 )
                 if row["modifyTime"] != "-" and row["type"] != "dir"
@@ -265,7 +269,8 @@ def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]
         column_width = {key: len(title) for key, title in columns.items()}
         for row in formatted:
             for key in columns:
-                column_width[key] = max(column_width[key], len(click.unstyle(row[key])))
+                column_width[key] = max(
+                    column_width[key], len(click.unstyle(row[key])))
 
         def pad_styled(x: str, l: int, align_right=False):
             cur = len(click.unstyle(x))
@@ -334,7 +339,8 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
         get_params(wf_name, version)
     except Exception as e:
         CrashHandler.report()
-        click.secho(f"Unable to generate param map for workflow: {str(e)}", fg="red")
+        click.secho(
+            f"Unable to generate param map for workflow: {str(e)}", fg="red")
         return
     if version is None:
         version = "latest"
@@ -420,7 +426,8 @@ def mkdir(remote_directory: str):
             fg="yellow",
         )
         mkdir(remote_directory)
-        click.secho(f"Successfully created directory {remote_directory}.", fg="green")
+        click.secho(
+            f"Successfully created directory {remote_directory}.", fg="green")
     except Exception as e:
         CrashHandler.report()
         click.secho(
@@ -469,7 +476,8 @@ def preview(workflow_name: str):
         preview(workflow_name)
     except Exception as e:
         CrashHandler.report()
-        click.secho(f"Unable to preview inputs for {workflow_name}: {str(e)}", fg="red")
+        click.secho(
+            f"Unable to preview inputs for {workflow_name}: {str(e)}", fg="red")
 
 
 @main.command("workspace")
