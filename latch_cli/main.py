@@ -1,8 +1,5 @@
 """Entrypoints to service functions through a latch_cli."""
 
-import os
-import re
-import shutil
 import textwrap
 from collections import OrderedDict
 from pathlib import Path
@@ -12,11 +9,13 @@ import click
 from packaging.version import parse as parse_version
 
 import latch_cli.click_utils
-from latch_cli.crash_handler import CrashHandler
+from latch_cli.exceptions.handler import CrashHandler
 from latch_cli.services.init.init import _Templates
 from latch_cli.utils import get_latest_package_version, get_local_package_version
 
 latch_cli.click_utils.patch()
+
+crash_handler = CrashHandler()
 
 
 @click.group(
@@ -43,6 +42,8 @@ def main():
             ).strip("\n"),
             fg="yellow",
         )
+
+    crash_handler.init()
 
 
 @main.command("register")
@@ -71,10 +72,12 @@ def register(pkg_root: str, disable_auto_version: bool, remote: bool):
 
     Visit docs.latch.bio to learn more.
     """
+
+    crash_handler.message = "Unable to register workflow."
+    crash_handler.pkg_root = pkg_root
+
     from latch_cli.services.register import register
 
-
-    CrashHandler.init(message="Unable to register workflow.", pkg_path=pkg_root)
     register(pkg_root, disable_auto_version=disable_auto_version, remote=remote)
     click.secho(
         "Successfully registered workflow. View @ console.latch.bio.", fg="green"
@@ -88,14 +91,13 @@ def local_development(pkg_root: Path):
 
     Visit docs.latch.bio to learn more.
     """
+
+    crash_handler.message = "Error during local development session"
+    crash_handler.pkg_root = str(pkg_root)
+
     from latch_cli.services.local_dev import local_development
 
-    try:
-        local_development(pkg_root.resolve())
-    except Exception as e:
-        CrashHandler.report(pkg_path=str(pkg_root))
-        click.secho(
-            f"Error during local development session: {str(e)}", fg="red")
+    local_development(pkg_root.resolve())
 
 
 @main.command("login")
@@ -107,14 +109,14 @@ def local_development(pkg_root: Path):
 )
 def login(connection: Optional[str]):
     """Manually login to Latch."""
+
+    crash_handler.message = "Unable to log in"
+    crash_handler.pkg_root = str(Path.cwd())
+
     from latch_cli.services.login import login
 
-    try:
-        login(connection)
-        click.secho("Successfully logged into LatchBio.", fg="green")
-    except Exception as e:
-        CrashHandler.report()
-        click.secho(f"Unable to log in: {str(e)}", fg="red")
+    login(connection)
+    click.secho("Successfully logged into LatchBio.", fg="green")
 
 
 @main.command("init")
@@ -129,47 +131,14 @@ def login(connection: Optional[str]):
 )
 def init(pkg_name: str, template: Optional[str] = None):
     """Initialize boilerplate for local workflow code."""
+
+    crash_handler.message = f"Unable to initialize {pkg_name}"
+    crash_handler.pkg_root = str(Path.cwd())
+
     from latch_cli.services.init import init
 
-    # Workflow name must not contain capitals or end in a hyphen or underscore. If it does, we should throw an error
-    # Check for capitals
-    if any(char.isupper() for char in pkg_name):
-        click.secho(
-            f"Unable to initialize {pkg_name}: package name must not contain any"
-            " upper-case characters",
-            fg="red",
-        )
-        return
+    init(pkg_name, template)
 
-    # Check for other illegal characters
-    if (
-        len(
-            re.findall(
-                "(?:[a-z0-9]+(?:[._-][a-z0-9]+)*\/)*[a-z0-9]+(?:[._-][a-z0-9]+)*",
-                pkg_name,
-            )
-        )
-        != 1
-    ):
-        click.secho(
-            f"Unable to initialize {pkg_name}: package name must match the regular"
-            " expression"
-            " '(?:[a-z0-9]+(?:[._-][a-z0-9]+)*\/)*[a-z0-9]+(?:[._-][a-z0-9]+)*'",
-            fg="red",
-        )
-        click.secho(
-            "This means that the package name must start and end with a lower-case"
-            " letter, and may contain hyphens, underscores, and periods",
-            fg="red",
-        )
-        return
-
-    try:
-        init(pkg_name, template)
-    except Exception as e:
-        CrashHandler.report()
-        click.secho(f"Unable to initialize {pkg_name}: {str(e)}", fg="red")
-        return
     click.secho(f"Created a latch workflow called {pkg_name}.", fg="green")
     click.secho("Run", fg="green")
     click.secho(f"\t$ latch register {pkg_name}", fg="green")
@@ -181,18 +150,16 @@ def init(pkg_name: str, template: Optional[str] = None):
 @click.argument("destination_file", nargs=1)
 def cp(source_file: str, destination_file: str):
     """Copy local files to LatchData and vice versa."""
+
+    crash_handler.message = f"Unable to copy {source_file} to {destination_file}"
+    crash_handler.pkg_root = str(Path.cwd())
+
     from latch_cli.services.cp import cp
 
-    try:
-        cp(source_file, destination_file)
-        click.secho(
-            f"\nSuccessfully copied {source_file} to {destination_file}.", fg="green"
-        )
-    except Exception as e:
-        CrashHandler.report()
-        click.secho(
-            f"Unable to copy {source_file} to {destination_file}: {str(e)}", fg="red"
-        )
+    cp(source_file, destination_file)
+    click.secho(
+        f"\nSuccessfully copied {source_file} to {destination_file}.", fg="green"
+    )
 
 
 @main.command("ls")
@@ -209,6 +176,10 @@ def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]
     """
     List the contents of a Latch Data directory
     """
+
+    crash_handler.message = f"Unable to display contents of {remote_directory}"
+    crash_handler.pkg_root = str(Path.cwd())
+
     from datetime import datetime
 
     from latch_cli.services.ls import ls
@@ -222,13 +193,8 @@ def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]
         if len(remote_directories) > 1:
             click.echo(f"{remote_directory}:")
 
-        try:
-            output = ls(remote_directory)
-        except Exception as e:
-            click.secho(
-                f"Unable to display contents of {remote_directory}: {str(e)}", fg="red"
-            )
-            continue
+        output = ls(remote_directory)
+
         output.sort(key=lambda row: row["name"])
         if group_directories_first:
             output.sort(key=lambda row: row["type"])
@@ -237,15 +203,13 @@ def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]
         for row in output:
             vals = {
                 "contentSize": click.style(
-                    with_si_suffix(int(row["contentSize"]),
-                                   suffix="", styled=True),
+                    with_si_suffix(int(row["contentSize"]), suffix="", styled=True),
                     fg="bright_green",
                 )
                 if row["contentSize"] != "-" and row["type"] != "dir"
                 else click.style("-", dim=True),
                 "modifyTime": click.style(
-                    datetime.fromisoformat(
-                        row["modifyTime"]).strftime("%d %b %H:%M"),
+                    datetime.fromisoformat(row["modifyTime"]).strftime("%d %b %H:%M"),
                     fg="blue",
                 )
                 if row["modifyTime"] != "-" and row["type"] != "dir"
@@ -269,8 +233,7 @@ def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]
         column_width = {key: len(title) for key, title in columns.items()}
         for row in formatted:
             for key in columns:
-                column_width[key] = max(
-                    column_width[key], len(click.unstyle(row[key])))
+                column_width[key] = max(column_width[key], len(click.unstyle(row[key])))
 
         def pad_styled(x: str, l: int, align_right=False):
             cur = len(click.unstyle(x))
@@ -308,16 +271,16 @@ def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]
 )
 def launch(params_file: Path, version: Union[str, None] = None):
     """Launch a workflow using a python parameter map."""
+
+    crash_handler.message = f"Unable to launch workflow"
+    crash_handler.pkg_root = str(Path.cwd())
+
     from latch_cli.services.launch import launch
 
-    try:
-        wf_name = launch(params_file, version)
-    except Exception as e:
-        CrashHandler.report()
-        click.secho(f"Unable to launch workflow: {str(e)}", fg="red")
-        return
+    wf_name = launch(params_file, version)
     if version is None:
         version = "latest"
+
     click.secho(
         f"Successfully launched workflow named {wf_name} with version {version}.",
         fg="green",
@@ -333,15 +296,12 @@ def launch(params_file: Path, version: Union[str, None] = None):
 )
 def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
     """Generate a python parameter map for a workflow."""
+    crash_handler.message = "Unable to generate param map for workflow"
+    crash_handler.pkg_root = str(Path.cwd())
+
     from latch_cli.services.get_params import get_params
 
-    try:
-        get_params(wf_name, version)
-    except Exception as e:
-        CrashHandler.report()
-        click.secho(
-            f"Unable to generate param map for workflow: {str(e)}", fg="red")
-        return
+    get_params(wf_name, version)
     if version is None:
         version = "latest"
     click.secho(
@@ -359,14 +319,12 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
 )
 def get_wf(name: Union[str, None] = None):
     """List workflows."""
+    crash_handler.message = "Unable to get workflows"
+    crash_handler.pkg_root = str(Path.cwd())
+
     from latch_cli.services.get import get_wf
 
-    try:
-        wfs = get_wf(name)
-    except Exception as e:
-        CrashHandler.report()
-        click.secho(f"Unable to get workflows: {str(e)}", fg="red")
-        return
+    wfs = get_wf(name)
     id_padding, name_padding, version_padding = 0, 0, 0
     for wf in wfs:
         id, name, version = wf
@@ -375,6 +333,7 @@ def get_wf(name: Union[str, None] = None):
         name_padding = max(name_padding, name_len)
         version_padding = max(version_padding, version_len)
 
+    # TODO(ayush): make this much better
     click.secho(
         f"ID{id_padding * ' '}\tName{name_padding * ' '}\tVersion{version_padding * ' '}"
     )
@@ -388,120 +347,110 @@ def get_wf(name: Union[str, None] = None):
 @click.argument("remote_file", nargs=1, type=str)
 def open_remote_file(remote_file: str):
     """Open a remote file in the browser."""
+    crash_handler.message = f"Unable to open {remote_file}"
+    crash_handler.pkg_root = str(Path.cwd())
+
     from latch_cli.services.open_file import open_file
 
-    try:
-        open_file(remote_file)
-        click.secho(f"Successfully opened {remote_file}.", fg="green")
-    except Exception as e:
-        CrashHandler.report()
-        click.secho(f"Unable to open {remote_file}: {str(e)}", fg="red")
+    open_file(remote_file)
+    click.secho(f"Successfully opened {remote_file}.", fg="green")
 
 
 @main.command("rm")
 @click.argument("remote_path", nargs=1, type=str)
 def rm(remote_path: str):
     """Deletes a remote entity."""
+    crash_handler.message = f"Unable to delete {remote_path}"
+    crash_handler.pkg_root = str(Path.cwd())
+
     from latch_cli.services.deprecated.rm import rm
 
-    try:
-        click.secho(
-            f"Warning: `latch rm` is deprecated and will be removed soon.", fg="yellow"
-        )
-        rm(remote_path)
-        click.secho(f"Successfully deleted {remote_path}.", fg="green")
-    except Exception as e:
-        click.secho(f"Unable to delete {remote_path}: {str(e)}", fg="red")
+    click.secho(
+        f"Warning: `latch rm` is deprecated and will be removed soon.", fg="yellow"
+    )
+    rm(remote_path)
+    click.secho(f"Successfully deleted {remote_path}.", fg="green")
 
 
 @main.command("mkdir")
 @click.argument("remote_directory", nargs=1, type=str)
 def mkdir(remote_directory: str):
     """Creates a new remote directory."""
+    crash_handler.message = f"Unable to create directory {remote_directory}"
+    crash_handler.pkg_root = str(Path.cwd())
+
     from latch_cli.services.deprecated.mkdir import mkdir
 
-    try:
-        click.secho(
-            f"Warning: `latch mkdir` is deprecated and will be removed soon.",
-            fg="yellow",
-        )
-        mkdir(remote_directory)
-        click.secho(
-            f"Successfully created directory {remote_directory}.", fg="green")
-    except Exception as e:
-        CrashHandler.report()
-        click.secho(
-            f"Unable to create directory {remote_directory}: {str(e)}", fg="red"
-        )
+    click.secho(
+        f"Warning: `latch mkdir` is deprecated and will be removed soon.",
+        fg="yellow",
+    )
+    mkdir(remote_directory)
+    click.secho(f"Successfully created directory {remote_directory}.", fg="green")
 
 
 @main.command("touch")
 @click.argument("remote_file", nargs=1, type=str)
 def touch(remote_file: str):
     """Creates an empty text file."""
+    crash_handler.message = f"Unable to create {remote_file}"
+    crash_handler.pkg_root = str(Path.cwd())
+
     from latch_cli.services.deprecated.touch import touch
 
-    try:
-        click.secho(
-            f"Warning: `latch touch` is deprecated and will be removed soon.",
-            fg="yellow",
-        )
-        touch(remote_file)
-        click.secho(f"Successfully touched {remote_file}.", fg="green")
-    except Exception as e:
-        CrashHandler.report()
-        click.secho(f"Unable to create {remote_file}: {str(e)}", fg="red")
+    click.secho(
+        f"Warning: `latch touch` is deprecated and will be removed soon.",
+        fg="yellow",
+    )
+    touch(remote_file)
+    click.secho(f"Successfully touched {remote_file}.", fg="green")
 
 
 @main.command("exec")
 @click.argument("task_name", nargs=1, type=str)
 def execute(task_name: str):
     """Drops the user into an interactive shell from within a task."""
+    crash_handler.message = f"Unable to exec into {task_name}"
+    crash_handler.pkg_root = str(Path.cwd())
+
     from latch_cli.services.execute import execute
 
-    try:
-        execute(task_name)
-    except Exception as e:
-        CrashHandler.report()
-        click.secho(f"Unable to exec into {task_name}: {str(e)}", fg="red")
+    execute(task_name)
 
 
 @main.command("preview")
 @click.argument("workflow_name", nargs=1, type=str)
 def preview(workflow_name: str):
     """Creates a preview of your workflow interface."""
+    crash_handler.message = f"Unable to preview inputs for {workflow_name}"
+    crash_handler.pkg_root = str(Path.cwd())
+
     from latch_cli.services.preview import preview
 
-    try:
-        preview(workflow_name)
-    except Exception as e:
-        CrashHandler.report()
-        click.secho(
-            f"Unable to preview inputs for {workflow_name}: {str(e)}", fg="red")
+    preview(workflow_name)
 
 
 @main.command("workspace")
 def workspace():
     """Spawns an interactive terminal prompt allowing users to choose what workspace they want to work in."""
+
+    crash_handler.message = "Unable to fetch workspaces"
+    crash_handler.pkg_root = str(Path.cwd())
+
     from latch_cli.services.workspace import workspace
 
-    try:
-        workspace()
-    except Exception as e:
-        CrashHandler.report()
-        click.secho(f"Unable to fetch workspaces: {str(e)}", fg="red")
+    workspace()
 
 
 @main.command("get-executions")
 def get_executions():
     """Spawns an interactive terminal UI that shows all executions in a given workspace"""
+
+    crash_handler.message = "Unable to fetch executions"
+
     from latch_cli.services.get_executions import get_executions
 
-    try:
-        get_executions()
-    except Exception as e:
-        CrashHandler.report()
-        click.secho(f"Unable to fetch executions: {str(e)}", fg="red")
+    get_executions()
 
 
 # Test data subcommands.
@@ -510,7 +459,7 @@ def get_executions():
 @main.group(invoke_without_command=True)
 @click.version_option(package_name="latch")
 @click.pass_context
-def test_data(ctx):
+def test_data(ctx: click.Context):
     """Subcommands to upload and delete test data objects."""
     if ctx.invoked_subcommand is None:
         click.secho(f"{ctx.get_help()}")
@@ -529,16 +478,13 @@ def test_data(ctx):
 def test_data_upload(src_path: str, dont_confirm_overwrite: bool):
     """Upload test data object."""
 
+    crash_handler.message = f"Unable to upload {src_path} to managed bucket"
+    crash_handler.pkg_root = str(Path.cwd())
+
     from latch_cli.services.test_data.upload import upload
 
-    try:
-        s3_url = upload(src_path, dont_confirm_overwrite)
-        click.secho(f"Successfully uploaded to {s3_url}", fg="green")
-    except Exception as e:
-        CrashHandler.report()
-        click.secho(
-            f"Unable to upload {src_path} to managed bucket: {str(e)}", fg="red"
-        )
+    s3_url = upload(src_path, dont_confirm_overwrite)
+    click.secho(f"Successfully uploaded to {s3_url}", fg="green")
 
 
 @test_data.command("remove")
@@ -546,30 +492,25 @@ def test_data_upload(src_path: str, dont_confirm_overwrite: bool):
 def test_data_remove(object_url: str):
     """Remove test data object."""
 
+    crash_handler.message = f"Unable to remove {object_url} from managed bucket"
+    crash_handler.pkg_root = str(Path.cwd())
+
     from latch_cli.services.test_data.remove import remove
 
-    try:
-        remove(object_url)
-    except Exception as e:
-        CrashHandler.report()
-        click.secho(
-            f"Unable to remove {object_url} from managed bucket : {str(e)}", fg="red"
-        )
+    remove(object_url)
+    click.secho(f"Successfully removed {object_url}", fg="green")
 
 
 @test_data.command("ls")
 def test_data_ls():
     """List test data objects."""
 
+    crash_handler.message = f"Unable to list objects within managed bucket"
+    crash_handler.pkg_root = str(Path.cwd())
+
     from latch_cli.services.test_data.ls import ls
 
-    try:
-        objects = ls()
-    except Exception as e:
-        CrashHandler.report()
-        click.secho(
-            f"Unable to list objects within managed bucket : {str(e)}", fg="red"
-        )
+    objects = ls()
     click.secho("Listing your managed objects by full S3 path.\n", fg="green")
     for o in objects:
         print(f"\ts3://latch-public/{o}")
