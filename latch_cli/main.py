@@ -177,7 +177,7 @@ def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]
     List the contents of a Latch Data directory
     """
 
-    crash_handler.message = f"Unable to display contents of {remote_directory}"
+    crash_handler.message = f"Unable to display contents of {remote_directories}"
     crash_handler.pkg_root = str(Path.cwd())
 
     from datetime import datetime
