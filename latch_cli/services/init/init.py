@@ -1,9 +1,11 @@
 """Service to initialize boilerplate."""
 
 import os
+import re
 import shutil
 from enum import Enum, auto
 from pathlib import Path
+from textwrap import dedent
 from typing import Optional
 
 
@@ -26,28 +28,56 @@ def init(pkg_name: Path, template: Optional[str] = None):
     Example:
 
         >>> init("test-workflow")
-
-    The resulting file structure will look like::
-
-        test-workflow
-        ├── Dockerfile
-        ├── reference
-        │   ├── wuhan.1.bt2
-        │   ├── wuhan.2.bt2
-        │   ├── wuhan.3.bt2
-        │   ├── wuhan.4.bt2
-        │   ├── wuhan.fasta
-        │   ├── wuhan.rev.1.bt2
-        │   └── wuhan.rev.2.bt2
-        ├── version
-        └── wf
-            └── __init__.py
-
-    Where `version` holds the workflow's version in plaintext and `__init__.py`
-    contains the objects needed to define the workflow.
+            # The resulting file structure will look like
+            #   test-workflow
+            #   ├── Dockerfile
+            #   ├── reference
+            #   │   ├── wuhan.1.bt2
+            #   │   ├── wuhan.2.bt2
+            #   │   ├── wuhan.3.bt2
+            #   │   ├── wuhan.4.bt2
+            #   │   ├── wuhan.fasta
+            #   │   ├── wuhan.rev.1.bt2
+            #   │   └── wuhan.rev.2.bt2
+            #   ├── version
+            #   └── wf
+            #       └── __init__.py
 
     """
     # click doesn't support enums for options hence '.name' madness
+
+    # Workflow name must not contain capitals or end in a hyphen or underscore. If it does, we should throw an error
+    # Check for capitals
+    if any(char.isupper() for char in str(pkg_name)):
+        raise ValueError(
+            f"Unable to initialize {str(pkg_name)}: package name must not contain any"
+            " upper-case characters",
+        )
+
+    # Check for other illegal characters
+    if (
+        len(
+            re.findall(
+                "(?:[a-z0-9]+(?:[._-][a-z0-9]+)*\/)*[a-z0-9]+(?:[._-][a-z0-9]+)*",
+                pkg_name,
+            )
+        )
+        != 1
+    ):
+        raise ValueError(
+            dedent(
+                f"""
+                Unable to initialize {pkg_name}: package name must match the regular
+                expression
+
+                    `(?:[a-z0-9]+(?:[._-][a-z0-9]+)*\/)*[a-z0-9]+(?:[._-][a-z0-9]+)*`
+
+                This means that the package name must start and end with a
+                lower-case letter, and may only contain hyphens, underscores, and
+                periods,
+                """
+            )
+        )
 
     if template is None:
         template = _Templates.default.name
