@@ -85,11 +85,12 @@ class _Traceback:
 
             if isinstance(exc_value, SyntaxError):
                 stack.error = _SyntaxError(
-                    offset=exc_value.offset or 0,
                     filename=exc_value.filename or "?",
                     lineno=exc_value.lineno or 0,
-                    line=exc_value.text or "",
-                    msg=exc_value.msg,
+                    offset=exc_value.offset or 0,
+                    text=exc_value.text or "",
+                    end_lineno=exc_value.end_lineno or 0,
+                    end_offset=exc_value.end_offset or 0,
                 )
             elif isinstance(exc_value, _FlytekitError):
                 stack.error = _FlytekitError()
