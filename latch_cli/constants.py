@@ -1,6 +1,7 @@
 """Package-wide constants."""
 
 from dataclasses import dataclass
+import re
 
 
 @dataclass
@@ -22,3 +23,7 @@ FILE_MAX_SIZE = 4 * MB
 FILE_CHUNK_SIZE = 5 * MB
 
 PKG_NAME = "latch"
+
+IGNORE_REGEX = re.compile(
+    "(\.git|\.latch_report\.tar\.gz|traceback\.txt|metadata\.json)"
+)
