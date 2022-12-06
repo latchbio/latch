@@ -105,6 +105,6 @@ class CrashHandler:
         ) -> None:
             print(f"{self.message} - printing traceback:\n")
             _Traceback(type_, value, traceback).pretty_print()
-            self._write_state_to_tarball(self.pkg_root)
+            self._write_state_to_tarball()
 
         sys.excepthook = _excepthook
