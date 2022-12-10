@@ -1,60 +1,68 @@
 # Caching
 
+Caching allows workflow developers to cache the results of tasks to prevent
+wasted computation.
+
+This is helpful when running large batches of workflows with redundant inputs
+or when debugging errors in the middle of a workflow where upstream state can
+be "saved".
+
 ---
-
-You can cache the results of tasks to prevent wasted computation. Tasks that are
-identified as "the same" (rigorous criteria to identify cache validity to
-follow) can succeed instantly with outputs that were saved from previous
-executions.
-
-Caching is very helpful when debugging, sharing tasks between workflows, or
-batched executions over similar input data.
-
-Every latch task, eg. `small_task`, `large_gpu_task`, has a cachable
-equivalent prefixed with cached, eg. `cached_small_task`.
 
 ```python
 import time
-from latch.resources.tasks import cached_small_task
+from latch import small_task
 
-@cached_small_task("someversion")
+@small_task(cache=True)
 def do_sleep(foo: str) -> str:
 
     time.sleep(60)
     return foo
 ```
 
-## When will my tasks get cached?
+You can also pass an optional `cach_version` keyword argument to version your
+cache with greater control. Tasks caches with explicit versions will get
+invalidated if and only if the version changes. This is ideal if one wishes to
+preserve the cache despite the function body changing or to manually invalidate
+the cache despite the function body remaining the same.
 
-Tasks are not cached by default as task code has the option of performing side
-effects (eg. communicating with servers or uploading files) that would be
-destroyed by caching.
+```python
+import time
+from latch import small_task
 
-Tasks will only receive a cache when using the `cached_<>` task decorators.
+@small_task(cache=True, cache_version="0.0.0")
+def do_sleep_with_version(foo: str) -> str:
 
-## Task cache isolation
+    time.sleep(60)
+    return foo
+```
 
-Task caches are not shared between accounts or even necessarily between
-workflows within the same account. The following is a list of cases where task
-caches are guaranteed to be different.
+## Task Invalidation Behavior
 
-* each latch account will have its own task cache
-* each task with a unique name will have its own task cache
-* whenever the task function signature changes (name or typing of input or output parameters) the task will receive a
-  new cache
-* whenever the task cache version changes, the task will receive a new cache
+Each workflow task maintains its own cache that is independent from the version
+of its parent workflow. This allows tasks to preserve their cache across workflow
+re-registers if other tasks are modified.
 
-## Why there is a cache version
+A task's cache will get invalidated when:
 
-We require a cache version because we cannot naively assume that the checksum of
-a task function's body should be used in our cache key.
+* code in the task function body (that is not a comment) is changed
+* the task function signature (name or typing of input or output parameters) is
+  changed
+* an (optional) cache version is changed
 
-This assumes that changing the task body logic will always change the outputs of
-the task. There are many changes we can make to the body (eg. print statements)
-that will have no effect on the outputs and would cause an expensive cache
-invalidate for no reason.
+A task's cache will not get invalidated if the task function body does not
+change (comments do not count as changes that invalidate the cache).
 
-Therefore we are rolling out the initial cached task feature with user specified
-cache versions. If this becomes too cumbersome and the vast majority of
-re-registers would benefit from an automatic cache invalidate when task body
-code changes, we will pin the cache version with a digest of the function body.
+## Task Isolation Criteria
+
+A more comprehensive list of what defines a unique cache follows. Between any
+two task caches, if any of the following things change, the caches will be
+distinct:
+
+* the account to which the task is registered, including:
+    * individual user accounts
+    * workspaces owned by the same user
+* the name of the task (name of the function)
+* the function signature of the task (name and typing of all input / output
+  parameters)
+* the (optional) cache version
