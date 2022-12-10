@@ -49,10 +49,88 @@ libraries and settings for consistent task behavior._
 
 There are 3 latch-base images available as seen on [github](https://github.com/latchbio/latch-base). 
 
+## Writing Dockerfiles for different tasks
+
+When writing different tasks, defining distinct containers for each task
+increases workflow performance by reducing the size of the container scheduled
+on kubernetes. It also helps with code organization by only associating dependency
+installation code with the task that strictly needs it.
+
+You can write different Dockerfiles and associate them to tasks by passing
+their paths to the task definition. When registering a workflow with multiple
+containers, it is important to realize that each container will be built with
+every registration, which could slow development. 
+
+```
+@small_task(dockerfile=Path(__file__).parent.parent / "DockerfileMultiQC")
+```
+
+A full example:
+
+```
+import subprocess
+from pathlib import Path
+
+from latch import small_task
+from latch.types import LatchFile
+
+
+@small_task
+def assembly_task(read1: LatchFile, read2: LatchFile) -> LatchFile:
+
+    # A reference to our output.
+    sam_file = Path("covid_assembly.sam").resolve()
+
+    _bowtie2_cmd = [
+        "bowtie2/bowtie2",
+        "--local",
+        "-x",
+        "wuhan",
+        "-1",
+        read1.local_path,
+        "-2",
+        read2.local_path,
+        "--very-sensitive-local",
+        "-S",
+        str(sam_file),
+    ]
+
+    subprocess.run(_bowtie2_cmd)
+
+    return LatchFile(str(sam_file), "latch:///covid_assembly.sam")
+
+
+# Note the use of paths relative to the location of the __init__.py file
+
+@small_task(dockerfile=Path(__file__).parent.parent / "DockerfileBlaster")
+def sam_blaster(sam: LatchFile) -> LatchFile:
+
+    blasted_sam = Path(sam.name + ".blasted.sam")
+
+    subprocess.run(
+        ["samblaster", "-i", sam.local_path, "-o", str(blasted_sam.resolve())]
+    )
+
+    return LatchFile(blasted_sam, f"latch:///{blasted_sam.name}")
+```
+
+```
+├── Dockerfile
+├── DockerfileBlaster
+├── version
+└── wf
+    ├── __init__.py
+```
+
+The remote development utilities (`latch develop .`) do not work with
+different containers per task and we do not recommend using the two features
+together for the time being.
+
+
 ## Limitations
 
-The only limitation between a latch workflow and running your code on your linux
-machine is that we restrict your access to `/dev/` and the networking stack.
-For example, you cannot create mounts using `/dev/fuse` (so mounts are generally
-off limits) and you do not have admin access to the networking stack on the host
-machine as your task execution does not have root access.
+The difference between a latch task environment and running your code on your
+Linux machine is that we restrict your access to `/dev/` and the networking
+stack.  For example, you cannot create mounts using `/dev/fuse` (so mounts are
+generally off limits) and you do not have admin access to the networking stack
+on the host machine as your task execution does not have root access.
