@@ -39,19 +39,23 @@ def do_sleep_with_version(foo: str) -> str:
 
 ## Task Invalidation Behavior
 
-Each workflow task maintains its own cache that is independent from the version
-of its parent workflow. This allows tasks to preserve their cache across workflow
-re-registers if other tasks are modified.
+Each task maintains its own cache that is independent from whatever workflow it
+happens to be associated with.  This allows tasks to preserve their cache
+across workflow re-registers if other tasks are modified. 
 
-A task's cache will get invalidated when:
+Examples of when a task's cache will get invalidated:
 
 * code in the task function body (that is not a comment) is changed
 * the task function signature (name or typing of input or output parameters) is
   changed
 * an (optional) cache version is changed
 
-A task's cache will not get invalidated if the task function body does not
-change (comments do not count as changes that invalidate the cache).
+Examples of when a task's cache will remain unchanged:
+
+* the task function body does not
+    change (comments do not count as changes that invalidate the cache).
+* a new workflow was created with a task of the same name, signature and body
+  (remember that task caches are independent from workflows that contain them)
 
 ## Task Isolation Criteria
 

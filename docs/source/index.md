@@ -79,6 +79,7 @@ basics/defining_cloud_resources
 basics/customizing_interface
 basics/caching
 basics/conditional_and_map_tasks
+basics/retries
 ```
 
 ```{toctree}
