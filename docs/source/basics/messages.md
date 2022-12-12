@@ -18,7 +18,7 @@ def task():
     ...
 ```
 
-The `type` parameter affects how your message is styled. It currently accepts three options:
+The `typ` parameter affects how your message is styled. It currently accepts three options:
 
 - `info`
 - `warning`
