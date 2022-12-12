@@ -10,7 +10,6 @@ import pytest
 import requests
 
 from latch_cli.config.latch import _LatchConfig
-from tests.fixtures import test_account_jwt
 
 config = _LatchConfig()
 endpoints = config.sdk_endpoints
@@ -170,7 +169,6 @@ def test_ls(test_account_jwt):
 
 
 def test_launch(test_account_jwt):
-
     with open("foo.py", "w") as f:
         f.write(
             textwrap.dedent(
@@ -192,12 +190,3 @@ def test_launch(test_account_jwt):
         "Successfully launched workflow named wf.__init__.assemble_and_sort with"
         " version latest.",
     )
-
-
-def test_get_wf(test_account_jwt):
-
-    _cmd = ["latch", "get-wf"]
-    _run_and_verify(_cmd, "wf.__init__.crispresso2_wf")
-
-    _cmd = ["latch", "get-wf", "--name", "wf.__init__.crispresso2_wf"]
-    _run_and_verify(_cmd, "v0.1.11")
