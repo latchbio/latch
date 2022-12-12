@@ -75,6 +75,7 @@ basics/what_is_a_workflow
 basics/writing_dockerfiles
 basics/working_with_files
 basics/parameter_types
+basics/messages
 basics/defining_cloud_resources
 basics/customizing_interface
 basics/caching
