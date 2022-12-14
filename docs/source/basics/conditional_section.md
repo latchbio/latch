@@ -1,10 +1,4 @@
-# Conditional Sections and Map Tasks
-
-Two key limitations with the vanilla task-workflow model is the inability to (a) conditionally run tasks (and thus save on resources) and (b) run identical copies of the same task on many different inputs in parallel. The Latch SDK supports constructs on top of tasks/workflows to make these possible.
-
----
-
-## Conditional Sections
+# Conditional Sections
 
 In order to support the functionality of an `if-elif-else` clause within the body of a workflow, we introduce the method `create_conditional_section`.
 
@@ -51,29 +45,4 @@ def multiplier(my_input: float) -> float:
     )
     result_3 = double(n=result_2)
     return result_3
-```
-
-## Map Tasks
-
-This construct allows a user to run a specific task on any number of different inputs in parallel, provided as a list. To map a task across a list of inputs, call the `map_task` on the task function to get new "mapped task" function which now accepts a list of inputs as a parameter. A task can only be mapped if it accepts one input and produces one output.
-
-See below for an example:
-
-```python
-@task
-def a_mappable_task(a: int) -> str:
-    inc = a + 2
-    stringified = str(inc)
-    return stringified
-
-@task
-def coalesce(b: typing.List[str]) -> str:
-    coalesced = "".join(b)
-    return coalesced
-
-@workflow
-def my_map_workflow(a: typing.List[int]) -> str:
-    mapped_out = map_task(a_mappable_task)(a=a)
-    coalesced = coalesce(b=mapped_out)
-    return coalesced
 ```
