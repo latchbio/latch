@@ -12,7 +12,7 @@ import yaml
 class LatchRule:
     """Class describing a rule that a parameter input must follow
 
-    Fields:
+    Args:
         regex:
             A string regular expression which inputs must match
         message:
@@ -43,7 +43,7 @@ class LatchAppearanceType(Enum):
 class LatchAuthor:
     """Class describing metadata about the workflow author
 
-    Fields:
+    Args:
         name:
             The name of the author
         email:
@@ -126,7 +126,7 @@ class Fork(FlowBase):
 class LatchParameter:
     """Class for organizing parameter metadata
 
-    Fields:
+    Args:
         display_name:
             The name used to display the parameter on Latch Console
         description:
@@ -211,21 +211,53 @@ class LatchParameter:
 
 @dataclass
 class LatchMetadata:
-    """Class for organizing workflow metadata
+    """Workflow information container for use in the :meth:`@workflow <latch.resources.workflow>` decorator
 
-    Fields:
+    Metadata is visible both in the workflow sidebar and on the workflow card
+
+    .. image:: /assets/LatchMetadata/explore.png
+        :alt: Workflow information UI
+
+    Args:
         display_name:
-            The name of the workflow
+            Human-readable name
+
+            .. image:: /assets/LatchMetadata/display_name.png
+                :alt: Workflow display name UI
         author:
-            A `LatchAuthor` object that describes the author of the workflow
+            Information about the workflow author
+
+            .. image:: /assets/LatchMetadata/author.png
+                :alt: Workflow author UI
         documentation:
-            A link to documentation for the workflow itself
+            Link to a documentation page for the workflow
+
+            .. image:: /assets/LatchMetadata/documentation.png
+                :alt: Workflow documentation link UI
         repository:
-            A link to the repository where the code for the workflow is hosted
+            Link to the workflow source code repository
+
+            .. image:: /assets/LatchMetadata/github.png
+                :alt: Workflow source code repository link UI
         license:
-            A SPDX identifier
+            `SPDX identifier <https://spdx.org/licenses/>`_ of the workflow source code license
+
+            .. image:: /assets/LatchMetadata/license.png
+                :alt: Workflow source code license UI
         parameters:
-            A dictionary mapping parameter names (strings) to `LatchParameter` objects
+            Map from parameter names to :class:`metadata <LatchParameter>`
+        video_tutorial:
+            Link to a video showcase of the workflow
+
+            .. image:: /assets/LatchMetadata/video.png
+                :alt: Workflow video tutorial link UI
+        tags:
+            Keywords for workflow search, currently only allows a predefined set of biological domains
+
+            .. image:: /assets/LatchMetadata/tags.png
+                :alt: Workflow tags UI
+        flow:
+            Custom `parameter flow declaration <basics/workflow_ui.html#custom-parameter-flow>`_
     """
 
     display_name: str

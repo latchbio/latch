@@ -24,6 +24,9 @@ build-docs:
   rm -rf docs/build
   make -C docs html
 
+watch-docs:
+  sphinx-autobuild docs/source docs/build/html -N --watch latch -n -w docs/build/errors.txt -vv > docs/build/log.txt
+
 test:
   export TEST_TOKEN=$(cat ~/.latch/token) &&\
     pytest -s tests

@@ -1,7 +1,5 @@
 # Caching
 
----
-
 You can cache the results of tasks to prevent wasted computation. Tasks that are
 identified as "the same" (rigorous criteria to identify cache validity to
 follow) can succeed instantly with outputs that were saved from previous
@@ -38,11 +36,11 @@ Task caches are not shared between accounts or even necessarily between
 workflows within the same account. The following is a list of cases where task
 caches are guaranteed to be different.
 
-* each latch account will have its own task cache
-* each task with a unique name will have its own task cache
-* whenever the task function signature changes (name or typing of input or output parameters) the task will receive a
+- each latch account will have its own task cache
+- each task with a unique name will have its own task cache
+- whenever the task function signature changes (name or typing of input or output parameters) the task will receive a
   new cache
-* whenever the task cache version changes, the task will receive a new cache
+- whenever the task cache version changes, the task will receive a new cache
 
 ## Why there is a cache version
 
