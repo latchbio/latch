@@ -10,6 +10,7 @@ import pytest
 import requests
 
 from latch_cli.config.latch import _LatchConfig
+from tests.fixtures import test_account_jwt
 
 config = _LatchConfig()
 endpoints = config.sdk_endpoints
