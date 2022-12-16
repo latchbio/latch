@@ -34,7 +34,7 @@ def coalesce(b: typing.List[str]) -> str:
     return coalesced
 ```
 
-We send `a_mappable_task` to be repeated across a collection of inputs to the `map_task()` function. The task a_mappable_task is run for each element in the list.
+We send `a_mappable_task` to be repeated across a collection of inputs to the `map_task()` function. The task `a_mappable_task` is run for each element in the list.
 
 ```python
 @workflow
@@ -44,7 +44,7 @@ def my_map_workflow(a: typing.List[int]) -> str:
     return coalesced
 ```
 
-That's it! You've successfully defined `a_mappable_task` that is passed to a `map_task()` and ran repeatedly on a list of inputs in parallel. You have also defined a `coalesce` to collect the list of outputs from the mapped task and returns a string.
+That's it! You've successfully defined `a_mappable_task` that is passed to a `map_task()` and ran repeatedly on a list of inputs in parallel. You have also defined a `coalesce` task to collect the list of outputs from the mapped task and returns a string.
 
 ## Map a Task with Multiple Inputs
 
