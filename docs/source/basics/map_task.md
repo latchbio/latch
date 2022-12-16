@@ -1,8 +1,18 @@
 # Map Task
 
-There are many pipelines in bioinformatics that require running a processing step in parallel and aggregating their outputs at the end for downstream analysis. A prominent example of this is bulk RNA-sequencing, where the alignment is performed to produce transcript abundances per sample, and gene counts of all samples are subsequently merged. Having a single count matrix makes it convenient to use in downstream steps, such as differential gene expression analysis. Another example is performing FastQC on multiple samples and summarizing the results in a MultiQC report.
+There are many pipelines in bioinformatics that require running a processing
+step in parallel and aggregating their outputs at the end for downstream
+analysis. A prominent example of this is bulk RNA-sequencing, where the
+alignment is performed to produce transcript abundances per sample, and gene
+counts of all samples are subsequently merged. Having a single count matrix
+makes it convenient to use in downstream steps, such as differential gene
+expression analysis. Another example is performing FastQC on multiple samples
+and summarizing the results in a MultiQC report.
 
-The Latch SDK introduces a construct called `map_task` to help parallelize a task across a list of inputs. This means you can run thousands of instances of the task at the same time inside a single workflow, providing valuable performance gains.
+The Latch SDK introduces a construct called `map_task` to help parallelize a
+task across a list of inputs. This means you can run thousands of instances of
+the task at the same time inside a single workflow, providing valuable
+performance gains.
 
 Let's look at a simple example below!
 
@@ -34,7 +44,9 @@ def coalesce(b: typing.List[str]) -> str:
     return coalesced
 ```
 
-We send `a_mappable_task` to be repeated across a collection of inputs to the `map_task()` function. The task `a_mappable_task` is run for each element in the list.
+We send `a_mappable_task` to be repeated across a collection of inputs to the
+`map_task()` function. The task `a_mappable_task` is run for each element in
+the list.
 
 ```python
 @workflow
@@ -44,13 +56,17 @@ def my_map_workflow(a: typing.List[int]) -> str:
     return coalesced
 ```
 
-That's it! You've successfully defined `a_mappable_task` that is passed to a `map_task()` and ran repeatedly on a list of inputs in parallel. You have also defined a `coalesce` task to collect the list of outputs from the mapped task and returns a string.
+That's it! You've successfully defined `a_mappable_task` that is passed to a
+`map_task()` and ran repeatedly on a list of inputs in parallel. You have also
+defined a `coalesce` task to collect the list of outputs from the mapped task
+and returns a string.
 
 ## Map a Task with Multiple Inputs
 
 You may want to map a task with multiple inputs.
 
-For example, the task below takes in 2 inputs, a base and a DNA sequence, and returns percentage of that base in the sequence:
+For example, the task below takes in 2 inputs, a base and a DNA sequence, and
+returns percentage of that base in the sequence:
 
 ```python
 @small_task
@@ -58,7 +74,9 @@ def count_task(base: str, dna_sequence: str) -> float:
     return dna_sequence.count(base) / len(dna_sequence) * 100
 ```
 
-But we only want to map this task with the `base` input while the `dna_sequence` stays the same. Since a map task accepts only one input, we can do this by creating a new task that prepares the map task’s inputs.
+But we only want to map this task with the `base` input while the
+`dna_sequence` stays the same. Since a map task accepts only one input, we can
+do this by creating a new task that prepares the map task’s inputs.
 
 We start by putting the inputs in a Dataclass and `dataclass_json`.
 
@@ -81,7 +99,8 @@ def prepare_map_inputs(list_base: List[str], dna_sequence: str) -> List[MapInput
     return [MapInput(base, dna_sequence) for base in list_base]
 ```
 
-We now refactor the original `count_task`. Instead of 2 inputs, `count_task` has a single input:
+We now refactor the original `count_task`. Instead of 2 inputs, `count_task`
+has a single input:
 
 ```python
 @small_task
@@ -98,15 +117,20 @@ def count_wf(list_base: List[str] = ["A", "T", "C", "G"], dna_sequence: str = "A
     return map_task(mappable_task)(input=prepared)
 ```
 
-Great! Now, we are able to use the `count_wf` to spin up four tasks in parallel. The `map_task` returns a list of four floats, each of which is the percentage of base pair in the DNA sequence.
+Great! Now, we are able to use the `count_wf` to spin up four tasks in
+parallel. The `map_task` returns a list of four floats, each of which is the
+percentage of base pair in the DNA sequence.
 
 ---
 
 ## Bonus: Learning through a Biological Example
 
-In the example below, we walk through a practical example of how we can use the map task construct to run FastQC on multiple samples and summarize their results in a MultiQC report.
+In the example below, we walk through a practical example of how we can use the
+map task construct to run FastQC on multiple samples and summarize their
+results in a MultiQC report.
 
-First, we define a Dataclass that contains a sample name and its associated FastQ file:
+First, we define a Dataclass that contains a sample name and its associated
+FastQ file:
 
 ```python
 @dataclass_json
@@ -116,7 +140,8 @@ class Sample:
     fastq: LatchFile
 ```
 
-Then, we create a task to run FastQC on a single sample and output the result under the **FastQC Results** folder on Latch.
+Then, we create a task to run FastQC on a single sample and output the result
+under the **FastQC Results** folder on Latch.
 
 ```python
 @small_task
@@ -136,9 +161,12 @@ def fastqc_task(sample) -> LatchDir:
     return LatchDir("/root/fastqc_result", f"latch:///FastQC Results/{sample.sample_name}")
 ```
 
-> **Concept check**: Note how this task will later be mapped across a list of samples. Therefore, the task is defined to accept one input and return one output.
+> **Concept check**: Note how this task will later be mapped across a list of
+samples. Therefore, the task is defined to accept one input and return one
+output.
 
-Next, define a second task to run MultiQC on a given directory for analysis logs and compiles a HTML report.
+Next, define a second task to run MultiQC on a given directory for analysis
+logs and compiles a HTML report.
 
 ```python
 @small_task
@@ -156,9 +184,12 @@ def multiqc_task(fastqc_results: List[LatchDir]) -> LatchDir:
     return LatchDir(outdir, "latch:///MultiQC Results")
 ```
 
-> **Concept check**: Because the map task will return a list of `LatchDir`s, each of which contains an individual sample's FastQC results, the `multiqc_task` needs to also accept a list of `LatchDir`s.
+> **Concept check**: Because the map task will return a list of `LatchDir`s,
+each of which contains an individual sample's FastQC results, the
+`multiqc_task` needs to also accept a list of `LatchDir`s.
 
-Finally, we can specify our workflow, which accepts a list of `Sample`s and returns a single directory with the MultiQC report:
+Finally, we can specify our workflow, which accepts a list of `Sample`s and
+returns a single directory with the MultiQC report:
 
 ```python
 @workflow(metadata)
