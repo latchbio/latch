@@ -27,6 +27,13 @@ Types of changes
 * A new error that is thrown when there is an inconsistency between a
   `LatchMetadata` object and its associated workflow's parameters.
 
+### Fixed
+
+* The crash reporter now prints stack traces of caught exceptions in the
+  correct order
+* `latch develop` now throws an error when run on a workflow that hasn't been
+  registered yet.
+
 ### Deprecated
 
 * The commands `latch rm`, `latch mkdir`, and `latch touch`.
