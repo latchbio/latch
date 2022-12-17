@@ -2,7 +2,7 @@
 
 There are many pipelines in bioinformatics that require running a processing
 step in parallel and aggregating their outputs at the end for downstream
-analysis. A prominent example of this is bulk RNA-sequencing, where the
+analysis. A prominent example of this is bulk RNA-sequencing, where
 alignment is performed to produce transcript abundances per sample, and gene
 counts of all samples are subsequently merged. Having a single count matrix
 makes it convenient to use in downstream steps, such as differential gene
