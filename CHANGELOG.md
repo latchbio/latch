@@ -21,6 +21,10 @@ Types of changes
 
 * The `latch develop` command, and with it an ecosystem supporting local
   development and faster debugging.
+* ce72edf166907628bc70b6c71916c5d174624135: the `latch cp` command now
+  displays a x number of files out of n indicator and displays which stage
+  of the download it going on (network request to get presigned urls vs
+  downloading blob data).
 
 ### Deprecated
 
