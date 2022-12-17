@@ -44,9 +44,7 @@ def coalesce(b: List[str]) -> str:
     return coalesced
 ```
 
-We send `a_mappable_task` to be repeated across a collection of inputs to the
-`map_task()` function. The task `a_mappable_task` is run for each element in
-the list.
+We can run `a_mappable_task` across a collection of inputs using the `map_task` function. This function takes in `a_mappable_task` and returns a mapped version of that task. This mapped version takes as input a list of inputs to `a_mappable_task` , and returns a list of the outputs of `a_mappable_task` run on all inputs in the list in parallel.
 
 ```python
 @workflow
