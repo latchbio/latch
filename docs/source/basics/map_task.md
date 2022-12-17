@@ -170,14 +170,14 @@ logs and compiles a HTML report.
 @small_task
 def multiqc_task(fastqc_results: List[LatchDir]) -> LatchDir:
 
-    outdir = "/root/multiqc_results"
-    os.mkdir(outdir)
+    outdir = Path("/root/multiqc_results").resolve()
+    outdir.mkdir(exist_ok=True)
 
     fastqc_dirs = [result.local_path for result in fastqc_results]
 
     _multiqc_cmd = ["multiqc"] + fastqc_dirs + ["-o", outdir]
 
-    subprocess.run(_multiqc_cmd)
+    subprocess.run(_multiqc_cmd, check=True)
 
     return LatchDir(outdir, "latch:///MultiQC Results")
 ```
