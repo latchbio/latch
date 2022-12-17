@@ -10,7 +10,7 @@ expression analysis. Another example is performing FastQC on multiple samples
 and summarizing the results in a MultiQC report.
 
 The Latch SDK introduces a construct called `map_task` to help parallelize a
-task across a list of inputs. This means you can run thousands of instances of
+task across a list of inputs. This means you can run multiple instances of
 the task at the same time inside a single workflow, providing valuable
 performance gains.
 
