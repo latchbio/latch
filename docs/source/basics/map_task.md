@@ -55,7 +55,7 @@ def my_map_workflow(a: typing.List[int]) -> str:
 ```
 
 That's it! You've successfully defined `a_mappable_task` that is passed to a
-`map_task()` and ran repeatedly on a list of inputs in parallel. You have also
+`map_task()` and run repeatedly on a list of inputs in parallel. You have also
 defined a `coalesce` task to collect the list of outputs from the mapped task
 and returns a string.
 
