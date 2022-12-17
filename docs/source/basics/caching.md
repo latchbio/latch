@@ -1,11 +1,11 @@
 # Caching
 
-Caching allows workflow developers to cache the results of tasks to prevent
-wasted computation.
+Caching allows workflow developers to reuse the results of previously run tasks
+to prevent wasted time and computation.
 
 This is helpful when running large batches of workflows with redundant inputs
 or when debugging errors in the middle of a workflow where upstream state can
-be "saved".
+be reused.
 
 ---
 
@@ -20,9 +20,9 @@ def do_sleep(foo: str) -> str:
     return foo
 ```
 
-You can also pass an optional `cach_version` keyword argument to version your
-cache with greater control. Tasks caches with explicit versions will get
-invalidated if and only if the version changes. This is ideal if one wishes to
+You can also pass the optional `cache_version` keyword argument to version your
+cache giving you greater control. Tasks caches with explicit versions will get
+invalidated if and only if the version changes. This is ideal if you wish to
 preserve the cache despite the function body changing or to manually invalidate
 the cache despite the function body remaining the same.
 
@@ -37,7 +37,7 @@ def do_sleep_with_version(foo: str) -> str:
     return foo
 ```
 
-## Task Invalidation Behavior
+## Caching behavior with tasks
 
 Each task maintains its own cache that is independent from whatever workflow it
 happens to be associated with.  This allows tasks to preserve their cache
@@ -57,11 +57,10 @@ Examples of when a task's cache will remain unchanged:
 * a new workflow was created with a task of the same name, signature and body
   (remember that task caches are independent from workflows that contain them)
 
-## Task Isolation Criteria
+## When does my cache get invalidated?
 
-A more comprehensive list of what defines a unique cache follows. Between any
-two task caches, if any of the following things change, the caches will be
-distinct:
+A task's cache will be invalidated and the task will be run from scratch if any
+of the following change between executions:
 
 * the account to which the task is registered, including:
     * individual user accounts
