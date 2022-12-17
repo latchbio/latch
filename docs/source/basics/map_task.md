@@ -154,7 +154,7 @@ def fastqc_task(sample) -> LatchDir:
         f"--outdir={outdir}"
     ]
 
-    subprocess.run(_fastqc_cmd)
+    subprocess.run(_fastqc_cmd, check=True)
 
     return LatchDir("/root/fastqc_result", f"latch:///FastQC Results/{sample.sample_name}")
 ```
