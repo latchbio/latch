@@ -23,9 +23,9 @@ The following class of errors are handled by retries:
 execution
 
 
-### Underlying node failures and retries
+## Underlying node failures and retries
 
-Task failure due to instance pre-emption or other varieties of node failures
-that block an otherwise successful task execution trigger an automatic retry.
-This type of retry will occur automatically and is unrelated to the task
-argument documented above.
+Task failures due to instance pre-emption or other varieties of node issues
+that block an otherwise successful task execution will trigger an automatic
+retry. This type of retry will occur automatically and is unrelated to the
+task argument documented above.
