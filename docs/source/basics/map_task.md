@@ -145,8 +145,8 @@ under the **FastQC Results** folder on Latch.
 @small_task
 def fastqc_task(sample) -> LatchDir:
 
-    outdir = "/root/fastqc_result"
-    os.mkdir(outdir)
+    outdir = Path("/root/fastqc_result").resolve()
+    outdir.mkdir(exist_ok=True)
 
     _fastqc_cmd = [
         "/root/FastQC/fastqc", 
