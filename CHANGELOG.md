@@ -24,6 +24,8 @@ Types of changes
 * The `latch cp` command now displays a x number of files out of n indicator
   and displays which stage of the download is going on (network request to get
   presigned urls vs downloading blob data).
+* A new error that is thrown when there is an inconsistency between a
+  `LatchMetadata` object and its associated workflow's parameters.
 
 ### Deprecated
 
