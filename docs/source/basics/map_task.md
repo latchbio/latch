@@ -39,7 +39,7 @@ Let's also define a task that collects the mapped output and returns a string:
 
 ```python
 @small_task
-def coalesce(b: typing.List[str]) -> str:
+def coalesce(b: List[str]) -> str:
     coalesced = "".join(b)
     return coalesced
 ```
