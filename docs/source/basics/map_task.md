@@ -66,7 +66,7 @@ and returns a string.
 You may want to map a task with multiple inputs.
 
 For example, the task below takes in 2 inputs, a base and a DNA sequence, and
-returns percentage of that base in the sequence:
+returns the percentage of that base in the sequence:
 
 ```python
 @small_task
