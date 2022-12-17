@@ -49,10 +49,105 @@ libraries and settings for consistent task behavior._
 
 There are 3 latch-base images available as seen on [github](https://github.com/latchbio/latch-base). 
 
+## Writing Dockerfiles for different tasks
+
+When writing different tasks, defining distinct containers for each task
+increases workflow performance by reducing the size of the container scheduled
+on Kubernetes. It also helps with code organization by only associating
+dependencies with the tasks that need them.
+
+You can write different Dockerfiles and associate them to tasks by passing
+their paths to the task definition. When registering a workflow with multiple
+containers, note that each container will be rebuilt, which can slow down 
+development. 
+
+```
+@small_task(dockerfile=Path(__file__).parent.parent / "DockerfileMultiQC")
+def sample_task(int: a) -> str:
+    return str(a)
+```
+
+A full example:
+
+```
+# assemble.py
+
+import subprocess
+from pathlib import Path
+
+from latch import small_task
+from latch.types import LatchFile
+
+@small_task(dockerfile=Path(__file__) / "Dockerfile")
+def assembly_task(read1: LatchFile, read2: LatchFile) -> LatchFile:
+
+    # A reference to our output.
+    sam_file = Path("covid_assembly.sam").resolve()
+
+    _bowtie2_cmd = [
+        "bowtie2/bowtie2",
+        "--local",
+        "-x",
+        "wuhan",
+        "-1",
+        read1.local_path,
+        "-2",
+        read2.local_path,
+        "--very-sensitive-local",
+        "-S",
+        str(sam_file),
+    ]
+
+    subprocess.run(_bowtie2_cmd)
+
+    return LatchFile(str(sam_file), "latch:///covid_assembly.sam")
+```
+
+```
+# sam_blaster.py
+
+import subprocess
+from pathlib import Path
+
+from latch import small_task
+from latch.types import LatchFile
+
+# Note the use of paths relative to the location of the __init__.py file
+
+@small_task(dockerfile=Path(__file__) / "Dockerfile")
+def sam_blaster(sam: LatchFile) -> LatchFile:
+
+    blasted_sam = Path(sam.name + ".blasted.sam")
+
+    subprocess.run(
+        ["samblaster", "-i", sam.local_path, "-o", str(blasted_sam.resolve())]
+    )
+
+    return LatchFile(blasted_sam, f"latch:///{blasted_sam.name}")
+```
+
+Notice how we can organize task definitions and Docker containers into their
+own directories.
+
+```
+├── Dockerfile
+├── __init__.py
+├── assemble
+│   ├── Dockerfile
+│   └── __init__.py
+└── sam_blaster
+    ├── Dockerfile
+    └── __init__.py
+```
+
 ## Limitations
 
-The only limitation between a latch workflow and running your code on your linux
-machine is that we restrict your access to `/dev/` and the networking stack.
-For example, you cannot create mounts using `/dev/fuse` (so mounts are generally
-off limits) and you do not have admin access to the networking stack on the host
-machine as your task execution does not have root access.
+The difference between a latch task environment and running your code on your
+Linux machine is that we restrict your access to `/dev/` and the networking
+stack.  For example, you cannot create mounts using `/dev/fuse` (so mounts are
+generally off limits) and you do not have admin access to the networking stack
+on the host machine as your task execution does not have root access.
+
+The remote development utilities (`latch develop .`) do not work with
+different containers per task and we do not recommend using the two features
+together for the time being.
