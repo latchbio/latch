@@ -36,14 +36,14 @@ def workflow(metadata: Union[LatchMetadata, Callable]):
 
             if len(in_meta_not_in_wf) > 0 or len(not_in_meta_in_wf) > 0:
                 error_str = (
-                    "Inconsistency detected between parameters in your metadata object"
-                    " and parameters in your workflow signature.\n\n"
+                    "Inconsistency detected between parameters in your `LatchMetadata`"
+                    " object and parameters in your workflow signature.\n\n"
                 )
 
                 if len(in_meta_not_in_wf) > 0:
                     error_str += (
-                        "The following parameters appear in your metadata object but"
-                        " not in your workflow signature:\n\n"
+                        "The following parameters appear in your `LatchMetadata` object"
+                        " but not in your workflow signature:\n\n"
                     )
                     for param in in_meta_not_in_wf:
                         error_str += f"    \x1b[1m{param}\x1b[22m\n"
@@ -52,15 +52,16 @@ def workflow(metadata: Union[LatchMetadata, Callable]):
                 if len(not_in_meta_in_wf) > 0:
                     error_str += (
                         "The following parameters appear in your workflow signature but"
-                        " not in your metadata object:\n\n"
+                        " not in your `LatchMetadata` object:\n\n"
                     )
                     for param in not_in_meta_in_wf:
                         error_str += f"    \x1b[1m{param}\x1b[22m\n"
                     error_str += "\n"
 
                 error_str += (
-                    "Please resolve these inconsistencies and ensure that your metadata"
-                    " object and workflow signature have the same parameters."
+                    "Please resolve these inconsistencies and ensure that your"
+                    " `LatchMetadata` object and workflow signature have the same"
+                    " parameters."
                 )
 
                 raise ValueError(error_str)
