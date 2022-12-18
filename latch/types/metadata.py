@@ -59,11 +59,38 @@ class LatchAuthor:
 
 @dataclass(frozen=True)
 class FlowBase:
+    """Parent class for all flow elements
+
+    Available flow elements:
+
+    * :class:`~latch.types.metadata.Params`
+
+    * :class:`~latch.types.metadata.Text`
+
+    * :class:`~latch.types.metadata.Title`
+
+    * :class:`~latch.types.metadata.Section`
+
+    * :class:`~latch.types.metadata.Spoiler`
+
+    * :class:`~latch.types.metadata.Fork`
+    """
+
     ...
 
 
 @dataclass(frozen=True, init=False)
 class Section(FlowBase):
+    """Flow element that displays a child flow in a card with a given title
+
+    Args:
+        section:
+            Title of the section
+
+        flow:
+            Flow displayed in the section card
+    """
+
     section: str
     flow: List[FlowBase]
 
@@ -74,16 +101,38 @@ class Section(FlowBase):
 
 @dataclass(frozen=True)
 class Text(FlowBase):
+    """Flow element that displays a markdown string
+
+    Args:
+        text:
+            Markdown body text
+    """
+
     text: str
 
 
 @dataclass(frozen=True)
 class Title(FlowBase):
+    """Flow element that displays a markdown title
+
+    Args:
+        title:
+            Markdown title text
+    """
+
     title: str
 
 
 @dataclass(frozen=True, init=False)
 class Params(FlowBase):
+    """Flow element that displays parameter widgets
+
+    Args:
+        params:
+            Names of parameters whose widgets will be displayed.
+            Order is preserved. Duplicates are allowed
+    """
+
     params: List[str]
 
     def __init__(self, *args: str):
@@ -92,6 +141,16 @@ class Params(FlowBase):
 
 @dataclass(frozen=True, init=False)
 class Spoiler(FlowBase):
+    """Flow element that displays a collapsible card with a given title
+
+    Args:
+        spoiler:
+            Title of the spoiler
+
+        flow:
+            Flow displayed in the spoiler card
+    """
+
     spoiler: str
     flow: List[FlowBase]
 
@@ -102,6 +161,16 @@ class Spoiler(FlowBase):
 
 @dataclass(frozen=True, init=False)
 class ForkBranch:
+    """Definition of a :class:`~latch.types.metadata.Fork` branch
+
+    Args:
+        display_name:
+            String displayed in the fork's multibutton
+
+        flow:
+            Child flow displayed in the fork card when the branch is active
+    """
+
     display_name: str
     flow: List[FlowBase]
 
@@ -112,6 +181,23 @@ class ForkBranch:
 
 @dataclass(frozen=True, init=False)
 class Fork(FlowBase):
+    """Flow element that displays a set of mutually exclusive alternatives
+
+    Displays a title, followed by a horizontal multibutton for selecting a branch,
+    then a card for the active branch
+
+    Args:
+        fork:
+            Name of a `str`-typed parameter to store the active branch's key
+
+        display_name:
+            Title shown above the fork selector
+
+        flows:
+            Mapping between branch keys to branch definitions.
+            Order determines the order of options in the multibutton
+    """
+
     fork: str
     display_name: str
     flows: Dict[str, ForkBranch]

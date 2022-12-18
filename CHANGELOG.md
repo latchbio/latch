@@ -21,9 +21,18 @@ Types of changes
 
 * The `latch develop` command, and with it an ecosystem supporting local
   development and faster debugging.
+* The `latch cp` command now displays a x number of files out of n indicator
+  and displays which stage of the download is going on (network request to get
+  presigned urls vs downloading blob data).
+* A new error that is thrown when there is an inconsistency between a
+  `LatchMetadata` object and its associated workflow's parameters.
 
 ### Deprecated
 
 * The commands `latch rm`, `latch mkdir`, and `latch touch`.
 * The operators `left_join`, `right_join`, `inner_join`, `outer_join`,
   `group_tuple`, `latch_filter`, and `combine`
+
+### Removed
+
+* Removed a broken SDK test (launching CRISPResso2)

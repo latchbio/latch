@@ -234,6 +234,7 @@ def download(
         last_slash = remote_source.rfind("/")
         output_dir = output_dir / remote_source[last_slash + 1 :]
 
+    print("Generating download URLs...")
     response = tinyrequests.post(
         endpoints["download"],
         headers={"Authorization": f"Bearer {retrieve_or_login()}"},
@@ -243,13 +244,13 @@ def download(
         },
     )
 
+    print("Downloading...")
     response_data = response.json()
     if response_data["dir"]:
         futures = []
         _download_dir(output_dir, response_data, futures, _executor)
-        for fut in cf.as_completed(futures):
-            # TODO(ayush) send over size info in response and properly use progress bars
-            print(f"Finished downloading {fut.result()}", flush=True)
+        for _ in _tqdm.tqdm(cf.as_completed(futures), total=len(futures)):
+            continue
     else:
         _download_file(response_data["url"], output_dir)
 
