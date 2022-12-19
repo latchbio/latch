@@ -5,6 +5,7 @@ except ImportError:
 
 import enum
 import json
+import keyword
 import typing
 from typing import Optional
 
@@ -51,6 +52,8 @@ _primitive_table = {
 # fqn are supported by default, address when you get to this todo
 # (3) show a message indicating the generated filename,
 # (4) optionally specify the output filename
+
+
 def get_params(wf_name: str, wf_version: Optional[str] = None):
     """Constructs a parameter map for a workflow given its name and an optional
     version.
@@ -136,7 +139,11 @@ def get_params(wf_name: str, wf_version: Optional[str] = None):
 
                 _enum_literal = f"class {name}(Enum):"
                 for variant in variants:
-                    _enum_literal += f"\n    {variant} = '{variant}'"
+                    if variant in keyword.kwlist:
+                        variant_name = f"_{variant}"
+                    else:
+                        variant_name = variant
+                    _enum_literal += f"\n    {variant_name} = '{variant}'"
                 enum_literals.append(_enum_literal)
 
         # Parse collection, union types for potential imports and dependent
