@@ -1,4 +1,4 @@
-# Taxonomy Classification with Metamage Workflow
+# Metagenomics assembly and annotation with Metamage Workflow
 
 In this tutorial, we will use the Latch SDK to build **metamage**, a workflow for taxonomic classification, assembly, binning and annotation of short-read host-associated metagenomics datasets.
 
@@ -80,10 +80,10 @@ metamage_latch
     ├── docs.py
     ├── functional.py
     ├── functional_module
-    │   ├── amp.py
-    │   ├── arg.py
-    │   ├── bgc.py
-    │   └── prodigal.py
+    │   ├── amp.py
+    │   ├── arg.py
+    │   ├── bgc.py
+    │   └── prodigal.py
     ├── host_removal.py
     ├── kaiju.py
     ├── metassembly.py

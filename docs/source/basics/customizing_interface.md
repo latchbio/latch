@@ -263,7 +263,7 @@ def wf(read1: LatchFile):
     ...
 ```
 
-### How Python types of paramters translate to the UI
+### How Python types of parameters translate to the UI
 
 Latch parses the Python type of your workflow parameters to generate the appropriate interface.
 

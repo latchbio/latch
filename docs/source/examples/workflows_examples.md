@@ -15,7 +15,7 @@ We'll maintain a growing list of well documented examples developed by our commu
 **Phylogenetics**
   * [Seq-to-tree: Evolutionary history inference](https://github.com/JLSteenwyk/latch_wf_seq_to_tree)
   * [Codon optimization estimation](https://github.com/JLSteenwyk/latch_wf_codon_optimization)
-  * [Metamage: Taxonomy classification](https://github.com/jvfe/metamage_latch)
+  * [Metamage: Metagenomics assembly and annotation](https://github.com/jvfe/metamage_latch)
 
 **Single-cell Analysis**
   * [ArchR: Single-cell chromatin accessibility analysis](https://github.com/aa20g217/Archr-Latch-Wf)
