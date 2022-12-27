@@ -47,7 +47,7 @@ WORKDIR /root
 _Note that we must use the base image specified in the first line to configure
 libraries and settings for consistent task behavior._
 
-There are 3 latch-base images available as seen on [github](https://github.com/latchbio/latch-base). 
+There are 3 latch-base images available as seen on [github](https://github.com/latchbio/latch-base).
 
 ## Writing Dockerfiles for different tasks
 
@@ -58,8 +58,8 @@ dependencies with the tasks that need them.
 
 You can write different Dockerfiles and associate them to tasks by passing
 their paths to the task definition. When registering a workflow with multiple
-containers, note that each container will be rebuilt, which can slow down 
-development. 
+containers, note that each container will be rebuilt, which can slow down
+development.
 
 ```
 @small_task(dockerfile=Path(__file__).parent.parent / "DockerfileMultiQC")
@@ -67,10 +67,15 @@ def sample_task(int: a) -> str:
     return str(a)
 ```
 
-A full example:
+### An example for task-specific Dockerfiles
+
+Let's build a workflow, based on the default assemble and sort workflow, to
+show how you can build a pipeline containing task-specific Dockerfiles.
+
+First, the assembly task and its respective Dockerfile:
 
 ```
-# assemble.py
+# assembly/__init__.py
 
 import subprocess
 from pathlib import Path
@@ -78,7 +83,7 @@ from pathlib import Path
 from latch import small_task
 from latch.types import LatchFile
 
-@small_task(dockerfile=Path(__file__) / "Dockerfile")
+@small_task(dockerfile=Path(__file__).parent / "Dockerfile")
 def assembly_task(read1: LatchFile, read2: LatchFile) -> LatchFile:
 
     # A reference to our output.
@@ -103,8 +108,39 @@ def assembly_task(read1: LatchFile, read2: LatchFile) -> LatchFile:
     return LatchFile(str(sam_file), "latch:///covid_assembly.sam")
 ```
 
+```Dockerfile
+# assembly/Dockerfile
+
+FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:dd8f-main
+
+RUN apt-get update -y && \
+    apt-get install -y curl unzip
+
+# Install bowtie2
+RUN curl -L \
+    https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.4.4/bowtie2-2.4.4-linux-x86_64.zip/download \
+    -o bowtie2-2.4.4.zip && \
+    unzip bowtie2-2.4.4.zip && \
+    mv bowtie2-2.4.4-linux-x86_64 bowtie2
+
+# Copy reference
+COPY reference /root/reference
+ENV BOWTIE2_INDEXES="reference"
+
+# STOP HERE:
+# The following lines are needed to ensure your build environement works
+# correctly with latch.
+RUN python3 -m pip install --upgrade latch
+COPY wf /root/wf
+ARG tag
+ENV FLYTE_INTERNAL_IMAGE $tag
+WORKDIR /root
 ```
-# sam_blaster.py
+
+Now, the sorting task and its respective dockerfile:
+
+```
+# sort/__init__.py
 
 import subprocess
 from pathlib import Path
@@ -114,37 +150,112 @@ from latch.types import LatchFile
 
 # Note the use of paths relative to the location of the __init__.py file
 
-@small_task(dockerfile=Path(__file__) / "Dockerfile")
-def sam_blaster(sam: LatchFile) -> LatchFile:
 
-    blasted_sam = Path(sam.name + ".blasted.sam")
+@small_task(dockerfile=Path(__file__).parent / "Dockerfile")
+def sort_bam_task(sam: LatchFile) -> LatchFile:
 
-    subprocess.run(
-        ["samblaster", "-i", sam.local_path, "-o", str(blasted_sam.resolve())]
-    )
+    bam_file = Path("covid_sorted.bam").resolve()
 
-    return LatchFile(blasted_sam, f"latch:///{blasted_sam.name}")
+    _samtools_sort_cmd = [
+        "samtools",
+        "sort",
+        "-o",
+        str(bam_file),
+        "-O",
+        "bam",
+        sam.local_path,
+    ]
+
+    subprocess.run(_samtools_sort_cmd)
+
+    return LatchFile(str(bam_file), "latch:///covid_sorted.bam")
+```
+
+```Dockerfile
+# sort/Dockerfile
+
+FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:dd8f-main
+
+# Install samtools
+RUN apt-get install -y autoconf samtools
+
+# STOP HERE:
+# The following lines are needed to ensure your build environement works
+# correctly with latch.
+RUN python3 -m pip install --upgrade latch
+COPY wf /root/wf
+ARG tag
+ENV FLYTE_INTERNAL_IMAGE $tag
+WORKDIR /root
+```
+
+Finally, the workflow itself can look something like this:
+
+```
+from latch import workflow
+from latch.types import LatchFile
+
+from wf.assembly import assembly_task
+from wf.sort import sort_bam_task
+
+@workflow
+def assemble_and_sort(read1: LatchFile, read2: LatchFile) -> LatchFile:
+    """Description...
+
+    markdown header
+    ----
+
+    Write some documentation about your workflow in
+    markdown here:
+
+    > Regular markdown constructs work as expected.
+
+    # Heading
+
+    * content1
+    * content2
+    """
+    sam = assembly_task(read1=read1, read2=read2)
+    return sort_bam_task(sam=sam)
 ```
 
 Notice how we can organize task definitions and Docker containers into their
-own directories.
+own directories:
 
 ```
 ├── Dockerfile
-├── __init__.py
-├── assemble
-│   ├── Dockerfile
-│   └── __init__.py
-└── sam_blaster
-    ├── Dockerfile
-    └── __init__.py
+├── version
+└── wf
+    ├── __init__.py
+    ├── assembly
+    │   ├── Dockerfile
+    │   └── __init__.py
+    └── sort
+        ├── Dockerfile
+        └── __init__.py
+```
+
+Notice also how you still have to include a Dockerfile at the root of your workflow's directory.
+This file can contain just the basic boilerplate for SDK workflows, that is:
+
+```Dockerfile
+FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:dd8f-main
+
+# STOP HERE:
+# The following lines are needed to ensure your build environement works
+# correctly with latch.
+RUN python3 -m pip install --upgrade latch
+COPY wf /root/wf
+ARG tag
+ENV FLYTE_INTERNAL_IMAGE $tag
+WORKDIR /root
 ```
 
 ## Limitations
 
 The difference between a latch task environment and running your code on your
 Linux machine is that we restrict your access to `/dev/` and the networking
-stack.  For example, you cannot create mounts using `/dev/fuse` (so mounts are
+stack. For example, you cannot create mounts using `/dev/fuse` (so mounts are
 generally off limits) and you do not have admin access to the networking stack
 on the host machine as your task execution does not have root access.
 
