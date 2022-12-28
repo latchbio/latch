@@ -13,7 +13,7 @@ which will become a container that it will execute within at runtime.
 Here is an example of a Dockerfile used earlier:
 
 ```Dockerfile
-FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:9a7d-main
+FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:dd8f-main
 
 # Its easy to build binaries from source that you can later reference as
 # subprocesses within your workflow.
@@ -32,15 +32,13 @@ RUN apt-get update -y &&\
 COPY data /root/reference
 ENV BOWTIE2_INDEXES="reference"
 
-COPY wf /root/wf
-
 # STOP HERE:
 # The following lines are needed to ensure your build environement works
 # correctly with latch.
+RUN python3 -m pip install --upgrade latch
+COPY wf /root/wf
 ARG tag
 ENV FLYTE_INTERNAL_IMAGE $tag
-RUN sed -i 's/latch/wf/g' flytekit.config
-RUN python3 -m pip install --upgrade latch
 WORKDIR /root
 ```
 
@@ -69,13 +67,20 @@ def sample_task(int: a) -> str:
 
 ### An example for task-specific Dockerfiles
 
-Let's build a workflow, based on the default assemble and sort workflow, to
-show how you can build a pipeline containing task-specific Dockerfiles.
+Since our default assemble and sort workflow has two tasks,
+let's split this workflow's original Dockerfile in two - making one Dockerfile per task -
+to show how you can build a pipeline containing task-specific Dockerfiles.
 
-First, the assembly task and its respective Dockerfile:
+First, let's create the workflow directory we'll be working in:
 
 ```
-# assembly/__init__.py
+latch init dockerfile-per-task
+```
+
+Then, we'll build the assembly task and its respective Dockerfile.
+
+```
+# wf/assembly/__init__.py
 
 import subprocess
 from pathlib import Path
@@ -83,6 +88,7 @@ from pathlib import Path
 from latch import small_task
 from latch.types import LatchFile
 
+# Note the use of paths relative to the location of the __init__.py file
 @small_task(dockerfile=Path(__file__).parent / "Dockerfile")
 def assembly_task(read1: LatchFile, read2: LatchFile) -> LatchFile:
 
@@ -108,11 +114,29 @@ def assembly_task(read1: LatchFile, read2: LatchFile) -> LatchFile:
     return LatchFile(str(sam_file), "latch:///covid_assembly.sam")
 ```
 
+Note, in the python script above, the use of relative paths - we're using `Path(__file__).parent / "Dockerfile"` to specify where this task's Dockerfile can be found.
+
+`Path(__file__)` means the path to the current Python script (`wf/assembly/__init__.py`)
+and `.parent` means the parent directory of this script (`wf/assembly/`).
+The final path then being `wf/assembly/Dockerfile`.
+
+For this workflow, we're keeping the Dockerfiles for each task
+in the same directory where the task definition for that task is located.
+Though we recommend keeping this same structure, you are free to change the
+location of these files, as long as you also change the `dockerfile` argument
+of each task.
+
+Now, let's build the Dockerfile itself.
+Since the assembly task requires `bowtie2`, this first Dockerfile
+can look like this:
+
 ```Dockerfile
-# assembly/Dockerfile
+# wf/assembly/Dockerfile
 
 FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:dd8f-main
 
+# Install curl and unzip
+# Both necessary to install bowtie2 (See the next RUN command)
 RUN apt-get update -y && \
     apt-get install -y curl unzip
 
@@ -137,18 +161,20 @@ ENV FLYTE_INTERNAL_IMAGE $tag
 WORKDIR /root
 ```
 
-Now, the sorting task and its respective dockerfile:
+Notice how you still have to use the same base image at the top of each Dockerfile
+and keep the latch installation commands at the bottom,
+as shown above.
+
+Now, let's build the sorting task and its respective dockerfile:
 
 ```
-# sort/__init__.py
+# wf/sort/__init__.py
 
 import subprocess
 from pathlib import Path
 
 from latch import small_task
 from latch.types import LatchFile
-
-# Note the use of paths relative to the location of the __init__.py file
 
 
 @small_task(dockerfile=Path(__file__).parent / "Dockerfile")
@@ -171,8 +197,10 @@ def sort_bam_task(sam: LatchFile) -> LatchFile:
     return LatchFile(str(bam_file), "latch:///covid_sorted.bam")
 ```
 
+Since this task requires `samtools`, this Dockerfile looks like this:
+
 ```Dockerfile
-# sort/Dockerfile
+# wf/sort/Dockerfile
 
 FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:dd8f-main
 
@@ -235,7 +263,13 @@ own directories:
         └── __init__.py
 ```
 
-Notice also how you still have to include a Dockerfile at the root of your workflow's directory.
+We recommend keeping this same basic structure for other workflows with
+task-specific Dockerfiles, since it leads to better modularity and code
+organization, making it easy to see which task requires which Dockerfile.
+And also facilitating for you or other users to re-use these task
+definitions in other workflows.
+
+Note how you still have to include a Dockerfile at the root of your workflow's directory.
 This file can contain just the basic boilerplate for SDK workflows, that is:
 
 ```Dockerfile
