@@ -37,7 +37,8 @@ Types of changes
 
 * Removed a broken SDK test (launching CRISPResso2)
 
-### Bug Fixes
+### Fixed
 
 * `lytekit` version updated to pin `numpy` to version `1.22` (breaking changes in later versions of this library)
+* `requests` library given higher lower bound to fix warning with one of its dependencies
 * `latch get-params` will escape class attribute names (representation of Enum type) if they are python keywords 
