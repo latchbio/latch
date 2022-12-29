@@ -1,10 +1,13 @@
 import json
 import logging
 import webbrowser
+from pathlib import Path
 from typing import List
 
-from flytekit.clis.sdk_in_container.run import load_naive_entity
+from flytekit.core.workflow import PythonFunctionWorkflow
+from google.protobuf.json_format import MessageToJson
 
+from latch_cli.centromere.utils import _import_flyte_objects
 from latch_cli.config.latch import _LatchConfig
 from latch_cli.tinyrequests import post
 from latch_cli.utils import current_workspace, retrieve_or_login
@@ -13,95 +16,42 @@ logger = logging.Logger(name="logger")
 config = _LatchConfig()
 endpoints = config.sdk_endpoints
 
-SIMPLE_MAP = {
-    0: "NONE",
-    1: "INTEGER",
-    2: "FLOAT",
-    3: "STRING",
-    4: "BOOLEAN",
-    5: "DATETIME",
-    6: "DURATION",
-    7: "BINARY",
-    8: "ERROR",
-    9: "STRUCT",
-}
 
-DIM_MAP = {
-    0: "SINGLE",
-    1: "MULTIPART",
-}
-
-
-def _deep_dict(t) -> dict:
-    if hasattr(t, "__dict__"):
-        output = {}
-        for k in t.__dict__:
-            if t.__dict__[k] is not None:
-                new_key = k.strip("_")
-                if new_key == "union_type":
-                    new_key = "unionType"
-                elif new_key == "collection_type":
-                    new_key = "collectionType"
-                elif new_key == "enum_type":
-                    new_key = "enumType"
-
-                if new_key == "simple":
-                    val = SIMPLE_MAP.get(t.__dict__[k], None)
-                elif new_key == "dimensionality":
-                    val = DIM_MAP.get(t.__dict__[k], None)
-                else:
-                    val = t.__dict__[k]
-                output[new_key] = _deep_dict(val)
-        return output
-    elif isinstance(t, List):
-        output = []
-        for i in range(len(t)):
-            if t[i] is not None:
-                output.append(_deep_dict(t[i]))
-        return output
-    else:
-        return t
-
-
-# TODO(ayush): make this import the `wf` directory and use the package root
-# instead of the workflow name. also redo the frontend, also make it open the
-# page
-def preview(workflow_name: str):
+def preview(pkg_root: Path):
     """Generate a preview of the parameter interface for a workflow.
 
     This will allow a user to see how their parameter interface will look
-    without having to first register their workflow. Simply provide the name of
-    the workflow function.
+    without having to first register their workflow.
 
     Args:
-        workflow_name: The full name of the workflow function.
+        pkg_root: A valid path pointing to the worklow code a user wishes to
+            preview. The path can be absolute or relative.
 
     Example:
         >>> preview("wf.__init__.alphafold_wf")
     """
 
     try:
-        wf = load_naive_entity("wf.__init__", workflow_name)
+        modules = _import_flyte_objects([pkg_root.resolve()])
+        wf = None
+        for module in modules:
+            for flyte_obj in module.__dict__.values():
+                if isinstance(flyte_obj, PythonFunctionWorkflow):
+                    wf = flyte_obj
+                    break
+        if wf is None:
+            raise ValueError(f"Unable to find a workflow definition in {pkg_root}")
     except ImportError as e:
         raise ValueError(
             f"Unable to find {e.name} - make sure that all necessary packages"
             " are installed and you have the correct function name."
         )
 
-    d = {k: _deep_dict(wf.interface.inputs[k]) for k in wf.interface.inputs}
-
-    token = retrieve_or_login()
-    headers = {"Authorization": f"Bearer {token}"}
-
     resp = post(
         url=endpoints["preview"],
-        headers=headers,
+        headers={"Authorization": f"Bearer {retrieve_or_login()}"},
         json={
-            "workflow_ui_preview": json.dumps(
-                {"variables": d},
-                sort_keys=True,
-                indent=2,
-            ),
+            "workflow_ui_preview": MessageToJson(wf.interface.to_flyte_idl().inputs),
             "ws_account_id": current_workspace(),
         },
     )
