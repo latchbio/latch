@@ -8,6 +8,7 @@ Each tutorial demonstrates a key concept within the Latch SDK.
 | --- | ----------- | -------- | ----
 | Bulk RNA-seq | Gene and transcript counts from bulk RNA-seq sample reads. | Running task in parallel over a list of inputs; Grouping files; Handling files and metadata | map_task, file_glob
 | Metamage | Taxonomic classification, assembly, binning and annotation of short-read host-associated metagenomics datasets | Reusing workflow in a larger workflow | subworkflows
+| Nextflow | A simple RNASeq-NF pipeline for transcriptomic alignment and quantification | How to port a Nextflow pipeline to Latch SDK | Nextflow & Latch
 
 ---
 

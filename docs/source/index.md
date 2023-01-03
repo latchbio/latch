@@ -114,6 +114,7 @@ examples/docker_recipes
 :caption: Tutorials
 tutorials/overview
 tutorials/rnaseq
+tutorials/nextflow
 tutorials/metamage
 ```
 
