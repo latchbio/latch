@@ -2,7 +2,7 @@
 
 Estimated time to complete: 30 minutes
 
-Nextflow is a popular framework for orchestrating bioinformatics workflows. In this tutorial, we will walk through how you can package an existing Nextflow script in Latch Python SDK!
+Nextflow is a popular framework for running bioinformatics workflows. In this tutorial, we will walk through how you can package an existing Nextflow script in the Latch SDK!
 
 ## Prerequisites
 
