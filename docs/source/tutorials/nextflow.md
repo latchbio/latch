@@ -6,10 +6,10 @@ Nextflow is a popular framework for running bioinformatics workflows. In this tu
 
 ## Prerequisites
 
-Before we start, make sure you:
+Before we start, make sure you
 
-* Install the [Latch SDK](../getting_started/quick_start.md).
-* Understand basic concepts of a workflow through our [Quickstart](../getting_started/quick_start.md) and [Authoring your Own Workflow](../getting_started/authoring_your_workflow.md).
+* Install the [Latch SDK](../getting_started/quick_start.md), and
+* Review the basic concepts of a workflow by reading [Quickstart](../getting_started/quick_start.md) and [Authoring your Own Workflow](../getting_started/authoring_your_workflow.md).
 
 As an example, we will use Nextflow's RNA-seq pipeline example. Let's dive in!
 
@@ -27,21 +27,21 @@ To run the Nextflow pipeline locally:
 
 ```console
 # Clone the repository
-git clone https://github.com/nextflow-io/rnaseq-nf.git
+git clone git@github.com:nextflow-io/rnaseq-nf.git
 cd rnaseq-nf
 
 # Run the Nextflow script
 nextflow run main.nf
 ```
 
-Once the execution finishes successfully, you will see a MultiQC report generated under `rnaseq-nf/results/multiqc_report.html`.
+Once the execution finishes, you can find a MultiQC report generated under `rnaseq-nf/results/multiqc_report.html`.
 
 ## How to Wrap the Nextflow Pipeline in Latch SDK
 
 To port the above workflow to the Latch SDK, we have to complete three steps:
 
-1. Initialize a Latch workflow and clone the RNASeq-NF code inside the Latch workflow directory.
-2. Define your Dockerfile to install dependencies
+1. Initialize a Latch workflow and clone the RNASeq-NF code inside the Latch workflow directory,
+2. Create a Dockerfile to install dependencies, and
 3. Define a workflow that executes the `nextflow run` command to run the Nextflow pipeline.
 
 ### Step 1: Initialize the Latch workflow directory
@@ -49,7 +49,7 @@ To port the above workflow to the Latch SDK, we have to complete three steps:
 If you prefer to follow along, instead of creating the workflow from scratch, clone the final GitHub repository here:
 
 ```console
-git clone https://github.com/latchbio/nextflow-latch-wf.git 
+git clone git@github.com:latchbio/nextflow-latch-wf.git
 ```
 
 For those who prefer starting from scratch, first initialize a fresh Latch boiplerplate repository:
@@ -67,10 +67,10 @@ cd nextflow-latch-wf
 Clone the original RNASeq-NF code:
 
 ```console
-https://github.com/nextflow-io/rnaseq-nf.git
+git clone git@github.com:nextflow-io/rnaseq-nf.git
 ```
 
-Great! Now we have a boilerplate code to start modifying, as well as the Nextflow code that we will later use.
+Great! Now we have boilerplate code we can modify, as well as Nextflow code that we can later use.
 
 ### Step 2: Define your Dockerfile to install dependencies
 
@@ -107,15 +107,11 @@ Enter an interative shell:
 >>> shell
 
 Syncing local changes... 
-Could not find /Users/hannahle/Documents/GitHub/nextflow-latch-wf/data - skipping
-Finished syncing.
-Pulling 812206152185.dkr.ecr.us-west-2.amazonaws.com/6064_nextflow-latch-wf:0.0.0-7da9b6... 
-Image successfully pulled.
+...
 ```
 
-This will pull your workflow image built by the Dockerfile, which is handy to verify and reiterate on your build commands.
 
-For example, we can verify that Nextflow is installed correctly by typing:
+We can verify that Nextflow is installed correctly by typing
 
 ```console
 root@ip-10-0-11-243:~# nextflow
@@ -134,9 +130,9 @@ Options:
 
 ### Step 3: Define the Latch workflow
 
-The core logic of a Latch workflow is in the `wf/__init__.py`.
+The core logic of a Latch workflow is defined in the file `wf/__init__.py`.
 
-To wrap the Nextflow workflow inside a Latch workflow, first import the necessary dependencies
+To wrap the Nextflow workflow inside a Latch workflow, first import the necessary dependencies:
 
 ```python
 import subprocess
@@ -147,7 +143,7 @@ from latch.resources.launch_plan import LaunchPlan
 from latch.types import LatchAuthor, LatchFile, LatchMetadata, LatchParameter, LatchDir
 ```
 
-Next, let's define our task:
+Next, define the task:
 
 ![Nextflow Task](../assets/nextflow-task.png)
 
@@ -196,7 +192,7 @@ def rnaseq_wf(
 
 ### Defining Workflow GUI
 
-To expose workflow parameters to a user-friendly workflow GUI, you can use the `LatchMetadata` object. An important point to note is that all workflow arguments need to be added to the `parameters` key of LatchMetadata for them to display on the GUI. For an exhaustive list of how workflow argument and their Python types map to the front-end interface, visit [Customizing Your Interface](../basics/customizing_interface.md)
+To expose workflow parameters in a user-friendly workflow GUI, you can use the `LatchMetadata` object. An important point to note is that all workflow arguments need to be added to the `parameters` key of LatchMetadata for them to display on the GUI. For an exhaustive list of how workflow arguments and their respective Python types map to a front-end component, see [Customizing Your Interface](../basics/customizing_interface.md)
 
 ```python
 """The metadata included here will be injected into your interface."""
@@ -268,15 +264,15 @@ To publish the workflow to the Latch platform, you can navigate to the root work
 latch register -r .
 ```
 
-This will give us:
+This will give us
 
-* a no-code interface
-* managed cloud infrastructure for workflow execution
-* a dedicated API endpoint for programmatic execution
-* hosted documentation
-* parallelized CSV-to-batch execution
+* a no-code interface,
+* managed cloud infrastructure for workflow execution,
+* a dedicated API endpoint for programmatic execution,
+* hosted documentation, and
+* parallelized CSV-to-batch execution.
 
-Once registration finishes, you can navigate to [Latch](https://console.latch.bio/workflows) to run your workflow.
+Once registration finishes, you can navigate to the [Latch Console](https://console.latch.bio/workflows) to run your workflow.
 
 ---
 
@@ -287,7 +283,7 @@ Once registration finishes, you can navigate to [Latch](https://console.latch.bi
 
     For prototyping purposes, we recommend that you wrap an entire Nextflow pipeline in a single task first. This allows you to quickly experience the development experience with a Pythonic SDK and publish a first workflow that's ready-to-use for scientists.
 
-    One disadvantage of this, however, is all processes are run on a single machine with fixed compute resource. If parallelization of individual processes across multiple machines is desired, it is beneficial to refactor each process into its individual task. With the [SDK's remote debugging toolkit](../basics/local_development.md), refactoring also enables for faster debugging and development.
+    One disadvantage of this, however, is that all processes are run on a single machine with fixed compute resources. If parallelization of individual processes across multiple machines is desired, it is beneficial to refactor each process into its individual task. This is quick to do with the [SDK's remote debugging toolkit](../basics/local_development.md).
 
 2. **Can I take advantage of existing Netxflow's community workflows while using the Latch SDK?**
 
