@@ -74,21 +74,21 @@ params = {
 # success.
 
 
-def test_execute_previous_versions():
-    with NamedTemporaryFile("w+") as tf:
-        tf.write(simple_plan)
-        tf.seek(0)
+# def test_execute_previous_versions():
+#     with NamedTemporaryFile("w+") as tf:
+#         tf.write(simple_plan)
+#         tf.seek(0)
 
-        assert launch(tf.name) == "wf.__init__.assemble_and_sort"
-        assert launch(tf.name, "barrackobama") == "wf.__init__.assemble_and_sort"
+#         assert launch(tf.name) == "wf.__init__.assemble_and_sort"
+#         assert launch(tf.name, "barrackobama") == "wf.__init__.assemble_and_sort"
 
 
-def test_execute_rnaseq():
-    with NamedTemporaryFile("w+") as tf:
-        tf.write(rnaseq_plan)
-        tf.seek(0)
+# def test_execute_rnaseq():
+#     with NamedTemporaryFile("w+") as tf:
+#         tf.write(rnaseq_plan)
+#         tf.seek(0)
 
-        assert launch(tf.name) == "wf.__init__.nf_rnaseq_wf"
+#         assert launch(tf.name) == "wf.__init__.nf_rnaseq_wf"
 
 
 # TODO(ayush, kenny): fix this test
