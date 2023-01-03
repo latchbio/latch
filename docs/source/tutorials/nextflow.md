@@ -282,7 +282,6 @@ Once registration finishes, you can navigate to [Latch](https://console.latch.bi
 
 ## Commonly Asked Questions
 
-Below we aim to provide answers to the most commonly asked questions about porting a Nextflow pipeline to Latch:
 
 1. **Should I wrap an entire Nextflow pipeline in a single task or refactor each Nextflow process to an individual task?**
 
