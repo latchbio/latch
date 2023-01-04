@@ -105,7 +105,7 @@ def local_development(pkg_root: Path):
     "--connection",
     type=str,
     default=None,
-    help=("Specific AuthO connection name e.g. for SSO."),
+    help="Specific AuthO connection name e.g. for SSO.",
 )
 def login(connection: Optional[str]):
     """Manually login to Latch."""
@@ -419,20 +419,21 @@ def execute(task_name: str):
 
 
 @main.command("preview")
-@click.argument("workflow_name", nargs=1, type=str)
-def preview(workflow_name: str):
+@click.argument("pkg_root", nargs=1, type=click.Path(exists=True, path_type=Path))
+def preview(pkg_root: Path):
     """Creates a preview of your workflow interface."""
-    crash_handler.message = f"Unable to preview inputs for {workflow_name}"
-    crash_handler.pkg_root = str(Path.cwd())
+    crash_handler.message = f"Unable to preview inputs for {pkg_root}"
+    crash_handler.pkg_root = str(pkg_root)
 
     from latch_cli.services.preview import preview
 
-    preview(workflow_name)
+    preview(pkg_root)
 
 
 @main.command("workspace")
 def workspace():
-    """Spawns an interactive terminal prompt allowing users to choose what workspace they want to work in."""
+    """Spawns an interactive terminal prompt allowing users to choose what workspace they want to work in.
+    """
 
     crash_handler.message = "Unable to fetch workspaces"
     crash_handler.pkg_root = str(Path.cwd())
@@ -444,7 +445,8 @@ def workspace():
 
 @main.command("get-executions")
 def get_executions():
-    """Spawns an interactive terminal UI that shows all executions in a given workspace"""
+    """Spawns an interactive terminal UI that shows all executions in a given workspace
+    """
 
     crash_handler.message = "Unable to fetch executions"
 
@@ -473,7 +475,7 @@ def test_data(ctx: click.Context):
     is_flag=True,
     default=False,
     type=bool,
-    help=("Automatically overwrite any files without asking for confirmation."),
+    help="Automatically overwrite any files without asking for confirmation.",
 )
 def test_data_upload(src_path: str, dont_confirm_overwrite: bool):
     """Upload test data object."""

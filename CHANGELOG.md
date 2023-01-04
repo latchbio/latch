@@ -42,4 +42,8 @@ Types of changes
 * `lytekit` version updated to
   * pin `numpy` to version `1.22` (breaking changes in later versions of this library)
   * have better behavior when downloading directories during local development
-* `latch get-params` will escape class attribute names (representation of Enum type) if they are python keywords
+* `latch get-params` will escape class attribute names (representation of Enum
+  type) if they are python keywords
+* `latch preview` now requires a directory argument instead of a workflow name
+  argument, and now behaves consistently with regular parameter interface
+  generation.
