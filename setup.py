@@ -31,7 +31,7 @@ setup(
         "aioconsole==0.5.1",
         "kubernetes>=24.2.0",
         "pyjwt>=0.2.0",
-        "requests>=2.0",
+        "requests>=2.28.1",
         "click>=8.0",
         "docker>=5.0",
         "paramiko>=2.11.0",
