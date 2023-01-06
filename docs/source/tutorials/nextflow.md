@@ -1,6 +1,6 @@
 # Tutorial: Running Nextflow in Python with Latch SDK
 
-Estimated time to complete: 30 minutes
+Estimated time to complete: 45 minutes
 
 Nextflow is a popular framework for orchestrating bioinformatics workflows. In this tutorial, we will walk through how you can package an existing Nextflow script in Latch Python SDK!
 
@@ -11,81 +11,182 @@ Before we start, make sure you:
 * Install the [Latch SDK](../getting_started/quick_start.md).
 * Understand basic concepts of a workflow through our [Quickstart](../getting_started/quick_start.md) and [Authoring your Own Workflow](../getting_started/authoring_your_workflow.md).
 
-As an example, we will use Nextflow's RNA-seq pipeline example. Let's dive in!
+As an example, we will use a BLAST workflow written in Nextflow. Let's dive in!
 
-## Overview of the RNA-seq Nextflow Pipeline
+## Set up your developer environment
 
-The [RNASeq-NF pipeline](https://www.nextflow.io/example4.html) maps a collection of read-pairs to a given reference genome and outputs the respective transcript model. The Nextflow team has kindly provided the GitHub repository to their full pipeline code [here](https://github.com/nextflow-io/rnaseq-nf).
+As a quick refresh, the SDK schedules each task of your workflow to be run on a Linux computer.
 
-At a high level, RNASeq-NF uses the following components and tools:
+We highly recommend that you run through the tutorial inside a Latch Pod (a Linux-based compute environment on Latch) to best simulate the behaviour of how your tasks would run on Latch.
 
-* Salmon 1.0.0
-* FastQC 0.11.5
-* Multiqc 1.5
+### Step 1: Start a Latch Pod
 
-To run the Nextflow pipeline locally:
+* Navigate to the [Apps page on Latch](https://console.latch.bio/apps).
+* To create a new Pod, click the Apps dropdown and select “Create a new Pod”. You will be prompted to enter a Pod name and set up your personal computing environment.
 
-```console
-# Clone the repository
-git clone https://github.com/nextflow-io/rnaseq-nf.git
-cd rnaseq-nf
+![Latch Pods](../assets/nextflow-example/latch-pod.png)
 
-# Run the Nextflow script
-nextflow run main.nf
-```
+* There are four Pod sizes that you can choose from: 4 cores and 8GiB of RAM, 8 cores and 32 GiB of RAM, 16 cores and 128 GiB of RAM, and 64 cores and 256GiB of RAM. Storage for a Pod ranges from 20 to 1000 gigabytes. For our RNASeq-NF tutorial, let's choose the **16 cores and 128GiB of RAM** option.
+  
+* Click "Launch Pod". For the first time, Pods may take 5-15 minutes to start running.
 
-Once the execution finishes successfully, you will see a MultiQC report generated under `rnaseq-nf/results/multiqc_report.html`.
+* Once a Pod has started, JupyterLab will be available by default in your Pod. To access them, simply double click on the desired notebook, or copy paste the permanent endpoints from the sidebar to your browser.
 
-## How to Wrap the Nextflow Pipeline in Latch SDK
+![Dev Env](../assets/nextflow-example/devenv.png)
 
-To port the above workflow to the Latch SDK, we have to complete three steps:
-
-1. Initialize a Latch workflow and clone the RNASeq-NF code inside the Latch workflow directory.
-2. Define your Dockerfile to install dependencies
-3. Define a workflow that executes the `nextflow run` command to run the Nextflow pipeline.
-
-### Step 1: Initialize the Latch workflow directory
-
-If you prefer to follow along, instead of creating the workflow from scratch, clone the final GitHub repository here:
+* Once you are inside a Pod, you can clone the example code GitHub repository here:
 
 ```console
-git clone https://github.com/latchbio/nextflow-latch-wf.git 
+git clone https://github.com/latchbio/blast-nextflow-latch
 ```
 
-For those who prefer starting from scratch, first initialize a fresh Latch boiplerplate repository:
+At a high level, the repo contains the original BLAST Nextflow Pipeline, as well as additional files and folders required to upload the workflow to Latch:
+
+![Latch Nextflow](../assets/nextflow-example/latch-nextflow-structure.png)
+
+We will first attempt to run the Nextflow pipeline locally, and walk through the additional files required to package the pipeline and upload it to Latch.
+
+## Step 2: Install dependencies for the Nextflow Pipeline
+
+To successfully run Nextflow BLAST pipeline inside the Pod, your Pod environment needs:
+
+* Java 8
+* Nextflow (version 20.07.x or higher)
+
+In this tutorial, we will use `conda` to manage the pipeline dependencies. We need to additionally install:
+
+* Micromamba (a faster alternative to Anaconda)
+* BLAST
+
+Let's walk through our Jupyter Notebook to see how these dependencies are installed!
+
+> Note: All the commands below assume that you are in a Linux environment. Please ensure that you are inside a Latch Pod or an alternative Linux environment before proceeding.
+
+### Update system dependencies
+
+First, let's download and update existing dependencies on our system:
 
 ```console
-latch init nextflow-latch-wf
+apt-get update -y && apt-get install -y curl unzip git
 ```
 
-Enter the workflow directory;
+### Install Java 8
+
+Java 8 is required to run Nextflow. You can install the headless version of Java 8 like so:
 
 ```console
-cd nextflow-latch-wf
+apt-get install -y default-jre-headless
 ```
 
-Clone the original RNASeq-NF code:
+### Install Nextflow
 
 ```console
-https://github.com/nextflow-io/rnaseq-nf.git
+curl -s https://get.nextflow.io | bash && \
+    mv nextflow /usr/bin/ && \
+    chmod 777 /usr/bin/nextflow 
 ```
 
-Great! Now we have a boilerplate code to start modifying, as well as the Nextflow code that we will later use.
+### Install Micromamba
 
-### Step 2: Define your Dockerfile to install dependencies
+Micromamba is a drop-in replace for Conda that is faster and more light-weight. It uses the same commands and configurations as Conda.
 
-As the Latch workflow will be executed on a fresh machine on the Latch platform, we have to define a Dockerfile with the necessary dependencies for RNASeq-NF to run:
+```console
+# Install micromamba
+! export CONDA_DIR=/opt/conda
+! export MAMBA_ROOT_PREFIX=/opt/conda
+! export PATH=$CONDA_DIR/bin:$PATH
 
-![Nextflow Dockerfile](../assets/dockerfile-nextflow.png)
+! apt-get update && apt-get install -y wget bzip2 \
+    && wget -qO-  https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba \
+    && touch /root/.bashrc \
+    && ./bin/micromamba shell init -s bash -p /opt/conda  \
+    && grep -v '[ -z "\$PS1" ] && return' /root/.bashrc  > /opt/conda/bashrc
+    && apt-get clean autoremove --yes \
+    && rm -rf /var/lib/{apt,dpkg,cache,log}
+```
+
+The above set of commands install Micromamba under the `/root/bin` directory.
+
+### Create a Conda environment for the BLAST Nextflow Pipeline
+
+We can use YAML files to manage conda dependencies. Inspecting the `blast-nf` folder, there is a `conda.yml` file that specifies `blast`, which is the only dependency required for this pipeline.
+
+```yml
+# blast-nf/conda.yml
+name: blast-nf
+channels:
+  - defaults
+  - bioconda
+  - conda-forge
+dependencies:
+  - blast
+```
+
+You can create an environment called `blast-nf` using Micromamba like so:
+
+```console
+/root/bin/micromamba create -f /root/blast-nextflow-latch/blast-nf/conda.yml -y
+```
+
+You can verify the dependencies installation by listing our the environment:
+
+```console
+/root/bin/micromamba env list
+```
+
+Output on Latch Pod:
+
+```console
+          __  ______ ___  ____ _____ ___  / /_  ____ _
+         / / / / __ `__ \/ __ `/ __ `__ \/ __ \/ __ `/
+        / /_/ / / / / / / /_/ / / / / / / /_/ / /_/ /
+       / .___/_/ /_/ /_/\__,_/_/ /_/ /_/_.___/\__,_/
+      /_/
+
+  Name       Active  Path                           
+──────────────────────────────────────────────────────
+  base               /root/micromamba               
+  blast-nf              /root/micromamba/envs/blast-nf
+                     /root/miniconda                
+             *       /root/miniconda/envs/jupyterlab
+```
+
+### Run the BLAST Nextflow Pipeline
+
+Great! Now that we have successfully installed Nextflow and all required dependencies, let's run the BLAST pipeline locally:
+
+```console
+/root/bin/micromamba run -n blast-nf /bin/bash -c "nextflow run /root/blast-example/main.nf --out /root/results.txt"
+```
+
+The results would be output under `/root/results.txt`. You can see an example output file [here](https://console.latch.bio/s/594643294258238).
+
+## Step 3: Package the Nextflow Pipeline as a Latch Workflow
+
+![Latch Nextflow](../assets/nextflow-example/latch-nextflow-structure.png)
+
+Now that we have successfully run the BLAST pipeline, let's walk through the additional files necessary to package it as a **Latch Workflow**. These files are:
+
+1. A Dockerfile to install the required dependencies
+2. A Python `__init__.py` to define workflow logic
+3. A `version` file to semantically name the workflow version
+
+### Define your Dockerfile to install dependencies
+
+As the Latch workflow will be executed on a fresh machine on the Latch platform, we have to define a Dockerfile with the necessary dependencies for BLAST to run.
+
+To do so, we can copy paste previous commands used to set up our environment:
+
+![Nextflow Dockerfile](../assets/nextflow-example/nextflow-dockerfile.png)
 
 * **Line 1**: is the [Latch base image](https://github.com/latchbio/latch-base), which is used to configure libraries required for consistent task behaviour.
 * **Line 3-4**: downloads and installs the updates for each outdated package and dependency on the machine that executes the workflow. `curl` and `unzip` are also installed.
 * **Line 7**: installs the Java runtime environment, which is required to run Nextflow.
-* **Line 8-9**: installs Nextflow and moves the binary to `/usr/bin`.
-* **Line 11-23**: is a series of commands to install Micromamba. We use Micromamba because the RNASeq-NF pipeline specifies all its dependencies in the `rnaseq-nf/conda.yml` file, which can later be used to set up the environment.
-* **Line 26**: copies the RNASeq-NF pipeline code to the task execution environment. The `/root/rnaseq-nf` is that path at which the NF code is stored in the machine that executes the task on Latch.
-* **Line 29**: uses Micromamba to install the dependencies as spefieid in `/root/rnaseq-nf/conda.yml`. These dependencies include `salmon=1.6.0`, `fastqc=0.11.9`, and `multiqc=1.11`.
-* **Line 31-38**: are already provided in the boilerplate Dockerfile and are needed to ensure your build envrionment works correctly with Latch.
+* **Line 8-10**: installs Nextflow and moves the binary to `/usr/bin`.
+* **Line 13-25**: is a series of commands to install Micromamba.
+* **Line 27**: copies the BLAST Nextflow pipeline code to the task execution environment. The `/root/blast-nf` is that path at which the NF code is stored in the machine that executes the task on Latch.
+* **Line 30**: uses Micromamba to install the dependencies as spefieid in `/root/blast-nf/conda.yml`.
+* **Line 35-39**: are already provided in the boilerplate Dockerfile and are needed to ensure your build envrionment works correctly with Latch.
 
 That's it! You've successfully defined your Dockerfile.
 
@@ -132,7 +233,7 @@ Options:
   ...
 ```
 
-### Step 3: Define the Latch workflow
+### Define the Latch workflow
 
 The core logic of a Latch workflow is in the `wf/__init__.py`.
 
@@ -149,22 +250,23 @@ from latch.types import LatchAuthor, LatchFile, LatchMetadata, LatchParameter, L
 
 Next, let's define our task:
 
-![Nextflow Task](../assets/nextflow-task.png)
+![Nextflow Task](../assets/nextflow-example/blast-nf-wf.png)
 
-* **Line 1**: specifies the compute that the RNASeq-NF pipeline needs. Here, we are using a `@medium_task`, which will provision a machine with 32 cpus, 128 gigs of memory of memory to run the task. For a comprehensive list of all task resources available, visit [how to define cloud resources](./../basics/defining_cloud_resources.md).
-* **Line 3-10:** are the task parameters. We choose `reads`, `transcriptome`, and `outdir` because they are also required parameters in the RNASeq-NF pipeline, as shown in Nextflow's `main.nf` file [here](https://github.com/nextflow-io/rnaseq-nf/blob/master/main.nf).
-* **Line 13-14**: defines the paths of the forward and reverse reads.
-  * If you are familiar with Python, `pathlib` is a handy module that makes sure that your file paths work the same in different operating systems. Also, it provides functionalities and operations to help you save time while handling and manipulating paths.
-  * Here, we are passing in the remote filepath (e.g. `latch:///rnaseq-nf/ggal_gut_1.fq`) to the `Path` object to resolve its filepath in the task machine.
-  * Then, we rename the local absolute filepath to `/root/read_1.fq`. Similarly, we rename the local absolute filepath of the second read to `/root/read_2.fq`. Since the RNASeq-NF pipeline ingests a string with a common prefix pattern `*_{1,2}.fq` instead of a list, renaming both files guarantees that they both have the same initial pattern.
-* **Line 16**: specifies the string value for the `reads` command line argument of the RNASeq-NF pipeline.
-* **Line 18-29**: specifies the command to be run by Python `subprocess` module.
-* **Line 19-20**: tells Micromamba to use the `rnaseq-nf` conda environment previously installed in our Dockerfile.
-* **Line 26-29**: is the command to run the Nextflow RNASeq-NF command with custom parameters.
-* **Line 33**: uses `subprocess` to pops open a process to execute the Nextflow command.
-* **Line 35**: takes the output `/root/results` folder and uploads it to [Latch Data](https://console.latch.bio/data) under a user-defined folder.
+* **Line 1**: specifies the compute that the RNASeq-NF pipeline needs. Here, we are using a `@small_task`, which will provision a machine with 2 cpus, 4 gigs of memory of memory to run the task. For a comprehensive list of all task resources available, visit [how to define cloud resources](./../basics/defining_cloud_resources.md).
+* **Line 3-8:** are the task parameters. We choose `query` and `db` because they are also required parameters in the BLAST Nextflow pipeline, as shown in Nextflow's `main.nf` file.
 
-Now you have successfully defined a Latch task with the correct compute resource to execute the RNASeq-NF pipeline!
+![Main Nextflow](../assets/nextflow-example/main-nf.png)
+
+* **Line 10**: creates a filepath called `results.txt` that can be used to output the BLAST results to.
+* **Line 12**: `db.local_path` downloads the BLAST database to the task execution environment. We use Python list comprehension to retrieve all filenames under this directory.
+* **Line 14**: retrieves the common filename prefix across alls inside the BLAST database. This is necessary because the BLAST pipeline requires a common filename prefix to be appended to the BLAST database directory.
+* **Line 16-29**: specifies the command to be run by Python `subprocess` module.
+* **Line 17-22**: tells Micromamba to use the `blast-nf` conda environment previously installed in our Dockerfile.
+* **Line 24-27**: is the command to run the BLAST Nextflow pipeline with custom parameters.
+* **Line 31**: uses `subprocess` to pops open a process to execute the Nextflow command.
+* **Line 33**: takes the output `/root/results.txt` file and uploads it to [Latch Data](https://console.latch.bio/data) under a user-defined filename.
+
+Now you have successfully defined a Latch task with custom compute resources to execute the BLAST Nextflow pipeline on Latch!
 
 ### Calling a Latch task inside a Latch workflow
 
@@ -172,26 +274,11 @@ Since this is a single task workflow, you can simply call the task inside the wo
 
 ```python
 @workflow(metadata)
-def rnaseq_wf(
-    reads: List[LatchFile], transcriptome: LatchFile, outdir: LatchDir
-) -> LatchDir:
-    """Description...
-
-    markdown header
-    ----
-
-    Write some documentation about your workflow in
-    markdown here:
-
-    > Regular markdown constructs work as expected.
-
-    # Heading
-
-    * content1
-    * content2
-    """
-    return rnaseq_task(reads=reads, transcriptome=transcriptome, outdir=outdir)
-
+def blast_wf(
+    query: LatchFile, db: LatchDir, out: str
+) -> LatchFile:
+    ...
+    return blast_task(query=query, db=db, out=out)
 ```
 
 ### Defining Workflow GUI
@@ -201,26 +288,31 @@ To expose workflow parameters to a user-friendly workflow GUI, you can use the `
 ```python
 """The metadata included here will be injected into your interface."""
 metadata = LatchMetadata(
-    display_name="Porting RNAseq-NF pipeline to Latch SDK",
+    display_name="Example: Wrapping a Nextflow BLAST Pipeline in Latch SDK",
     documentation="your-docs.dev",
     author=LatchAuthor(
-        name="Hannah Le",
-        email="hannah@latch.bio",
-        github="https://github.com/latchbio/nextflow-latch-wf",
+        name="John von Neumann",
+        email="hungarianpapi4@gmail.com",
+        github="github.com/fluid-dynamix",
     ),
-    repository="https://github.com/latchbio/nextflow-latch-wf",
+    repository="https://github.com/your-repo",
     license="MIT",
     parameters={
-        "reads": LatchParameter(
-            display_name="Forward and Reverse reads",
-            description="Paired-end read 1 and 2 files to be aligned.",
+        "query": LatchParameter(
+            display_name="FASTA File",
+            description="Select FASTA file.",
+            batch_table_column=True,  # Show this parameter in batched mode.
         ),
-        "transcriptome": LatchParameter(
-            display_name="Transcriptome", description="Select transcriptome (.fa)"
+        "db": LatchParameter(
+            display_name="BLAST Database",
+            description="Select the database to run BLAST against.",
+            batch_table_column=True,  # Show this parameter in batched mode.
         ),
-        "outdir": LatchParameter(
-            display_name="Output Directory", description="Select output directory."
-        ),
+        "out": LatchParameter(
+            display_name="Output Text File",
+            description="Specify the location of the output text file.",
+            batch_table_column=True,  # Show this parameter in batched mode.
+        )
     },
     tags=[],
 )
@@ -230,10 +322,11 @@ metadata = LatchMetadata(
 
 Finally, we can add some test data to run the workflow.
 
-In the RNASeq-NF workflow, there is a folder for test data under `rnaseq-nf/data/ggal`. Let's upload these folders to a public S3 link, so that they can be used by others when running the workflow on Latch:
+In the BLAST Nextflow workflow, there is a folder for test data under `blast-nf/data` and an additional folder for BLAST database under `blast-nf/blast-db/pdb`. Let's upload these folders to a public S3 link, so that they can be used by others when running the workflow on Latch:
 
 ```console
-latch test-data upload rnaseq-nf/data/ggal
+latch test-data upload blast-nextflow-latch/blast-nf/data
+latch test-data upload blast-nextflow-latch/blast-nf/blast-db/pdb
 ```
 
 Once the command runs successfully, you will see the links at which the folder is uploaded. You can then use the `LaunchPlan` construct to add the remote files as test data like so:
@@ -249,7 +342,7 @@ LaunchPlan(
     "Test Data",
     {
         "reads": [
-            LatchFile("s3://test-data/6064/rnaseq-nf/data/ggal/ggal_gut_1.fq"),
+            LatchFile("s3://test-data/6064/rnaseq-nf/data/ggal/ggal_gut_1.fq"), # <- Here we are using a different user's public S3 link - Substitute with your own if desired. Both will work.
             LatchFile("s3://test-data/6064/rnaseq-nf/data/ggal/ggal_gut_2.fq"),
         ],
         "transcriptome": LatchFile(
@@ -265,7 +358,7 @@ LaunchPlan(
 To publish the workflow to the Latch platform, you can navigate to the root workflow directory and upload it with the `latch register` command:
 
 ```console
-latch register -r .
+latch register -r blast-nextflow-latch
 ```
 
 This will give us:
