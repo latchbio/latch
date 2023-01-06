@@ -30,7 +30,7 @@ We highly recommend that you run through the tutorial inside a Latch Pod (a Linu
   
 * Click "Launch Pod". For the first time, Pods may take 5-15 minutes to start running.
 
-* Once a Pod has started, JupyterLab will be available by default in your Pod. To access them, simply double click on the desired notebook, or copy paste the permanent endpoints from the sidebar to your browser.
+* Once a Pod has started, JupyterLab will be available by default in your Pod. To access them, simply double click on the Jupyterlab icon, or copy paste the permanent endpoints from the sidebar to your browser.
 
 ![Dev Env](../assets/nextflow-example/devenv.png)
 
@@ -45,6 +45,8 @@ At a high level, the repo contains the original BLAST Nextflow Pipeline, as well
 ![Latch Nextflow](../assets/nextflow-example/latch-nextflow-structure.png)
 
 We will first attempt to run the Nextflow pipeline locally, and walk through the additional files required to package the pipeline and upload it to Latch.
+
+> To follow along, open the Jupyter Notebook provided inside the GitHub repo (`blast_nextflow_example.ipynb`).
 
 ## Step 2: Install dependencies for the Nextflow Pipeline
 
