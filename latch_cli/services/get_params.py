@@ -83,15 +83,28 @@ def get_params(wf_name: str, wf_version: Optional[str] = None):
     wf_vars = wf_interface["variables"]
     default_wf_vars = wf_default_params["parameters"]
     for key, value in wf_vars.items():
+
         try:
-            description_json = json.loads(value["description"])
-            param_name = description_json["name"]
-        except (json.decoder.JSONDecodeError, KeyError) as e:
+            description_json_str = value["description"]
+            literal_type_json = value["type"]
+        except KeyError as e:
+            f"Flyte workflow interface for {wf_name}-{wf_version} is missing 'description' or 'type' key"
+
+        try:
+            print("foo: ", description_json_str)
+            description_json = json.loads(description_json_str)
+        except json.decoder.JSONDecodeError as e:
             raise ValueError(
-                f"Parameter description json for workflow {wf_name} is malformed"
+                f"Parameter description json for workflow {wf_name} and parameter {key} is malformed"
             ) from e
 
-        literal_type_json = value["type"]
+        try:
+            param_name = description_json["name"]
+        except KeyError as e:
+            raise ValueError(
+                f"Parameter description json for workflow {wf_name} and parameter {key} is missing 'name' key."
+            ) from e
+
         literal_type = gpjson.ParseDict(literal_type_json, _LiteralType())
 
         python_type = _guess_python_type(
@@ -111,6 +124,7 @@ def get_params(wf_name: str, wf_version: Optional[str] = None):
 
     import_statements = {
         LatchFile: "from latch.types import LatchFile",
+        LatchDir: "from latch.types import LatchDir",
         LatchDir: "from latch.types import LatchDir",
         enum.Enum: "from enum import Enum",
     }
@@ -325,7 +339,6 @@ def _guess_python_type(literal: LiteralType, param_name: str):
 
     if literal.enum_type is not None:
 
-        # We can hold the variants a proxy class that is also type 'Enum', s.t.
         # we can parse the variants and define the object in the param map
         # code.
 
