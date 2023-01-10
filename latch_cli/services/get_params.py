@@ -3,6 +3,7 @@ try:
 except ImportError:
     from typing_extensions import get_args, get_origin
 
+import dataclasses
 import enum
 import json
 import keyword
@@ -10,6 +11,7 @@ import typing
 from typing import Optional
 
 import google.protobuf.json_format as gpjson
+from dataclasses_json import dataclass_json
 from flyteidl.core.literals_pb2 import Literal as _Literal
 from flyteidl.core.types_pb2 import LiteralType as _LiteralType
 from flytekit.models.literals import Literal
@@ -80,7 +82,6 @@ def get_params(wf_name: str, wf_version: Optional[str] = None):
     )
 
     params = {}
-    # print(wf_interface)
     wf_vars = wf_interface["variables"]
     default_wf_vars = wf_default_params["parameters"]
     for key, value in wf_vars.items():
@@ -88,11 +89,15 @@ def get_params(wf_name: str, wf_version: Optional[str] = None):
             description_json_str = value["description"]
             literal_type_json = value["type"]
         except KeyError as e:
-            f"Flyte workflow interface for {wf_name}-{wf_version} is missing 'description' or 'type' key"
+            raise ValueError(
+                f"Flyte workflow interface for "
+                f"{wf_name}-{wf_version} is missing 'description' or "
+                "'type' key"
+            ) from e
 
         try:
             description_json = json.loads(description_json_str)
-        except json.decoder.JSONDecodeError as e:
+        except json.decoder.JSONDecodeError:
             # Parameters that are used for control flow in forks do not have
             # valid JSON in description and we can safely ignore these.
             # TODO - add metadata to control flow fork parameters to exclude
@@ -119,13 +124,13 @@ def get_params(wf_name: str, wf_version: Optional[str] = None):
             val = _guess_python_val(Literal.from_flyte_idl(literal), python_type)
         else:
             default = False
+
             val = _best_effort_default_val(python_type)
 
         params[param_name] = (python_type, val, default)
 
     import_statements = {
         LatchFile: "from latch.types import LatchFile",
-        LatchDir: "from latch.types import LatchDir",
         LatchDir: "from latch.types import LatchDir",
         enum.Enum: "from enum import Enum",
     }
@@ -299,16 +304,124 @@ def _guess_python_val(literal: _Literal, python_type: typing.T):
     )
 
 
-def _guess_python_type(literal: LiteralType, param_name: str):
-    """Transform flyte type literal to native python type."""
+def _guess_python_type(literal_type: LiteralType, param_name: str):
+    """Transform Flyte LiteralType to Python type."""
 
-    if literal.simple is not None:
-        return _simple_table[literal.simple]
+    if literal_type.simple is not None:
+        if literal_type.simple == 9:
 
-    if literal.collection_type is not None:
-        return typing.List[_guess_python_type(literal.collection_type, param_name)]
+            from flytekit.core.type_engine import DataclassTransformer
 
-    if literal.blob is not None:
+            def get_schema_name(metadata: dict) -> str:
+                return metadata["$ref"].split("/")[-1]
+
+            def _guess_property_python_type(
+                property_val: dict, json_schema: dict
+            ) -> str:
+
+                if "oneOf" in property_val:
+
+                    for x in property_val["oneOf"]:
+                        print("thing: ")
+                        print(x)
+                        print()
+                    print()
+
+                    return typing.Union[
+                        tuple(
+                            [
+                                _guess_property_python_type(
+                                    variant["properties"]["type"]["const"], json_schema
+                                )
+                                for variant in property_val["oneOf"]
+                            ]
+                        )
+                    ]
+
+                print(property_val)
+                property_type = property_val["type"]
+                if property_type == "object":
+                    if property_val.get("$ref"):
+                        nested_name = get_schema_name(property_val)
+                        return construct_class_from_json_schema(
+                            json_schema, nested_name
+                        )
+                    elif property_val.get("additionalProperties"):
+                        return typing.Dict[
+                            str,
+                            _guess_property_python_type(
+                                property_val["additionalProperties"], json_schema
+                            ),
+                        ]
+                    else:
+                        return typing.Dict[
+                            str, _guess_property_python_type(property_val, json_schema)
+                        ]
+                elif property_val["type"] == "array":
+                    return typing.List[
+                        _guess_property_python_type(property_val["items"], json_schema)
+                    ]
+
+                elif property_type == "string":
+                    return str
+                elif property_type == "integer":
+                    return int
+                elif property_type == "boolean":
+                    return bool
+                elif property_type == "number":
+                    element_format = (
+                        property_val["format"] if "format" in property_val else None
+                    )
+                    if element_format == "integer":
+                        return int
+                    else:
+                        return float
+                print("property_val: ", property_val)
+                print("property_schema: ", json_schema)
+                print()
+                return str
+
+            def construct_class_from_json_schema(json_schema: dict, schema_name: str):
+                attribute_list = []
+                for property_key, property_val in json_schema[schema_name][
+                    "properties"
+                ].items():
+                    attribute_list.append(
+                        (
+                            property_key,
+                            _guess_property_python_type(property_val, json_schema),
+                        )
+                    )
+
+                for x in attribute_list:
+                    print(x)
+
+                return dataclass_json(
+                    dataclasses.make_dataclass(schema_name, attribute_list)
+                )
+
+            def guess_python_class(literal_type: LiteralType):
+
+                if (
+                    literal_type.metadata is not None
+                    and "definitions" in literal_type.metadata
+                ):
+                    schema_name = get_schema_name(literal_type.metadata)
+                    return construct_class_from_json_schema(
+                        literal_type.metadata["definitions"], schema_name
+                    )
+
+                raise ValueError(
+                    f"Unable to guess dataclass for literal_type: {literal_type}"
+                )
+
+            return guess_python_class(literal_type)
+        return _simple_table[literal_type.simple]
+
+    if literal_type.collection_type is not None:
+        return typing.List[_guess_python_type(literal_type.collection_type, param_name)]
+
+    if literal_type.blob is not None:
 
         # flyteidl BlobType message for reference:
         #   enum BlobDimensionality {
@@ -316,17 +429,17 @@ def _guess_python_type(literal: LiteralType, param_name: str):
         #       MULTIPART = 1;
         #   }
 
-        dim = literal.blob.dimensionality
+        dim = literal_type.blob.dimensionality
         if dim == 0:
             return LatchFile
         else:
             return LatchDir
 
-    if literal.union_type is not None:
+    if literal_type.union_type is not None:
 
         variant_types = [
             _guess_python_type(variant, param_name)
-            for variant in literal.union_type.variants
+            for variant in literal_type.union_type.variants
         ]
 
         # Trying to directly construct set of types will throw error if list is
@@ -338,7 +451,7 @@ def _guess_python_type(literal: LiteralType, param_name: str):
 
         return typing.Union[tuple(variant_types)]
 
-    if literal.enum_type is not None:
+    if literal_type.enum_type is not None:
 
         # we can parse the variants and define the object in the param map
         # code.
@@ -346,13 +459,13 @@ def _guess_python_type(literal: LiteralType, param_name: str):
         class _VariantCarrier(enum.Enum):
             ...
 
-        _VariantCarrier._variants = literal.enum_type.values
+        _VariantCarrier._variants = literal_type.enum_type.values
         # Use param name to uniquely identify each enum
         _VariantCarrier._name = param_name
         return _VariantCarrier
 
     raise NotImplementedError(
-        f"The flyte literal {literal} cannot be transformed to a python type."
+        f"The flyte literal_type {literal_type} cannot be transformed to a python type."
     )
 
 
