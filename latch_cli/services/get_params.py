@@ -80,10 +80,10 @@ def get_params(wf_name: str, wf_version: Optional[str] = None):
     )
 
     params = {}
+    # print(wf_interface)
     wf_vars = wf_interface["variables"]
     default_wf_vars = wf_default_params["parameters"]
     for key, value in wf_vars.items():
-
         try:
             description_json_str = value["description"]
             literal_type_json = value["type"]
@@ -91,12 +91,13 @@ def get_params(wf_name: str, wf_version: Optional[str] = None):
             f"Flyte workflow interface for {wf_name}-{wf_version} is missing 'description' or 'type' key"
 
         try:
-            print("foo: ", description_json_str)
             description_json = json.loads(description_json_str)
         except json.decoder.JSONDecodeError as e:
-            raise ValueError(
-                f"Parameter description json for workflow {wf_name} and parameter {key} is malformed"
-            ) from e
+            # Parameters that are used for control flow in forks do not have
+            # valid JSON in description and we can safely ignore these.
+            # TODO - add metadata to control flow fork parameters to exclude
+            # these specifically.
+            continue
 
         try:
             param_name = description_json["name"]
