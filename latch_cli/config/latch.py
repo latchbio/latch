@@ -42,11 +42,12 @@ SDK_ENDPOINTS = {
     "local-development": "/sdk/initiate-local-development-session",
     "close-local-development": "/sdk/close-local-development-session",
     "get-latest-version": "/sdk/get-latest-version",
+    "get-secret": "/secrets/get",
+    "get-secret-local": "/secrets/get-local",
 }
 
 
 class _LatchConfig:
-
     dkr_repo = "812206152185.dkr.ecr.us-west-2.amazonaws.com"
 
     def __init__(self):
