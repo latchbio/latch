@@ -109,6 +109,12 @@ def _guess_property_python_type(property_val: dict, json_schema: dict) -> str:
     if property_type == "object":
         if property_val.get("$ref"):
             nested_name = _get_schema_name(property_val)
+            # LatchFile and LatchDir are serialized as type "object" in JSON
+            # schema indistinguishable from eg. nested python classes.
+            if nested_name == "LatchfileSchema":
+                return LatchFile
+            elif nested_name == "LatchdirSchema":
+                return LatchDir
             return _construct_class_from_json_schema(json_schema, nested_name)
         elif property_val.get("additionalProperties"):
             return typing.Dict[
@@ -246,12 +252,6 @@ def best_effort_python_val(t: typing.T):
     if type(t) is enum.EnumMeta:
         return f"{t._name}.{t._variants[0]}"
 
-    if get_origin(t) is None:
-        return None
-        raise NotImplementedError(
-            f"Unable to produce a best-effort value for the python type {t}"
-        )
-
     if get_origin(t) is list:
         list_args = get_args(t)
         if len(list_args) == 0:
@@ -260,6 +260,17 @@ def best_effort_python_val(t: typing.T):
 
     if get_origin(t) is typing.Union:
         return best_effort_python_val(get_args(t)[0])
+
+    if get_origin(t) is None:
+
+        if "__dataclass_fields__" in t.__dict__:
+            fields = t.__dict__["__dataclass_fields__"]
+            dataclass_args = {
+                k: best_effort_python_val(v.type) for k, v in fields.items()
+            }
+            return t(**dataclass_args)
+
+        # TODO : record implementation
 
     raise NotImplementedError(
         f"Unable to produce a best-effort value for the python type {t}"
