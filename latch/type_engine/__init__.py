@@ -158,7 +158,11 @@ def _construct_class_from_json_schema(json_schema: dict, schema_name: str):
             )
         )
 
-    return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
+    _dataclass = dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
+    # Flag for code generator (LatchFile/LatchDir would also be recognized
+    # under naive is_dataclass(t) check)
+    _dataclass._from_dataclass = True
+    return _dataclass
 
 
 def _guess_python_class(literal_type: LiteralType):
@@ -323,3 +327,60 @@ def guess_python_val(literal: _Literal, python_type: typing.T):
     raise NotImplementedError(
         f"The flyte literal {literal} cannot be transformed to a python type."
     )
+
+
+def build_python_literal(python_val: any, python_type: typing.T):
+    """Construct literal representation of python value.
+
+    To be formatted into a executable python code block.
+    """
+
+    if python_type is str or (type(python_val) is str and str in get_args(python_type)):
+        return f'"{python_val}"', python_type
+
+    if type(python_type) is enum.EnumMeta:
+        name = python_type._name
+        return python_val, f"<enum '{name}'>"
+
+    if get_origin(python_type) is typing.Union:
+        variants = get_args(python_type)
+        type_repr = "typing.Union["
+        for i, variant in enumerate(variants):
+            if i < len(variants) - 1:
+                delimiter = ", "
+            else:
+                delimiter = ""
+            type_repr += f"{build_python_literal(python_val, variant)[1]}{delimiter}"
+        type_repr += "]"
+        return python_val, type_repr
+
+    if get_origin(python_type) is list:
+        if python_val is None:
+            _, type_repr = build_python_literal(None, get_args(python_type)[0])
+            return None, f"typing.List[{type_repr}]"
+        else:
+            collection_literal = "["
+            if len(python_val) > 0:
+                for i, item in enumerate(python_val):
+                    item_literal, type_repr = build_python_literal(
+                        item, get_args(python_type)[0]
+                    )
+
+                    if i < len(python_val) - 1:
+                        delimiter = ","
+                    else:
+                        delimiter = ""
+
+                    collection_literal += f"{item_literal}{delimiter}"
+            else:
+                list_t = get_args(python_type)[0]
+                _, type_repr = build_python_literal(
+                    best_effort_python_val(list_t), list_t
+                )
+
+            collection_literal += "]"
+            return collection_literal, f"typing.List[{type_repr}]"
+
+    # dataclass
+
+    return python_val, python_type

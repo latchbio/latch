@@ -19,6 +19,7 @@ from flytekit.models.types import LiteralType
 
 from latch.type_engine import (
     best_effort_python_val,
+    build_python_literal,
     guess_python_type,
     guess_python_val,
 )
@@ -106,58 +107,91 @@ def get_params(wf_name: str, wf_version: Optional[str] = None):
 
         params[param_name] = (python_type, val, default)
 
-    import_statements = {
-        LatchFile: "from latch.types import LatchFile",
-        LatchDir: "from latch.types import LatchDir",
-        enum.Enum: "from enum import Enum",
+    import_statements: typing.Dict[str, typing.List[str]] = {
+        "latchfile": ["from latch.types import LatchFile"],
+        "latchdir": ["from latch.types import LatchDir"],
+        "enum": ["from enum import Enum"],
+        "class": [
+            "from dataclasses import dataclass",
+            "from dataclasses_json import dataclass_json",
+        ],
     }
+    imported_statements: typing.Dict[str, bool] = {}
 
-    import_types = []
     enum_defs = []
+    class_defs = []
+
+    def _add_imports(type_: typing.T):
+        if type(type_) is LatchFile and "latchfile" not in imported_statements:
+            import_statements["latchfile"] = True
+            # LatchFile can also be a dataclass
+            return
+
+        if type(type_) is LatchDir and "latchdir" not in imported_statements:
+            import_statements["latchdir"] = True
+            # LatchDir can also be a dataclass
+            return
+
+        if type(type_) is enum.EnumMeta and "enum" not in imported_statements:
+            import_statements["enum"] = True
+            return
+
+        if (
+            "__dataclass_fields__" in type_.__dict__
+            and "class" not in imported_statements
+        ):
+            import_statements["class"] = True
+
+    def _define_enums(enum_: enum.EnumMeta):
+        if type(enum_) is enum.EnumMeta:
+            variants = enum_._variants
+            name = enum_._name
+
+            _enum_def_literal = f"class {name}(Enum):"
+            for variant in variants:
+                if variant in keyword.kwlist:
+                    variant_name = f"_{variant}"
+                else:
+                    variant_name = variant
+                _enum_def_literal += f"\n    {variant_name} = '{variant}'"
+            enum_defs.append(_enum_def_literal)
+
+    def _define_classes(class_: object):
+        if "__dataclass_fields__" in class_.__dict__:
+            _class_def_literal = (
+                f"@dataclass_json\n@dataclass\nclass {class_.__name__}():"
+            )
+            for field in class_.__dict__["__dataclass_fields__"].values():
+                _class_def_literal += f"\n    {field.name}: {field.type}"
+            class_defs.append(_class_def_literal)
+
     param_map_str = ""
     param_map_str += "\nparams = {"
     param_map_str += f'\n    "_name": "{wf_name}", # Don\'t edit this value.'
+
     for param_name, value in params.items():
         python_type, python_val, default = value
 
-        # Check for imports.
+        def _walk_type(_type: typing.T):
+            if get_origin(_type) is not None:
+                if get_origin(_type) is list:
+                    _walk_type(get_args(_type)[0])
+                elif get_origin(_type) is typing.Union:
+                    for variant in get_args(_type):
+                        _walk_type(variant)
+            elif "__dataclass_fields__" in _type.__dict__:
+                _add_imports(_type)
+                _define_enums(_type)
+                _define_classes(_type)
+                for field in _type.__dict__["__dataclass_fields__"].values():
+                    _walk_type(field.type)
+            else:
+                _add_imports(_type)
+                _define_enums(_type)
+                _define_classes(_type)
 
-        def _check_and_import(python_type: typing.T):
-            if python_type in import_statements and python_type not in import_types:
-                import_types.append(python_type)
-
-        def _handle_enum(python_type: typing.T):
-            if type(python_type) is enum.EnumMeta:
-                if enum.Enum not in import_types:
-                    import_types.append(enum.Enum)
-
-                variants = python_type._variants
-                name = python_type._name
-
-                _enum_literal = f"class {name}(Enum):"
-                for variant in variants:
-                    if variant in keyword.kwlist:
-                        variant_name = f"_{variant}"
-                    else:
-                        variant_name = variant
-                    _enum_literal += f"\n    {variant_name} = '{variant}'"
-                enum_defs.append(_enum_literal)
-
-        # Parse collection, union types for potential imports and dependent
-        # objects, eg. enum class construction.
-        if get_origin(python_type) is not None:
-            if get_origin(python_type) is list:
-                _check_and_import(get_args(python_type)[0])
-                _handle_enum(get_args(python_type)[0])
-            elif get_origin(python_type) is typing.Union:
-                for variant in get_args(python_type):
-                    _check_and_import(variant)
-                    _handle_enum(variant)
-        else:
-            _check_and_import(python_type)
-            _handle_enum(python_type)
-
-        python_val, python_type = _get_code_literal(python_val, python_type)
+        _walk_type(python_type)
+        python_val, python_type = build_python_literal(python_val, python_type)
 
         if default is True:
             default = "DEFAULT. "
@@ -173,61 +207,14 @@ def get_params(wf_name: str, wf_version: Optional[str] = None):
             f'"""Run `latch launch {wf_name}.params.py` to launch this workflow"""\n'
         )
 
-        for t in import_types:
-            f.write(f"\n{import_statements[t]}")
+        print(enum_defs)
+
+        for k in imported_statements:
+            f.write(f"\n{import_statements[k]}")
         for e in enum_defs:
             f.write(f"\n\n{e}\n")
+        for c in class_defs:
+            f.write(f"\n\n{c}\n")
 
         f.write("\n")
         f.write(param_map_str)
-
-
-def _get_code_literal(python_val: any, python_type: typing.T):
-    """Construct value that is executable python when templated into a code
-    block."""
-
-    if python_type is str or (type(python_val) is str and str in get_args(python_type)):
-        return f'"{python_val}"', python_type
-
-    if type(python_type) is enum.EnumMeta:
-        name = python_type._name
-        return python_val, f"<enum '{name}'>"
-
-    if get_origin(python_type) is typing.Union:
-        variants = get_args(python_type)
-        type_repr = "typing.Union["
-        for i, variant in enumerate(variants):
-            if i < len(variants) - 1:
-                delimiter = ", "
-            else:
-                delimiter = ""
-            type_repr += f"{_get_code_literal(python_val, variant)[1]}{delimiter}"
-        type_repr += "]"
-        return python_val, type_repr
-
-    if get_origin(python_type) is list:
-        if python_val is None:
-            _, type_repr = _get_code_literal(None, get_args(python_type)[0])
-            return None, f"typing.List[{type_repr}]"
-        else:
-            collection_literal = "["
-            if len(python_val) > 0:
-                for i, item in enumerate(python_val):
-                    item_literal, type_repr = _get_code_literal(
-                        item, get_args(python_type)[0]
-                    )
-
-                    if i < len(python_val) - 1:
-                        delimiter = ","
-                    else:
-                        delimiter = ""
-
-                    collection_literal += f"{item_literal}{delimiter}"
-            else:
-                list_t = get_args(python_type)[0]
-                _, type_repr = _get_code_literal(best_effort_python_val(list_t), list_t)
-
-            collection_literal += "]"
-            return collection_literal, f"typing.List[{type_repr}]"
-
-    return python_val, python_type
