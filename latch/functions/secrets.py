@@ -30,7 +30,7 @@ def get_secret(secret_name: str):
     )
 
     if resp.status_code != 200:
-        raise ValueError(resp.json()["error"]["data"]["error"])
+        raise ValueError(resp.json()["error"])
 
     return resp.json()["secret"]
 
@@ -46,6 +46,6 @@ def _get_secret_local(secret_name: str):
     )
 
     if resp.status_code != 200:
-        raise ValueError(resp.json()["error"]["data"]["error"])
+        raise ValueError(resp.json()["error"])
 
     return resp.json()["secret"]
