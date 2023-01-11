@@ -10,7 +10,6 @@ endpoints = config.sdk_endpoints
 
 
 def get_secret(secret_name: str):
-    """ """
     internal_execution_id = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
     if internal_execution_id is None:
         return _get_secret_local(secret_name)
