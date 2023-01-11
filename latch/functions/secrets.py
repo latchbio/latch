@@ -1,5 +1,4 @@
 import os
-import webbrowser
 
 from latch_cli.config.latch import _LatchConfig
 from latch_cli.tinyrequests import post
