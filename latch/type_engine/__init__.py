@@ -175,7 +175,9 @@ def _guess_python_class(literal_type: LiteralType):
         )
     # TODO: Record implementation
 
-    raise ValueError(f"Unable to construct a python for literal_type: {literal_type}")
+    raise ValueError(
+        f"Unable to construct a python type for literal type: {literal_type}"
+    )
 
 
 ###
@@ -206,14 +208,12 @@ def guess_python_type(literal_type: LiteralType):
             guess_python_type(variant) for variant in literal_type.union_type.variants
         ]
 
-        # Trying to directly construct set of types will throw error if list is
-        # included as 'list' is not hashable.
         unique_variants = []
         for t in variant_types:
             if t not in unique_variants:
                 unique_variants.append(t)
 
-        return typing.Union[tuple(variant_types)]
+        return typing.Union[tuple(unique_variants)]
 
     if literal_type.enum_type is not None:
 
@@ -329,13 +329,23 @@ def guess_python_val(literal: _Literal, python_type: typing.T):
     )
 
 
-def build_python_literal(python_val: any, python_type: typing.T):
-    """Construct literal representation of python value.
+def build_python_literal(python_val: any, python_type: typing.T) -> (str, str):
+    """Construct literal python value and human-readable type.
 
-    To be formatted into a executable python code block.
+    The returned python value is escaped so that when formatted into a code block it
+    is correct python code.
+
+    The returned human-readable type is to be used in eg. a comment to provide
+    information about the original type of the value.
+
+    ```
+    >> build_python_literal("foo", type("foo")
+    ('"foo"', <class 'str'>)
+    ```
+
     """
 
-    if python_type is str or (type(python_val) is str and str in get_args(python_type)):
+    if python_type is str:
         return f'"{python_val}"', python_type
 
     if type(python_type) is enum.EnumMeta:
@@ -350,36 +360,33 @@ def build_python_literal(python_val: any, python_type: typing.T):
                 delimiter = ", "
             else:
                 delimiter = ""
-            type_repr += f"{build_python_literal(python_val, variant)[1]}{delimiter}"
+            variant_val, variant_type = build_python_literal(python_val, variant)
+            if type(python_val) is variant_type:
+                python_val = variant_val
+            type_repr += f"{variant_type}{delimiter}"
         type_repr += "]"
         return python_val, type_repr
 
     if get_origin(python_type) is list:
-        if python_val is None:
-            _, type_repr = build_python_literal(None, get_args(python_type)[0])
-            return None, f"typing.List[{type_repr}]"
-        else:
-            collection_literal = "["
-            if len(python_val) > 0:
-                for i, item in enumerate(python_val):
-                    item_literal, type_repr = build_python_literal(
-                        item, get_args(python_type)[0]
-                    )
-
-                    if i < len(python_val) - 1:
-                        delimiter = ","
-                    else:
-                        delimiter = ""
-
-                    collection_literal += f"{item_literal}{delimiter}"
-            else:
-                list_t = get_args(python_type)[0]
-                _, type_repr = build_python_literal(
-                    best_effort_python_val(list_t), list_t
+        # if python_val is None:
+        #     _, type_repr = build_python_literal(None, get_args(python_type)[0])
+        #     return None, f"typing.List[{type_repr}]"
+        collection_literal = "["
+        if len(python_val) > 0:
+            for i, item in enumerate(python_val):
+                item_val, item_type = build_python_literal(
+                    item, get_args(python_type)[0]
                 )
-
-            collection_literal += "]"
-            return collection_literal, f"typing.List[{type_repr}]"
+                if i < len(python_val) - 1:
+                    delimiter = ","
+                else:
+                    delimiter = ""
+                collection_literal += f"{item_val}{delimiter}"
+        else:
+            list_t = get_args(python_type)[0]
+            _, item_type = build_python_literal(best_effort_python_val(list_t), list_t)
+        collection_literal += "]"
+        return collection_literal, f"typing.List[{item_type}]"
 
     # dataclass
 

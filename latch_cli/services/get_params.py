@@ -142,28 +142,32 @@ def get_params(wf_name: str, wf_version: Optional[str] = None):
         ):
             import_statements["class"] = True
 
-    def _define_enums(enum_: enum.EnumMeta):
-        if type(enum_) is enum.EnumMeta:
-            variants = enum_._variants
-            name = enum_._name
+    def _define_enums(type_: any):
 
-            _enum_def_literal = f"class {name}(Enum):"
-            for variant in variants:
-                if variant in keyword.kwlist:
-                    variant_name = f"_{variant}"
-                else:
-                    variant_name = variant
-                _enum_def_literal += f"\n    {variant_name} = '{variant}'"
-            enum_defs.append(_enum_def_literal)
+        if type(type_) is not enum.EnumMeta:
+            return
 
-    def _define_classes(class_: object):
-        if "__dataclass_fields__" in class_.__dict__:
-            _class_def_literal = (
-                f"@dataclass_json\n@dataclass\nclass {class_.__name__}():"
-            )
-            for field in class_.__dict__["__dataclass_fields__"].values():
-                _class_def_literal += f"\n    {field.name}: {field.type}"
-            class_defs.append(_class_def_literal)
+        variants = type_._variants
+        name = type_._name
+
+        _enum_def_literal = f"class {name}(Enum):"
+        for variant in variants:
+            if variant in keyword.kwlist:
+                variant_name = f"_{variant}"
+            else:
+                variant_name = variant
+            _enum_def_literal += f"\n    {variant_name} = '{variant}'"
+        enum_defs.append(_enum_def_literal)
+
+    def _define_classes(type_: any):
+
+        if "__dataclass_fields__" not in type_.__dict__:
+            return
+
+        _class_def_literal = f"@dataclass_json\n@dataclass\nclass {type_.__name__}():"
+        for field in type_.__dict__["__dataclass_fields__"].values():
+            _class_def_literal += f"\n    {field.name}: {field.type}"
+        class_defs.append(_class_def_literal)
 
     param_map_str = ""
     param_map_str += "\nparams = {"
@@ -206,8 +210,6 @@ def get_params(wf_name: str, wf_version: Optional[str] = None):
         f.write(
             f'"""Run `latch launch {wf_name}.params.py` to launch this workflow"""\n'
         )
-
-        print(enum_defs)
 
         for k in imported_statements:
             f.write(f"\n{import_statements[k]}")
