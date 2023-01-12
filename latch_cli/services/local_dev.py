@@ -56,7 +56,7 @@ def _get_latest_image(pkg_root: Path) -> str:
     registry_name = f"{ws_id}_{pkg_root.name}"
 
     resp = post(
-        sdk_endpoints["get-latest-version-new"],
+        sdk_endpoints["get-latest-version"],
         headers={"Authorization": f"Bearer {retrieve_or_login()}"},
         json={
             "registry_name": registry_name,

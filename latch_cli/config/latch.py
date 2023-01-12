@@ -41,8 +41,7 @@ SDK_ENDPOINTS = {
     "abort-execution": "/sdk/abort-execution",
     "local-development": "/sdk/initiate-local-development-session",
     "close-local-development": "/sdk/close-local-development-session",
-    "get-latest-version": "/sdk/get-latest-version",
-    "get-latest-version-new": "/sdk/get-latest-version-new",
+    "get-latest-version": "/sdk/get-latest-version-new",
 }
 
 
