@@ -38,7 +38,7 @@ class _WorkflowAPI:
     interface: str = "/sdk/wf-interface"
     graph: str = "/sdk/get-workflow-graph"
     check_version: str = "/sdk/check-workflow-version"
-    get_latest: str = "/sdk/get-latest-version"
+    get_latest: str = "/sdk/get-latest-version-new"
     preview: str = "/sdk/workflow-ui-preview"
 
 
