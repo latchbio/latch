@@ -217,9 +217,6 @@ def guess_python_type(literal_type: LiteralType):
 
     if literal_type.enum_type is not None:
 
-        class _VariantCarrier(enum.Enum):
-            ...
-
         escaped_variant_names = list(
             map(
                 lambda x: "".join(
@@ -228,14 +225,15 @@ def guess_python_type(literal_type: LiteralType):
                 literal_type.enum_type.values,
             )
         )
-        _VariantCarrier._variants: typing.List[str] = escaped_variant_names
-        # Construct a unique symbol to represent each enum as a python class.
 
+        # Construct a unique symbol to represent each enum as a python class.
         global _enum_counter
-        _VariantCarrier._name = f"enum{_enum_counter}"
+        python_enum = enum.Enum(
+            f"enum{_enum_counter}", {x: x for x in escaped_variant_names}
+        )
         _enum_counter += 1
 
-        return _VariantCarrier
+        return python_enum
 
     raise NotImplementedError(
         f"The flyte literal_type {literal_type} cannot be transformed to a python type."
@@ -262,7 +260,7 @@ def best_effort_python_val(t: typing.T):
         return file_like_table[t]
 
     if type(t) is enum.EnumMeta:
-        return f"{t._name}.{t._variants[0]}"
+        return list(t.__members__.values())[0]
 
     if get_origin(t) is list:
         list_args = get_args(t)
@@ -301,7 +299,7 @@ def guess_python_val(literal: _Literal, python_type: typing.T):
 
             if primitive.string_value is not None:
                 if type(python_type) is enum.EnumMeta:
-                    return f"{python_type._name}.{str(primitive.string_value)}"
+                    return list(python_type.__members__.values())[0]
                 return str(primitive.string_value)
 
             if primitive.integer is not None:
@@ -357,8 +355,8 @@ def build_python_literal(python_val: any, python_type: typing.T) -> (str, str):
         return f'"{python_val}"', python_type
 
     if type(python_type) is enum.EnumMeta:
-        name = python_type._name
-        return python_val, f"<enum '{name}'>"
+        # return python_val, f"<enum '{name}'>"
+        return python_val, python_type
 
     if get_origin(python_type) is typing.Union:
         variants = get_args(python_type)
