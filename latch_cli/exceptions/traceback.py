@@ -131,7 +131,7 @@ class _Traceback:
 
             break
 
-        return stacks
+        return stacks[::-1]
 
     def pretty_print(self):
         for i, stack in enumerate(self.stacks):
