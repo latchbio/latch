@@ -365,10 +365,10 @@ def build_python_literal(python_val: any, python_type: typing.T) -> (str, str):
                 delimiter = ", "
             else:
                 delimiter = ""
-            variant_val, variant_type = build_python_literal(python_val, variant)
-            if type(python_val) is variant_type:
+            variant_val, variant_type_repr = build_python_literal(python_val, variant)
+            if type(python_val) is variant:
                 python_val = variant_val
-            type_repr += f"{variant_type}{delimiter}"
+            type_repr += f"{variant_type_repr}{delimiter}"
         type_repr += "]"
         return python_val, type_repr
 
