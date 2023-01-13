@@ -27,6 +27,13 @@ Types of changes
 * A new error that is thrown when there is an inconsistency between a
   `LatchMetadata` object and its associated workflow's parameters.
 
+### Fixed
+
+* The crash reporter now prints stack traces of caught exceptions in the
+  correct order
+* `latch develop` now throws an error when run on a workflow that hasn't been
+  registered yet.
+
 ### Deprecated
 
 * The commands `latch rm`, `latch mkdir`, and `latch touch`.
@@ -43,6 +50,7 @@ Types of changes
 * `lytekit` version updated to
   * pin `numpy` to version `1.22` (breaking changes in later versions of this library)
   * have better behavior when downloading directories during local development
+  * force retry on connection closed on file uploads (POST requests  more generally)
 * `latch get-params` will escape class attribute names (representation of Enum
   type) if they are python keywords
 * `latch preview` now requires a directory argument instead of a workflow name

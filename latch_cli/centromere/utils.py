@@ -75,7 +75,7 @@ def _import_flyte_objects(paths: List[Path], module_name: str = "wf"):
                     fromlist=fromlist,
                     level=level,
                 )
-            except (ModuleNotFoundError, AttributeError):
+            except (ModuleNotFoundError, AttributeError) as e:
                 return FakeModule(name)
 
         # Temporary ctx tells lytekit to skip local execution when
@@ -118,7 +118,7 @@ def _construct_dkr_client(ssh_host: Optional[str] = None):
 
         # empty string for tls verify counts as "false".
         # Any value or 'unset' counts as true.
-        tls_verify = environment.get("DOCKER_TLS_VERIFY") is not ""
+        tls_verify = environment.get("DOCKER_TLS_VERIFY") != ""
 
         enable_tls = tls_verify or cert_path is not None
 

@@ -8,6 +8,7 @@ import sys
 import termios
 import tty
 from enum import Enum
+from http.client import HTTPException
 from pathlib import Path
 from typing import Callable, Optional, Union
 
@@ -48,31 +49,29 @@ COMMANDS = QUIT_COMMANDS + EXEC_COMMANDS + LIST_COMMANDS
 
 
 def _get_latest_image(pkg_root: Path) -> str:
-    _import_flyte_objects(paths=[pkg_root])
+    ws_id = current_workspace()
+    if int(ws_id) < 10:
+        ws_id = f"x{ws_id}"
 
-    wf_name = ""
-    for entity in FlyteEntities.entities:
-        if isinstance(entity, PythonFunctionWorkflow):
-            wf_name = entity.name
-
-    if wf_name == "":
-        raise ValueError("Package root does not contain a workflow definition.")
+    registry_name = f"{ws_id}_{pkg_root.name}"
 
     resp = post(
         sdk_endpoints["get-latest-version"],
         headers={"Authorization": f"Bearer {retrieve_or_login()}"},
         json={
-            "wf_name": wf_name,
+            "registry_name": registry_name,
             "ws_account_id": current_workspace(),
         },
     )
 
-    resp.raise_for_status()
-    latest_version = resp.json()["version"]
-
-    ws_id = current_workspace()
-    if int(ws_id) < 10:
-        ws_id = f"x{ws_id}"
+    try:
+        resp.raise_for_status()
+        latest_version = resp.json()["version"]
+    except:
+        raise ValueError(
+            "There was an issue getting your workflow's docker image. Please make sure"
+            " you've registered your workflow at least once."
+        )
 
     return f"{config.dkr_repo}/{ws_id}_{pkg_root.name}:{latest_version}"
 
@@ -244,6 +243,10 @@ async def _shell_session(
 
 async def _run_local_dev_session(pkg_root: Path):
     scripts_dir = pkg_root.joinpath("scripts").resolve()
+
+    # hit the endpoint to make sure that a workflow image exists in ecr before
+    # doing anything
+    _get_latest_image(pkg_root)
 
     def file_filter(filename: str) -> bool:
         file_path = Path(filename).resolve()
