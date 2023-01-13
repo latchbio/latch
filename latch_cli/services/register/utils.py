@@ -6,16 +6,16 @@ from pathlib import Path
 from typing import List, Optional
 
 import boto3
+import requests
 
 from latch_cli.centromere.ctx import _CentromereCtx
-from latch_cli.tinyrequests import post
 from latch_cli.utils import current_workspace
 
 
 def _docker_login(ctx: _CentromereCtx):
     headers = {"Authorization": f"Bearer {ctx.token}"}
     data = {"pkg_name": ctx.image, "ws_account_id": current_workspace()}
-    response = post(ctx.latch_image_api_url, headers=headers, json=data)
+    response = requests.post(ctx.latch_image_api_url, headers=headers, json=data)
 
     try:
         response = response.json()
@@ -112,7 +112,7 @@ def _register_serialized_pkg(ctx: _CentromereCtx, files: List[Path]) -> dict:
         for fh in file_handlers:
             serialize_files[fh.name] = fh
 
-        response = post(
+        response = requests.post(
             ctx.latch_register_api_url,
             headers=headers,
             files=serialize_files,
