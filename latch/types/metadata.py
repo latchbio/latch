@@ -253,6 +253,7 @@ class LatchParameter:
     appearance_type: LatchAppearanceType = LatchAppearanceType.line
     rules: List[LatchRule] = field(default_factory=list)
     detail: Optional[str] = None
+    samplesheet: Optional[bool] = None
     _custom_ingestion: Optional[str] = None
 
     def __str__(self):
@@ -268,6 +269,8 @@ class LatchParameter:
             parameter_dict["output"] = True
         if self.batch_table_column:
             parameter_dict["batch_table_column"] = True
+        if self.samplesheet:
+            parameter_dict["samplesheet"] = True
 
         temp_dict = {"hidden": self.hidden}
         if self.section_title is not None:
