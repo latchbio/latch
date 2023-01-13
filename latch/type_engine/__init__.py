@@ -220,7 +220,15 @@ def guess_python_type(literal_type: LiteralType):
         class _VariantCarrier(enum.Enum):
             ...
 
-        _VariantCarrier._variants = literal_type.enum_type.values
+        escaped_variant_names = list(
+            map(
+                lambda x: "".join(
+                    filter(str.isidentifier, x.lower().replace(" ", "_"))
+                ),
+                literal_type.enum_type.values,
+            )
+        )
+        _VariantCarrier._variants: typing.List[str] = escaped_variant_names
         # Construct a unique symbol to represent each enum as a python class.
 
         global _enum_counter
