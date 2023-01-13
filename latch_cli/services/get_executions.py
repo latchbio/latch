@@ -9,12 +9,9 @@ from typing import Dict, List
 from apscheduler.schedulers.background import BackgroundScheduler
 
 import latch_cli.tui as tui
-from latch_cli.config.latch import _LatchConfig
+from latch_cli.config.latch import config
 from latch_cli.tinyrequests import post
 from latch_cli.utils import account_id_from_token, current_workspace, retrieve_or_login
-
-config = _LatchConfig()
-endpoints = config.sdk_endpoints
 
 
 def get_executions():
@@ -36,7 +33,7 @@ def get_executions():
     headers = {"Authorization": f"Bearer {token}"}
 
     resp = post(
-        url=endpoints["get-executions"],
+        url=config.api.execution.list,
         headers=headers,
         json={"ws_account_id": context},
     )
@@ -165,7 +162,7 @@ def _all_executions(
             if b == b"\r":
                 selected_execution_data = options[curr_selected]
                 resp = post(
-                    endpoints["get-workflow-graph"],
+                    config.api.workflow.graph,
                     headers={"Authorization": f"Bearer {retrieve_or_login()}"},
                     json={
                         "workflow_id": selected_execution_data["workflow_id"],
@@ -358,7 +355,7 @@ def _log_window(execution_data, fixed_workflow_graph: list, selected: int):
 
     def get_logs():
         resp = post(
-            endpoints["get-logs"],
+            config.api.execution.logs,
             headers={"Authorization": f"Bearer {retrieve_or_login()}"},
             json={
                 "exec_id": execution_data["id"],
@@ -373,7 +370,8 @@ def _log_window(execution_data, fixed_workflow_graph: list, selected: int):
     def render(vert_index, hor_index, term_width, term_height):
         tui.move_cursor((2, 2))
         tui._print(
-            f'{execution_data["display_name"]} - {execution_data["workflow_tagged"]} - {selected_task["name"]}'
+            f'{execution_data["display_name"]} - {execution_data["workflow_tagged"]} -'
+            f' {selected_task["name"]}'
         )
         tui.draw_box((2, 3), term_height - 5, term_width - 4)
         tui.move_cursor((4, 4))
@@ -507,7 +505,7 @@ def _abort_modal(execution_data):
             if b in (b"y", b"Y"):
                 headers = {"Authorization": f"Bearer {retrieve_or_login()}"}
                 resp = post(
-                    url=endpoints["abort-execution"],
+                    url=config.api.execution.abort,
                     headers=headers,
                     json={"execution_id": execution_data["id"]},
                 )

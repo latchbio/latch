@@ -25,16 +25,13 @@ from prompt_toolkit.patch_stdout import patch_stdout
 from prompt_toolkit.shortcuts import PromptSession
 
 from latch_cli.centromere.utils import _import_flyte_objects
-from latch_cli.config.latch import _LatchConfig
+from latch_cli.config.latch import config
 from latch_cli.tinyrequests import post
 from latch_cli.utils import (
     TemporarySSHCredentials,
     current_workspace,
     retrieve_or_login,
 )
-
-config = _LatchConfig()
-sdk_endpoints = config.sdk_endpoints
 
 QUIT_COMMANDS = ["quit", "exit"]
 EXEC_COMMANDS = ["shell", "run", "run-script"]
@@ -59,7 +56,7 @@ def _get_latest_image(pkg_root: Path) -> str:
         raise ValueError("Package root does not contain a workflow definition.")
 
     resp = post(
-        sdk_endpoints["get-latest-version"],
+        config.api.workflow.get_latest,
         headers={"Authorization": f"Bearer {retrieve_or_login()}"},
         json={
             "wf_name": wf_name,
@@ -277,14 +274,14 @@ async def _run_local_dev_session(pkg_root: Path):
 
         try:
             cent_resp = post(
-                sdk_endpoints["provision-centromere"],
+                config.api.centromere.provision,
                 headers=headers,
                 json={"public_key": ssh.public_key},
             )
             cent_resp.raise_for_status()
 
             init_local_dev_resp = post(
-                sdk_endpoints["local-development"],
+                config.api.centromere.start_local_dev,
                 headers=headers,
                 json={
                     "ws_account_id": current_workspace(),
@@ -411,7 +408,7 @@ async def _run_local_dev_session(pkg_root: Path):
                     return
                 finally:
                     close_resp = post(
-                        sdk_endpoints["close-local-development"],
+                        config.api.centromere.stop_local_dev,
                         headers={"Authorization": f"Bearer {retrieve_or_login()}"},
                     )
                     close_resp.raise_for_status()

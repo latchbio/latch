@@ -3,11 +3,8 @@
 from typing import Dict, List
 
 import latch_cli.tinyrequests as tinyrequests
-from latch_cli.config.latch import _LatchConfig
+from latch_cli.config.latch import config
 from latch_cli.utils import _normalize_remote_path, current_workspace, retrieve_or_login
-
-config = _LatchConfig()
-endpoints = config.sdk_endpoints
 
 
 def ls(remote_directory: str) -> List[Dict[str, str]]:
@@ -33,7 +30,7 @@ def ls(remote_directory: str) -> List[Dict[str, str]]:
     """
     remote_directory = _normalize_remote_path(remote_directory)
 
-    url = endpoints["list-files"]
+    url = config.api.data.list
     token = retrieve_or_login()
     headers = {"Authorization": f"Bearer {token}"}
     data = {"directory": remote_directory, "ws_account_id": current_workspace()}

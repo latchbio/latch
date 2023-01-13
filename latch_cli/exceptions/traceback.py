@@ -1,13 +1,11 @@
 from dataclasses import dataclass, field
 from pathlib import Path
+from traceback import walk_tb
 from types import TracebackType
 from typing import List, Optional, Type
 
-from latch_cli.exceptions.errors import _SyntaxError, _FlytekitError, _HandledError
-
-from traceback import walk_tb
-
 from latch_cli.exceptions.cache import _code_cache
+from latch_cli.exceptions.errors import _FlytekitError, _HandledError, _SyntaxError
 
 
 @dataclass
@@ -73,10 +71,8 @@ class _Traceback:
         exc_value: BaseException,
         traceback: Optional[TracebackType],
     ) -> List[_Stack]:
-
         stacks: List[_Stack] = []
         while True:
-
             stack = _Stack(
                 exc_type=exc_type.__name__,
                 exc_value=exc_value,
@@ -145,9 +141,11 @@ class _Traceback:
             if i < len(self.stacks) - 1:
                 if stack.is_cause:
                     print(
-                        "\nThe above exception was the direct cause of the following exception:\n"
+                        "\nThe above exception was the direct cause of the following"
+                        " exception:\n"
                     )
                 else:
                     print(
-                        "\nDuring handling of the above exception, another exception occurred:\n"
+                        "\nDuring handling of the above exception, another exception"
+                        " occurred:\n"
                     )
