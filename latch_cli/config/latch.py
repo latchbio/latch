@@ -14,74 +14,6 @@ NUCLEUS_URL = f"https://nucleus.{DOMAIN}"
 
 T = TypeVar("T")
 
-<<<<<<< HEAD
-||||||| e17886f
-SDK_ENDPOINTS = {
-    "get-test-data-creds": "/sdk/get-test-data-creds",
-    "initiate-multipart-upload": "/sdk/initiate-multipart-upload",
-    "complete-multipart-upload": "/sdk/complete-multipart-upload",
-    "check-workflow-version": "/sdk/check-workflow-version",
-    "download": "/sdk/download",
-    "list-files": "/sdk/list",
-    "initiate-image-upload": "/sdk/initiate-image-upload",
-    "register-workflow": "/sdk/register-workflow",
-    "get-workflow-interface": "/sdk/wf-interface",
-    "access-jwt": "/sdk/access-jwt",
-    "execute-workflow": "/sdk/wf",
-    "get-workflows": "/sdk/get-wf",
-    "verify": "/sdk/verify",
-    "remove": "/sdk/rm",
-    "id": "/sdk/node-id",
-    "mkdir": "/sdk/mkdir",
-    "rmdir": "/sdk/rmdir",
-    "touch": "/sdk/touch",
-    "pod-exec-info": "/sdk/get-pod-exec-info",
-    "provision-centromere": "/sdk/provision-centromere",
-    "get-image-from-task": "/sdk/get-image-from-task",
-    "preview": "/sdk/workflow-ui-preview",
-    "get-ws": "/sdk/get-ws",
-    "get-executions": "/sdk/get-executions",
-    "get-workflow-graph": "/sdk/get-workflow-graph",
-    "get-logs": "/sdk/get-logs-for-node",
-    "abort-execution": "/sdk/abort-execution",
-    "local-development": "/sdk/initiate-local-development-session",
-    "close-local-development": "/sdk/close-local-development-session",
-    "get-latest-version": "/sdk/get-latest-version",
-}
-=======
-SDK_ENDPOINTS = {
-    "get-test-data-creds": "/sdk/get-test-data-creds",
-    "initiate-multipart-upload": "/sdk/initiate-multipart-upload",
-    "complete-multipart-upload": "/sdk/complete-multipart-upload",
-    "check-workflow-version": "/sdk/check-workflow-version",
-    "download": "/sdk/download",
-    "list-files": "/sdk/list",
-    "initiate-image-upload": "/sdk/initiate-image-upload",
-    "register-workflow": "/sdk/register-workflow",
-    "get-workflow-interface": "/sdk/wf-interface",
-    "access-jwt": "/sdk/access-jwt",
-    "execute-workflow": "/sdk/wf",
-    "get-workflows": "/sdk/get-wf",
-    "verify": "/sdk/verify",
-    "remove": "/sdk/rm",
-    "id": "/sdk/node-id",
-    "mkdir": "/sdk/mkdir",
-    "rmdir": "/sdk/rmdir",
-    "touch": "/sdk/touch",
-    "pod-exec-info": "/sdk/get-pod-exec-info",
-    "provision-centromere": "/sdk/provision-centromere",
-    "get-image-from-task": "/sdk/get-image-from-task",
-    "preview": "/sdk/workflow-ui-preview",
-    "get-ws": "/sdk/get-ws",
-    "get-executions": "/sdk/get-executions",
-    "get-workflow-graph": "/sdk/get-workflow-graph",
-    "get-logs": "/sdk/get-logs-for-node",
-    "abort-execution": "/sdk/abort-execution",
-    "local-development": "/sdk/initiate-local-development-session",
-    "close-local-development": "/sdk/close-local-development-session",
-    "get-latest-version": "/sdk/get-latest-version-new",
-}
->>>>>>> e74f1b09e1a7e17c8fa91dec7b8d4e187ce88902
 
 @dataclass
 class _DataAPI:
@@ -143,7 +75,6 @@ class _API:
 
 @dataclass
 class _LatchConfig:
-<<<<<<< HEAD
     api: _API
     dkr_repo: str = "812206152185.dkr.ecr.us-west-2.amazonaws.com"
     console_url: str = CONSOLE_URL
@@ -159,12 +90,6 @@ def build_endpoints(x: Type[T] = _API) -> T:
             res[field.name] = NUCLEUS_URL + field.default
     return x(**res)
 
-||||||| e17886f
-
-    dkr_repo = "812206152185.dkr.ecr.us-west-2.amazonaws.com"
-=======
-    dkr_repo = "812206152185.dkr.ecr.us-west-2.amazonaws.com"
->>>>>>> e74f1b09e1a7e17c8fa91dec7b8d4e187ce88902
 
 # singleton config instance
 config = _LatchConfig(api=build_endpoints())
