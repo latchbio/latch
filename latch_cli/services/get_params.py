@@ -147,8 +147,8 @@ def get_params(wf_name: str, wf_version: Optional[str] = None):
         if type(type_) is not enum.EnumMeta:
             return
 
-        variants = type_._variants
-        name = type_._name
+        variants = type_.__members__.values()
+        name = type_.__name__
 
         _enum_def_literal = f"class {name}(Enum):"
         for variant in variants:
