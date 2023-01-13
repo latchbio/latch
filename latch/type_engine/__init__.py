@@ -352,10 +352,9 @@ def build_python_literal(python_val: any, python_type: typing.T) -> (str, str):
     """
 
     if python_type is str:
-        return f'"{python_val}"', python_type
+        return f'"{python_val}"', python_type.__name__
 
     if type(python_type) is enum.EnumMeta:
-        # return python_val, f"<enum '{name}'>"
         return python_val, python_type
 
     if get_origin(python_type) is typing.Union:
@@ -374,9 +373,6 @@ def build_python_literal(python_val: any, python_type: typing.T) -> (str, str):
         return python_val, type_repr
 
     if get_origin(python_type) is list:
-        # if python_val is None:
-        #     _, type_repr = build_python_literal(None, get_args(python_type)[0])
-        #     return None, f"typing.List[{type_repr}]"
         collection_literal = "["
         if len(python_val) > 0:
             for i, item in enumerate(python_val):
@@ -393,7 +389,5 @@ def build_python_literal(python_val: any, python_type: typing.T) -> (str, str):
             _, item_type = build_python_literal(best_effort_python_val(list_t), list_t)
         collection_literal += "]"
         return collection_literal, f"typing.List[{item_type}]"
-
-    # dataclass
 
     return python_val, python_type

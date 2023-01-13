@@ -7,6 +7,7 @@ import dataclasses
 import enum
 import json
 import keyword
+import textwrap
 import typing
 from typing import Optional
 
@@ -107,40 +108,8 @@ def get_params(wf_name: str, wf_version: Optional[str] = None):
 
         params[param_name] = (python_type, val, default)
 
-    import_statements: typing.Dict[str, typing.List[str]] = {
-        "latchfile": ["from latch.types import LatchFile"],
-        "latchdir": ["from latch.types import LatchDir"],
-        "enum": ["from enum import Enum"],
-        "class": [
-            "from dataclasses import dataclass",
-            "from dataclasses_json import dataclass_json",
-        ],
-    }
-    imported_statements: typing.Dict[str, bool] = {}
-
     enum_defs = []
     class_defs = []
-
-    def _add_imports(type_: typing.T):
-        if type(type_) is LatchFile and "latchfile" not in imported_statements:
-            import_statements["latchfile"] = True
-            # LatchFile can also be a dataclass
-            return
-
-        if type(type_) is LatchDir and "latchdir" not in imported_statements:
-            import_statements["latchdir"] = True
-            # LatchDir can also be a dataclass
-            return
-
-        if type(type_) is enum.EnumMeta and "enum" not in imported_statements:
-            import_statements["enum"] = True
-            return
-
-        if (
-            "__dataclass_fields__" in type_.__dict__
-            and "class" not in imported_statements
-        ):
-            import_statements["class"] = True
 
     def _define_enums(type_: any):
 
@@ -166,7 +135,11 @@ def get_params(wf_name: str, wf_version: Optional[str] = None):
 
         _class_def_literal = f"@dataclass_json\n@dataclass\nclass {type_.__name__}():"
         for field in type_.__dict__["__dataclass_fields__"].values():
-            _class_def_literal += f"\n    {field.name}: {field.type}"
+            if hasattr(field.type, "__name__"):
+                field_type_repr = field.type.__name__
+            else:
+                field_type_repr = field.type
+            _class_def_literal += f"\n    {field.name}: {field_type_repr}"
         class_defs.append(_class_def_literal)
 
     param_map_str = ""
@@ -184,13 +157,11 @@ def get_params(wf_name: str, wf_version: Optional[str] = None):
                     for variant in get_args(_type):
                         _walk_type(variant)
             elif "__dataclass_fields__" in _type.__dict__:
-                _add_imports(_type)
                 _define_enums(_type)
                 _define_classes(_type)
                 for field in _type.__dict__["__dataclass_fields__"].values():
                     _walk_type(field.type)
             else:
-                _add_imports(_type)
                 _define_enums(_type)
                 _define_classes(_type)
 
@@ -208,11 +179,19 @@ def get_params(wf_name: str, wf_version: Optional[str] = None):
     with open(f"{wf_name}.params.py", "w") as f:
 
         f.write(
-            f'"""Run `latch launch {wf_name}.params.py` to launch this workflow"""\n'
+            textwrap.dedent(
+                f"""# Run `latch launch {wf_name}.params.py` to launch this workflow
+
+            from dataclasses import dataclass
+            from enum import Enum
+            import typing
+
+            from dataclasses_json import dataclass_json
+            from latch.types import LatchFile, LatchDir
+            """
+            )
         )
 
-        for k in imported_statements:
-            f.write(f"\n{import_statements[k]}")
         for e in enum_defs:
             f.write(f"\n\n{e}\n")
         for c in class_defs:
