@@ -55,3 +55,8 @@ Types of changes
   correct order
 * `latch develop` now throws an error when run on a workflow that hasn't been
   registered yet.
+* Reworked how internal configs are stored, eschewing a flat dictionary of API
+  endpoints in favor of a nested dataclass. This removes a small class of
+  potential mistakes arising from misspelling, and gives the benefit of IDE
+  intellisense.
+* Made both configs singletons.
