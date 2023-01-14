@@ -15,7 +15,7 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 3.0.0 - 2022-12-08
+## 2.10.0 - 2023-01-14
 
 ### Added
 
@@ -26,13 +26,8 @@ Types of changes
   presigned urls vs downloading blob data).
 * A new error that is thrown when there is an inconsistency between a
   `LatchMetadata` object and its associated workflow's parameters.
-
-### Fixed
-
-* The crash reporter now prints stack traces of caught exceptions in the
-  correct order
-* `latch develop` now throws an error when run on a workflow that hasn't been
-  registered yet.
+* The function `get_secret` which allows users to reference secrets they've
+  uploaded to the Latch platform from within a workflow.
 
 ### Deprecated
 
@@ -56,3 +51,7 @@ Types of changes
 * `latch preview` now requires a directory argument instead of a workflow name
   argument, and now behaves consistently with regular parameter interface
   generation.
+* The crash reporter now prints stack traces of caught exceptions in the
+  correct order
+* `latch develop` now throws an error when run on a workflow that hasn't been
+  registered yet.
