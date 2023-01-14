@@ -1,10 +1,7 @@
 import requests
 
-from latch_cli.config.latch import _LatchConfig
+from latch_cli.config.latch import config
 from latch_cli.utils import _normalize_remote_path, current_workspace, retrieve_or_login
-
-config = _LatchConfig()
-endpoints = config.sdk_endpoints
 
 
 def touch(remote_file: str):
@@ -44,7 +41,7 @@ def touch(remote_file: str):
     headers = {"Authorization": f"Bearer {token}"}
     data = {"filename": remote_file, "ws_account_id": current_workspace()}
 
-    response = requests.post(endpoints["touch"], json=data, headers=headers)
+    response = requests.post(config.api.data.touch, json=data, headers=headers)
     json_data = response.json()
     if not json_data["success"]:
         raise ValueError(data["error"]["data"]["message"])

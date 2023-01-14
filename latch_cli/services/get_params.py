@@ -171,7 +171,6 @@ def get_params(wf_name: str, wf_version: Optional[str] = None):
     param_map_str += "\n}"
 
     with open(f"{wf_name}.params.py", "w") as f:
-
         f.write(
             f'"""Run `latch launch {wf_name}.params.py` to launch this workflow"""\n'
         )
@@ -294,7 +293,6 @@ def _guess_python_type(literal: LiteralType, param_name: str):
         return typing.List[_guess_python_type(literal.collection_type, param_name)]
 
     if literal.blob is not None:
-
         # flyteidl BlobType message for reference:
         #   enum BlobDimensionality {
         #       SINGLE = 0;
@@ -308,7 +306,6 @@ def _guess_python_type(literal: LiteralType, param_name: str):
             return LatchDir
 
     if literal.union_type is not None:
-
         variant_types = [
             _guess_python_type(variant, param_name)
             for variant in literal.union_type.variants
@@ -324,7 +321,6 @@ def _guess_python_type(literal: LiteralType, param_name: str):
         return typing.Union[tuple(variant_types)]
 
     if literal.enum_type is not None:
-
         # We can hold the variants a proxy class that is also type 'Enum', s.t.
         # we can parse the variants and define the object in the param map
         # code.

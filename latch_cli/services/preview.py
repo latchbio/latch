@@ -1,5 +1,3 @@
-import json
-import logging
 import os
 import sys
 import termios
@@ -13,13 +11,9 @@ from google.protobuf.json_format import MessageToJson
 
 import latch_cli.tui as tui
 from latch_cli.centromere.utils import _import_flyte_objects
-from latch_cli.config.latch import _LatchConfig
+from latch_cli.config.latch import config
 from latch_cli.tinyrequests import post
 from latch_cli.utils import current_workspace, retrieve_or_login
-
-logger = logging.Logger(name="logger")
-config = _LatchConfig()
-endpoints = config.sdk_endpoints
 
 
 # TODO(ayush): make this import the `wf` directory and use the package root
@@ -64,7 +58,7 @@ def preview(pkg_root: Path):
         ]
 
     resp = post(
-        url=endpoints["preview"],
+        url=config.api.workflow.preview,
         headers={"Authorization": f"Bearer {retrieve_or_login()}"},
         json={
             "workflow_ui_preview": MessageToJson(wf.interface.to_flyte_idl().inputs),

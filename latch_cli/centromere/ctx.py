@@ -16,7 +16,7 @@ from latch_cli.centromere.utils import (
     _construct_ssh_client,
     _import_flyte_objects,
 )
-from latch_cli.config.latch import _LatchConfig
+from latch_cli.config.latch import config
 from latch_cli.utils import (
     account_id_from_token,
     current_workspace,
@@ -24,9 +24,6 @@ from latch_cli.utils import (
     hash_directory,
     retrieve_or_login,
 )
-
-config = _LatchConfig()
-endpoints = config.sdk_endpoints
 
 
 @dataclass
@@ -58,11 +55,11 @@ class _CentromereCtx:
     container_map: Dict[str, _Container]
     workflow_name: Optional[str]
 
-    latch_register_api_url = endpoints["register-workflow"]
-    latch_image_api_url = endpoints["initiate-image-upload"]
-    latch_provision_url = endpoints["provision-centromere"]
-    latch_get_image_url = endpoints["get-image-from-task"]
-    latch_check_version_url = endpoints["check-workflow-version"]
+    latch_register_api_url = config.api.workflow.register
+    latch_image_api_url = config.api.workflow.upload_image
+    latch_provision_url = config.api.centromere.provision
+    latch_get_image_url = config.api.workflow.get_image
+    latch_check_version_url = config.api.workflow.check_version
 
     def __init__(
         self,
@@ -84,7 +81,7 @@ class _CentromereCtx:
                 self.account_id = ws
 
             self.pkg_root = Path(pkg_root).resolve()
-            self.dkr_repo = _LatchConfig.dkr_repo
+            self.dkr_repo = config.dkr_repo
             self.remote = remote
             self.container_map = {}
 
@@ -131,7 +128,6 @@ class _CentromereCtx:
             )
 
             if remote is True:
-
                 self.ssh_key_path = Path(self.pkg_root) / ".ssh_key"
                 self.public_key = generate_temporary_ssh_credentials(self.ssh_key_path)
 

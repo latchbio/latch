@@ -29,7 +29,6 @@ def login(connection: Optional[str] = None) -> str:
 
     with PKCE() as pkce:
         with CSRFState() as csrf_state:
-
             oauth2_flow = OAuth2(pkce, csrf_state, OAuth2Constants)
             auth_code = oauth2_flow.authorization_request(connection)
             jwt = oauth2_flow.access_token_request(auth_code)
@@ -38,11 +37,9 @@ def login(connection: Optional[str] = None) -> str:
             # LatchBio.
             access_jwt = _auth0_jwt_for_access_jwt(jwt)
 
-            from latch_cli.config.user import _UserConfig
+            from latch_cli.config.user import user_config
 
-            config = _UserConfig()
-
-            config.update_token(access_jwt)
+            user_config.update_token(access_jwt)
             return access_jwt
 
 
@@ -72,15 +69,13 @@ def _auth0_jwt_for_access_jwt(token) -> str:
     Uses an Auth0 token to authenticate the user.
     """
     import latch_cli.tinyrequests as tinyrequests
-    from latch_cli.config.latch import _LatchConfig
-
-    endpoints = _LatchConfig().sdk_endpoints
+    from latch_cli.config.latch import config
 
     headers = {
         "Authorization": f"Bearer {token}",
     }
 
-    url = endpoints["access-jwt"]
+    url = config.api.user.jwt
 
     response = tinyrequests.post(url, headers=headers)
 

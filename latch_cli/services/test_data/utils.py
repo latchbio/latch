@@ -2,29 +2,22 @@ import json
 from typing import Tuple
 
 import latch_cli.tinyrequests as tinyrequests
-from latch_cli.config.latch import _LatchConfig
+from latch_cli.config.latch import config
 from latch_cli.utils import current_workspace, retrieve_or_login
-
-config = _LatchConfig()
-endpoints = config.sdk_endpoints
 
 
 def _retrieve_creds() -> Tuple[str, str, str, str]:
-
-    url = endpoints["get-test-data-creds"]
-    token = retrieve_or_login()
-    headers = {"Authorization": f"Bearer {token}"}
-
     response = tinyrequests.post(
-        url,
-        headers=headers,
+        config.api.data.test_data,
+        headers={"Authorization": f"Bearer {retrieve_or_login()}"},
         json={
             "ws_account_id": current_workspace(),
         },
     )
     if response.status_code != 200:
         raise ValueError(
-            "Unable to retrieve upload credentials. Server responded with {response.json}."
+            "Unable to retrieve upload credentials. Server responded with"
+            f" {response.json}."
         )
 
     try:

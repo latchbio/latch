@@ -1,4 +1,4 @@
-"Utilites for registration." ""
+"Utilites for registration."
 
 import base64
 import contextlib
@@ -13,7 +13,6 @@ from latch_cli.utils import current_workspace
 
 
 def _docker_login(ctx: _CentromereCtx):
-
     headers = {"Authorization": f"Bearer {ctx.token}"}
     data = {"pkg_name": ctx.image, "ws_account_id": current_workspace()}
     response = requests.post(ctx.latch_image_api_url, headers=headers, json=data)
@@ -55,7 +54,6 @@ def _build_image(
     context_path: Path,
     dockerfile: Optional[Path] = None,
 ) -> List[str]:
-
     _docker_login(ctx)
     if dockerfile is not None:
         dockerfile = str(dockerfile)
@@ -71,7 +69,6 @@ def _build_image(
 
 
 def _upload_image(ctx: _CentromereCtx, image_name: str) -> List[str]:
-
     return ctx.dkr_client.push(
         repository=f"{ctx.dkr_repo}/{image_name}",
         stream=True,
@@ -82,7 +79,6 @@ def _upload_image(ctx: _CentromereCtx, image_name: str) -> List[str]:
 def _serialize_pkg_in_container(
     ctx: _CentromereCtx, image_name: str, serialize_dir: Path
 ) -> List[str]:
-
     _serialize_cmd = ["make", "serialize"]
     container = ctx.dkr_client.create_container(
         f"{ctx.dkr_repo}/{image_name}",
@@ -105,7 +101,6 @@ def _serialize_pkg_in_container(
 
 
 def _register_serialized_pkg(ctx: _CentromereCtx, files: List[Path]) -> dict:
-
     headers = {"Authorization": f"Bearer {ctx.token}"}
 
     serialize_files = {

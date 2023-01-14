@@ -1,19 +1,17 @@
 import json
 import os
-from pathlib import Path
 import platform
-import re
 import sys
 import tarfile
 import tempfile
+from pathlib import Path
 from traceback import print_exc, walk_tb
 from types import TracebackType
 from typing import Optional, Type
 
 from latch_cli.constants import FILE_MAX_SIZE, IGNORE_REGEX
-from latch_cli.utils import get_local_package_version
-
 from latch_cli.exceptions.traceback import _Traceback
+from latch_cli.utils import get_local_package_version
 
 
 class CrashHandler:
@@ -49,7 +47,6 @@ class CrashHandler:
         tarball_path.unlink(missing_ok=True)
 
         with tarfile.open(tarball_path, mode="x:gz") as tf:
-
             # If calling stack frame is handling an exception, we want to store
             # the traceback in a log file.
             if sys.exc_info()[0] is not None:

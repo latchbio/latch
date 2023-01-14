@@ -14,11 +14,8 @@ import websocket
 from kubernetes.client.api import core_v1_api
 from kubernetes.stream import stream
 
-from latch_cli.config.latch import _LatchConfig
+from latch_cli.config.latch import config
 from latch_cli.utils import account_id_from_token, current_workspace, retrieve_or_login
-
-config = _LatchConfig()
-endpoints = config.sdk_endpoints
 
 
 def _construct_kubeconfig(
@@ -29,7 +26,6 @@ def _construct_kubeconfig(
     secret_key: str,
     session_token: str,
 ) -> str:
-
     open_brack = "{"
     close_brack = "}"
     region_code = "us-west-2"
@@ -74,11 +70,10 @@ users:
 
 
 def _fetch_pod_info(token: str, task_name: str) -> Tuple[str, str, str]:
-
     headers = {"Authorization": f"Bearer {token}"}
     data = {"task_name": task_name, "ws_account_id": current_workspace()}
 
-    response = requests.post(endpoints["pod-exec-info"], headers=headers, json=data)
+    response = requests.post(config.api.execution.exec, headers=headers, json=data)
 
     try:
         response = response.json()
@@ -231,7 +226,8 @@ def execute(task_name: str):
             wsstream = WSStream()
         except kubernetes.client.rest.ApiException:
             raise ValueError(
-                "Unable to find requested task name - make sure that you are in the correct workspace."
+                "Unable to find requested task name - make sure that you are in the"
+                " correct workspace."
             )
 
         rlist = [wsstream.socket, tty_.in_stream]
