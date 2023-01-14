@@ -1,11 +1,8 @@
 import os
 
-from latch_cli.config.latch import _LatchConfig
+from latch_cli.config.latch import config
 from latch_cli.tinyrequests import post
 from latch_cli.utils import current_workspace, retrieve_or_login
-
-config = _LatchConfig()
-endpoints = config.sdk_endpoints
 
 
 def get_secret(secret_name: str):

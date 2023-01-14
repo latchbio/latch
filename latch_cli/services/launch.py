@@ -13,11 +13,8 @@ from flytekit.core.type_engine import TypeEngine
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from latch_cli.config.latch import _LatchConfig
+from latch_cli.config.latch import config
 from latch_cli.utils import current_workspace, retrieve_or_login
-
-config = _LatchConfig()
-endpoints = config.sdk_endpoints
 
 
 def launch(params_file: Path, version: Optional[str] = None) -> str:
@@ -49,7 +46,6 @@ def launch(params_file: Path, version: Optional[str] = None) -> str:
     token = retrieve_or_login()
 
     with open(params_file, "r") as pf:
-
         param_code = pf.read()
         spec = importlib.util.spec_from_loader("wf_params", loader=None)
         param_module = importlib.util.module_from_spec(spec)
@@ -77,13 +73,11 @@ def launch(params_file: Path, version: Optional[str] = None) -> str:
     wf_vars = wf_interface["variables"]
     wf_literals = {}
     for key, value in wf_vars.items():
-
         ctx = FlyteContextManager.current_context()
         literal_type_json = value["type"]
         literal_type = gpjson.ParseDict(literal_type_json, LiteralType())
 
         if key in wf_params:
-
             python_value = wf_params[key]
             # Recover parameterized generics for TypeTransformer.
             python_type = _guess_python_type(python_value)
@@ -152,7 +146,7 @@ def _get_workflow_interface(
         "ws_account_id": current_workspace(),
     }
 
-    url = endpoints["get-workflow-interface"]
+    url = config.api.workflow.interface
 
     # TODO(ayush) - figure out why timeout within this endpoint only.
     session = requests.Session()
@@ -216,7 +210,7 @@ def _launch_workflow(token: str, wf_id: str, params: dict) -> bool:
         "params": params,
         "ws_account_id": current_workspace(),
     }
-    url = endpoints["execute-workflow"]
+    url = config.api.execution.create
 
     response = requests.post(url, headers=headers, json=_interface_request)
 

@@ -208,12 +208,12 @@ on it.
      - GPU
      - On-Demand
    * - Request
-     - 46
+     - 90
      - 176Gi
      - 0
      - True
    * - Limit
-     - 48
+     - 96
      - 196Gi
      - 0
      - True
