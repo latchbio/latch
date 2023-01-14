@@ -55,6 +55,8 @@ class _ExecutionAPI:
 class _UserAPI:
     jwt: str = "/sdk/access-jwt"
     list_workspaces: str = "/sdk/get-ws"
+    get_secret: str = "/secrets/get"
+    get_secret_local: str = "/secrets/get-local"
 
 
 @dataclass
