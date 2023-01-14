@@ -14,14 +14,14 @@ def get_secret(secret_name: str):
         >>> get_secret("test-secret")
         "test-value-123"
     """
-    internal_execution_id = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
-    if internal_execution_id is None:
+    execution_token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
+    if execution_token is None:
         return _get_secret_local(secret_name)
 
     resp = post(
-        url=endpoints["get-secret"],
+        url=config.api.user.get_secret,
         json={
-            "internal_execution_id": internal_execution_id,
+            "execution_token": execution_token,
             "name": secret_name,
         },
     )
@@ -34,7 +34,7 @@ def get_secret(secret_name: str):
 
 def _get_secret_local(secret_name: str):
     resp = post(
-        url=endpoints["get-secret-local"],
+        url=config.api.user.get_secret_local,
         json={
             "ws_account_id": current_workspace(),
             "name": secret_name,
