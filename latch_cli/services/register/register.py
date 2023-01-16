@@ -240,7 +240,6 @@ def register(
         disable_auto_version=disable_auto_version,
         remote=remote,
     ) as ctx:
-
         print(f"Initializing registration for {pkg_root}")
         if remote:
             print("Connecting to remote server for docker build [alpha]...")
@@ -304,7 +303,8 @@ def register(
                                 ]
                     except ValueError as e:
                         raise ValueError(
-                            f"Unable to match {task_name} to any of the protobuf files in {new_protos}"
+                            f"Unable to match {task_name} to any of the protobuf files"
+                            f" in {new_protos}"
                         ) from e
                 except TypeError as e:
                     raise ValueError(

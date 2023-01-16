@@ -2,19 +2,15 @@ import os
 import sys
 import termios
 import tty
-from pathlib import Path
 from typing import List
 
 import click
 
 import latch_cli.tui as tui
-from latch_cli.config.latch import _LatchConfig
-from latch_cli.config.user import _UserConfig
+from latch_cli.config.latch import config
+from latch_cli.config.user import user_config
 from latch_cli.tinyrequests import post
 from latch_cli.utils import current_workspace, retrieve_or_login
-
-config = _LatchConfig()
-endpoints = config.sdk_endpoints
 
 
 def workspace():
@@ -27,7 +23,7 @@ def workspace():
     headers = {"Authorization": f"Bearer {retrieve_or_login()}"}
 
     resp = post(
-        url=endpoints["get-ws"],
+        url=config.api.user.list_workspaces,
         headers=headers,
     )
 
@@ -53,8 +49,7 @@ def workspace():
 
     old_id = current_workspace()
     if old_id != new_id:
-        user_conf = _UserConfig()
-        user_conf.update_workspace(new_id)
+        user_config.update_workspace(new_id)
         click.secho(f"Successfully switched to context {selected_option}", fg="green")
     else:
         click.secho(f"Already in context {selected_option}.", fg="green")

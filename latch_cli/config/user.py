@@ -10,21 +10,30 @@ from pathlib import Path
 class _UserConfig:
     """User specific configuration persisted in `~/.latch/`."""
 
-    _root = None
-
     def __init__(self):
-        self._root = Path.home().resolve().joinpath(".latch")
+        self._root = Path.home().resolve() / ".latch"
+        self._token_path = None
+        self._workspace_path = None
 
     @property
-    def root_dir(self):
-        if self._root.exists() is False:
+    def root(self):
+        if not self._root.exists():
             self._root.mkdir(parents=True)
         return self._root
 
-    def token_exists(self) -> bool:
-        if self.token != "":
-            return False
-        return True
+    @property
+    def token_path(self):
+        if self._token_path is None:
+            self._token_path = self.root / "token"
+        self._token_path.touch(exist_ok=True)
+        return self._token_path
+
+    @property
+    def workspace_path(self):
+        if self._workspace_path is None:
+            self._workspace_path = self.root / "workspace"
+        self._workspace_path.touch(exist_ok=True)
+        return self._workspace_path
 
     @property
     def token(self) -> str:
@@ -33,24 +42,27 @@ class _UserConfig:
         Returns: ID token if exists else an empty string.
         """
         try:
-            with open(self.root_dir.joinpath("token"), "r") as f:
+            with open(self.token_path, "r") as f:
                 return f.read().strip()
         except FileNotFoundError:
             return ""
 
     @property
-    def current_workspace(self) -> str:
+    def workspace(self) -> str:
         try:
-            with open(self.root_dir.joinpath("workspace"), "r") as f:
+            with open(self.workspace_path, "r") as f:
                 return f.read().strip()
         except FileNotFoundError:
             return ""
 
     def update_token(self, token: str):
         """Updates user config with new token regardless if one exists."""
-        with open(self.root_dir.joinpath("token"), "w") as f:
+        with open(self.token_path, "w") as f:
             f.write(token)
 
     def update_workspace(self, workspace: str):
-        with open(self.root_dir.joinpath("workspace"), "w") as f:
+        with open(self.workspace_path, "w") as f:
             f.write(workspace)
+
+
+user_config = _UserConfig()

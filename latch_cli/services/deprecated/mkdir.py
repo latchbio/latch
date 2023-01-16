@@ -1,9 +1,6 @@
 import latch_cli.tinyrequests as tinyrequests
-from latch_cli.config.latch import _LatchConfig
+from latch_cli.config.latch import config
 from latch_cli.utils import _normalize_remote_path, current_workspace, retrieve_or_login
-
-config = _LatchConfig()
-endpoints = config.sdk_endpoints
 
 
 def mkdir(remote_directory):
@@ -44,7 +41,7 @@ def mkdir(remote_directory):
     headers = {"Authorization": f"Bearer {token}"}
     data = {"directory": remote_directory, "ws_account_id": current_workspace()}
 
-    response = tinyrequests.post(endpoints["mkdir"], headers=headers, json=data)
+    response = tinyrequests.post(config.api.data.mkdir, headers=headers, json=data)
     json_data = response.json()
 
     if not json_data["success"]:

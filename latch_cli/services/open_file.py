@@ -2,11 +2,8 @@ import webbrowser
 
 import requests
 
-from latch_cli.config.latch import _LatchConfig
+from latch_cli.config.latch import config
 from latch_cli.utils import _normalize_remote_path, current_workspace, retrieve_or_login
-
-config = _LatchConfig()
-endpoints = config.sdk_endpoints
 
 
 def open_file(remote_file: str):
@@ -34,7 +31,7 @@ def open_file(remote_file: str):
     token = retrieve_or_login()
     remote_file = _normalize_remote_path(remote_file)
 
-    url = endpoints["id"]
+    url = config.api.data.id
     headers = {"Authorization": f"Bearer {token}"}
     data = {"filename": remote_file, "ws_account_id": current_workspace()}
 

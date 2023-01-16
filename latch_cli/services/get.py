@@ -4,11 +4,9 @@ from typing import List, Optional, Tuple, Union
 
 import requests
 
-from latch_cli.config.latch import _LatchConfig
+from latch_cli.config.latch import config
 from latch_cli.utils import current_workspace, retrieve_or_login
 
-config = _LatchConfig()
-endpoints = config.sdk_endpoints
 
 # TODO(ayush): rewrite this to look/be better
 def get_wf(wf_name: Optional[str] = None):
@@ -49,8 +47,7 @@ def _list_workflow_request(
         "ws_account_id": current_workspace(),
     }
 
-    url = endpoints["get-workflows"]
-
+    url = config.api.workflow.list
     response = requests.post(url, headers=headers, json=data)
 
     wf_interface_resp = response.json()

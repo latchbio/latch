@@ -9,11 +9,8 @@ from typing import List
 import pytest
 import requests
 
-from latch_cli.config.latch import _LatchConfig
+from latch_cli.config.latch import config
 from tests.fixtures import test_account_jwt
-
-config = _LatchConfig()
-endpoints = config.sdk_endpoints
 
 
 def _random_name(length: int):
@@ -44,7 +41,7 @@ def _file_exists(token, remote_dir: str, filename: str) -> bool:
 
     headers = {"Authorization": f"Bearer {token}"}
     data = {"filename": remote_path}
-    response = requests.post(url=endpoints["verify"], headers=headers, json=data)
+    response = requests.post(url=config.api.data.verify, headers=headers, json=data)
     try:
         assert response.status_code == 200
     except:

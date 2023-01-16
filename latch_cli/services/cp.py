@@ -10,14 +10,11 @@ import tqdm as _tqdm
 from tqdm.auto import tqdm
 
 import latch_cli.tinyrequests as tinyrequests
-from latch_cli.config.latch import _LatchConfig
+from latch_cli.config.latch import config
 from latch_cli.constants import FILE_CHUNK_SIZE
 from latch_cli.services.deprecated.mkdir import mkdir
 from latch_cli.services.deprecated.touch import touch
 from latch_cli.utils import _normalize_remote_path, current_workspace, retrieve_or_login
-
-config = _LatchConfig()
-endpoints = config.sdk_endpoints
 
 # tqdm progress bars aren't thread safe so restrict so that only one can update at a time
 IO_LOCK = threading.Lock()
@@ -29,7 +26,7 @@ def _dir_exists(remote_dir: str) -> bool:
     token = retrieve_or_login()
     headers = {"Authorization": f"Bearer {token}"}
     data = {"filename": remote_dir}
-    response = tinyrequests.post(url=endpoints["verify"], headers=headers, json=data)
+    response = tinyrequests.post(url=config.api.data.verify, headers=headers, json=data)
     try:
         assert response.status_code == 200
     except:
@@ -110,7 +107,7 @@ def _upload_file(
         return
 
     response = tinyrequests.post(
-        endpoints["initiate-multipart-upload"],
+        config.api.data.begin_upload,
         headers={"Authorization": f"Bearer {retrieve_or_login()}"},
         json={
             "ws_account_id": current_workspace(),
@@ -161,7 +158,7 @@ def _upload_file(
     parts.sort(key=lambda res: res["PartNumber"])
 
     response = tinyrequests.post(
-        endpoints["complete-multipart-upload"],
+        config.api.data.complete_upload,
         headers={"Authorization": f"Bearer {retrieve_or_login()}"},
         json={
             "path": path,
@@ -236,7 +233,7 @@ def download(
 
     print("Generating download URLs...")
     response = tinyrequests.post(
-        endpoints["download"],
+        config.api.data.download,
         headers={"Authorization": f"Bearer {retrieve_or_login()}"},
         json={
             "source_path": remote_source,

@@ -9,12 +9,10 @@ from pathlib import Path
 import jwt
 import paramiko
 
-from latch_cli.config.user import _UserConfig
+from latch_cli.config.user import user_config
 from latch_cli.constants import FILE_MAX_SIZE, PKG_NAME
 from latch_cli.services.login import login
 from latch_cli.tinyrequests import get
-
-user_conf = _UserConfig()
 
 
 def retrieve_or_login() -> str:
@@ -24,16 +22,17 @@ def retrieve_or_login() -> str:
         A JWT
     """
 
-    token = user_conf.token
+    token = user_config.token
     if token == "":
         token = login()
     return token
 
 
 def current_workspace() -> str:
-    ws = user_conf.current_workspace
+    ws = user_config.workspace
     if ws == "":
         ws = account_id_from_token(retrieve_or_login())
+        user_config.update_workspace(ws)
     return ws
 
 
@@ -168,8 +167,8 @@ def generate_temporary_ssh_credentials(ssh_key_path: Path) -> str:
             subprocess.run(cmd, check=True)
         except subprocess.CalledProcessError as e:
             raise ValueError(
-                "There was a problem creating temporary SSH credentials. Please ensure that "
-                "`ssh-keygen` is installed and available in your PATH."
+                "There was a problem creating temporary SSH credentials. Please ensure"
+                " that `ssh-keygen` is installed and available in your PATH."
             ) from e
         os.chmod(ssh_key_path, 0o700)
 
@@ -179,9 +178,9 @@ def generate_temporary_ssh_credentials(ssh_key_path: Path) -> str:
         subprocess.run(cmd, check=True, stderr=subprocess.DEVNULL)
     except subprocess.CalledProcessError as e:
         raise ValueError(
-            "There was an issue adding temporary SSH credentials to your SSH Agent. Please ensure "
-            "that your SSH Agent is running, or (re)start it manually by running\n\n    $ eval `ssh-agent -s`"
-            "\n\n"
+            "There was an issue adding temporary SSH credentials to your SSH Agent."
+            " Please ensure that your SSH Agent is running, or (re)start it manually by"
+            " running\n\n    $ eval `ssh-agent -s`\n\n"
         ) from e
 
     # decode private key into public key
@@ -190,8 +189,8 @@ def generate_temporary_ssh_credentials(ssh_key_path: Path) -> str:
         out = subprocess.run(cmd, check=True, capture_output=True)
     except subprocess.CalledProcessError as e:
         raise ValueError(
-            "There was a problem decoding your temporary credentials. Please ensure that "
-            "`ssh-keygen` is installed and available in your PATH."
+            "There was a problem decoding your temporary credentials. Please ensure"
+            " that `ssh-keygen` is installed and available in your PATH."
         ) from e
 
     public_key = out.stdout.decode("utf-8").strip("\n")
@@ -207,7 +206,7 @@ def get_local_package_version() -> str:
 
 
 def get_latest_package_version_request() -> str:
-    cache_location = user_conf.root_dir / "cached_version"
+    cache_location = user_config.root / "cached_version"
     resp = get(f"https://pypi.org/pypi/{PKG_NAME}/json")
     version = resp.json()["info"]["version"]
     with open(cache_location, "w") as f:
@@ -217,7 +216,7 @@ def get_latest_package_version_request() -> str:
 
 def get_latest_package_version() -> str:
     version = None
-    cache_location = user_conf.root_dir / "cached_version"
+    cache_location = user_config.root / "cached_version"
     try:
         with open(cache_location, "r") as f:
             version, timestamp = f.read().split(" ")
