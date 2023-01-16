@@ -1,7 +1,9 @@
 import inspect
+from dataclasses import is_dataclass
 from textwrap import dedent
-from typing import Callable, Union
+from typing import Callable, Union, get_args, get_origin
 
+import typing_inspect
 from flytekit import workflow as _workflow
 
 from latch.types.metadata import LatchMetadata
@@ -26,13 +28,13 @@ def workflow(metadata: Union[LatchMetadata, Callable]):
             in_meta_not_in_wf = []
             not_in_meta_in_wf = []
 
-            for param in metadata.parameters:
-                if param not in wf_params:
-                    in_meta_not_in_wf.append(param)
+            for meta_param in metadata.parameters:
+                if meta_param not in wf_params:
+                    in_meta_not_in_wf.append(meta_param)
 
-            for param in wf_params:
-                if param not in metadata.parameters:
-                    not_in_meta_in_wf.append(param)
+            for wf_param in wf_params:
+                if wf_param not in metadata.parameters:
+                    not_in_meta_in_wf.append(wf_param)
 
             if len(in_meta_not_in_wf) > 0 or len(not_in_meta_in_wf) > 0:
                 error_str = (
@@ -45,8 +47,8 @@ def workflow(metadata: Union[LatchMetadata, Callable]):
                         "The following parameters appear in your `LatchMetadata` object"
                         " but not in your workflow signature:\n\n"
                     )
-                    for param in in_meta_not_in_wf:
-                        error_str += f"    \x1b[1m{param}\x1b[22m\n"
+                    for meta_param in in_meta_not_in_wf:
+                        error_str += f"    \x1b[1m{meta_param}\x1b[22m\n"
                     error_str += "\n"
 
                 if len(not_in_meta_in_wf) > 0:
@@ -54,8 +56,8 @@ def workflow(metadata: Union[LatchMetadata, Callable]):
                         "The following parameters appear in your workflow signature but"
                         " not in your `LatchMetadata` object:\n\n"
                     )
-                    for param in not_in_meta_in_wf:
-                        error_str += f"    \x1b[1m{param}\x1b[22m\n"
+                    for meta_param in not_in_meta_in_wf:
+                        error_str += f"    \x1b[1m{meta_param}\x1b[22m\n"
                     error_str += "\n"
 
                 error_str += (
@@ -65,6 +67,19 @@ def workflow(metadata: Union[LatchMetadata, Callable]):
                 )
 
                 raise ValueError(error_str)
+
+            for name, meta_param in metadata.parameters.items():
+                if not meta_param.samplesheet:
+                    continue
+                annotation = wf_params[name].annotation
+                if not (
+                    get_origin(annotation) is list
+                    and len(get_args(annotation)) == 1
+                    and is_dataclass(get_args(annotation)[0])
+                ):
+                    raise ValueError(
+                        "A samplesheet parameter must be a list of dataclasses"
+                    )
 
             f.__doc__ = f"{short_desc}\n{dedent(long_desc)}\n\n" + str(metadata)
             return _workflow(f)
