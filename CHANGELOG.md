@@ -60,3 +60,5 @@ Types of changes
   potential mistakes arising from misspelling, and gives the benefit of IDE
   intellisense.
 * Made both configs singletons.
+* Fixed issue with registering libraries containing nested imports used as
+    subclasses (eg. `torch`)
