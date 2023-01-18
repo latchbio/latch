@@ -32,35 +32,31 @@ def _import_flyte_objects(paths: List[Path], module_name: str = "wf"):
 
     with _add_sys_paths(paths):
 
-        # (kenny) Documenting weird failure modes of importing modules:
-        #   1. Calling attribute of FakeModule in some nested import
-        #
-        #   ```
-        #   # This is submodule or nested import of top level import
-        #   import foo
-        #   def new_func(a=foo.something):
-        #       ...
-        #   ```
-        #
-        #   The potentially weird workaround is to silence attribute
-        #   errors during import, which I don't see as swallowing problems
-        #   associated with the strict task here of retrieving attributes
-        #   from tasks, but idk.
-        #
-        #   2. Calling FakeModule directly in nested import
-        #
-        #   ```
-        #   # This is submodule or nested import of top level import
-        #   from foo import bar
-        #
-        #   a = bar()
-        #   ```
-        #
-        #   This is why we return a callable from our FakeModule
-
         class FakeModule(ModuleType):
             def __getattr__(self, key):
-                return lambda: None
+
+                # This value is designed to be used in the execution of top
+                # level code without throwing errors but need not do anything.
+                # Here are some cases where this value can be used:
+                #
+                # ```
+                # from foo import bar
+                #
+                # # Referencing an attribute from an attribute
+                # a = bar.x
+                #
+                # # Calling an attribute
+                # b = bar()
+                #
+                # # Subclassing from an attribute
+                # class C(bar):
+                # ```
+                #     ...
+                class FakeAttr:
+                    def __new__(*args, **kwargs):
+                        return None
+
+                return FakeAttr
 
             __all__ = []
 
