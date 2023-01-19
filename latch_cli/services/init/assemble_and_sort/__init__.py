@@ -43,6 +43,11 @@ metadata = LatchMetadata(
                 )
             ],
         ),
+        "output_directory": LatchParameter(
+            display_name="Output Directory",
+            description="Where to place the result file.",
+            batch_table_column=True,  # Show this parameter in batched mode.
+        ),
     },
     tags=[],
 )
@@ -80,5 +85,6 @@ LaunchPlan(
     {
         "read1": LatchFile("s3://latch-public/init/r1.fastq"),
         "read2": LatchFile("s3://latch-public/init/r2.fastq"),
+        "output_directory": LatchOutputDir("latch:///assemble_and_sort_outputs"),
     },
 )
