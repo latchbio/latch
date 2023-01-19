@@ -43,7 +43,7 @@ def send_fake_data_task(fake_data: str) -> bool:
     token = get_secret("API_KEY")
 
     response = requests.post(
-        "https://fake.server.com/fake/endpoint",
+        "https://fake.example.com/fake/endpoint",
         headers={"Authorization": f"Bearer {token}"}
         json={
             "fake_data": fake_data
