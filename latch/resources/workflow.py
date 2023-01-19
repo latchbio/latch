@@ -5,12 +5,13 @@ from typing import Callable, Union
 from flytekit import workflow as _workflow
 
 from latch.types.metadata import LatchMetadata
+from flytekit.core.workflow import PythonFunctionWorkflow
 
 
 # this weird Union thing is to ensure backwards compatibility,
 # so that when users call @workflow without any arguments or
 # parentheses, the workflow still serializes as expected
-def workflow(metadata: Union[LatchMetadata, Callable]):
+def workflow(metadata: Union[LatchMetadata, Callable]) -> Union[PythonFunctionWorkflow, Callable]:
     if isinstance(metadata, Callable):
         return _workflow(metadata)
     else:

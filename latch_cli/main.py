@@ -121,15 +121,7 @@ def login(connection: Optional[str]):
 
 @main.command("init")
 @click.argument("pkg_name", nargs=1)
-@click.option(
-    "--template",
-    "-t",
-    type=click.Choice(
-        [t.name for t in _Templates],
-        case_sensitive=False,
-    ),
-)
-def init(pkg_name: str, template: Optional[str] = None):
+def init(pkg_name: str):
     """Initialize boilerplate for local workflow code."""
 
     crash_handler.message = f"Unable to initialize {pkg_name}"
@@ -137,12 +129,17 @@ def init(pkg_name: str, template: Optional[str] = None):
 
     from latch_cli.services.init import init
 
-    init(pkg_name, template)
+    click.secho(pkg_name)
 
-    click.secho(f"Created a latch workflow called {pkg_name}.", fg="green")
-    click.secho("Run", fg="green")
-    click.secho(f"\t$ latch register {pkg_name}", fg="green")
-    click.secho("To register the workflow with console.latch.bio.", fg="green")
+    created = init(pkg_name)
+    if created:
+        click.secho(f"Created a latch workflow in `{pkg_name}`", fg="green")
+        click.secho("Run", fg="green")
+        click.secho(f"\t$ latch register {pkg_name}", fg="green")
+        click.secho("To register the workflow with console.latch.bio.", fg="green")
+        return
+    
+    click.secho("No workflow created.", fg="yellow")
 
 
 @main.command("cp")

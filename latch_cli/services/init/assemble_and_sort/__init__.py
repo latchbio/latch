@@ -1,58 +1,11 @@
 """
 Assemble and sort some COVID reads...
 """
-
-import subprocess
-from pathlib import Path
-
-from latch import small_task, workflow
+from latch import workflow
 from latch.resources.launch_plan import LaunchPlan
-from latch.types import LatchAuthor, LatchFile, LatchMetadata, LatchParameter
-
-
-@small_task
-def assembly_task(read1: LatchFile, read2: LatchFile) -> LatchFile:
-
-    # A reference to our output.
-    sam_file = Path("covid_assembly.sam").resolve()
-
-    _bowtie2_cmd = [
-        "bowtie2/bowtie2",
-        "--local",
-        "-x",
-        "wuhan",
-        "-1",
-        read1.local_path,
-        "-2",
-        read2.local_path,
-        "--very-sensitive-local",
-        "-S",
-        str(sam_file),
-    ]
-
-    subprocess.run(_bowtie2_cmd)
-
-    return LatchFile(str(sam_file), "latch:///covid_assembly.sam")
-
-
-@small_task
-def sort_bam_task(sam: LatchFile) -> LatchFile:
-
-    bam_file = Path("covid_sorted.bam").resolve()
-
-    _samtools_sort_cmd = [
-        "samtools",
-        "sort",
-        "-o",
-        str(bam_file),
-        "-O",
-        "bam",
-        sam.local_path,
-    ]
-
-    subprocess.run(_samtools_sort_cmd)
-
-    return LatchFile(str(bam_file), "latch:///covid_sorted.bam")
+from latch.types import LatchAuthor, LatchFile, LatchOutputDir, LatchMetadata, LatchParameter, LatchRule
+from assemble import assembly_task
+from sort import sort_bam_task
 
 
 """The metadata included here will be injected into your interface."""
@@ -60,9 +13,9 @@ metadata = LatchMetadata(
     display_name="Assemble and Sort FastQ Files",
     documentation="your-docs.dev",
     author=LatchAuthor(
-        name="John von Neumann",
-        email="hungarianpapi4@gmail.com",
-        github="github.com/fluid-dynamix",
+        name="Author",
+        email="author@gmail.com",
+        github="github.com/author",
     ),
     repository="https://github.com/your-repo",
     license="MIT",
@@ -71,11 +24,24 @@ metadata = LatchMetadata(
             display_name="Read 1",
             description="Paired-end read 1 file to be assembled.",
             batch_table_column=True,  # Show this parameter in batched mode.
+            rules=[
+                # valid the input file using regex
+                LatchRule(
+                    regex="(.fastq|.fastq.gz|.fq|.fq.gz)$",
+                    message="Only fastq, fastq.gz, fq, fq.gz extensions are valid"
+                )
+            ],
         ),
         "read2": LatchParameter(
             display_name="Read 2",
             description="Paired-end read 2 file to be assembled.",
             batch_table_column=True,  # Show this parameter in batched mode.
+            rules=[
+                LatchRule(
+                    regex="(.fastq|.fastq.gz|.fq|.fq.gz)$",
+                    message="Only fastq, fastq.gz, fq, fq.gz extensions are valid"
+                )
+            ],
         ),
     },
     tags=[],
@@ -83,7 +49,7 @@ metadata = LatchMetadata(
 
 
 @workflow(metadata)
-def assemble_and_sort(read1: LatchFile, read2: LatchFile) -> LatchFile:
+def assemble_and_sort(read1: LatchFile, read2: LatchFile, output_directory: LatchOutputDir) -> LatchFile:
     """Description...
 
     markdown header
@@ -100,7 +66,7 @@ def assemble_and_sort(read1: LatchFile, read2: LatchFile) -> LatchFile:
     * content2
     """
     sam = assembly_task(read1=read1, read2=read2)
-    return sort_bam_task(sam=sam)
+    return sort_bam_task(sam=sam, output_directory=output_directory)
 
 
 """
