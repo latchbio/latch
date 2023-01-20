@@ -24,7 +24,6 @@ SHELL ["conda", "run", "-n", "your_env", "/bin/bash", "-c"]
 # STOP HERE:
 # The following lines are needed to ensure your build environement works
 # correctly with latch.
-RUN /opt/conda/bin/pip install --upgrade latch
 COPY wf /root/wf
 ARG tag
 ENV FLYTE_INTERNAL_IMAGE $tag

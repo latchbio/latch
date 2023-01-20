@@ -17,7 +17,6 @@ RUN R -e "BiocManager::install('S4Vectors', force = TRUE)"
 # STOP HERE:
 # The following lines are needed to ensure your build environement works
 # correctly with latch.
-RUN python3 -m pip install --upgrade latch
 COPY wf /root/wf
 ARG tag
 ENV FLYTE_INTERNAL_IMAGE $tag
