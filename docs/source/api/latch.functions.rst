@@ -20,6 +20,14 @@ latch.functions.operators module
    :undoc-members:
    :show-inheritance:
 
+latch.functions.secrets module
+------------------------------
+
+.. automodule:: latch.functions.secrets
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 
