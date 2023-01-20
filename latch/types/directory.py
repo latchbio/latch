@@ -149,11 +149,11 @@ class LatchDirPathTransformer(FlyteDirToMultipartBlobTransformer):
                 "Casting from Pathlike to LatchDir is currently not supported."
             )
 
-        base_class = expected_python_type
-        if get_origin(expected_python_type) == Annotated:
-            base_class = get_args(LatchOutputDir)[0]
+        
+        while get_origin(expected_python_type) == Annotated:
+            expected_python_type = get_args(expected_python_type)[0]
 
-        if not issubclass(base_class, LatchDir):
+        if not issubclass(expected_python_type, LatchDir):
             raise TypeError(
                 f"Neither os.PathLike nor LatchDir specified {expected_python_type}"
             )
@@ -161,7 +161,7 @@ class LatchDirPathTransformer(FlyteDirToMultipartBlobTransformer):
         # This is a local file path, like /usr/local/my_file, don't mess with it. Certainly, downloading it doesn't
         # make any sense.
         if not ctx.file_access.is_remote(uri):
-            return base_class(uri)
+            return expected_python_type(uri)
 
         # For the remote case, return an FlyteDirectory object that can download
         local_folder = ctx.file_access.get_random_local_directory()

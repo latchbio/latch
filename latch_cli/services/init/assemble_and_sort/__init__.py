@@ -32,7 +32,7 @@ metadata = LatchMetadata(
             description="Paired-end read 1 file to be assembled.",
             batch_table_column=True,  # Show this parameter in batched mode.
             rules=[
-                # valid the input file using regex
+                # validate the input file using regex
                 LatchRule(
                     regex="(.fastq|.fastq.gz|.fq|.fq.gz)$",
                     message="Only fastq, fastq.gz, fq, fq.gz extensions are valid",
