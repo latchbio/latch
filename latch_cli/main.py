@@ -10,7 +10,7 @@ from packaging.version import parse as parse_version
 
 import latch_cli.click_utils
 from latch_cli.exceptions.handler import CrashHandler
-from latch_cli.services.init.init import _Templates
+from latch_cli.services.init.init import template_flag_to_option
 from latch_cli.utils import get_latest_package_version, get_local_package_version
 
 latch_cli.click_utils.patch()
@@ -122,13 +122,13 @@ def login(connection: Optional[str]):
 @main.command("init")
 @click.argument("pkg_name", nargs=1)
 @click.option(
-     "--template",
-     "-t",
-     type=click.Choice(
-         [t.name for t in _Templates],
-         case_sensitive=False,
-     ),
- )
+    "--template",
+    "-t",
+    type=click.Choice(
+        list(template_flag_to_option.keys()),
+        case_sensitive=False,
+    ),
+)
 def init(pkg_name: str, template: Optional[str] = None):
     """Initialize boilerplate for local workflow code."""
 

@@ -15,13 +15,6 @@ import click
 from latch_cli.tui import select_tui
 
 
-class _Templates(Enum):
-    empty = auto()
-    subprocess = auto()
-    r = auto()
-    conda = auto()
-
-
 def _get_boilerplate(pkg_root: Path, source_path: Path, expose_dockerfile: bool):
     pkg_root = pkg_root.resolve()
     source_path = source_path.resolve()
@@ -113,6 +106,7 @@ option_map = {
     "Conda Example": _gen_example_conda,
 }
 
+
 template_flag_to_option = {
     "empty": "Empty workflow",
     "subprocess": "Subprocess Example",
@@ -121,7 +115,9 @@ template_flag_to_option = {
 }
 
 
-def init(pkg_name: str, template: Optional[str], expose_dockerfile: bool = True) -> bool:
+def init(
+    pkg_name: str, template: Optional[str], expose_dockerfile: bool = True
+) -> bool:
     """Creates boilerplate workflow files in the user's working directory.
 
     Args:
@@ -184,10 +180,14 @@ def init(pkg_name: str, template: Optional[str], expose_dockerfile: bool = True)
                 ),
             )
 
-    selected_option = select_tui(
-        title="Select Workflow Template",
-        options=list(option_map.keys()),
-    ) if template is None else template_flag_to_option[template]
+    selected_option = (
+        select_tui(
+            title="Select Workflow Template",
+            options=list(option_map.keys()),
+        )
+        if template is None
+        else template_flag_to_option[template]
+    )
 
     if selected_option is None:
         return False
