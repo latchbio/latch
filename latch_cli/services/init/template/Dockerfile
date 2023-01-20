@@ -15,10 +15,10 @@ RUN apt-get update -y && \
 # Set any environment variables
 # ENV MY_ENV="foo"
 
-# Latch postamble (do not change)
+# Latch epilogue (do not change)
 RUN python3 -m pip install --upgrade latch
 COPY wf /root/wf
 ARG tag
 ENV FLYTE_INTERNAL_IMAGE $tag
 WORKDIR /root
-# end postamble
+# end epilogue
