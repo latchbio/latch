@@ -15,6 +15,28 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.11.0 - 2023-01-20
+
+### Added
+
+* Use best practices in `latch init` templates
+*   * `LatchOutputDir` used to indicate output location on Latch
+*   * Regex rules used to validate files
+*   * Splits tasks into files
+*   * Include empty template
+*   * Remove yaml metadata from docstring
+*   * Use messages in examples
+*   * Error handling
+*   * Add LICENSE file
+*   * Add README file
+* Allow user to select template in GUI or pass flag
+* Allow user to run `latch init .`
+
+### Fixed
+
+* LatchDir type transformer bug with Annotated types
+*   * LatchOutputDir is fixed
+
 ## 2.10.0 - 2023-01-14
 
 ### Added
