@@ -22,8 +22,11 @@ def sort_bam_task(sam: LatchFile, output_directory: LatchOutputDir) -> LatchFile
     ]
 
     try:
-        # best practice arguments for subprocess.run
-        subprocess.run(_samtools_sort_cmd, shell=True, check=True)
+        # We use shell=True for all the benefits of pipes and other shell features.
+        # When using shell=True, we pass the entire command as a single string as
+        # opposed to a list since the shell will parse the string into a list
+        # using its own rules.
+        subprocess.run(" ".join(_samtools_sort_cmd), shell=True, check=True)
     except subprocess.CalledProcessError as e:
         # will display in the messages tab of the execution graph for the sort_bam_task node
         message(

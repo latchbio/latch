@@ -15,20 +15,23 @@ def assembly_task(read1: LatchFile, read2: LatchFile, output_directory: LatchOut
     _bowtie2_cmd = [
         "bowtie2/bowtie2",
         "--local",
+        "--very-sensitive-local",
         "-x",
         "wuhan",
         "-1",
         read1.local_path,
         "-2",
         read2.local_path,
-        "--very-sensitive-local",
         "-S",
         str(sam_file),
     ]
 
     try:
-        # best practice arguments for subprocess.run
-        subprocess.run(_bowtie2_cmd, shell=True, check=True)
+        # We use shell=True for all the benefits of pipes and other shell features.
+        # When using shell=True, we pass the entire command as a single string as
+        # opposed to a list since the shell will parse the string into a list
+        # using its own rules.
+        subprocess.run(" ".join(_bowtie2_cmd), shell=True, check=True)
     except subprocess.CalledProcessError as e:
         # will display in the messages tab of the execution graph for the assembly_task node
         message(
