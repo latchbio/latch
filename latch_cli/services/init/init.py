@@ -114,11 +114,15 @@ def init(pkg_name: str, expose_dockerfile: bool = True) -> bool:
     try:
         pkg_root.mkdir(parents=True)
     except FileExistsError:
+        if not pkg_root.is_dir():
+            raise ValueError(
+                f"Cannot create directory `{pkg_name}`. A file with that name already exists."
+            )
+
         if not click.confirm(
             f"Warning -- existing files in directory `{pkg_name}` may be overwritten by boilerplate. Continue?"
         ):
             return False
-        pkg_root.mkdir(parents=True, exist_ok=True)
 
     if template == _Templates.empty:
         _gen_template(pkg_root, expose_dockerfile)
