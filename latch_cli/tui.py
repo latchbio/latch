@@ -2,7 +2,7 @@ import os
 import sys
 import termios
 import tty
-from typing import Callable, Optional, Tuple, List
+from typing import Callable, List, Optional, Tuple
 
 
 def buffered_print() -> Tuple[Callable, Callable]:
@@ -190,6 +190,7 @@ def read_bytes(num_bytes: int) -> bytes:
     for _ in range(num_bytes):
         result += read_next_byte()
     return result
+
 
 def select_tui(title: str, options: List[str], clear_terminal: bool = True):
     """

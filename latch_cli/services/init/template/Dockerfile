@@ -8,7 +8,7 @@ RUN apt-get update -y && \
 # Install any apt packages
 # RUN apt-get install -y package_1 package_2
 
-# Install any python packaged
+# Install any python packages
 # COPY requirements.txt /root/requirements.txt
 # RUN python3 -m pip install -r /root/requirements.txt
 

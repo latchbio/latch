@@ -2,8 +2,8 @@ import subprocess
 from pathlib import Path
 
 from latch import small_task
-from latch.types import LatchFile, LatchOutputDir
 from latch.functions.messages import message
+from latch.types import LatchFile, LatchOutputDir
 
 
 @small_task

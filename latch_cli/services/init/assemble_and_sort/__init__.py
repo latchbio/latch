@@ -1,12 +1,19 @@
 """
 Assemble and sort some COVID reads...
 """
-from latch import workflow
-from latch.resources.launch_plan import LaunchPlan
-from latch.types import LatchAuthor, LatchFile, LatchOutputDir, LatchMetadata, LatchParameter, LatchRule
 from wf.assemble import assembly_task
 from wf.sort import sort_bam_task
 
+from latch import workflow
+from latch.resources.launch_plan import LaunchPlan
+from latch.types import (
+    LatchAuthor,
+    LatchFile,
+    LatchMetadata,
+    LatchOutputDir,
+    LatchParameter,
+    LatchRule,
+)
 
 """The metadata included here will be injected into your interface."""
 metadata = LatchMetadata(
@@ -28,7 +35,7 @@ metadata = LatchMetadata(
                 # valid the input file using regex
                 LatchRule(
                     regex="(.fastq|.fastq.gz|.fq|.fq.gz)$",
-                    message="Only fastq, fastq.gz, fq, fq.gz extensions are valid"
+                    message="Only fastq, fastq.gz, fq, fq.gz extensions are valid",
                 )
             ],
         ),
@@ -39,7 +46,7 @@ metadata = LatchMetadata(
             rules=[
                 LatchRule(
                     regex="(.fastq|.fastq.gz|.fq|.fq.gz)$",
-                    message="Only fastq, fastq.gz, fq, fq.gz extensions are valid"
+                    message="Only fastq, fastq.gz, fq, fq.gz extensions are valid",
                 )
             ],
         ),
@@ -54,7 +61,9 @@ metadata = LatchMetadata(
 
 
 @workflow(metadata)
-def assemble_and_sort(read1: LatchFile, read2: LatchFile, output_directory: LatchOutputDir) -> LatchFile:
+def assemble_and_sort(
+    read1: LatchFile, read2: LatchFile, output_directory: LatchOutputDir
+) -> LatchFile:
     """Description...
 
     markdown header

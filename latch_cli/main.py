@@ -138,7 +138,7 @@ def init(pkg_name: str):
         click.secho(f"\t$ latch register {pkg_name}", fg="green")
         click.secho("To register the workflow with console.latch.bio.", fg="green")
         return
-    
+
     click.secho("No workflow created.", fg="yellow")
 
 
@@ -429,8 +429,7 @@ def preview(pkg_root: Path):
 
 @main.command("workspace")
 def workspace():
-    """Spawns an interactive terminal prompt allowing users to choose what workspace they want to work in.
-    """
+    """Spawns an interactive terminal prompt allowing users to choose what workspace they want to work in."""
 
     crash_handler.message = "Unable to fetch workspaces"
     crash_handler.pkg_root = str(Path.cwd())
@@ -442,8 +441,7 @@ def workspace():
 
 @main.command("get-executions")
 def get_executions():
-    """Spawns an interactive terminal UI that shows all executions in a given workspace
-    """
+    """Spawns an interactive terminal UI that shows all executions in a given workspace"""
 
     crash_handler.message = "Unable to fetch executions"
 

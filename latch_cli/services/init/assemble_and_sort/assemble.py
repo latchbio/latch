@@ -2,12 +2,14 @@ import subprocess
 from pathlib import Path
 
 from latch import small_task
-from latch.types import LatchFile, LatchOutputDir
 from latch.functions.messages import message
+from latch.types import LatchFile, LatchOutputDir
 
 
 @small_task
-def assembly_task(read1: LatchFile, read2: LatchFile, output_directory: LatchOutputDir) -> LatchFile:
+def assembly_task(
+    read1: LatchFile, read2: LatchFile, output_directory: LatchOutputDir
+) -> LatchFile:
 
     # A reference to our output.
     sam_file = Path("covid_assembly.sam").resolve()

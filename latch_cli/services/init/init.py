@@ -1,17 +1,19 @@
 """Service to initialize boilerplate."""
 
+import json
 import os
 import re
 import shutil
 from enum import Enum, auto
+from importlib.metadata import version
 from pathlib import Path
 from textwrap import dedent
-from importlib.metadata import version
-import json
 from typing import Callable, Optional
+
 import click
 
 from latch_cli.tui import select_tui
+
 
 class _Templates(Enum):
     empty = auto()
@@ -45,33 +47,45 @@ def init(pkg_name: str, expose_dockerfile: bool = True) -> bool:
 
     using_dir_name = False
     if pkg_name == ".":
-        curdir =  Path(os.getcwd())
+        curdir = Path(os.getcwd())
         pkg_name = curdir.name
         using_dir_name = True
 
-    append_ctx_to_error: Callable[[str], str] = lambda x: f"{x}. Current directory name: {pkg_name}" if using_dir_name else f"{x}. Supplied name: {pkg_name}"
+    append_ctx_to_error: Callable[[str], str] = (
+        lambda x: f"{x}. Current directory name: {pkg_name}"
+        if using_dir_name
+        else f"{x}. Supplied name: {pkg_name}"
+    )
 
     # Workflow name must not contain capitals or start or end in a hyphen or underscore. If it does, we should throw an error.
 
     if any(char.isupper() for char in pkg_name):
         raise ValueError(
-            append_ctx_to_error(f"package name must not contain any upper-case characters: {pkg_name}"),
+            append_ctx_to_error(
+                f"package name must not contain any upper-case characters: {pkg_name}"
+            ),
         )
 
     if re.search("^[a-z]", pkg_name) is None:
         raise ValueError(
-            append_ctx_to_error(f"package name must start with a lower-case letter: {pkg_name}"),
+            append_ctx_to_error(
+                f"package name must start with a lower-case letter: {pkg_name}"
+            ),
         )
 
     if re.search("[a-z]$", pkg_name) is None:
         raise ValueError(
-            append_ctx_to_error(f"package name must end with a lower-case letter: {pkg_name}"),
+            append_ctx_to_error(
+                f"package name must end with a lower-case letter: {pkg_name}"
+            ),
         )
 
     for char in pkg_name:
         if not char.isalnum and char not in ["-", "_"]:
             raise ValueError(
-                append_ctx_to_error(f"package name must only contain alphanumeric characters, hyphens, and underscores: found `{char}`."),
+                append_ctx_to_error(
+                    f"package name must only contain alphanumeric characters, hyphens, and underscores: found `{char}`."
+                ),
             )
 
     option_map = {
@@ -100,7 +114,9 @@ def init(pkg_name: str, expose_dockerfile: bool = True) -> bool:
     try:
         pkg_root.mkdir(parents=True)
     except FileExistsError:
-        if not click.confirm(f"Warning -- existing files in directory `{pkg_name}` may be overwritten by boilerplate. Continue?"):
+        if not click.confirm(
+            f"Warning -- existing files in directory `{pkg_name}` may be overwritten by boilerplate. Continue?"
+        ):
             return False
         pkg_root.mkdir(parents=True, exist_ok=True)
 
@@ -125,10 +141,10 @@ def _get_boilerplate(pkg_root: Path, source_path: Path, expose_dockerfile: bool)
 
     for f in source_path.glob("*.py"):
         shutil.copy(f, wf_root)
-    
+
     for f in source_path.glob("LICENSE*"):
         shutil.copy(f, pkg_root)
-    
+
     for f in source_path.glob("README*"):
         shutil.copy(f, pkg_root)
 
