@@ -32,6 +32,10 @@ metadata = LatchMetadata(
             display_name="Input File",
             batch_table_column=True,  # Show this parameter in batched mode.
         ),
+        "output_directory": LatchParameter(
+            display_name="Output Directory",
+            batch_table_column=True,  # Show this parameter in batched mode.
+        ),
     },
     tags=[],
 )
