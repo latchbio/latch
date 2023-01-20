@@ -2,12 +2,12 @@ import subprocess
 from pathlib import Path
 
 from latch import small_task
-from latch.types import LatchFile
+from latch.types import LatchFile, LatchOutputDir
 from latch.functions.messages import message
 
 
 @small_task
-def assembly_task(read1: LatchFile, read2: LatchFile) -> LatchFile:
+def assembly_task(read1: LatchFile, read2: LatchFile, output_directory: LatchOutputDir) -> LatchFile:
 
     # A reference to our output.
     sam_file = Path("covid_assembly.sam").resolve()
@@ -15,15 +15,15 @@ def assembly_task(read1: LatchFile, read2: LatchFile) -> LatchFile:
     _bowtie2_cmd = [
         "bowtie2/bowtie2",
         "--local",
-        "-bt2-idx",
+        "-x",
         "wuhan",
-        "-m1",
+        "-1",
         read1.local_path,
-        "-m2",
+        "-2",
         read2.local_path,
-        "-sam",
-        str(sam_file),
         "--very-sensitive-local",
+        "-S",
+        str(sam_file),
     ]
 
     try:
@@ -37,4 +37,8 @@ def assembly_task(read1: LatchFile, read2: LatchFile) -> LatchFile:
         )
         raise e
 
-    return LatchFile(str(sam_file), "latch:///covid_assembly.sam")
+    # intended output path of the file in Latch console, constructed from
+    # the user provided output directory
+    output_location = f"{output_directory.remote_directory}/covid_assembly.sam"
+
+    return LatchFile(str(sam_file), output_location)

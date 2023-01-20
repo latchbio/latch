@@ -4,8 +4,8 @@ Assemble and sort some COVID reads...
 from latch import workflow
 from latch.resources.launch_plan import LaunchPlan
 from latch.types import LatchAuthor, LatchFile, LatchOutputDir, LatchMetadata, LatchParameter, LatchRule
-from assemble import assembly_task
-from sort import sort_bam_task
+from wf.assemble import assembly_task
+from wf.sort import sort_bam_task
 
 
 """The metadata included here will be injected into your interface."""
@@ -70,7 +70,7 @@ def assemble_and_sort(read1: LatchFile, read2: LatchFile, output_directory: Latc
     * content1
     * content2
     """
-    sam = assembly_task(read1=read1, read2=read2)
+    sam = assembly_task(read1=read1, read2=read2, output_directory=output_directory)
     return sort_bam_task(sam=sam, output_directory=output_directory)
 
 
