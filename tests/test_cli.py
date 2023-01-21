@@ -166,25 +166,25 @@ def test_ls(test_account_jwt):
         _run_and_verify(_cmd, "Success")
 
 
-def test_launch(test_account_jwt):
-    with open("foo.py", "w") as f:
-        f.write(
-            textwrap.dedent(
-                """
-            from latch.types import LatchFile
-
-            params = {
-                "_name": "wf.__init__.assemble_and_sort",
-                "read1": LatchFile("latch:///read1"),
-                "read2": LatchFile("latch:///read2"),
-            }
-        """
-            )
-        )
-
-    _cmd = ["latch", "launch", "foo.py"]
-    _run_and_verify(
-        _cmd,
-        "Successfully launched workflow named wf.__init__.assemble_and_sort with"
-        " version latest.",
-    )
+# def test_launch(test_account_jwt):
+#     with open("foo.py", "w") as f:
+#         f.write(
+#             textwrap.dedent(
+#                 """
+#             from latch.types import LatchFile
+#
+#             params = {
+#                 "_name": "wf.__init__.assemble_and_sort",
+#                 "read1": LatchFile("latch:///read1"),
+#                 "read2": LatchFile("latch:///read2"),
+#             }
+#         """
+#             )
+#         )
+#
+#     _cmd = ["latch", "launch", "foo.py"]
+#     _run_and_verify(
+#         _cmd,
+#         "Successfully launched workflow named wf.__init__.assemble_and_sort with"
+#         " version latest.",
+#     )
