@@ -7,16 +7,21 @@ special utilities that handle this securely.
 ## Adding Secrets
 
 To add a secret, simply navigate to the [Latch Console](https://console.latch.bio)
-and head to Account Settings > Developer Settings.
+and head to Account Settings.
 
 ![How to get to Account Settings](../assets/settings-menu.png)
 
+From there, navigate to Developer Settings
+
 ![How to get to Developer Settings](../assets/developer-settings.png)
 
-From there, scroll down to the 'Secrets' section and add your secrets. Secrets
-consist of key-value pairs where keys are unique across a workspace. Secrets are
-also immutable, so the only way to change the value of a given secret is to
-delete it and add a new one with the same key.
+From there, scroll down to the 'Secrets' section and add your secrets.
+
+![How to add a Secret](../assets/secrets.png)
+
+Secrets consist of key-value pairs where keys are unique across a workspace.
+Secrets are also immutable, so the only way to change the value of a given
+secret is to delete it and add a new one with the same key.
 
 ## Using Secrets
 
