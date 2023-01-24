@@ -10,7 +10,7 @@ from packaging.version import parse as parse_version
 
 import latch_cli.click_utils
 from latch_cli.exceptions.handler import CrashHandler
-from latch_cli.services.init.init import _Templates
+from latch_cli.services.init.init import template_flag_to_option
 from latch_cli.utils import get_latest_package_version, get_local_package_version
 
 latch_cli.click_utils.patch()
@@ -125,7 +125,7 @@ def login(connection: Optional[str]):
     "--template",
     "-t",
     type=click.Choice(
-        [t.name for t in _Templates],
+        list(template_flag_to_option.keys()),
         case_sensitive=False,
     ),
 )
@@ -137,12 +137,15 @@ def init(pkg_name: str, template: Optional[str] = None):
 
     from latch_cli.services.init import init
 
-    init(pkg_name, template)
+    created = init(pkg_name, template)
+    if created:
+        click.secho(f"Created a latch workflow in `{pkg_name}`", fg="green")
+        click.secho("Run", fg="green")
+        click.secho(f"\t$ latch register {pkg_name}", fg="green")
+        click.secho("To register the workflow with console.latch.bio.", fg="green")
+        return
 
-    click.secho(f"Created a latch workflow called {pkg_name}.", fg="green")
-    click.secho("Run", fg="green")
-    click.secho(f"\t$ latch register {pkg_name}", fg="green")
-    click.secho("To register the workflow with console.latch.bio.", fg="green")
+    click.secho("No workflow created.", fg="yellow")
 
 
 @main.command("cp")
@@ -432,8 +435,7 @@ def preview(pkg_root: Path):
 
 @main.command("workspace")
 def workspace():
-    """Spawns an interactive terminal prompt allowing users to choose what workspace they want to work in.
-    """
+    """Spawns an interactive terminal prompt allowing users to choose what workspace they want to work in."""
 
     crash_handler.message = "Unable to fetch workspaces"
     crash_handler.pkg_root = str(Path.cwd())
@@ -445,8 +447,7 @@ def workspace():
 
 @main.command("get-executions")
 def get_executions():
-    """Spawns an interactive terminal UI that shows all executions in a given workspace
-    """
+    """Spawns an interactive terminal UI that shows all executions in a given workspace"""
 
     crash_handler.message = "Unable to fetch executions"
 

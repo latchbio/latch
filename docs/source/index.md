@@ -81,6 +81,7 @@ basics/customizing_interface
 basics/caching
 basics/conditional_section
 basics/map_task
+basics/adding_secrets
 ```
 
 ```{toctree}

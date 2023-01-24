@@ -1,5 +1,5 @@
 from os import PathLike
-from typing import Optional, Type, Union
+from typing import Annotated, Optional, Type, Union, get_args, get_origin
 
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
@@ -148,6 +148,10 @@ class LatchDirPathTransformer(FlyteDirToMultipartBlobTransformer):
             raise TypeError(
                 "Casting from Pathlike to LatchDir is currently not supported."
             )
+
+        
+        while get_origin(expected_python_type) == Annotated:
+            expected_python_type = get_args(expected_python_type)[0]
 
         if not issubclass(expected_python_type, LatchDir):
             raise TypeError(

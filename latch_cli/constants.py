@@ -1,7 +1,7 @@
 """Package-wide constants."""
 
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 
 
 @dataclass
@@ -17,7 +17,7 @@ class OAuth2Constants:
     """Redirect URL registered with authentication server."""
 
 
-MB = 2**20
+MB = 2 ** 20
 
 FILE_MAX_SIZE = 4 * MB
 FILE_CHUNK_SIZE = 5 * MB

@@ -41,7 +41,7 @@ def do_sleep_with_version(foo: str) -> str:
 
 Each task maintains its own cache that is independent from whatever workflow it
 happens to be associated with.  This allows tasks to preserve their cache
-across workflow re-registers if other tasks are modified. 
+across workflow re-registers if other tasks are modified.
 
 Examples of when a task's cache will get invalidated:
 
@@ -63,8 +63,8 @@ A task's cache will be invalidated and the task will be run from scratch if any
 of the following change between executions:
 
 * the account to which the task is registered, including:
-    * individual user accounts
-    * workspaces owned by the same user
+  * individual user accounts
+  * workspaces owned by the same user
 * the name of the task (name of the function)
 * the function signature of the task (name and typing of all input / output
   parameters)

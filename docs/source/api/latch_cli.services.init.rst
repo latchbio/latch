@@ -10,6 +10,7 @@ Subpackages
    latch_cli.services.init.assemble_and_sort
    latch_cli.services.init.example_conda
    latch_cli.services.init.example_r
+   latch_cli.services.init.template
 
 Submodules
 ----------

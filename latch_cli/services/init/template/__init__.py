@@ -1,13 +1,13 @@
 """
-Minimal template workflow to show how to run R programs in Latch
+Minimal template workflow to show the structure of a Latch workflow
 
-For a more comprehensive template, see the assemble_and_sort workflow
-For examples on how to use R in Latch, see https://docs.latch.bio/examples/workflows_examples.html
+For a more comprehensive example, see the assemble_and_sort workflow
+For examples on how to use the Latch SDK, see https://docs.latch.bio/examples/workflows_examples.html
 """
 
-from wf.r_task import r_task
+from wf.task import task
 
-from latch import small_task, workflow
+from latch import workflow
 from latch.types import (
     LatchAuthor,
     LatchFile,
@@ -43,5 +43,7 @@ metadata = LatchMetadata(
 
 # change the name of this function to something more descriptive
 @workflow(metadata)
-def r_workflow(input_file: LatchFile, output_directory: LatchOutputDir) -> LatchFile:
-    return r_task(input_file=input_file, output_directory=output_directory)
+def latch_workflow(
+    input_file: LatchFile, output_directory: LatchOutputDir
+) -> LatchFile:
+    return task(input_file=input_file, output_directory=output_directory)

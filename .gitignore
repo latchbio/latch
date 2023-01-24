@@ -5,6 +5,7 @@ latch.egg-info
 .hypothesis
 **/.DS_Store
 **/.pytest_cache
+.env/
 
 __pycache__
 
