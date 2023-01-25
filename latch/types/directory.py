@@ -1,5 +1,5 @@
 from os import PathLike
-from typing import Annotated, Optional, Type, Union, get_args, get_origin
+from typing import Optional, Type, Union, get_args, get_origin
 
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
@@ -56,7 +56,6 @@ class LatchDir(FlyteDirectory):
         remote_path: Optional[PathLike] = None,
         **kwargs,
     ):
-
         if path is None:
             raise ValueError("Unable to instantiate LatchDir with None")
 
@@ -64,13 +63,13 @@ class LatchDir(FlyteDirectory):
         # representation.
         self.path = str(path)
 
-        if _is_valid_url(path) and remote_path is None:
-            self._remote_directory = str(path)
+        if _is_valid_url(self.path) and remote_path is None:
+            self._remote_directory = self.path
         else:
             self._remote_directory = None if remote_path is None else str(remote_path)
 
         if kwargs.get("downloader") is not None:
-            super().__init__(path, kwargs["downloader"], remote_path)
+            super().__init__(self.path, kwargs["downloader"], self._remote_directory)
         else:
 
             def downloader():
@@ -89,7 +88,7 @@ class LatchDir(FlyteDirectory):
                         is_multipart=True,
                     )
 
-            super().__init__(path, downloader, self._remote_directory)
+            super().__init__(self.path, downloader, self._remote_directory)
 
     @property
     def local_path(self) -> str:
@@ -99,7 +98,7 @@ class LatchDir(FlyteDirectory):
         # user wishing to access the file without using `open`.
         self.__fspath__()
 
-        return self.path
+        return str(self.path)
 
     @property
     def remote_path(self) -> Optional[str]:
@@ -149,7 +148,7 @@ class LatchDirPathTransformer(FlyteDirToMultipartBlobTransformer):
                 "Casting from Pathlike to LatchDir is currently not supported."
             )
 
-        
+
         while get_origin(expected_python_type) == Annotated:
             expected_python_type = get_args(expected_python_type)[0]
 
