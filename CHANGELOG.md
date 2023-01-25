@@ -15,6 +15,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.11.1 - 2023-01-25
+
+### Fixed
+
+* LatchDir initialized with local path initialized to Path object fails on upload
+
 ## 2.11.0 - 2023-01-20
 
 ### Added
