@@ -64,13 +64,13 @@ class LatchDir(FlyteDirectory):
         # representation.
         self.path = str(path)
 
-        if _is_valid_url(path) and remote_path is None:
-            self._remote_directory = str(path)
+        if _is_valid_url(self.path) and remote_path is None:
+            self._remote_directory = self.path
         else:
             self._remote_directory = None if remote_path is None else str(remote_path)
 
         if kwargs.get("downloader") is not None:
-            super().__init__(path, kwargs["downloader"], remote_path)
+            super().__init__(path, kwargs["downloader"], self._remote_directory)
         else:
 
             def downloader():
@@ -149,7 +149,7 @@ class LatchDirPathTransformer(FlyteDirToMultipartBlobTransformer):
                 "Casting from Pathlike to LatchDir is currently not supported."
             )
 
-        
+
         while get_origin(expected_python_type) == Annotated:
             expected_python_type = get_args(expected_python_type)[0]
 
