@@ -98,7 +98,7 @@ class LatchDir(FlyteDirectory):
         # user wishing to access the file without using `open`.
         self.__fspath__()
 
-        return self.path
+        return str(self.path)
 
     @property
     def remote_path(self) -> Optional[str]:
