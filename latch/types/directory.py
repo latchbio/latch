@@ -1,5 +1,5 @@
 from os import PathLike
-from typing import Annotated, Optional, Type, Union, get_args, get_origin
+from typing import Optional, Type, Union, get_args, get_origin
 
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
