@@ -66,13 +66,13 @@ class LatchFile(FlyteFile):
         # representation.
         self.path = str(path)
 
-        if _is_valid_url(path) and remote_path is None:
+        if _is_valid_url(self.path) and remote_path is None:
             self._remote_path = str(path)
         else:
             self._remote_path = None if remote_path is None else str(remote_path)
 
         if kwargs.get("downloader") is not None:
-            super().__init__(path, kwargs["downloader"], remote_path)
+            super().__init__(self.path, kwargs["downloader"], self._remote_path)
         else:
 
             def downloader():
@@ -91,7 +91,7 @@ class LatchFile(FlyteFile):
                         is_multipart=False,
                     )
 
-            super().__init__(path, downloader, self._remote_path)
+            super().__init__(self.path, downloader, self._remote_path)
 
     @property
     def local_path(self) -> str:
@@ -101,7 +101,7 @@ class LatchFile(FlyteFile):
         # user wishing to access the file without using `open`.
         self.__fspath__()
 
-        return self.path
+        return str(self.path)
 
     @property
     def remote_path(self) -> Optional[str]:
