@@ -56,7 +56,6 @@ class LatchDir(FlyteDirectory):
         remote_path: Optional[PathLike] = None,
         **kwargs,
     ):
-
         if path is None:
             raise ValueError("Unable to instantiate LatchDir with None")
 
@@ -70,7 +69,7 @@ class LatchDir(FlyteDirectory):
             self._remote_directory = None if remote_path is None else str(remote_path)
 
         if kwargs.get("downloader") is not None:
-            super().__init__(path, kwargs["downloader"], self._remote_directory)
+            super().__init__(self.path, kwargs["downloader"], self._remote_directory)
         else:
 
             def downloader():
@@ -89,7 +88,7 @@ class LatchDir(FlyteDirectory):
                         is_multipart=True,
                     )
 
-            super().__init__(path, downloader, self._remote_directory)
+            super().__init__(self.path, downloader, self._remote_directory)
 
     @property
     def local_path(self) -> str:
