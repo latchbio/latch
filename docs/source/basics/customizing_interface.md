@@ -93,20 +93,6 @@ We recommend limiting your workflow description to one sentence, as longer descr
 
 ```python
 @workflow
-def foo(
-    ...
-):
-    """This line is a short workflow description, displayed in the explore tab and sidebar.
-
-    ...
-    """
-    ...
-```
-
-Example:
-
-```python
-@workflow
 def rnaseq(
     ...
 ):
@@ -117,41 +103,11 @@ def rnaseq(
     ...
 ```
 
-![Short Description](../assets/ui/one-line%20description.png)
+![Short Description](../assets/ui/one-line-description.png)
 
 ### Long Form Description
 
 The body of the workflow function docstring is where you write long-form markdown documentation. This markdown will get rendered in the dedicated workflow "About" tab on your interface. Feel free to include links, lists, code blocks, and more.
-
-```python
-@workflow
-def foo(
-    ...
-):
-    """This line is a short workflow description, displayed in the explore tab
-
-    This line starts the long workflow description in markdown, displayed in
-    this workflow's about tab
-
-    Lists
-    - item1
-    - item2
-    - item3
-
-    ### headers
-
-    Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod
-    tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
-    quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
-    consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse
-    cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat
-    non proident, sunt in culpa qui officia deserunt mollit anim id est
-    laborum.
-    """
-    ...
-```
-
-Example:
 
 ```python
 @workflow
@@ -188,7 +144,7 @@ def rnaseq(
     """
 ```
 
-![Long Description](../assets/ui/long-form%20description.png)
+![Long Description](../assets/ui/long-form-description.png)
 
 ---
 
@@ -269,7 +225,7 @@ Latch parses the Python type of your workflow parameters to generate the appropr
 
 Below is a list of examples of Python types and how they translate to the UI:
 
-1. LatchFile
+### LatchFile
 
 ```python
 from latch.types import LatchFile
@@ -288,7 +244,7 @@ def bactopia_wf(
 
 `LatchFile` receives a button that allows users of the workflow to select data from their Latch account. The `Optional` type renders the toggle for `fastq_one`. When the toggle is turned on, Latch automatically detects the empty path and throws a warning. Additionally, you can set the default value to the path to `None`.
 
-2. LatchDir
+### LatchDir
 
 ```python
 from latch.types import LatchDir
@@ -304,7 +260,7 @@ def bactopia_wf(
 
 ![LatchDir](../assets/ui/latchdir.png)
 
-3. Boolean
+### Boolean
 
 ```python
 hybrid: bool = False,
@@ -312,7 +268,7 @@ hybrid: bool = False,
 
 ![Boolean](../assets/ui/boolean.png)
 
-4. Enum
+### Enum
 
 ```python
 from enum import Enum
@@ -336,7 +292,7 @@ def bactopia_wf(
 
 ![Enum](../assets/ui/enum.png)
 
-5. Int
+### Int
 
 ```python
 @workflow
@@ -349,7 +305,7 @@ def bactopia_wf(
 
 ![int](../assets/ui/int.png)
 
-6. Str
+### Str
 
 ```python
 @workflow
@@ -362,7 +318,7 @@ def bactopia_wf(
 
 ![str](../assets/ui/str.png)
 
-7. List
+### List
 
 ```python
 from latch.types import LatchFile
@@ -380,7 +336,7 @@ def rnaseq(
 
 When `List` is used, Latch generates a plus sign, where users can add additional values of the same type. For `LatchFile`s specifically, an additional button **Bulk Add Files** is generated, allowing users to select multiple files at once.
 
-8. Dataclass
+### Dataclass
 
 If you want to handle file references and their associated metadata as an input to your workflow, you may want to use a `dataclass`.
 

@@ -15,6 +15,8 @@ Let's look at an example.
 
 ```python
 from pathlib import Path
+from latch.types import LatchFile, LatchDir
+import subprocess
 
 
 @small_task
@@ -146,6 +148,8 @@ In this example, all files ending with `.fastq.gz` in the working directory of
 the task will be returned to the `latch:///fastqc_outputs` directory:
 
 ```python
+from latch.types import file_glob
+
 @small_task
 def task():
 

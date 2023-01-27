@@ -11,6 +11,9 @@ It is possible to consume the outputs from conditional nodes. And to pass in out
 The boolean expressions in the condition use `&` and `|` as and / or operators. Additionally, binary expressions are not allowed. Thus if a task returns a boolean and we wish to use it in a condition of a conditional block, we must use built in truth checks: `result.is_true()` or `result.is_false()`
 
 ```python
+from latch import small_task
+from latch import create_conditional_section
+
 @small_task
 def square(n: float) -> float:
     """
