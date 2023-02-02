@@ -8,7 +8,6 @@ import sys
 import termios
 import tty
 from enum import Enum
-from http.client import HTTPException
 from pathlib import Path
 from typing import Callable, Optional, Union
 
@@ -17,15 +16,8 @@ import asyncssh
 import boto3
 import websockets.client as websockets
 import websockets.exceptions
-from flytekit.core.context_manager import FlyteEntities
-from flytekit.core.workflow import PythonFunctionWorkflow
-from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
-from prompt_toolkit.completion import NestedCompleter, PathCompleter
-from prompt_toolkit.history import FileHistory
 from prompt_toolkit.patch_stdout import patch_stdout
-from prompt_toolkit.shortcuts import PromptSession
 
-from latch_cli.centromere.utils import _import_flyte_objects
 from latch_cli.config.latch import config
 from latch_cli.tinyrequests import post
 from latch_cli.utils import (
@@ -33,16 +25,6 @@ from latch_cli.utils import (
     current_workspace,
     retrieve_or_login,
 )
-
-QUIT_COMMANDS = ["quit", "exit"]
-EXEC_COMMANDS = ["shell", "run", "run-script"]
-LIST_COMMANDS = ["ls", "list-tasks"]
-
-COMMAND_EXPRESSION = re.compile(
-    "^\s*(run\s+.+|run-script\s+.+|shell|list-tasks|ls.*)\s*$"
-)
-
-COMMANDS = QUIT_COMMANDS + EXEC_COMMANDS + LIST_COMMANDS
 
 
 def _get_latest_image(pkg_root: Path) -> str:
@@ -77,28 +59,13 @@ async def _copy_files(
     ssh_conn: asyncssh.SSHClientConnection,
     pkg_root: Path,
 ):
-    # TODO(ayush) rsync
 
-    coroutines = []
-    for path in [
-        pkg_root.joinpath("wf"),
-        pkg_root.joinpath("data"),
-        pkg_root.joinpath("scripts"),
-    ]:
-        if path.exists():
-            coroutines.append(
-                asyncssh.scp(
-                    path,
-                    (ssh_conn, f"~/{pkg_root.name}"),
-                    recurse=True,
-                    block_size=16 * 1024,
-                )
-            )
-        else:
-            await aioconsole.aprint(f"Could not find {path} - skipping")
-
-    if len(coroutines) > 0:
-        await asyncio.gather(*coroutines)
+    await asyncssh.scp(
+        pkg_root,
+        (ssh_conn, f"~/{pkg_root.name}"),
+        recurse=True,
+        block_size=16 * 1024,
+    )
 
 
 class _MessageType(Enum):
@@ -245,31 +212,6 @@ async def _run_local_dev_session(pkg_root: Path):
     # doing anything
     _get_latest_image(pkg_root)
 
-    def file_filter(filename: str) -> bool:
-        file_path = Path(filename).resolve()
-        return file_path == scripts_dir or scripts_dir in file_path.parents
-
-    completer = NestedCompleter(
-        {
-            "run-script": PathCompleter(
-                get_paths=lambda: [str(pkg_root)],
-                file_filter=file_filter,
-            ),
-            "run": None,
-            "ls": None,
-            "list-tasks": None,
-            "shell": None,
-        },
-        ignore_case=True,
-    )
-    session = PromptSession(
-        ">>> ",
-        completer=completer,
-        complete_while_typing=True,
-        auto_suggest=AutoSuggestFromHistory(),
-        history=FileHistory(pkg_root.joinpath(".latch_history")),
-    )
-
     key_path = pkg_root / ".ssh_key"
 
     with TemporarySSHCredentials(key_path) as ssh:
@@ -353,68 +295,38 @@ async def _run_local_dev_session(pkg_root: Path):
                         "Successfully connected to remote instance."
                     )
                     try:
-                        while True:
-                            with session.input.raw_mode():
-                                cmd: str = await session.prompt_async()
-                                cmd = cmd.strip()
+                        await aioconsole.aprint("Syncing local changes... ")
+                        await _copy_files(ssh_conn, pkg_root)
+                        await aioconsole.aprint("Finished syncing.")
 
-                            if cmd == "":
-                                continue
+                        await _send_message(ws, "shell")
 
-                            if cmd in QUIT_COMMANDS:
-                                raise EOFError
+                        image_name_tagged = _get_latest_image(pkg_root)
+                        await _send_message(ws, docker_access_token)
+                        await _send_message(ws, image_name_tagged)
+                        await aioconsole.aprint(f"Pulling {image_name_tagged}... ")
 
-                            if not COMMAND_EXPRESSION.match(cmd):
-                                await aioconsole.aprint("Invalid command")
+                        await _get_messages(ws, show_output=False)
+                        await _get_messages(ws, show_output=False)
+                        await aioconsole.aprint("Image successfully pulled.\n")
 
-                                closest = difflib.get_close_matches(
-                                    cmd.strip().split()[0], COMMANDS, 1
-                                )
-                                if len(closest) > 0:
-                                    await aioconsole.aprint(
-                                        f"Did you mean \x1b[1m{closest[0]}\x1b[22m?"
-                                    )
-                                continue
+                        await _get_messages(ws, show_output=True)
 
-                            if (
-                                cmd.startswith("run")
-                                or cmd == "list-tasks"
-                                or cmd == "shell"
-                            ):
-                                await aioconsole.aprint("Syncing local changes... ")
-                                await _copy_files(ssh_conn, pkg_root)
-                                await aioconsole.aprint("Finished syncing.")
-
-                            await _send_message(ws, cmd)
-
-                            image_name_tagged = _get_latest_image(pkg_root)
-                            await _send_message(ws, docker_access_token)
-                            await _send_message(ws, image_name_tagged)
-                            await aioconsole.aprint(f"Pulling {image_name_tagged}... ")
-
-                            await _get_messages(ws, show_output=False)
-                            await _get_messages(ws, show_output=False)
-                            await aioconsole.aprint("Image successfully pulled.\n")
-
-                            await _get_messages(ws, show_output=True)
-
-                            if cmd == "shell":
-                                with session.input.detach():
-                                    with patch_stdout(raw=True):
-                                        await _shell_session(ws)
-                                        await ws.drain()
+                        with patch_stdout(raw=True):
+                            await _shell_session(ws)
+                            await ws.close()
                     except websockets.exceptions.ConnectionClosed:
                         continue
                 except (KeyboardInterrupt, EOFError):
-                    await aioconsole.aprint("Exiting local development session")
                     await ws.close()
-                    return
                 finally:
+                    await aioconsole.aprint("Exiting local development session")
                     close_resp = post(
                         config.api.centromere.stop_local_dev,
                         headers={"Authorization": f"Bearer {retrieve_or_login()}"},
                     )
                     close_resp.raise_for_status()
+                    return
 
 
 def local_development(pkg_root: Path):
