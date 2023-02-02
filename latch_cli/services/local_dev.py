@@ -11,12 +11,14 @@ from enum import Enum
 from pathlib import Path
 from typing import Callable, Optional, Union
 
+import shlex
 import aioconsole
 import asyncssh
 import boto3
 import websockets.client as websockets
 import websockets.exceptions
 from prompt_toolkit.patch_stdout import patch_stdout
+import subprocess
 
 from latch_cli.config.latch import config
 from latch_cli.tinyrequests import post
@@ -55,17 +57,26 @@ def _get_latest_image(pkg_root: Path) -> str:
     return f"{config.dkr_repo}/{ws_id}_{pkg_root.name}:{latest_version}"
 
 
-async def _copy_files(
-    ssh_conn: asyncssh.SSHClientConnection,
+async def _setup_rsync(
     pkg_root: Path,
+    usr: str,
+    ip: str
 ):
-
-    await asyncssh.scp(
-        pkg_root,
-        (ssh_conn, f"~/{pkg_root.name}"),
-        recurse=True,
-        block_size=16 * 1024,
+    outs = await asyncio.subprocess.create_subprocess_exec(
+        "rsync",
+        "-v",
+        "-v",
+        "-a",
+        "--delete",
+        f"{str(pkg_root)}/",
+        f"{usr}@{ip}:~/{pkg_root.name}",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
     )
+    stdout, stderr = await outs.communicate()
+    await aioconsole.aprint(stdout.decode("utf-8"))
+    await aioconsole.aprint(stderr.decode("utf-8"))
+
 
 
 class _MessageType(Enum):
@@ -206,8 +217,6 @@ async def _shell_session(
 
 
 async def _run_local_dev_session(pkg_root: Path):
-    scripts_dir = pkg_root.joinpath("scripts").resolve()
-
     # hit the endpoint to make sure that a workflow image exists in ecr before
     # doing anything
     _get_latest_image(pkg_root)
@@ -280,11 +289,7 @@ async def _run_local_dev_session(pkg_root: Path):
 
         async with asyncssh.connect(
             centromere_ip, username=centromere_username
-        ) as ssh_conn:
-            await aioconsole.aprint("Copying your local changes... ", end="")
-            await _copy_files(ssh_conn, pkg_root)
-            await aioconsole.aprint("Done.")
-
+        ):
             async for ws in websockets.connect(
                 f"ws://{centromere_ip}:{port}/ws",
                 close_timeout=0,
@@ -295,9 +300,9 @@ async def _run_local_dev_session(pkg_root: Path):
                         "Successfully connected to remote instance."
                     )
                     try:
-                        await aioconsole.aprint("Syncing local changes... ")
-                        await _copy_files(ssh_conn, pkg_root)
-                        await aioconsole.aprint("Finished syncing.")
+                        await aioconsole.aprint("Setting up local sync...")
+                        await _setup_rsync(pkg_root, centromere_username, centromere_ip)
+                        await aioconsole.aprint("Done.")
 
                         await _send_message(ws, "shell")
 
@@ -318,6 +323,9 @@ async def _run_local_dev_session(pkg_root: Path):
                     except websockets.exceptions.ConnectionClosed:
                         continue
                 except (KeyboardInterrupt, EOFError):
+                    await ws.close()
+                except Exception as e:
+                    await aioconsole.aprint(f"Error: {e}")
                     await ws.close()
                 finally:
                     await aioconsole.aprint("Exiting local development session")
