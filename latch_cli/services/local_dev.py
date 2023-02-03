@@ -1,8 +1,6 @@
 import asyncio
-import difflib
 import json
 import os
-import re
 import signal
 import sys
 import termios
@@ -11,14 +9,12 @@ from enum import Enum
 from pathlib import Path
 from typing import Callable, Optional, Union
 
-import shlex
 import aioconsole
 import asyncssh
 import boto3
 import websockets.client as websockets
 import websockets.exceptions
 from prompt_toolkit.patch_stdout import patch_stdout
-import subprocess
 
 from latch_cli.config.latch import config
 from latch_cli.tinyrequests import post
