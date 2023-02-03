@@ -16,7 +16,7 @@ Bioinformatics workflows developed with the SDK automatically receive:
 
 ## Problems Latch SDK solves
 
-**Building the infrastructure to share bioinformatics pipelines at scale is time-consuming.** Bioinformatics is dominated by terabytes of data and workflows that require multiple CPUs or GPUs, making sharing and scaling pipelines difficult. It often take engineering teams 6-12 months to build a robust cloud infrastructure necessary to support the ingestion and execution of bioinformatics pipelines.
+**Building the infrastructure to share bioinformatics pipelines at scale is time-consuming.** Bioinformatics is dominated by terabytes of data and workflows that require multiple CPUs or GPUs, making sharing and scaling pipelines difficult. 
 
 Lacth SDK allows developers to upload workflows to the full-featured [Latch Platform](https://console.latch.bio) with ease. The platform is built with Kubernetes, ensuring containerization, portability, and scalability are available out-of-the-box. Behind the scene, Latch takes advantage of AWS spot instances, offering ultra-fast runtimes with extremely low cloud costs for teams.
 
@@ -31,6 +31,7 @@ With Latch SDK, developers can write the description to their workflow and custo
 Latch SDK containerizes and versions the code in the background each time a workflow is registered to the Latch platform. Container images are constructed by parsing user-defined [Dockerfiles](https://docs.docker.com/engine/reference/builder/). Similarly, versions are user-specified as any unique plaintext string. This behavior is a strict requirement of the toolchain and gives us remarkable guarantees with respect to code reproducibility, portability and scalability.
 
 ## What the Latch SDK is not
+
 * **A self-hosted solution**: Currently, you cannot write your workflow using Latch SDK and host it in your own AWS instance or an HPC. The infrastructure serving bioinformatics pipelines is fully managed by Latch. This allows us to rapidly iterate to bring on high quality features, give cost and performance guarantees, and ensure that security is offered out-of-the-box.
 
 ## Examples
@@ -75,9 +76,10 @@ basics/what_is_a_workflow
 basics/writing_dockerfiles
 basics/working_with_files
 basics/parameter_types
+basics/customizing_interface
+basics/customize_docs
 basics/messages
 basics/defining_cloud_resources
-basics/customizing_interface
 basics/caching
 basics/conditional_section
 basics/map_task

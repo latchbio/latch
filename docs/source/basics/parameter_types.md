@@ -11,17 +11,35 @@ registration.
 
 ## Supported Types
 
-Below is an exhaustive list of supported types currently shipped with the SDK.
+Tasks support all native Python types, while workflow only supports a subset of types.
+
+Below is an exhaustive list of supported workflow parameter types currently shipped with the SDK, and how they will translate to the workflow GUI once the workflow is registered.
 
 ### Integers
 
 ```python
-@task
-def foo(
-  a: int = 10
-):
-  ...
+@workflow
+def bactopia_wf(
+    ...
+    coverage: int,
+    ...
+)
 ```
+
+![int](../assets/ui/int.png)
+
+### Boolean
+
+```python
+@workflow
+def bactopia_wf(
+    ...
+    hybrid: bool,
+    ...
+)
+```
+
+![Boolean](../assets/ui/boolean.png)
 
 ### Floats
 
@@ -36,51 +54,74 @@ def foo(
 ### Strings
 
 ```python
-@task
-def foo(
-  a: str = "bio"
-):
-  ...
+@workflow
+def bactopia_wf(
+    ...
+    sample_name: str = "sample1"
+    ...
+)
 ```
+
+![str](../assets/ui/str.png)
 
 ### Files
 
 ```python
-@task
-def foo(
-  a: LatchFile = LatchFile("/root/data.txt")
-):
-  ...
+from latch.types import LatchFile
+from typing import Optional
+
+...
+@workflow
+def bactopia_wf(
+    ...
+    fastq_one: Optional[LatchFile] = None,
+    ...
+)
 ```
+
+![LatchFile](../assets/ui/optional-latch-file.png)
 
 ### Directories
 
 ```python
-@task
-def foo(
-  a: LatchDir = LatchDir("/root/test_data/")
-):
-  ...
+from latch.types import LatchDir
+
+...
+@workflow
+def bactopia_wf(
+    ...
+    output_dir: LatchDir,
+    ...
+)
 ```
 
+![LatchDir](../assets/ui/latchdir.png)
+
 ### Enums
+
 _Note_: As expressed in the [Flyte Docs](https://docs.flyte.org/projects/cookbook/en/stable/auto/core/type_system/enums.html), Enum values can only be strings.
+
 ```python
 from enum import Enum
 
 # You must define your Enum as a python class before using it as an annotation.
-class Statistic(Enum):
+class SpeciesGenomeSize(Enum):
+    mash = "mash estimate"
     min = "min"
     median = "median"
     mean = "mean"
     max = "max"
 
-@task
-def foo(
-  a: Statistic = Statistic.min
-):
-  ...
+...
+@workflow
+def bactopia_wf(
+    ...
+    species_genome_size: SpeciesGenomeSize,
+    ...
+)
 ```
+
+![Enum](../assets/ui/enum.png)
 
 ### Unions
 
@@ -107,15 +148,41 @@ Finally, we currently support a single collection type which is `List[T]`, also
 provided by the `typing` module.
 
 ```python
-from typing import List, Optional
+from latch.types import LatchFile
+from typing import List
 
-@task
-def foo(
-  a: List[str] = ["AUG", "GGG"],
-  b: List[Optional[int]] = [1, None, 3, 4, None, 6]
+@workflow
+def rnaseq(
+    sample_identifiers: List[str],
+    sample_reads: List[LatchFile]
 ):
-  ...
+...
 ```
+
+![List](../assets/ui/list.png)
+
+### Dataclass
+
+If you want to handle file references and their associated metadata as an input to your workflow, you may want to use a `dataclass`.
+
+```python
+from dataclasses import dataclass
+from dataclasses_json import dataclass_json
+
+@dataclass_json
+@dataclass
+class Sample:
+    name: str
+    fastq: LatchFile
+
+@workflow
+def rnaseq(
+    samples: List[Sample]
+):
+
+```
+
+![List of class](../assets/ui/dataclass.png)
 
 ## Setting Default Values
 
