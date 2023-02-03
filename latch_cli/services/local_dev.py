@@ -57,26 +57,39 @@ def _get_latest_image(pkg_root: Path) -> str:
     return f"{config.dkr_repo}/{ws_id}_{pkg_root.name}:{latest_version}"
 
 
-async def _setup_rsync(
+async def _poll_rsync(
     pkg_root: Path,
-    usr: str,
-    ip: str
+    ip: str,
+    ssh_port: str,
+    key_path: Path,
+    interval: float = 0.5,
 ):
-    outs = await asyncio.subprocess.create_subprocess_exec(
+    command = [
         "rsync",
-        "-v",
-        "-v",
-        "-a",
+        "-e",
+        f"'ssh -p {ssh_port} -i {str(key_path)} -o StrictHostKeyChecking=no'",
+        "-az",
         "--delete",
-        f"{str(pkg_root)}/",
-        f"{usr}@{ip}:~/{pkg_root.name}",
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-    stdout, stderr = await outs.communicate()
-    await aioconsole.aprint(stdout.decode("utf-8"))
-    await aioconsole.aprint(stderr.decode("utf-8"))
+        f"{str(pkg_root)}",
+        f"root@{ip}:~/{pkg_root.name}/",
+    ]
+    total_fails = 0
+    while True:
+        outs = await asyncio.subprocess.create_subprocess_shell(
+            " ".join(command),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        if outs.returncode != 0:
+            total_fails += 1
 
+        if total_fails > 100:
+            stdout, stderr = await outs.communicate()
+            await aioconsole.aprint(stdout.decode("utf-8"))
+            await aioconsole.aprint(stderr.decode("utf-8"))
+            raise RuntimeError("rsync failed too many times")
+
+        await asyncio.sleep(interval)
 
 
 class _MessageType(Enum):
@@ -223,6 +236,8 @@ async def _run_local_dev_session(pkg_root: Path):
 
     key_path = pkg_root / ".ssh_key"
 
+    await aioconsole.aprint(str(key_path))
+
     with TemporarySSHCredentials(key_path) as ssh:
         headers = {"Authorization": f"Bearer {retrieve_or_login()}"}
 
@@ -263,6 +278,7 @@ async def _run_local_dev_session(pkg_root: Path):
             secret_key = docker_info["tmp_secret_key"]
             session_token = docker_info["tmp_session_token"]
             port = init_local_dev_data["port"]
+            ssh_port = init_local_dev_data["ssh_port"]
         except KeyError as e:
             raise ValueError(
                 f"Malformed response from initialization endpoint: missing {e}"
@@ -301,7 +317,7 @@ async def _run_local_dev_session(pkg_root: Path):
                     )
                     try:
                         await aioconsole.aprint("Setting up local sync...")
-                        await _setup_rsync(pkg_root, centromere_username, centromere_ip)
+                        asyncio.create_task(_poll_rsync(pkg_root, centromere_ip, ssh_port, key_path))
                         await aioconsole.aprint("Done.")
 
                         await _send_message(ws, "shell")
