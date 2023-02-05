@@ -334,8 +334,6 @@ async def _run_local_dev_session(pkg_root: Path):
                         asyncio.create_task(_watch_and_rsync(pkg_root, centromere_ip, ssh_port, key_path))
                         await aioconsole.aprint("Done.")
 
-                        await _send_message(ws, "start")
-
                         image_name_tagged = _get_latest_image(pkg_root)
                         await _send_message(ws, docker_access_token)
                         await _send_message(ws, image_name_tagged)
@@ -349,14 +347,10 @@ async def _run_local_dev_session(pkg_root: Path):
 
                         with patch_stdout(raw=True):
                             await _shell_session(ws)
-                            await ws.close()
                     except websockets.exceptions.ConnectionClosed:
                         continue
-                except (KeyboardInterrupt, EOFError):
-                    await ws.close()
                 except Exception as e:
                     await aioconsole.aprint(traceback.format_exc())
-                    await ws.close()
                 finally:
                     await aioconsole.aprint("Exiting local development session")
                     await ws.close()
