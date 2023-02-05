@@ -61,9 +61,9 @@ class _UserAPI:
 
 @dataclass
 class _CentromereAPI:
-    provision: str = "/sdk/provision-centromere"
-    start_local_dev: str = "/sdk/initiate-local-development-session"
-    stop_local_dev: str = "/sdk/close-local-development-session"
+    provision: str = "/sdk/provision-centromere-dev"
+    start_local_dev: str = "/sdk/initiate-local-development-session-dev"
+    stop_local_dev: str = "/sdk/close-local-development-session-dev"
 
 
 @dataclass

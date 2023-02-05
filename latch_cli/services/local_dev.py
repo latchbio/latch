@@ -7,7 +7,8 @@ import termios
 import tty
 from enum import Enum
 from pathlib import Path
-from typing import Callable, Optional, Union
+from typing import Callable, Optional, Union, Tuple
+import traceback
 
 import aioconsole
 import asyncssh
@@ -15,7 +16,8 @@ import boto3
 import websockets.client as websockets
 import websockets.exceptions
 from prompt_toolkit.patch_stdout import patch_stdout
-
+from watchfiles import awatch
+import time
 from latch_cli.config.latch import config
 from latch_cli.tinyrequests import post
 from latch_cli.utils import (
@@ -53,39 +55,57 @@ def _get_latest_image(pkg_root: Path) -> str:
     return f"{config.dkr_repo}/{ws_id}_{pkg_root.name}:{latest_version}"
 
 
-async def _poll_rsync(
+async def _watch_and_rsync(
     pkg_root: Path,
     ip: str,
     ssh_port: str,
     key_path: Path,
-    interval: float = 0.5,
+    #
+    startup_grace_period: int = 10,
 ):
-    command = [
-        "rsync",
-        "-e",
-        f"'ssh -p {ssh_port} -i {str(key_path)} -o StrictHostKeyChecking=no'",
-        "-az",
-        "--delete",
-        f"{str(pkg_root)}",
-        f"root@{ip}:~/{pkg_root.name}/",
-    ]
-    total_fails = 0
-    while True:
-        outs = await asyncio.subprocess.create_subprocess_shell(
-            " ".join(command),
+    async def _rsync() -> Tuple[int, str, str]:
+        command = [
+            "rsync",
+            f"--rsh=ssh -p {ssh_port} -i {str(key_path)} -o StrictHostKeyChecking=no",
+            "--compress",
+            "--recursive",
+            "--links",
+            "--times",
+            "--devices",
+            "--specials",
+            f"{str(pkg_root)}/",
+            f"root@{ip}:/root/",
+        ]
+        process = await asyncio.subprocess.create_subprocess_exec(
+            *command,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        if outs.returncode != 0:
-            total_fails += 1
+        rval = await process.wait()
+        stdout, stderr = await process.communicate()
+        return rval, stdout.decode("utf-8"), stderr.decode("utf-8")
 
-        if total_fails > 100:
-            stdout, stderr = await outs.communicate()
-            await aioconsole.aprint(stdout.decode("utf-8"))
-            await aioconsole.aprint(stderr.decode("utf-8"))
-            raise RuntimeError("rsync failed too many times")
+    # run rsync a maximum of once every 500ms
+    watcher = awatch(str(pkg_root), debounce=500, step=500)
 
-        await asyncio.sleep(interval)
+    start_time = time.time()
+    while time.time() - start_time < startup_grace_period:
+        returncode, _, _ = await _rsync()
+        if returncode == 0:
+            break
+
+        await asyncio.sleep(1)
+
+    # todo(aidan): upgrade watchfiles and remove this error suppression after the next release of watchfiles
+    # https://github.com/samuelcolvin/watchfiles/issues/200
+    try:
+        async for _ in watcher:
+            rval, _, stderr = await _rsync()
+            if rval != 0:
+                raise RuntimeError(f"Error running rsync: {stderr}")
+    except RuntimeError as e:
+        if not str(e) == "Already borrowed":
+            raise e
 
 
 class _MessageType(Enum):
@@ -232,8 +252,6 @@ async def _run_local_dev_session(pkg_root: Path):
 
     key_path = pkg_root / ".ssh_key"
 
-    await aioconsole.aprint(str(key_path))
-
     with TemporarySSHCredentials(key_path) as ssh:
         headers = {"Authorization": f"Bearer {retrieve_or_login()}"}
 
@@ -313,10 +331,10 @@ async def _run_local_dev_session(pkg_root: Path):
                     )
                     try:
                         await aioconsole.aprint("Setting up local sync...")
-                        asyncio.create_task(_poll_rsync(pkg_root, centromere_ip, ssh_port, key_path))
+                        asyncio.create_task(_watch_and_rsync(pkg_root, centromere_ip, ssh_port, key_path))
                         await aioconsole.aprint("Done.")
 
-                        await _send_message(ws, "shell")
+                        await _send_message(ws, "start")
 
                         image_name_tagged = _get_latest_image(pkg_root)
                         await _send_message(ws, docker_access_token)
@@ -337,10 +355,11 @@ async def _run_local_dev_session(pkg_root: Path):
                 except (KeyboardInterrupt, EOFError):
                     await ws.close()
                 except Exception as e:
-                    await aioconsole.aprint(f"Error: {e}")
+                    await aioconsole.aprint(traceback.format_exc())
                     await ws.close()
                 finally:
                     await aioconsole.aprint("Exiting local development session")
+                    await ws.close()
                     close_resp = post(
                         config.api.centromere.stop_local_dev,
                         headers={"Authorization": f"Bearer {retrieve_or_login()}"},

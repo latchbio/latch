@@ -17,3 +17,4 @@ uvloop==0.17.0
 websockets==10.3
 prompt-toolkit==3.0.33
 asyncssh==2.12.0
+watchfiles==0.18.1
