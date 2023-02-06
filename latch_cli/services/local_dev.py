@@ -319,7 +319,7 @@ async def _run_local_dev_session(pkg_root: Path):
         except Exception as err:
             raise ValueError(f"unable to retrieve an ecr login token") from err
 
-        # todo(aidan): setup known hosts properly
+        # todo(aidan): edit known hosts file with centromere ip and address to allow strict host checking
         async with asyncssh.connect(
             centromere_ip, username=centromere_username, known_hosts=None
         ):
