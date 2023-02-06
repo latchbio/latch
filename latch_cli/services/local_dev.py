@@ -15,7 +15,6 @@ import asyncssh
 import boto3
 import websockets.client as websockets
 import websockets.exceptions
-from prompt_toolkit.patch_stdout import patch_stdout
 from watchfiles import awatch
 import time
 from latch_cli.config.latch import config
@@ -347,10 +346,9 @@ async def _run_local_dev_session(pkg_root: Path):
 
                         await _get_messages(ws, show_output=True)
 
-                        with patch_stdout(raw=True):
-                            await _shell_session(ws)
-                            rsync_stop_event.set()
-                            await watch_task
+                        await _shell_session(ws)
+                        rsync_stop_event.set()
+                        await watch_task
 
                     except websockets.exceptions.ConnectionClosed:
                         continue
