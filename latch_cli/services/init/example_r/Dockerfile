@@ -1,4 +1,4 @@
-FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:dd8f-main
+FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:ace9-main
 
 # Install R
 RUN apt-get update -y && \

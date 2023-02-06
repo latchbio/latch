@@ -1,31 +1,22 @@
 import asyncio
-import difflib
 import json
 import os
-import re
 import signal
 import sys
 import termios
 import tty
 from enum import Enum
-from http.client import HTTPException
 from pathlib import Path
-from typing import Callable, Optional, Union
+from typing import Callable, Optional, Union, Tuple
+import traceback
 
 import aioconsole
 import asyncssh
 import boto3
 import websockets.client as websockets
 import websockets.exceptions
-from flytekit.core.context_manager import FlyteEntities
-from flytekit.core.workflow import PythonFunctionWorkflow
-from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
-from prompt_toolkit.completion import NestedCompleter, PathCompleter
-from prompt_toolkit.history import FileHistory
-from prompt_toolkit.patch_stdout import patch_stdout
-from prompt_toolkit.shortcuts import PromptSession
-
-from latch_cli.centromere.utils import _import_flyte_objects
+from watchfiles import awatch
+import time
 from latch_cli.config.latch import config
 from latch_cli.tinyrequests import post
 from latch_cli.utils import (
@@ -33,16 +24,6 @@ from latch_cli.utils import (
     current_workspace,
     retrieve_or_login,
 )
-
-QUIT_COMMANDS = ["quit", "exit"]
-EXEC_COMMANDS = ["shell", "run", "run-script"]
-LIST_COMMANDS = ["ls", "list-tasks"]
-
-COMMAND_EXPRESSION = re.compile(
-    "^\s*(run\s+.+|run-script\s+.+|shell|list-tasks|ls.*)\s*$"
-)
-
-COMMANDS = QUIT_COMMANDS + EXEC_COMMANDS + LIST_COMMANDS
 
 
 def _get_latest_image(pkg_root: Path) -> str:
@@ -73,32 +54,59 @@ def _get_latest_image(pkg_root: Path) -> str:
     return f"{config.dkr_repo}/{ws_id}_{pkg_root.name}:{latest_version}"
 
 
-async def _copy_files(
-    ssh_conn: asyncssh.SSHClientConnection,
+rsync_stop_event = asyncio.Event()
+
+async def _watch_and_rsync(
     pkg_root: Path,
+    ip: str,
+    ssh_port: str,
+    key_path: Path,
+    startup_grace_period: int = 10,
 ):
-    # TODO(ayush) rsync
+    async def _rsync() -> Tuple[int, str, str]:
+        # todo(aidan): set up host key rather than disabling strict host checking
+        command = [
+            "rsync",
+            f"--rsh=ssh -p {ssh_port} -i {str(key_path)} -o StrictHostKeyChecking=no",
+            "--compress",
+            "--recursive",
+            "--links",
+            "--times",
+            "--devices",
+            "--specials",
+            f"{str(pkg_root)}/",
+            f"root@{ip}:/root/",
+        ]
+        process = await asyncio.subprocess.create_subprocess_exec(
+            *command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        rval = await process.wait()
+        stdout, stderr = await process.communicate()
+        return rval, stdout.decode("utf-8"), stderr.decode("utf-8")
 
-    coroutines = []
-    for path in [
-        pkg_root.joinpath("wf"),
-        pkg_root.joinpath("data"),
-        pkg_root.joinpath("scripts"),
-    ]:
-        if path.exists():
-            coroutines.append(
-                asyncssh.scp(
-                    path,
-                    (ssh_conn, f"~/{pkg_root.name}"),
-                    recurse=True,
-                    block_size=16 * 1024,
-                )
-            )
-        else:
-            await aioconsole.aprint(f"Could not find {path} - skipping")
+    # run rsync a maximum of once every 500ms
+    watcher = awatch(str(pkg_root), debounce=500, step=500, stop_event=rsync_stop_event)
 
-    if len(coroutines) > 0:
-        await asyncio.gather(*coroutines)
+    start_time = time.time()
+    while time.time() - start_time < startup_grace_period:
+        returncode, _, _ = await _rsync()
+        if returncode == 0:
+            break
+
+        await asyncio.sleep(1)
+
+    # todo(aidan): upgrade watchfiles and remove this error suppression after the next release of watchfiles
+    # https://github.com/samuelcolvin/watchfiles/issues/200
+    try:
+        async for _ in watcher:
+            rval, _, stderr = await _rsync()
+            if rval != 0:
+                await aioconsole.aprint(f"Error running rsync: {stderr}", use_stderr=True)
+    except RuntimeError as e:
+        if not str(e) == "Already borrowed":
+            raise e
 
 
 class _MessageType(Enum):
@@ -239,36 +247,9 @@ async def _shell_session(
 
 
 async def _run_local_dev_session(pkg_root: Path):
-    scripts_dir = pkg_root.joinpath("scripts").resolve()
-
     # hit the endpoint to make sure that a workflow image exists in ecr before
     # doing anything
     _get_latest_image(pkg_root)
-
-    def file_filter(filename: str) -> bool:
-        file_path = Path(filename).resolve()
-        return file_path == scripts_dir or scripts_dir in file_path.parents
-
-    completer = NestedCompleter(
-        {
-            "run-script": PathCompleter(
-                get_paths=lambda: [str(pkg_root)],
-                file_filter=file_filter,
-            ),
-            "run": None,
-            "ls": None,
-            "list-tasks": None,
-            "shell": None,
-        },
-        ignore_case=True,
-    )
-    session = PromptSession(
-        ">>> ",
-        completer=completer,
-        complete_while_typing=True,
-        auto_suggest=AutoSuggestFromHistory(),
-        history=FileHistory(pkg_root.joinpath(".latch_history")),
-    )
 
     key_path = pkg_root / ".ssh_key"
 
@@ -312,6 +293,7 @@ async def _run_local_dev_session(pkg_root: Path):
             secret_key = docker_info["tmp_secret_key"]
             session_token = docker_info["tmp_session_token"]
             port = init_local_dev_data["port"]
+            ssh_port = init_local_dev_data["ssh_port"]
         except KeyError as e:
             raise ValueError(
                 f"Malformed response from initialization endpoint: missing {e}"
@@ -336,13 +318,10 @@ async def _run_local_dev_session(pkg_root: Path):
         except Exception as err:
             raise ValueError(f"unable to retrieve an ecr login token") from err
 
+        # todo(aidan): edit known hosts file with centromere ip and address to allow strict host checking
         async with asyncssh.connect(
-            centromere_ip, username=centromere_username
-        ) as ssh_conn:
-            await aioconsole.aprint("Copying your local changes... ", end="")
-            await _copy_files(ssh_conn, pkg_root)
-            await aioconsole.aprint("Done.")
-
+            centromere_ip, username=centromere_username, known_hosts=None
+        ):
             async for ws in websockets.connect(
                 f"ws://{centromere_ip}:{port}/ws",
                 close_timeout=0,
@@ -353,68 +332,37 @@ async def _run_local_dev_session(pkg_root: Path):
                         "Successfully connected to remote instance."
                     )
                     try:
-                        while True:
-                            with session.input.raw_mode():
-                                cmd: str = await session.prompt_async()
-                                cmd = cmd.strip()
+                        await aioconsole.aprint("Setting up local sync...")
+                        watch_task = asyncio.create_task(_watch_and_rsync(pkg_root, centromere_ip, ssh_port, key_path))
+                        await aioconsole.aprint("Done.")
 
-                            if cmd == "":
-                                continue
+                        image_name_tagged = _get_latest_image(pkg_root)
+                        await _send_message(ws, docker_access_token)
+                        await _send_message(ws, image_name_tagged)
+                        await aioconsole.aprint(f"Pulling {image_name_tagged}... ")
 
-                            if cmd in QUIT_COMMANDS:
-                                raise EOFError
+                        await _get_messages(ws, show_output=False)
+                        await aioconsole.aprint("Image successfully pulled.\n")
 
-                            if not COMMAND_EXPRESSION.match(cmd):
-                                await aioconsole.aprint("Invalid command")
+                        await _get_messages(ws, show_output=True)
 
-                                closest = difflib.get_close_matches(
-                                    cmd.strip().split()[0], COMMANDS, 1
-                                )
-                                if len(closest) > 0:
-                                    await aioconsole.aprint(
-                                        f"Did you mean \x1b[1m{closest[0]}\x1b[22m?"
-                                    )
-                                continue
+                        await _shell_session(ws)
+                        rsync_stop_event.set()
+                        await watch_task
 
-                            if (
-                                cmd.startswith("run")
-                                or cmd == "list-tasks"
-                                or cmd == "shell"
-                            ):
-                                await aioconsole.aprint("Syncing local changes... ")
-                                await _copy_files(ssh_conn, pkg_root)
-                                await aioconsole.aprint("Finished syncing.")
-
-                            await _send_message(ws, cmd)
-
-                            image_name_tagged = _get_latest_image(pkg_root)
-                            await _send_message(ws, docker_access_token)
-                            await _send_message(ws, image_name_tagged)
-                            await aioconsole.aprint(f"Pulling {image_name_tagged}... ")
-
-                            await _get_messages(ws, show_output=False)
-                            await _get_messages(ws, show_output=False)
-                            await aioconsole.aprint("Image successfully pulled.\n")
-
-                            await _get_messages(ws, show_output=True)
-
-                            if cmd == "shell":
-                                with session.input.detach():
-                                    with patch_stdout(raw=True):
-                                        await _shell_session(ws)
-                                        await ws.drain()
                     except websockets.exceptions.ConnectionClosed:
                         continue
-                except (KeyboardInterrupt, EOFError):
+                except Exception as e:
+                    await aioconsole.aprint(traceback.format_exc())
+                finally:
                     await aioconsole.aprint("Exiting local development session")
                     await ws.close()
-                    return
-                finally:
                     close_resp = post(
                         config.api.centromere.stop_local_dev,
                         headers={"Authorization": f"Bearer {retrieve_or_login()}"},
                     )
                     close_resp.raise_for_status()
+                    return
 
 
 def local_development(pkg_root: Path):
