@@ -60,10 +60,10 @@ async def _watch_and_rsync(
     ip: str,
     ssh_port: str,
     key_path: Path,
-    #
     startup_grace_period: int = 10,
 ):
     async def _rsync() -> Tuple[int, str, str]:
+        # todo(aidan): set up host key rather than disabling strict host checking
         command = [
             "rsync",
             f"--rsh=ssh -p {ssh_port} -i {str(key_path)} -o StrictHostKeyChecking=no",
@@ -102,7 +102,7 @@ async def _watch_and_rsync(
         async for _ in watcher:
             rval, _, stderr = await _rsync()
             if rval != 0:
-                raise RuntimeError(f"Error running rsync: {stderr}")
+                await aioconsole.aprint(f"Error running rsync: {stderr}", use_stderr=True)
     except RuntimeError as e:
         if not str(e) == "Already borrowed":
             raise e
@@ -331,7 +331,7 @@ async def _run_local_dev_session(pkg_root: Path):
                     )
                     try:
                         await aioconsole.aprint("Setting up local sync...")
-                        asyncio.create_task(_watch_and_rsync(pkg_root, centromere_ip, ssh_port, key_path))
+                        watch_task = asyncio.create_task(_watch_and_rsync(pkg_root, centromere_ip, ssh_port, key_path))
                         await aioconsole.aprint("Done.")
 
                         image_name_tagged = _get_latest_image(pkg_root)
@@ -346,6 +346,8 @@ async def _run_local_dev_session(pkg_root: Path):
 
                         with patch_stdout(raw=True):
                             await _shell_session(ws)
+                            watch_task.cancel()
+                            await watch_task
                     except websockets.exceptions.ConnectionClosed:
                         continue
                 except Exception as e:
