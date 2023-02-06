@@ -317,8 +317,9 @@ async def _run_local_dev_session(pkg_root: Path):
         except Exception as err:
             raise ValueError(f"unable to retrieve an ecr login token") from err
 
+        # todo(aidan): setup known hosts properly
         async with asyncssh.connect(
-            centromere_ip, username=centromere_username
+            centromere_ip, username=centromere_username, known_hosts=None
         ):
             async for ws in websockets.connect(
                 f"ws://{centromere_ip}:{port}/ws",
