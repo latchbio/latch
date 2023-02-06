@@ -347,8 +347,14 @@ async def _run_local_dev_session(pkg_root: Path):
 
                         with patch_stdout(raw=True):
                             await _shell_session(ws)
-                            watch_task.cancel()
-                            await watch_task
+                            try:
+                                e = watch_task.exception()
+                                if e is not None:
+                                    raise e
+                            except (asyncio.InvalidStateError, asyncio.CancelledError):
+                                pass
+                            except Exception as e:
+                                await aioconsole.aprint(traceback.format_exc(), use_stderr=True)
                     except websockets.exceptions.ConnectionClosed:
                         continue
                 except Exception as e:
