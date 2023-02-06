@@ -340,7 +340,6 @@ async def _run_local_dev_session(pkg_root: Path):
                         await aioconsole.aprint(f"Pulling {image_name_tagged}... ")
 
                         await _get_messages(ws, show_output=False)
-                        await _get_messages(ws, show_output=False)
                         await aioconsole.aprint("Image successfully pulled.\n")
 
                         await _get_messages(ws, show_output=True)
