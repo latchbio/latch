@@ -48,7 +48,6 @@ A `LatchParameter` can take a myriad of keyword arguments at construction time, 
 - `batch_table_column` (boolean): Whether this parameter should have a column to itself in the batch table at the top of the parameters page,
 - `appearance_type`: Either `LatchAppearanceType.line` or `LatchAppearanceType.paragraph`, which style to render text inputs as.
 - `rules`: A list of `LatchRule`s which consist of a regular expression and a message. If provided, an input must match all given regexes in order to appear valid in the front end - if it fails to match one of the regexes, the corresponding message is displayed.
-- `display_name`: The name of the workflow, e.g. CRISPResso2,
 - `documentation`: A URL that leads to documentation for the workflow itself,
 - `author`: This must be a `LatchAuthor` objects, whose fields are:
   - `name`: The name of the author;
@@ -131,7 +130,7 @@ The custom layout is specified using the `flow` parameter of the {class}`~latch.
 The `LatchMetadata` can be defined as follows:
 
 ```python
-from latch.types import LatchMetadata, LatchParamet33er
+from latch.types import LatchMetadata, LatchParameter
 from latch import workflow
 
 metadata = LatchMetadata(

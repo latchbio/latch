@@ -132,9 +132,9 @@ Recall that `Optional[T] = Union[None, T]`.
 
 ```python
 from typing import Union, Optional
+from latch.types import LatchFile
 
-
-@task
+@workflow
 def foo(
   a: Union[int, LatchFile] = LatchFile("/root/data.txt"),
   b: Optional[float] = None
@@ -168,6 +168,7 @@ If you want to handle file references and their associated metadata as an input 
 ```python
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
+from typing import List
 
 @dataclass_json
 @dataclass

@@ -15,6 +15,7 @@ Let's look at an example.
 
 ```python
 from pathlib import Path
+from latch import small_task
 from latch.types import LatchFile, LatchDir
 import subprocess
 

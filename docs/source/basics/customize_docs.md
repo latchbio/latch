@@ -9,6 +9,8 @@ The first line of the workflow function docstring will get rendered in the sideb
 We recommend limiting your workflow description to one sentence, as longer descriptions are only partially rendered on the Workflows page.
 
 ```python
+from latch import workflow
+
 @workflow
 def rnaseq(
     ...
@@ -27,6 +29,8 @@ def rnaseq(
 The body of the workflow function docstring is where you write long-form markdown documentation. This markdown will get rendered in the dedicated workflow "About" tab on your interface. Feel free to include links, lists, code blocks, and more.
 
 ```python
+from latch import workflow
+
 @workflow
 def rnaseq(
     ...

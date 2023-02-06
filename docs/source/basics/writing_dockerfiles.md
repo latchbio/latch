@@ -61,7 +61,9 @@ their paths to the task definition. When registering a workflow with multiple
 containers, note that each container will be rebuilt, which can slow down 
 development. 
 
-```
+```python
+from latch import small_task
+
 @small_task(dockerfile=Path(__file__).parent.parent / "DockerfileMultiQC")
 def sample_task(int: a) -> str:
     return str(a)
