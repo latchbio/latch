@@ -55,6 +55,8 @@ def _get_latest_image(pkg_root: Path) -> str:
     return f"{config.dkr_repo}/{ws_id}_{pkg_root.name}:{latest_version}"
 
 
+rsync_stop_event = asyncio.Event()
+
 async def _watch_and_rsync(
     pkg_root: Path,
     ip: str,
@@ -86,7 +88,7 @@ async def _watch_and_rsync(
         return rval, stdout.decode("utf-8"), stderr.decode("utf-8")
 
     # run rsync a maximum of once every 500ms
-    watcher = awatch(str(pkg_root), debounce=500, step=500)
+    watcher = awatch(str(pkg_root), debounce=500, step=500, stop_event=rsync_stop_event)
 
     start_time = time.time()
     while time.time() - start_time < startup_grace_period:
@@ -347,14 +349,9 @@ async def _run_local_dev_session(pkg_root: Path):
 
                         with patch_stdout(raw=True):
                             await _shell_session(ws)
-                            try:
-                                e = watch_task.exception()
-                                if e is not None:
-                                    raise e
-                            except (asyncio.InvalidStateError, asyncio.CancelledError):
-                                pass
-                            except Exception as e:
-                                await aioconsole.aprint(traceback.format_exc(), use_stderr=True)
+                            rsync_stop_event.set()
+                            await watch_task
+
                     except websockets.exceptions.ConnectionClosed:
                         continue
                 except Exception as e:
