@@ -14,6 +14,15 @@ Types of changes
 -->
 
 # Latch SDK Changelog
+## 2.12.0 - 2023-02-06
+
+### Added
+
+* `latch develop` drops users directly into a shell in their docker environment. Local changes in the workflow directory and any subdirectories are automatically synced into the environment. Deleted local files are not deleted in the environment. However, any additions or modifications to files and directories are propagated.
+
+### Removed
+
+* latch develop no longer drops user into REPL with multiple options -- it goes straight to a shell.
 
 ## 2.11.1 - 2023-01-25
 
