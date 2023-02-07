@@ -89,7 +89,7 @@ You can execute the script in `latch develop` like so:
 
 You can execute any python code in your workflow environment. Functions and scripts do not have to be latch specific so you can test library code or binaries as well. Think of the environment as a snapshot of the computer your workflow will get when you execute it.
 
-### Notes on the test environment
+## Notes on the test environment
 
 It is important that any changes to the code are done on your local machine -- these changes will be synced into the latch develop environment and saved on your local computer as well. Changes made directly in the latch develop environment are not saved and are not synced back to your local computer. Moreover, they may be overwritten in the development process.
 
@@ -101,6 +101,8 @@ COPY wf /root/wf
 ...
 ```
 Then when running `latch develop`, any changes to files or additional files created in the `wf` directory will be reflected in the development environment.
+
+Files that are deleted locally are not automatically deleted in the development environment. Finally, any changes to the Dockerfile which you would like to reflect in the development environment require a rebuild.
 
 ## Exploring the environment
 

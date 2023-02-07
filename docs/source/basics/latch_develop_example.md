@@ -91,27 +91,12 @@ We must register the workflow before we can debug it with `latch develop`. The r
 
 Run `latch develop .` in the workflow directory. You will be dropped into the environment of your workflow.
 
+To familiarize yourself with the local development environment, we recommend you read read [this](../basics/local_development.md#notes-on-the-test-environment) if you have not already.
+
 ## Defining a test script
 
-Before testing the workflow end-to-end, it is helpful to run and test each task individually. To do so as an example, create a directory called
-called `scripts` in the workflow directory on your local computer.
-
-### Notes on the test environment
-
-It is important that any changes to the code are done on your local machine -- these changes will be synced into the latch develop environment and saved on your local computer as well. Changes made directly in the latch develop environment are not saved and are not synced back to your local computer. Moreover, they may be overwritten in the development process.
-
-We use `rsync` to bring changes from your local workflow directory to the latch develop environment. We recursively copy changes to the `/root` directory in the development environment. For example, this line in the default docker image creates the `wf` directory in the cloud environment:
-
-```Dockerfile
-...
-COPY wf /root/wf
-...
-```
-Then when running `latch develop`, any changes to files or additional files created in the `wf` directory will be reflected in the development environment.
-
-Files that are deleted locally are not automatically deleted in the development environment. Finally, any changes to the Dockerfile which you would like to reflect in the development environment require a rebuild.
-
-The code for the example now looks like the following:
+Before testing the workflow end-to-end, it is helpful to run and test each task individually. To do so as an example, the example contains a directory
+called `scripts` with a `main.py` inside.
 
 ```console
 $ tree .
@@ -127,7 +112,7 @@ $ tree .
 3 directories, 6 files
 ```
 
-For example, our `main.py` script can look like:
+Uncomment some of the code in `main.py` to get this example:
 
 ```python
 # Import task functions from our workflow
