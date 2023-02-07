@@ -26,38 +26,27 @@ $ latch register --remote .
 $ latch develop .
 ```
 
-This command will drop you into a [REPL](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop) in which
-you can do several things.
+This command will drop you into a shell in which you can run your code and inspect your environment.
 
 Output:
 
 ```console
 $ latch develop .
-
-Copying your local changes...
-Could not find /Users/hannahle/Documents/GitHub/covid-wf/data - skipping
-Could not find /Users/hannahle/Documents/GitHub/covid-wf/scripts - skipping
-Done.
-Successfully connected to remote instance.
-Pulling 4034_covid-wf, this will only take a moment...
-Image successfully pulled.
-
+...
 >>>
 ```
 
-**Note**: The REPL environment contains the dependencies specified in your Dockerfile(s). If you are creating a fresh workflow directory or make changes to your Dockerfile that you want to exist in your development environment, you have to register your workflow to Latch with `latch register <path_to_workflow_directory>`.
+**Note**: The shell environment is built from your Dockerfile each time you register your workflow. If you are debugging a new workflow or making changes to a Dockerfile in an existing workflow and want to run `latch develop`, make sure to register your workflow to Latch with `latch register <path_to_workflow_directory>` beforehand.
 
 ## Running tasks
 
-If you want to run a task quickly, simply type `run <task_name>` into the prompt. This will run the specified task in a
-container with the correct environment and stream all output to your terminal, allowing for quick debugging at the task
-level. Since this is running in the Docker container you created with your Dockerfile, you don't have to worry about not
-having any of the binaries or the dependencies that you need.
+If you want to test a task, create a test file and import your task. Then call the task as a python function using any inputs you would like. For file or directory inputs, the files should be in Latch data.
 
-You can configure which inputs the task runs on by changing the default values of the arguments in the task definition.
-For example, for the below task definition (taken from the boilerplate generated from `latch init`), running
-`run assembly_task` would result in `assembly_task` being run on `LatchFile("latch:///read1.txt")` and
-`LatchFile("latch:///read2.txt")`.
+Below is an example task and the code to test it
+
+```console
+cat wf/__init__.py
+```
 
 ```python
 import subprocess
@@ -70,63 +59,18 @@ def assembly_task(
     read2: LatchFile = LatchFile("latch:///read2.fastq"), # <==
 ) -> LatchFile:
 
-    # A reference to our output.
-    sam_file = Path("covid_assembly.sam").resolve()
-
-    _bowtie2_cmd = [
-        "bowtie2/bowtie2",
-        "--local",
-        "-x",
-        "wuhan",
-        "-1",
-        read1.local_path,
-        "-2",
-        read2.local_path,
-        "--very-sensitive-local",
-        "-S",
-        str(sam_file),
-    ]
-
-    subprocess.run(_bowtie2_cmd)
+    ...
 
     return LatchFile(str(sam_file), "latch:///covid_assembly.sam")
-```
 
-You can run the task like so:
+...
+```
 
 ```console
->>> run assembly_task
+cat scripts/test_task.py
 ```
-
-You can then make changes to the task function. All local changes will be automatically synced to the development session, and you can easily run the new task function for testing.
-
-## Running scripts
-
-If you want to debug multiple tasks at once, you can again do so very easily by using scripts. Simply create a
-`scripts` folder inside your workflow directory and write python scripts in there.
-
-```console
-mkdir scripts
-echo 'print("hello world")' > scripts/hello_world.py
-```
-
-You can run any script in the `scripts` folder by using the command `run-script` in the local develop REPL.
-
-```console
->>> run-script scripts/hello_world.py
-hello world
-```
-
-To use your tasks, simply import them from the `wf` module. For example, the following script runs the same task that
-was defined above.
 
 ```python
-# filename: test.py
-#
-# Run this as below
-#
-# >>> run-script scripts/test.py
-
 from latch.types import LatchFile
 
 import wf
@@ -137,40 +81,33 @@ wf.assembly_task(
 )
 ```
 
-Running this script will run `assembly_task`, just the same as the previous `run` command. You can add to this though,
-and run multiple tasks in the same script, as below.
+You can execute the script in `latch develop` like so:
 
-```python
-# filename: test.py
-
-from latch.types import LatchFile
-
-import wf
-
-sam = wf.assembly_task(
-    read1=LatchFile("latch:///read1.txt"),
-    read2=LatchFile("latch:///read2.txt"),
-)
-
-wf.sort_bam_task(sam=sam)
+```console
+>>> python3 scripts/test_task.py
 ```
 
-Hence using scripts, you can rapidly test the interactions between tasks, increasing our speed of workflow development.
+You can execute any python code in your workflow environment. Functions and scripts do not have to be latch specific so you can test library code or binaries as well. Think of the environment as a snapshot of the computer your workflow will get when you execute it.
+
+### Notes on the test environment
+
+It is important that any changes to the code are done on your local machine -- these changes will be synced into the latch develop environment and saved on your local computer as well. Changes made directly in the latch develop environment are not saved and are not synced back to your local computer. Moreover, they may be overwritten in the development process.
+
+We use `rsync` to bring changes from your local workflow directory to the latch develop environment. We recursively copy changes to the `/root` directory in the development environment. For example, this line in the default docker image creates the `wf` directory in the cloud environment:
+
+```Dockerfile
+...
+COPY wf /root/wf
+...
+```
+Then when running `latch develop`, any changes to files or additional files created in the `wf` directory will be reflected in the development environment.
 
 ## Exploring the environment
 
-If you are running into issues with your environment (say, for example, a binary isn't where you expect it to be), you can see for yourself exactly what the environment looks like. Simply run `shell` in the REPL to get a fully functional bash session in the Docker container you created.
-
-```console
->>> shell
-
-root@ip-10-0-11-243:~$
-```
-
-Now you can explore the environment as you would like, test out programs, and more.
+If you are running into issues with your environment (say, for example, a binary isn't where you expect it to be), you can see for yourself exactly what the environment looks like when running `latch develop`.
 
 ---
 
 ## Next Steps
 
-The best way to learn is through examples. Visit the [Learning through An Example](../basics/latch_develop_example.md) page to see an end-to-end flow of how to use `latch develop` to test and debug a simple variant calling pipeline.
+Visit the [Learning through An Example](../basics/latch_develop_example.md) page to see an end-to-end flow of how to use `latch develop` to test and debug a simple variant calling pipeline.
