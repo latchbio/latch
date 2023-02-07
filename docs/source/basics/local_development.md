@@ -1,16 +1,8 @@
 # Development and debugging
 
-When developing a workflow, its useful to be able to easily run your task functions so that you can debug issues more
-effectively and overall, iterate faster. However, since tasks and workflows need to run in a highly custom, specified
-environment (namely, the one defined in your Dockerfile(s)), it isn't always feasible to simply run your workflow
-locally.
+When developing a workflow, its useful to run your task functions before running the entire workflow in the cloud so that you can debug environment and logical issues. However, since tasks run in a different environment than your local computer (namely, the one defined in your Dockerfile(s)), it isn't always feasible or instructive to run your workflows locally.
 
-Say for instance you are writing a workflow that uses Google's [DeepVariant](https://github.com/google/deepvariant)
-model - running this locally would be nearly impossible (unless your daily driver is a supercomputer). This means that
-debugging this workflow as you are writing it would be difficult and time consuming, as you would have to register it
-anew *every time you needed to make an edit*, slowing down the speed of development.
-
-To address this, the Latch SDK comes with a command that allows you to quickly run tasks and debug your environment without having to wait for registration every time. Navigate to a workflow directory you would like to work on and run
+To address this, the Latch SDK comes with a command that allows you to run tasks and debug your environment without having to go through the web or constantly reregister your workflow. Navigate to a workflow directory you would like to work on and run
  `latch develop .`:
 
 ```console
@@ -87,11 +79,11 @@ You can execute the script in `latch develop` like so:
 >>> python3 scripts/test_task.py
 ```
 
-You can execute any python code in your workflow environment. Functions and scripts do not have to be latch specific so you can test library code or binaries as well. Think of the environment as a snapshot of the computer your workflow will get when you execute it.
+You can execute any python code in your workflow environment. Functions and scripts do not have to be latch specific so you can test library code or binaries as well. Think of the environment as a snapshot of the computer your tasks run on.
 
 ## Notes on the test environment
 
-It is important that any changes to the code are done on your local machine -- these changes will be synced into the latch develop environment and saved on your local computer as well. Changes made directly in the latch develop environment are not saved and are not synced back to your local computer. Moreover, they may be overwritten in the development process.
+It is important that any changes to the code are done on your local machine -- these changes will be synced into the latch develop environment and saved on your local computer as well. Changes made directly in the latch develop environment are not saved and are not synced back to your local computer. Moreover, they may be overwritten by the sync process.
 
 We use `rsync` to bring changes from your local workflow directory to the latch develop environment. We recursively copy changes to the `/root` directory in the development environment. For example, this line in the default docker image creates the `wf` directory in the cloud environment:
 
@@ -100,15 +92,9 @@ We use `rsync` to bring changes from your local workflow directory to the latch 
 COPY wf /root/wf
 ...
 ```
-Then when running `latch develop`, any changes to files or additional files created in the `wf` directory will be reflected in the development environment.
+Then when running `latch develop`, any changes to files or additional files created in the `wf` directory will be reflected in the environment, overwriting the old code in the development environment to ensure that your latest changes are present.
 
-Files that are deleted locally are not automatically deleted in the development environment. Finally, any changes to the Dockerfile which you would like to reflect in the development environment require a rebuild.
-
-## Exploring the environment
-
-If you are running into issues with your environment (say, for example, a binary isn't where you expect it to be), you can see for yourself exactly what the environment looks like when running `latch develop`.
-
----
+Files that are deleted locally are not automatically deleted in the development environment. Also, any changes to the Dockerfile which you would like to reflect in the development environment require a reregister.
 
 ## Next Steps
 

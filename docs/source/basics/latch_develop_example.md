@@ -1,10 +1,11 @@
 # Learning through An Example
-To demonstrate how to use `latch develop`, we will walk through a quick end-to-end flow of testing and debugging a variant calling workflow.
+To demonstrate how to use `latch develop`, we will walk through a quick end-to-end flow for testing and debugging a variant calling workflow.
 
 ## Prerequisites
 
 * Install [Latch](../getting_started/quick_start.md)
 * Have a conceptual understanding of how Latch workflows work through reading the [Quickstart](../getting_started/quick_start.md) and [Authoring your own workflow](../getting_started/authoring_your_workflow.md)
+* Understand how [latch develop](../basics/local_development.md) works
 
 ## Building a Simple Variant Calling Workflow
 
