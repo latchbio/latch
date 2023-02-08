@@ -1,10 +1,10 @@
 # Learning through An Example
-To demonstrate how to use `latch develop`, we will walk through a quick end-to-end flow for testing and debugging a variant calling workflow.
+We will walk through a quick end-to-end flow for testing and debugging a variant calling workflow to demonstrate how to use latch develop.
 
 ## Prerequisites
 
 * Install [Latch](../getting_started/quick_start.md)
-* Have a conceptual understanding of how Latch workflows work through reading the [quick start](../getting_started/quick_start.md) and [Authoring your workflow](../getting_started/authoring_your_workflow.md)](../getting_started/authoring_your_workflow.md)
+* Have a conceptual understanding of how Latch workflows work through reading the [quick start](../getting_started/quick_start.md) and [Authoring a workflow](../getting_started/authoring_your_workflow.md)](../getting_started/authoring_your_workflow.md)
 * Understand how [latch develop](../basics/local_development.md) works
 
 ## Building a Simple Variant Calling Workflow
@@ -22,21 +22,21 @@ The repository consists of three folders:
 * `good-wf`: The final, functional workflow
 * `wgs`: Test data for the workflow
 
-We will use `latch develop` to effectively test and debug the `buggy-wf` to arrive at `good-wf`.
+We will use `latch develop` to test and debug the buggy-wf to arrive at good-wf effectively.
 
 Let's get started!
 
 ## Preparing test data
 
-First, we have to upload our test data folder, `wgs`, to the Latch Platform.
+First, we must upload our test data folder, `wgs`, to the Latch Platform.
 
-You can run the following command to upload the data from your terminal
+Run the following command to upload the `wgs` data from the terminal
 
 ```console
 $ latch cp wgs latch:///wgs
 ```
 
-Once your data has finished uploading, you can verify whether it exists on Latch by using `latch ls` like so:
+Once the data has finished uploading, verify whether it exists on Latch by using `latch ls` like so:
 
 ```console
 $ latch ls
@@ -49,13 +49,11 @@ Size Date Modified Name
 ## Overview of the variant calling workflow
 
 The data we are working with is part of a long-term evolution experiment by
-[Richard Lenski](https://lenski.mmg.msu.edu/), which was designed to assess the adaptation of _E. coli_ in various
+[Richard Lenski](https://lenski.mmg.msu.edu/), designed to assess the adaptation of _E. coli_ in various
 environments.
 
-Variant calling is a common workflow that can be used to observe the change in a population over successive
-generations. We can use this to analyze how the population of _E. coli_ in this experiment changed over time relative
-to the original population, _E. coli_ strain REL606. To do so, we will align each of our samples to the original _E.
-coli_ strain's (REL606) reference genome to determine what differences exist between our reads after 40,000 generations
+Variant calling is a typical workflow used to observe the change in a population over successive
+generations. We can use this to analyze how this experiment's _E. coli__ population changed over time relative to the original population, _E. coli_ strain REL606. To do so, we will align each of our samples to the original _E.coli_ strain's (REL606) reference genome to determine the differences between our reads after 40,000 generations
 versus the original genome.
 
 ![Upload](../assets/latch-develop-example/variant-calling-wf.png)
@@ -71,7 +69,7 @@ Our variant calling pipeline will consist of five steps:
 Hence, our workflow will contain five tasks: `build_index`, `align_reads`, `convert_to_bam`, `sort_bam`, and
 `variant_calling`.
 
-We've provided some (buggy) code for the five tasks above for you in the `buggy-wf`, which you will now test and debug!
+We have provided some (buggy) code for the five tasks above for you in the `buggy-wf`, which you will now test and debug!
 
 ## Testing and Debugging the Workflow
 
@@ -86,18 +84,17 @@ $ cd buggy-wf
 $ latch register --remote .
 ```
 
-We must register the workflow before we can debug it with `latch develop`. The registration process builds the environment in which your code runs, which is the key to successfully debugging your workflow. Now we can interact with the environment.
+We must register the workflow before we can debug it with `latch develop`. The registration process builds the code's environment, which is the key to successfully debugging your workflow. Now we can interact with the environment.
 
 ## Entering the environment
 
-Run `latch develop .` in the workflow directory. You will be dropped into the environment of your workflow.
+Run `latch develop .` in the workflow directory to enter the workflow environment.
 
-To familiarize yourself with the local development environment, we recommend you read [this](../basics/local_development.md#notes-on-the-test-environment) if you have not already.
+We recommend reading [this](../basics/local_development.md#notes-on-the-test-environment) overview of the latch develop environment before proceeding.
 
 ## Defining a test script
 
-Before testing the workflow end-to-end, it is helpful to run and test each task individually. To do so as an example, the example contains a directory
-called `scripts` with a `main.py` inside.
+Before testing the workflow end-to-end, it is helpful to run and test each task individually. To get started, we have provided a testing directory called `scripts` with a `main.py` inside containing commented-out task test code.
 
 ```console
 $ tree .
@@ -124,7 +121,7 @@ from latch.types import LatchFile, LatchDir
 build_index(ref_genome = LatchFile("latch:///wgs/ref_genome/ecoli_rel606.fasta"))
 ```
 
-* The first line imports all tasks defined in `wf/__init__.py` so that we can reference them in this script.
+* The first line imports all tasks defined in `wf/__init__.py` so we can reference them in this script.
 * The second line imports the necessary Latch types.
 * The third line calls the task function to index the reference genome, `build_index`.
 
@@ -136,7 +133,7 @@ pass the whole string as a parameter to `LatchFile`.
 
 ## Calling the test script
 
-Now that we have modified our local code, we can run it in the development environment. The local changes will already be reflected in the development environment.
+Now that we have modified our local code, we can run it in the development environment. Note that local changes are automatically reflected in the development environment.
 
 ```console
 >>> python3 scripts/main.py
@@ -145,7 +142,7 @@ Now that we have modified our local code, we can run it in the development envir
 FileNotFoundError: [Errno 2] No such file or directory: 'bwa'
 ```
 
-The logs tell us that there is no file or directory called `bwa`. One potential reason why is that we might not have
+The logs tell us that there is no file or directory called `bwa`. One potential reason is that we might not have
 installed the binary `bwa` correctly.
 
 ```console
@@ -154,7 +151,7 @@ installed the binary `bwa` correctly.
 bash: bwa: command not found
 ```
 
-Indeed, our `bwa` binary was not installed! Checking the Dockerfile, notice that the installation instruction for `bwa`
+Indeed, our `bwa` binary is not installed! Checking the Dockerfile, notice that the installation instruction for `bwa`
 is commented out. Let's uncomment it:
 
 ```Dockerfile
@@ -163,14 +160,14 @@ RUN apt-get install bwa
 ...
 ```
 
-Because we modified our Dockerfile, we have to rebuild the environment and enter a new development session to load in the newest changes. First, exit your current development session:
+Because we modified our Dockerfile, we must rebuild the environment and enter a new development session to load in the newest changes. First, exit the current development session:
 
 ```console
 >>> exit
 Exiting local development session
 ```
 
-Re-register your workflow with the new Docker image
+Re-register the workflow with the new Docker image
 
 ```console
 $ latch register --remote .
@@ -183,12 +180,11 @@ Now enter a new development session and re-run the test script:
 >>> python3 scripts/main.py
 ```
 
-Your script should now run successfully!
+The script should now run successfully!
 
 ## Where are my outputs?
-
-To make sure that our tasks are working properly, let's look at their output files to make sure that they're correct.
-Where do we find them though? Let's inspect the return statement of the `build_index` task inside `wf/__init__.py`:
+To ensure that our tasks are working correctly, let's look at their output files to ensure they're correct.
+To locate the output files, we can inspect the return statement of the `build_index` task inside `wf/__init__.py`:
 
 ```python
 @small_task
@@ -204,8 +200,8 @@ def build_index(ref_genome: LatchFile = LatchFile("latch:///wgs/ref_genome/ecoli
     return LatchDir(output, "latch:///wgs/ref_genome")
 ```
 
-We can see the task is returning a `LatchDir` with the remote path `latch:///wgs/ref_genome`, which indicates that the
-output files are located inside the `/wgs/ref_genome` folder in the Latch Console.
+We see that the task is returning a `LatchDir` with the remote path `latch:///wgs/ref_genome`, which indicates that the
+output files are inside the `/wgs/ref_genome` folder in the Latch Console.
 
 ![Outputs](../assets/latch-develop-example/ref_genome.png)
 
@@ -253,8 +249,7 @@ The task now outputs the results to the folder `/results` on Latch!
 
 ## Exercise
 
-As an exercise, you are welcome to continue and debug the final three tasks of the whole workflow. The solution of a
-working workflow is provided in the `good-wf` folder for reference.
+As an optional exercise, continue debugging the workflow's final three tasks. The debugged workflow code is provided in the `good-wf` folder for reference.
 
 ---
 
@@ -262,4 +257,4 @@ working workflow is provided in the `good-wf` folder for reference.
 
 * How to open a development session with `latch develop`
 * How local changes are synced to the development environment
-* How to reflect changes in your `Dockerfile`
+* How to reflect changes from your `Dockerfile` in the latch develop environment
