@@ -1,16 +1,15 @@
 # Learning through An Example
-
-To demonstrate how to use `latch develop`, we will walk through an end-to-end flow of testing and debugging an existing variant calling workflow.
+We will walk through a quick end-to-end flow for testing and debugging a variant calling workflow to demonstrate how to use latch develop.
 
 ## Prerequisites
 
 * Install [Latch](../getting_started/quick_start.md)
-* Have a conceptual understanding of how Latch workflows work through reading the [Quickstart](../getting_started/quick_start.md) and [Authoring your own workflow](../getting_started/authoring_your_workflow.md)
+* Have a conceptual understanding of how Latch workflows work through reading the [quick start](../getting_started/quick_start.md) and [Authoring a workflow](../getting_started/authoring_your_workflow.md)](../getting_started/authoring_your_workflow.md)
+* Understand how [latch develop](../basics/local_development.md) works
 
 ## Building a Simple Variant Calling Workflow
 
-In this tutorial, we will be building a simple variant calling workflow. To follow along, you can clone the example
-code here:
+In this tutorial, we will be building a variant calling workflow. To follow along, clone the example code here:
 
 ```console
 git clone https://github.com/hannahle/simple-variant-calling.git
@@ -23,21 +22,21 @@ The repository consists of three folders:
 * `good-wf`: The final, functional workflow
 * `wgs`: Test data for the workflow
 
-After this example, you will learn how to use `latch develop` to effectively test and debug the `buggy-wf` to arrive at
-the `good-wf`.
+We will use `latch develop` to test and debug the buggy-wf to arrive at good-wf effectively.
 
 Let's get started!
 
 ## Preparing test data
 
-First, we have to upload our test data folder, `wgs`, to the Latch Platform.
+First, we must upload our test data folder, `wgs`, to the Latch Platform.
 
-To do so, you can navigate to [console.latch.bio](https://console.latch.bio), and drag and drop the test data folder on
-Latch. You should see a spinning wheel which indicates the status of your data upload.
+Run the following command to upload the `wgs` data from the terminal
 
-![Upload](../assets/latch-develop-example/data-upload.png)
+```console
+$ latch cp wgs latch:///wgs
+```
 
-Once your data has finished uploading, you can verify whether it exists on Latch by using `latch ls` like so:
+Once the data has finished uploading, verify whether it exists on Latch by using `latch ls` like so:
 
 ```console
 $ latch ls
@@ -50,18 +49,11 @@ Size Date Modified Name
 ## Overview of the variant calling workflow
 
 The data we are working with is part of a long-term evolution experiment by
-[Richard Lenski](https://lenski.mmg.msu.edu/), which was designed to assess the adaptation of _E. coli_ in various
+[Richard Lenski](https://lenski.mmg.msu.edu/), designed to assess the adaptation of _E. coli_ in various
 environments.
 
-A population of these bacteria was propagated for over 40,000 generations in a glucose-limited minimal medium which was
-supplemented with citrate. Sequencing of the populations at different time points revealed that a spontaneous
-citrate-using variant (Cit+) appeared between 31,000 and 31,500 generations, causing an increase in population size and
-diversity.
-
-Variant calling is a common workflow that can be used to observe the change in a population over successive
-generations. We can use this to analyze how the population of _E. coli_ in this experiment changed over time relative
-to the original population, _E. coli_ strain REL606. To do so, we will align each of our samples to the original _E.
-coli_ strain's (REL606) reference genome to determine what differences exist between our reads after 40,000 generations
+Variant calling is a typical workflow used to observe the change in a population over successive
+generations. We can use this to analyze how this experiment's _E. coli__ population changed over time relative to the original population, _E. coli_ strain REL606. To do so, we will align each of our samples to the original _E.coli_ strain's (REL606) reference genome to determine the differences between our reads after 40,000 generations
 versus the original genome.
 
 ![Upload](../assets/latch-develop-example/variant-calling-wf.png)
@@ -77,7 +69,7 @@ Our variant calling pipeline will consist of five steps:
 Hence, our workflow will contain five tasks: `build_index`, `align_reads`, `convert_to_bam`, `sort_bam`, and
 `variant_calling`.
 
-We've provided some (buggy) code for the five tasks above for you in the `buggy-wf`, which you will now test and debug!
+We have provided some (buggy) code for the five tasks above for you in the `buggy-wf`, which you will now test and debug!
 
 ## Testing and Debugging the Workflow
 
@@ -92,10 +84,17 @@ $ cd buggy-wf
 $ latch register --remote .
 ```
 
+We must register the workflow before we can debug it with `latch develop`. The registration process builds the code's environment, which is the key to successfully debugging your workflow. Now we can interact with the environment.
+
+## Entering the environment
+
+Run `latch develop .` in the workflow directory to enter the workflow environment.
+
+We recommend reading [this](../basics/local_development.md#notes-on-the-test-environment) overview of the latch develop environment before proceeding.
+
 ## Defining a test script
 
-Before testing the workflow end-to-end, it is helpful to run and test each task individually. To do so, create a folder
-called `scripts`, which will contain Python files that can call your task functions.
+Before testing the workflow end-to-end, it is helpful to run and test each task individually. To get started, we have provided a testing directory called `scripts` with a `main.py` inside containing commented-out task test code.
 
 ```console
 $ tree .
@@ -111,7 +110,7 @@ $ tree .
 3 directories, 6 files
 ```
 
-For example, our `main.py` script can look like:
+Uncomment some of the code in `main.py` to get this:
 
 ```python
 # Import task functions from our workflow
@@ -122,67 +121,37 @@ from latch.types import LatchFile, LatchDir
 build_index(ref_genome = LatchFile("latch:///wgs/ref_genome/ecoli_rel606.fasta"))
 ```
 
-* The first line imports all tasks defined in `wf/__init__.py` so that we can reference them in this script.
+* The first line imports all tasks defined in `wf/__init__.py` so we can reference them in this script.
 * The second line imports the necessary Latch types.
 * The third line calls the task function to index the reference genome, `build_index`.
 
 ![Copy](../assets/latch-develop-example/copy.png)
 
-To use a file on Latch as test data to the task, navigate to the Latch Console, click on the specific file and copy the
+To use a file on Latch as test data for the task, navigate to the Latch Console, click on the specific file and copy the
 path shown on the sidebar. After copying the path, prefix it with `latch://` to specify that it is a file on Latch, and
 pass the whole string as a parameter to `LatchFile`.
 
 ## Calling the test script
 
-Inside `buggy-wf`, start a development session by running
+Now that we have modified our local code, we can run it in the development environment. Note that local changes are automatically reflected in the development environment.
 
 ```console
-$ latch develop .
+>>> python3 scripts/main.py
 
-Copying your local changes...
-Could not find /Users/hannahle/Documents/GitHub/simple-variant-calling/buggy-wf/data - skipping
-Done.
-Successfully connected to remote instance.
-Pulling 6064_buggy-wf, this will only take a moment...
-Image successfully pulled.
->>>
+...
+FileNotFoundError: [Errno 2] No such file or directory: 'bwa'
 ```
 
-Now, run the test script as below:
-
-```console
->>> run-script scripts/main.py
-
-Syncing your local changes...
-Could not find /Users/hannahle/Documents/GitHub/simple-variant-calling/buggy-wf/data - skipping
-Finished syncing. Beginning execution and streaming logs:
-Finished downloading ecoli_rel606.fasta
-
-====================
-2022-11-17 00:09:13,104 flytekit ERROR Exception occured when executing task: [Errno 2] No such file or directory: 'bwa'
-====================
-```
-
-The logs tell us that there is no file or directory called `bwa`. One potential reason why is that we might not have
+The logs tell us that there is no file or directory called `bwa`. One potential reason is that we might not have
 installed the binary `bwa` correctly.
 
-To check this, let's open up a shell and check if the `bwa` command exists:
-
 ```console
->>> shell
+>>> bwa
 
-account-4034-development@ip-10-0-11-243:~$
-```
-
-This opens up an interactive bash session into the environment in which our task is running, which we can use just like
-a normal terminal. Trying to run `bwa` in it yields the following output:
-
-```console
-account-4034-development@ip-10-0-11-243:~$ bwa
 bash: bwa: command not found
 ```
 
-Indeed, our `bwa` binary was not installed! Checking the Dockerfile, notice that the installation instruction for `bwa`
+Indeed, our `bwa` binary is not installed! Checking the Dockerfile, notice that the installation instruction for `bwa`
 is commented out. Let's uncomment it:
 
 ```Dockerfile
@@ -191,41 +160,31 @@ RUN apt-get install bwa
 ...
 ```
 
-Because we made a modification to our Dockerfile, we have to rebuild the environment and enter a new development
-session to load in the newest changes. First, exit your current development session:
+Because we modified our Dockerfile, we must rebuild the environment and enter a new development session to load in the newest changes. First, exit the current development session:
 
 ```console
-account-4034-development@ip-10-0-11-243:~$ exit
 >>> exit
 Exiting local development session
 ```
 
-Re-register your workflow with the new Docker image
+Re-register the workflow with the new Docker image
 
 ```console
 $ latch register --remote .
 ...
 ```
 
-Next, once your workflow finishes registering, enter a new development session:
+Now enter a new development session and re-run the test script:
 
 ```console
-$ latch develop .
-...
+>>> python3 scripts/main.py
 ```
 
-Now, re-run the test script:
-
-```console
->>> run-script scripts/main.py
-```
-
-Your script should now run successfully!
+The script should now run successfully!
 
 ## Where are my outputs?
-
-To make sure that our tasks are working properly, lets look at their output files to make sure that they're correct.
-Where do we find them though? Let's inspect the return statement of the `build_index` task inside `wf/__init__.py`:
+To ensure that our tasks are working correctly, let's look at their output files to ensure they're correct.
+To locate the output files, we can inspect the return statement of the `build_index` task inside `wf/__init__.py`:
 
 ```python
 @small_task
@@ -241,8 +200,8 @@ def build_index(ref_genome: LatchFile = LatchFile("latch:///wgs/ref_genome/ecoli
     return LatchDir(output, "latch:///wgs/ref_genome")
 ```
 
-We can see the task is returning a `LatchDir` with the remote path `latch:///wgs/ref_genome`, which indicates that the
-output files are located inside the `/wgs/ref_genome` folder in the Latch Console.
+We see that the task is returning a `LatchDir` with the remote path `latch:///wgs/ref_genome`, which indicates that the
+output files are inside the `/wgs/ref_genome` folder in the Latch Console.
 
 ![Outputs](../assets/latch-develop-example/ref_genome.png)
 
@@ -268,25 +227,9 @@ Here, we are passing the output of the first task, `latch:///wgs/ref_genome`, as
 Run the test script:
 
 ```console
->>> run-script scripts/main.py
-
-Syncing your local changes...
-Could not find /Users/hannahle/Documents/GitHub/simple-variant-calling/buggy-wf/data - skipping
-Finished syncing. Beginning execution and streaming logs:
-Finished downloading ecoli_rel606.fasta.amb
-Finished downloading ecoli_rel606.fasta.ann
-Finished downloading ecoli_rel606.fasta.pac
-Finished downloading ecoli_rel606.fasta.sa
-Finished downloading ecoli_rel606.fasta
-Finished downloading ecoli_rel606.fasta.bwt
-['/tmp/flyte-4jp7wtbm/sandbox/local_flytekit/638a02102804a22fa669f18a715b580a/ecoli_rel606.fasta']
-====================
-2022-11-17 00:42:29,046 flytekit ERROR Exception occured when executing task: Failed to get data from latch:///wgs/
-trimmed_fastqs/SRR2584863_1.trim.sub.fastq to /tmp/flyte-4jp7wtbm/sandbox/local_flytekit/
-3b8d7234fe9c7d3e37ec78af9c592208/SRR2584863_1.trim.sub.fastq (recursive=False).
-
+>>> python3 scripts/main.py
+...
 Original exception: failed to get presigned url for `latch:///wgs/trimmed_fastqs/SRR2584863_1.trim.sub.fastq`
-====================
 ```
 
 This error tells us that there is no file called `/wgs/trimmed_fastqs/SRR2584863_1.trim.sub.fastq` in the Latch
@@ -297,7 +240,7 @@ trimmed_fastqs`).
 We can make this modification to our test script and re-run the task as below:
 
 ```console
->>> run-script scripts/main.py
+>>> python3 scripts/main.py
 ```
 
 The task now outputs the results to the folder `/results` on Latch!
@@ -306,13 +249,12 @@ The task now outputs the results to the folder `/results` on Latch!
 
 ## Exercise
 
-As an exercise, you are welcome to continue and debug the final three tasks of the whole workflow. The solution of a
-working workflow is provided in the `good-wf` folder for reference.
+As an optional exercise, continue debugging the workflow's final three tasks. The debugged workflow code is provided in the `good-wf` folder for reference.
 
 ---
 
 ## Key Takeaways
 
 * How to open a development session with `latch develop`
-* How to open an interactive bash for quick debugging of commands with `shell`
-* How to call a task and run a test script with `run-script`
+* How local changes are synced to the development environment
+* How to reflect changes from your `Dockerfile` in the latch develop environment

@@ -2,13 +2,16 @@ import asyncio
 import json
 import os
 import signal
+import subprocess
 import sys
 import termios
+import time
+import traceback
 import tty
 from enum import Enum
 from pathlib import Path
-from typing import Callable, Optional, Union, Tuple
-import traceback
+from textwrap import dedent
+from typing import Callable, Optional, Tuple, Union
 
 import aioconsole
 import asyncssh
@@ -16,7 +19,7 @@ import boto3
 import websockets.client as websockets
 import websockets.exceptions
 from watchfiles import awatch
-import time
+
 from latch_cli.config.latch import config
 from latch_cli.tinyrequests import post
 from latch_cli.utils import (
@@ -55,6 +58,7 @@ def _get_latest_image(pkg_root: Path) -> str:
 
 
 rsync_stop_event = asyncio.Event()
+
 
 async def _watch_and_rsync(
     pkg_root: Path,
@@ -103,7 +107,9 @@ async def _watch_and_rsync(
         async for _ in watcher:
             rval, _, stderr = await _rsync()
             if rval != 0:
-                await aioconsole.aprint(f"Error running rsync: {stderr}", use_stderr=True)
+                await aioconsole.aprint(
+                    f"Error running rsync: {stderr}", use_stderr=True
+                )
     except RuntimeError as e:
         if not str(e) == "Already borrowed":
             raise e
@@ -333,7 +339,11 @@ async def _run_local_dev_session(pkg_root: Path):
                     )
                     try:
                         await aioconsole.aprint("Setting up local sync...")
-                        watch_task = asyncio.create_task(_watch_and_rsync(pkg_root, centromere_ip, ssh_port, key_path))
+                        watch_task = asyncio.create_task(
+                            _watch_and_rsync(
+                                pkg_root, centromere_ip, ssh_port, key_path
+                            )
+                        )
                         await aioconsole.aprint("Done.")
 
                         image_name_tagged = _get_latest_image(pkg_root)
@@ -383,4 +393,24 @@ def local_development(pkg_root: Path):
             docs for `register`)
 
     """
+
+    # ensure that rsync is installed
+    try:
+        subprocess.run(
+            ["rsync", "--version"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=True,
+        )
+    except FileNotFoundError:
+        raise ValueError(
+            dedent(
+                """
+                rsync is required for latch develop. Please install rsync and try again
+                    linux: apt install rsync
+                    mac: brew install rsync
+                """
+            )
+        )
+
     asyncio.run(_run_local_dev_session(pkg_root))
