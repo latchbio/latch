@@ -402,7 +402,7 @@ def local_development(pkg_root: Path):
             stderr=subprocess.DEVNULL,
             check=True,
         )
-    except subprocess.CalledProcessError:
+    except FileNotFoundError:
         raise ValueError(
             dedent(
                 """
