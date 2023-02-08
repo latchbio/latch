@@ -98,4 +98,4 @@ Files deleted locally are not automatically deleted in the development environme
 
 ## Next Steps
 
-Visit the [Learning through An Example](../basics/latch_develop_example.md) page to see an end-to-end flow of how to use `latch develop` to test and debug a simple variant calling pipeline.
+Visit the [learning through An Example](../basics/latch_develop_example.md) page to see an end-to-end flow of how to use `latch develop` to test and debug a simple variant calling pipeline.

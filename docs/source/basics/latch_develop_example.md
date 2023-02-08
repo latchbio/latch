@@ -4,7 +4,7 @@ We will walk through a quick end-to-end flow for testing and debugging a variant
 ## Prerequisites
 
 * Install [Latch](../getting_started/quick_start.md)
-* Have a conceptual understanding of how Latch workflows work through reading the [quick start](../getting_started/quick_start.md) and [Authoring a workflow](../getting_started/authoring_your_workflow.md)](../getting_started/authoring_your_workflow.md)
+* Have a conceptual understanding of how Latch workflows work through reading the [quick start](../getting_started/quick_start.md) and [authoring a workflow](../getting_started/authoring_your_workflow.md)
 * Understand how [latch develop](../basics/local_development.md) works
 
 ## Building a Simple Variant Calling Workflow
