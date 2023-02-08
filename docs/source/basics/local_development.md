@@ -20,7 +20,12 @@ Output:
 
 ```console
 $ latch develop .
-...
+...Successfully connected to remote instance.
+Setting up local sync...
+Done.
+Pulling 812206152185.dkr.ecr.us-west-2.amazonaws.com/...
+Image successfully pulled.
+Starting OpenBSD Secure Shell server: sshd.
 >>>
 ```
 
