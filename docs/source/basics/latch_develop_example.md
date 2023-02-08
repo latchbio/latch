@@ -4,7 +4,7 @@ To demonstrate how to use `latch develop`, we will walk through a quick end-to-e
 ## Prerequisites
 
 * Install [Latch](../getting_started/quick_start.md)
-* Have a conceptual understanding of how Latch workflows work through reading the [Quickstart](../getting_started/quick_start.md) and [Authoring your own workflow](../getting_started/authoring_your_workflow.md)
+* Have a conceptual understanding of how Latch workflows work through reading the [quick start](../getting_started/quick_start.md) and [Authoring your workflow](../getting_started/authoring_your_workflow.md)](../getting_started/authoring_your_workflow.md)
 * Understand how [latch develop](../basics/local_development.md) works
 
 ## Building a Simple Variant Calling Workflow
@@ -92,7 +92,7 @@ We must register the workflow before we can debug it with `latch develop`. The r
 
 Run `latch develop .` in the workflow directory. You will be dropped into the environment of your workflow.
 
-To familiarize yourself with the local development environment, we recommend you read read [this](../basics/local_development.md#notes-on-the-test-environment) if you have not already.
+To familiarize yourself with the local development environment, we recommend you read [this](../basics/local_development.md#notes-on-the-test-environment) if you have not already.
 
 ## Defining a test script
 
@@ -130,7 +130,7 @@ build_index(ref_genome = LatchFile("latch:///wgs/ref_genome/ecoli_rel606.fasta")
 
 ![Copy](../assets/latch-develop-example/copy.png)
 
-To use a file on Latch as test data to the task, navigate to the Latch Console, click on the specific file and copy the
+To use a file on Latch as test data for the task, navigate to the Latch Console, click on the specific file and copy the
 path shown on the sidebar. After copying the path, prefix it with `latch://` to specify that it is a file on Latch, and
 pass the whole string as a parameter to `LatchFile`.
 
@@ -163,7 +163,7 @@ RUN apt-get install bwa
 ...
 ```
 
-Because we made a modification to our Dockerfile, we have to rebuild the environment and enter a new development session to load in the newest changes. First, exit your current development session:
+Because we modified our Dockerfile, we have to rebuild the environment and enter a new development session to load in the newest changes. First, exit your current development session:
 
 ```console
 >>> exit
@@ -187,7 +187,7 @@ Your script should now run successfully!
 
 ## Where are my outputs?
 
-To make sure that our tasks are working properly, lets look at their output files to make sure that they're correct.
+To make sure that our tasks are working properly, let's look at their output files to make sure that they're correct.
 Where do we find them though? Let's inspect the return statement of the `build_index` task inside `wf/__init__.py`:
 
 ```python
