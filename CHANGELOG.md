@@ -14,6 +14,23 @@ Types of changes
 -->
 
 # Latch SDK Changelog
+## 2.12.1 - 2023-02-08
+
+### Added
+
+* `latch develop` documentation updates
+
+### Fixed
+
+* `latch develop` throws error if user does not have rsync installed
+* `pip install latch` installs the `watchfiles` package for `latch develop`
+
+## 2.11.1 - 2023-01-25
+
+### Fixed
+
+* LatchDir initialized with local path initialized to Path object fails on upload
+
 ## 2.12.0 - 2023-02-06
 
 ### Added

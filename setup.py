@@ -14,7 +14,7 @@ if CURRENT_PYTHON < MIN_PYTHON_VERSION:
 
 setup(
     name="latch",
-    version="v2.12.0",
+    version="v2.12.1",
     author_email="kenny@latch.bio",
     description="The Latchbio SDK",
     packages=find_packages(),
@@ -45,6 +45,7 @@ setup(
         "uvloop==0.17.0",
         "websockets==10.3",
         "prompt-toolkit==3.0.33",
+        "watchfiles==0.18.1",
     ],
     classifiers=[
         "Programming Language :: Python :: 3.7",
