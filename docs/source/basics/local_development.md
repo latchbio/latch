@@ -2,7 +2,11 @@
 
 When developing a workflow, it's helpful to run the task functions before executing the entire workflow in the cloud to debug the environment and logical issues. Since tasks run in a different environment than your local computer (namely, the one defined in your Dockerfile(s)), there may be discrepancies when running your code locally.
 
-To address this, the Latch SDK comes with a command that allows you to run tasks and debug your environment without going through the web or constantly reregistering your workflow. Navigate to a workflow directory and run:
+To address this, the Latch SDK comes with a command that allows you to run tasks and debug your environment without having to reregister your workflow and run it through the UI.
+
+## Setup
+
+Navigate to a workflow directory you would like to work on and run
 
 ```console
 $ cd test-wf
@@ -80,7 +84,7 @@ We use `rsync` to bring changes from your local workflow directory to the latch 
 
 ```Dockerfile
 ...
-COPY wf /root/wf
+copy wf /root/wf
 ...
 ```
 Then when running `latch develop`, any changes to files or additional files created in the `wf` directory will be reflected in the environment, overwriting the old code in the development environment to ensure that your latest changes are present.

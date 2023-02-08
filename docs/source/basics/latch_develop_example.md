@@ -110,7 +110,7 @@ $ tree .
 3 directories, 6 files
 ```
 
-Uncomment some of the code in `main.py` to get this example:
+Uncomment some of the code in `main.py` to get this:
 
 ```python
 # Import task functions from our workflow
