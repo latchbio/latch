@@ -43,9 +43,6 @@ def get_epilogue() -> List[str]:
     ]
 
 
-# do a ignore file to ignore certain files when building the dockerfile
-
-
 def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
     commands: List[DockerCmdBlock] = []
 
