@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import jwt
-import paramiko
+from docker.utils import exclude_paths
 
 from latch_cli.config.user import user_config
 from latch_cli.constants import FILE_MAX_SIZE, PKG_NAME
@@ -115,27 +115,34 @@ def with_si_suffix(num, suffix="B", styled=False):
 def hash_directory(dir_path: Path) -> str:
     m = hashlib.new("sha256")
     m.update(current_workspace().encode("utf-8"))
-    for containing_path, dirnames, fnames in os.walk(dir_path):
+    exclude = None
+    ignore_file = dir_path / ".dockerignore"
+    if os.path.exists(ignore_file):
+        with open(ignore_file) as f:
+            exclude = list(
+                filter(
+                    lambda x: x != "" and x[0] != "#",
+                    [l.strip() for l in f.read().splitlines()],
+                )
+            )
+    for item in exclude_paths(dir_path, exclude):
         # for repeatability guarantees
-        dirnames.sort()
-        fnames.sort()
-        for filename in fnames:
-            path = Path(containing_path).joinpath(filename)
-            m.update(str(path).encode("utf-8"))
-            file_size = os.path.getsize(path)
+        p = Path(dir_path / item)
+        if p.is_dir():
+            m.update(str(p).encode("utf-8"))
+        else:
+            m.update(str(p).encode("utf-8"))
+            file_size = os.path.getsize(p)
             if file_size < FILE_MAX_SIZE:
-                with open(path, "rb") as f:
+                with open(p, "rb") as f:
                     m.update(f.read())
             else:
                 print(
                     "\x1b[38;5;226m"
-                    f"WARNING: {path.relative_to(dir_path.resolve())} is too large "
+                    f"WARNING: {p.relative_to(dir_path.resolve())} is too large "
                     f"({with_si_suffix(file_size)}) to checksum, skipping."
                     "\x1b[0m"
                 )
-        for dirname in dirnames:
-            path = Path(containing_path).joinpath(dirname)
-            m.update(str(path).encode("utf-8"))
     return m.hexdigest()
 
 
