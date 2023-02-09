@@ -256,6 +256,7 @@ def register(
                 ctx.default_container.image_name,
                 ctx.default_container.dockerfile.parent,
                 td,
+                dockerfile=ctx.default_container.dockerfile,
             )
             protos = _recursive_list(td)
             if remote:

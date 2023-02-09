@@ -163,8 +163,11 @@ def generate_dockerfile(pkg_root: Path, outfile: Path) -> None:
     Generate a Dockerfile from files in the workflow directory.
     """
 
+    print("Generating Dockerfile")
     with open(pkg_root / ".latch") as f:
         config: LatchWorkflowConfig = LatchWorkflowConfig.from_json(f.read())
+        print("  - base image:", config.base_image)
+        print("  - latch version:", config.latch_version)
 
     with open(outfile, "w") as f:
         f.write("\n".join(get_prologue(config)) + "\n\n")
@@ -185,3 +188,5 @@ def generate_dockerfile(pkg_root: Path, outfile: Path) -> None:
             f.writelines("\n".join(block.commands) + "\n\n")
 
         f.writelines("\n".join(get_epilogue()) + "\n")
+
+    print("Generated.")

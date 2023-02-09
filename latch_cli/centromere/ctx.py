@@ -91,8 +91,10 @@ class _CentromereCtx:
 
             default_dockerfile = self.pkg_root.joinpath("Dockerfile")
             if not default_dockerfile.exists():
-                default_dockerfile = generate_dockerfile(self.pkg_root)
-                print("Generated Dockerfile from files in the workflow directory")
+                generate_dockerfile(
+                    self.pkg_root, self.pkg_root.joinpath(".Dockerfile")
+                )
+                default_dockerfile = self.pkg_root.joinpath(".Dockerfile")
 
             _import_flyte_objects([self.pkg_root])
 
