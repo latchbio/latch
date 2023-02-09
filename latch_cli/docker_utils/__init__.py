@@ -27,7 +27,7 @@ class DockerCmdBlock:
 def get_prologue(config: LatchWorkflowConfig) -> List[str]:
     return [
         "# latch base image + dependencies for latch SDK -- removing these will break the workflow",
-        f"from {config.base_image}"
+        f"from {config.base_image}",
         f"run python3 -m pip install latch=={config.latch_version}",
     ]
 
@@ -55,7 +55,7 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
                 comment="Install apt requirements",
                 commands=[
                     "copy requirements.apt /root/requirements.apt",
-                    "run apt-get update -y && xargs apt-get install </root/requirements.apt",
+                    "run apt-get update -y && xargs apt-get install -y </root/requirements.apt",
                 ],
                 order=DockerCmdBlockOrder.PRECOPY,
             )

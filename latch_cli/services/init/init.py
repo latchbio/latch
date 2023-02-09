@@ -8,7 +8,7 @@ from latch_cli.constants import LatchConstants
 from latch_cli.types import LatchWorkflowConfig
 from datetime import datetime
 from pkg_resources import get_distribution
-from docker_utils import generate_dockerfile
+from latch_cli.docker_utils import generate_dockerfile
 
 import click
 
@@ -31,6 +31,12 @@ def _get_boilerplate(pkg_root: Path, source_path: Path):
     for f in source_path.glob("README*"):
         shutil.copy(f, pkg_root)
 
+    for f in source_path.glob("requirements*"):
+        shutil.copy(f, pkg_root)
+
+    for f in source_path.glob("env*"):
+        shutil.copy(f, pkg_root)
+
     version_f = pkg_root / "version"
     with open(version_f, "w") as f:
         f.write("0.0.0")
@@ -45,6 +51,8 @@ def _gen_assemble_and_sort(pkg_root: Path):
     source_path = Path(__file__).parent / "assemble_and_sort"
 
     _get_boilerplate(pkg_root, source_path)
+
+    shutil.copytree(source_path / "bowtie2", pkg_root / "bowtie2")
 
     data_root = pkg_root / "reference"
     data_root.mkdir(exist_ok=True)
