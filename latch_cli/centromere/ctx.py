@@ -24,6 +24,10 @@ from latch_cli.utils import (
     hash_directory,
     retrieve_or_login,
 )
+from latch_cli.docker_utils import generate_dockerfile
+import functools
+
+print = functools.partial(print, flush=True)
 
 
 @dataclass
@@ -87,10 +91,9 @@ class _CentromereCtx:
 
             default_dockerfile = self.pkg_root.joinpath("Dockerfile")
             if not default_dockerfile.exists():
-                raise FileNotFoundError(
-                    "Make sure you are passing a directory that contains a ",
-                    "valid dockerfile to `$ latch register`.",
-                )
+                default_dockerfile = generate_dockerfile(self.pkg_root)
+                print("Generated Dockerfile from files in the workflow directory")
+
             _import_flyte_objects([self.pkg_root])
 
             self.disable_auto_version = disable_auto_version

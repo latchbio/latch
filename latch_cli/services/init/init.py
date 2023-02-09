@@ -1,21 +1,21 @@
 """Service to initialize boilerplate."""
 
-import json
-import os
 import re
 import shutil
-from enum import Enum, auto
-from importlib.metadata import version
 from pathlib import Path
-from textwrap import dedent
 from typing import Callable, Optional
+from latch_cli.constants import LatchConstants
+from latch_cli.types import LatchWorkflowConfig
+from datetime import datetime
+from pkg_resources import get_distribution
+from docker_utils import generate_dockerfile
 
 import click
 
 from latch_cli.tui import select_tui
 
 
-def _get_boilerplate(pkg_root: Path, source_path: Path, expose_dockerfile: bool):
+def _get_boilerplate(pkg_root: Path, source_path: Path):
     pkg_root = pkg_root.resolve()
     source_path = source_path.resolve()
 
@@ -35,13 +35,8 @@ def _get_boilerplate(pkg_root: Path, source_path: Path, expose_dockerfile: bool)
     with open(version_f, "w") as f:
         f.write("0.0.0")
 
-    if expose_dockerfile:
-        docker_f = pkg_root / "Dockerfile"
-        docker_source = source_path / "Dockerfile"
-        shutil.copy(docker_source, docker_f)
 
-
-def _gen_assemble_and_sort(pkg_root: Path, expose_dockerfile: bool):
+def _gen_assemble_and_sort(pkg_root: Path):
     import boto3
     from botocore import UNSIGNED
     from botocore.config import Config
@@ -49,7 +44,7 @@ def _gen_assemble_and_sort(pkg_root: Path, expose_dockerfile: bool):
     pkg_root = pkg_root.resolve()
     source_path = Path(__file__).parent / "assemble_and_sort"
 
-    _get_boilerplate(pkg_root, source_path, expose_dockerfile)
+    _get_boilerplate(pkg_root, source_path)
 
     data_root = pkg_root / "reference"
     data_root.mkdir(exist_ok=True)
@@ -74,29 +69,29 @@ def _gen_assemble_and_sort(pkg_root: Path, expose_dockerfile: bool):
     print()
 
 
-def _gen_template(pkg_root: Path, expose_dockerfile: bool):
+def _gen_template(pkg_root: Path):
     pkg_root = pkg_root.resolve()
     source_path = Path(__file__).parent / "template"
 
-    _get_boilerplate(pkg_root, source_path, expose_dockerfile)
+    _get_boilerplate(pkg_root, source_path)
 
 
-def _gen_example_r(pkg_root: Path, expose_dockerfile: bool):
+def _gen_example_r(pkg_root: Path):
     pkg_root = pkg_root.resolve()
     source_path = Path(__file__).parent / "example_r"
 
-    _get_boilerplate(pkg_root, source_path, expose_dockerfile)
+    _get_boilerplate(pkg_root, source_path)
 
 
-def _gen_example_conda(pkg_root: Path, expose_dockerfile: bool):
+def _gen_example_conda(pkg_root: Path):
     pkg_root = pkg_root.resolve()
     source_path = Path(__file__).parent / "example_conda"
 
-    _get_boilerplate(pkg_root, source_path, expose_dockerfile)
+    _get_boilerplate(pkg_root, source_path)
 
-    imports_dest = pkg_root / "requirements.txt"
-    imports_source = source_path / "requirements.txt"
-    shutil.copy(imports_source, imports_dest)
+    conda_env_dest = pkg_root / "environment.yml"
+    conda_env_src = source_path / "environment.yml"
+    shutil.copy(conda_env_src, conda_env_dest)
 
 
 option_map = {
@@ -207,5 +202,18 @@ def init(
         ):
             return False
 
-    template_func(pkg_root, expose_dockerfile)
+    config = LatchWorkflowConfig(
+        latch_version=get_distribution("latch").version,
+        base_image=LatchConstants.base_image,
+        date=datetime.now(),
+    )
+
+    with open(pkg_root / ".latch", "w") as f:
+        f.write(config.to_json())
+
+    template_func(pkg_root)
+
+    if expose_dockerfile:
+        generate_dockerfile(pkg_root, pkg_root / "Dockerfile")
+
     return True

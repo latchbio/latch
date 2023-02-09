@@ -5,6 +5,13 @@ from dataclasses import dataclass
 
 
 @dataclass
+class LatchConstants:
+    base_image: str = (
+        "812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:ace9-main"
+    )
+
+
+@dataclass
 class OAuth2Constants:
 
     client_id: str = "jzFBOhIbfp4EPRYZ8wmx4YyvL27LFDeB"

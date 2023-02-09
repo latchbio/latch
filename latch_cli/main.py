@@ -129,7 +129,14 @@ def login(connection: Optional[str]):
         case_sensitive=False,
     ),
 )
-def init(pkg_name: str, template: Optional[str] = None):
+@click.option(
+    "--dockerfile",
+    "-d",
+    help="Create a user editable Dockerfile for this workflow.",
+    is_flag=True,
+    default=False,
+)
+def init(pkg_name: str, template: Optional[str] = None, dockerfile: bool = False):
     """Initialize boilerplate for local workflow code."""
 
     crash_handler.message = f"Unable to initialize {pkg_name}"
@@ -137,7 +144,7 @@ def init(pkg_name: str, template: Optional[str] = None):
 
     from latch_cli.services.init import init
 
-    created = init(pkg_name, template)
+    created = init(pkg_name, template, dockerfile)
     if created:
         click.secho(f"Created a latch workflow in `{pkg_name}`", fg="green")
         click.secho("Run", fg="green")
