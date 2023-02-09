@@ -185,7 +185,7 @@ def generate_dockerfile(pkg_root: Path, outfile: Path) -> None:
             f.write(f"# {block.comment}\n")
             f.writelines("\n".join(block.commands) + "\n\n")
 
-        f.write("# copy all code from package (use .latchignore to skip files)\n")
+        f.write("# copy all code from package (use .dockerignore to skip files)\n")
         f.write("copy . /root/\n\n")
 
         for block in post_commands:
