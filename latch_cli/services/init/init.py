@@ -37,6 +37,10 @@ def _get_boilerplate(pkg_root: Path, source_path: Path):
     for f in source_path.glob("env*"):
         shutil.copy(f, pkg_root)
 
+    common_source = source_path.parent / "common"
+    for f in common_source.iterdir():
+        shutil.copy(f, pkg_root)
+
     version_f = pkg_root / "version"
     with open(version_f, "w") as f:
         f.write("0.0.0")
