@@ -52,7 +52,7 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
         print("Install apt requirements from `requirements.apt`")
         commands.append(
             DockerCmdBlock(
-                comment="Install apt requirements",
+                comment="install apt requirements",
                 commands=[
                     "copy requirements.apt /root/requirements.apt",
                     "run apt-get update -y && xargs apt-get install -y </root/requirements.apt",
@@ -66,16 +66,16 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
         print("Install R packages from `environment.R`y")
         commands.append(
             DockerCmdBlock(
-                comment="Install R requirements",
+                comment="install R requirements",
                 commands=[
                     dedent(
+                        """\
+                        run apt-get update -y && \\
+                            apt-get install -y software-properties-common && \\
+                            add-apt-repository "deb http://cloud.r-project.org/bin/linux/debian buster-cran40/" && \\
+                            apt-get install -y r-base r-base-dev libxml2-dev libcurl4-openssl-dev libssl-dev wget \
                         """
-                    run apt-get update -y && \
-                        apt-get install -y software-properties-common && \
-                        add-apt-repository "deb http://cloud.r-project.org/bin/linux/debian buster-cran40/" && \
-                        apt-get install -y r-base r-base-dev libxml2-dev libcurl4-openssl-dev libssl-dev wget
-                    """
-                    ),
+                    ).strip(),
                     "copy environment.R /root/environment.R",
                     "run Rscript /root/environment.R",
                 ],
@@ -103,24 +103,24 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
                 order=DockerCmdBlockOrder.PRECOPY,
             ),
             DockerCmdBlock(
-                comment="Install miniconda",
+                comment="install miniconda",
                 commands=[
                     dedent(
+                        """\
+                        run apt-get update -y && \\
+                            apt-get install -y curl && \\
+                            curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \\
+                            mkdir /root/.conda && \\
+                            bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \\
+                            rm -f Miniconda3-latest-Linux-x86_64.sh && \\
+                            conda init bash \
                         """
-                        run apt-get update -y && \
-                            apt-get install -y curl && \
-                            curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
-                            mkdir /root/.conda && \
-                            bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \
-                            rm -f Miniconda3-latest-Linux-x86_64.sh && \
-                            conda init bash
-                        """
-                    ),
+                    ).strip(),
                 ],
                 order=DockerCmdBlockOrder.PRECOPY,
             ),
             DockerCmdBlock(
-                comment="Build and configure conda environment",
+                comment="build and configure conda environment",
                 commands=[
                     "copy environment.yml /root/environment.yml",
                     f"run conda env create -f environment.yml --name {env_name}",
@@ -136,7 +136,7 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
         print("Add local package to python environment")
         commands.append(
             DockerCmdBlock(
-                comment="Add local package to python environment",
+                comment="add local package to python environment",
                 commands=["run python3 -m pip install -e /root/"],
                 order=DockerCmdBlockOrder.POSTCOPY,
             )
@@ -147,7 +147,7 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
         print("Add requirements from `requirements.txt` to python environment")
         commands.append(
             DockerCmdBlock(
-                comment="Add requirements from `requirements.txt` to python environment",
+                comment="add requirements from `requirements.txt` to python environment",
                 commands=[
                     "copy requirements.txt /root/requirements.txt",
                     "run python3 -m pip install -r requirements.txt",
@@ -178,6 +178,7 @@ def generate_dockerfile(pkg_root: Path, outfile: Path) -> None:
             f.write(f"# {block.comment}\n")
             f.writelines("\n".join(block.commands) + "\n\n")
 
+        f.write("# copy all code from package (use .latchignore to skip files)\n")
         f.write("copy . /root/\n\n")
 
         for block in post_commands:
