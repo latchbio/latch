@@ -1,11 +1,13 @@
-from pathlib import Path
-from latch_cli.types import LatchWorkflowConfig
-from textwrap import dedent
 import functools
 from dataclasses import dataclass
 from enum import Enum, auto
+from pathlib import Path
+from textwrap import dedent
 from typing import List
+
 import yaml
+
+from latch_cli.types import LatchWorkflowConfig
 
 print = functools.partial(print, flush=True)
 

@@ -1,3 +1,4 @@
+import functools
 import re
 import subprocess
 from dataclasses import dataclass
@@ -17,6 +18,7 @@ from latch_cli.centromere.utils import (
     _import_flyte_objects,
 )
 from latch_cli.config.latch import config
+from latch_cli.docker_utils import generate_dockerfile
 from latch_cli.utils import (
     account_id_from_token,
     current_workspace,
@@ -24,8 +26,6 @@ from latch_cli.utils import (
     hash_directory,
     retrieve_or_login,
 )
-from latch_cli.docker_utils import generate_dockerfile
-import functools
 
 print = functools.partial(print, flush=True)
 

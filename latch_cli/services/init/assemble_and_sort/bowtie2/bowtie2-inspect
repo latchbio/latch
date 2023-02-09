@@ -20,13 +20,14 @@
 """
 
 
-import os
-import sys
+import argparse
 import inspect
 import logging
-import argparse
+import os
 import subprocess
+import sys
 from collections import deque
+
 
 def main():
     parser = argparse.ArgumentParser(add_help = False)
