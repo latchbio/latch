@@ -164,10 +164,15 @@ def generate_dockerfile(pkg_root: Path, outfile: Path) -> None:
     """
 
     print("Generating Dockerfile")
-    with open(pkg_root / ".latch") as f:
-        config: LatchWorkflowConfig = LatchWorkflowConfig.from_json(f.read())
-        print("  - base image:", config.base_image)
-        print("  - latch version:", config.latch_version)
+    try:
+        with open(pkg_root / ".latch") as f:
+            config: LatchWorkflowConfig = LatchWorkflowConfig.from_json(f.read())
+            print("  - base image:", config.base_image)
+            print("  - latch version:", config.latch_version)
+    except FileNotFoundError:
+        raise RuntimeError(
+            "Could not find .latch file in supplied directory. If your workflow was created previously to release 2.13.0, you may need to run `latch init` to generate a .latch file."
+        )
 
     with open(outfile, "w") as f:
         f.write("\n".join(get_prologue(config)) + "\n\n")

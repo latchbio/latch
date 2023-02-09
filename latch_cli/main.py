@@ -46,6 +46,30 @@ def main():
     crash_handler.init()
 
 
+@main.command("dockerfile")
+@click.argument("pkg_root", nargs=1, type=click.Path(exists=True))
+def dockerfile(pkg_root: str):
+    """Generates a user editable dockerfile for workflow and saves under `pkg_root/Dockerfile`.
+
+    Visit docs.latch.bio to learn more.
+    """
+
+    crash_handler.message = "Failed to generate Dockerfile."
+    crash_handler.pkg_root = pkg_root
+
+    from latch_cli.docker_utils import generate_dockerfile
+
+    source = Path(pkg_root)
+    dest = source / "Dockerfile"
+    if dest.exists() and not click.confirm(
+        f"Dockerfile already exists at `{dest}`. Overwrite?"
+    ):
+        return
+    generate_dockerfile(source, dest)
+
+    click.secho(f"Successfully generated dockerfile `{dest}`", fg="green")
+
+
 @main.command("register")
 @click.argument("pkg_root", nargs=1, type=click.Path(exists=True))
 @click.option(
