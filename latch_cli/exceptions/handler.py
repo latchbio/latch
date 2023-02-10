@@ -65,7 +65,7 @@ class CrashHandler:
                     Path(dp) / f
                     for dp, _, filenames in os.walk(pkg_path)
                     for f in filenames
-                    if not latch_constants.ignore_regex.match(str(Path(dp) / f))
+                    if latch_constants.ignore_regex.search(str(Path(dp) / f)) is None
                 ]
                 for file_path in pkg_files:
                     if os.path.getsize(file_path) < latch_constants.file_max_size:
