@@ -4,17 +4,17 @@ import re
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(frozen=True)
 class LatchConstants:
     base_image: str = (
         "812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:ace9-main"
     )
 
-    mb: int = 2**20
+    mib: int = 2**20
 
-    file_max_size: int = 4 * mb
+    file_max_size: int = 4 * mib
 
-    file_chunk_size: int = 5 * mb
+    file_chunk_size: int = 5 * mib
 
     pkg_name: str = "latch"
 
@@ -30,7 +30,7 @@ class LatchConstants:
 latch_constants = LatchConstants()
 
 
-@dataclass
+@dataclass(frozen=True)
 class OAuth2Constants:
 
     client_id: str = "jzFBOhIbfp4EPRYZ8wmx4YyvL27LFDeB"

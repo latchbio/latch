@@ -13,6 +13,7 @@ from latch_cli.config.user import user_config
 from latch_cli.constants import latch_constants
 from latch_cli.services.login import login
 from latch_cli.tinyrequests import get
+from typing import List
 
 
 def retrieve_or_login() -> str:
@@ -115,16 +116,21 @@ def with_si_suffix(num, suffix="B", styled=False):
 def hash_directory(dir_path: Path) -> str:
     m = hashlib.new("sha256")
     m.update(current_workspace().encode("utf-8"))
-    exclude = None
+
     ignore_file = dir_path / ".dockerignore"
-    if os.path.exists(ignore_file):
-        with open(ignore_file) as f:
-            exclude = list(
-                filter(
-                    lambda x: x != "" and x[0] != "#",
-                    [l.strip() for l in f.read().splitlines()],
-                )
-            )
+    exclude: List[str] = []
+    try:
+        for l in ignore_file.open("r"):
+            l = l.strip()
+
+            if l == "":
+                continue
+            if l[0] == "#":
+                continue
+
+            exclude.append(l)
+    except FileNotFoundError:
+        print("No .dockerignore file found --- including all files")
 
     paths = list(exclude_paths(dir_path, exclude))
     paths.sort()
@@ -134,19 +140,20 @@ def hash_directory(dir_path: Path) -> str:
         p = Path(dir_path / item)
         if p.is_dir():
             m.update(str(p).encode("utf-8"))
+            continue
+
+        m.update(str(p).encode("utf-8"))
+        file_size = os.path.getsize(p)
+        if file_size < latch_constants.file_max_size:
+            m.update(p.read_bytes())
         else:
-            m.update(str(p).encode("utf-8"))
-            file_size = os.path.getsize(p)
-            if file_size < latch_constants.file_max_size:
-                with open(p, "rb") as f:
-                    m.update(f.read())
-            else:
-                print(
-                    "\x1b[38;5;226m"
-                    f"WARNING: {p.relative_to(dir_path.resolve())} is too large "
-                    f"({with_si_suffix(file_size)}) to checksum, skipping."
-                    "\x1b[0m"
-                )
+            print(
+                "\x1b[38;5;226m"
+                f"WARNING: {p.relative_to(dir_path.resolve())} is too large "
+                f"({with_si_suffix(file_size)}) to checksum, skipping."
+                "\x1b[0m"
+            )
+
     return m.hexdigest()
 
 

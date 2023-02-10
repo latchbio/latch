@@ -84,9 +84,8 @@ def _gen_assemble_and_sort(pkg_root: Path):
     subprocess.run(
         [
             "curl",
-            "-L",
             f"https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.4.4/{bowtie2_base_name}.zip/download",
-            "-o",
+            "--output",
             str(pkg_root / f"{bowtie2_base_name}.zip"),
         ],
         check=True,

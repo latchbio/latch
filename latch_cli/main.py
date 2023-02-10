@@ -47,7 +47,7 @@ def main():
 
 
 @main.command("dockerfile")
-@click.argument("pkg_root", nargs=1, type=click.Path(exists=True))
+@click.argument("pkg_root", type=click.Path(exists=True, file_okay=False))
 def dockerfile(pkg_root: str):
     """Generates a user editable dockerfile for workflow and saves under `pkg_root/Dockerfile`.
 
@@ -59,7 +59,7 @@ def dockerfile(pkg_root: str):
 
     from latch_cli.docker_utils import generate_dockerfile
 
-    source = Path(pkg_root).resolve()
+    source = Path(pkg_root)
     dest = source / "Dockerfile"
     if dest.exists() and not click.confirm(
         f"Dockerfile already exists at `{dest}`. Overwrite?"
@@ -71,7 +71,7 @@ def dockerfile(pkg_root: str):
 
 
 @main.command("register")
-@click.argument("pkg_root", nargs=1, type=click.Path(exists=True))
+@click.argument("pkg_root", type=click.Path(exists=True, file_okay=False))
 @click.option(
     "-d",
     "--disable-auto-version",

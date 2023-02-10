@@ -5,5 +5,4 @@ docker-compose.yml
 Dockerfile
 .latch
 .git
-.cache
-**/*.pyc
+__pycache__

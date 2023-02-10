@@ -1,3 +1,3 @@
 install.packages("RCurl")
 install.packages("BiocManager")
-BiocManager::install("S4Vectors", force = TRUE)
+BiocManager::install("S4Vectors")

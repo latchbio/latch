@@ -10,7 +10,7 @@ import certifi
 
 from latch_cli.auth.csrf import CSRFState
 from latch_cli.auth.pkce import PKCE
-from latch_cli.constants import oauth2_constants
+from latch_cli.constants import OAuth2Constants
 
 
 class OAuth2:
@@ -70,7 +70,7 @@ class OAuth2:
     """
 
     def __init__(
-        self, pkce: PKCE, csrf_state: CSRFState, oauth2_constants: oauth2_constants
+        self, pkce: PKCE, csrf_state: CSRFState, oauth2_constants: OAuth2Constants
     ):
         self.pkce = pkce
         self.csrf_state = csrf_state
