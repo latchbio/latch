@@ -20,6 +20,7 @@ from latch_cli.services.register.utils import (
     _upload_image,
 )
 
+
 def _delete_lines(lines: List[str]):
     """Deletes the previous len(lines) lines, assuming cursor is on a
     new line just below the first line to be deleted"""

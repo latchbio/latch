@@ -10,7 +10,7 @@ class LatchConstants:
         "812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:ace9-main"
     )
 
-    mb: int = 2 ** 20
+    mb: int = 2**20
 
     file_max_size: int = 4 * mb
 
@@ -26,7 +26,9 @@ class LatchConstants:
         "(\.git|\.latch_report\.tar\.gz|traceback\.txt|metadata\.json)"
     )
 
+
 latch_constants = LatchConstants()
+
 
 @dataclass
 class OAuth2Constants:
@@ -40,5 +42,5 @@ class OAuth2Constants:
     redirect_url: str = "http://127.0.0.1:5050/callback"
     """Redirect URL registered with authentication server."""
 
-oauth2_constants = OAuth2Constants()
 
+oauth2_constants = OAuth2Constants()

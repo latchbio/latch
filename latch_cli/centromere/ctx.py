@@ -17,6 +17,7 @@ from latch_cli.centromere.utils import (
     _import_flyte_objects,
 )
 from latch_cli.config.latch import config
+from latch_cli.constants import latch_constants
 from latch_cli.docker_utils import generate_dockerfile
 from latch_cli.utils import (
     account_id_from_token,
@@ -25,7 +26,7 @@ from latch_cli.utils import (
     hash_directory,
     retrieve_or_login,
 )
-from latch_cli.constants import latch_constants
+
 
 @dataclass
 class _Container:
@@ -128,7 +129,9 @@ class _CentromereCtx:
                 raise ValueError(f"Version {self.version} has already been registered.")
 
             self.default_container = _Container(
-                dockerfile=default_dockerfile, image_name=self.image_tagged, pkg_dir=self.pkg_root
+                dockerfile=default_dockerfile,
+                image_name=self.image_tagged,
+                pkg_dir=self.pkg_root,
             )
 
             if remote is True:

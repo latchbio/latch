@@ -2,10 +2,10 @@
 
 import re
 import shutil
+import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, Optional
-import subprocess
 
 import click
 from pkg_resources import get_distribution
@@ -82,14 +82,20 @@ def _gen_assemble_and_sort(pkg_root: Path):
     print("Downloading bowtie2")
     bowtie2_base_name = "bowtie2-2.4.4-linux-x86_64"
     subprocess.run(
-        ["curl", "-L", f"https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.4.4/{bowtie2_base_name}.zip/download", "-o", str(pkg_root / f"{bowtie2_base_name}.zip")],
+        [
+            "curl",
+            "-L",
+            f"https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.4.4/{bowtie2_base_name}.zip/download",
+            "-o",
+            str(pkg_root / f"{bowtie2_base_name}.zip"),
+        ],
         check=True,
     )
     subprocess.run(
         ["unzip", str(pkg_root / f"{bowtie2_base_name}.zip"), "-d", str(pkg_root)],
         check=True,
     )
-    
+
     bowtie_dir = pkg_root / "bowtie2"
     bowtie_dir.mkdir(exist_ok=True)
 

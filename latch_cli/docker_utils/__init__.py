@@ -3,10 +3,10 @@ from enum import Enum, auto
 from pathlib import Path
 from textwrap import dedent
 from typing import List
-from latch_cli.constants  import latch_constants
 
 import yaml
 
+from latch_cli.constants import latch_constants
 from latch_cli.types import LatchWorkflowConfig
 
 

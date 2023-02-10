@@ -21,13 +21,13 @@ import websockets.exceptions
 from watchfiles import awatch
 
 from latch_cli.config.latch import config
+from latch_cli.constants import latch_constants
 from latch_cli.tinyrequests import post
 from latch_cli.utils import (
     TemporarySSHCredentials,
     current_workspace,
     retrieve_or_login,
 )
-from latch_cli.constants  import latch_constants
 
 
 def _get_latest_image(pkg_root: Path) -> str:
