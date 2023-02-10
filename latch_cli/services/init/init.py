@@ -5,6 +5,7 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, Optional
+import subprocess
 
 import click
 from pkg_resources import get_distribution
@@ -56,8 +57,6 @@ def _gen_assemble_and_sort(pkg_root: Path):
 
     _get_boilerplate(pkg_root, source_path)
 
-    shutil.copytree(source_path / "bowtie2", pkg_root / "bowtie2")
-
     data_root = pkg_root / "reference"
     data_root.mkdir(exist_ok=True)
 
@@ -78,6 +77,32 @@ def _gen_assemble_and_sort(pkg_root: Path):
         print(".", flush=True, end="")
         with open(data_root / id, "wb") as f:
             s3.download_fileobj("latch-public", f"sdk/{id}", f)
+    print()
+
+    print("Downloading bowtie2")
+    bowtie2_base_name = "bowtie2-2.4.4-linux-x86_64"
+    subprocess.run(
+        ["curl", "-L", f"https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.4.4/{bowtie2_base_name}.zip/download", "-o", str(pkg_root / f"{bowtie2_base_name}.zip")],
+        check=True,
+    )
+    subprocess.run(
+        ["unzip", str(pkg_root / f"{bowtie2_base_name}.zip"), "-d", str(pkg_root)],
+        check=True,
+    )
+    
+    bowtie_dir = pkg_root / "bowtie2"
+    bowtie_dir.mkdir(exist_ok=True)
+
+    subprocess.run(
+        f"mv {str(pkg_root / bowtie2_base_name)}/*bowtie2* {str(pkg_root / 'bowtie2')}",
+        check=True,
+        shell=True,
+    )
+    subprocess.run(
+        f"rm -r {str(pkg_root / bowtie2_base_name)} {str(pkg_root / bowtie2_base_name)}.zip {str(pkg_root / 'bowtie2')}/*-debug*",
+        check=True,
+        shell=True,
+    )
     print()
 
 
