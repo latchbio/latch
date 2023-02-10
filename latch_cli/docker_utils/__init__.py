@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
@@ -178,7 +179,7 @@ def generate_dockerfile(pkg_root: Path, outfile: Path) -> None:
     print("Generating Dockerfile")
     try:
         with open(pkg_root / latch_constants.pkg_config) as f:
-            config: LatchWorkflowConfig = LatchWorkflowConfig.from_json(f.read())
+            config: LatchWorkflowConfig = LatchWorkflowConfig(**json.load(f))
             print("  - base image:", config.base_image)
             print("  - latch version:", config.latch_version)
     except FileNotFoundError as e:

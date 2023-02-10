@@ -5,6 +5,7 @@ import os
 import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import List
 
 import jwt
 from docker.utils import exclude_paths
@@ -13,7 +14,6 @@ from latch_cli.config.user import user_config
 from latch_cli.constants import latch_constants
 from latch_cli.services.login import login
 from latch_cli.tinyrequests import get
-from typing import List
 
 
 def retrieve_or_login() -> str:

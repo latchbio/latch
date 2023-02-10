@@ -1,10 +1,7 @@
-from datetime import datetime
 from dataclasses import dataclass
+from datetime import datetime
 
-from dataclasses_json import dataclass_json
 
-
-@dataclass_json
 @dataclass(frozen=True)
 class LatchWorkflowConfig:
     """Configuration for a Latch workflow."""
@@ -13,5 +10,5 @@ class LatchWorkflowConfig:
     """Version of the Latch SDK used to initialize the workflow"""
     base_image: str
     """Exact version of the included workflow base image"""
-    date: datetime
+    date: str
     """Time stamp of the `latch init` call"""

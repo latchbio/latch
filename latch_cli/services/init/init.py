@@ -1,8 +1,10 @@
 """Service to initialize boilerplate."""
 
+import json
 import re
 import shutil
 import subprocess
+from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, Optional
@@ -247,13 +249,13 @@ def init(
     config = LatchWorkflowConfig(
         latch_version=get_distribution("latch").version,
         base_image=latch_constants.base_image,
-        date=datetime.now(),
+        date=datetime.now().isoformat(),
     )
 
     (pkg_root / ".latch").mkdir(exist_ok=True)
 
     with open(pkg_root / latch_constants.pkg_config, "w") as f:
-        f.write(config.to_json())
+        f.write(json.dumps(asdict(config)))
 
     template_func(pkg_root)
 
