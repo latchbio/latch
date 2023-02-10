@@ -163,8 +163,19 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
 
 
 def generate_dockerfile(pkg_root: Path, outfile: Path) -> None:
-    """
-    Generate a Dockerfile from files in the workflow directory.
+    """Generate a best effort Dockerfile from files in the workflow directory.
+
+    Args:
+        pkg_root: A path to a workflow directory.
+        outfile: The path to write the generated Dockerfile.
+
+    Example:
+
+        >>> generate_dockerfile(Path("test-workflow"), Path("test-workflow/Dockerfile"))
+            # The resulting file structure will look like
+            #   test-workflow
+            #   ├── Dockerfile
+            #   └── ...
     """
 
     print("Generating Dockerfile")
