@@ -9,7 +9,7 @@ from traceback import print_exc, walk_tb
 from types import TracebackType
 from typing import Optional, Type
 
-from latch_cli.constants import FILE_MAX_SIZE, IGNORE_REGEX
+from latch_cli.constants import latch_constants
 from latch_cli.exceptions.traceback import _Traceback
 from latch_cli.utils import get_local_package_version
 
@@ -65,16 +65,16 @@ class CrashHandler:
                     Path(dp) / f
                     for dp, _, filenames in os.walk(pkg_path)
                     for f in filenames
-                    if not IGNORE_REGEX.match(str(Path(dp) / f))
+                    if not latch_constants.ignore_regex.match(str(Path(dp) / f))
                 ]
                 for file_path in pkg_files:
-                    if os.path.getsize(file_path) < FILE_MAX_SIZE:
+                    if os.path.getsize(file_path) < latch_constants.file_max_size:
                         tf.add(file_path)
                     else:
                         with tempfile.NamedTemporaryFile("wb+") as ntf:
                             ntf.write(f"# first 4 MB of {file_path}\n".encode("utf-8"))
                             with open(file_path, "rb") as f:
-                                ntf.write(f.read(FILE_MAX_SIZE))
+                                ntf.write(f.read(latch_constants.file_max_size))
                                 ntf.seek(0)
                             tf.add(ntf.name, arcname=file_path)
 

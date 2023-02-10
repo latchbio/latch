@@ -9,7 +9,7 @@ from typing import Callable, Optional
 import click
 from pkg_resources import get_distribution
 
-from latch_cli.constants import LatchConstants
+from latch_cli.constants import latch_constants
 from latch_cli.docker_utils import generate_dockerfile
 from latch_cli.tui import select_tui
 from latch_cli.types import LatchWorkflowConfig
@@ -216,11 +216,13 @@ def init(
 
     config = LatchWorkflowConfig(
         latch_version=get_distribution("latch").version,
-        base_image=LatchConstants.base_image,
+        base_image=latch_constants.base_image,
         date=datetime.now(),
     )
 
-    with open(pkg_root / ".latch", "w") as f:
+    (pkg_root / ".latch").mkdir(exist_ok=True)
+
+    with open(pkg_root / latch_constants.pkg_config, "w") as f:
         f.write(config.to_json())
 
     template_func(pkg_root)

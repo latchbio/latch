@@ -10,7 +10,7 @@ import certifi
 
 from latch_cli.auth.csrf import CSRFState
 from latch_cli.auth.pkce import PKCE
-from latch_cli.constants import OAuth2Constants
+from latch_cli.constants import oauth2_constants
 
 
 class OAuth2:
@@ -53,7 +53,7 @@ class OAuth2:
             with CSRFState() as csrf_state:
 
                 # Construct our object + call each leg of the flow as a method.
-                oauth2_flow = OAuth2(pkce, csrf_state, OAuth2Constants)
+                oauth2_flow = OAuth2(pkce, csrf_state, oauth2_constants)
                 auth_code = oauth2_flow.authorization_request() # A + B
                 token = oauth2_flow.access_token_request(auth_code) # C + D
 
@@ -70,7 +70,7 @@ class OAuth2:
     """
 
     def __init__(
-        self, pkce: PKCE, csrf_state: CSRFState, oauth2_constants: OAuth2Constants
+        self, pkce: PKCE, csrf_state: CSRFState, oauth2_constants: oauth2_constants
     ):
         self.pkce = pkce
         self.csrf_state = csrf_state

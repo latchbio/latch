@@ -59,7 +59,7 @@ def dockerfile(pkg_root: str):
 
     from latch_cli.docker_utils import generate_dockerfile
 
-    source = Path(pkg_root)
+    source = Path(pkg_root).resolve()
     dest = source / "Dockerfile"
     if dest.exists() and not click.confirm(
         f"Dockerfile already exists at `{dest}`. Overwrite?"

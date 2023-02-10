@@ -14,4 +14,4 @@ class LatchWorkflowConfig:
     base_image: str
     """Base image at initialization time."""
     date: datetime.datetime
-    """Date and time at initialization time."""
+    """Date and time of initialization"""

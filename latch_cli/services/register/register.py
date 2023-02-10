@@ -1,7 +1,6 @@
 """Service to register workflows."""
 
 import contextlib
-import functools
 import os
 import re
 import shutil
@@ -20,9 +19,6 @@ from latch_cli.services.register.utils import (
     _serialize_pkg_in_container,
     _upload_image,
 )
-
-print = functools.partial(print, flush=True)
-
 
 def _delete_lines(lines: List[str]):
     """Deletes the previous len(lines) lines, assuming cursor is on a
@@ -254,7 +250,7 @@ def register(
             _build_and_serialize(
                 ctx,
                 ctx.default_container.image_name,
-                ctx.default_container.dockerfile.parent,
+                ctx.default_container.pkg_dir,
                 td,
                 dockerfile=ctx.default_container.dockerfile,
             )
@@ -276,7 +272,7 @@ def register(
                         ctx,
                         container.image_name,
                         # always use root as build context
-                        ctx.default_container.dockerfile.parent,
+                        ctx.default_container.pkg_dir,
                         task_td,
                         dockerfile=container.dockerfile,
                     )

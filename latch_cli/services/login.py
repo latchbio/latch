@@ -25,11 +25,11 @@ def login(connection: Optional[str] = None) -> str:
         )
 
     from latch_cli.auth import PKCE, CSRFState, OAuth2
-    from latch_cli.constants import OAuth2Constants
+    from latch_cli.constants import oauth2_constants
 
     with PKCE() as pkce:
         with CSRFState() as csrf_state:
-            oauth2_flow = OAuth2(pkce, csrf_state, OAuth2Constants)
+            oauth2_flow = OAuth2(pkce, csrf_state, oauth2_constants)
             auth_code = oauth2_flow.authorization_request(connection)
             jwt = oauth2_flow.access_token_request(auth_code)
 

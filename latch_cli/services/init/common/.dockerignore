@@ -3,7 +3,7 @@ README.md
 CHANGELOG.md
 docker-compose.yml
 Dockerfile
-.Dockerfile
+.latch
 .git
 .cache
 **/*.pyc

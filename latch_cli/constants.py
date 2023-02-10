@@ -10,6 +10,23 @@ class LatchConstants:
         "812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:ace9-main"
     )
 
+    mb: int = 2 ** 20
+
+    file_max_size: int = 4 * mb
+
+    file_chunk_size: int = 5 * mb
+
+    pkg_name: str = "latch"
+
+    pkg_ssh_key: str = ".latch/ssh_key"
+
+    pkg_config: str = ".latch/config"
+
+    ignore_regex = re.compile(
+        "(\.git|\.latch_report\.tar\.gz|traceback\.txt|metadata\.json)"
+    )
+
+latch_constants = LatchConstants()
 
 @dataclass
 class OAuth2Constants:
@@ -23,14 +40,5 @@ class OAuth2Constants:
     redirect_url: str = "http://127.0.0.1:5050/callback"
     """Redirect URL registered with authentication server."""
 
+oauth2_constants = OAuth2Constants()
 
-MB = 2**20
-
-FILE_MAX_SIZE = 4 * MB
-FILE_CHUNK_SIZE = 5 * MB
-
-PKG_NAME = "latch"
-
-IGNORE_REGEX = re.compile(
-    "(\.git|\.latch_report\.tar\.gz|traceback\.txt|metadata\.json)"
-)

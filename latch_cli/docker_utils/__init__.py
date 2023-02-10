@@ -1,15 +1,13 @@
-import functools
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
 from textwrap import dedent
 from typing import List
+from latch_cli.constants  import latch_constants
 
 import yaml
 
 from latch_cli.types import LatchWorkflowConfig
-
-print = functools.partial(print, flush=True)
 
 
 class DockerCmdBlockOrder(Enum):
@@ -83,9 +81,15 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
         )
 
     # conda environment in workflow directory
+    conda_env_file_name = None
     if (pkg_root / "environment.yml").exists():
+        conda_env_file_name = "environment.yml"
+    elif (pkg_root / "environment.yaml").exists():
+        conda_env_file_name = "environment.yaml"
+
+    if conda_env_file_name is not None:
         print("Create conda environment from `environment.yml`")
-        with open(pkg_root / "environment.yml") as f:
+        with open(pkg_root / conda_env_file_name) as f:
             conda_env = yaml.safe_load(f.read())
             if "name" in conda_env:
                 env_name = conda_env["name"]
@@ -121,8 +125,8 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
             DockerCmdBlock(
                 comment="build and configure conda environment",
                 commands=[
-                    "copy environment.yml /root/environment.yml",
-                    f"run conda env create -f environment.yml --name {env_name}",
+                    f"copy {conda_env_file} /root/{conda_env_file}",
+                    f"run conda env create -f {conda_env_file} --name {env_name}",
                     f"""shell ["conda", "run", "-n", "{env_name}", "/bin/bash", "-c"]""",
                     "run /opt/conda/bin/pip install --upgrade latch",
                 ],
@@ -165,7 +169,7 @@ def generate_dockerfile(pkg_root: Path, outfile: Path) -> None:
 
     print("Generating Dockerfile")
     try:
-        with open(pkg_root / ".latch") as f:
+        with open(pkg_root / latch_constants.pkg_config) as f:
             config: LatchWorkflowConfig = LatchWorkflowConfig.from_json(f.read())
             print("  - base image:", config.base_image)
             print("  - latch version:", config.latch_version)

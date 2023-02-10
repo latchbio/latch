@@ -10,7 +10,7 @@ import jwt
 from docker.utils import exclude_paths
 
 from latch_cli.config.user import user_config
-from latch_cli.constants import FILE_MAX_SIZE, PKG_NAME
+from latch_cli.constants import latch_constants
 from latch_cli.services.login import login
 from latch_cli.tinyrequests import get
 
@@ -125,7 +125,11 @@ def hash_directory(dir_path: Path) -> str:
                     [l.strip() for l in f.read().splitlines()],
                 )
             )
-    for item in exclude_paths(dir_path, exclude):
+
+    paths = list(exclude_paths(dir_path, exclude))
+    paths.sort()
+
+    for item in paths:
         # for repeatability guarantees
         p = Path(dir_path / item)
         if p.is_dir():
@@ -133,7 +137,7 @@ def hash_directory(dir_path: Path) -> str:
         else:
             m.update(str(p).encode("utf-8"))
             file_size = os.path.getsize(p)
-            if file_size < FILE_MAX_SIZE:
+            if file_size < latch_constants.file_max_size:
                 with open(p, "rb") as f:
                     m.update(f.read())
             else:
@@ -209,12 +213,12 @@ def get_local_package_version() -> str:
         from importlib import metadata
     except ImportError:
         import importlib_metadata as metadata
-    return metadata.version(PKG_NAME)
+    return metadata.version(latch_constants.pkg_name)
 
 
 def get_latest_package_version_request() -> str:
     cache_location = user_config.root / "cached_version"
-    resp = get(f"https://pypi.org/pypi/{PKG_NAME}/json")
+    resp = get(f"https://pypi.org/pypi/{latch_constants.pkg_name}/json")
     version = resp.json()["info"]["version"]
     with open(cache_location, "w") as f:
         f.write(f"{version} {datetime.now().isoformat()}")

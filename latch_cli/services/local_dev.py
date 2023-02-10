@@ -27,6 +27,7 @@ from latch_cli.utils import (
     current_workspace,
     retrieve_or_login,
 )
+from latch_cli.constants  import latch_constants
 
 
 def _get_latest_image(pkg_root: Path) -> str:
@@ -257,7 +258,7 @@ async def _run_local_dev_session(pkg_root: Path):
     # doing anything
     _get_latest_image(pkg_root)
 
-    key_path = pkg_root / ".ssh_key"
+    key_path = pkg_root / latch_constants.pkg_ssh_key
 
     with TemporarySSHCredentials(key_path) as ssh:
         headers = {"Authorization": f"Bearer {retrieve_or_login()}"}
