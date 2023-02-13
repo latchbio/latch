@@ -162,20 +162,27 @@ def init(
     Args:
         pkg_name: A identifier for the workflow - will name the boilerplate
             directory as well as functions within the constructed package.
+        template: A template to use for the workflow. If None, you will be
+            prompted to choose a template.
+                * "empty": An empty workflow wrapper
+                * "subprocess": An example workflow that runs a subprocess
+                * "r": A template workflow for executing an R script
+                * "conda": A template workflow for executing code within a conda environment
         expose_dockerfile: Whether to expose a Dockerfile in the workflow.
             If true, the Dockerfile will be created at init time and can be
             modified. Otherwise, the Dockerfile will be created at registration
-            time and the user will not be able to modify it.
-
+            time and the user will not be able to modify it. At any point,
+            the user can switch modes by executing `latch dockerfile .` in
+            the workflow directory.
     Example:
 
-        >>> init("test-workflow")
+        >>> init("test-workflow", "empty", False)
             # The resulting file structure will look like
             #   test-workflow
-            #   ├── Dockerfile
             #   ├── version
             #   └── wf
-            #       └── __init__.py
+            #       ├── __init__.py
+            #       └── task.py
 
     """
 
