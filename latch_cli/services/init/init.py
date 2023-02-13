@@ -34,7 +34,7 @@ def _get_boilerplate(pkg_root: Path, source_path: Path):
     for f in source_path.glob("README*"):
         shutil.copy(f, pkg_root)
 
-    for f in source_path.glob("requirements*"):
+    for f in source_path.glob("*requirements*"):
         shutil.copy(f, pkg_root)
 
     for f in source_path.glob("env*"):
@@ -82,12 +82,12 @@ def _gen_assemble_and_sort(pkg_root: Path):
     print()
 
     print("Downloading bowtie2")
-    bowtie2_base_name = "bowtie2-2.4.4-linux-x86_64"
+    bowtie2_base_name = "bowtie2-2.5.1-linux-x86_64"
     subprocess.run(
         [
             "curl",
-            f"https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.4.4/{bowtie2_base_name}.zip/download",
-            "--output",
+            f"https://latch-public.s3.us-west-2.amazonaws.com/sdk/{bowtie2_base_name}.zip",
+            "-o",
             str(pkg_root / f"{bowtie2_base_name}.zip"),
         ],
         check=True,
