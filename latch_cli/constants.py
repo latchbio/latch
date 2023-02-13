@@ -24,7 +24,7 @@ class LatchConstants:
 
     # todo(aidan): make this aware of the current working directory so that we do not remove useful context
     ignore_regex = re.compile(
-        r"(?:\.git|\.latch_report\.tar\.gz|traceback\.txt|metadata\.json)$"
+        r"(\.git|\.latch_report\.tar\.gz|traceback\.txt|metadata\.json)$"
     )
 
 

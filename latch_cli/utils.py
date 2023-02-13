@@ -143,7 +143,7 @@ def hash_directory(dir_path: Path) -> str:
             continue
 
         m.update(str(p).encode("utf-8"))
-        file_size = os.path.getsize(p)
+        file_size = p.stat().st_size
         if file_size < latch_constants.file_max_size:
             m.update(p.read_bytes())
         else:

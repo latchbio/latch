@@ -1,6 +1,7 @@
 import json
 from dataclasses import dataclass
 from enum import Enum, auto
+from io import TextIOWrapper
 from pathlib import Path
 from textwrap import dedent
 from typing import List
@@ -23,6 +24,10 @@ class DockerCmdBlock:
     comment: str
     commands: List[str]
     order: DockerCmdBlockOrder
+
+    def write_block(self, f: TextIOWrapper):
+        f.write(f"# {self.comment}\n")
+        f.write("\n".join(self.commands) + "\n\n")
 
 
 def get_prologue(config: LatchWorkflowConfig) -> List[str]:
@@ -94,7 +99,7 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
         if "name" in conda_env:
             env_name = conda_env["name"]
         else:
-            env_name = "unnamed"
+            env_name = "workflow"
 
         commands += [
             DockerCmdBlock(
@@ -114,6 +119,7 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
                             apt-get install --yes curl && \
                             curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
                             mkdir /root/.conda && \
+                            # docs for -b and -p flags: https://docs.anaconda.com/anaconda/install/silent-mode/#linux-macos
                             bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \
                             rm -f Miniconda3-latest-Linux-x86_64.sh && \
                             conda init bash
@@ -127,13 +133,14 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
                 commands=[
                     f"copy {conda_env_file_name} /opt/latch/{conda_env_file_name}",
                     f"run conda env create --file /opt/latch/{conda_env_file_name} --name {env_name}",
-                    f"""shell ["conda", "run", "--name", "{env_name}", "/bin/bash", "-c"]""",
-                    "run /opt/conda/bin/pip install --upgrade latch",
+                    f"""shell ["conda", "run", "--name", "{env_name}", "/bin/bash", "--", "-c"]""",
+                    "pip install --upgrade latch",
                 ],
                 order=DockerCmdBlockOrder.precopy,
             ),
         ]
 
+    # from https://peps.python.org/pep-0518/ and https://peps.python.org/pep-0621/
     if (pkg_root / "setup.py").exists() or (pkg_root / "pyproject.toml").exists():
         print("Adding local package installation phase")
         commands.append(
@@ -145,7 +152,7 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
         )
 
     if (pkg_root / "requirements.txt").exists():
-        print("Adding python package installation phase")
+        print("Adding python dependency installation phase")
         commands.append(
             DockerCmdBlock(
                 comment="add requirements from `requirements.txt` to python environment",
@@ -191,19 +198,17 @@ def generate_dockerfile(pkg_root: Path, outfile: Path) -> None:
         f.write("\n".join(get_prologue(config)) + "\n\n")
 
         commands = infer_commands(pkg_root)
-        pre_commands = [c for c in commands if c.order == DockerCmdBlockOrder.precopy]
-        post_commands = [c for c in commands if c.order == DockerCmdBlockOrder.postcopy]
 
-        for block in pre_commands:
-            f.write(f"# {block.comment}\n")
-            f.write("\n".join(block.commands) + "\n\n")
+        for block in commands:
+            if block.order == DockerCmdBlockOrder.precopy:
+                block.write_block(f)
 
         f.write("# copy all code from package (use .dockerignore to skip files)\n")
         f.write("copy . /root/\n\n")
 
-        for block in post_commands:
-            f.write(f"# {block.comment}\n")
-            f.write("\n".join(block.commands) + "\n\n")
+        for block in commands:
+            if block.order == DockerCmdBlockOrder.postcopy:
+                block.write_block(f)
 
         f.write("\n".join(get_epilogue()) + "\n")
 
