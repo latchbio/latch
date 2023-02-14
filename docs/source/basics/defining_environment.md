@@ -1,6 +1,6 @@
-# Defining The Workflow Environment
+# The Workflow Environment
 
-Outside the task code, environment variables, system packages, and various programs are critical to running latch workflows. For example, a task that downloads a binary from a server and uses the aws command line toolkit to get reference data may rely on the apt packages `wget` and `aws-cli` as well as `aws` specific environment variables.
+Outside of task code, various environment variables, system packages, and programs are critical to running latch workflows. For example, a task that downloads a binary from a server and uses the aws command line toolkit to get reference data may rely on the apt packages `wget` and `aws-cli` as well as `aws` specific environment variables.
 
 Latch manages the execution environment of a workflow using Dockerfiles. A Dockerfile specifies the environment in which the workflow runs.
 
@@ -229,98 +229,16 @@ workdir /root
 
 Latch has three base images, one baseline, one with CUDA drivers, and one with OPENCL drivers. To use the CUDA or OPENCL base image, modify the from directive in the Dockerfile to `.../`latch-base-cuda`:...` or `.../`latch-base-opencl`:...`.
 
-## Writing Dockerfiles for different tasks
-
-When writing different tasks, defining distinct containers for each task
-increases workflow performance by reducing the size of the container scheduled
-on Kubernetes. It also helps with code organization by only associating
-dependencies with the tasks that need them.
-
-To use a separate Dockerfile for a task, pass the path of the Dockerfile when defining a task. If the workflow utilizes more than one Dockerfile, registration will take longer given that multiple containers must be built.
-
-```
-@small_task(dockerfile=Path(__file__).parent.parent / "DockerfileMultiQC")
-def sample_task(int: a) -> str:
-    return str(a)
-```
-
-A full example:
-
-```
-# assemble.py
-
-import subprocess
-from pathlib import Path
-
-from latch import small_task
-from latch.types import LatchFile
-
-@small_task(dockerfile=Path(__file__) / "Dockerfile")
-def assembly_task(read1: LatchFile, read2: LatchFile) -> LatchFile:
-
-    # A reference to our output.
-    sam_file = Path("covid_assembly.sam").resolve()
-
-    _bowtie2_cmd = [
-        "bowtie2/bowtie2",
-        "--local",
-        "-x",
-        "wuhan",
-        "-1",
-        read1.local_path,
-        "-2",
-        read2.local_path,
-        "--very-sensitive-local",
-        "-S",
-        str(sam_file),
-    ]
-
-    subprocess.run(_bowtie2_cmd)
-
-    return LatchFile(str(sam_file), "latch:///covid_assembly.sam")
-```
-
-```
-# sam_blaster.py
-
-import subprocess
-from pathlib import Path
-
-from latch import small_task
-from latch.types import LatchFile
-
-# Note the use of paths relative to the location of the __init__.py file
-
-@small_task(dockerfile=Path(__file__) / "Dockerfile")
-def sam_blaster(sam: LatchFile) -> LatchFile:
-
-    blasted_sam = Path(sam.name + ".blasted.sam")
-
-    subprocess.run(
-        ["samblaster", "-i", sam.local_path, "-o", str(blasted_sam.resolve())]
-    )
-
-    return LatchFile(blasted_sam, f"latch:///{blasted_sam.name}")
-```
-
-We can organize task definitions and Dockerfiles in a directory structure as follows:
-
-```
-├── Dockerfile
-├── __init__.py
-├── assemble
-│   ├── Dockerfile
-│   └── __init__.py
-└── sam_blaster
-    ├── Dockerfile
-    └── __init__.py
-```
-
-However, the root directory used when building the images is always the workflow directory.
-
-A limitation of using a separate Dockerfile for a task is that `latch develop .` uses the Dockerfile in the workflow directory. In the future, we will support passing a Dockerfile as an argument to `latch develop`.
-
 ## Docker Limitations
 
-
 The difference between a latch task environment and running code on a Linux machine is that we restrict access to root system resources. For example, `/dev` and the networking stack are restricted, so creating mounts using `/dev/fuse` is not permitted. We limit this behavior to prevent users from accessing sensitive system resources that could influence other tasks running on the same machine. In the future, we will support full container isolation, allowing users to treat their containers as complete linux machines.
+
+
+---
+
+```{toctree}
+:hidden:
+:maxdepth: 2
+environment/dockerfile_per_task
+environment/docker_recipes
+```

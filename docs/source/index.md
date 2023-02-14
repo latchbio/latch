@@ -72,6 +72,7 @@ getting_started/authoring_your_workflow
 :maxdepth: 2
 :caption: Defining a Workflow
 basics/what_is_a_workflow
+
 basics/defining_environment
 basics/working_with_files
 basics/parameter_types
@@ -106,7 +107,6 @@ basics/remote_registration
 :maxdepth: 2
 :caption: Examples
 examples/workflows_examples
-examples/docker_recipes
 ```
 
 ```{toctree}
