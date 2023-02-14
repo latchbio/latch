@@ -226,7 +226,7 @@ First, we define a :class:`~latch.types.metadata.Section` for our sample paramet
 we name this section "Samples", the first value inside the :class:`~latch.types.metadata.Section` element.
 Then, we can include some small descriptive text using the :class:`~latch.types.metadata.Text` element.
 
-And, finally, we add the logic for the fork itself: Notice how we use the variable
+And, finally, we add the logic for the fork itself. Notice how we use the variable
 we set in our workflow (`sample_fork`) as the unique key for our fork. Although this
 has no visible impact on the interface itself, it's necessary for the Fork logic to
 work when running your workflow. Then, in separate branches using ForkBranch, we include
