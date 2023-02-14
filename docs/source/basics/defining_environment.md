@@ -229,6 +229,15 @@ workdir /root
 
 Latch has three base images, one baseline, one with CUDA drivers, and one with OPENCL drivers. To use the CUDA or OPENCL base image, modify the from directive in the Dockerfile to `.../`latch-base-cuda`:...` or `.../`latch-base-opencl`:...`.
 
+## Ignoring files
+In the above Dockerfile, the line 
+
+```Dockerfile
+copy . /root/
+```
+
+recursively copies files and directories from the workflow directory into the Docker image. Even if files in the workflow directory are unused by the workflow, they will be copied into the docker image. Having unnecessary files in the image increases its size, slowing workflow execution and registration. Additionally, any changes to said files will cause image rebuilding when running `latch register` or `latch develop` on the workflow, making the process slower. To avoid this, Latch uses a `.dockerignore` file in the workflow directory. This file should contain a list of files and directories that should be skipped when copying files into your container, as documented [here](https://docs.docker.com/engine/reference/builder/#dockerignore-file). Each workflow begins with a default `.dockerignore` file that ignores common pesky files.
+
 ## Docker Limitations
 
 The difference between a latch task environment and running code on a Linux machine is that we restrict access to root system resources. For example, `/dev` and the networking stack are restricted, so creating mounts using `/dev/fuse` is not permitted. We limit this behavior to prevent users from accessing sensitive system resources that could influence other tasks running on the same machine. In the future, we will support full container isolation, allowing users to treat their containers as complete linux machines.

@@ -18,18 +18,18 @@ The document aims to be an extension to the quickstart to help you better unders
 
 ## 1: Initialize Workflow Directory
 Bootstrap a new workflow directory by running `latch init` from the command line.
-```
+```shell-session
 latch init covid-wf -t subprocess
 ```
 Output:
-```
+```shell-session
 Created a latch workflow in `covid-wf`
 Run
         $ latch register covid-wf
 To register the workflow with console.latch.bio.
 ```
 File Tree:
-```
+```shell-session
 covid-wf
 ├── LICENSE
 ├── README.md
@@ -60,12 +60,12 @@ A task is a Python function that takes in inputs and returns outputs to the latc
 Anytime you read from a file or directory in a task, for example running the following code in a task
 
 ```python
-from latch.types import LatchFile
+from latch.types import LatchFile, LatchOutputDir
 ...
 
 @small_task
 def assembly_task(
-    read1: LatchFile, ...
+    read1: LatchFile, read2: LatchFile, output_directory: LatchOutputDir
 ) -> LatchFile:
 
     local_file = Path(read1)
@@ -73,22 +73,22 @@ def assembly_task(
 ```
 The data will be downloaded locally and will be able to be accessed inside the task.
 
-Sometimes, our python task does not access a file but the file data still needs to exist locally. For example, when running a subprocess with a file as an argument. We can get around having to call Path on the file or directory by accessing the `local_path` attribute of the LatchFile or LatchDir. This will download the data into the task and return back a path to the local file or directory.
+Sometimes, our python task does not access a file, but the file data still needs to exist locally. For example, when running a subprocess with a file as an argument. We can get around having to call Path on the file or directory by accessing the `local_path` attribute of the LatchFile or LatchDir. This will download the data into the task and return back a path to the local file or directory.
     
 ```python
-_bowtie2_cmd = [
-        "bowtie2/bowtie2",
-        "--local",
-        "-x",
-        "wuhan",
-        "-1",
-        read1.local_path,
-        "-2",
-        read2.local_path,
-        "--very-sensitive-local",
-        "-S",
-        str(sam_file),
-    ]
+bowtie2_cmd = [
+    "bowtie2/bowtie2",
+    "--local",
+    "--very-sensitive-local",
+    "-x",
+    "wuhan",
+    "-1",
+    read1.local_path,
+    "-2",
+    read2.local_path,
+    "-S",
+    str(sam_file),
+]
 ```
 
 To output a file or directory to the latch platform:
@@ -97,7 +97,7 @@ To output a file or directory to the latch platform:
     return LatchFile(local_file, "latch:///covid_assembly.sam")
 ```
 
-Here, LatchFile takes two values: the first being your local filepath and the second being the remote file location on Latch. Every file on Latch must be prefixed with `latch:///`.
+Here, LatchFile takes two values: the first being your local filepath and the second being the remote file location on Latch. Every file on Latch must have the prefix `latch:///`.
 
 ## 3. Define compute and storage requirements
 
@@ -121,7 +121,6 @@ def inference(
 
 See an exhaustive reference to larger CPU and GPU tasks [here](../basics/defining_cloud_resources.md).
 
-
 To arbitrarily specify resource requirements, use:
 ```python
 from latch import custom_task
@@ -135,47 +134,46 @@ def my_task(
 
 ## 4. Manage installation for third-party dependencies
 
-Under the hood, latch uses Dockerfiles for dependencies management, which allow you to define the computing environment that your task will execute in.
+Under the hood, latch uses Dockerfiles for dependencies management, which allow you to define the computing environment that your task will execute in. In most cases, there is no need for a user to write a Dockerfile, as the Latch SDK will automatically generate one for you.
 
-There's no need to create your Dockerfile from scratch as one is already provided when you initialized your workflow.
+We need `samtools` and `autoconf`. We can install these dependencies by adding them to the `system-requirements.txt` file, as shown [here](../basics/defining_environment.md#system-debian-packages). We will create and add the following lines to the file:
 
-To write a Dockerfile, you simply write the commands that you want executed.
-
-For example, since we want `bowtie` and `samtools` available to our tassk, we can write the Dockerfile like so:
-
-```Dockerfile
-FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:9a7d-main
-
-# Its easy to build binaries from source that you can later reference as
-# subprocesses within your workflow.
-RUN curl -L https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.4.4/bowtie2-2.4.4-linux-x86_64.zip/download -o bowtie2-2.4.4.zip &&\
-    unzip bowtie2-2.4.4.zip &&\
-    mv bowtie2-2.4.4-linux-x86_64 bowtie2
-
-# Or use managed library distributions through the container OS's package
-# manager.
-RUN apt-get update -y &&\
-    apt-get install -y autoconf samtools
-
-
-# You can use local data to construct your workflow image.  Here we copy a
-# pre-indexed reference to a path that our workflow can reference.
-COPY reference /root/reference
-ENV BOWTIE2_INDEXES="reference"
-
-COPY wf /root/wf
-
-# STOP HERE:
-# The following lines are needed to ensure your build environement works
-# correctly with latch.
-ARG tag
-ENV FLYTE_INTERNAL_IMAGE $tag
-RUN sed -i 's/latch/wf/g' flytekit.config
-RUN python3 -m pip install --upgrade latch
-WORKDIR /root
+```
+samtools
+autoconf
 ```
 
-To write a Dockerfile for R and Python packages, visit Dockerfile recipes [here](../basics/writing_dockerfiles.md).
+Additionally, we need to set an environment variable for bowtie2 to work. As shown [here](../basics/defining_environment.md#environment-variables), we can set environment variables by adding them to the `environment` file. We will create and add the following line to the file:
+
+```
+BOWTIE2_INDEXES=reference
+```
+
+After adding these files to the workflow directory, we can run `latch dockerfile .` to check out the auto generated Dockerfile.
+
+```Dockerfile
+# latch base image + dependencies for latch SDK --- removing these will break the workflow
+from 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:ace9-main
+run pip install latch==2.12.1
+run mkdir /opt/latch
+
+# install system requirements
+copy system-requirements.txt /opt/latch/system-requirements.txt
+run apt-get update --yes && xargs apt-get install --yes </opt/latch/system-requirements.txt
+
+# copy all code from package (use .dockerignore to skip files)
+copy . /root/
+
+# set environment variables
+env BOWTIE2_INDEXES=reference
+
+# latch internal tagging system + expected root directory --- changing these lines will break the workflow
+arg tag
+env FLYTE_INTERNAL_IMAGE $tag
+workdir /root
+```
+
+To configure your environment for other use cases, such as R or conda, visit the [defining environment](../basics/defining_environment.md) section.
 
 ## 5. Customize user interface
 There are two pages that you can customize: the **About** page for your workflow and a **Parameters** page for workflow input parameters.
