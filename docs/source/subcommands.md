@@ -8,25 +8,17 @@ $ latch init PACKAGE_NAME
 
 This command can be used to generate an example workflow ([this workflow](https://genomebiology.biomedcentral.com/track/pdf/10.1186/gb-2009-10-3-r25.pdf), to be specific) for reference purposes. It has all of the [required elements](basics/what_is_a_workflow.md) for a workflow, and can also be used as boilerplate - simply replace the logic with your logic, adding more tasks as necessary.
 
-The parameter `PACKAGE_NAME` is the name of the directory that `latch init` will create and populate with example files. The resulting directory structure is as below:
+The parameter `PACKAGE_NAME` is the name of the directory that `latch init` will create and populate with example files.
 
-```text
-PACKAGE_NAME
-├── Dockerfile
-├── data
-│   ├── wuhan.1.bt2
-│   ├── wuhan.2.bt2
-│   ├── wuhan.3.bt2
-│   ├── wuhan.4.bt2
-│   ├── wuhan.fasta
-│   ├── wuhan.rev.1.bt2
-│   └── wuhan.rev.2.bt2
-├── version
-└── wf
-    └── __init__.py
-```
+### Options
 
-This example workflow is ready for registration (see below).
+> `--template`, `-t`
+>
+> One of `r`, `conda`, `subprocess`, `empty`. If not provided, user will be prompted for input.
+>
+> `--dockerfile`, `-d`
+>
+> Generate a Dockerfile for the workflow.
 
 ## `latch register`
 
@@ -37,6 +29,24 @@ $ latch register PATH_TO_WORKFLOW_DIRECTORY
 ```
 
 The first argument specifies the local path in which to look for workflow objects. Inside the local path should be a single directory called `wf` containing `__init__.py`, any helper python files, a `Dockerfile`, and a `version` files. See [here](basics/what_is_a_workflow.md) for more info.
+
+### Options
+
+> `--disable-auto-version`, `-d`
+>
+> Whether to automatically bump the version of the workflow each time register is called.
+>
+> `--remote`, `-r`
+>
+> Use a remote server to build workflow.
+
+## `latch dockerfile`
+
+This command generates a Dockerfile for a workflow using files in the workflow directory.
+
+```console
+$ latch dockerfile PATH_TO_WORKFLOW_DIRECTORY
+```
 
 ## `latch get-params`
 
@@ -90,7 +100,9 @@ This command will list out all workflows (and their respective versions) that th
 
 ### Options
 
-`--name` -- if provided, refines the output to instead list out all available versions of the workflow with the specified name
+> `--name`
+> 
+> If provided, refines the output to instead list out all available versions of the workflow with the specified name
 
 ## `latch open`
 
