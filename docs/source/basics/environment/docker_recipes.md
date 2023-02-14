@@ -2,7 +2,7 @@
 
 ### Build binaries from source
 
-Often times we need a binary in our workflow which we may not want to store in a github repo with our workflow code. In this case, we can download a binary in our Dockerfile and unpack it. Below we download and unpack bowtie2.
+Often times we need a binary in our workflow which we may not want to store in a repository with our workflow code. In this case, we can download a binary in our Dockerfile and unpack it. Below we download and unpack bowtie2.
 
 ```Dockerfile
 
