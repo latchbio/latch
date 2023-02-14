@@ -20,12 +20,12 @@ First, let's define a simple dockerfile to install the tool in our environment:
 
 FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:6839-main
 
-RUN apt-get update &&\
-    apt-get install -y curl
+RUN apt-get update && \
+    apt-get install --yes curl
 
 # Install fastp
-RUN curl -L http://opengene.org/fastp/fastp -o fastp &&\
-    chmod a+x fastp
+RUN curl --location http://opengene.org/fastp/fastp --output fastp
+RUN chmod u+x fastp
 
 # STOP HERE:
 # The following lines are needed to ensure your build environement works
@@ -217,17 +217,17 @@ FLOW = [
     ]
 ```
 
-In the code above we define a variable, FLOW, which will be used
+In the code above we define a variable, `FLOW`, which will be used
 as the value for the flow argument in our LatchMetadata object.
 In this variable, we'll define the way our parameters are laid out and how they'll
 look in the interface.
 
-First, we define a Section for our sample parameters - be it paired end or single end,
-we name this section "Samples", the first value inside the Section element.
-Then, we can include some small descriptive text using the Text element.
+First, we define a :class:`~latch.types.metadata.Section` for our sample parameters --- be it paired end or single end,
+we name this section "Samples", the first value inside the :class:`~latch.types.metadata.Section` element.
+Then, we can include some small descriptive text using the :class:`~latch.types.metadata.Text` element.
 
 And, finally, we add the logic for the fork itself: Notice how we use the variable
-we set in our workflow (`sample_fork`) as the unique key for our fork - Although this
+we set in our workflow (`sample_fork`) as the unique key for our fork. Although this
 has no visible impact on the interface itself, it's necessary for the Fork logic to
 work when running your workflow. Then, in separate branches using ForkBranch, we include
 our `paired_end` and `single_end` parameters using the Params element.
