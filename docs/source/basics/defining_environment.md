@@ -1,10 +1,18 @@
 # Defining The Workflow Environment
 
-Outside the task and workflow code, environment variables, system packages, and various programs are critical to running specific tasks. For example, a workflow that downloads a binary from a server and uses the aws command line toolkit to get reference data may rely on the apt packages `wget` and `aws-cli` as well as `aws` environment variables.
+Outside the task code, environment variables, system packages, and various programs are critical to running latch workflows. For example, a task that downloads a binary from a server and uses the aws command line toolkit to get reference data may rely on the apt packages `wget` and `aws-cli` as well as `aws` specific environment variables.
 
-Under the hood, Latch manages the environment of a workflow using Dockerfiles. A Dockerfile specifies the environment in which the workflow runs. However, Dockerfiles are often overkill for simple applications. To solve having to write a Dockerfile for simple cases, the Latch SDK will automatically generate a Dockefile at registration time for a given workflow directory. The user controls the following files in the workflow directory with the following behavior
+Latch manages the execution environment of a workflow using Dockerfiles. A Dockerfile specifies the environment in which the workflow runs.
 
-## Python PyPI Packages
+Dockerfiles are often overkill for simple applications. To solve having to write a Dockerfile for simple cases, the Latch SDK will automatically generate a Dockefile at registration time for a given workflow directory.
+
+## Environment Definition Files
+
+The workflow author controls optional files in the workflow directory that are used to generate the Dockerfile if present. Below is an exhaustive list of the files used to auto-generate a Dockerfile. If this list does not cover a use case, please open an issue on the [Latch SDK Github](https://github.com/latchbio/latch), and we will respond shortly.
+
+<br>
+
+### Python PyPI Packages
 Python requirements found in `requirements.txt` are installed into the default python that executes task code.
 
 <details>
@@ -29,7 +37,7 @@ run pip install --requirement /opt/latch/requirements.txt
 </details>
 <br />
 
-## Local Python Packages
+### Local Python Packages
 Local python packages, indicated by a `setup.py` or `pyproject.toml` file in the workflow directory, will be installed into the default python that executes task code.
 
 <details>
@@ -71,7 +79,7 @@ run pip install --editable /root/
 </details>
 <br />
 
-## Conda Environment
+### Conda Environment
 A conda python environment, indicated by a `environment.yml` or an `environment.yaml` file, will be used to create an isolated python environment in which all shell commands execute. Any subprocess run with `shell=True` will have access to the binaries and packages defined in the environment file. Miniconda is installed into the workflow environment as the conda manager.
 
 <details>
@@ -114,31 +122,7 @@ run pip install --upgrade latch
 </details>
 <br />
 
-## System (Debian) Packages
-Requirements found in `system-requirements.txt` are installed system-wide using apt.
-
-<details>
-<summary>Example File</summary>
-
-```
-autoconf
-samtools
-```
-</details>
-<br />
-
-
-<details>
-<summary>Docker commands</summary>
-
-```Dockerfile
-copy system-requirements.txt /opt/latch/system-requirements.txt
-run apt-get update --yes && xargs apt-get install --yes </opt/latch/system-requirements.txt
-```
-</details>
-<br />
-
-## R Packages
+### R Packages
 A local R environment will be created using the `environment.R` script. This script should include all the R installs needed to run relevant R scripts in the workflow. R 4.0 is the default version.
 
 <details>
@@ -166,7 +150,31 @@ run Rscript /opt/latch/environment.R
 </details>
 <br />
 
-## Environment Variables
+### System (Debian) Packages
+Requirements found in `system-requirements.txt` are installed system-wide using apt.
+
+<details>
+<summary>Example File</summary>
+
+```
+autoconf
+samtools
+```
+</details>
+<br />
+
+
+<details>
+<summary>Docker commands</summary>
+
+```Dockerfile
+copy system-requirements.txt /opt/latch/system-requirements.txt
+run apt-get update --yes && xargs apt-get install --yes </opt/latch/system-requirements.txt
+```
+</details>
+<br />
+
+### Environment Variables
 Environment variables found in the `environment` file will be used to set environment variables inside your workflow environment.
 
 <details>
@@ -185,55 +193,41 @@ PATH="$PATH:/root/bowtie2"
 ```Dockerfile
 env {line1}
 env {line2}
+...
 ```
 </details>
 <br />
 
-To write a Dockerfile, you simply write the commands that you want executed and
-specify the files that you want available before your task is run. A Dockerfile
-defines your task's "image" (the recipe for its virtual computing environment)
-which will become a container that it will execute within at runtime.
-
 ---
+<br>
 
-Here is an example of a Dockerfile used earlier:
+To save the generated Dockerfile in the workflow directory, run `latch dockerfile {path_to_workflow_directory}`. The generated Dockefile will be used during subsequent `latch register` and `latch develop` commands to build the workflow environment, and it can be user modified. To go back to the autogenerated Dockerfile, delete the Dockerfile in the workflow directory.
+
+To understand the generated Dockefile, here is an example with instructive comments generated by running `latch init --template subprocess --dockerfile pkg_name`:
 
 ```Dockerfile
-FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:9a7d-main
+# latch base image + dependencies for latch SDK --- removing these will break the workflow
+from 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:ace9-main
+run pip install latch==2.12.1
+run mkdir /opt/latch
 
-# Its easy to build binaries from source that you can later reference as
-# subprocesses within your workflow.
-RUN curl -L https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.4.4/bowtie2-2.4.4-linux-x86_64.zip/download -o bowtie2-2.4.4.zip &&\
-    unzip bowtie2-2.4.4.zip &&\
-    mv bowtie2-2.4.4-linux-x86_64 bowtie2
+# install system requirements
+copy system-requirements.txt /opt/latch/system-requirements.txt
+run apt-get update --yes && xargs apt-get install --yes </opt/latch/system-requirements.txt
 
-# Or use managed library distributions through the container OS's package
-# manager.
-RUN apt-get update -y &&\
-    apt-get install -y autoconf samtools
+# copy all code from package (use .dockerignore to skip files)
+copy . /root/
 
+# set environment variables
+env BOWTIE2_INDEXES=reference
 
-# You can use local data to construct your workflow image.  Here we copy a
-# pre-indexed reference to a path that our workflow can reference.
-COPY data /root/reference
-ENV BOWTIE2_INDEXES="reference"
-
-COPY wf /root/wf
-
-# STOP HERE:
-# The following lines are needed to ensure your build environement works
-# correctly with latch.
-ARG tag
-ENV FLYTE_INTERNAL_IMAGE $tag
-RUN sed -i 's/latch/wf/g' flytekit.config
-RUN python3 -m pip install --upgrade latch
-WORKDIR /root
+# latch internal tagging system + expected root directory --- changing these lines will break the workflow
+arg tag
+env FLYTE_INTERNAL_IMAGE $tag
+workdir /root
 ```
 
-_Note that we must use the base image specified in the first line to configure
-libraries and settings for consistent task behavior._
-
-There are 3 latch-base images available as seen on [github](https://github.com/latchbio/latch-base). 
+Latch has three base images, one baseline, one with CUDA drivers, and one with OPENCL drivers. To use the CUDA or OPENCL base image, modify the from directive in the Dockerfile to `.../`latch-base-cuda`:...` or `.../`latch-base-opencl`:...`.
 
 ## Writing Dockerfiles for different tasks
 
@@ -242,10 +236,7 @@ increases workflow performance by reducing the size of the container scheduled
 on Kubernetes. It also helps with code organization by only associating
 dependencies with the tasks that need them.
 
-You can write different Dockerfiles and associate them to tasks by passing
-their paths to the task definition. When registering a workflow with multiple
-containers, note that each container will be rebuilt, which can slow down 
-development. 
+To use a separate Dockerfile for a task, pass the path of the Dockerfile when defining a task. If the workflow utilizes more than one Dockerfile, registration will take longer given that multiple containers must be built.
 
 ```
 @small_task(dockerfile=Path(__file__).parent.parent / "DockerfileMultiQC")
@@ -312,8 +303,7 @@ def sam_blaster(sam: LatchFile) -> LatchFile:
     return LatchFile(blasted_sam, f"latch:///{blasted_sam.name}")
 ```
 
-Notice how we can organize task definitions and Docker containers into their
-own directories.
+We can organize task definitions and Dockerfiles in a directory structure as follows:
 
 ```
 ├── Dockerfile
@@ -326,14 +316,11 @@ own directories.
     └── __init__.py
 ```
 
-## Limitations
+However, the root directory used when building the images is always the workflow directory.
 
-The difference between a latch task environment and running your code on your
-Linux machine is that we restrict your access to `/dev/` and the networking
-stack.  For example, you cannot create mounts using `/dev/fuse` (so mounts are
-generally off limits) and you do not have admin access to the networking stack
-on the host machine as your task execution does not have root access.
+A limitation of using a separate Dockerfile for a task is that `latch develop .` uses the Dockerfile in the workflow directory. In the future, we will support passing a Dockerfile as an argument to `latch develop`.
 
-The remote development utilities (`latch develop .`) do not work with
-different containers per task and we do not recommend using the two features
-together for the time being.
+## Docker Limitations
+
+
+The difference between a latch task environment and running code on a Linux machine is that we restrict access to root system resources. For example, `/dev` and the networking stack are restricted, so creating mounts using `/dev/fuse` is not permitted. We limit this behavior to prevent users from accessing sensitive system resources that could influence other tasks running on the same machine. In the future, we will support full container isolation, allowing users to treat their containers as complete linux machines.
