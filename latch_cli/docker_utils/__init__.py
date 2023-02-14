@@ -158,9 +158,27 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
                 comment="add requirements from `requirements.txt` to python environment",
                 commands=[
                     "copy requirements.txt /opt/latch/requirements.txt",
-                    "pip install --requirement /opt/latch/requirements.txt",
+                    "run pip install --requirement /opt/latch/requirements.txt",
                 ],
                 order=DockerCmdBlockOrder.precopy,
+            )
+        )
+
+    if (pkg_root / "environment").exists():
+        print("Adding environment variable phase")
+        envs = []
+        for line in (pkg_root / "environment").read_text().splitlines():
+            if line.startswith("#"):
+                continue
+            if line.strip() == "":
+                continue
+            envs.append(f"env {line}")
+
+        commands.append(
+            DockerCmdBlock(
+                comment="set environment variables",
+                commands=envs,
+                order=DockerCmdBlockOrder.postcopy,
             )
         )
 

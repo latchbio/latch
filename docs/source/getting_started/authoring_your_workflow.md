@@ -1,8 +1,8 @@
 # Authoring your Own Workflow
 
-In this tutorial, we will write a workflow to sort and assemble COVID sequencing data.
+In this demonstration, we will examine a workflow which sorts and assembles COVID sequencing data.
 
-The tutorial aims to be an extension to the quickstart to help you better understand the structure of a workflow and how to make your own modifications.
+The document aims to be an extension to the quickstart to help you better understand the structure of a workflow and write your own.
 
 **Prerequisite:**
 * Complete the [Quickstart](../getting_started/quick_start.md) guide.
@@ -19,66 +19,62 @@ The tutorial aims to be an extension to the quickstart to help you better unders
 ## 1: Initialize Workflow Directory
 Bootstrap a new workflow directory by running `latch init` from the command line.
 ```
-latch init covid-wf
+latch init covid-wf -t subprocess
 ```
 Output:
 ```
-Created a latch workflow called covid-wf.
+Created a latch workflow in `covid-wf`
+Run
+        $ latch register covid-wf
+To register the workflow with console.latch.bio.
 ```
 File Tree:
 ```
 covid-wf
-├── Dockerfile
+├── LICENSE
+├── README.md
+├── bowtie2
+│   ├── bowtie2
+│   └── ...
 ├── reference
 │   ├── wuhan.1.bt2
-│   ├── wuhan.2.bt2
-│   ├── wuhan.3.bt2
-│   ├── wuhan.4.bt2
-│   ├── wuhan.fasta
-│   ├── wuhan.rev.1.bt2
-│   └── wuhan.rev.2.bt2
+│   └── ...
+├── system-requirements.txt
 ├── version
 └── wf
-    └── __init__.py
+    ├── __init__.py
+    ├── assemble.py
+    └── sort.py
 ```
+
 Once your boilerplate workflow has been created successfully, you should see a folder called `covid-wf`.
 
 ## 2. Writing your First Task
 
-A task is a pure Python function that takes in inputs and returns outputs. Here, we are writing a task that takes in two sequencing reads and returns an assembled SAM file.
+A task is a Python function that takes in inputs and returns outputs to the latch platform or to another task. In the `assemble.py` file inside the `covid-wf/wf` directory, we have a task which ingests two sequencing reads and outputs an assembled SAM file. Take a look within the file.
+
+### How to work with LatchFiles and LatchDirs
+
+`LatchFile` and `LatchDir` are types built into the Latch SDK which allow users to use files and directories on Latch as inputs and outputs to workflows. They point to remote file locations in our user interfact on [Latch Console](https://console.latch.bio/data) and implement the necessary operations to ensure data is pulled into the task environment and saved back into your data tab.
+
+Anytime you read from a file or directory in a task, for example running the following code in a task
 
 ```python
+from latch.types import LatchFile
+...
+
 @small_task
-def assembly_task(read1: LatchFile, read2: LatchFile) -> LatchFile:
+def assembly_task(
+    read1: LatchFile, ...
+) -> LatchFile:
 
-    # A reference to our output.
-    sam_file = Path("covid_assembly.sam").resolve()
-
-    _bowtie2_cmd = [
-        "bowtie2/bowtie2",
-        "--local",
-        "-x",
-        "wuhan",
-        "-1",
-        read1.local_path,
-        "-2",
-        read2.local_path,
-        "--very-sensitive-local",
-        "-S",
-        str(sam_file),
-    ]
-
-    subprocess.run(_bowtie2_cmd)
-
-    return LatchFile(str(sam_file), "latch:///covid_assembly.sam")
+    local_file = Path(read1)
+    ...
 ```
+The data will be downloaded locally and will be able to be accessed inside the task.
 
-### How to work with LatchFiles
-
-`LatchFile` refers to a remote file location on
-[Latch Console](https://console.latch.bio/data).
-
-To make the file available to the local task's environment, you have to call `local_path` property like so:
+Sometimes, our python task does not access a file but the file data still needs to exist locally. For example, when running a subprocess with a file as an argument. We can get around having to call Path on the file or directory by accessing the `local_path` attribute of the LatchFile or LatchDir. This will download the data into the task and return back a path to the local file or directory.
+    
 ```python
 _bowtie2_cmd = [
         "bowtie2/bowtie2",
@@ -95,11 +91,10 @@ _bowtie2_cmd = [
     ]
 ```
 
-Once the subprocess finishes executing the command above, it creates an output file (`str(sam_file)`).
-
-To make the SAM file available to Latch Console, you have to upload it using the following return statement:
+To output a file or directory to the latch platform:
 ```python
-    return LatchFile(str(sam_file), "latch:///covid_assembly.sam")
+    local_file = Path("/root/covid_assembly.sam")
+    return LatchFile(local_file, "latch:///covid_assembly.sam")
 ```
 
 Here, LatchFile takes two values: the first being your local filepath and the second being the remote file location on Latch. Every file on Latch must be prefixed with `latch:///`.
@@ -140,7 +135,7 @@ def my_task(
 
 ## 4. Manage installation for third-party dependencies
 
-Latch uses Dockerfiles for dependencies management, which allow you to define the computing environment that your task will execute in.
+Under the hood, latch uses Dockerfiles for dependencies management, which allow you to define the computing environment that your task will execute in.
 
 There's no need to create your Dockerfile from scratch as one is already provided when you initialized your workflow.
 

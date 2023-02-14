@@ -49,7 +49,7 @@ def main():
 @main.command("dockerfile")
 @click.argument("pkg_root", type=click.Path(exists=True, file_okay=False))
 def dockerfile(pkg_root: str):
-    """Generates a user editable dockerfile for workflow and saves under `pkg_root/Dockerfile`.
+    """Generates a user editable dockerfile for a workflow and saves under `pkg_root/Dockerfile`.
 
     Visit docs.latch.bio to learn more.
     """

@@ -21,7 +21,7 @@ First, verify that you are inside the workflow directory:
 ```shell-session
 $ ls
 
-Dockerfile      reference       wf      version
+reference       wf      version
 ```
 
 Then, use `latch preview` with the name of your workflow function:

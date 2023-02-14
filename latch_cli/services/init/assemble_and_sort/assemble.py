@@ -1,4 +1,3 @@
-import os
 import subprocess
 from pathlib import Path
 
@@ -14,8 +13,6 @@ def assembly_task(
 
     # A reference to our output.
     sam_file = Path("covid_assembly.sam").resolve()
-
-    bowtie_env = {**os.environ, "BOWTIE2_INDEXES": "reference"}
 
     bowtie2_cmd = [
         "bowtie2/bowtie2",
@@ -36,7 +33,7 @@ def assembly_task(
         # When using shell=True, we pass the entire command as a single string as
         # opposed to a list since the shell will parse the string into a list
         # using its own rules.
-        subprocess.run(" ".join(bowtie2_cmd), shell=True, check=True, env=bowtie_env)
+        subprocess.run(" ".join(bowtie2_cmd), shell=True, check=True)
     except subprocess.CalledProcessError as e:
         # will display in the messages tab of the execution graph for the assembly_task node
         message(
