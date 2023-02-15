@@ -15,7 +15,7 @@ from pkg_resources import get_distribution
 from latch_cli.constants import latch_constants
 from latch_cli.docker_utils import generate_dockerfile
 from latch_cli.tui import select_tui
-from latch_cli.types import BaseImageAcceleratorDriver, LatchWorkflowConfig
+from latch_cli.types import LatchWorkflowConfig
 
 
 def _get_boilerplate(pkg_root: Path, source_path: Path):
