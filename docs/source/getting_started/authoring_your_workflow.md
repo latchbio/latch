@@ -137,14 +137,14 @@ Under the hood, Latch uses Dockerfiles for dependency management, which allows a
 
 We need `samtools` and `autoconf`. We can install these dependencies by adding them to the `system-requirements.txt` file, as shown [here](../basics/defining_environment.md#system-debian-packages). We will create and add the following lines to the file:
 
-```plaintext
+```text
 samtools
 autoconf
 ```
 
 Additionally, we need to set an environment variable for bowtie2 to work. As shown [here](../basics/defining_environment.md#environment-variables), we can set environment variables by adding them to the `environment` file. We will create and add the following line to the file:
 
-```plaintext
+```text
 BOWTIE2_INDEXES=reference
 ```
 
