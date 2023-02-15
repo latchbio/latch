@@ -1,6 +1,6 @@
 # The Workflow Environment
 
-Outside of task code, various environment variables, system packages, and programs are critical to running latch workflows. For example, a task that downloads a binary from a server and uses the aws command line toolkit to get reference data may rely on the apt packages `wget` and `aws-cli` as well as `aws` specific environment variables.
+Outside of task code, various environment variables, system packages, and programs are critical to running latch workflows. For example, a task that downloads a binary from a server and uses the AWS command line toolkit to get reference data may rely on the apt packages `wget` and `aws-cli` as well as AWS-specific environment variables.
 
 Latch manages the execution environment of a workflow using Dockerfiles. A Dockerfile specifies the environment in which the workflow runs.
 
