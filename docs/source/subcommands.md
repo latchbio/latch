@@ -6,7 +6,7 @@
 $ latch init PACKAGE_NAME
 ```
 
-This command can be used to generate an example workflow ([this workflow](https://genomebiology.biomedcentral.com/track/pdf/10.1186/gb-2009-10-3-r25.pdf), to be specific) for reference purposes. It has all of the [required elements](basics/what_is_a_workflow.md) for a workflow, and can also be used as boilerplate - simply replace the logic with your logic, adding more tasks as necessary.
+This command is used to initialize a new workflow directory, using one of four templates. It will create a directory with the name `PACKAGE_NAME` and populate it with the necessary files to get started.
 
 The parameter `PACKAGE_NAME` is the name of the directory that `latch init` will create and populate with example files.
 
