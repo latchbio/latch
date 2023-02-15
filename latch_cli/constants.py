@@ -17,9 +17,7 @@ class LatchConstants:
     file_chunk_size: int = 5 * mib
 
     pkg_name: str = "latch"
-
     pkg_ssh_key: str = ".latch/ssh_key"
-
     pkg_config: str = ".latch/config"
 
     # todo(aidan): make this aware of the current working directory so that we do not remove useful context

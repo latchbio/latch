@@ -133,7 +133,7 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
                 commands=[
                     f"copy {conda_env_file_name} /opt/latch/{conda_env_file_name}",
                     f"run conda env create --file /opt/latch/{conda_env_file_name} --name {env_name}",
-                    f"""shell ["conda", "run", "--name", "{env_name}", "/bin/bash", "-c"]""",
+                    f'shell ["conda", "run", "--name", "{env_name}", "/bin/bash", "-c"]',
                     "run pip install --upgrade latch",
                 ],
                 order=DockerCmdBlockOrder.precopy,
@@ -209,7 +209,7 @@ def generate_dockerfile(pkg_root: Path, outfile: Path) -> None:
             print("  - latch version:", config.latch_version)
     except FileNotFoundError as e:
         raise RuntimeError(
-            "Could not find .latch file in supplied directory. If your workflow was created previously to release 2.13.0, you may need to run `latch init` to generate a .latch file."
+            "Could not find a .latch/config file in the supplied directory. If your workflow was created prior to release 2.13.0, you may need to run `latch init` to generate a .latch/config file."
         ) from e
 
     with outfile.open("w") as f:

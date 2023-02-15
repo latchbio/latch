@@ -1,12 +1,8 @@
 # Common Dockerfile patterns
 
-### Build binaries from source
+## Build binaries from source
 
 Often times we need a binary in our workflow which we may not want to store in a repository with our workflow code. In this case, we can download a binary in our Dockerfile and unpack it. Below we download and unpack bowtie2.
-
-```Dockerfile
-
-<br>
 
 ```Dockerfile
 RUN curl -L https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.4.4/bowtie2-2.4.4-linux-x86_64.zip/download -o bowtie2-2.4.4.zip &&\

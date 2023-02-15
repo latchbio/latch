@@ -5,4 +5,5 @@ docker-compose.yml
 Dockerfile
 .latch
 .git
-__pycache__
+**/__pycache__
+.latch_report.tar.gz

@@ -1,9 +1,6 @@
 # Dockerfiles per Task
 
-When writing different tasks, defining distinct containers for each task
-increases workflow performance by reducing the size of the container scheduled
-on Kubernetes. It also helps with code organization by only associating
-dependencies with the tasks that need them.
+When writing different tasks, defining distinct containers for each task increases workflow execution performance by reducing the size of the container scheduled on Kubernetes. It also helps with code organization by only associating dependencies with the tasks that need them.
 
 To use a separate Dockerfile for a task, pass the path of the Dockerfile when defining a task. If the workflow utilizes more than one Dockerfile, registration will take longer given that multiple containers must be built.
 
@@ -44,6 +41,7 @@ def sam_blaster(sam: LatchFile) -> LatchFile:
 We can organize task definitions and Dockerfiles in a directory structure as follows:
 
 ```shell-session
+wf
 ├── Dockerfile
 ├── __init__.py
 ├── assemble

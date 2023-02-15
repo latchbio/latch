@@ -4,16 +4,14 @@ Outside of task code, various environment variables, system packages, and progra
 
 Latch manages the execution environment of a workflow using Dockerfiles. A Dockerfile specifies the environment in which the workflow runs.
 
-Dockerfiles are often overkill for simple applications. To solve having to write a Dockerfile for simple cases, the Latch SDK will automatically generate a Dockefile at registration time for a given workflow directory.
+Dockerfiles, however, are often overkill for simple applications. In simple cases, the Latch SDK will automatically generate a Dockefile at registration time for a given workflow directory.
 
 ## Environment Definition Files
 
-The workflow author controls optional files in the workflow directory that are used to generate the Dockerfile if present. Below is an exhaustive list of the files used to auto-generate a Dockerfile. If this list does not cover a use case, please open an issue on the [Latch SDK Github](https://github.com/latchbio/latch), and we will respond shortly.
-
-<br>
+The workflow author can add optional files in the workflow directory that will be used to generate a Dockerfile if present. Below is an exhaustive list of the files used to auto-generate a Dockerfile. If this list does not cover a use case, please open an issue in [Github](https://github.com/latchbio/latch), and our team will respond shortly.
 
 ### Python PyPI Packages
-Python requirements found in `requirements.txt` are installed into the default python that executes task code.
+Python requirements found in a file called `requirements.txt` are installed into the default python environment in which task code is executed.
 
 <details>
 <summary>Example File</summary>
@@ -38,27 +36,20 @@ run pip install --requirement /opt/latch/requirements.txt
 <br />
 
 ### Local Python Packages
-Local python packages, indicated by a `setup.py` or `pyproject.toml` file in the workflow directory, will be installed into the default python that executes task code.
+Local python packages, indicated by a `setup.py` or `pyproject.toml` file in the workflow directory, will be installed into the default python environment in which task code is executed.
 
 <details>
 <summary>Example File</summary>
 
 ```python
-from setuptools import find_packages, setup
+from setuptools import setup
 
 setup(
     name="latch",
     version="v2.12.1",
     author_email="kenny@latch.bio",
     description="The Latchbio SDK",
-    packages=find_packages(),
-    include_package_data=True,
-    python_requires=">=3.8",
-    entry_points={
-        "console_scripts": [
-            "latch=latch_cli.main:main",
-        ]
-    },
+    ...
     install_requires=[
         "awscli==1.25.22",
     ],
@@ -80,7 +71,7 @@ run pip install --editable /root/
 <br />
 
 ### Conda Environment
-A conda python environment, indicated by a `environment.yml` or an `environment.yaml` file, will be used to create an isolated python environment in which all shell commands execute. Any subprocess run with `shell=True` will have access to the binaries and packages defined in the environment file. Miniconda is installed into the workflow environment as the conda manager.
+A conda environment, indicated by a `environment.yml` or an `environment.yaml` file, will be used to create an python environment used by the task by default. If both files are present, the `environment.yml` file will be used. Miniconda is installed into the workflow environment as the conda manager.
 
 <details>
 <summary>Example File</summary>
@@ -108,7 +99,7 @@ env CONDA_DIR /opt/conda
 env PATH=$CONDA_DIR/bin:$PATH
 run apt-get update --yes && \
     apt-get install --yes curl && \
-    curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
+    curl --remote-name https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
     mkdir /root/.conda && \
     # docs for -b and -p flags: https://docs.anaconda.com/anaconda/install/silent-mode/#linux-macos
     bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \
@@ -123,7 +114,7 @@ run pip install --upgrade latch
 <br />
 
 ### R Packages
-A local R environment will be created using the `environment.R` script. This script should include all the R installs needed to run relevant R scripts in the workflow. R 4.0 is the default version.
+A local R environment will be created using an `environment.R` script. This script should include all the R packages needed to run the relevant R scripts in a workflow. R 4.0 is the default version.
 
 <details>
 <summary>Example File</summary>
@@ -175,7 +166,7 @@ run apt-get update --yes && xargs apt-get install --yes </opt/latch/system-requi
 <br />
 
 ### Environment Variables
-Environment variables found in the `environment` file will be used to set environment variables inside your workflow environment.
+Environment variables found in an `environment` file will be used to set environment variables inside the workflow environment.
 
 <details>
 <summary>Example File</summary>
@@ -203,7 +194,7 @@ env {line2}
 
 To save the generated Dockerfile in the workflow directory, run `latch dockerfile {path_to_workflow_directory}`. The generated Dockefile will be used during subsequent `latch register` and `latch develop` commands to build the workflow environment, and it can be user modified. To go back to the autogenerated Dockerfile, delete the Dockerfile in the workflow directory.
 
-To understand the generated Dockefile, here is an example with instructive comments generated by running `latch init --template subprocess --dockerfile pkg_name`:
+To understand the generated Dockefile, here is an example with instructive comments generated by running `latch init --template subprocess --dockerfile example_workflow`:
 
 ```Dockerfile
 # latch base image + dependencies for latch SDK --- removing these will break the workflow
@@ -227,16 +218,11 @@ env FLYTE_INTERNAL_IMAGE $tag
 workdir /root
 ```
 
-Latch has three base images, one baseline, one with CUDA drivers, and one with OPENCL drivers. To use the CUDA or OPENCL base image, modify the from directive in the Dockerfile to `.../`latch-base-cuda`:...` or `.../`latch-base-opencl`:...`.
+Latch has three base images, one without hardware acceleration drivers, one with CUDA drivers, and one with OPENCL drivers. To use the CUDA or OPENCL base image, use the `--cuda` or `--opencl` flags when running `latch init`.
 
 ## Ignoring files
-In the above Dockerfile, the line 
 
-```Dockerfile
-copy . /root/
-```
-
-recursively copies files and directories from the workflow directory into the Docker image. Even if files in the workflow directory are unused by the workflow, they will be copied into the docker image. Having unnecessary files in the image increases its size, slowing workflow execution and registration. Additionally, any changes to said files will cause image rebuilding when running `latch register` or `latch develop` on the workflow, making the process slower. To avoid this, Latch uses a `.dockerignore` file in the workflow directory. This file should contain a list of files and directories that should be skipped when copying files into your container, as documented [here](https://docs.docker.com/engine/reference/builder/#dockerignore-file). Each workflow begins with a default `.dockerignore` file that ignores common pesky files.
+In the above Dockerfile, the line `copy . /root/` recursively copies all files and directories from the workflow directory into the Docker image. Even if files in the workflow directory are unused by the workflow, they will still be copied. Having unnecessary files in the image increases its size, slowing workflow execution and registration. Additionally, any changes to said files will cause image rebuilding when running `latch register` or `latch develop` on the workflow, making the process slower. To mitigate this, Latch uses a `.dockerignore` file in the workflow directory. This file should contain a list of files and directories that should be skipped when copying files into your container, as documented [here](https://docs.docker.com/engine/reference/builder/#dockerignore-file). Each workflow begins with a default `.dockerignore` file that ignores common pesky files (for example, `.latch_report.tar.gz` and other auto-generated files).
 
 ## Docker Limitations
 

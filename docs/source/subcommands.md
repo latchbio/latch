@@ -12,13 +12,21 @@ The parameter `PACKAGE_NAME` is the name of the directory that `latch init` will
 
 ### Options
 
-> `--template`, `-t`
->
-> One of `r`, `conda`, `subprocess`, `empty`. If not provided, user will be prompted for input.
->
-> `--dockerfile`, `-d`
->
-> Generate a Dockerfile for the workflow.
+#### `--template`, `-t`
+
+One of `r`, `conda`, `subprocess`, `empty`. If not provided, user will be prompted for input.
+
+#### `--dockerfile`, `-d`
+
+Generate a Dockerfile for the workflow.
+
+#### `--cuda`
+
+Make cuda drivers available to task code.
+
+#### `--opencl`
+
+Make opencl drivers available to task code.
 
 ## `latch register`
 
@@ -32,13 +40,13 @@ The first argument specifies the local path in which to look for workflow object
 
 ### Options
 
-> `--disable-auto-version`, `-d`
->
-> Whether to automatically bump the version of the workflow each time register is called.
->
-> `--remote`, `-r`
->
-> Use a remote server to build workflow.
+#### `--disable-auto-version`, `-d`
+
+Whether to automatically bump the version of the workflow each time register is called.
+
+#### `--remote`, `-r`
+
+Use a remote server to build workflow.
 
 ## `latch dockerfile`
 
@@ -100,9 +108,9 @@ This command will list out all workflows (and their respective versions) that th
 
 ### Options
 
-> `--name`
-> 
-> If provided, refines the output to instead list out all available versions of the workflow with the specified name
+#### `--name`
+
+If provided, refines the output to instead list out all available versions of the workflow with the specified name
 
 ## `latch open`
 

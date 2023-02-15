@@ -15,7 +15,7 @@ from pkg_resources import get_distribution
 from latch_cli.constants import latch_constants
 from latch_cli.docker_utils import generate_dockerfile
 from latch_cli.tui import select_tui
-from latch_cli.types import LatchWorkflowConfig
+from latch_cli.types import BaseImageAcceleratorDriver, LatchWorkflowConfig
 
 
 def _get_boilerplate(pkg_root: Path, source_path: Path):
@@ -155,7 +155,11 @@ template_flag_to_option = {
 
 
 def init(
-    pkg_name: str, template: Optional[str], expose_dockerfile: bool = True
+    pkg_name: str,
+    template: Optional[str],
+    expose_dockerfile: bool = True,
+    cuda: bool = False,
+    opencl: bool = False,
 ) -> bool:
     """Creates boilerplate workflow files in the user's working directory.
 
@@ -252,6 +256,14 @@ def init(
             f"Warning -- existing files in directory `{pkg_name}` may be overwritten by boilerplate. Continue?"
         ):
             return False
+
+    base_image = latch_constants.base_image
+    if cuda and opencl:
+        raise ValueError("Latch does not support both CUDA and OpenCL yet")
+    elif cuda:
+        base_image = base_image.replace("latch-base", "latch-base-cuda")
+    elif opencl:
+        base_image = base_image.replace("latch-base", "latch-base-opencl")
 
     config = LatchWorkflowConfig(
         latch_version=get_distribution("latch").version,
