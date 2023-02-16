@@ -267,7 +267,7 @@ def init(
 
     config = LatchWorkflowConfig(
         latch_version=get_distribution("latch").version,
-        base_image=latch_constants.base_image,
+        base_image=base_image,
         date=datetime.now().isoformat(),
     )
 
