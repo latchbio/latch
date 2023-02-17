@@ -14,6 +14,22 @@ Types of changes
 -->
 
 # Latch SDK Changelog
+## 2.13.0 - 2023-02-17
+
+### Added
+
+* The `latch dockerfile` command which auto-generates a Dockerfile from files in the workflow directory.
+* The `latch init` command can use base images with hardware acceleration using the `--cuda` and the `--opencl` flags
+* The `latch init` command does not populate the workflow directory with a Dockerfile by default
+* The `latch init` command will populate the workflow directory with a Dockerfile if passed `--dockerfile`
+* The `latch register` and `latch develop` commands auto-generate a dockerfile from files in the workflow directory if no Dockerfile is present
+* Documentation for the auto-generated Dockerfile feature
+
+### Fixed
+
+* Quickstart tutorial is written factually
+* Getting started docs are written factually
+
 ## 2.12.1 - 2023-02-08
 
 ### Added
