@@ -54,7 +54,7 @@ A task is a Python function that takes in inputs and returns outputs to the Latc
 
 ### Working with `LatchFile`s and `LatchDir`s
 
-:py:class:`latch.types.LatchFile` and :py:class:`latch.types.LatchDir` are types built into the Latch SDK which allow users to use files and directories stored remotely on Latch as inputs and outputs to workflows. They point to remote file locations in our user interface on [the Latch Console](https://console.latch.bio/data) and implement the necessary operations to ensure data is available in the task environment and outputs are uploaded to your Latch account.
+`LatchFile` and `LatchDir` are types built into the Latch SDK which allow users to use files and directories stored remotely on Latch as inputs and outputs to workflows. They point to remote file locations in our user interface on [the Latch Console](https://console.latch.bio/data) and implement the necessary operations to ensure data is available in the task environment and outputs are uploaded to your Latch account.
 
 The first time you read or resolve the path of a file or directory in a task, the data will be downloaded and will be accessible within the task. For example the line `local_file = Path(read1)` in the snippet below will download the file from Latch and return a path to the local copy.
 
