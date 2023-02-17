@@ -75,7 +75,7 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
                         run apt-get update --yes && \
                             apt-get install --yes software-properties-common && \
                             add-apt-repository "deb http://cloud.r-project.org/bin/linux/debian buster-cran40/" && \
-                            apt-get install --yes r-base r-base-dev libxml2-dev libcurl4-openssl-dev libssl-dev wget
+                            DEBIAN_FRONTEND=noninteractive apt-get install --yes r-base r-base-dev libxml2-dev libcurl4-openssl-dev libssl-dev wget
                         """
                     ).strip(),
                     "copy environment.R /opt/latch/environment.R",
