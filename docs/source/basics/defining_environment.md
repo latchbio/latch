@@ -155,7 +155,7 @@ run Rscript /opt/latch/environment.R
 
 ### System: APT
 
-Dependencies from a `system-requirements.txt` text document will be automatically installed using `apt-get install --yes --no-install-recommends`
+Dependencies from a `system-requirements.txt` text document will be automatically installed using `apt-get install --yes`
 
 <details>
 <summary>Example File</summary>
@@ -174,7 +174,7 @@ samtools
 ```Dockerfile
 copy system-requirements.txt /opt/latch/system-requirements.txt
 run apt-get update --yes && \
-    xargs apt-get install --yes --no-install-recommends < /opt/latch/system-requirements.txt
+    xargs apt-get install --yes < /opt/latch/system-requirements.txt
 ```
 </details>
 <br />

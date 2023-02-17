@@ -58,7 +58,7 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
                 comment="install system requirements",
                 commands=[
                     "copy system-requirements.txt /opt/latch/system-requirements.txt",
-                    "run apt-get update --yes && xargs apt-get install --yes --no-install-recommends </opt/latch/system-requirements.txt",
+                    "run apt-get update --yes && xargs apt-get install --yes </opt/latch/system-requirements.txt",
                 ],
                 order=DockerCmdBlockOrder.precopy,
             )
