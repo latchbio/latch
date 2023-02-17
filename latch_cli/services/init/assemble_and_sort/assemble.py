@@ -14,7 +14,7 @@ def assembly_task(
     # A reference to our output.
     sam_file = Path("covid_assembly.sam").resolve()
 
-    _bowtie2_cmd = [
+    bowtie2_cmd = [
         "bowtie2/bowtie2",
         "--local",
         "--very-sensitive-local",
@@ -33,7 +33,7 @@ def assembly_task(
         # When using shell=True, we pass the entire command as a single string as
         # opposed to a list since the shell will parse the string into a list
         # using its own rules.
-        subprocess.run(" ".join(_bowtie2_cmd), shell=True, check=True)
+        subprocess.run(" ".join(bowtie2_cmd), shell=True, check=True)
     except subprocess.CalledProcessError as e:
         # will display in the messages tab of the execution graph for the assembly_task node
         message(

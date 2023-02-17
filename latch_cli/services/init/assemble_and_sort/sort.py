@@ -11,7 +11,7 @@ def sort_bam_task(sam: LatchFile, output_directory: LatchOutputDir) -> LatchFile
 
     bam_file = Path("covid_sorted.bam").resolve()
 
-    _samtools_sort_cmd = [
+    samtools_sort_cmd = [
         "samtools",
         "sort",
         "-o",
@@ -26,7 +26,7 @@ def sort_bam_task(sam: LatchFile, output_directory: LatchOutputDir) -> LatchFile
         # When using shell=True, we pass the entire command as a single string as
         # opposed to a list since the shell will parse the string into a list
         # using its own rules.
-        subprocess.run(" ".join(_samtools_sort_cmd), shell=True, check=True)
+        subprocess.run(" ".join(samtools_sort_cmd), shell=True, check=True)
     except subprocess.CalledProcessError as e:
         # will display in the messages tab of the execution graph for the sort_bam_task node
         message(

@@ -53,7 +53,7 @@ class OAuth2:
             with CSRFState() as csrf_state:
 
                 # Construct our object + call each leg of the flow as a method.
-                oauth2_flow = OAuth2(pkce, csrf_state, OAuth2Constants)
+                oauth2_flow = OAuth2(pkce, csrf_state, oauth2_constants)
                 auth_code = oauth2_flow.authorization_request() # A + B
                 token = oauth2_flow.access_token_request(auth_code) # C + D
 

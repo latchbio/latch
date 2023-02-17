@@ -21,6 +21,7 @@ import websockets.exceptions
 from watchfiles import awatch
 
 from latch_cli.config.latch import config
+from latch_cli.constants import latch_constants
 from latch_cli.tinyrequests import post
 from latch_cli.utils import (
     TemporarySSHCredentials,
@@ -257,7 +258,7 @@ async def _run_local_dev_session(pkg_root: Path):
     # doing anything
     _get_latest_image(pkg_root)
 
-    key_path = pkg_root / ".ssh_key"
+    key_path = pkg_root / latch_constants.pkg_ssh_key
 
     with TemporarySSHCredentials(key_path) as ssh:
         headers = {"Authorization": f"Bearer {retrieve_or_login()}"}

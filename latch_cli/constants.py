@@ -4,7 +4,32 @@ import re
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(frozen=True)
+class LatchConstants:
+    base_image: str = (
+        "812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:ace9-main"
+    )
+
+    mib: int = 2**20
+
+    file_max_size: int = 4 * mib
+
+    file_chunk_size: int = 5 * mib
+
+    pkg_name: str = "latch"
+    pkg_ssh_key: str = ".latch/ssh_key"
+    pkg_config: str = ".latch/config"
+
+    # todo(aidan): make this aware of the current working directory so that we do not remove useful context
+    ignore_regex = re.compile(
+        r"(\.git|\.latch_report\.tar\.gz|traceback\.txt|metadata\.json)$"
+    )
+
+
+latch_constants = LatchConstants()
+
+
+@dataclass(frozen=True)
 class OAuth2Constants:
 
     client_id: str = "jzFBOhIbfp4EPRYZ8wmx4YyvL27LFDeB"
@@ -17,13 +42,4 @@ class OAuth2Constants:
     """Redirect URL registered with authentication server."""
 
 
-MB = 2**20
-
-FILE_MAX_SIZE = 4 * MB
-FILE_CHUNK_SIZE = 5 * MB
-
-PKG_NAME = "latch"
-
-IGNORE_REGEX = re.compile(
-    "(\.git|\.latch_report\.tar\.gz|traceback\.txt|metadata\.json)"
-)
+oauth2_constants = OAuth2Constants()

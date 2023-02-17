@@ -10,6 +10,7 @@ Subpackages
    latch_cli.auth
    latch_cli.centromere
    latch_cli.config
+   latch_cli.docker_utils
    latch_cli.exceptions
    latch_cli.services
 
@@ -52,6 +53,14 @@ latch\_cli.tui module
 ---------------------
 
 .. automodule:: latch_cli.tui
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+latch\_cli.types module
+-----------------------
+
+.. automodule:: latch_cli.types
    :members:
    :undoc-members:
    :show-inheritance:

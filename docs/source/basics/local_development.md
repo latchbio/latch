@@ -89,7 +89,7 @@ We use `rsync` to bring changes from your local workflow directory to the latch 
 
 ```Dockerfile
 ...
-copy wf /root/wf
+copy . /root/
 ...
 ```
 Then when running `latch develop`, any changes to files or additional files created in the `wf` directory will be reflected in the environment, overwriting the old code in the development environment to ensure that your latest changes are present.

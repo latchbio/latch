@@ -46,8 +46,32 @@ def main():
     crash_handler.init()
 
 
+@main.command("dockerfile")
+@click.argument("pkg_root", type=click.Path(exists=True, file_okay=False))
+def dockerfile(pkg_root: str):
+    """Generates a user editable dockerfile for a workflow and saves under `pkg_root/Dockerfile`.
+
+    Visit docs.latch.bio to learn more.
+    """
+
+    crash_handler.message = "Failed to generate Dockerfile."
+    crash_handler.pkg_root = pkg_root
+
+    from latch_cli.docker_utils import generate_dockerfile
+
+    source = Path(pkg_root)
+    dest = source / "Dockerfile"
+    if dest.exists() and not click.confirm(
+        f"Dockerfile already exists at `{dest}`. Overwrite?"
+    ):
+        return
+    generate_dockerfile(source, dest)
+
+    click.secho(f"Successfully generated dockerfile `{dest}`", fg="green")
+
+
 @main.command("register")
-@click.argument("pkg_root", nargs=1, type=click.Path(exists=True))
+@click.argument("pkg_root", type=click.Path(exists=True, file_okay=False))
 @click.option(
     "-d",
     "--disable-auto-version",
@@ -129,7 +153,32 @@ def login(connection: Optional[str]):
         case_sensitive=False,
     ),
 )
-def init(pkg_name: str, template: Optional[str] = None):
+@click.option(
+    "--dockerfile",
+    "-d",
+    help="Create a user editable Dockerfile for this workflow.",
+    is_flag=True,
+    default=False,
+)
+@click.option(
+    "--cuda",
+    help="Create a user editable Dockerfile for this workflow.",
+    is_flag=True,
+    default=False,
+)
+@click.option(
+    "--opencl",
+    help="Create a user editable Dockerfile for this workflow.",
+    is_flag=True,
+    default=False,
+)
+def init(
+    pkg_name: str,
+    template: Optional[str] = None,
+    dockerfile: bool = False,
+    cuda: bool = False,
+    opencl: bool = False,
+):
     """Initialize boilerplate for local workflow code."""
 
     crash_handler.message = f"Unable to initialize {pkg_name}"
@@ -137,7 +186,7 @@ def init(pkg_name: str, template: Optional[str] = None):
 
     from latch_cli.services.init import init
 
-    created = init(pkg_name, template)
+    created = init(pkg_name, template, dockerfile, cuda, opencl)
     if created:
         click.secho(f"Created a latch workflow in `{pkg_name}`", fg="green")
         click.secho("Run", fg="green")

@@ -5,12 +5,13 @@ import os
 import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import List
 
 import jwt
-import paramiko
+from docker.utils import exclude_paths
 
 from latch_cli.config.user import user_config
-from latch_cli.constants import FILE_MAX_SIZE, PKG_NAME
+from latch_cli.constants import latch_constants
 from latch_cli.services.login import login
 from latch_cli.tinyrequests import get
 
@@ -115,27 +116,44 @@ def with_si_suffix(num, suffix="B", styled=False):
 def hash_directory(dir_path: Path) -> str:
     m = hashlib.new("sha256")
     m.update(current_workspace().encode("utf-8"))
-    for containing_path, dirnames, fnames in os.walk(dir_path):
+
+    ignore_file = dir_path / ".dockerignore"
+    exclude: List[str] = []
+    try:
+        for l in ignore_file.open("r"):
+            l = l.strip()
+
+            if l == "":
+                continue
+            if l[0] == "#":
+                continue
+
+            exclude.append(l)
+    except FileNotFoundError:
+        print("No .dockerignore file found --- including all files")
+
+    paths = list(exclude_paths(dir_path, exclude))
+    paths.sort()
+
+    for item in paths:
         # for repeatability guarantees
-        dirnames.sort()
-        fnames.sort()
-        for filename in fnames:
-            path = Path(containing_path).joinpath(filename)
-            m.update(str(path).encode("utf-8"))
-            file_size = os.path.getsize(path)
-            if file_size < FILE_MAX_SIZE:
-                with open(path, "rb") as f:
-                    m.update(f.read())
-            else:
-                print(
-                    "\x1b[38;5;226m"
-                    f"WARNING: {path.relative_to(dir_path.resolve())} is too large "
-                    f"({with_si_suffix(file_size)}) to checksum, skipping."
-                    "\x1b[0m"
-                )
-        for dirname in dirnames:
-            path = Path(containing_path).joinpath(dirname)
-            m.update(str(path).encode("utf-8"))
+        p = Path(dir_path / item)
+        if p.is_dir():
+            m.update(str(p).encode("utf-8"))
+            continue
+
+        m.update(str(p).encode("utf-8"))
+        file_size = p.stat().st_size
+        if file_size < latch_constants.file_max_size:
+            m.update(p.read_bytes())
+        else:
+            print(
+                "\x1b[38;5;226m"
+                f"WARNING: {p.relative_to(dir_path.resolve())} is too large "
+                f"({with_si_suffix(file_size)}) to checksum, skipping."
+                "\x1b[0m"
+            )
+
     return m.hexdigest()
 
 
@@ -202,12 +220,12 @@ def get_local_package_version() -> str:
         from importlib import metadata
     except ImportError:
         import importlib_metadata as metadata
-    return metadata.version(PKG_NAME)
+    return metadata.version(latch_constants.pkg_name)
 
 
 def get_latest_package_version_request() -> str:
     cache_location = user_config.root / "cached_version"
-    resp = get(f"https://pypi.org/pypi/{PKG_NAME}/json")
+    resp = get(f"https://pypi.org/pypi/{latch_constants.pkg_name}/json")
     version = resp.json()["info"]["version"]
     with open(cache_location, "w") as f:
         f.write(f"{version} {datetime.now().isoformat()}")

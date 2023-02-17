@@ -54,21 +54,21 @@ latch init covid-wf
 The command creates a folder in your current working directory called `covid-wf`.  Inside that folder, it will generate the initial project structure:
 ```
 covid-wf
-├── Dockerfile
+├── LICENSE
+├── README.md
+├── bowtie2
+│   ├── bowtie2
+│   └── ...
 ├── reference
 │   ├── wuhan.1.bt2
-│   ├── wuhan.2.bt2
-│   ├── wuhan.3.bt2
-│   ├── wuhan.4.bt2
-│   ├── wuhan.fasta
-│   ├── wuhan.rev.1.bt2
-│   └── wuhan.rev.2.bt2
+│   └── ...
+├── system-requirements.txt
 ├── version
 └── wf
-    └── __init__.py
+    ├── __init__.py
+    ├── assemble.py
+    └── sort.py
 ```
-
-All these files (excluding the `reference` folder) are required for you to successfully register and upload your workflow to Latch Console.
 
 ## Step 4: Register your first workflow
 To get a live version of your workflow on Latch, simply type:
