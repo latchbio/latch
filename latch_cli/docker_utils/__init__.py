@@ -58,7 +58,7 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
                 comment="install system requirements",
                 commands=[
                     "copy system-requirements.txt /opt/latch/system-requirements.txt",
-                    "run apt-get update --yes && xargs apt-get install --yes </opt/latch/system-requirements.txt",
+                    "run apt-get update --yes && xargs apt-get install --yes --no-install-recommends </opt/latch/system-requirements.txt",
                 ],
                 order=DockerCmdBlockOrder.precopy,
             )
@@ -85,15 +85,9 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
             )
         )
 
-    conda_env_file_name = None
-    if (pkg_root / "environment.yml").exists():
-        conda_env_file_name = "environment.yml"
-    elif (pkg_root / "environment.yaml").exists():
-        conda_env_file_name = "environment.yaml"
-
-    if conda_env_file_name is not None:
+    if (pkg_root / "environment.yaml").exists():
         print("Adding conda + conda environment installation phase")
-        with (pkg_root / conda_env_file_name).open("rb") as f:
+        with (pkg_root / "environment.yaml").open("rb") as f:
             conda_env = yaml.safe_load(f)
 
         if "name" in conda_env:
@@ -131,8 +125,8 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
             DockerCmdBlock(
                 comment="build and configure conda environment",
                 commands=[
-                    f"copy {conda_env_file_name} /opt/latch/{conda_env_file_name}",
-                    f"run conda env create --file /opt/latch/{conda_env_file_name} --name {env_name}",
+                    "copy environment.yaml /opt/latch/environment.yaml",
+                    f"run conda env create --file /opt/latch/environment.yaml --name {env_name}",
                     f'shell ["conda", "run", "--name", "{env_name}", "/bin/bash", "-c"]',
                     "run pip install --upgrade latch",
                 ],
@@ -164,10 +158,10 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
             )
         )
 
-    if (pkg_root / "environment").exists():
+    if (pkg_root / ".env").exists():
         print("Adding environment variable phase")
         envs = []
-        for line in (pkg_root / "environment").read_text().splitlines():
+        for line in (pkg_root / ".env").read_text().splitlines():
             if line.startswith("#"):
                 continue
             if line.strip() == "":

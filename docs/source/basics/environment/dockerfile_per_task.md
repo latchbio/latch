@@ -1,8 +1,8 @@
-# Dockerfiles per Task
+# Environments for Individual Tasks
 
-When writing different tasks, defining distinct containers for each task increases workflow execution performance by reducing the size of the container scheduled on Kubernetes. It also helps with code organization by only associating dependencies with the tasks that need them.
+Different tasks in a workflow may need different sets of dependencies. Creating a single shared environment can be problematic as the some part of the workflow image will be unused in each task and slow down that task's startup proportionally to the size of the extraneous chunk. Different dependencies might also need different system package versions in which case installing them together might be impractical.
 
-To use a separate Dockerfile for a task, pass the path of the Dockerfile when defining a task. If the workflow utilizes more than one Dockerfile, registration will take longer given that multiple containers must be built.
+Instead, consider defining an individual environment for each task using the optional `dockerfile` parameter in the task definition. Include only the dependencies that each specific task needs.
 
 ```python
 # assemble.py
@@ -16,9 +16,7 @@ from latch.types import LatchFile
 
 @small_task(dockerfile=Path(__file__).parent / "Dockerfile")
 def assembly_task(read1: LatchFile, read2: LatchFile) -> LatchFile:
-
     ...
-
     return LatchFile(str(sam_file), "latch:///covid_assembly.sam")
 ```
 
@@ -32,13 +30,11 @@ from latch.types import LatchFile
 
 @small_task(dockerfile=Path(__file__).parent / "Dockerfile")
 def sam_blaster(sam: LatchFile) -> LatchFile:
-
     ...
-
     return LatchFile(blasted_sam, f"latch:///{blasted_sam.name}")
 ```
 
-We can organize task definitions and Dockerfiles in a directory structure as follows:
+`Dockerfile`s can be organized as follows:
 
 ```shell-session
 wf
@@ -56,4 +52,4 @@ The root directory used when building the images is always the workflow director
 
 ## Limitations
 
-`latch develop .` uses the Dockerfile in the workflow directory. In the future, we will support passing a Dockerfile as an argument to `latch develop`.
+`latch develop` uses the `Dockerfile` in the workflow directory and not any of the individual `Dockerfiles`

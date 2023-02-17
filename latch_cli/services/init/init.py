@@ -40,6 +40,9 @@ def _get_boilerplate(pkg_root: Path, source_path: Path):
     for f in source_path.glob("env*"):
         shutil.copy(f, pkg_root)
 
+    if (source_path / ".env").exists():
+        shutil.copy(source_path / ".env", pkg_root)
+
     common_source = source_path.parent / "common"
     for f in common_source.iterdir():
         shutil.copy(f, pkg_root)
@@ -133,8 +136,8 @@ def _gen_example_conda(pkg_root: Path):
 
     _get_boilerplate(pkg_root, source_path)
 
-    conda_env_dest = pkg_root / "environment.yml"
-    conda_env_src = source_path / "environment.yml"
+    conda_env_dest = pkg_root / "environment.yaml"
+    conda_env_src = source_path / "environment.yaml"
     shutil.copy(conda_env_src, conda_env_dest)
 
 

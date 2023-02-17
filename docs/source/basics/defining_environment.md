@@ -1,17 +1,22 @@
-# The Workflow Environment
+# Workflow Environment
 
-Outside of task code, various environment variables, system packages, and programs are critical to running latch workflows. For example, a task that downloads a binary from a server and uses the AWS command line toolkit to get reference data may rely on the apt packages `wget` and `aws-cli` as well as AWS-specific environment variables.
+Workflow code is rarely free of dependencies. It may require python or system packages or make use of environment variables. For example, a task that downloads compressed reference data from AWS S3 will need the `aws-cli` and `unzip` [APT](https://en.wikipedia.org/wiki/APT_(software)) packages, then use the `pyyaml` python package to read the included metadata.
 
 Latch manages the execution environment of a workflow using Dockerfiles. A Dockerfile specifies the environment in which the workflow runs.
 
-Dockerfiles, however, are often overkill for simple applications. In simple cases, the Latch SDK will automatically generate a Dockefile at registration time for a given workflow directory.
+Latch has three [base images](https://docs.docker.com/build/building/base-images/), one without hardware acceleration drivers, one with CUDA drivers, and one with OPENCL drivers. To use the CUDA or OPENCL base image, use the `--cuda` or `--opencl` flags when running `latch init`.
 
-## Environment Definition Files
+The workflow environment is encapsulated in [a Docker container](https://en.wikipedia.org/wiki/Docker_(software)), which is created from a recipe defined in [a text document called Dockerfile.](https://docs.docker.com/engine/reference/builder/) In most cases these recipes are repetitive and unnecessarily complicated, so Latch will automatically generate one using conventional dependency lists and heuristics. To use a handwritten Dockerfile, [run the eject command](#ejecting-auto-generation).
 
-The workflow author can add optional files in the workflow directory that will be used to generate a Dockerfile if present. Below is an exhaustive list of the files used to auto-generate a Dockerfile. If this list does not cover a use case, please open an issue in [Github](https://github.com/latchbio/latch), and our team will respond shortly.
+## Automatic Dockerfile Generation
 
-### Python PyPI Packages
-Python requirements found in a file called `requirements.txt` are installed into the default python environment in which task code is executed.
+Below is the list of files used when auto-generating Dockerfiles.
+
+If auto-generation does not cover your use case, please [open a suggestion on GitHub.](https://github.com/latchbio/latch/issues)
+
+### Python: `requirements.txt`
+
+Dependencies from a [`requirements.txt` file](https://pip.pypa.io/en/stable/reference/requirements-file-format/) will be automatically installed using `pip install --requirement`.
 
 <details>
 <summary>Example File</summary>
@@ -26,7 +31,7 @@ awscli==1.22.24
 <br />
 
 <details>
-<summary>Docker commands</summary>
+<summary>Generated Docker Commands</summary>
 
 ```Dockerfile
 copy requirements.txt /opt/latch/requirements.txt
@@ -35,8 +40,11 @@ run pip install --requirement /opt/latch/requirements.txt
 </details>
 <br />
 
-### Local Python Packages
-Local python packages, indicated by a `setup.py` or `pyproject.toml` file in the workflow directory, will be installed into the default python environment in which task code is executed.
+### Python: `setup.py`, PEP-621 `pyproject.toml`
+
+Workflows with a package specification in a [`setup.py` file](https://docs.python.org/3/distutils/setupscript.html) or a [PEP-621 `pyproject.toml` file](https://peps.python.org/pep-0621/) will be automatically installed using `pip install --editable`
+
+[Poetry `pyproject.toml` files](https://python-poetry.org/docs/pyproject/) are not supported.
 
 <details>
 <summary>Example File</summary>
@@ -45,58 +53,53 @@ Local python packages, indicated by a `setup.py` or `pyproject.toml` file in the
 from setuptools import setup
 
 setup(
-    name="latch",
-    version="v2.12.1",
-    author_email="kenny@latch.bio",
-    description="The Latchbio SDK",
+    name='alphafold',
+    version='2.2.3',
+    author='DeepMind',
     ...
-    install_requires=[
-        "awscli==1.25.22",
-    ],
-    classifiers=[
-        "Programming Language :: Python :: 3.10",
-    ],
 )
 ```
 </details>
 <br />
 
 <details>
-<summary>Docker commands</summary>
+<summary>Generated Dockerfile Commands</summary>
 
 ```Dockerfile
+copy . /root/
 run pip install --editable /root/
 ```
 </details>
 <br />
 
-### Conda Environment
-A conda environment, indicated by a `environment.yml` or an `environment.yaml` file, will be used to create an python environment used by the task by default. If both files are present, the `environment.yml` file will be used. Miniconda is installed into the workflow environment as the conda manager.
+### System/Python: Conda `environment.yaml`
+
+The [Conda](https://docs.conda.io/en/latest/) environment in an [`environment.yaml` file](https://conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#create-env-file-manually) will be automatically created using `conda env create --file` with latest [miniconda](https://docs.conda.io/en/latest/miniconda.html). The environment will be activated by default.
 
 <details>
 <summary>Example File</summary>
 
 ```yaml
-name: env-name
+name: workflow
 channels:
   - conda-forge
   - defaults
 dependencies:
   - python=3.7
-  - codecov
+  - bwakit=0.7.17
 variables:
-  VAR1: valueA
-  VAR2: valueB
+  reference: ~/covid19
 ```
 </details>
 <br />
 
 <details>
-<summary>Docker commands</summary>
+<summary>Generated Dockerfile Commands</summary>
 
 ```Dockerfile
 env CONDA_DIR /opt/conda
 env PATH=$CONDA_DIR/bin:$PATH
+
 run apt-get update --yes && \
     apt-get install --yes curl && \
     curl --remote-name https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
@@ -105,16 +108,23 @@ run apt-get update --yes && \
     bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \
     rm -f Miniconda3-latest-Linux-x86_64.sh && \
     conda init bash
-copy environment.yml /opt/latch/environment.yml
-run conda env create --file /opt/latch/environment.yml --name workflow
+
+copy environment.yaml /opt/latch/environment.yaml
+run conda env create --file /opt/latch/environment.yaml --name workflow
+
 shell ["conda", "run", "--name", "workflow", "/bin/bash", "-c"]
 run pip install --upgrade latch
 ```
 </details>
 <br />
 
-### R Packages
-A local R environment will be created using an `environment.R` script. This script should include all the R packages needed to run the relevant R scripts in a workflow. R 4.0 is the default version.
+### R: `environment.R`
+
+Any script in an `environment.R` file will be automatically executed when the workflow is built. This is intended for installing dependencies but there are no actual limits on what the script does.
+
+Currently only R 4.0.0 is supported.
+
+Note that some R packages may have system dependencies that need to be installed using APT or another method. These packages will list these dependencies in their documentation. Missing dependencies will cause crashes during workflow build or when using the packages.
 
 <details>
 <summary>Example File</summary>
@@ -122,27 +132,30 @@ A local R environment will be created using an `environment.R` script. This scri
 ```R
 install.packages("RCurl")
 install.packages("BiocManager")
+
 BiocManager::install("S4Vectors")
 ```
 </details>
 <br />
 
 <details>
-<summary>Docker commands</summary>
+<summary>Generated Dockerfile Commands</summary>
 
 ```Dockerfile
 run apt-get update --yes && \
     apt-get install --yes software-properties-common && \
     add-apt-repository "deb http://cloud.r-project.org/bin/linux/debian buster-cran40/" && \
     apt-get install --yes r-base r-base-dev libxml2-dev libcurl4-openssl-dev libssl-dev wget
+
 copy environment.R /opt/latch/environment.R
 run Rscript /opt/latch/environment.R
 ```
 </details>
 <br />
 
-### System (Debian) Packages
-Requirements found in `system-requirements.txt` are installed system-wide using apt.
+### System: APT
+
+Dependencies from a `system-requirements.txt` text document will be automatically installed using `apt-get install --yes --no-install-recommends`
 
 <details>
 <summary>Example File</summary>
@@ -156,35 +169,35 @@ samtools
 
 
 <details>
-<summary>Docker commands</summary>
+<summary>Generated Dockerfile Commands</summary>
 
 ```Dockerfile
 copy system-requirements.txt /opt/latch/system-requirements.txt
-run apt-get update --yes && xargs apt-get install --yes </opt/latch/system-requirements.txt
+run apt-get update --yes && \
+    xargs apt-get install --yes --no-install-recommends < /opt/latch/system-requirements.txt
 ```
 </details>
 <br />
 
 ### Environment Variables
-Environment variables found in an `environment` file will be used to set environment variables inside the workflow environment.
+Environment variables from an `.env` text document will be automatically set in the workflow environment.
 
 <details>
 <summary>Example File</summary>
 
 ```
 BOWTIE2_INDEXES=reference
-PATH="$PATH:/root/bowtie2"
+PATH="/root/bowtie2:$PATH"
 ```
 </details>
 <br />
 
 <details>
-<summary>Docker commands</summary>
+<summary>Generated Dockerfile Commands</summary>
 
 ```Dockerfile
-env {line1}
-env {line2}
-...
+env BOWTIE2_INDEXES="reference"
+env PATH="/root/bowtie2:$PATH"
 ```
 </details>
 <br />
@@ -192,9 +205,9 @@ env {line2}
 ---
 <br>
 
-To save the generated Dockerfile in the workflow directory, run `latch dockerfile {path_to_workflow_directory}`. The generated Dockefile will be used during subsequent `latch register` and `latch develop` commands to build the workflow environment, and it can be user modified. To go back to the autogenerated Dockerfile, delete the Dockerfile in the workflow directory.
+## Example of Auto-generated Dockerfile
 
-To understand the generated Dockefile, here is an example with instructive comments generated by running `latch init --template subprocess --dockerfile example_workflow`:
+The following Dockerfile is generated in the `subprocess` template (using `latch init --template subprocess --dockerfile example_workflow`):
 
 ```Dockerfile
 # latch base image + dependencies for latch SDK --- removing these will break the workflow
@@ -218,16 +231,36 @@ env FLYTE_INTERNAL_IMAGE $tag
 workdir /root
 ```
 
-Latch has three base images, one without hardware acceleration drivers, one with CUDA drivers, and one with OPENCL drivers. To use the CUDA or OPENCL base image, use the `--cuda` or `--opencl` flags when running `latch init`.
+## Note on Python Requirements
 
-## Ignoring files
+The order of python requirement installation is as follows
+1. `conda`
+2. `setup.py` / `pyproject.toml`
+3. `requirements.txt`
 
-In the above Dockerfile, the line `copy . /root/` recursively copies all files and directories from the workflow directory into the Docker image. Even if files in the workflow directory are unused by the workflow, they will still be copied. Having unnecessary files in the image increases its size, slowing workflow execution and registration. Additionally, any changes to said files will cause image rebuilding when running `latch register` or `latch develop` on the workflow, making the process slower. To mitigate this, Latch uses a `.dockerignore` file in the workflow directory. This file should contain a list of files and directories that should be skipped when copying files into your container, as documented [here](https://docs.docker.com/engine/reference/builder/#dockerignore-file). Each workflow begins with a default `.dockerignore` file that ignores common pesky files (for example, `.latch_report.tar.gz` and other auto-generated files).
+Consequently, a package specified in the `requirements.txt` file will overwrite a previous install of the same packaged installed by the `conda` environment. 
+
+## Ejecting Auto-generation
+
+The auto-generated Dockerfile can be saved to the workflow root using `latch dockerfile <path to workflow root>`. Subsequent `latch register` and `latch develop` commands will use the saved version. This also disables automatic generation so no dependency files will be used and changes in these files will not have any effect.
+
+To start with a custom Dockerfile, the `--dockerfile` option for `latch init` can be used.
+
+This can be used to switch to a more complicated handwritten Dockerfile or to debug any issues with auto-generation. Removing the Dockerfile will re-enable automatic generation.
+
+If you use ejection because auto-generation does not cover your use case, please [open a suggestion on GitHub.](https://github.com/latchbio/latch/issues)
+
+## Excluding Files
+
+By default, all files in the workflow root directory are included in the workflow build. Any unnecessary files will increase the resulting workflow container image size and increase registration and startup time proportional to their size.
+
+To exclude files from the build use [a `.dockerignore`.](https://docs.docker.com/engine/reference/builder/#dockerignore-file) Files can be specified one at a time or using glob patterns.
+
+The default `.dockerignore` includes files auto-generated by Latch.
 
 ## Docker Limitations
 
-The difference between a latch task environment and running code on a Linux machine is that we restrict access to root system resources. For example, `/dev` and the networking stack are restricted, so creating mounts using `/dev/fuse` is not permitted. We limit this behavior to prevent users from accessing sensitive system resources that could influence other tasks running on the same machine. In the future, we will support full container isolation, allowing users to treat their containers as complete linux machines.
-
+Docker containers have limitations on some system administration functions. While each workflow runs as a genuine `root` user (UID 0), commands that require [kernel capabilities](https://man7.org/linux/man-pages/man7/capabilities.7.html) will fail with "Permission denied". This includes `mount` and `chroot` among others.
 
 ---
 

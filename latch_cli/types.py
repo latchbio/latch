@@ -10,4 +10,4 @@ class LatchWorkflowConfig:
     base_image: str
     """Exact version of the included workflow base image"""
     date: str
-    """Time stamp of the `latch init` call"""
+    """Timestamp of the `latch init` call"""

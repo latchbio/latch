@@ -6,19 +6,19 @@
 $ latch init PACKAGE_NAME
 ```
 
-This command is used to initialize a new workflow directory, using one of four templates. It will create a directory with the name `PACKAGE_NAME` and populate it with the necessary files to get started.
+This command is used to initialize a new workflow root by populating it with the required boilerplate. Optionally, a template workflow can be used as a starting point.
 
-The parameter `PACKAGE_NAME` is the name of the directory that `latch init` will create and populate with example files.
+`PACKAGE_NAME` is the name of the target directory. It will be created if it does not exist.
 
 ### Options
 
 #### `--template`, `-t`
 
-One of `r`, `conda`, `subprocess`, `empty`. If not provided, user will be prompted for input.
+One of `r`, `conda`, `subprocess`, `empty`. If not provided, user will be prompted for input. The `r` template comes with `R4.0` preinstalled, the `conda` template comes with `miniconda` preinstalled + a boilerplate `environment.yaml` conda environment file, the `subprocess` template demonstrates how to run a subprocess in a task, and the `empty` template is a blank slate.
 
 #### `--dockerfile`, `-d`
 
-Generate a Dockerfile for the workflow.
+Generate a Dockerfile for the workflow instead of relying on [auto-generation.](basics/defining_environment.md#automatic-dockerfile-generation)
 
 #### `--cuda`
 
@@ -42,15 +42,15 @@ The first argument specifies the local path in which to look for workflow object
 
 #### `--disable-auto-version`, `-d`
 
-Whether to automatically bump the version of the workflow each time register is called.
+Do not include the workflow contents hash in the workflow version. The `version` must be manually updated after each registration. This can be useful when publishing a workflow with a version that should not include the hash.
 
 #### `--remote`, `-r`
 
-Use a remote server to build workflow.
+Use a remote server to build the workflow.
 
 ## `latch dockerfile`
 
-This command generates a Dockerfile for a workflow using files in the workflow directory.
+Generate a `Dockerfile` using files in the specified workflow root.
 
 ```console
 $ latch dockerfile PATH_TO_WORKFLOW_DIRECTORY
@@ -110,7 +110,7 @@ This command will list out all workflows (and their respective versions) that th
 
 #### `--name`
 
-If provided, refines the output to instead list out all available versions of the workflow with the specified name
+If provided, list only the versions with the specified name.
 
 ## `latch open`
 
