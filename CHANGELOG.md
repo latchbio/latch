@@ -14,6 +14,12 @@ Types of changes
 -->
 
 # Latch SDK Changelog
+## 2.13.1 - 2023-02-17
+
+### Fixed
+
+* Add latch/latch_cli/services/init/common to pypi release
+
 ## 2.13.0 - 2023-02-17
 
 ### Added
