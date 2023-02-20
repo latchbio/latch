@@ -8,6 +8,7 @@ from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, Optional
+from enum import Enum
 
 import click
 from pkg_resources import get_distribution
@@ -140,29 +141,46 @@ def _gen_example_conda(pkg_root: Path):
     conda_env_src = source_path / "environment.yaml"
     shutil.copy(conda_env_src, conda_env_dest)
 
+def _get_example_docker(pkg_root: Path):
+    pkg_root = pkg_root.resolve()
+    source_path = Path(__file__).parent / "example_docker"
+
+    _get_boilerplate(pkg_root, source_path)
+
+    conda_env_dest = pkg_root / "environment.yaml"
+    conda_env_src = source_path / "environment.yaml"
+    shutil.copy(conda_env_src, conda_env_dest)
+
 
 option_map = {
     "Empty workflow": _gen_template,
     "Subprocess Example": _gen_assemble_and_sort,
     "R Example": _gen_example_r,
     "Conda Example": _gen_example_conda,
+    "Docker Example": _get_example_docker,
 }
 
 
 template_flag_to_option = {
     "empty": "Empty workflow",
+    "docker": "Docker Example",
     "subprocess": "Subprocess Example",
     "r": "R Example",
     "conda": "Conda Example",
 }
 
 
+class BaseImageOptions(Enum):
+    cuda = "cuda"
+    opencl = "opencl"
+    docker = "docker"
+
+
 def init(
     pkg_name: str,
     template: Optional[str],
     expose_dockerfile: bool = True,
-    cuda: bool = False,
-    opencl: bool = False,
+    base_image_type: Optional[str] = None,
 ) -> bool:
     """Creates boilerplate workflow files in the user's working directory.
 
@@ -261,12 +279,8 @@ def init(
             return False
 
     base_image = latch_constants.base_image
-    if cuda and opencl:
-        raise ValueError("Latch does not support both CUDA and OpenCL yet")
-    elif cuda:
-        base_image = base_image.replace("latch-base", "latch-base-cuda")
-    elif opencl:
-        base_image = base_image.replace("latch-base", "latch-base-opencl")
+    if base_image_type is not None:
+        base_image = base_image.replace("latch-base", f"latch-base-{base_image_type}")
 
     config = LatchWorkflowConfig(
         latch_version=get_distribution("latch").version,
