@@ -7,7 +7,7 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class LatchConstants:
     base_image: str = (
-        "812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:0d3d-main"
+        "812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:9c8f-main"
     )
 
     mib: int = 2**20

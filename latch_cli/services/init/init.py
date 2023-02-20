@@ -6,9 +6,9 @@ import shutil
 import subprocess
 from dataclasses import asdict
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 from typing import Callable, Optional
-from enum import Enum
 
 import click
 from pkg_resources import get_distribution
@@ -53,15 +53,12 @@ def _get_boilerplate(pkg_root: Path, source_path: Path):
         f.write("0.0.0")
 
 
-def _gen_assemble_and_sort(pkg_root: Path):
+def _get_example_reference(pkg_root: Path):
     import boto3
     from botocore import UNSIGNED
     from botocore.config import Config
 
     pkg_root = pkg_root.resolve()
-    source_path = Path(__file__).parent / "assemble_and_sort"
-
-    _get_boilerplate(pkg_root, source_path)
 
     data_root = pkg_root / "reference"
     data_root.mkdir(exist_ok=True)
@@ -84,6 +81,19 @@ def _gen_assemble_and_sort(pkg_root: Path):
         with open(data_root / id, "wb") as f:
             s3.download_fileobj("latch-public", f"sdk/{id}", f)
     print()
+
+
+def _gen_assemble_and_sort(pkg_root: Path):
+    import boto3
+    from botocore import UNSIGNED
+    from botocore.config import Config
+
+    pkg_root = pkg_root.resolve()
+    source_path = Path(__file__).parent / "assemble_and_sort"
+
+    _get_boilerplate(pkg_root, source_path)
+
+    _get_example_reference(pkg_root)
 
     print("Downloading bowtie2")
     bowtie2_base_name = "bowtie2-2.5.1-linux-x86_64"
@@ -141,15 +151,24 @@ def _gen_example_conda(pkg_root: Path):
     conda_env_src = source_path / "environment.yaml"
     shutil.copy(conda_env_src, conda_env_dest)
 
-def _get_example_docker(pkg_root: Path):
+
+def _gen_example_docker(pkg_root: Path):
+    import boto3
+    from botocore import UNSIGNED
+    from botocore.config import Config
+
     pkg_root = pkg_root.resolve()
-    source_path = Path(__file__).parent / "example_docker"
+    source_path = Path(__file__).parent / "assemble_and_sort"
 
     _get_boilerplate(pkg_root, source_path)
+    _get_example_reference(pkg_root)
 
-    conda_env_dest = pkg_root / "environment.yaml"
-    conda_env_src = source_path / "environment.yaml"
-    shutil.copy(conda_env_src, conda_env_dest)
+    source_docker_path = Path(__file__).parent / "example_docker"
+    shutil.copy(source_docker_path / "assemble.py", pkg_root / "wf/assemble.py")
+
+    (pkg_root / ".env").unlink()
+
+    print()
 
 
 option_map = {
@@ -157,7 +176,7 @@ option_map = {
     "Subprocess Example": _gen_assemble_and_sort,
     "R Example": _gen_example_r,
     "Conda Example": _gen_example_conda,
-    "Docker Example": _get_example_docker,
+    "Docker Example": _gen_example_docker,
 }
 
 
@@ -281,6 +300,9 @@ def init(
     base_image = latch_constants.base_image
     if base_image_type is not None:
         base_image = base_image.replace("latch-base", f"latch-base-{base_image_type}")
+
+    if template == "docker":
+        base_image = base_image.replace("latch-base", "latch-base-docker")
 
     config = LatchWorkflowConfig(
         latch_version=get_distribution("latch").version,

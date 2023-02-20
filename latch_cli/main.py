@@ -10,7 +10,7 @@ from packaging.version import parse as parse_version
 
 import latch_cli.click_utils
 from latch_cli.exceptions.handler import CrashHandler
-from latch_cli.services.init.init import template_flag_to_option, BaseImageOptions
+from latch_cli.services.init.init import BaseImageOptions, template_flag_to_option
 from latch_cli.utils import get_latest_package_version, get_local_package_version
 
 latch_cli.click_utils.patch()
@@ -166,7 +166,7 @@ def login(connection: Optional[str]):
     type=click.Choice(
         list(BaseImageOptions._member_names_),
         case_sensitive=False,
-    )
+    ),
 )
 def init(
     pkg_name: str,
