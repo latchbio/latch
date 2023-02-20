@@ -87,7 +87,9 @@ def _get_large_pod() -> Pod:
     primary_container.resources = resources
 
     return Pod(
+        annotations={"io.kubernetes.cri-o.userns-mode": "auto:size=65536"},
         pod_spec=V1PodSpec(
+            runtime_class_name="sysbox-runc",
             containers=[primary_container],
             tolerations=[
                 V1Toleration(effect="NoSchedule", key="ng", value="cpu-96-spot")
@@ -108,7 +110,9 @@ def _get_medium_pod() -> Pod:
     primary_container.resources = resources
 
     return Pod(
+        annotations={"io.kubernetes.cri-o.userns-mode": "auto:size=65536"},
         pod_spec=V1PodSpec(
+            runtime_class_name="sysbox-runc",
             containers=[primary_container],
             tolerations=[
                 V1Toleration(effect="NoSchedule", key="ng", value="cpu-32-spot")
@@ -129,7 +133,9 @@ def _get_small_pod() -> Pod:
     primary_container.resources = resources
 
     return Pod(
+        annotations={"io.kubernetes.cri-o.userns-mode": "auto:size=65536"},
         pod_spec=V1PodSpec(
+            runtime_class_name="sysbox-runc",
             containers=[primary_container],
         ),
         primary_container_name="primary",
@@ -289,14 +295,18 @@ def custom_task(cpu: int, memory: int):
     primary_container.resources = resources
     if cpu < 48 and memory < 128:
         task_config = Pod(
+            annotations={"io.kubernetes.cri-o.userns-mode": "auto:size=65536"},
             pod_spec=V1PodSpec(
+                runtime_class_name="sysbox-runc",
                 containers=[primary_container],
             ),
             primary_container_name="primary",
         )
     elif cpu < 96 and memory < 180:
         task_config = Pod(
+            annotations={"io.kubernetes.cri-o.userns-mode": "auto:size=65536"},
             pod_spec=V1PodSpec(
+                runtime_class_name="sysbox-runc",
                 containers=[primary_container],
                 tolerations=[
                     V1Toleration(effect="NoSchedule", key="ng", value="cpu-96-spot")
