@@ -9,3 +9,7 @@ RUN curl -L https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.4.4/bowt
     unzip bowtie2-2.4.4.zip &&\
     mv bowtie2-2.4.4-linux-x86_64 bowtie2
 ```
+
+## Run Docker in Docker
+
+Latch provides a base image which includes Docker. Specify the `--base-image docker` argument to `latch init` to use the image. Latch provides a comprehensive example of running a containerized `bowtie2` aligner in a Latch workflow, which can be found by running `latch init --template docker ...`.
