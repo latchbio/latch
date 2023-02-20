@@ -4,7 +4,6 @@ import json
 import re
 import shutil
 import subprocess
-from dataclasses import asdict
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -16,7 +15,7 @@ from pkg_resources import get_distribution
 from latch_cli.constants import latch_constants
 from latch_cli.docker_utils import generate_dockerfile
 from latch_cli.tui import select_tui
-from latch_cli.types import LatchWorkflowConfig
+from latch_cli.workflow_config import create_and_write_config
 
 
 def _get_boilerplate(pkg_root: Path, source_path: Path):
@@ -304,18 +303,9 @@ def init(
     if template == "docker":
         base_image = base_image.replace("latch-base", "latch-base-docker")
 
-    config = LatchWorkflowConfig(
-        latch_version=get_distribution("latch").version,
-        base_image=base_image,
-        date=datetime.now().isoformat(),
-    )
-
-    (pkg_root / ".latch").mkdir(exist_ok=True)
-
-    with open(pkg_root / latch_constants.pkg_config, "w") as f:
-        f.write(json.dumps(asdict(config)))
-
     template_func(pkg_root)
+
+    create_and_write_config(base_image, pkg_root)
 
     if expose_dockerfile:
         generate_dockerfile(pkg_root, pkg_root / "Dockerfile")

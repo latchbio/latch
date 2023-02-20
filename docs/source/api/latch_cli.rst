@@ -25,6 +25,14 @@ latch\_cli.click\_utils module
    :undoc-members:
    :show-inheritance:
 
+latch\_cli.config module
+------------------------
+
+.. automodule:: latch_cli.config
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 latch\_cli.constants module
 ---------------------------
 
@@ -53,14 +61,6 @@ latch\_cli.tui module
 ---------------------
 
 .. automodule:: latch_cli.tui
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-latch\_cli.types module
------------------------
-
-.. automodule:: latch_cli.types
    :members:
    :undoc-members:
    :show-inheritance:
