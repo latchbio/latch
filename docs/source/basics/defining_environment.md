@@ -4,7 +4,7 @@ Workflow code is rarely free of dependencies. It may require python or system pa
 
 Latch manages the execution environment of a workflow using Dockerfiles. A Dockerfile specifies the environment in which the workflow runs.
 
-Latch has three [base images](https://docs.docker.com/build/building/base-images/), one without hardware acceleration drivers, one with CUDA drivers, and one with OPENCL drivers. To use the CUDA or OPENCL base image, use the `--cuda` or `--opencl` flags when running `latch init`.
+Latch has four [base images](https://docs.docker.com/build/building/base-images/), one bare minimum, one with CUDA drivers, one with OPENCL drivers, and one with the Docker software pre-installed. To use the CUDA, OPENCL, or Docker base image, use the `--base-image` flag when running `latch init`.
 
 The workflow environment is encapsulated in [a Docker container](https://en.wikipedia.org/wiki/Docker_(software)), which is created from a recipe defined in [a text document called Dockerfile.](https://docs.docker.com/engine/reference/builder/) In most cases these recipes are repetitive and unnecessarily complicated, so Latch will automatically generate one using conventional dependency lists and heuristics. To use a handwritten Dockerfile, [run the eject command](#ejecting-auto-generation).
 

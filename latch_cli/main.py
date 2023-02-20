@@ -162,6 +162,7 @@ def login(connection: Optional[str]):
 )
 @click.option(
     "--base-image",
+    "-b",
     help="Which base image to use for the Dockerfile.",
     type=click.Choice(
         list(BaseImageOptions._member_names_),

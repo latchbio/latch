@@ -20,13 +20,9 @@ One of `r`, `conda`, `subprocess`, `empty`. If not provided, user will be prompt
 
 Generate a Dockerfile for the workflow instead of relying on [auto-generation.](basics/defining_environment.md#automatic-dockerfile-generation)
 
-#### `--cuda`
+#### `--base-image`, `-b`
 
-Make cuda drivers available to task code.
-
-#### `--opencl`
-
-Make opencl drivers available to task code.
+One of `opencl`, `cuda`, `docker`. If provided, the workflow will be built using with the specified software in the environment. These options are mutually exclusive.
 
 ## `latch register`
 
