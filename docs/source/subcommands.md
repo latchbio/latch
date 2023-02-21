@@ -22,7 +22,7 @@ Generate a Dockerfile for the workflow instead of relying on [auto-generation.](
 
 #### `--base-image`, `-b`
 
-One of `opencl`, `cuda`, `docker`. If provided, the workflow will be built using with the specified software in the environment. These options are mutually exclusive.
+One of `opencl`, `cuda`, `docker`, `default`. If provided, the workflow will be built using with the specified software in the environment. These options are mutually exclusive. If not provided or `default`, will use a bare-minimum image.
 
 ## `latch register`
 

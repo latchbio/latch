@@ -1,16 +1,13 @@
 """Service to initialize boilerplate."""
 
-import json
 import re
 import shutil
 import subprocess
-from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from typing import Callable, Optional
 
 import click
-from pkg_resources import get_distribution
 
 from latch_cli.constants import latch_constants
 from latch_cli.docker_utils import generate_dockerfile
@@ -83,10 +80,6 @@ def _get_example_reference(pkg_root: Path):
 
 
 def _gen_assemble_and_sort(pkg_root: Path):
-    import boto3
-    from botocore import UNSIGNED
-    from botocore.config import Config
-
     pkg_root = pkg_root.resolve()
     source_path = Path(__file__).parent / "assemble_and_sort"
 
@@ -152,10 +145,6 @@ def _gen_example_conda(pkg_root: Path):
 
 
 def _gen_example_docker(pkg_root: Path):
-    import boto3
-    from botocore import UNSIGNED
-    from botocore.config import Config
-
     pkg_root = pkg_root.resolve()
     source_path = Path(__file__).parent / "assemble_and_sort"
 
@@ -166,8 +155,6 @@ def _gen_example_docker(pkg_root: Path):
     shutil.copy(source_docker_path / "assemble.py", pkg_root / "wf/assemble.py")
 
     (pkg_root / ".env").unlink()
-
-    print()
 
 
 option_map = {
@@ -189,6 +176,7 @@ template_flag_to_option = {
 
 
 class BaseImageOptions(Enum):
+    default = "default"
     cuda = "cuda"
     opencl = "opencl"
     docker = "docker"
@@ -198,7 +186,7 @@ def init(
     pkg_name: str,
     template: Optional[str],
     expose_dockerfile: bool = True,
-    base_image_type: Optional[str] = None,
+    base_image_type_str: str = "default",
 ) -> bool:
     """Creates boilerplate workflow files in the user's working directory.
 
@@ -278,6 +266,13 @@ def init(
         else template_flag_to_option[template]
     )
 
+    if base_image_type_str not in BaseImageOptions.__members__:
+        raise ValueError(
+            f"Invalid base image type: {base_image_type_str}. Must be one of {list(BaseImageOptions.__members__.keys())}"
+        )
+
+    base_image_type = BaseImageOptions.__members__[base_image_type_str]
+
     if selected_option is None:
         return False
 
@@ -296,16 +291,9 @@ def init(
         ):
             return False
 
-    base_image = latch_constants.base_image
-    if base_image_type is not None:
-        base_image = base_image.replace("latch-base", f"latch-base-{base_image_type}")
-
-    if template == "docker":
-        base_image = base_image.replace("latch-base", "latch-base-docker")
-
     template_func(pkg_root)
 
-    create_and_write_config(base_image, pkg_root)
+    create_and_write_config(pkg_root, base_image_type)
 
     if expose_dockerfile:
         generate_dockerfile(pkg_root, pkg_root / "Dockerfile")

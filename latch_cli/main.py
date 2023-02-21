@@ -168,6 +168,7 @@ def login(connection: Optional[str]):
         list(BaseImageOptions._member_names_),
         case_sensitive=False,
     ),
+    default="default",
 )
 def init(
     pkg_name: str,

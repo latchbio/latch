@@ -24,7 +24,7 @@ Types of changes
 
 * `latch init`: Docker in Docker template workflow
 * `latch init`: Docker base image
-* Small, medium, and large tasks run with sysbox runtime allowing the execution of system code
+* Small, medium, and large tasks run with sysbox runtime allowing the execution system-level software such as systemd, Docker, Kubernetes, K3s, buildx, legacy apps, and more.
 
 ## 2.13.1 - 2023-02-17
 

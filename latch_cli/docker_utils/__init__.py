@@ -204,9 +204,9 @@ def generate_dockerfile(pkg_root: Path, outfile: Path) -> None:
             print("  - latch version:", config.latch_version)
     except FileNotFoundError as e:
         print(
-            "Could not find a .latch/config file in the supplied directory. Recreating configuration."
+            "Could not find a .latch/config file in the supplied directory. Creating configuration."
         )
-        create_and_write_config(latch_constants.base_image, pkg_root)
+        create_and_write_config(pkg_root)
         with open(pkg_root / latch_constants.pkg_config) as f:
             config: LatchWorkflowConfig = LatchWorkflowConfig(**json.load(f))
 
