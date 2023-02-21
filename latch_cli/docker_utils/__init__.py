@@ -6,10 +6,11 @@ from pathlib import Path
 from textwrap import dedent
 from typing import List
 
+import click
 import yaml
 
 from latch_cli.constants import latch_constants
-from latch_cli.types import LatchWorkflowConfig
+from latch_cli.workflow_config import LatchWorkflowConfig, create_and_write_config
 
 
 class DockerCmdBlockOrder(str, Enum):
@@ -197,14 +198,17 @@ def generate_dockerfile(pkg_root: Path, outfile: Path) -> None:
 
     print("Generating Dockerfile")
     try:
-        with open(pkg_root / latch_constants.pkg_config) as f:
+        with (pkg_root / latch_constants.pkg_config).open("r") as f:
             config: LatchWorkflowConfig = LatchWorkflowConfig(**json.load(f))
             print("  - base image:", config.base_image)
             print("  - latch version:", config.latch_version)
     except FileNotFoundError as e:
-        raise RuntimeError(
-            "Could not find a .latch/config file in the supplied directory. If your workflow was created prior to release 2.13.0, you may need to run `latch init` to generate a .latch/config file."
-        ) from e
+        print(
+            "Could not find a .latch/config file in the supplied directory. Creating configuration"
+        )
+        create_and_write_config(pkg_root)
+        with (pkg_root / latch_constants.pkg_config).open("r") as f:
+            config: LatchWorkflowConfig = LatchWorkflowConfig(**json.load(f))
 
     with outfile.open("w") as f:
         f.write("\n".join(get_prologue(config)) + "\n\n")

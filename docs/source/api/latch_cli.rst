@@ -57,18 +57,18 @@ latch\_cli.tui module
    :undoc-members:
    :show-inheritance:
 
-latch\_cli.types module
------------------------
-
-.. automodule:: latch_cli.types
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 latch\_cli.utils module
 -----------------------
 
 .. automodule:: latch_cli.utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+latch\_cli.workflow\_config module
+----------------------------------
+
+.. automodule:: latch_cli.workflow_config
    :members:
    :undoc-members:
    :show-inheritance:

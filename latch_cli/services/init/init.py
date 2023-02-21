@@ -1,21 +1,16 @@
 """Service to initialize boilerplate."""
 
-import json
 import re
 import shutil
 import subprocess
-from dataclasses import asdict
-from datetime import datetime
 from pathlib import Path
 from typing import Callable, Optional
 
 import click
-from pkg_resources import get_distribution
 
-from latch_cli.constants import latch_constants
 from latch_cli.docker_utils import generate_dockerfile
 from latch_cli.tui import select_tui
-from latch_cli.types import LatchWorkflowConfig
+from latch_cli.workflow_config import BaseImageOptions, create_and_write_config
 
 
 def _get_boilerplate(pkg_root: Path, source_path: Path):
@@ -52,15 +47,12 @@ def _get_boilerplate(pkg_root: Path, source_path: Path):
         f.write("0.0.0")
 
 
-def _gen_assemble_and_sort(pkg_root: Path):
+def _get_example_reference(pkg_root: Path):
     import boto3
     from botocore import UNSIGNED
     from botocore.config import Config
 
     pkg_root = pkg_root.resolve()
-    source_path = Path(__file__).parent / "assemble_and_sort"
-
-    _get_boilerplate(pkg_root, source_path)
 
     data_root = pkg_root / "reference"
     data_root.mkdir(exist_ok=True)
@@ -83,6 +75,15 @@ def _gen_assemble_and_sort(pkg_root: Path):
         with open(data_root / id, "wb") as f:
             s3.download_fileobj("latch-public", f"sdk/{id}", f)
     print()
+
+
+def _gen_assemble_and_sort(pkg_root: Path):
+    pkg_root = pkg_root.resolve()
+    source_path = Path(__file__).parent / "assemble_and_sort"
+
+    _get_boilerplate(pkg_root, source_path)
+
+    _get_example_reference(pkg_root)
 
     print("Downloading bowtie2")
     bowtie2_base_name = "bowtie2-2.5.1-linux-x86_64"
@@ -141,16 +142,31 @@ def _gen_example_conda(pkg_root: Path):
     shutil.copy(conda_env_src, conda_env_dest)
 
 
+def _gen_example_docker(pkg_root: Path):
+    pkg_root = pkg_root.resolve()
+    source_path = Path(__file__).parent / "assemble_and_sort"
+
+    _get_boilerplate(pkg_root, source_path)
+    _get_example_reference(pkg_root)
+
+    source_docker_path = Path(__file__).parent / "example_docker"
+    shutil.copy(source_docker_path / "assemble.py", pkg_root / "wf/assemble.py")
+
+    (pkg_root / ".env").unlink()
+
+
 option_map = {
     "Empty workflow": _gen_template,
     "Subprocess Example": _gen_assemble_and_sort,
     "R Example": _gen_example_r,
     "Conda Example": _gen_example_conda,
+    "Docker Example": _gen_example_docker,
 }
 
 
 template_flag_to_option = {
     "empty": "Empty workflow",
+    "docker": "Docker Example",
     "subprocess": "Subprocess Example",
     "r": "R Example",
     "conda": "Conda Example",
@@ -161,8 +177,7 @@ def init(
     pkg_name: str,
     template: Optional[str],
     expose_dockerfile: bool = True,
-    cuda: bool = False,
-    opencl: bool = False,
+    base_image_type_str: str = "default",
 ) -> bool:
     """Creates boilerplate workflow files in the user's working directory.
 
@@ -181,6 +196,12 @@ def init(
             time and the user will not be able to modify it. At any point,
             the user can switch modes by executing `latch dockerfile .` in
             the workflow directory.
+        base_image_type_str: Base image to use for the workflow. Default value
+            is "default". The following options are available:
+                * "default": with no additional dependencies
+                * "cuda": with Nvidia CUDA/cuDNN (cuda 11.4.2, cudnn 8) drivers
+                * "opencl": with OpenCL (ubuntu 18.04) drivers
+                * "docker": with the Docker daemon
     Example:
 
         >>> init("test-workflow", "empty", False)
@@ -242,6 +263,13 @@ def init(
         else template_flag_to_option[template]
     )
 
+    if base_image_type_str not in BaseImageOptions.__members__:
+        raise ValueError(
+            f"Invalid base image type: {base_image_type_str}. Must be one of {list(BaseImageOptions.__members__.keys())}"
+        )
+
+    base_image_type = BaseImageOptions.__members__[base_image_type_str]
+
     if selected_option is None:
         return False
 
@@ -260,26 +288,9 @@ def init(
         ):
             return False
 
-    base_image = latch_constants.base_image
-    if cuda and opencl:
-        raise ValueError("Latch does not support both CUDA and OpenCL yet")
-    elif cuda:
-        base_image = base_image.replace("latch-base", "latch-base-cuda")
-    elif opencl:
-        base_image = base_image.replace("latch-base", "latch-base-opencl")
-
-    config = LatchWorkflowConfig(
-        latch_version=get_distribution("latch").version,
-        base_image=base_image,
-        date=datetime.now().isoformat(),
-    )
-
-    (pkg_root / ".latch").mkdir(exist_ok=True)
-
-    with open(pkg_root / latch_constants.pkg_config, "w") as f:
-        f.write(json.dumps(asdict(config)))
-
     template_func(pkg_root)
+
+    create_and_write_config(pkg_root, base_image_type)
 
     if expose_dockerfile:
         generate_dockerfile(pkg_root, pkg_root / "Dockerfile")

@@ -18,6 +18,18 @@ Types of changes
 
 ### Fixed
 
+* Internal state file should be automatically created when running `latch register` and `latch develop`
+
+### Added
+
+* `latch init`: Docker in Docker template workflow
+* `latch init`: Docker base image
+* Small, medium, and large tasks use the [Sysbox runtime](https://github.com/nestybox/sysbox) to run Docker and other system software within task containers
+
+## 2.13.1 - 2023-02-17
+
+### Fixed
+
 * Add latch/latch_cli/services/init/common to pypi release
 
 ## 2.13.0 - 2023-02-17

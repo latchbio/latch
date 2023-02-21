@@ -9,3 +9,7 @@ RUN curl -L https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.4.4/bowt
     unzip bowtie2-2.4.4.zip &&\
     mv bowtie2-2.4.4-linux-x86_64 bowtie2
 ```
+
+## Run Docker in Docker
+
+Use [`--base-image docker` with `latch init`](../../subcommands.md##latch-init) to use a base workflow environment which includes Docker. An example of running a containerized `bowtie2` aligner in a Latch workflow can be found using `latch init --template docker my_bowtie2_example`.

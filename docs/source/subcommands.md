@@ -20,13 +20,15 @@ One of `r`, `conda`, `subprocess`, `empty`. If not provided, user will be prompt
 
 Generate a Dockerfile for the workflow instead of relying on [auto-generation.](basics/defining_environment.md#automatic-dockerfile-generation)
 
-#### `--cuda`
+#### `--base-image`, `-b`
 
-Make cuda drivers available to task code.
+Each environment is build on one of the following base distributions:
+- `default` with no additional dependencies
+- `cuda` with Nvidia CUDA/cuDNN (cuda 11.4.2, cudnn 8) drivers
+- `opencl` with OpenCL (ubuntu 18.04) drivers
+- `docker` with the Docker daemon
 
-#### `--opencl`
-
-Make opencl drivers available to task code.
+Only one option can be given at a time. If not provided or `default`, only the bare minimum packages to execute the workflow will be installed.
 
 ## `latch register`
 

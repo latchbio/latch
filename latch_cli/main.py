@@ -12,6 +12,7 @@ import latch_cli.click_utils
 from latch_cli.exceptions.handler import CrashHandler
 from latch_cli.services.init.init import template_flag_to_option
 from latch_cli.utils import get_latest_package_version, get_local_package_version
+from latch_cli.workflow_config import BaseImageOptions
 
 latch_cli.click_utils.patch()
 
@@ -161,23 +162,20 @@ def login(connection: Optional[str]):
     default=False,
 )
 @click.option(
-    "--cuda",
-    help="Create a user editable Dockerfile for this workflow.",
-    is_flag=True,
-    default=False,
-)
-@click.option(
-    "--opencl",
-    help="Create a user editable Dockerfile for this workflow.",
-    is_flag=True,
-    default=False,
+    "--base-image",
+    "-b",
+    help="Which base image to use for the Dockerfile.",
+    type=click.Choice(
+        list(BaseImageOptions._member_names_),
+        case_sensitive=False,
+    ),
+    default="default",
 )
 def init(
     pkg_name: str,
     template: Optional[str] = None,
     dockerfile: bool = False,
-    cuda: bool = False,
-    opencl: bool = False,
+    base_image: str = "default",
 ):
     """Initialize boilerplate for local workflow code."""
 
@@ -186,7 +184,7 @@ def init(
 
     from latch_cli.services.init import init
 
-    created = init(pkg_name, template, dockerfile, cuda, opencl)
+    created = init(pkg_name, template, dockerfile, base_image)
     if created:
         click.secho(f"Created a latch workflow in `{pkg_name}`", fg="green")
         click.secho("Run", fg="green")
