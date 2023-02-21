@@ -1,13 +1,19 @@
 import json
 from dataclasses import asdict, dataclass
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 from pkg_resources import get_distribution
 
 from latch_cli.constants import latch_constants
-from latch_cli.services.init.init import BaseImageOptions
+
+
+class BaseImageOptions(str, Enum):
+    default = "default"
+    cuda = "cuda"
+    opencl = "opencl"
+    docker = "docker"
 
 
 @dataclass(frozen=True)

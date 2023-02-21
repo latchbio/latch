@@ -3,16 +3,14 @@
 import re
 import shutil
 import subprocess
-from enum import Enum
 from pathlib import Path
 from typing import Callable, Optional
 
 import click
 
-from latch_cli.constants import latch_constants
 from latch_cli.docker_utils import generate_dockerfile
 from latch_cli.tui import select_tui
-from latch_cli.workflow_config import create_and_write_config
+from latch_cli.workflow_config import BaseImageOptions, create_and_write_config
 
 
 def _get_boilerplate(pkg_root: Path, source_path: Path):
@@ -173,13 +171,6 @@ template_flag_to_option = {
     "r": "R Example",
     "conda": "Conda Example",
 }
-
-
-class BaseImageOptions(str, Enum):
-    default = "default"
-    cuda = "cuda"
-    opencl = "opencl"
-    docker = "docker"
 
 
 def init(
