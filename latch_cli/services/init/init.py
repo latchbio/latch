@@ -205,6 +205,12 @@ def init(
             time and the user will not be able to modify it. At any point,
             the user can switch modes by executing `latch dockerfile .` in
             the workflow directory.
+        base_image_type_str: The base image to use for the workflow. Default value
+            is "default". The following options are available:
+                * "default": Bare-minimum image to execute a Latch workflow
+                * "cuda": adds CUDA drivers
+                * "opencl": adds OpenCL drivers
+                * "docker": adds Docker daemon
     Example:
 
         >>> init("test-workflow", "empty", False)
