@@ -268,7 +268,6 @@ def init(
             f"Invalid base image type: {base_image_type_str}. Must be one of {list(BaseImageOptions.__members__.keys())}"
         )
 
-    base_image_type = BaseImageOptions.__members__[base_image_type_str]
 
     if selected_option is None:
         return False
@@ -289,6 +288,11 @@ def init(
             return False
 
     template_func(pkg_root)
+
+    base_image_type = BaseImageOptions.__members__[base_image_type_str]
+
+    if selected_option == "Docker Example":
+        base_image_type = BaseImageOptions.docker
 
     create_and_write_config(pkg_root, base_image_type)
 

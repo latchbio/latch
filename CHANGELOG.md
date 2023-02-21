@@ -14,7 +14,13 @@ Types of changes
 -->
 
 # Latch SDK Changelog
-## 2.13.1 - 2023-02-17
+## 2.13.3 - 2023-02-21
+
+### Fixed
+
+* Docker template uses correct base image
+
+## 2.13.2 - 2023-02-21
 
 ### Fixed
 

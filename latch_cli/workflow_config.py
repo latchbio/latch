@@ -41,7 +41,7 @@ def create_and_write_config(
 
     config = LatchWorkflowConfig(
         latch_version=get_distribution("latch").version,
-        base_image=base_image if base_image is not None else latch_constants.base_image,
+        base_image=base_image,
         date=datetime.now().isoformat(),
     )
 
