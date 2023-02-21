@@ -18,13 +18,13 @@ Types of changes
 
 ### Fixed
 
-* Create latch config file if it does not exist at registration or develop time
+* Internal state file should be automatically created when running `latch register` and `latch develop`
 
 ### Added
 
 * `latch init`: Docker in Docker template workflow
 * `latch init`: Docker base image
-* Small, medium, and large tasks run with sysbox runtime allowing the execution of system-level software such as `systemd`, Docker, Kubernetes, K3s, `buildx`, legacy apps, and more.
+* Small, medium, and large tasks use a [Sysbox runtime](https://github.com/nestybox/sysbox) to run Docker and other system software within task containers
 
 ## 2.13.1 - 2023-02-17
 

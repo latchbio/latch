@@ -13,3 +13,5 @@ RUN curl -L https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.4.4/bowt
 ## Run Docker in Docker
 
 Latch provides a base image which includes Docker. Specify the `--base-image docker` argument to `latch init` to use the image. Latch provides a comprehensive example of running a containerized `bowtie2` aligner in a Latch workflow, which can be found by running `latch init --template docker ...`.
+
+Use [`--base-image docker` with `latch init`](../../subcommands.md##latch-init) to use a base workflow environment which includes Docker. An example of running a containerized `bowtie2` aligner in a Latch workflow can be found using `latch init --template docker my_bowtie2_example`.

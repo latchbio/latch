@@ -22,7 +22,13 @@ Generate a Dockerfile for the workflow instead of relying on [auto-generation.](
 
 #### `--base-image`, `-b`
 
-One of `opencl`, `cuda`, `docker`, `default`. If provided, the workflow will be built using with the specified software in the environment. These options are mutually exclusive. If not provided or `default`, will use a bare-minimum image.
+Each environment is build on one of the following base distributions:
+- `default` with no additional dependencies
+- `cuda` with Nvidia CUDA/cuDNN (cuda 11.4.2, cudnn 8) drivers
+- `opencl` with OpenCL (ubuntu 18.04) drivers
+- `docker` with the Docker daemon
+
+Only one option can be given at a time. If not provided or `default`, only the bare minimum packages to execute the workflow will be installed.
 
 ## `latch register`
 

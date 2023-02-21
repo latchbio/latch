@@ -44,13 +44,11 @@ def assembly_task(
     ]
 
     try:
-        # We use shell=True for all the benefits of pipes and other shell features.
         # When using shell=True, we pass the entire command as a single string as
         # opposed to a list since the shell will parse the string into a list
         # using its own rules.
         subprocess.run(" ".join(bowtie2_cmd), shell=True, check=True)
     except subprocess.CalledProcessError as e:
-        # will display in the messages tab of the execution graph for the assembly_task node
         message(
             "error",
             {"title": "Bowtie2 Failed", "body": f"Error: {str(e)}"},

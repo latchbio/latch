@@ -175,7 +175,7 @@ template_flag_to_option = {
 }
 
 
-class BaseImageOptions(Enum):
+class BaseImageOptions(str, Enum):
     default = "default"
     cuda = "cuda"
     opencl = "opencl"
@@ -205,12 +205,12 @@ def init(
             time and the user will not be able to modify it. At any point,
             the user can switch modes by executing `latch dockerfile .` in
             the workflow directory.
-        base_image_type_str: The base image to use for the workflow. Default value
+        base_image_type_str: Base image to use for the workflow. Default value
             is "default". The following options are available:
-                * "default": Bare-minimum image to execute a Latch workflow
-                * "cuda": adds CUDA drivers
-                * "opencl": adds OpenCL drivers
-                * "docker": adds Docker daemon
+                * "default": with no additional dependencies
+                * "cuda": with Nvidia CUDA/cuDNN (cuda 11.4.2, cudnn 8) drivers
+                * "opencl": with OpenCL (ubuntu 18.04) drivers
+                * "docker": with the Docker daemon
     Example:
 
         >>> init("test-workflow", "empty", False)

@@ -41,5 +41,5 @@ def create_and_write_config(
 
     (pkg_root / ".latch").mkdir(exist_ok=True)
 
-    with open(pkg_root / latch_constants.pkg_config, "w") as f:
+    with (pkg_root / latch_constants.pkg_config).open("w") as f:
         f.write(json.dumps(asdict(config)))
