@@ -18,6 +18,18 @@ Types of changes
 
 ### Fixed
 
+* Create latch config file if it does not exist at registration or develop time
+
+### Added
+
+* `latch init`: Docker in Docker template workflow
+* `latch init`: Docker base image
+* Small, medium, and large tasks run with sysbox runtime allowing the execution of system code
+
+## 2.13.1 - 2023-02-17
+
+### Fixed
+
 * Add latch/latch_cli/services/init/common to pypi release
 
 ## 2.13.0 - 2023-02-17
