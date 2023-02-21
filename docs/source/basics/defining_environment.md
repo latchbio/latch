@@ -2,7 +2,7 @@
 
 Workflow code is rarely free of dependencies. It may require python or system packages or make use of environment variables. For example, a task that downloads compressed reference data from AWS S3 will need the `aws-cli` and `unzip` [APT](https://en.wikipedia.org/wiki/APT_(software)) packages, then use the `pyyaml` python package to read the included metadata.
 
-The workflow environment is encapsulated in [a Docker container](https://en.wikipedia.org/wiki/Docker_(software)), which is created from a recipe defined in [a text document called Dockerfile.](https://docs.docker.com/engine/reference/builder/). Latch provides [four baseline environments](../subcommands.md#base-image--b) which each latch workflows inherits from. In most cases, modifying the `Dockefile` manually is unecessary, so Latch will automatically generate one using conventional dependency lists and heuristics. To use a handwritten Dockerfile, [run the eject command](#ejecting-auto-generation).
+The workflow environment is encapsulated in [a Docker container](https://en.wikipedia.org/wiki/Docker_(software)), which is created from a recipe defined in [a text document named Dockerfile.](https://docs.docker.com/engine/reference/builder/). Latch provides [four baseline environments](../subcommands.md#base-image--b) which each latch workflow inherits from. In most cases, modifying the `Dockefile` manually is unnecessary, so Latch will automatically generate one using conventional dependency lists and heuristics. To use a handwritten Dockerfile, [run the eject command](#ejecting-auto-generation).
 
 ## Automatic Dockerfile Generation
 

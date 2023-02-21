@@ -24,7 +24,7 @@ Types of changes
 
 * `latch init`: Docker in Docker template workflow
 * `latch init`: Docker base image
-* Small, medium, and large tasks use a [Sysbox runtime](https://github.com/nestybox/sysbox) to run Docker and other system software within task containers
+* Small, medium, and large tasks use the [Sysbox runtime](https://github.com/nestybox/sysbox) to run Docker and other system software within task containers
 
 ## 2.13.1 - 2023-02-17
 
