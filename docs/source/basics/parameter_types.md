@@ -74,7 +74,7 @@ from typing import Optional
 @workflow
 def bactopia_wf(
     ...
-    fastq_one: Optional[LatchFile] = None,
+    fastq_one: LatchFile | None = None,
     ...
 )
 ```
