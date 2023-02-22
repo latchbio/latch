@@ -1,6 +1,6 @@
 # Previewing your Workflow
 
-To quickly reiterate on the user interface of your workflow, it is recommended that you use `latch preview` to preview your workflow locally without registering them on Latch.
+Preview the workflow user interface locally using `latch preview` to avoid the lengthy registration process when iterating on the design.
 
 First, verify that you are inside the workflow directory:
 
