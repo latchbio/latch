@@ -180,6 +180,7 @@ def generate_temporary_ssh_credentials(ssh_key_path: Path) -> str:
 
     # generate private key
     if not ssh_key_path.exists():
+        ssh_key_path.parent.mkdir(parents=True, exist_ok=True)
         cmd = ["ssh-keygen", "-f", ssh_key_path, "-N", "", "-q"]
         try:
             subprocess.run(cmd, check=True)

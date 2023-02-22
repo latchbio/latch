@@ -15,6 +15,12 @@ Types of changes
 -->
 
 # Latch SDK Changelog
+## 2.13.5 - 2023-02-21
+
+### Fixed
+
+* `latch register` ssh-keygen bug when `.latch` folder does not exist
+
 ## 2.13.4 - 2023-02-21
 
 ### Dependencies
