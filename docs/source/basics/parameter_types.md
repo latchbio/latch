@@ -153,7 +153,7 @@ from typing import List
 
 @workflow
 def rnaseq(
-    sample_identifiers: List[str],
+    sample_identifiers: list[str],
     sample_reads: List[LatchFile]
 ):
 ...
