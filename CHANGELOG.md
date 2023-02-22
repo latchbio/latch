@@ -6,6 +6,7 @@ Types of changes
 
     *Added* for new features.
     *Changed* for changes in existing functionality.
+    *Dependencies* for changes in dependencies.
     *Deprecated* for soon-to-be removed features.
     *Removed* for now removed features.
     *Fixed* for any bug fixes.
@@ -14,6 +15,12 @@ Types of changes
 -->
 
 # Latch SDK Changelog
+## 2.13.4 - 2023-02-21
+
+### Dependencies
+
+* Upgrades lytekit to `0.14.9`
+
 ## 2.13.3 - 2023-02-21
 
 ### Fixed
