@@ -148,7 +148,6 @@ class LatchDirPathTransformer(FlyteDirToMultipartBlobTransformer):
                 "Casting from Pathlike to LatchDir is currently not supported."
             )
 
-
         while get_origin(expected_python_type) == Annotated:
             expected_python_type = get_args(expected_python_type)[0]
 

@@ -57,6 +57,7 @@ def _build_image(
     _docker_login(ctx)
     if dockerfile is not None:
         dockerfile = str(dockerfile)
+
     build_logs = ctx.dkr_client.build(
         path=str(context_path),
         dockerfile=dockerfile,

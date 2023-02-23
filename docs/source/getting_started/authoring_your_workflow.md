@@ -1,8 +1,8 @@
 # Authoring your Own Workflow
 
-In this tutorial, we will write a workflow to sort and assemble COVID sequencing data.
+In this demonstration, we will examine a workflow which sorts and assembles COVID sequencing data.
 
-The tutorial aims to be an extension to the quickstart to help you better understand the structure of a workflow and how to make your own modifications.
+This document aims to be an extension to the [Quickstart](../getting_started/quick_start.md) to help you better understand the structure of a workflow and write your own.
 
 **Prerequisite:**
 * Complete the [Quickstart](../getting_started/quick_start.md) guide.
@@ -18,91 +18,87 @@ The tutorial aims to be an extension to the quickstart to help you better unders
 
 ## 1: Initialize Workflow Directory
 Bootstrap a new workflow directory by running `latch init` from the command line.
+
+```shell-session
+$ latch init covid-wf --template subprocess
+Created a latch workflow in `covid-wf`
+Run
+        $ latch register covid-wf
+To register the workflow with console.latch.bio.
 ```
-latch init covid-wf
-```
-Output:
-```
-Created a latch workflow called covid-wf.
-```
+
 File Tree:
-```
+```shell-session
 covid-wf
-├── Dockerfile
+├── LICENSE
+├── README.md
+├── bowtie2
+│   ├── bowtie2
+│   └── ...
 ├── reference
 │   ├── wuhan.1.bt2
-│   ├── wuhan.2.bt2
-│   ├── wuhan.3.bt2
-│   ├── wuhan.4.bt2
-│   ├── wuhan.fasta
-│   ├── wuhan.rev.1.bt2
-│   └── wuhan.rev.2.bt2
+│   └── ...
+├── system-requirements.txt
 ├── version
 └── wf
-    └── __init__.py
+    ├── __init__.py
+    ├── assemble.py
+    └── sort.py
 ```
+
 Once your boilerplate workflow has been created successfully, you should see a folder called `covid-wf`.
 
 ## 2. Writing your First Task
 
-A task is a pure Python function that takes in inputs and returns outputs. Here, we are writing a task that takes in two sequencing reads and returns an assembled SAM file.
+A task is a Python function that takes in inputs and returns outputs to the Latch platform or to another task. In the `assemble.py` file inside the `covid-wf/wf` directory, there is a task which ingests two sequencing reads and outputs an assembled SAM file.
+
+### Working with `LatchFile`s and `LatchDir`s
+
+`LatchFile` and `LatchDir` are types built into the Latch SDK which allow users to use files and directories stored remotely on Latch as inputs and outputs to workflows. They point to remote file locations in our user interface on [the Latch Console](https://console.latch.bio/data) and implement the necessary operations to ensure data is available in the task environment and outputs are uploaded to your Latch account.
+
+The first time you read or resolve the path of a file or directory in a task, the data will be downloaded and will be accessible within the task. For example the line `local_file = Path(read1)` in the snippet below will download the file from Latch and return a path to the local copy.
+
 
 ```python
+from latch.types import LatchFile, LatchOutputDir
+...
+
 @small_task
-def assembly_task(read1: LatchFile, read2: LatchFile) -> LatchFile:
+def assembly_task(
+    read1: LatchFile, read2: LatchFile, output_directory: LatchOutputDir
+) -> LatchFile:
 
-    # A reference to our output.
-    sam_file = Path("covid_assembly.sam").resolve()
-
-    _bowtie2_cmd = [
-        "bowtie2/bowtie2",
-        "--local",
-        "-x",
-        "wuhan",
-        "-1",
-        read1.local_path,
-        "-2",
-        read2.local_path,
-        "--very-sensitive-local",
-        "-S",
-        str(sam_file),
-    ]
-
-    subprocess.run(_bowtie2_cmd)
-
-    return LatchFile(str(sam_file), "latch:///covid_assembly.sam")
+    local_file = Path(read1)
+    ...
 ```
 
-### How to work with LatchFiles
+Sometimes, a python task does not directly access a file/directory, but uses its path; for example, through a subprocessed shell command. We can ensure that the file's data is present by accessing the `local_path` attribute of the LatchFile or LatchDir. This will download the data into the task environment and return back a path to the local file or directory.
 
-`LatchFile` refers to a remote file location on
-[Latch Console](https://console.latch.bio/data).
-
-To make the file available to the local task's environment, you have to call `local_path` property like so:
 ```python
-_bowtie2_cmd = [
-        "bowtie2/bowtie2",
-        "--local",
-        "-x",
-        "wuhan",
-        "-1",
-        read1.local_path,
-        "-2",
-        read2.local_path,
-        "--very-sensitive-local",
-        "-S",
-        str(sam_file),
-    ]
+bowtie2_cmd = [
+    "bowtie2/bowtie2",
+    "--local",
+    "--very-sensitive-local",
+    "-x",
+    "wuhan",
+    "-1",
+    read1.local_path,
+    "-2",
+    read2.local_path,
+    "-S",
+    str(sam_file),
+]
 ```
 
-Once the subprocess finishes executing the command above, it creates an output file (`str(sam_file)`).
 
-To make the SAM file available to Latch Console, you have to upload it using the following return statement:
+Returning a LatchFile or LatchDirectory from a task will upload it to the latch platform in the location specified by the second argument. For example, after running a task which ends in the following snippet, the file `covid_assembly.sam` will be available in the root directory of Latch Data.
+
 ```python
-    return LatchFile(str(sam_file), "latch:///covid_assembly.sam")
+    local_file = Path("/root/covid_assembly.sam")
+    return LatchFile(local_file, "latch:///covid_assembly.sam")
 ```
 
-Here, LatchFile takes two values: the first being your local filepath and the second being the remote file location on Latch. Every file on Latch must be prefixed with `latch:///`.
+Here, `LatchFile(...)` takes as input two values: the first is the local filepath and the second is the target remote file location on Latch. Remote paths on Latch start with the prefix `latch:///`.
 
 ## 3. Define compute and storage requirements
 
@@ -126,7 +122,6 @@ def inference(
 
 See an exhaustive reference to larger CPU and GPU tasks [here](../basics/defining_cloud_resources.md).
 
-
 To arbitrarily specify resource requirements, use:
 ```python
 from latch import custom_task
@@ -140,47 +135,46 @@ def my_task(
 
 ## 4. Manage installation for third-party dependencies
 
-Latch uses Dockerfiles for dependencies management, which allow you to define the computing environment that your task will execute in.
+Internally, Latch uses `Dockerfile`s for dependency management, which are automatically generated from environment files or handwritten.
 
-There's no need to create your Dockerfile from scratch as one is already provided when you initialized your workflow.
+Install `samtools` and `autoconf` by [adding them to the dependency list in `system-requirements.txt`:](../basics/defining_environment.md#system-debian-packages)
 
-To write a Dockerfile, you simply write the commands that you want executed.
-
-For example, since we want `bowtie` and `samtools` available to our tassk, we can write the Dockerfile like so:
-
-```Dockerfile
-FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:9a7d-main
-
-# Its easy to build binaries from source that you can later reference as
-# subprocesses within your workflow.
-RUN curl -L https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.4.4/bowtie2-2.4.4-linux-x86_64.zip/download -o bowtie2-2.4.4.zip &&\
-    unzip bowtie2-2.4.4.zip &&\
-    mv bowtie2-2.4.4-linux-x86_64 bowtie2
-
-# Or use managed library distributions through the container OS's package
-# manager.
-RUN apt-get update -y &&\
-    apt-get install -y autoconf samtools
-
-
-# You can use local data to construct your workflow image.  Here we copy a
-# pre-indexed reference to a path that our workflow can reference.
-COPY reference /root/reference
-ENV BOWTIE2_INDEXES="reference"
-
-COPY wf /root/wf
-
-# STOP HERE:
-# The following lines are needed to ensure your build environement works
-# correctly with latch.
-ARG tag
-ENV FLYTE_INTERNAL_IMAGE $tag
-RUN sed -i 's/latch/wf/g' flytekit.config
-RUN python3 -m pip install --upgrade latch
-WORKDIR /root
+```text
+samtools
+autoconf
 ```
 
-To write a Dockerfile for R and Python packages, visit Dockerfile recipes [here](../basics/writing_dockerfiles.md).
+Set an environment variable for bowtie2 using [an environment file](../basics/defining_environment.md#environment-variables):
+
+```text
+BOWTIE2_INDEXES=reference
+```
+
+Now run `latch dockerfile .` to examine the auto generated Dockerfile:
+
+```Dockerfile
+# latch base image + dependencies for latch SDK --- removing these will break the workflow
+from 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:ace9-main
+run pip install latch==2.12.1
+run mkdir /opt/latch
+
+# install system requirements
+copy system-requirements.txt /opt/latch/system-requirements.txt
+run apt-get update --yes && xargs apt-get install --yes </opt/latch/system-requirements.txt
+
+# copy all code from package (use .dockerignore to skip files)
+copy . /root/
+
+# set environment variables
+env BOWTIE2_INDEXES=reference
+
+# latch internal tagging system + expected root directory --- changing these lines will break the workflow
+arg tag
+env FLYTE_INTERNAL_IMAGE $tag
+workdir /root
+```
+
+See the [Workflow Environment] page(../basics/defining_environment.md) for further information configuring the environment for other use dependencies such as R or Conda.
 
 ## 5. Customize user interface
 There are two pages that you can customize: the **About** page for your workflow and a **Parameters** page for workflow input parameters.
@@ -297,7 +291,8 @@ These default values will be available under the 'Test Data' dropdown at Latch C
 
 ## 7. Register your workflow to Latch
 You can release a live version of your workflow by registering it on Latch:
-```
+
+```bash
 latch register --remote <path_to_workflow_dir>
 ```
 
