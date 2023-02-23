@@ -71,7 +71,7 @@ from typing import Optional
 @workflow
 def bactopia_wf(
     ...
-    fastq_one: Optional[LatchFile] = None,
+    fastq_one: LatchFile | None = None,
     ...
 )
 ```
@@ -150,7 +150,7 @@ from typing import List
 
 @workflow
 def rnaseq(
-    sample_identifiers: List[str],
+    sample_identifiers: list[str],
     sample_reads: List[LatchFile]
 ):
 ...
