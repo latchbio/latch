@@ -42,8 +42,6 @@ def rnaseq(
     This workflow will produce gene and transcript counts from bulk RNA-seq
     sample reads.
 
-    # Workflow Anatomy
-
     # Disclaimer
 
     This workflow assumes that your sequencing reads were derived from *short-read

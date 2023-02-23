@@ -3,15 +3,12 @@
 The Latch SDK supports first-class static typing. All input parameters and
 output values must be annotated with types in the function signature.
 
-These type annotations validate task values and guide construction of
-parameter-specific frontend components when your interface is generated at
+These type annotations validate task values and guide the construction of parameter-specific frontend components when your interface is generated at
 registration.
 
 ---
 
 ## Supported Types
-
-Tasks support all native Python types, while workflow only supports a subset of types.
 
 Below is an exhaustive list of supported workflow parameter types currently shipped with the SDK, and how they will translate to the workflow GUI once the workflow is registered.
 
@@ -163,14 +160,12 @@ def rnaseq(
 
 ### Dataclass
 
-If you want to handle file references and their associated metadata as an input to your workflow, you may want to use a `dataclass`.
+If you want to handle file references and their associated metadata as inputs to your workflow, you may want to use a `dataclass`.
 
 ```python
 from dataclasses import dataclass
-from dataclasses_json import dataclass_json
 from typing import List
 
-@dataclass_json
 @dataclass
 class Sample:
     name: str
@@ -185,12 +180,13 @@ def rnaseq(
 
 ![List of class](../assets/ui/dataclass.png)
 
+### Custom Types
+
+If existing types don't directly work, it is possible to define your own custom types to be used in tasks and workflows. See the Flyte docs on how to do so [here](https://docs.flyte.org/projects/cookbook/en/latest/auto/core/extend_flyte/custom_types.html).
+
 ## Setting Default Values
 
-Notice that every parameter in the above list of types had a default value. This
-default value will be displayed to the user in the frontend interface and will
-be passed by default if no change is made. You do not have to provide a default
-value, but it helps document parameters and provide semantic context to users.
+If a parameter has a default value, it will be displayed to the user in the frontend interface and will be passed by default if no change is made. You do not have to provide a default value, but it helps document parameters and provide semantic context to users.
 
 ## Example
 
