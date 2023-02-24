@@ -89,7 +89,7 @@ class Section(FlowBase):
 
     Example:
 
-    ![Flow Example 1](../assets/flow-example/flow_example_1.png)
+    ![Example of a user interface for a workflow with a custom flow](../assets/flow-example/flow_example_1.png)
 
     ![Spoiler Example](../assets/flow-example/flow_example_spoiler.png)
 
