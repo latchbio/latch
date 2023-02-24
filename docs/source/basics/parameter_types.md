@@ -160,7 +160,7 @@ def rnaseq(
 
 ### :class:`~dataclasses.dataclass`
 
-If you want to handle file references and their associated metadata as inputs to your workflow, you may want to use a `dataclass`.
+Complex object types should be represented using :class:`dataclasses <dataclasses.dataclass>` They render a group of input elements for each of the fields of the dataclass. These can be used in lists and maps, and are useful to model interdependent data, for example, pairs of reads or named samples.
 
 ```python
 from dataclasses import dataclass
