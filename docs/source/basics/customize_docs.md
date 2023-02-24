@@ -4,7 +4,7 @@ While most of the metadata of a workflow will be encapsulated in a LatchMetadata
 
 ## One Line Description
 
-The first line of the workflow function docstring will get rendered in the sidebar of the workflow and the workflow explore tab as a brief description of your workflow's functionality. Think of this as summarizing the entirety of your workflow's significance into a single line.
+The workflow sidebar and workflow explore tab render the first line of the workflow docstring as a brief description of its functionality. This description should summarize the significance of the workflow in a single line.
 
 
 ```python
