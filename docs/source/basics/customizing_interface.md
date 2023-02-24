@@ -1,6 +1,6 @@
 # Customizing Your Interface
 
-The Latch SDK will dynamically construct parameter interfaces from your python code using the `LatchMetadata` object.
+Latch dynamically constructs the workflow interface based on the workflow function code and the `LatchMetadata` object.
 
 With these, you can specify
 
