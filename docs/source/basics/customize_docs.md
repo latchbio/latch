@@ -64,4 +64,4 @@ def rnaseq(
     """
 ```
 
-![Long Description](../assets/ui/long-form-description.png)
+![Workflow "About" tab displaying the workflow description from the example above](../assets/ui/long-form-description.png)
