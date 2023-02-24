@@ -10,7 +10,7 @@ $ ls
 Dockerfile      reference       wf      version
 ```
 
-Then, use `latch preview` with the name of your workflow function:
+Then, use `latch preview` with the name of the workflow function:
 
 ```shell-session
 $ latch preview <workflow_function_name>
