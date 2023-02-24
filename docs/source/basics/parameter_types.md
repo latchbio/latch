@@ -186,7 +186,7 @@ If existing types don't directly work, it is possible to define your own custom 
 
 ## Setting Default Values
 
-If a parameter has a default value, it will be displayed to the user in the frontend interface and will be passed by default if no change is made. You do not have to provide a default value, but it helps document parameters and provide semantic context to users.
+If a parameter has a default value, it is displayed to the user in the frontend interface and passed to the workflow if the user does not change it. Default values are optional but encouraged as, if a reasonable default exists, it can improve the user experience by encouraging best practices and allowing users to focus on the settings that really matter to them.
 
 ## Example
 
