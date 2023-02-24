@@ -158,7 +158,7 @@ def rnaseq(
 
 ![List](../assets/ui/list.png)
 
-### Dataclass
+### :class:`~dataclasses.dataclass`
 
 If you want to handle file references and their associated metadata as inputs to your workflow, you may want to use a `dataclass`.
 
