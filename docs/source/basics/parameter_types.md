@@ -10,7 +10,7 @@ registration.
 
 ## Supported Types
 
-Below is an exhaustive list of supported workflow parameter types currently shipped with the SDK, and how they will translate to the workflow GUI once the workflow is registered.
+Below is an exhaustive list of workflow and task parameter types currently supported by the SDK, and how they translate to the workflow UI once the workflow is registered:
 
 ### Integers
 
