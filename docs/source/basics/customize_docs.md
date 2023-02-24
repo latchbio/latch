@@ -27,7 +27,7 @@ def rnaseq(
 
 The body of the workflow function docstring supports [GitHub-flavored markdown](https://github.github.com/gfm/) and [KaTeX, a subset of LaTeX for mathematical typesetting](https://katex.org/docs/supported.html).
 
-Here you can write long-form documentation, which will get rendered in the About" tab on the workflow interface.
+The workflow "About" tab renders all lines of the workflow docstring after the first. This should include any long-form documentation for the workflow.
 
 ```python
 from latch import workflow
