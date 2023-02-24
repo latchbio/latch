@@ -182,7 +182,7 @@ def rnaseq(
 
 ### Custom Types
 
-If existing types don't directly work, it is possible to define your own custom types to be used in tasks and workflows. See the Flyte docs on how to do so [here](https://docs.flyte.org/projects/cookbook/en/latest/auto/core/extend_flyte/custom_types.html).
+If existing types are not sufficient to properly model the input or output data, it is possible to define your own custom types for use in tasks and workflows. [Flyte documentation on custom type transformers](https://docs.flyte.org/projects/cookbook/en/latest/auto/core/extend_flyte/custom_types.html) describes this process. The workflow interface will show inputs for the underlying representation (the IDL) of the custom type.
 
 ## Setting Default Values
 
