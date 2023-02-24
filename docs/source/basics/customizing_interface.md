@@ -11,7 +11,7 @@ With these, you can specify
 
 ## Parameter Display
 
-For any workflow parameters you want to display on the GUI, you can add them to the `LatchMetadata` object like so:
+The UI only displays parameters specified in the `LatchMetadata` object:
 
 ```python
 from latch.types import LatchParameter, LatchAppearanceType, LatchRule
