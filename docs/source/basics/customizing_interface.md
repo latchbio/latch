@@ -4,7 +4,7 @@ The Latch SDK will dynamically construct parameter interfaces from your python c
 
 With these, you can specify
 
-- sidebar presentation of contact email, repository, social media links, etc.
+- the contact email, repository, social media links, etc.
 - the ordering and grouping of parameters
 - parameter tooltip descriptions
 - parameter display names
