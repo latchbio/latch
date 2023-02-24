@@ -34,7 +34,7 @@ metadata = LatchMetadata(
 
 @workflow(metadata)
 def wf(
-    param_0: int, # any of the supported types would also work here
+    param_0: int, # any supported type works
     param_1: str,
     ...
 )
