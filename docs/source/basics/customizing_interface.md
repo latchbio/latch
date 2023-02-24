@@ -40,7 +40,7 @@ def wf(
 )
 ```
 
-Each key in `metadata.parameters` must be the name of one of the parameters of the workflow, otherwise, the parameter will not be displayed.
+Each key in `metadata.parameters` must be the name of one of the parameters of the workflow function. Other keys will be ignored. Parameters without a corresponding key in `metadata.parameters` will not be displayed.
 
 - {class}`~latch.types.metadata.LatchParameter` specifies the metadata associated with each workflow parameter, such as `description` and `display_name`. Visit the API docs for a comprehensive list of keyword arguments that `LatchParameter` accepts and an example of how to use `LatchParameter`.
 - {class}`~latch.types.metadata.LatchAuthor` describes information about the workflow author.
