@@ -52,7 +52,7 @@ Each key in `metadata.parameters` must be the name of one of the parameters of t
 
 By default, parameters are displayed in a flat list, in the order in which they are declared in the metadata. For more complex workflows it is often better to specify a custom layout, known as a "flow".
 
-The custom layout is specified using the `flow` parameter of the {class}`~latch.types.metadata.Metadata` specification, which is a list of flow elements. Additionally, some flow elements can have child flows. All such flow elements can be arbitrarily nested.
+The custom layout is defined using the `flow` parameter of the {class}`~latch.types.metadata.Metadata` specification, which is a list of flow elements. Some flow elements can have child flows. All flow elements can be arbitrarily nested.
 
 ## Flow Elements
 
