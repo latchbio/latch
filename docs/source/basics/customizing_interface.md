@@ -62,4 +62,4 @@ The custom layout is defined using the `flow` parameter of the {class}`~latch.ty
 - {class}`~latch.types.metadata.Spoiler` displays a child flow in a collapsible card with a given title. The spoiler is collapsed by default. This is often used for hiding away parts of the UI that will not be useful to the majority of users
 - {class}`~latch.types.metadata.Fork` shows a set of mutually-exclusive alternatives. The alternatives are specified as a list of {class}`~latch.types.metadata.ForkBranch`, each of which displays a child flow when active and nothing otherwise. Each branch is identified by a unique key. This key is passed to the workflow is a `str`-typed parameter so the user selection can be used to change runtime behavior
 
-Visit the API docs for an example of how to use flow elements.
+Visit the API docs for an example of how to use each flow element.
