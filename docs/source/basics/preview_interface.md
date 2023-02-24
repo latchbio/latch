@@ -1,4 +1,4 @@
-# Previewing your Workflow
+# Previewing the Workflow Interface
 
 Preview the workflow user interface locally using `latch preview` to avoid the lengthy registration process when iterating on the design.
 
