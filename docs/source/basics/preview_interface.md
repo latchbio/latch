@@ -16,7 +16,7 @@ Then, use `latch preview` with the name of the workflow function:
 $ latch preview <workflow_function_name>
 ```
 
-After using `latch preview`, a new button with your workflow name will also be generated on the top right corner of the workflow page.
+After using `latch preview`, a new button with the workflow name will appear on the top right corner of the "Workflows" page:
 
 ![Preview](../assets/ui/previewer.png)
 
