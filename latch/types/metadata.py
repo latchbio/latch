@@ -12,8 +12,6 @@ import yaml
 class LatchRule:
     """Class describing a rule that a parameter input must follow
 
-    * :class:`~latch.types.metadata.LatchRule`
-
     Fields:
         regex:
             A string regular expression which inputs must match
@@ -44,8 +42,6 @@ class LatchAppearanceType(Enum):
 @dataclass
 class LatchAuthor:
     """Class describing metadata about the workflow author
-
-    * :class:`~latch.types.metadata.LatchAuthor`
 
     Fields:
         name:
@@ -291,8 +287,6 @@ class Fork(FlowBase):
 @dataclass
 class LatchParameter:
     """Class for organizing parameter metadata
-
-    * :class:`~latch.types.metadata.LatchParameter`
 
     Fields:
         display_name:

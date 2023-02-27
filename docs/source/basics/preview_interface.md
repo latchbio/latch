@@ -1,6 +1,6 @@
 # Previewing your Workflow
 
-Preview the workflow user interface locally using `latch preview` to avoid the lengthy registration process when iterating on the design.
+When iterating on the design of the workflow, it is helpful to preview the user interface locally using `latch preview`.
 
 First, verify that you are inside the workflow directory:
 
@@ -18,6 +18,6 @@ $ latch preview <workflow_function_name>
 
 After using `latch preview`, a new button with your workflow name will also be generated on the top right corner of the workflow page.
 
-![Preview](../assets/ui/previewer.png)
-
 You can click on the button to preview the interface.
+
+![Screenshot of the workflow interface preview page](../assets/ui/previewer.png)

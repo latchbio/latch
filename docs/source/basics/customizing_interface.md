@@ -26,7 +26,7 @@ metadata = LatchMetadata(
         'param_1': LatchParameter(
             display_name="Parameter 1",
             description="This is parameter 1",
-            hidden=True,
+            hidden=True, # parameter is collapsed
         )
     }
 )

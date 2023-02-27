@@ -23,7 +23,7 @@ def bactopia_wf(
 )
 ```
 
-![int](../assets/ui/int.png)
+![The user interface that corresponds to the int type](../assets/ui/int.png)
 
 ### Boolean
 
@@ -36,7 +36,7 @@ def bactopia_wf(
 )
 ```
 
-![Boolean](../assets/ui/boolean.png)
+![The user interface that corresponds to the Boolean type](../assets/ui/boolean.png)
 
 ### Floats
 
@@ -59,7 +59,7 @@ def bactopia_wf(
 )
 ```
 
-![str](../assets/ui/str.png)
+![The user interface that corresponds to the str type](../assets/ui/str.png)
 
 ### Files
 
@@ -76,7 +76,7 @@ def bactopia_wf(
 )
 ```
 
-![LatchFile](../assets/ui/optional-latch-file.png)
+![The user interface that corresponds to the LatchFile type](../assets/ui/optional-latch-file.png)
 
 ### Directories
 
@@ -92,7 +92,7 @@ def bactopia_wf(
 )
 ```
 
-![LatchDir](../assets/ui/latchdir.png)
+![The user interface that corresponds to the LatchDir type](../assets/ui/latchdir.png)
 
 ### Enums
 
@@ -118,7 +118,7 @@ def bactopia_wf(
 )
 ```
 
-![Enum](../assets/ui/enum.png)
+![The user interface that corresponds to the Enum type](../assets/ui/enum.png)
 
 ### Unions
 
@@ -156,7 +156,7 @@ def rnaseq(
 ...
 ```
 
-![List](../assets/ui/list.png)
+![The user interface that corresponds to the List type](../assets/ui/list.png)
 
 ### Dataclass
 
@@ -178,7 +178,7 @@ def rnaseq(
 
 ```
 
-![List of class](../assets/ui/dataclass.png)
+![The user interface that corresponds to a list of dataclasses](../assets/ui/dataclass.png)
 
 ### Custom Types
 

@@ -2,7 +2,7 @@
 
 While most of the metadata of a workflow will be encapsulated in a LatchMetadata object, we still require a docstring in the body of the workflow function which specifies both a short and long-form description.
 
-## One Line Description
+## Short Description
 
 The first line of the workflow function docstring will get rendered in the sidebar of the workflow and the workflow explore tab as a brief description of your workflow's functionality. Think of this as summarizing the entirety of your workflow's significance into a single line.
 
@@ -22,9 +22,9 @@ def rnaseq(
     ...
 ```
 
-![Short Description](../assets/ui/one-line-description.png)
+![A short description of the workflow displayed under the workflow name once the workflow is published](../assets/ui/one-line-description.png)
 
-## Long Form Description
+## Long Description
 
 The body of the workflow function docstring supports [full GitHub-flavored markdown](https://github.github.com/gfm/) and [KaTeX, a subset of LaTeX for mathematical typesetting](https://katex.org/docs/supported.html).
 
@@ -65,4 +65,4 @@ def rnaseq(
     """
 ```
 
-![Long Description](../assets/ui/long-form-description.png)
+![A long discussion will show on the About page of the workflow](../assets/ui/long-form-description.png)
