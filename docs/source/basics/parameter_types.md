@@ -3,25 +3,40 @@
 The Latch SDK supports first-class static typing. All input parameters and
 output values must be annotated with types in the function signature.
 
-These type annotations validate task values and guide construction of
-parameter-specific frontend components when your interface is generated at
+These type annotations validate task values and guide the construction of parameter-specific frontend components when your interface is generated at
 registration.
 
 ---
 
 ## Supported Types
 
-Below is an exhaustive list of supported types currently shipped with the SDK.
+Below is an exhaustive list of workflow and task parameter types currently supported by the SDK, and how they translate to the workflow UI once the workflow is registered:
 
 ### Integers
 
 ```python
-@task
-def foo(
-  a: int = 10
-):
-  ...
+@workflow
+def bactopia_wf(
+    ...
+    coverage: int,
+    ...
+)
 ```
+
+![The user interface that corresponds to the int type](../assets/ui/int.png)
+
+### Boolean
+
+```python
+@workflow
+def bactopia_wf(
+    ...
+    hybrid: bool,
+    ...
+)
+```
+
+![The user interface that corresponds to the Boolean type](../assets/ui/boolean.png)
 
 ### Floats
 
@@ -36,51 +51,74 @@ def foo(
 ### Strings
 
 ```python
-@task
-def foo(
-  a: str = "bio"
-):
-  ...
+@workflow
+def bactopia_wf(
+    ...
+    sample_name: str = "sample1"
+    ...
+)
 ```
+
+![The user interface that corresponds to the str type](../assets/ui/str.png)
 
 ### Files
 
 ```python
-@task
-def foo(
-  a: LatchFile = LatchFile("/root/data.txt")
-):
-  ...
+from latch.types import LatchFile
+from typing import Optional
+
+...
+@workflow
+def bactopia_wf(
+    ...
+    fastq_one: LatchFile | None = None,
+    ...
+)
 ```
+
+![The user interface that corresponds to the LatchFile type](../assets/ui/optional-latch-file.png)
 
 ### Directories
 
 ```python
-@task
-def foo(
-  a: LatchDir = LatchDir("/root/test_data/")
-):
-  ...
+from latch.types import LatchDir
+
+...
+@workflow
+def bactopia_wf(
+    ...
+    output_dir: LatchDir,
+    ...
+)
 ```
 
+![The user interface that corresponds to the LatchDir type](../assets/ui/latchdir.png)
+
 ### Enums
+
 _Note_: As expressed in the [Flyte Docs](https://docs.flyte.org/projects/cookbook/en/stable/auto/core/type_system/enums.html), Enum values can only be strings.
+
 ```python
 from enum import Enum
 
 # You must define your Enum as a python class before using it as an annotation.
-class Statistic(Enum):
+class SpeciesGenomeSize(Enum):
+    mash = "mash estimate"
     min = "min"
     median = "median"
     mean = "mean"
     max = "max"
 
-@task
-def foo(
-  a: Statistic = Statistic.min
-):
-  ...
+...
+@workflow
+def bactopia_wf(
+    ...
+    species_genome_size: SpeciesGenomeSize,
+    ...
+)
 ```
+
+![The user interface that corresponds to the Enum type](../assets/ui/enum.png)
 
 ### Unions
 
@@ -91,9 +129,9 @@ Recall that `Optional[T] = Union[None, T]`.
 
 ```python
 from typing import Union, Optional
+from latch.types import LatchFile
 
-
-@task
+@workflow
 def foo(
   a: Union[int, LatchFile] = LatchFile("/root/data.txt"),
   b: Optional[float] = None
@@ -107,22 +145,48 @@ Finally, we currently support a single collection type which is `List[T]`, also
 provided by the `typing` module.
 
 ```python
-from typing import List, Optional
+from latch.types import LatchFile
+from typing import List
 
-@task
-def foo(
-  a: List[str] = ["AUG", "GGG"],
-  b: List[Optional[int]] = [1, None, 3, 4, None, 6]
+@workflow
+def rnaseq(
+    sample_identifiers: list[str],
+    sample_reads: List[LatchFile]
 ):
-  ...
+...
 ```
+
+![The user interface that corresponds to the List type](../assets/ui/list.png)
+
+### :class:`~dataclasses.dataclass`
+
+Complex object types should be represented using :class:`dataclasses <dataclasses.dataclass>` They render a group of input elements for each of the fields of the dataclass. These can be used in lists and maps, and are useful to model interdependent data, for example, pairs of reads or named samples.
+
+```python
+from dataclasses import dataclass
+from typing import List
+
+@dataclass
+class Sample:
+    name: str
+    fastq: LatchFile
+
+@workflow
+def rnaseq(
+    samples: List[Sample]
+):
+
+```
+
+![The user interface that corresponds to a list of dataclasses](../assets/ui/dataclass.png)
+
+### Custom Types
+
+If existing types are not sufficient to properly model the input or output data, it is possible to define your own custom types for use in tasks and workflows. [Flyte documentation on custom type transformers](https://docs.flyte.org/projects/cookbook/en/latest/auto/core/extend_flyte/custom_types.html) describes this process. The workflow interface will show inputs for the underlying representation (the IDL) of the custom type.
 
 ## Setting Default Values
 
-Notice that every parameter in the above list of types had a default value. This
-default value will be displayed to the user in the frontend interface and will
-be passed by default if no change is made. You do not have to provide a default
-value, but it helps document parameters and provide semantic context to users.
+If a parameter has a default value, it is displayed to the user in the frontend interface and passed to the workflow if the user does not change it. Default values are optional but encouraged as, if a reasonable default exists, it can improve the user experience by encouraging best practices and allowing users to focus on the settings that really matter to them.
 
 ## Example
 
