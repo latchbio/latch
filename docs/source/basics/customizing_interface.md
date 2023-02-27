@@ -1,17 +1,17 @@
 # Customizing Your Interface
 
-The Latch SDK will dynamically construct parameter interfaces from your python code using the `LatchMetadata` object.
+Latch dynamically constructs the workflow interface based on the workflow function code and the `LatchMetadata` object.
 
 With these, you can specify
 
-- sidebar presentation of contact email, repository, social media links, etc.
+- the contact email, repository, social media links, etc.
 - the ordering and grouping of parameters
 - parameter tooltip descriptions
 - parameter display names
 
 ## Parameter Display
 
-For any workflow parameters you want to display on the GUI, you can add them to the `LatchMetadata` object like so:
+The UI only displays parameters specified in the `LatchMetadata` object:
 
 ```python
 from latch.types import LatchParameter, LatchAppearanceType, LatchRule
@@ -34,15 +34,15 @@ metadata = LatchMetadata(
 
 @workflow(metadata)
 def wf(
-    param_0: int, # any of the supported types would also work here
+    param_0: int, # any supported type works
     param_1: str,
     ...
 )
 ```
 
-Each key in `metadata.parameters` must be the name of one of the parameters of the workflow, otherwise, the parameter will not be displayed.
+Each key in `metadata.parameters` must be the name of one of the parameters of the workflow function. Other keys will be ignored. Parameters without a corresponding key in `metadata.parameters` will not be displayed.
 
-- {class}`~latch.types.metadata.LatchParameter` specifies the metadata associated with each workflow parameter, such as `description` and `display_name`. Visit the API docs for a comprehensive list of keyword arguments that `LatchParameter` accepts and an example of how to use `LatchParameter`.
+- {class}`~latch.types.metadata.LatchParameter` specifies the metadata associated with each workflow parameter.
 - {class}`~latch.types.metadata.LatchAuthor` describes information about the workflow author.
 - {class}`~latch.types.metadata.LatchRule` describes the rule that the parameter input must follow.
 
@@ -52,7 +52,7 @@ Each key in `metadata.parameters` must be the name of one of the parameters of t
 
 By default, parameters are displayed in a flat list, in the order in which they are declared in the metadata. For more complex workflows it is often better to specify a custom layout, known as a "flow".
 
-The custom layout is specified using the `flow` parameter of the {class}`~latch.types.metadata.Metadata` specification, which is a list of flow elements. Additionally, some flow elements can have child flows. All such flow elements can be arbitrarily nested.
+The custom layout is defined using the `flow` parameter of the {class}`~latch.types.metadata.Metadata` specification, which is a list of flow elements. Some flow elements can have child flows. All flow elements can be arbitrarily nested.
 
 ## Flow Elements
 
@@ -62,4 +62,4 @@ The custom layout is specified using the `flow` parameter of the {class}`~latch.
 - {class}`~latch.types.metadata.Spoiler` displays a child flow in a collapsible card with a given title. The spoiler is collapsed by default. This is often used for hiding away parts of the UI that will not be useful to the majority of users
 - {class}`~latch.types.metadata.Fork` shows a set of mutually-exclusive alternatives. The alternatives are specified as a list of {class}`~latch.types.metadata.ForkBranch`, each of which displays a child flow when active and nothing otherwise. Each branch is identified by a unique key. This key is passed to the workflow is a `str`-typed parameter so the user selection can be used to change runtime behavior
 
-Visit the API docs for an example of how to use flow elements.
+Visit the API docs for an example of how to use each flow element.

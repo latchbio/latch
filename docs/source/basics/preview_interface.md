@@ -1,4 +1,4 @@
-# Previewing your Workflow
+# Previewing the Workflow Interface
 
 When iterating on the design of the workflow, it is helpful to preview the user interface locally using `latch preview`.
 
@@ -10,13 +10,13 @@ $ ls
 Dockerfile      reference       wf      version
 ```
 
-Then, use `latch preview` with the name of your workflow function:
+Then, use `latch preview` with the name of the workflow function:
 
 ```shell-session
 $ latch preview <workflow_function_name>
 ```
 
-After using `latch preview`, a new button with your workflow name will also be generated on the top right corner of the workflow page.
+After using `latch preview`, a new button with the workflow name will appear on the top right corner of the "Workflows" page:
 
 You can click on the button to preview the interface.
 

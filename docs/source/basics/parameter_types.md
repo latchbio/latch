@@ -10,7 +10,7 @@ registration.
 
 ## Supported Types
 
-Below is an exhaustive list of supported workflow parameter types currently shipped with the SDK, and how they will translate to the workflow GUI once the workflow is registered.
+Below is an exhaustive list of workflow and task parameter types currently supported by the SDK, and how they translate to the workflow UI once the workflow is registered:
 
 ### Integers
 
@@ -158,9 +158,9 @@ def rnaseq(
 
 ![The user interface that corresponds to the List type](../assets/ui/list.png)
 
-### Dataclass
+### :class:`~dataclasses.dataclass`
 
-If you want to handle file references and their associated metadata as inputs to your workflow, you may want to use a `dataclass`.
+Complex object types should be represented using :class:`dataclasses <dataclasses.dataclass>` They render a group of input elements for each of the fields of the dataclass. These can be used in lists and maps, and are useful to model interdependent data, for example, pairs of reads or named samples.
 
 ```python
 from dataclasses import dataclass
@@ -182,11 +182,11 @@ def rnaseq(
 
 ### Custom Types
 
-If existing types don't directly work, it is possible to define your own custom types to be used in tasks and workflows. See the Flyte docs on how to do so [here](https://docs.flyte.org/projects/cookbook/en/latest/auto/core/extend_flyte/custom_types.html).
+If existing types are not sufficient to properly model the input or output data, it is possible to define your own custom types for use in tasks and workflows. [Flyte documentation on custom type transformers](https://docs.flyte.org/projects/cookbook/en/latest/auto/core/extend_flyte/custom_types.html) describes this process. The workflow interface will show inputs for the underlying representation (the IDL) of the custom type.
 
 ## Setting Default Values
 
-If a parameter has a default value, it will be displayed to the user in the frontend interface and will be passed by default if no change is made. You do not have to provide a default value, but it helps document parameters and provide semantic context to users.
+If a parameter has a default value, it is displayed to the user in the frontend interface and passed to the workflow if the user does not change it. Default values are optional but encouraged as, if a reasonable default exists, it can improve the user experience by encouraging best practices and allowing users to focus on the settings that really matter to them.
 
 ## Example
 

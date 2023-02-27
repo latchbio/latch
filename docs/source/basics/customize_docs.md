@@ -4,9 +4,8 @@ While most of the metadata of a workflow will be encapsulated in a LatchMetadata
 
 ## Short Description
 
-The first line of the workflow function docstring will get rendered in the sidebar of the workflow and the workflow explore tab as a brief description of your workflow's functionality. Think of this as summarizing the entirety of your workflow's significance into a single line.
+The workflow sidebar and workflow explore tab render the first line of the workflow docstring as a brief description of its functionality. This description should summarize the significance of the workflow in a single line.
 
-We recommend limiting your workflow description to one sentence, as longer descriptions are only partially rendered on the Workflows page.
 
 ```python
 from latch import workflow
@@ -26,9 +25,9 @@ def rnaseq(
 
 ## Long Description
 
-The body of the workflow function docstring supports [full GitHub-flavored markdown](https://github.github.com/gfm/) and [KaTeX, a subset of LaTeX for mathematical typesetting](https://katex.org/docs/supported.html).
+The body of the workflow function docstring supports [GitHub-flavored markdown](https://github.github.com/gfm/) and [KaTeX, a subset of LaTeX for mathematical typesetting](https://katex.org/docs/supported.html).
 
-Here you can write long-form documentation, which will get rendered in the About" tab on the workflow interface.
+The workflow "About" tab renders all lines of the workflow docstring after the first. This should include any long-form documentation for the workflow.
 
 ```python
 from latch import workflow
@@ -65,4 +64,4 @@ def rnaseq(
     """
 ```
 
-![A long discussion will show on the About page of the workflow](../assets/ui/long-form-description.png)
+![Workflow "About" tab displaying the workflow description from the example above](../assets/ui/long-form-description.png)
