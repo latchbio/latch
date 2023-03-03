@@ -17,6 +17,8 @@ from latch_cli.centromere.utils import (
     _import_flyte_objects,
 )
 from latch_cli.config.latch import config
+from latch_cli.constants import latch_constants
+from latch_cli.docker_utils import generate_dockerfile
 from latch_cli.utils import (
     account_id_from_token,
     current_workspace,
@@ -29,6 +31,7 @@ from latch_cli.utils import (
 @dataclass
 class _Container:
     dockerfile: Path
+    pkg_dir: Path
     image_name: str
 
 
@@ -87,10 +90,11 @@ class _CentromereCtx:
 
             default_dockerfile = self.pkg_root.joinpath("Dockerfile")
             if not default_dockerfile.exists():
-                raise FileNotFoundError(
-                    "Make sure you are passing a directory that contains a ",
-                    "valid dockerfile to `$ latch register`.",
+                generate_dockerfile(
+                    self.pkg_root, self.pkg_root.joinpath(".latch/Dockerfile")
                 )
+                default_dockerfile = self.pkg_root.joinpath(".latch/Dockerfile")
+
             _import_flyte_objects([self.pkg_root])
 
             self.disable_auto_version = disable_auto_version
@@ -118,17 +122,20 @@ class _CentromereCtx:
                         self.container_map[entity.name] = _Container(
                             dockerfile=entity.dockerfile_path,
                             image_name=self.task_image_name(entity.name),
+                            pkg_dir=entity.dockerfile_path.parent,
                         )
 
             if self.nucleus_check_version(self.version, self.workflow_name) is True:
                 raise ValueError(f"Version {self.version} has already been registered.")
 
             self.default_container = _Container(
-                dockerfile=default_dockerfile, image_name=self.image_tagged
+                dockerfile=default_dockerfile,
+                image_name=self.image_tagged,
+                pkg_dir=self.pkg_root,
             )
 
             if remote is True:
-                self.ssh_key_path = Path(self.pkg_root) / ".ssh_key"
+                self.ssh_key_path = Path(self.pkg_root) / latch_constants.pkg_ssh_key
                 self.public_key = generate_temporary_ssh_credentials(self.ssh_key_path)
 
                 public_ip, username = self.nucleus_provision_url()

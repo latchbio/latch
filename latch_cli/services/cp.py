@@ -11,7 +11,7 @@ from tqdm.auto import tqdm
 
 import latch_cli.tinyrequests as tinyrequests
 from latch_cli.config.latch import config
-from latch_cli.constants import FILE_CHUNK_SIZE
+from latch_cli.constants import latch_constants
 from latch_cli.services.deprecated.mkdir import mkdir
 from latch_cli.services.deprecated.touch import touch
 from latch_cli.utils import _normalize_remote_path, current_workspace, retrieve_or_login
@@ -100,7 +100,7 @@ def _upload_file(
     with open(local_source, "rb") as f:
         f.seek(0, 2)
         total_bytes = f.tell()
-        num_parts = math.ceil(total_bytes / FILE_CHUNK_SIZE)
+        num_parts = math.ceil(total_bytes / latch_constants.file_chunk_size)
 
     if total_bytes == 0:
         touch(remote_dest)
@@ -181,8 +181,8 @@ def _upload_file_chunk(
     progress_bar: _tqdm.tqdm,
 ):
     with open(local_source, "rb") as f:
-        f.seek(part_index * FILE_CHUNK_SIZE, 0)
-        payload = f.read(FILE_CHUNK_SIZE)
+        f.seek(part_index * latch_constants.file_chunk_size, 0)
+        payload = f.read(latch_constants.file_chunk_size)
         resp = tinyrequests.request("PUT", url, data=payload)
         etag = resp.headers["ETag"]
 
@@ -284,7 +284,7 @@ def _download_file(url: str, output_path: Path):
     with tinyrequests.get(url, stream=True) as r:
         r.raise_for_status()
         with open(output_path.resolve(), "wb") as f:
-            for chunk in r.iter_content(chunk_size=FILE_CHUNK_SIZE):
+            for chunk in r.iter_content(chunk_size=latch_constants.file_chunk_size):
                 f.write(chunk)
     return output_path
 

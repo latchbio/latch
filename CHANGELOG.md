@@ -6,6 +6,7 @@ Types of changes
 
     *Added* for new features.
     *Changed* for changes in existing functionality.
+    *Dependencies* for changes in dependencies.
     *Deprecated* for soon-to-be removed features.
     *Removed* for now removed features.
     *Fixed* for any bug fixes.
@@ -14,6 +15,90 @@ Types of changes
 -->
 
 # Latch SDK Changelog
+## 2.13.5 - 2023-02-21
+
+### Fixed
+
+* `latch register` ssh-keygen bug when `.latch` folder does not exist
+
+## 2.13.4 - 2023-02-21
+
+### Dependencies
+
+* Upgrades lytekit to `0.14.9`
+
+## 2.13.3 - 2023-02-21
+
+### Fixed
+
+* Docker template uses correct base image
+
+## 2.13.2 - 2023-02-21
+
+### Fixed
+
+* Internal state file should be automatically created when running `latch register` and `latch develop`
+
+### Added
+
+* `latch init`: Docker in Docker template workflow
+* `latch init`: Docker base image
+* Small, medium, and large tasks use the [Sysbox runtime](https://github.com/nestybox/sysbox) to run Docker and other system software within task containers
+
+## 2.13.1 - 2023-02-17
+
+### Fixed
+
+* Add latch/latch_cli/services/init/common to pypi release
+
+## 2.13.0 - 2023-02-17
+
+### Added
+
+* The `latch dockerfile` command which auto-generates a Dockerfile from files in the workflow directory.
+* The `latch init` command can use base images with hardware acceleration using the `--cuda` and the `--opencl` flags
+* The `latch init` command does not populate the workflow directory with a Dockerfile by default
+* The `latch init` command will populate the workflow directory with a Dockerfile if passed `--dockerfile`
+* The `latch register` and `latch develop` commands auto-generate a dockerfile from files in the workflow directory if no Dockerfile is present
+* Documentation for the auto-generated Dockerfile feature
+
+### Fixed
+
+* Quickstart tutorial is written factually
+* Getting started docs are written factually
+
+## 2.12.1 - 2023-02-08
+
+### Added
+
+* `latch develop` documentation updates
+
+### Fixed
+
+* `latch develop` throws error if user does not have rsync installed
+* `pip install latch` installs the `watchfiles` package for `latch develop`
+
+## 2.11.1 - 2023-01-25
+
+### Fixed
+
+* LatchDir initialized with local path initialized to Path object fails on upload
+
+## 2.12.0 - 2023-02-06
+
+### Added
+
+* `latch develop` drops users directly into a shell in their docker environment. Local changes in the workflow directory and any subdirectories are automatically synced into the environment. Deleted local files are not deleted in the environment. However, any additions or modifications to files and directories are propagated.
+
+### Removed
+
+* latch develop no longer drops user into REPL with multiple options -- it goes straight to a shell.
+
+## 2.11.1 - 2023-01-25
+
+### Fixed
+
+* LatchDir initialized with local path initialized to Path object fails on upload
 
 ## 2.11.0 - 2023-01-20
 

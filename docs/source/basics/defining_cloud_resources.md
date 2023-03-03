@@ -10,7 +10,7 @@ process.
 
 ---
 
-## Prespecified Task Resourcce
+## Prespecified Task Resource
 
 The Latch SDK currently supports a set of prespecified task resource requests
 represented as decorators:
@@ -24,7 +24,7 @@ represented as decorators:
 We use the tasks as follows:
 
 ```python
-from latch import small_task
+from latch import small_task, large_gpu_task
 
 @small_task
 def my_task(

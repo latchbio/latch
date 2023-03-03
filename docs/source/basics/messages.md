@@ -3,6 +3,8 @@
 Task executions produce logs, displayed on the Latch console to provide users visibility into their workflows. However, these logs tend to be terribly verbose. It's tedious to sift through piles of logs looking for useful signals; instead, important information, warnings, and errors should be prominently displayed. This is accomplished through the Latch SDK's new messaging feature.
 
 ```python
+from latch import small_task
+
 @small_task
 def task():
 

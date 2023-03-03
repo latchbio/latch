@@ -11,31 +11,44 @@ def assembly_task(
     read1: LatchFile, read2: LatchFile, output_directory: LatchOutputDir
 ) -> LatchFile:
 
-    # A reference to our output.
-    sam_file = Path("covid_assembly.sam").resolve()
+    outdir = Path("/root/outputs").resolve()
+    outdir.mkdir(exist_ok=True)
 
     bowtie2_cmd = [
-        "bowtie2/bowtie2",
+        "docker",
+        "run",
+        "--user",
+        "root",
+        "--env",
+        "BOWTIE2_INDEXES=/reference",
+        "--mount",
+        "type=bind,source=/root/reference,target=/reference",
+        "--mount",
+        f"type=bind,source={read1.local_path},target=/r1.fq",
+        "--mount",
+        f"type=bind,source={read2.local_path},target=/r2.fq",
+        "--mount",
+        f"type=bind,source={outdir},target=/outputs",
+        "biocontainers/bowtie2:v2.4.1_cv1",
+        "bowtie2",
         "--local",
         "--very-sensitive-local",
         "-x",
         "wuhan",
         "-1",
-        read1.local_path,
+        "/r1.fq",
         "-2",
-        read2.local_path,
+        "/r2.fq",
         "-S",
-        str(sam_file),
+        "/outputs/covid_assembly.sam",
     ]
 
     try:
-        # We use shell=True for all the benefits of pipes and other shell features.
         # When using shell=True, we pass the entire command as a single string as
         # opposed to a list since the shell will parse the string into a list
         # using its own rules.
         subprocess.run(" ".join(bowtie2_cmd), shell=True, check=True)
     except subprocess.CalledProcessError as e:
-        # will display in the messages tab of the execution graph for the assembly_task node
         message(
             "error",
             {"title": "Bowtie2 Failed", "body": f"Error: {str(e)}"},
@@ -45,5 +58,6 @@ def assembly_task(
     # intended output path of the file in Latch console, constructed from
     # the user provided output directory
     output_location = f"{output_directory.remote_directory}/covid_assembly.sam"
+    local_sam_file = outdir / "covid_assembly.sam"
 
-    return LatchFile(str(sam_file), output_location)
+    return LatchFile(str(local_sam_file), output_location)
