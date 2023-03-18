@@ -318,7 +318,6 @@ class LatchParameter:
         samplesheet:
             Use samplesheet input UI. Allows importing from Latch Registry.
             Parameter type must be a list of dataclasses
-
     """
 
     display_name: Optional[str] = None
