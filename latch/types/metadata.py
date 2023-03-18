@@ -315,6 +315,9 @@ class LatchParameter:
         rules:
             A list of LatchRule objects that inputs to this parameter must
             follow.
+        samplesheet:
+            Use samplesheet input UI. Allows importing from Latch Registry.
+            Parameter type must be a list of dataclasses
 
     """
 
