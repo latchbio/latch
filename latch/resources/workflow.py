@@ -72,16 +72,22 @@ def workflow(
                 raise ValueError(error_str)
 
             for name, meta_param in metadata.parameters.items():
-                if not meta_param.samplesheet:
+                if meta_param.samplesheet is not True:
                     continue
+
                 annotation = wf_params[name].annotation
-                if not (
-                    get_origin(annotation) is list
-                    and len(get_args(annotation)) == 1
-                    and is_dataclass(get_args(annotation)[0])
-                ):
+
+                origin = get_origin(annotation)
+                args = get_args(annotation)
+                valid = (
+                    origin is not None
+                    and issubclass(origin, list)
+                    and is_dataclass(args[0])
+                )
+                if not valid:
                     raise ValueError(
-                        "A samplesheet parameter must be a list of dataclasses"
+                        f"parameter marked as samplesheet is not valid: {name} "
+                        f"in workflow {f.__name__} must be a list of dataclasses"
                     )
 
             f.__doc__ = f"{short_desc}\n{dedent(long_desc)}\n\n" + str(metadata)
