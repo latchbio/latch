@@ -6,7 +6,7 @@ below to guide this decision:
 
 ---
 
-Benefits of splitting a task into mulitple tasks:
+Benefits of splitting a task into mulitple smaller tasks:
 
 * It is easier to manage the dependencies and environments of tasks with less code
 * Tasks can be reused between different workflows.
@@ -18,7 +18,7 @@ The last succeeded task will be "further along" in the workflow.
 * Splitting up tasks creates new nodes in the graph representation of the
   workflow. If each node has one function, may be easier to interpret for biologists.
 
-Downsides of splitting a task into multiple tasks:
+Downsides of splitting a task into multiple smaller tasks:
 
 * File I/O overhead - files passed between tasks are uploaded to S3 by the
 first task and then downloaded by the second task.
