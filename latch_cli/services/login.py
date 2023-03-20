@@ -2,6 +2,9 @@
 
 
 from typing import Optional
+import click
+from latch_cli.config.user import user_config
+from latch_cli.config.latch import config
 
 
 def login(connection: Optional[str] = None) -> str:
@@ -19,10 +22,11 @@ def login(connection: Optional[str] = None) -> str:
         https://datatracker.ietf.org/doc/html/rfc6749
     """
     if _browser_available() is False:
-        raise OSError(
-            "Unable to locate a browser on this machine. Unable to facilitate"
-            " login flow"
-        )
+        token: str = click.prompt(f"Go to `{config.console_url}/{config.console_routes.developer}` and copy your API Key for login", type=str)
+        token = token.strip()
+        user_config.update_token(token)
+
+        return token
 
     from latch_cli.auth import PKCE, CSRFState, OAuth2
     from latch_cli.constants import oauth2_constants
@@ -36,10 +40,8 @@ def login(connection: Optional[str] = None) -> str:
             # Exchange JWT from Auth0 for a persistent token issued by
             # LatchBio.
             access_jwt = _auth0_jwt_for_access_jwt(jwt)
-
-            from latch_cli.config.user import user_config
-
             user_config.update_token(access_jwt)
+
             return access_jwt
 
 
