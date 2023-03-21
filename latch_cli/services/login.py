@@ -22,7 +22,7 @@ def login(connection: Optional[str] = None) -> str:
         https://datatracker.ietf.org/doc/html/rfc6749
     """
     if _browser_available() is False:
-        token: str = click.prompt(f"Go to `{config.console_url}/{config.console_routes.developer}` and copy your API Key for login", type=str)
+        token: str = click.prompt(f"Go to `{config.console_url}/{config.console_routes.developer}` and copy your API Key here", type=str)
         token = token.strip()
         user_config.update_token(token)
 
