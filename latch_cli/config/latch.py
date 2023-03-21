@@ -77,7 +77,7 @@ class _API:
 
 @dataclass
 class _ConsoleRoutes:
-    developer: str = "settings/developer"
+    developer: str = f"{CONSOLE_URL}/settings/developer"
 
 @dataclass
 class _LatchConfig:
