@@ -76,8 +76,13 @@ class _API:
 
 
 @dataclass
+class _ConsoleRoutes:
+    developer: str = f"{CONSOLE_URL}/settings/developer"
+
+@dataclass
 class _LatchConfig:
     api: _API
+    console_routes: _ConsoleRoutes = _ConsoleRoutes()
     dkr_repo: str = "812206152185.dkr.ecr.us-west-2.amazonaws.com"
     console_url: str = CONSOLE_URL
     nucleus_url: str = NUCLEUS_URL
