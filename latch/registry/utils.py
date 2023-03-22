@@ -117,9 +117,9 @@ def to_python_literal(
         errors = {}
 
         for tag, sub_type in list(registry_type["union"].items()):
-            if tag in value:
+            if tag == value["tag"]:
                 try:
-                    return to_python_literal(value[tag], sub_type)
+                    return to_python_literal(value["value"], sub_type)
                 except Exception as e:
                     errors[str(sub_type)] = str(e)
                     pass
