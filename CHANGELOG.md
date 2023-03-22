@@ -15,6 +15,18 @@ Types of changes
 -->
 
 # Latch SDK Changelog
+## 2.14.1 - 2023-03-21
+
+### Fixed
+
+* `latch` commands which require authentication prompt user for token when no browser is present on machine
+
+## 2.14.0 - 2023.03-18
+
+### Added
+
+* SampleSheet metadata to `LatchParameter` -- allows for importing samples from Registry
+
 ## 2.13.5 - 2023-02-21
 
 ### Fixed

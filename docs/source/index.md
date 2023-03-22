@@ -73,6 +73,7 @@ getting_started/authoring_your_workflow
 :maxdepth: 2
 :caption: Defining a Workflow
 basics/what_is_a_workflow
+basics/when_to_create_task
 
 basics/defining_environment
 basics/working_with_files
