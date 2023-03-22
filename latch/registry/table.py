@@ -1,8 +1,8 @@
 import json
-from dataclasses import make_dataclass
+from dataclasses import fields, make_dataclass
 from typing import List
 
-from dacite import from_dict
+from dacite import Config, from_dict
 
 import latch.gql as gql
 from latch.registry import Project, Row
@@ -156,16 +156,14 @@ class Table:
                 for column in self.columns:
                     key = clean(column["key"])
                     typ = column["type"]
-                    python_type = to_python_type(
-                        typ["type"],
-                        key,
-                        typ["allowEmpty"],
-                    )
 
                     for data_point in row_data:
                         if clean(data_point["key"]) != key:
                             continue
-                        values[key] = to_python_literal(data_point["data"], python_type)
+                        values[key] = to_python_literal(
+                            data_point["data"],
+                            typ["type"],
+                        )
                         break
 
                     if key not in values:
@@ -180,7 +178,15 @@ class Table:
                 print(e)
                 continue
 
-            output.append(from_dict(self.row_type, values))
+            output.append(
+                from_dict(
+                    self.row_type,
+                    values,
+                    Config(
+                        check_types=False
+                    ),  # this library is dumb and doesn't understand Optionals
+                )
+            )
 
         return output
 

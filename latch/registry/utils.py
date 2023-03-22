@@ -16,8 +16,6 @@ from typing import (
 )
 
 import latch.gql as gql
-from latch.registry.row import Row
-from latch.registry.table import Table
 from latch.types import LatchDir, LatchFile
 
 T = TypeVar("T")
@@ -29,12 +27,16 @@ shared_regex = re.compile("^shared(?P<path>\/.*)$")
 
 
 def clean(name: str):
-    # https://stackoverflow.com/a/3305731
-    cleaned = re.sub("\W|^(?=\d)", "_", name)
+    try:
+        # https://stackoverflow.com/a/3305731
+        cleaned = re.sub("\W|^(?=\d)", "_", name)
 
-    if keyword.iskeyword(cleaned):
-        cleaned = f"_{cleaned}"
-    return cleaned
+        if keyword.iskeyword(cleaned):
+            cleaned = f"_{cleaned}"
+        return cleaned
+    except Exception as e:
+        print(name)
+        raise e
 
 
 def to_python_type(
@@ -42,7 +44,8 @@ def to_python_type(
     column_name: Optional[str] = None,
     allow_empty: bool = False,
 ):
-    column_name = clean(column_name)
+    if column_name is not None:
+        column_name = clean(column_name)
 
     ret = None
     if "primitive" in registry_type:
@@ -118,9 +121,9 @@ def to_python_literal(
         errors = {}
 
         for tag, sub_type in list(registry_type["union"].items()):
-            if tag in registry_literal:
+            if tag in value:
                 try:
-                    return to_python_literal(registry_literal[tag], sub_type)
+                    return to_python_literal(value[tag], sub_type)
                 except Exception as e:
                     errors[str(sub_type)] = str(e)
                     pass
@@ -219,11 +222,14 @@ def to_python_literal(
         except KeyError:
             raise ValueError("Unable to convert link type without a table reference")
 
+        from latch.registry.table import Table
+
         rows = Table(table_id).list()
         for row in rows:
             if row.id == value["sampleId"]:
                 return row
 
+        print(table_id, rows)
         raise ValueError(
             "unable to convert registry link to python - cannot find corresponding row"
             " in linked table"
@@ -322,6 +328,8 @@ def to_registry_literal(
             )
         value = python_literal
     elif primitive == "link":
+        from latch.registry.row import Row
+
         if not isinstance(python_literal, Row):
             raise ValueError("cannot convert non-row python literal to registry link")
         value = {"sampleId": python_literal.id}
