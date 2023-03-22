@@ -4,6 +4,7 @@ A commandline toolchain to define and register serverless workflows with the
 Latch platform.
 """
 
+from latch.account.account import Account
 from latch.functions.messages import message
 from latch.functions.operators import (
     combine,
