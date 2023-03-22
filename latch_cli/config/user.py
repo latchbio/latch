@@ -25,14 +25,18 @@ class _UserConfig:
     def token_path(self):
         if self._token_path is None:
             self._token_path = self.root / "token"
-        self._token_path.touch(exist_ok=True)
+
+        if not self._token_path.exists():
+            self._token_path.touch()
         return self._token_path
 
     @property
     def workspace_path(self):
         if self._workspace_path is None:
             self._workspace_path = self.root / "workspace"
-        self._workspace_path.touch(exist_ok=True)
+
+        if not self._workspace_path.exists():
+            self._workspace_path.touch()
         return self._workspace_path
 
     @property
