@@ -27,16 +27,12 @@ shared_regex = re.compile("^shared(?P<path>\/.*)$")
 
 
 def clean(name: str):
-    try:
-        # https://stackoverflow.com/a/3305731
-        cleaned = re.sub("\W|^(?=\d)", "_", name)
+    # https://stackoverflow.com/a/3305731
+    cleaned = re.sub("\W|^(?=\d)", "_", name)
 
-        if keyword.iskeyword(cleaned):
-            cleaned = f"_{cleaned}"
-        return cleaned
-    except Exception as e:
-        print(name)
-        raise e
+    if keyword.iskeyword(cleaned):
+        cleaned = f"_{cleaned}"
+    return cleaned
 
 
 def to_python_type(
@@ -229,7 +225,6 @@ def to_python_literal(
             if row.id == value["sampleId"]:
                 return row
 
-        print(table_id, rows)
         raise ValueError(
             "unable to convert registry link to python - cannot find corresponding row"
             " in linked table"
