@@ -15,6 +15,12 @@ Types of changes
 -->
 
 # Latch SDK Changelog
+## 2.14.2 - 2023-03-24
+
+### Fixed
+
+* Parameter flow forks should preserve the order of branches
+
 ## 2.14.1 - 2023-03-21
 
 ### Fixed
