@@ -1,4 +1,5 @@
 import asyncio
+import os
 from typing import Any, Dict, Optional
 
 import gql
@@ -13,14 +14,13 @@ def execute(
 ):
     async def helper():
         # todo(ayush): make this understand sdk tokens too
-        token = "f3b0a80f4aa0342d18dc"  # os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
+        token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
         if token is None or token == "":
             raise ValueError(
                 "Unable to find credentials to connect to gql server, aborting"
             )
 
         headers = {"Authorization": f"Latch-Execution-Token {token}"}
-        print(headers)
         transport = AIOHTTPTransport(
             url=config.gql,
             headers=headers,
@@ -28,14 +28,6 @@ def execute(
 
         async with gql.Client(transport=transport) as client:
             ret = await client.execute(gql.gql(document), variables)
-
-        # transport = RequestsHTTPTransport(
-        #     url="http://localhost:5000/graphql",
-        #     headers=headers,
-        # )
-
-        # with gql.Client(transport=transport) as client:
-        #     ret = client.execute(gql.gql(document), variables)
 
         return ret
 
