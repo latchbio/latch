@@ -1,10 +1,8 @@
 from dataclasses import make_dataclass
-from typing import List
-
-from dacite import Config, from_dict
+from typing import Dict, List, Optional, Type
 
 from latch.gql.execute import execute
-from latch.registry.row import Row
+from latch.registry.row import Record
 from latch.registry.utils import (
     clean,
     to_python_literal,
@@ -14,14 +12,13 @@ from latch.registry.utils import (
 
 
 class Table:
-    def __init__(self, table_id: str):
-        self.id = table_id
-        self._name = None
-        self._row_type = None
-        self._columns = None
+    def __init__(self, id: str):
+        self.id = id
+        self._name: Optional[str] = None
+        self._record_type: Type[Record] = None
+        self._columns: Optional[List[Dict[str, Dict]]] = None
 
-    @property
-    def name(self):
+    def get_display_name(self, load_if_missing=False):
         if self._name is not None:
             return self._name
 
@@ -29,19 +26,23 @@ class Table:
             """
             query tableNameQuery ($argTableId: BigInt!) {
                 catalogExperiment(id: $argTableId) {
+                    id
                     displayName
+                    catalogExperimentColumnDefinitionsByExperimentId {
+                        nodes {
+                            key
+                            type
+                        }
+                    }
                 }
             }
             """,
-            variables={
-                "argTableId": self.id,
-            },
+            variables={"argTableId": self.id},
         )["catalogExperiment"]["displayName"]
 
         return self._name
 
-    @property
-    def columns(self):
+    def get_columns(self, load_if_missing=False):
         if self._columns is not None:
             return self._columns
 
@@ -65,13 +66,12 @@ class Table:
 
         return self._columns
 
-    @property
-    def row_type(self):
-        if self._row_type is not None:
-            return self._row_type
+    def get_record_type(self):
+        if self._record_type is not None:
+            return self._record_type
 
         fields = []
-        for column in self.columns:
+        for column in self.get_columns():
             cleaned = clean(column["key"])
             column_db_type = column["type"]
 
@@ -87,14 +87,16 @@ class Table:
             )
 
         return make_dataclass(
-            clean(f"{self.name}_type"),
+            clean(f"{self.get_display_name()}_type"),
             fields,
-            bases=(Row,),
+            bases=(Record,),
             frozen=True,
         )
 
-    def list_rows(self) -> List[Row]:
-        rows = execute(
+    def list_records(self) -> List[Record]:
+        record_type = self.get_record_type()
+
+        records = execute(
             """
             query listRowsQuery($argTableId: BigInt!) {
                 catalogExperiment(id: $argTableId) {
@@ -118,16 +120,16 @@ class Table:
 
         output = []
 
-        for row in rows:
-            row_data = row["catalogSampleColumnDataBySampleId"]["nodes"]
-            values = {"id": row["id"], "name": row["name"]}
+        for record in records:
+            record_data = record["catalogSampleColumnDataBySampleId"]["nodes"]
+            values = {"id": record["id"], "name": record["name"]}
 
             try:
-                for column in self.columns:
+                for column in self.get_columns():
                     key = clean(column["key"])
                     typ = column["type"]
 
-                    for data_point in row_data:
+                    for data_point in record_data:
                         if clean(data_point["key"]) != key:
                             continue
                         values[key] = to_python_literal(
@@ -144,38 +146,30 @@ class Table:
                             )
                         values[key] = None
             except ValueError as e:
-                print(f"row {row['id']} ({row['name']}) is invalid - skipping")
+                print(f"row {record['id']} ({record['name']}) is invalid - skipping")
                 print(e)
                 continue
 
-            output.append(
-                from_dict(
-                    self.row_type,
-                    values,
-                    Config(
-                        check_types=False
-                    ),  # this library is dumb and doesn't understand Optionals
-                )
-            )
+            output.append(record_type(**values))
 
         return output
 
-    def upsert(self, *args: Row):
-        valid_rows: List[Row] = []
-        for row in args:
-            for column in self.columns:
+    def upsert(self, *args: Record):
+        valid_records: List[Record] = []
+        for record in args:
+            for column in self.get_columns():
                 cleaned = clean(column["key"])
-                if not hasattr(row, cleaned):
+                if not hasattr(record, cleaned):
                     print(
-                        f"row {row.name} is not valid for this table's schema, missing"
-                        f" property {cleaned} ({column['key']}) - skipping"
+                        f"row {record.name} is not valid for this table's schema,"
+                        f" missing property {cleaned} ({column['key']}) - skipping"
                     )
                     continue
-            valid_rows.append(row)
+            valid_records.append(record)
 
         names = []
-        for row in valid_rows:
-            names.append(row.name)
+        for record in valid_records:
+            names.append(record.name)
 
         ids = execute(
             """
@@ -194,13 +188,13 @@ class Table:
             },
         )["catalogMultiUpsertSamples"]["bigInts"]
 
-        for column in self.columns:
+        for column in self.get_columns():
             data = []
 
-            for row in valid_rows:
+            for record in valid_records:
                 data.append(
                     to_registry_literal(
-                        getattr(row, clean(column["key"])),
+                        getattr(record, clean(column["key"])),
                         column["type"]["type"],
                     )
                 )

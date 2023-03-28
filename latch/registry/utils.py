@@ -52,7 +52,7 @@ def to_python_type(
             from latch.registry.table import Table
 
             id = registry_type["experimentId"]
-            ret = Table(id).row_type
+            ret = Table(id).get_record_type()
         elif primitive == "enum":
             ret = Enum(column_name or "Enum", registry_type["members"])
         elif primitive == "null":
@@ -210,7 +210,7 @@ def to_python_literal(
 
         from latch.registry.table import Table
 
-        rows = Table(table_id).list_rows()
+        rows = Table(table_id).list_records()
         for row in rows:
             if row.id == value["sampleId"]:
                 return row
@@ -313,9 +313,9 @@ def to_registry_literal(
             )
         value = python_literal
     elif primitive == "link":
-        from latch.registry.row import Row
+        from latch.registry.row import Record
 
-        if not isinstance(python_literal, Row):
+        if not isinstance(python_literal, Record):
             raise ValueError("cannot convert non-row python literal to registry link")
         value = {"sampleId": python_literal.id}
     elif primitive == "blob":
