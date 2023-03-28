@@ -1,11 +1,10 @@
-import json
-from dataclasses import fields, make_dataclass
+from dataclasses import make_dataclass
 from typing import List
 
 from dacite import Config, from_dict
 
-import latch.gql as gql
-from latch.registry import Project, Row
+from latch.gql.execute import execute
+from latch.registry.row import Row
 from latch.registry.utils import (
     clean,
     to_python_literal,
@@ -21,41 +20,12 @@ class Table:
         self._row_type = None
         self._columns = None
 
-    @classmethod
-    def from_name(
-        cls,
-        project: Project,
-        table_name: str,
-    ):
-        data = gql.execute(
-            document="""
-                query tableInfoQuery ($argProjectId: BigInt!) {
-                    catalogExperiments(condition: {
-                        projectId: $argProjectId,
-                        removed: false
-                    }) {
-                        nodes {
-                            id,
-                            displayName
-                        }
-                    }
-                }
-            """,
-            variables={"argProjectId": project.id},
-        )["catalogExperiments"]["nodes"]
-
-        for experiment in data:
-            if experiment["displayName"] == table_name:
-                return cls(table_id=experiment["id"])
-
-        raise ValueError(f"unable to find table {table_name} in project {project.name}")
-
     @property
     def name(self):
         if self._name is not None:
             return self._name
 
-        self._name = gql.execute(
+        self._name = execute(
             """
             query tableNameQuery ($argTableId: BigInt!) {
                 catalogExperiment(id: $argTableId) {
@@ -75,7 +45,7 @@ class Table:
         if self._columns is not None:
             return self._columns
 
-        self._columns = gql.execute(
+        self._columns = execute(
             """
             query tableColumnsQuery ($argTableId: BigInt!) {
                 catalogExperiment(id: $argTableId) {
@@ -123,8 +93,8 @@ class Table:
             frozen=True,
         )
 
-    def list(self) -> List[Row]:
-        rows = gql.execute(
+    def list_rows(self) -> List[Row]:
+        rows = execute(
             """
             query listRowsQuery($argTableId: BigInt!) {
                 catalogExperiment(id: $argTableId) {
@@ -207,7 +177,7 @@ class Table:
         for row in valid_rows:
             names.append(row.name)
 
-        ids = gql.execute(
+        ids = execute(
             """
             mutation CatalogMultiUpsertSamples($tableId: BigInt!, $names: [String!]!) {
                 catalogMultiUpsertSamples(
@@ -235,7 +205,7 @@ class Table:
                     )
                 )
 
-            gql.execute(
+            execute(
                 """
                 mutation CatalogMultiUpsertColumnDatum(
                     $data: [JSON]!

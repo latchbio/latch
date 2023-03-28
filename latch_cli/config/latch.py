@@ -11,6 +11,7 @@ from typing import Type, TypeVar
 DOMAIN = os.environ.get("LATCH_SDK_DOMAIN", "latch.bio")
 CONSOLE_URL = f"https://console.{DOMAIN}"
 NUCLEUS_URL = f"https://nucleus.{DOMAIN}"
+VACUOLE_URL = f"https://vacuole.{DOMAIN}"
 
 T = TypeVar("T")
 
@@ -79,13 +80,16 @@ class _API:
 class _ConsoleRoutes:
     developer: str = f"{CONSOLE_URL}/settings/developer"
 
+
 @dataclass
 class _LatchConfig:
     api: _API
+    gql: str = f"{VACUOLE_URL}/graphql"
     console_routes: _ConsoleRoutes = _ConsoleRoutes()
     dkr_repo: str = "812206152185.dkr.ecr.us-west-2.amazonaws.com"
     console_url: str = CONSOLE_URL
     nucleus_url: str = NUCLEUS_URL
+    vacuole_url: str = VACUOLE_URL
 
 
 def build_endpoints(x: Type[T] = _API) -> T:

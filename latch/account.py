@@ -1,39 +1,36 @@
-from typing import Optional
+from typing import List, Optional
 
 from latch.gql.execute import execute
 from latch.registry.filter import NumberFilter, StringFilter
-from latch.registry.table import Table
+from latch.registry.project import Project
 
 
-class Project:
-    def __init__(self, id: str):
+class Account:
+    def __init__(
+        self,
+        id: str,
+    ):
         self.id = id
 
-        self._display_name = None
-
-    def get_display_name(self):
-        if self._display_name is not None:
-            return self._display_name
-
-        self._display_name = execute(
+    @classmethod
+    def current(cls):
+        account_id = execute(
             document="""
-                query projectNameQuery ($argProjectId: BigInt!) {
-                    catalogProject(id: $argProjectId) {
+                query accountInfoQuery {
+                    accountInfoCurrent {
                         id
-                        displayName
                     }
                 }
             """,
-            variables={"argProjectId": self.id},
-        )["catalogProject"]["displayName"]
+        )["accountInfoCurrent"]["id"]
 
-        return self._display_name
+        return cls(id=account_id)
 
-    def list_tables(
+    def list_projects(
         self,
         id: Optional[NumberFilter] = None,
         display_name: Optional[StringFilter] = None,
-    ):
+    ) -> List[Project]:
         filters = []
         if id is not None:
             filters.append(f"id: {id}")
@@ -43,10 +40,10 @@ class Project:
 
         if len(filter_str) == 0:
             query = f"""
-                query ExperimentsQuery ($argProjectId: BigInt!) {{
-                    catalogExperiments (
+                query ProjectsQuery ($argOwnerId: BigInt!) {{
+                    catalogProjects (
                         condition: {{
-                            projectId: $argProjectId
+                            ownerId: $argOwnerId
                             removed: false
                         }}
                     ) {{
@@ -59,10 +56,10 @@ class Project:
             """
         else:
             query = f"""
-                query ExperimentsQuery ($argProjectId: BigInt!) {{
-                    catalogExperiments (
+                query ProjectsQuery ($argOwnerId: BigInt!) {{
+                    catalogProjects (
                         condition: {{
-                            projectId: $argProjectId
+                            ownerId: $argOwnerId
                             removed: false
                         }}
                         filter: {{
@@ -77,14 +74,6 @@ class Project:
                 }}
             """
 
-        data = execute(query, {"argProjectId": self.id})
+        data = execute(query, {"argOwnerId": self.id})
 
-        return [Table(node["id"]) for node in data["catalogExperiments"]["nodes"]]
-
-    def __repr__(self):
-        return self.__str__()
-
-    def __str__(self):
-        if self._display_name is not None:
-            return f"Project(display_name={self._display_name})"
-        return f"Project(id={self.id})"
+        return [Project(node["id"]) for node in data["catalogProjects"]["nodes"]]

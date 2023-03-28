@@ -1,21 +1,11 @@
 import json
 import keyword
 import re
-from dataclasses import fields, is_dataclass
-from enum import Enum, EnumMeta
-from typing import (
-    Annotated,
-    Dict,
-    List,
-    Optional,
-    Type,
-    TypeVar,
-    Union,
-    get_args,
-    get_origin,
-)
+from dataclasses import dataclass
+from enum import Enum
+from typing import Annotated, Dict, List, Optional, TypeVar, Union
 
-import latch.gql as gql
+from latch.gql.execute import execute
 from latch.types import LatchDir, LatchFile
 
 T = TypeVar("T")
@@ -59,7 +49,7 @@ def to_python_type(
                         ret = LatchDir
             ret = LatchFile
         elif primitive == "link":
-            from latch.registry import Table
+            from latch.registry.table import Table
 
             id = registry_type["experimentId"]
             ret = Table(id).row_type
@@ -172,7 +162,7 @@ def to_python_literal(
         if not (type(value) is dict and ("ldataNodeId" in value)):
             raise ValueError("cannot convert non-blob value to blob type")
 
-        path_data = gql.execute(
+        path_data = execute(
             """
             query nodePath($nodeId: BigInt!) {
                 ldataOwner(argNodeId: $nodeId)
@@ -220,7 +210,7 @@ def to_python_literal(
 
         from latch.registry.table import Table
 
-        rows = Table(table_id).list()
+        rows = Table(table_id).list_rows()
         for row in rows:
             if row.id == value["sampleId"]:
                 return row
@@ -335,7 +325,7 @@ def to_registry_literal(
         ):
             raise ValueError("cannot convert non-blob python literal to registry blob")
 
-        node_id = gql.execute(
+        node_id = execute(
             """
             query nodeIdQ($argPath: String!) {
                 ldataResolvePath(
