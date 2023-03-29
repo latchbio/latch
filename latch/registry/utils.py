@@ -1,7 +1,6 @@
 import json
 import keyword
 import re
-from dataclasses import dataclass
 from enum import Enum
 from typing import Annotated, Dict, List, Optional, TypeVar, Union
 
@@ -10,15 +9,16 @@ from latch.types import LatchDir, LatchFile
 
 T = TypeVar("T")
 
+clean_regex = re.compile("\W|^(?=\d)", re.UNICODE)
+
 account_root_regex = re.compile("^account_root\/(?P<root>[^/]+)(?P<path>\/.*)$")
 mount_regex = re.compile("^mount\/(?P<mount>[^/]+)(?P<path>\/.*)$")
-
 shared_regex = re.compile("^shared(?P<path>\/.*)$")
 
 
 def clean(name: str):
     # https://stackoverflow.com/a/3305731
-    cleaned = re.sub("\W|^(?=\d)", "_", name)
+    cleaned = clean_regex.sub("_", name)
 
     if keyword.iskeyword(cleaned):
         cleaned = f"_{cleaned}"
@@ -26,13 +26,9 @@ def clean(name: str):
 
 
 def to_python_type(
-    registry_type: Dict,
-    column_name: Optional[str] = None,
+    registry_type: Dict[str, Dict],
     allow_empty: bool = False,
 ):
-    if column_name is not None:
-        column_name = clean(column_name)
-
     ret = None
     if "primitive" in registry_type:
         primitive = registry_type["primitive"]
@@ -49,12 +45,11 @@ def to_python_type(
                         ret = LatchDir
             ret = LatchFile
         elif primitive == "link":
-            from latch.registry.table import Table
+            from latch.registry.record import Record
 
-            id = registry_type["experimentId"]
-            ret = Table(id).get_record_type()
+            ret = Record
         elif primitive == "enum":
-            ret = Enum(column_name or "Enum", registry_type["members"])
+            ret = Enum("Enum", registry_type["members"])
         elif primitive == "null":
             ret = type(None)
         elif primitive == "boolean":
@@ -63,7 +58,7 @@ def to_python_type(
             raise ValueError(f"invalid primitive type: {registry_type['primitive']}")
 
     elif "array" in registry_type:
-        ret = List[to_python_type(registry_type["array"], column_name, False)]
+        ret = List[to_python_type(registry_type["array"], False)]
 
     elif "union" in registry_type:
         variants = []
@@ -72,7 +67,6 @@ def to_python_type(
                 Annotated[
                     to_python_type(
                         variant,
-                        f"{column_name}_{key}",
                         False,
                     ),
                     key,
@@ -210,10 +204,12 @@ def to_python_literal(
 
         from latch.registry.table import Table
 
-        rows = Table(table_id).list_records()
-        for row in rows:
-            if row.id == value["sampleId"]:
-                return row
+        tbl = Table(table_id)
+
+        for page in tbl.list_records():
+            for record in page["records"]:
+                if record.id == value["sampleId"]:
+                    return record
 
         raise ValueError(
             "unable to convert registry link to python - cannot find corresponding row"
@@ -313,10 +309,12 @@ def to_registry_literal(
             )
         value = python_literal
     elif primitive == "link":
-        from latch.registry.row import Record
+        from latch.registry.record import Record
 
         if not isinstance(python_literal, Record):
-            raise ValueError("cannot convert non-row python literal to registry link")
+            raise ValueError(
+                "cannot convert non-record python literal to registry link"
+            )
         value = {"sampleId": python_literal.id}
     elif primitive == "blob":
         if not (
