@@ -15,6 +15,12 @@ Types of changes
 -->
 
 # Latch SDK Changelog
+## 2.15.0 - 2023-03-29
+
+### Added
+
+* Verified MAFFT alignment workflow stub
+
 ## 2.14.2 - 2023-03-24
 
 ### Fixed
