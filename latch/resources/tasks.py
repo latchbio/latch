@@ -293,12 +293,15 @@ def custom_task(cpu: int, memory: int):
         limits={"cpu": str(cpu), "memory": f"{memory}Gi"},
     )
     primary_container.resources = resources
-    if cpu < 48 and memory < 128:
+    if cpu < 32 and memory < 128:
         task_config = Pod(
             annotations={"io.kubernetes.cri-o.userns-mode": "auto:size=65536"},
             pod_spec=V1PodSpec(
                 runtime_class_name="sysbox-runc",
                 containers=[primary_container],
+                tolerations=[
+                    V1Toleration(effect="NoSchedule", key="ng", value="cpu-32-spot")
+                ],
             ),
             primary_container_name="primary",
         )

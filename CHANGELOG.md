@@ -15,6 +15,13 @@ Types of changes
 -->
 
 # Latch SDK Changelog
+## 2.15.1 - 2023-03-30
+
+### Fixed
+
+* Custom tasks with less than 32 cores receiving incorrect toleration
+
+# Latch SDK Changelog
 ## 2.15.0 - 2023-03-29
 
 ### Added
