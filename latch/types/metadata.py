@@ -436,6 +436,10 @@ class LatchMetadata:
             A SPDX identifier
         parameters:
             A dictionary mapping parameter names (strings) to `LatchParameter` objects
+        no_standard_bulk_execution:
+            Disable the standard CSV-based bulk execution. Intended for workflows that
+            support an aleternative way of processing bulk data e.g. using a samplesheet
+            parameter
     """
 
     display_name: str

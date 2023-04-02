@@ -15,7 +15,13 @@ Types of changes
 -->
 
 # Latch SDK Changelog
-## 2.15.2 - 2023-04-01
+## 2.17.0 - 2023-04-01
+
+### Added
+
+- Option to disable default bulk execution mechanism when an alternative (e.g. using a samplesheet parameter) is supported by the workflow itself
+
+## 2.16.0 - 2023-04-01
 
 ### Added
 
