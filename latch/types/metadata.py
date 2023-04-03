@@ -436,6 +436,10 @@ class LatchMetadata:
             A SPDX identifier
         parameters:
             A dictionary mapping parameter names (strings) to `LatchParameter` objects
+        no_standard_bulk_execution:
+            Disable the standard CSV-based bulk execution. Intended for workflows that
+            support an aleternative way of processing bulk data e.g. using a samplesheet
+            parameter
     """
 
     display_name: str
@@ -449,6 +453,9 @@ class LatchMetadata:
     tags: List[str] = field(default_factory=list)
     flow: List[FlowBase] = field(default_factory=list)
 
+    no_standard_bulk_execution: bool = False
+    _non_standard: Dict[str, object] = field(default_factory=dict)
+
     @property
     def dict(self):
         metadata_dict = asdict(self)
@@ -459,6 +466,8 @@ class LatchMetadata:
         # flows override all other rendering, so disable them entirely if not provided
         if len(self.flow) == 0:
             del metadata_dict["flow"]
+
+        metadata_dict |= self._non_standard
 
         return {"__metadata__": metadata_dict}
 
