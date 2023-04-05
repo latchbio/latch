@@ -1,26 +1,30 @@
+from abc import abstractmethod
 from dataclasses import dataclass
-from typing import List
+from typing import List, TypeVar, Union
+
+import graphql.language as l
+
+GQLPrimitive = Union[str, int, float, bool, None]
+T = TypeVar("T", bound=GQLPrimitive)
+
+# todo(ayush): completely rewrite this
 
 
-@dataclass(frozen=True)
 class Filter:
-    value: str
-
-    def name(self):
-        ...
-
-    def __str__(self):
-        return f"{{ {self.name()}: {self.value} }}"
+    @abstractmethod
+    def serialize(self):
+        raise NotImplementedError
 
 
 @dataclass(frozen=True)
 class StringFilter(Filter):
+    value: str
     case_sensitive: bool = True
 
 
 @dataclass(frozen=True)
 class NumberFilter(Filter):
-    ...
+    value: float
 
 
 @dataclass(frozen=True)
@@ -47,8 +51,6 @@ class NotEqual(StringFilter, NumberFilter):
 class In(StringFilter, NumberFilter):
     """Return results included in the provided list of values"""
 
-    value: List[str]
-
     def name(self):
         if hasattr(self, "case_sensitive") and not self.case_sensitive:
             return "inInsensitive"
@@ -58,8 +60,6 @@ class In(StringFilter, NumberFilter):
 @dataclass(frozen=True)
 class NotIn(StringFilter, NumberFilter):
     """Return results not included in the provided list of values"""
-
-    value: List[str]
 
     def name(self):
         if hasattr(self, "case_sensitive") and not self.case_sensitive:

@@ -1,41 +1,48 @@
 import asyncio
-from dataclasses import dataclass
+import json
+from abc import abstractmethod
+from dataclasses import dataclass, field
 from typing import Any, Dict, Iterator, List, Optional, Type, TypedDict
 
 import gql
+import graphql.language as l
+import graphql.type as t
+import graphql.utilities as u
 
 from latch.gql.execute import execute, get_transport
 from latch.registry.record import Record
+from latch.registry.types import RegistryDBValue, registry_empty_cell
 from latch.registry.utils import (
-    clean,
+    RegistryTransformerException,
     to_python_literal,
-    to_python_type,
     to_registry_literal,
 )
 
 
-class ListRecordsOutputType(TypedDict):
+@dataclass(frozen=True)
+class ListRecordsOutput:
     records: List[Record]
     errors: List[Exception]
 
 
+@dataclass
 class Table:
-    def __init__(self, id: str):
-        self.id = id
-        self._name: Optional[str] = None
-        self._record_type: Type[Record] = None
+    id: str
+
+    def __post_init__(self):
+        self._display_name: Optional[str] = None
         self._columns: Optional[List[Dict[str, Dict]]] = None
-        self._info: Optional[Dict[str, Dict]] = None
+        self._data: Optional[Dict[str, Dict]] = None
 
     def load(self):
-        self.get_display_name(load_if_missing=True)
-        self.get_columns(load_if_missing=True)
+        self._load()
 
-    def _get_info(self):
-        if self._info is not None:
-            return self._info
+    def _load(self):
+        if self._data is not None:
+            return self._data
 
-        self._info = execute(
+        # todo(ayush): paginate column defs too?
+        self._data = execute(
             """
             query tableQuery ($argTableId: BigInt!) {
                 catalogExperiment(id: $argTableId) {
@@ -47,56 +54,46 @@ class Table:
                             type
                         }
                     }
-                    catalogSamplesByExperimentId(condition: { removed: false }) {
-                        nodes {
-                            id
-                            name
-                            catalogSampleColumnDataBySampleId {
-                                nodes {
-                                    data
-                                    key
-                                }
-                            }
-                        }
-                    }
                 }
             }
             """,
             variables={"argTableId": self.id},
         )
+        self._display_name = self._data["catalogExperiment"]["displayName"]
+        self._columns = self._data["catalogExperiment"][
+            "catalogExperimentColumnDefinitionsByExperimentId"
+        ]["nodes"]
 
-        return self._info
+        return self._data
 
     def get_display_name(self, load_if_missing=False):
-        if not load_if_missing or self._name is not None:
-            return self._name
+        if not load_if_missing or self._display_name is not None:
+            return self._display_name
 
-        self._name = self._get_info()["catalogExperiment"]["displayName"]
+        self._load()
 
-        return self._name
+        return self._display_name
 
     def get_columns(self, load_if_missing=False):
         if not load_if_missing or self._columns is not None:
             return self._columns
 
-        self._columns = self._get_info()["catalogExperiment"][
-            "catalogExperimentColumnDefinitionsByExperimentId"
-        ]["nodes"]
+        self._load()
 
         return self._columns
 
-    def list_records(self) -> Iterator[ListRecordsOutputType]:
+    def list_records(self, *ignored_args, page_size=100) -> Iterator[ListRecordsOutput]:
         has_next_page = True
         end_cursor = None
 
         while has_next_page:
             data = execute(
                 """
-                query tableQuery($argTableId: BigInt!, $argAfter: Cursor) {
+                query tableQuery($argTableId: BigInt!, $argAfter: Cursor, $argPageSize: Int) {
                     catalogExperiment(id: $argTableId) {
                         catalogSamplesByExperimentId(
                             condition: { removed: false }
-                            first: 50
+                            first: $argPageSize
                             after: $argAfter
                         ) {
                             nodes {
@@ -117,7 +114,11 @@ class Table:
                     }
                 }
                 """,
-                {"argTableId": self.id, "argAfter": end_cursor},
+                {
+                    "argTableId": self.id,
+                    "argAfter": end_cursor,
+                    "argPageSize": page_size,
+                },
             )["catalogExperiment"]["catalogSamplesByExperimentId"]
 
             records = data["nodes"]
@@ -128,31 +129,33 @@ class Table:
             errors: List[Exception] = []
 
             for record in records:
-                record_data = record["catalogSampleColumnDataBySampleId"]["nodes"]
+                record_data = {
+                    node["key"]: node["data"]
+                    for node in record["catalogSampleColumnDataBySampleId"]["nodes"]
+                }
 
-                values = {}
+                values: Dict[str, object] = {}
+                valid = True
 
                 try:
                     for column in self.get_columns(load_if_missing=True):
                         key = column["key"]
                         typ = column["type"]
 
-                        for data_point in record_data:
-                            if data_point["key"] != key:
-                                continue
+                        data_point = record_data.get(key)
+                        if data_point is not None:
                             values[key] = to_python_literal(
-                                data_point["data"],
+                                data_point,
                                 typ["type"],
                             )
-                            break
 
                         if key not in values:
                             if not typ["allowEmpty"]:
-                                raise ValueError(
-                                    f"no value provided for required column {key}"
-                                )
-                            values[key] = None
-                except ValueError as e:
+                                valid = False
+                            values[key] = registry_empty_cell
+                except RegistryTransformerException as e:
+                    # todo(ayush): raise immediately and prompt for confirmation
+                    # if the user wants the rest of the page to be processed?
                     errors.append(
                         ValueError(
                             f"record {record['id']} ({record['name']}) is invalid: {e}"
@@ -164,90 +167,99 @@ class Table:
                     Record(
                         id=record["id"],
                         name=record["name"],
-                        _value_dict=values,
+                        _values=values,
+                        _valid=valid,
                     )
                 )
 
-            yield {"records": output, "errors": errors}
+            yield ListRecordsOutput(records=output, errors=errors)
 
     def update(self):
         return TableUpdater(self)
 
 
-@dataclass
+@dataclass(frozen=True)
 class TableUpdate:
     table: Table
 
-    async def execute(self, session: gql.Client):
-        ...
+    @abstractmethod
+    async def get_document(self) -> l.DocumentNode:
+        raise NotImplementedError
 
 
 # todo(ayush): "DeleteRecordUpdate", "UpsertColumnUpdate", "DeleteColumnUpdate"
-@dataclass
+@dataclass(frozen=True)
 class UpsertRecordUpdate(TableUpdate):
     name: str
-    data: Dict[str, Any]
+    data: Dict[str, object]
+    op_index: int
 
-    async def execute(self, session: gql.Client):
-        record_id = await session.execute(
-            gql.gql(
-                """
-                mutation CatalogMultiUpsertSamples($tableId: BigInt!, $names: [String!]!) {
-                    catalogMultiUpsertSamples(
-                        input: { argExperimentId: $tableId, argNames: $names }
-                    ) {
-                        bigInts
-                        clientMutationId
-                    }
-                }
-                """
-            ),
-            {
-                "tableId": self.table.id,
-                "names": [self.name],
-            },
-        )["catalogMultiUpsertSamples"]["bigInts"][0]
+    def get_document(self) -> str:
+        errors: Dict[str, str] = {}
 
-        for column in self.table.get_columns():
-            literal = None
-            if column["key"] not in self.data:
-                if not column["type"]["allowEmpty"]:
-                    raise ValueError(
-                        f"unable to upsert record {self.name} as column"
-                        f" {column['key']} is missing a value"
-                    )
-            else:
-                literal = to_registry_literal(
-                    self.data[column["key"]],
-                    column["type"]["type"],
+        keys: List[str] = []
+        registry_literal_strings: List[str] = []
+
+        columns = self.table.get_columns(load_if_missing=True)
+        column_dict = {column["key"]: column["type"] for column in columns}
+
+        for key, python_literal in self.data.items():
+            try:
+                registry_type = column_dict.get(key)
+                registry_literal = to_registry_literal(
+                    python_literal, registry_type["type"]
                 )
+            except RegistryTransformerException as e:
+                errors[key] = f"unable to generate registry literal for {key}: {e}"
+                continue
 
-            await session.execute(
-                """
-                mutation CatalogMultiUpsertColumnDatum(
-                    $data: [JSON]!
-                    $key: String!
-                    $sampleIds: [BigInt!]!
-                ) {
-                    catalogMultiUpsertColumnSampleData(
-                        input: { argSampleIds: $sampleIds, argKey: $key, argData: $data }
-                    ) {
-                        clientMutationId
-                    }
-                }
-                """,
-                {
-                    "data": [literal],
-                    "key": column["key"],
-                    "sampleIds": [record_id],
-                },
-            )
+            keys.append(key)
+            registry_literal_strings.append(json.dumps(registry_literal))
+
+        arg_experiment_id = l.print_ast(
+            u.ast_from_value(self.table.id, t.GraphQLString)
+        )
+        arg_name = l.print_ast(u.ast_from_value(self.name, t.GraphQLString))
+        arg_keys = l.print_ast(u.ast_from_value(keys, t.GraphQLList(t.GraphQLString)))
+        arg_data = l.print_ast(
+            u.ast_from_value(registry_literal_strings, t.GraphQLList(t.GraphQLString))
+        )
+
+        return f"""
+        m{self.op_index}: catalogUpsertSampleWithData(
+            input: {{
+                argExperimentId: {arg_experiment_id}
+                argName: {arg_name}
+                argKeys: {arg_keys}
+                argData: {arg_data}
+            }}
+        ) {{
+            clientMutationId
+        }}
+        """
+
+        return gql.gql(
+            f"""
+            mutation UpsertSampleWithData {{
+                m{self.op_index}: catalogUpsertSampleWithData(
+                    input: {{
+                        argExperimentId: {arg_experiment_id}
+                        argName: {arg_name}
+                        argKeys: {arg_keys}
+                        argData: {arg_data}
+                    }}
+                ) {{
+                    clientMutationId
+                }}
+            }}
+            """
+        )
 
 
+@dataclass(frozen=True)
 class TableUpdater:
-    def __init__(self, table: Table):
-        self.table = table
-        self.updates: List[TableUpdate] = []
+    table: Table
+    _updates: List[TableUpdate] = field(default_factory=list)
 
     def __enter__(self):
         return self
@@ -258,18 +270,28 @@ class TableUpdater:
         self.commit()
 
     def upsert_record(self, record_name: str, column_data: Dict[str, Any]):
-        self.updates.append(
+        self._updates.append(
             UpsertRecordUpdate(
                 self.table,
                 record_name,
                 column_data,
+                len(self._updates),
             )
         )
 
     def commit(self):
-        async def helper():
-            async with gql.Client(transport=get_transport()) as session:
-                for update in self.updates:
-                    await update.execute(session)
+        documents: List[str] = []
 
-        asyncio.run(helper())
+        while len(self._updates) > 0:
+            update = self._updates.pop()
+            documents.append(update.get_document())
+
+        documents.reverse()
+
+        batched_document = f"""
+            mutation UpsertSampleWithData {{
+                {"".join(documents)}
+            }}
+        """
+
+        execute(batched_document)
