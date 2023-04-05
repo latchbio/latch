@@ -467,7 +467,8 @@ class LatchMetadata:
         if len(self.flow) == 0:
             del metadata_dict["flow"]
 
-        metadata_dict |= self._non_standard
+        for key in self._non_standard:
+            metadata_dict[key] = self._non_standard[key]
 
         return {"__metadata__": metadata_dict}
 

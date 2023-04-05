@@ -15,6 +15,14 @@ Types of changes
 -->
 
 # Latch SDK Changelog
+
+## 2.17.1 - 2023-04-05
+
+### Fixed
+
+- Switched a dictionary union from `|=` notation to a manual for-loop to
+  maintain support for Python 3.8.
+
 ## 2.17.0 - 2023-04-01
 
 ### Added
