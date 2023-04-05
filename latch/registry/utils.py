@@ -7,7 +7,15 @@ from typing import Annotated, Dict, List, Optional, Type, TypeVar, Union
 from dateutil.parser import parse
 
 from latch.gql.execute import execute
-from latch.registry.types import EmptyCell, InvalidValue, RegistryDBValue, RegistryType
+from latch.registry.types import (
+    EmptyCell,
+    InvalidValue,
+    RegistryDBValue,
+    RegistryPrimitiveBlobValue,
+    RegistryPrimitiveSimpleType,
+    RegistryPrimitiveType,
+    RegistryType,
+)
 from latch.types import LatchDir, LatchFile
 
 T = TypeVar("T")
@@ -41,11 +49,7 @@ def to_python_type(
         elif primitive == "number":
             ret = float
         elif primitive == "blob":
-            if "metadata" in registry_type:
-                if "nodeType" in registry_type["metadata"]:
-                    if registry_type["metadata"]["nodeType"] == "dir":
-                        ret = LatchDir
-            ret = LatchFile
+            ret = get_blob_nodetype(registry_type)
         elif primitive == "link":
             from latch.registry.record import Record
 
@@ -146,13 +150,7 @@ def to_python_literal(
         return to_python_type(registry_type)[value]
 
     if primitive == "blob":
-        typ = LatchFile
-        if (
-            "metadata" in registry_type
-            and "nodeType" in registry_type["metadata"]
-            and registry_type["metadata"]["nodeType"] == "dir"
-        ):
-            typ = LatchDir
+        typ = get_blob_nodetype(registry_type)
 
         if type(value) is not dict or "ldataNodeId" not in value:
             raise RegistryTransformerException(
@@ -406,3 +404,20 @@ def to_registry_literal(
         raise RegistryTransformerException(f"malformed registry type: {registry_type}")
 
     return {"value": value, "valid": True}
+
+
+def get_blob_nodetype(
+    registry_type: RegistryType,
+) -> Union[Type[LatchFile], Type[LatchDir]]:
+    if "primitive" not in registry_type or registry_type["primitive"] != "blob":
+        raise RegistryTransformerException(
+            f"cannot extract blob nodetype from non-blob type"
+        )
+
+    if (
+        "metadata" in registry_type
+        and "nodeType" in registry_type["metadata"]
+        and registry_type["metadata"]["nodeType"] == "dir"
+    ):
+        return LatchDir
+    return LatchFile

@@ -87,9 +87,12 @@ class Table:
         end_cursor = None
 
         while has_next_page:
+            # todo(ayush): switch this to a paginated ver of
+            # app_public.catalog_experiment_all_samples to get around RLS
+            # performance issues
             data = execute(
                 """
-                query tableQuery($argTableId: BigInt!, $argAfter: Cursor, $argPageSize: Int) {
+                query TableQuery($argTableId: BigInt!, $argAfter: Cursor, $argPageSize: Int) {
                     catalogExperiment(id: $argTableId) {
                         catalogSamplesByExperimentId(
                             condition: { removed: false }
@@ -237,23 +240,6 @@ class UpsertRecordUpdate(TableUpdate):
             clientMutationId
         }}
         """
-
-        return gql.gql(
-            f"""
-            mutation UpsertSampleWithData {{
-                m{self.op_index}: catalogUpsertSampleWithData(
-                    input: {{
-                        argExperimentId: {arg_experiment_id}
-                        argName: {arg_name}
-                        argKeys: {arg_keys}
-                        argData: {arg_data}
-                    }}
-                ) {{
-                    clientMutationId
-                }}
-            }}
-            """
-        )
 
 
 @dataclass(frozen=True)
