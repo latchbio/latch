@@ -1,21 +1,15 @@
-import asyncio
 import json
 from abc import abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterator, List, Optional, Type, TypedDict
+from typing import Any, Dict, Iterator, List, Optional
 
-import gql
 import graphql.language as l
 import graphql.type as t
 import graphql.utilities as u
 
-from latch.gql.execute import execute, get_transport
+from latch.gql.execute import execute
 from latch.registry.record import Record
-from latch.registry.types import (
-    RegistryDBValue,
-    RegistryInvalidValue,
-    registry_empty_cell,
-)
+from latch.registry.types import InvalidValue, registry_empty_cell
 from latch.registry.utils import (
     RegistryTransformerException,
     to_python_literal,
@@ -147,7 +141,7 @@ class Table:
                                 typ["type"],
                             )
 
-                            if isinstance(values[key], RegistryInvalidValue):
+                            if isinstance(values[key], InvalidValue):
                                 valid = False
 
                         if key not in values:

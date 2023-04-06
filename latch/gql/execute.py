@@ -33,12 +33,10 @@ def get_transport() -> AIOHTTPTransport:
             "Unable to find credentials to connect to gql server, aborting"
         )
 
-    _transport = AIOHTTPTransport(
+    return AIOHTTPTransport(
         url=config.gql,
         headers={"Authorization": auth_header},
     )
-
-    return _transport
 
 
 def execute(
