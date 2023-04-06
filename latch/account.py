@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from functools import cache
-from typing import List, Optional
+from typing import List, Optional, TypedDict
 
 import gql
 
@@ -8,16 +8,20 @@ from latch.gql.execute import execute
 from latch.registry.project import Project
 
 
+class _CatalogProjectNode(TypedDict):
+    id: str
+    displayName: str
+
+
 @dataclass
-class _AccountCache:
-    # todo(maximsmol): gql type generation
-    catalogProjects: Optional[List[object]] = None
+class _Cache:
+    catalog_projects: Optional[List[_CatalogProjectNode]] = None
 
 
 @dataclass(frozen=True)
 class Account:
-    _cache: _AccountCache = field(
-        default_factory=lambda: _AccountCache(),
+    _cache: _Cache = field(
+        default_factory=lambda: _Cache(),
         init=False,
         repr=False,
         hash=False,
@@ -46,10 +50,10 @@ class Account:
     def load(self):
         query = gql.gql(
             """
-            query ProjectsQuery ($argOwnerId: BigInt!) {
+            query ProjectsQuery($ownerId: BigInt!) {
                 catalogProjects (
                     condition: {
-                        ownerId: $argOwnerId
+                        ownerId: $ownerId
                         removed: false
                     }
                 ) {
@@ -61,21 +65,27 @@ class Account:
             }
             """
         )
-        data = execute(query, {"argOwnerId": self.id})
+        data = execute(query, {"ownerId": self.id})
 
-        self._cache.catalogProjects = data["catalogProjects"]["nodes"]
+        self._cache.catalog_projects = data["catalogProjects"]["nodes"]
 
     def list_projects_ext(
         self, *, load_if_missing: bool = False
     ) -> Optional[List[Project]]:
-        if self._cache.catalogProjects is None and load_if_missing:
+        if self._cache.catalog_projects is None and load_if_missing:
             self.load()
 
-        xs = self._cache.catalogProjects
+        xs = self._cache.catalog_projects
         if xs is None:
             return None
 
-        return [Project(x["id"]) for x in xs]
+        res: List[Project] = []
+        for x in xs:
+            cur = Project(x["id"])
+            cur._cache.display_name = x["displayName"]
+            res.append(cur)
+
+        return res
 
     def list_projects(self) -> List[Project]:
         res = self.list_projects_ext(load_if_missing=True)
