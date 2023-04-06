@@ -18,3 +18,5 @@ websockets==10.3
 prompt-toolkit==3.0.33
 asyncssh==2.12.0
 watchfiles==0.18.1
+gql==3.4.0
+aiohttp==3.8.4
