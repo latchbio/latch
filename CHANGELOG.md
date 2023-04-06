@@ -15,6 +15,44 @@ Types of changes
 -->
 
 # Latch SDK Changelog
+
+## 2.17.1 - 2023-04-05
+
+### Fixed
+
+- Switched a dictionary union from `|=` notation to a manual for-loop to
+  maintain support for Python 3.8.
+
+## 2.17.0 - 2023-04-01
+
+### Added
+
+- Option to disable default bulk execution mechanism when an alternative (e.g. using a samplesheet parameter) is supported by the workflow itself
+
+## 2.16.0 - 2023-04-01
+
+### Added
+
+- Verified Trim Galore adapter trimming workflow stub
+
+## 2.15.1 - 2023-03-30
+
+### Fixed
+
+* Custom tasks with less than 32 cores receiving incorrect toleration
+
+## 2.15.0 - 2023-03-29
+
+### Added
+
+* Verified MAFFT alignment workflow stub
+
+## 2.14.2 - 2023-03-24
+
+### Fixed
+
+* Parameter flow forks should preserve the order of branches
+
 ## 2.14.1 - 2023-03-21
 
 ### Fixed
