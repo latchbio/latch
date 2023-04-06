@@ -8,6 +8,7 @@ from gql.transport.aiohttp import AIOHTTPTransport
 
 from latch.registry.types import JSON
 from latch_cli.config.latch import config
+from latch_cli.config.user import user_config
 
 
 class AuthenticationError(Exception):
@@ -23,16 +24,26 @@ def get_transport() -> AIOHTTPTransport:
     if _transport is not None:
         return _transport
 
-    # todo(ayush): make this understand sdk tokens too
-    token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
-    if token is None or token == "":
+    auth_header: Optional[str] = None
+
+    if auth_header is None:
+        token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", "")
+        if token != "":
+            auth_header = f"Latch-Execution-Token {token}"
+
+    if auth_header is None:
+        token = user_config.token
+        if token != "":
+            auth_header = f"Latch-SDK-Token {token}"
+
+    if auth_header is None:
         raise AuthenticationError(
             "Unable to find credentials to connect to gql server, aborting"
         )
 
     _transport = AIOHTTPTransport(
         url=config.gql,
-        headers={"Authorization": f"Latch-Execution-Token {token}"},
+        headers={"Authorization": auth_header},
     )
 
     return _transport
