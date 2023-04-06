@@ -56,8 +56,7 @@ class Table:
 
     def load(self):
         data = execute(
-            gql.gql(
-                """
+            gql.gql("""
                 query TableQuery($id: BigInt!) {
                     catalogExperiment(id: $id) {
                         id
@@ -70,8 +69,7 @@ class Table:
                         }
                     }
                 }
-                """
-            ),
+                """),
             variables={"id": self.id},
         )["catalogExperiment"]
         # todo(maximsmol): deal with nonexistent tables
@@ -119,8 +117,7 @@ class Table:
             # app_public.catalog_experiment_all_samples to get around RLS
             # performance issues
             data = execute(
-                gql.gql(
-                    """
+                gql.gql("""
                     query TableQuery($argTableId: BigInt!, $argAfter: Cursor, $argPageSize: Int) {
                         catalogExperiment(id: $argTableId) {
                             catalogSamplesByExperimentId(
@@ -145,8 +142,7 @@ class Table:
                             }
                         }
                     }
-                    """
-                ),
+                    """),
                 {
                     "argTableId": self.id,
                     "argAfter": end_cursor,
