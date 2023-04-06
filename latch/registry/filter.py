@@ -1,8 +1,6 @@
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import List, TypeVar, Union
-
-import graphql.language as l
+from typing import TypeVar, Union
 
 GQLPrimitive = Union[str, int, float, bool, None]
 T = TypeVar("T", bound=GQLPrimitive)

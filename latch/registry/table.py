@@ -39,16 +39,13 @@ class Table:
         self._data: Optional[Dict[str, Dict]] = None
 
     def load(self):
-        self._load()
-
-    def _load(self):
         if self._data is not None:
             return self._data
 
         # todo(ayush): paginate column defs too?
         self._data = execute(
             """
-            query tableQuery ($argTableId: BigInt!) {
+            query TableQuery ($argTableId: BigInt!) {
                 catalogExperiment(id: $argTableId) {
                     id
                     displayName
@@ -68,25 +65,19 @@ class Table:
             "catalogExperimentColumnDefinitionsByExperimentId"
         ]["nodes"]
 
-        return self._data
-
-    def get_display_name(self, load_if_missing=False):
-        if not load_if_missing or self._display_name is not None:
-            return self._display_name
-
-        self._load()
+    def get_display_name(self, *, load_if_missing: bool = False):
+        if self._display_name is None and load_if_missing:
+            self.load()
 
         return self._display_name
 
-    def get_columns(self, load_if_missing=False):
-        if not load_if_missing or self._columns is not None:
-            return self._columns
-
-        self._load()
+    def get_columns(self, *, load_if_missing: bool = False):
+        if self._columns is None and load_if_missing:
+            self.load()
 
         return self._columns
 
-    def list_records(self, *ignored_args, page_size=100) -> Iterator[ListRecordsOutput]:
+    def list_records(self, *, page_size: int = 100) -> Iterator[ListRecordsOutput]:
         has_next_page = True
         end_cursor = None
 
@@ -166,11 +157,14 @@ class Table:
                 except RegistryTransformerException as e:
                     # todo(ayush): raise immediately and prompt for confirmation
                     # if the user wants the rest of the page to be processed?
-                    errors.append(
-                        ValueError(
-                            f"record {record['id']} ({record['name']}) is invalid: {e}"
-                        )
+
+                    err = ValueError(
+                        f"record {record['id']} ({record['name']}) is invalid"
                     )
+                    # emulating `raise ... from e`
+                    err.__context__ = e
+                    err.__cause__ = e
+                    errors.append(err)
                     continue
 
                 output.append(

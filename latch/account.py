@@ -24,20 +24,20 @@ class Account:
         return cls(id=account_id)
 
     def list_projects(self) -> List[Project]:
-        query = f"""
-            query ProjectsQuery ($argOwnerId: BigInt!) {{
+        query = """
+            query ProjectsQuery ($argOwnerId: BigInt!) {
                 catalogProjects (
-                    condition: {{
+                    condition: {
                         ownerId: $argOwnerId
                         removed: false
-                    }}
-                ) {{
-                    nodes {{
+                    }
+                ) {
+                    nodes {
                         id
                         displayName
-                    }}
-                }}
-            }}
+                    }
+                }
+            }
         """
 
         data = execute(query, {"argOwnerId": self.id})

@@ -2,37 +2,29 @@ import json
 import re
 from datetime import date, datetime
 from enum import Enum
-from typing import Annotated, Dict, List, Optional, Type, TypeVar, Union
+from typing import Dict, List, Optional, Type, TypeVar, Union
 
 from dateutil.parser import parse
 
 from latch.gql.execute import execute
-from latch.registry.types import (
-    EmptyCell,
-    InvalidValue,
-    RegistryDBValue,
-    RegistryPrimitiveBlobValue,
-    RegistryPrimitiveSimpleType,
-    RegistryPrimitiveType,
-    RegistryType,
-)
+from latch.registry.types import EmptyCell, InvalidValue, RegistryDBValue, RegistryType
 from latch.types import LatchDir, LatchFile
 
 T = TypeVar("T")
 
 
-account_root_regex = re.compile("^account_root\/(?P<root>[^/]+)(?P<path>\/.*)$")
-mount_regex = re.compile("^mount\/(?P<mount>[^/]+)(?P<path>\/.*)$")
-shared_regex = re.compile("^shared(?P<path>\/.*)$")
+account_root_regex = re.compile(r"^account_root/(?P<root>[^/]+)(?P<path>/.*)$")
+mount_regex = re.compile(r"^mount/(?P<mount>[^/]+)(?P<path>/.*)$")
+shared_regex = re.compile(r"^shared(?P<path>/.*)$")
 
 
-class RegistryTransformerException(Exception):
+class RegistryTransformerException(ValueError):
     ...
 
 
 def to_python_type(
     registry_type: RegistryType,
-    *_ignored_args,
+    *,
     allow_empty: bool = False,
 ) -> Type:
     ret: Optional[Type] = None
@@ -72,13 +64,12 @@ def to_python_type(
         variants: List[Type] = []
         for key, variant in registry_type["union"].items():
             variants.append(
-                Annotated[
-                    to_python_type(
-                        variant,
-                        allow_empty=False,
-                    ),
-                    key,
-                ]
+                # todo(maximsmol): allow specifying the exact variant we want
+                # or preserving it when round-tripping?
+                to_python_type(
+                    variant,
+                    allow_empty=False,
+                ),
             )
         ret = Union[tuple(variants)]
 

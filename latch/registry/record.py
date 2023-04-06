@@ -20,7 +20,7 @@ class Record:
 
     def __getitem__(self, key: str):
         if key not in self._values:
-            raise KeyError(f"column {key} not found in record {self.id} ({self.name})")
+            raise KeyError(f"column not found in record {self.id} ({self.name}): {key}")
         return self._values[key]
 
     @classmethod
@@ -68,7 +68,7 @@ class Record:
             ]["nodes"]
         }
 
-        python_values = {}
+        python_values: Dict[str, object] = {}
         valid = True
 
         for key, registry_type in column_types_dict.items():

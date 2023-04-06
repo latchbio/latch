@@ -31,30 +31,28 @@ class Project:
         return self._display_name
 
     def list_tables(self):
-        query = f"""
-            query ExperimentsQuery ($argProjectId: BigInt!) {{
+        query = """
+            query ExperimentsQuery ($argProjectId: BigInt!) {
                 catalogExperiments (
-                    condition: {{
+                    condition: {
                         projectId: $argProjectId
                         removed: false
-                    }}
-                ) {{
-                    nodes {{
+                    }
+                ) {
+                    nodes {
                         id
                         displayName
-                    }}
-                }}
-            }}
+                    }
+                }
+            }
         """
 
         data = execute(query, {"argProjectId": self.id})
 
         return [Table(node["id"]) for node in data["catalogExperiments"]["nodes"]]
 
-    def __repr__(self):
-        return f"Project(id={self.id})"
-
     def __str__(self):
         if self._display_name is not None:
-            return f"Project(display_name={self._display_name})"
-        return self.__repr__()
+            return f"Project({repr(self._display_name)})"
+
+        return repr(self)

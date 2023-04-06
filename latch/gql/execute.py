@@ -1,4 +1,5 @@
 import os
+from functools import cache
 from typing import Dict, Optional
 
 import gql
@@ -9,19 +10,12 @@ from latch_cli.config.latch import config
 from latch_cli.config.user import user_config
 
 
-class AuthenticationError(Exception):
+class AuthenticationError(RuntimeError):
     ...
 
 
-_transport = None
-
-
+@cache
 def get_transport() -> AIOHTTPTransport:
-    global _transport
-
-    if _transport is not None:
-        return _transport
-
     auth_header: Optional[str] = None
 
     if auth_header is None:
