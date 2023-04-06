@@ -167,19 +167,19 @@ def to_python_literal(
             {"nodeId": value["ldataNodeId"]},
         )
 
-        url = path_data["ldataGetPath"]
+        path = path_data["ldataGetPath"]
         owner = path_data["ldataOwnerUnsafe"]
 
-        if url == None:
+        if path == None:
             raise RegistryTransformerException(
                 f"unable to convert blob with id {value['ldataNodeId']} to"
                 " LatchFile/Dir as no url was found"
             )
 
-        account_match = account_root_regex.match(url)
-        mount_match = mount_regex.match(url)
+        account_match = account_root_regex.match(path)
+        mount_match = mount_regex.match(path)
 
-        path = ""
+        resolved_path = ""
 
         if account_match is not None:
             if owner is None:
@@ -188,16 +188,18 @@ def to_python_literal(
                     " LatchFile/Dir as owner was not found"
                 )
 
-            path = f"latch://{owner}.account{account_match.groupdict()['path']}"
+            resolved_path = (
+                f"latch://{owner}.account{account_match.groupdict()['path']}"
+            )
         elif mount_match is not None:
             groups = mount_match.groupdict()
-            path = f"latch://{groups['mount']}.mount{groups['path']}"
+            resolved_path = f"latch://{groups['mount']}.mount{groups['path']}"
         else:
             raise RegistryTransformerException(
-                f"unable to convert to LatchFile/Dir as url was malformed: {url}"
+                f"unable to convert to LatchFile/Dir as url was malformed: {path}"
             )
 
-        return typ(path)
+        return typ(resolved_path)
 
     if primitive == "link":
         if "sampleId" not in value:

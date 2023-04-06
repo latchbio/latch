@@ -3,13 +3,8 @@ from dataclasses import dataclass
 from typing import Dict, Optional
 
 from latch.gql.execute import execute
-from latch.registry.types import InvalidValue, registry_empty_cell
+from latch.registry.types import InvalidValue, RegistryInvalidValue, registry_empty_cell
 from latch.registry.utils import to_python_literal
-
-
-@dataclass(frozen=True)
-class InvalidRecord:
-    id: str
 
 
 @dataclass(frozen=True)
@@ -85,6 +80,8 @@ class Record:
                     registry_type["type"],
                 )
             if registry_literal is None and not registry_type["allowEmpty"]:
+                valid = False
+            if isinstance(python_literal, RegistryInvalidValue):
                 valid = False
 
             python_values[key] = python_literal

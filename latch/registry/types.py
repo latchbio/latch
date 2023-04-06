@@ -97,6 +97,7 @@ RegistryPrimitiveValue = Union[
     RegistryPrimitiveSimpleValue,
     RegistryPrimitiveLinkValue,
     RegistryPrimitiveBlobValue,
+    RegistryInvalidValue,
 ]
 
 RegistryArrayValue = List["RegistryDBValue"]
@@ -108,7 +109,6 @@ class RegistryUnionValue(TypedDict):
 
 
 RegistryDBValue = Union[
-    RegistryInvalidValue,
     RegistryPrimitiveValue,
     RegistryArrayValue,
     RegistryUnionValue,

@@ -11,7 +11,11 @@ import graphql.utilities as u
 
 from latch.gql.execute import execute, get_transport
 from latch.registry.record import Record
-from latch.registry.types import RegistryDBValue, registry_empty_cell
+from latch.registry.types import (
+    RegistryDBValue,
+    RegistryInvalidValue,
+    registry_empty_cell,
+)
 from latch.registry.utils import (
     RegistryTransformerException,
     to_python_literal,
@@ -151,6 +155,9 @@ class Table:
                                 data_point,
                                 typ["type"],
                             )
+
+                            if isinstance(values[key], RegistryInvalidValue):
+                                valid = False
 
                         if key not in values:
                             if not typ["allowEmpty"]:
