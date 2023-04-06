@@ -2,6 +2,8 @@ import json
 from dataclasses import dataclass
 from typing import Dict, Optional
 
+import gql
+
 from latch.gql.execute import execute
 from latch.registry.types import InvalidValue, registry_empty_cell
 from latch.registry.utils import to_python_literal
@@ -26,30 +28,32 @@ class Record:
     @classmethod
     def from_id(cls, id: str):
         data = execute(
-            """
-            query recordQuery($argRecordId: BigInt!) {
-                catalogSample(id: $argRecordId) {
-                    id
-                    name
-                    experiment {
+            gql.gql(
+                """
+                query recordQuery($argRecordId: BigInt!) {
+                    catalogSample(id: $argRecordId) {
                         id
-                        removed
-                        catalogExperimentColumnDefinitionsByExperimentId {
+                        name
+                        experiment {
+                            id
+                            removed
+                            catalogExperimentColumnDefinitionsByExperimentId {
+                                nodes {
+                                    key
+                                    type
+                                }
+                            }
+                        }
+                        catalogSampleColumnDataBySampleId {
                             nodes {
+                                data
                                 key
-                                type
                             }
                         }
                     }
-                    catalogSampleColumnDataBySampleId {
-                        nodes {
-                            data
-                            key
-                        }
-                    }
                 }
-            }
-            """,
+                """
+            ),
             {"argRecordId": id},
         )["catalogSample"]
 

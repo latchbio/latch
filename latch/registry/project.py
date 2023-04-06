@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Optional
 
+import gql
+
 from latch.gql.execute import execute
 from latch.registry.table import Table
 
@@ -17,21 +19,24 @@ class Project:
             return self._display_name
 
         self._display_name = execute(
-            document="""
+            document=gql.gql(
+                """
                 query ProjectQuery ($argProjectId: BigInt!) {
                     catalogProject(id: $argProjectId) {
                         id
                         displayName
                     }
                 }
-            """,
+                """
+            ),
             variables={"argProjectId": self.id},
         )["catalogProject"]["displayName"]
 
         return self._display_name
 
     def list_tables(self):
-        query = """
+        query = gql.gql(
+            """
             query ExperimentsQuery ($argProjectId: BigInt!) {
                 catalogExperiments (
                     condition: {
@@ -45,7 +50,8 @@ class Project:
                     }
                 }
             }
-        """
+            """
+        )
 
         data = execute(query, {"argProjectId": self.id})
 

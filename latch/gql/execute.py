@@ -4,6 +4,7 @@ from typing import Dict, Optional
 
 import gql
 from gql.transport.aiohttp import AIOHTTPTransport
+from graphql import DocumentNode
 
 from latch.registry.types import JSON
 from latch_cli.config.latch import config
@@ -39,12 +40,17 @@ def get_transport() -> AIOHTTPTransport:
     )
 
 
+@cache
+def get_client():
+    return gql.Client(transport=get_transport())
+
+
 def execute(
-    document: str,
+    document: DocumentNode,
     variables: Optional[Dict[str, JSON]] = None,
 ):
-    client = gql.Client(transport=get_transport())
-    return client.execute(gql.gql(document), variables)
+    client = get_client()
+    return client.execute(document, variables)
 
 
 # todo(ayush): add generator impl for subscriptions

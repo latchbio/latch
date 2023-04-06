@@ -3,9 +3,11 @@ from abc import abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterator, List, Optional
 
+import gql
 import graphql.language as l
 import graphql.type as t
 import graphql.utilities as u
+from typing_extensions import override
 
 from latch.gql.execute import execute
 from latch.registry.record import Record
@@ -38,20 +40,22 @@ class Table:
 
         # todo(ayush): paginate column defs too?
         self._data = execute(
-            """
-            query TableQuery ($argTableId: BigInt!) {
-                catalogExperiment(id: $argTableId) {
-                    id
-                    displayName
-                    catalogExperimentColumnDefinitionsByExperimentId {
-                        nodes {
-                            key
-                            type
+            gql.gql(
+                """
+                query TableQuery ($argTableId: BigInt!) {
+                    catalogExperiment(id: $argTableId) {
+                        id
+                        displayName
+                        catalogExperimentColumnDefinitionsByExperimentId {
+                            nodes {
+                                key
+                                type
+                            }
                         }
                     }
                 }
-            }
-            """,
+                """
+            ),
             variables={"argTableId": self.id},
         )
         self._display_name = self._data["catalogExperiment"]["displayName"]
@@ -80,32 +84,34 @@ class Table:
             # app_public.catalog_experiment_all_samples to get around RLS
             # performance issues
             data = execute(
-                """
-                query TableQuery($argTableId: BigInt!, $argAfter: Cursor, $argPageSize: Int) {
-                    catalogExperiment(id: $argTableId) {
-                        catalogSamplesByExperimentId(
-                            condition: { removed: false }
-                            first: $argPageSize
-                            after: $argAfter
-                        ) {
-                            nodes {
-                                id
-                                name
-                                catalogSampleColumnDataBySampleId {
-                                    nodes {
-                                        data
-                                        key
+                gql.gql(
+                    """
+                    query TableQuery($argTableId: BigInt!, $argAfter: Cursor, $argPageSize: Int) {
+                        catalogExperiment(id: $argTableId) {
+                            catalogSamplesByExperimentId(
+                                condition: { removed: false }
+                                first: $argPageSize
+                                after: $argAfter
+                            ) {
+                                nodes {
+                                    id
+                                    name
+                                    catalogSampleColumnDataBySampleId {
+                                        nodes {
+                                            data
+                                            key
+                                        }
                                     }
                                 }
-                            }
-                            pageInfo {
-                                endCursor
-                                hasNextPage
+                                pageInfo {
+                                    endCursor
+                                    hasNextPage
+                                }
                             }
                         }
                     }
-                }
-                """,
+                    """
+                ),
                 {
                     "argTableId": self.id,
                     "argAfter": end_cursor,
@@ -180,9 +186,10 @@ class Table:
 class TableUpdate:
     table: Table
 
+    # todo(maximsmol): switch to using l.DocumentNode
     @abstractmethod
-    async def get_document(self) -> l.DocumentNode:
-        raise NotImplementedError
+    def get_document(self) -> str:
+        raise NotImplementedError()
 
 
 # todo(ayush): "DeleteRecordUpdate", "UpsertColumnUpdate", "DeleteColumnUpdate"
@@ -192,6 +199,7 @@ class UpsertRecordUpdate(TableUpdate):
     data: Dict[str, object]
     op_index: int
 
+    @override
     def get_document(self) -> str:
         errors: Dict[str, str] = {}
 
@@ -275,4 +283,4 @@ class TableUpdater:
             }}
         """
 
-        execute(batched_document)
+        execute(gql.gql(batched_document))
