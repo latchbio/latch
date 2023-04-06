@@ -6,7 +6,7 @@ import gql
 from gql.transport.aiohttp import AIOHTTPTransport
 from graphql import DocumentNode
 
-from latch.registry.types import JSON
+from latch.registry.types import JsonValue
 from latch_cli.config.latch import config
 from latch_cli.config.user import user_config
 
@@ -47,7 +47,7 @@ def get_client():
 
 def execute(
     document: DocumentNode,
-    variables: Optional[Dict[str, JSON]] = None,
+    variables: Optional[Dict[str, JsonValue]] = None,
 ):
     client = get_client()
     return client.execute(document, variables)

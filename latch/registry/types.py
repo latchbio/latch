@@ -3,10 +3,10 @@ from typing import Dict, List, Literal, TypedDict, Union
 
 from typing_extensions import NotRequired
 
-JSON = Union[
+JsonValue = Union[
     Union[str, bool, int, float, None],
-    Dict[str, "JSON"],
-    List["JSON"],
+    Dict[str, "JsonValue"],
+    List["JsonValue"],
 ]
 
 
@@ -29,19 +29,19 @@ class RegistryPrimitiveSimpleType(TypedDict):
         "null",
         "boolean",
     ]
-    metadata: NotRequired[Dict[str, JSON]]
+    metadata: NotRequired[Dict[str, JsonValue]]
 
 
 class RegistryPrimitiveLinkType(TypedDict):
     primitive: Literal["link"]
     experimentId: str
-    metadata: NotRequired[Dict[str, JSON]]
+    metadata: NotRequired[Dict[str, JsonValue]]
 
 
 class RegistryPrimitiveEnumType(TypedDict):
     primitive: Literal["enum"]
     members: List[str]
-    metadata: NotRequired[Dict[str, JSON]]
+    metadata: NotRequired[Dict[str, JsonValue]]
 
 
 RegistryPrimitiveType = Union[
@@ -83,14 +83,22 @@ class RegistryPrimitiveSimpleValue(TypedDict):
     value: Union[str, int, float, bool, None]
 
 
+class LinkValue(TypedDict):
+    sampleId: str
+
+
 class RegistryPrimitiveLinkValue(TypedDict):
     valid: Literal[True]
-    value: TypedDict("LinkValue", {"sampleId": str})
+    value: LinkValue
+
+
+class BlobValue(TypedDict):
+    ldataNodeId: str
 
 
 class RegistryPrimitiveBlobValue(TypedDict):
     valid: Literal[True]
-    value: TypedDict("BlobValue", {"ldataNodeId": str})
+    value: BlobValue
 
 
 RegistryPrimitiveValue = Union[

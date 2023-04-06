@@ -15,7 +15,7 @@ class _CatalogProjectNode(TypedDict):
 
 @dataclass
 class _Cache:
-    catalog_projects: Optional[List[_CatalogProjectNode]] = None
+    catalog_projects: Optional[List[Project]] = None
 
 
 @dataclass(frozen=True)
@@ -48,26 +48,35 @@ class Account:
         return cls(id=account_id)
 
     def load(self):
-        query = gql.gql(
-            """
-            query ProjectsQuery($ownerId: BigInt!) {
-                catalogProjects (
-                    condition: {
-                        ownerId: $ownerId
-                        removed: false
-                    }
-                ) {
-                    nodes {
-                        id
-                        displayName
+        data = execute(
+            gql.gql(
+                """
+            query AccountQuery($ownerId: BigInt!) {
+                accountInfo(id: $ownerId) {
+                    catalogProjectsByOwnerId(
+                        condition: {
+                            removed: false
+                        }
+                    ) {
+                        nodes {
+                            id
+                            displayName
+                        }
                     }
                 }
             }
             """
-        )
-        data = execute(query, {"ownerId": self.id})
+            ),
+            {"ownerId": self.id},
+        )["accountInfo"]
+        # todo(maximsmol): deal with nonexistent accounts
 
-        self._cache.catalog_projects = data["catalogProjects"]["nodes"]
+        self._cache.catalog_projects = []
+        x: _CatalogProjectNode
+        for x in data["catalogProjectsByOwnerId"]["nodes"]:
+            cur = Project(x["id"])
+            cur._cache.display_name = x["displayName"]
+            self._cache.catalog_projects.append(cur)
 
     def list_projects_ext(
         self, *, load_if_missing: bool = False
@@ -75,17 +84,7 @@ class Account:
         if self._cache.catalog_projects is None and load_if_missing:
             self.load()
 
-        xs = self._cache.catalog_projects
-        if xs is None:
-            return None
-
-        res: List[Project] = []
-        for x in xs:
-            cur = Project(x["id"])
-            cur._cache.display_name = x["displayName"]
-            res.append(cur)
-
-        return res
+        return self._cache.catalog_projects
 
     def list_projects(self) -> List[Project]:
         res = self.list_projects_ext(load_if_missing=True)

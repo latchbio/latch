@@ -1,7 +1,7 @@
 import json
 from abc import abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, Iterator, List, Optional, TypedDict
 
 import gql
 import graphql.language as l
@@ -25,25 +25,41 @@ class ListRecordsOutput:
     errors: List[Exception]
 
 
+class _ColumnNode(TypedDict):
+    key: str
+    type: object
+
+
+@dataclass(frozen=True)
+class Column:
+    key: str
+    type: object
+
+
 @dataclass
+class _Cache:
+    display_name: Optional[str] = None
+    columns: Optional[List[Column]] = None
+
+
+@dataclass(frozen=True)
 class Table:
+    _cache: _Cache = field(
+        default_factory=lambda: _Cache(),
+        init=False,
+        repr=False,
+        hash=False,
+        compare=False,
+    )
+
     id: str
 
-    def __post_init__(self):
-        self._display_name: Optional[str] = None
-        self._columns: Optional[List[Dict[str, Dict]]] = None
-        self._data: Optional[Dict[str, Dict]] = None
-
     def load(self):
-        if self._data is not None:
-            return self._data
-
-        # todo(ayush): paginate column defs too?
-        self._data = execute(
+        data = execute(
             gql.gql(
                 """
-                query TableQuery ($argTableId: BigInt!) {
-                    catalogExperiment(id: $argTableId) {
+                query TableQuery($id: BigInt!) {
+                    catalogExperiment(id: $id) {
                         id
                         displayName
                         catalogExperimentColumnDefinitionsByExperimentId {
@@ -56,24 +72,43 @@ class Table:
                 }
                 """
             ),
-            variables={"argTableId": self.id},
-        )
-        self._display_name = self._data["catalogExperiment"]["displayName"]
-        self._columns = self._data["catalogExperiment"][
+            variables={"id": self.id},
+        )["catalogExperiment"]
+        # todo(maximsmol): deal with nonexistent tables
+
+        self._cache.display_name = data["displayName"]
+
+        self._cache.columns = []
+        columns: List[_ColumnNode] = data[
             "catalogExperimentColumnDefinitionsByExperimentId"
         ]["nodes"]
+        for x in columns:
+            cur = Column(x["key"], x["type"])
+            self._cache.columns.append(cur)
 
-    def get_display_name(self, *, load_if_missing: bool = False):
-        if self._display_name is None and load_if_missing:
+    def get_display_name_ext(self, *, load_if_missing: bool = False) -> Optional[str]:
+        if self._cache.display_name is None and load_if_missing:
             self.load()
 
-        return self._display_name
+        return self._cache.display_name
 
-    def get_columns(self, *, load_if_missing: bool = False):
-        if self._columns is None and load_if_missing:
+    def get_display_name(self) -> str:
+        res = self.get_display_name_ext(load_if_missing=True)
+        assert res is not None
+        return res
+
+    def get_columns_ext(
+        self, *, load_if_missing: bool = False
+    ) -> Optional[List[Column]]:
+        if self._cache.columns is None and load_if_missing:
             self.load()
 
-        return self._columns
+        return self._cache.columns
+
+    def get_columns(self) -> List[Column]:
+        res = self.get_columns_ext(load_if_missing=True)
+        assert res is not None
+        return res
 
     def list_records(self, *, page_size: int = 100) -> Iterator[ListRecordsOutput]:
         has_next_page = True

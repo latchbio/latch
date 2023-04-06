@@ -15,10 +15,10 @@ class _CatalogExperimentNode(TypedDict):
 @dataclass
 class _Cache:
     display_name: Optional[str] = None
-    experiments: Optional[List[_CatalogExperimentNode]] = None
+    experiments: Optional[List[Table]] = None
 
 
-@dataclass
+@dataclass(frozen=True)
 class Project:
     _cache: _Cache = field(
         default_factory=lambda: _Cache(),
@@ -34,7 +34,7 @@ class Project:
         data = execute(
             document=gql.gql(
                 """
-                query ProjectQuery ($id: BigInt!) {
+                query ProjectQuery($id: BigInt!) {
                     catalogProject(id: $id) {
                         id
                         displayName
@@ -55,11 +55,18 @@ class Project:
             ),
             variables={"id": self.id},
         )["catalogProject"]
-        if data is None:
-            raise
+        # todo(maximsmol): deal with nonexistent projects
 
         self._cache.display_name = data["displayName"]
-        self._cache.experiments = data["catalogExperimentsByProjectId"]["nodes"]
+
+        self._cache.experiments = []
+        experiments: List[_CatalogExperimentNode] = data[
+            "catalogExperimentsByProjectId"
+        ]["nodes"]
+        for x in experiments:
+            cur = Table(x["id"])
+            cur._cache.display_name = x["displayName"]
+            self._cache.experiments.append(cur)
 
     def get_display_name_ext(self, *, load_if_missing: bool = False) -> Optional[str]:
         if self._cache.display_name is None and load_if_missing:
@@ -67,7 +74,7 @@ class Project:
 
         return self._cache.display_name
 
-    def get_display_name(self):
+    def get_display_name(self) -> str:
         res = self.get_display_name_ext(load_if_missing=True)
         assert res is not None
         return res
@@ -78,17 +85,7 @@ class Project:
         if self._cache.experiments is None and load_if_missing:
             self.load()
 
-        xs = self._cache.experiments
-        if xs is None:
-            return None
-
-        res: List[Table] = []
-        for x in xs:
-            cur = Table(x["id"])
-            cur._display_name = x["displayName"]
-            res.append(cur)
-
-        return res
+        return self._cache.experiments
 
     def list_tables(self):
         res = self.list_tables_ext(load_if_missing=True)
