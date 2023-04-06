@@ -1,9 +1,7 @@
-import asyncio
 import os
 from typing import Dict, Optional
 
 import gql
-import uvloop
 from gql.transport.aiohttp import AIOHTTPTransport
 
 from latch.registry.types import JSON
@@ -53,13 +51,8 @@ def execute(
     document: str,
     variables: Optional[Dict[str, JSON]] = None,
 ):
-    async def helper():
-        async with gql.Client(transport=get_transport()) as client:
-            return await client.execute(gql.gql(document), variables)
+    client = gql.Client(transport=get_transport())
+    return client.execute(gql.gql(document), variables)
 
-    return asyncio.run(helper())
-
-
-uvloop.install()
 
 # todo(ayush): add generator impl for subscriptions
