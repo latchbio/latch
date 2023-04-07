@@ -14,7 +14,7 @@ class LatchConstants:
 
     file_max_size: int = 4 * mib
 
-    file_chunk_size: int = 5 * mib
+    file_chunk_size: int = 256 * mib
 
     # https://repost.aws/knowledge-center/s3-upload-large-files
     maximum_upload_parts = 10000
