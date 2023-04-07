@@ -100,12 +100,16 @@ def _upload_file(
     with open(local_source, "rb") as f:
         f.seek(0, 2)
         total_bytes = f.tell()
-        num_parts = math.ceil(total_bytes / latch_constants.file_chunk_size)
+        upload_chunk_size = max(
+            math.ceil(total_bytes / latch_constants.maximum_upload_parts),
+            latch_constants.file_chunk_size,
+        )
 
     if total_bytes == 0:
         touch(remote_dest)
         return
 
+    num_parts = math.ceil(total_bytes / upload_chunk_size)
     response = tinyrequests.post(
         config.api.data.begin_upload,
         headers={"Authorization": f"Bearer {retrieve_or_login()}"},
@@ -148,6 +152,7 @@ def _upload_file(
                 local_source=local_source,
                 part_index=i,
                 progress_bar=progress_bar,
+                chunk_size=upload_chunk_size,
             )
         )
 
@@ -179,10 +184,11 @@ def _upload_file_chunk(
     local_source: Path,
     part_index: int,
     progress_bar: _tqdm.tqdm,
+    chunk_size: int = latch_constants.file_chunk_size,
 ):
     with open(local_source, "rb") as f:
-        f.seek(part_index * latch_constants.file_chunk_size, 0)
-        payload = f.read(latch_constants.file_chunk_size)
+        f.seek(part_index * chunk_size, 0)
+        payload = f.read(chunk_size)
         resp = tinyrequests.request("PUT", url, data=payload)
         etag = resp.headers["ETag"]
 
