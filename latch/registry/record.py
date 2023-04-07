@@ -143,8 +143,6 @@ class Record:
     @overload
     def get_columns(
         self,
-        key: str,
-        default: Optional[Column] = None,
         *,
         load_if_missing: Literal[True] = True,
     ) -> Dict[str, Column]:
@@ -153,8 +151,6 @@ class Record:
     @overload
     def get_columns(
         self,
-        key: str,
-        default: Optional[Column] = None,
         *,
         load_if_missing: bool,
     ) -> Optional[Dict[str, Column]]:
@@ -162,8 +158,6 @@ class Record:
 
     def get_columns(
         self,
-        key: str,
-        default: Optional[Column] = None,
         *,
         load_if_missing: bool = True,
     ) -> Optional[Dict[str, Column]]:

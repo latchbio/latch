@@ -227,11 +227,9 @@ class UpsertRecordUpdate(TableUpdate):
         registry_literal_strings: List[str] = []
 
         columns = self.table.get_columns()
-        column_dict = {column.key: column.type for column in columns}
-
         for key, python_literal in self.data.items():
             try:
-                registry_type = column_dict.get(key)
+                registry_type = columns.get(key).upstream_type
                 registry_literal = to_registry_literal(
                     python_literal, registry_type["type"]
                 )
