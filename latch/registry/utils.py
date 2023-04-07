@@ -1,13 +1,23 @@
 import json
 import re
+from dataclasses import dataclass
 from datetime import date, datetime
 from enum import Enum
-from typing import Dict, List, Optional, Type, TypeVar, Union
+from typing import Dict, List, Optional, Type, TypeVar, Union, cast
 
+import gql
 from dateutil.parser import parse
+from typing_extensions import TypeAlias
 
 from latch.gql.execute import execute
-from latch.registry.types import EmptyCell, InvalidValue, RegistryDBValue, RegistryType
+from latch.registry.record import Record
+from latch.registry.upstream_types.types import (
+    ArrayType,
+    PrimitiveType,
+    PrimitiveTypeEnum,
+    RegistryType,
+)
+from latch.registry.upstream_types.values import DBValue, EmptyCell
 from latch.types import LatchDir, LatchFile
 
 T = TypeVar("T")
@@ -18,18 +28,38 @@ mount_regex = re.compile(r"^mount/(?P<mount>[^/]+)(?P<path>/.*)$")
 shared_regex = re.compile(r"^shared(?P<path>/.*)$")
 
 
+@dataclass(frozen=True)
+class InvalidValue:
+    raw_value: str
+
+
 class RegistryTransformerException(ValueError):
     ...
+
+
+# todo(maximsmol): hopefully, PyLance eventually narrows `TypedDict`` unions using `in`
+# then we can get rid of the casts
+
+RegistryPythonType: TypeAlias = Union[
+    str,
+    datetime,
+    date,
+    int,
+    float,
+    Record,
+    None,
+    List["RegistryPythonType"],
+]
 
 
 def to_python_type(
     registry_type: RegistryType,
     *,
     allow_empty: bool = False,
-) -> Type:
-    ret: Optional[Type] = None
+) -> Type[RegistryPythonType]:
+    ret: Optional[Type[RegistryPythonType]] = None
     if "primitive" in registry_type:
-        primitive = registry_type["primitive"]
+        primitive = cast(PrimitiveType, registry_type)["primitive"]
         if primitive == "string":
             ret = str
         elif primitive == "datetime":
@@ -43,25 +73,23 @@ def to_python_type(
         elif primitive == "blob":
             ret = get_blob_nodetype(registry_type)
         elif primitive == "link":
-            from latch.registry.record import Record
-
             ret = Record
         elif primitive == "enum":
-            ret = Enum("Enum", registry_type["members"])
+            members = cast(PrimitiveTypeEnum, registry_type)["members"]
+            ret = Enum("Enum", members)
         elif primitive == "null":
             ret = type(None)
         elif primitive == "boolean":
             ret = bool
         else:
-            raise RegistryTransformerException(
-                f"invalid primitive type: {registry_type['primitive']}"
-            )
+            raise RegistryTransformerException(f"invalid primitive type: {primitive}")
 
     elif "array" in registry_type:
-        ret = List[to_python_type(registry_type["array"], allow_empty=False)]
+        array = cast(ArrayType, registry_type)["array"]
+        ret = List[to_python_type(array, allow_empty=False)]
 
     elif "union" in registry_type:
-        variants: List[Type] = []
+        variants: List[Type[RegistryPythonType]] = []
         for key, variant in registry_type["union"].items():
             variants.append(
                 # todo(maximsmol): allow specifying the exact variant we want
@@ -81,11 +109,12 @@ def to_python_type(
 
     if allow_empty:
         return Union[ret, EmptyCell]
+
     return ret
 
 
 def to_python_literal(
-    registry_literal: RegistryDBValue,
+    registry_literal: DBValue,
     registry_type: RegistryType,
 ):
     """converts a registry value to a python literal of provided
@@ -149,12 +178,12 @@ def to_python_literal(
             )
 
         path_data = execute(
-            """
+            gql.gql("""
             query nodePath($nodeId: BigInt!) {
                 ldataOwnerUnsafe(argNodeId: $nodeId)
                 ldataGetPath(argNodeId: $nodeId)
             }
-            """,
+            """),
             {"nodeId": value["ldataNodeId"]},
         )
 
@@ -263,7 +292,7 @@ def to_python_literal(
 def to_registry_literal(
     python_literal,
     registry_type: RegistryType,
-) -> RegistryDBValue:
+) -> DBValue:
     if isinstance(python_literal, InvalidValue):
         return {"valid": False, "rawValue": python_literal.raw_value}
 
@@ -380,7 +409,7 @@ def to_registry_literal(
             )
 
         node_id = execute(
-            """
+            gql.gql("""
             query nodeIdQ($argPath: String!) {
                 ldataResolvePath(
                     path: $argPath
@@ -388,7 +417,7 @@ def to_registry_literal(
                     nodeId
                 }
             }
-            """,
+            """),
             {"argPath": python_literal.remote_path},
         )["ldataResolvePath"]["nodeId"]
 
@@ -401,7 +430,7 @@ def to_registry_literal(
 
 def get_blob_nodetype(
     registry_type: RegistryType,
-) -> Union[Type[LatchFile], Type[LatchDir]]:
+) -> Type[Union[LatchFile, LatchDir]]:
     if "primitive" not in registry_type or registry_type["primitive"] != "blob":
         raise RegistryTransformerException(
             f"cannot extract blob nodetype from non-blob type"
@@ -413,4 +442,5 @@ def get_blob_nodetype(
         and registry_type["metadata"]["nodeType"] == "dir"
     ):
         return LatchDir
+
     return LatchFile

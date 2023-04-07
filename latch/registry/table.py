@@ -11,7 +11,8 @@ from typing_extensions import override
 
 from latch.gql.execute import execute
 from latch.registry.record import Record
-from latch.registry.types import InvalidValue, registry_empty_cell
+from latch.registry.upstream_types.types import DBType
+from latch.registry.upstream_types.values import EmptyCell
 from latch.registry.utils import (
     RegistryTransformerException,
     to_python_literal,
@@ -27,13 +28,13 @@ class ListRecordsOutput:
 
 class _ColumnNode(TypedDict):
     key: str
-    type: object
+    type: DBType
 
 
 @dataclass(frozen=True)
 class Column:
     key: str
-    type: object
+    type: DBType
 
 
 @dataclass
@@ -167,9 +168,9 @@ class Table:
                 valid = True
 
                 try:
-                    for column in self.get_columns(load_if_missing=True):
-                        key = column["key"]
-                        typ = column["type"]
+                    for column in self.get_columns():
+                        key = column.key
+                        typ = column.type
 
                         data_point = record_data.get(key)
                         if data_point is not None:
@@ -178,13 +179,10 @@ class Table:
                                 typ["type"],
                             )
 
-                            if isinstance(values[key], InvalidValue):
-                                valid = False
-
                         if key not in values:
                             if not typ["allowEmpty"]:
                                 valid = False
-                            values[key] = registry_empty_cell
+                            values[key] = EmptyCell()
                 except RegistryTransformerException as e:
                     # todo(ayush): raise immediately and prompt for confirmation
                     # if the user wants the rest of the page to be processed?
@@ -237,8 +235,8 @@ class UpsertRecordUpdate(TableUpdate):
         keys: List[str] = []
         registry_literal_strings: List[str] = []
 
-        columns = self.table.get_columns(load_if_missing=True)
-        column_dict = {column["key"]: column["type"] for column in columns}
+        columns = self.table.get_columns()
+        column_dict = {column.key: column.type for column in columns}
 
         for key, python_literal in self.data.items():
             try:

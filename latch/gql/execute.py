@@ -6,7 +6,7 @@ import gql
 from gql.transport.aiohttp import AIOHTTPTransport
 from graphql import DocumentNode
 
-from latch.registry.types import JsonValue
+from latch.types.json import JsonValue
 from latch_cli.config.latch import config
 from latch_cli.config.user import user_config
 

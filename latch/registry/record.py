@@ -5,8 +5,7 @@ from typing import Dict, Optional
 import gql
 
 from latch.gql.execute import execute
-from latch.registry.types import InvalidValue, registry_empty_cell
-from latch.registry.utils import to_python_literal
+from latch.registry.upstream_types.values import EmptyCell
 
 
 @dataclass(frozen=True)
@@ -27,9 +26,11 @@ class Record:
 
     @classmethod
     def from_id(cls, id: str):
+        # circular import
+        from latch.registry.utils import InvalidValue, to_python_literal
+
         data = execute(
-            gql.gql(
-                """
+            gql.gql("""
                 query recordQuery($argRecordId: BigInt!) {
                     catalogSample(id: $argRecordId) {
                         id
@@ -52,8 +53,7 @@ class Record:
                         }
                     }
                 }
-                """
-            ),
+                """),
             {"argRecordId": id},
         )["catalogSample"]
 
@@ -76,7 +76,7 @@ class Record:
         valid = True
 
         for key, registry_type in column_types_dict.items():
-            python_literal = registry_empty_cell
+            python_literal = EmptyCell()
             registry_literal = record_data_dict.get(key)
             if registry_literal is not None:
                 python_literal = to_python_literal(
