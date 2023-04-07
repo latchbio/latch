@@ -1,4 +1,5 @@
-from typing import List, Literal, Optional, TypedDict, Union
+from dataclasses import dataclass
+from typing import ClassVar, List, Literal, Optional, TypedDict, Union
 
 from typing_extensions import Self, TypeAlias
 
@@ -92,8 +93,9 @@ class UnionValue(TypedDict):
 DBValue: TypeAlias = Union[PrimitiveValue, ArrayValue, UnionValue]
 
 
+@dataclass(frozen=True)
 class EmptyCell:
-    _singleton: Optional["EmptyCell"] = None
+    _singleton: ClassVar[Optional["EmptyCell"]] = None
 
     def __new__(cls) -> Self:
         if cls._singleton is None:

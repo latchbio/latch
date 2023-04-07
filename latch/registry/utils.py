@@ -17,15 +17,13 @@ from latch.registry.upstream_types.types import (
     PrimitiveTypeEnum,
     RegistryType,
 )
-from latch.registry.upstream_types.values import DBValue, EmptyCell
+from latch.registry.upstream_types.values import DBValue
 from latch.types import LatchDir, LatchFile
 
+# todo(maximsmol): hopefully, PyLance eventually narrows `TypedDict`` unions using `in`
+# then we can get rid of the casts
+
 T = TypeVar("T")
-
-
-account_root_regex = re.compile(r"^account_root/(?P<root>[^/]+)(?P<path>/.*)$")
-mount_regex = re.compile(r"^mount/(?P<mount>[^/]+)(?P<path>/.*)$")
-shared_regex = re.compile(r"^shared(?P<path>/.*)$")
 
 
 @dataclass(frozen=True)
@@ -37,10 +35,7 @@ class RegistryTransformerException(ValueError):
     ...
 
 
-# todo(maximsmol): hopefully, PyLance eventually narrows `TypedDict`` unions using `in`
-# then we can get rid of the casts
-
-RegistryPythonType: TypeAlias = Union[
+RegistryPythonValue: TypeAlias = Union[
     str,
     datetime,
     date,
@@ -48,11 +43,11 @@ RegistryPythonType: TypeAlias = Union[
     float,
     Record,
     None,
-    List["RegistryPythonType"],
+    List["RegistryPythonValue"],
 ]
 
 
-def to_python_type(registry_type: RegistryType) -> Type[RegistryPythonType]:
+def to_python_type(registry_type: RegistryType) -> Type[RegistryPythonValue]:
     if "primitive" in registry_type:
         primitive = cast(PrimitiveType, registry_type)["primitive"]
         if primitive == "string":
@@ -84,7 +79,7 @@ def to_python_type(registry_type: RegistryType) -> Type[RegistryPythonType]:
         return List[to_python_type(array)]
 
     if "union" in registry_type:
-        variants: List[Type[RegistryPythonType]] = []
+        variants: List[Type[RegistryPythonValue]] = []
         for key, variant in registry_type["union"].items():
             variants.append(
                 # todo(maximsmol): allow specifying the exact variant we want
@@ -104,9 +99,6 @@ def to_python_literal(
     registry_literal: DBValue,
     registry_type: RegistryType,
 ):
-    """converts a registry value to a python literal of provided
-    python type, throws an exception on failure"""
-
     if "array" in registry_type:
         if type(registry_literal) is not list:
             raise RegistryTransformerException(
@@ -164,49 +156,7 @@ def to_python_literal(
                 f"cannot convert non-blob value {value} to blob type"
             )
 
-        path_data = execute(
-            gql.gql("""
-            query nodePath($nodeId: BigInt!) {
-                ldataOwnerUnsafe(argNodeId: $nodeId)
-                ldataGetPath(argNodeId: $nodeId)
-            }
-            """),
-            {"nodeId": value["ldataNodeId"]},
-        )
-
-        path = path_data["ldataGetPath"]
-        owner = path_data["ldataOwnerUnsafe"]
-
-        if path == None:
-            raise RegistryTransformerException(
-                f"unable to convert blob with id {value['ldataNodeId']} to"
-                " LatchFile/Dir as no url was found"
-            )
-
-        account_match = account_root_regex.match(path)
-        mount_match = mount_regex.match(path)
-
-        resolved_path = ""
-
-        if account_match is not None:
-            if owner is None:
-                raise RegistryTransformerException(
-                    f"unable to convert blob with id {value['ldataNodeId']} to"
-                    " LatchFile/Dir as owner was not found"
-                )
-
-            resolved_path = (
-                f"latch://{owner}.account{account_match.groupdict()['path']}"
-            )
-        elif mount_match is not None:
-            groups = mount_match.groupdict()
-            resolved_path = f"latch://{groups['mount']}.mount{groups['path']}"
-        else:
-            raise RegistryTransformerException(
-                f"unable to convert to LatchFile/Dir as url was malformed: {path}"
-            )
-
-        return typ(resolved_path)
+        return typ(f"latch://{value['ldataNodeId']}.node")
 
     if primitive == "link":
         if "sampleId" not in value:

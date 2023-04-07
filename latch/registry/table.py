@@ -14,7 +14,7 @@ from latch.registry.record import Record
 from latch.registry.upstream_types.types import DBType
 from latch.registry.upstream_types.values import EmptyCell
 from latch.registry.utils import (
-    RegistryPythonType,
+    RegistryPythonValue,
     RegistryTransformerException,
     to_python_literal,
     to_python_type,
@@ -36,7 +36,7 @@ class _ColumnNode(TypedDict):
 @dataclass(frozen=True)
 class Column:
     key: str
-    type: Union[Type[RegistryPythonType], Type[Union[RegistryPythonType, EmptyCell]]]
+    type: Union[Type[RegistryPythonValue], Type[Union[RegistryPythonValue, EmptyCell]]]
     upstream_type: DBType
 
 
