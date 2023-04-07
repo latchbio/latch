@@ -13,7 +13,7 @@ from latch_cli.config.user import user_config
 
 
 @cache
-def get_transport() -> AIOHTTPTransport:
+def _get_client():
     auth_header: Optional[str] = None
 
     if auth_header is None:
@@ -31,22 +31,19 @@ def get_transport() -> AIOHTTPTransport:
             "Unable to find credentials to connect to gql server, aborting"
         )
 
-    return AIOHTTPTransport(
-        url=config.gql,
-        headers={"Authorization": auth_header},
+    return gql.Client(
+        transport=AIOHTTPTransport(
+            url=config.gql,
+            headers={"Authorization": auth_header},
+        )
     )
-
-
-@cache
-def get_client():
-    return gql.Client(transport=get_transport())
 
 
 def execute(
     document: DocumentNode,
     variables: Optional[Dict[str, JsonValue]] = None,
 ):
-    client = get_client()
+    client = _get_client()
     return client.execute(document, variables)
 
 
