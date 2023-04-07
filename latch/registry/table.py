@@ -11,6 +11,7 @@ from typing_extensions import override
 
 from latch.gql._execute import execute
 from latch.registry.record import Record
+from latch.registry.types import RecordValue
 from latch.registry.upstream_types.types import DBType
 from latch.registry.upstream_types.values import EmptyCell
 from latch.registry.utils import (
@@ -172,13 +173,14 @@ class Table:
                     for node in record["catalogSampleColumnDataBySampleId"]["nodes"]
                 }
 
-                values: Dict[str, object] = {}
-                valid = True
+                types: Dict[str, DBType] = {}
+                values: Dict[str, RecordValue] = {}
 
                 try:
                     for column in self.get_columns():
                         key = column.key
                         typ = column.upstream_type
+                        types[key] = typ
 
                         data_point = record_data.get(key)
                         if data_point is not None:
@@ -188,8 +190,6 @@ class Table:
                             )
 
                         if key not in values:
-                            if not typ["allowEmpty"]:
-                                valid = False
                             values[key] = EmptyCell()
                 except RegistryTransformerException as e:
                     # todo(ayush): raise immediately and prompt for confirmation
@@ -204,14 +204,13 @@ class Table:
                     errors.append(err)
                     continue
 
-                output.append(
-                    Record(
-                        id=record["id"],
-                        name=record["name"],
-                        _values=values,
-                        _valid=valid,
-                    )
+                res = Record(
+                    id=record["id"],
+                    name=record["name"],
                 )
+                res._cache.types = types
+                res._cache.values = values
+                output.append(res)
 
             yield ListRecordsOutput(records=output, errors=errors)
 

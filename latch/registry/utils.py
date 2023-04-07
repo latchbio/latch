@@ -1,16 +1,14 @@
 import json
-import re
-from dataclasses import dataclass
 from datetime import date, datetime
 from enum import Enum
 from typing import Dict, List, Optional, Type, TypeVar, Union, cast
 
 import gql
 from dateutil.parser import parse
-from typing_extensions import TypeAlias
 
 from latch.gql._execute import execute
 from latch.registry.record import Record
+from latch.registry.types import InvalidValue, RegistryPythonValue
 from latch.registry.upstream_types.types import (
     ArrayType,
     PrimitiveType,
@@ -26,25 +24,8 @@ from latch.types import LatchDir, LatchFile
 T = TypeVar("T")
 
 
-@dataclass(frozen=True)
-class InvalidValue:
-    raw_value: str
-
-
 class RegistryTransformerException(ValueError):
     ...
-
-
-RegistryPythonValue: TypeAlias = Union[
-    str,
-    datetime,
-    date,
-    int,
-    float,
-    Record,
-    None,
-    List["RegistryPythonValue"],
-]
 
 
 def to_python_type(registry_type: RegistryType) -> Type[RegistryPythonValue]:
