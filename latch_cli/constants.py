@@ -16,6 +16,9 @@ class LatchConstants:
 
     file_chunk_size: int = 5 * mib
 
+    # https://repost.aws/knowledge-center/s3-upload-large-files
+    maximum_upload_parts = 10000
+
     pkg_name: str = "latch"
     pkg_ssh_key: str = ".latch/ssh_key"
     pkg_config: str = ".latch/config"
@@ -31,7 +34,6 @@ latch_constants = LatchConstants()
 
 @dataclass(frozen=True)
 class OAuth2Constants:
-
     client_id: str = "jzFBOhIbfp4EPRYZ8wmx4YyvL27LFDeB"
     """Identifies the authentication server in 0Auth2.0 flow"""
 
