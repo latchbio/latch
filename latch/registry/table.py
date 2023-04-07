@@ -1,7 +1,7 @@
 import json
 from abc import abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterator, List, Optional, TypedDict
+from typing import Any, Dict, Iterator, List, Optional, Type, TypedDict, Union
 
 import gql
 import graphql.language as l
@@ -14,8 +14,10 @@ from latch.registry.record import Record
 from latch.registry.upstream_types.types import DBType
 from latch.registry.upstream_types.values import EmptyCell
 from latch.registry.utils import (
+    RegistryPythonType,
     RegistryTransformerException,
     to_python_literal,
+    to_python_type,
     to_registry_literal,
 )
 
@@ -34,7 +36,8 @@ class _ColumnNode(TypedDict):
 @dataclass(frozen=True)
 class Column:
     key: str
-    type: DBType
+    type: Union[Type[RegistryPythonType], Type[Union[RegistryPythonType, EmptyCell]]]
+    upstream_type: DBType
 
 
 @dataclass
@@ -82,7 +85,12 @@ class Table:
             "catalogExperimentColumnDefinitionsByExperimentId"
         ]["nodes"]
         for x in columns:
-            cur = Column(x["key"], x["type"])
+            py_type = to_python_type(x["type"]["type"])
+            if x["type"]["allowEmpty"]:
+                py_type = Union[py_type, EmptyCell]
+
+            cur = Column(x["key"], py_type, x["type"])
+
             self._cache.columns.append(cur)
 
     def get_display_name_ext(self, *, load_if_missing: bool = False) -> Optional[str]:
@@ -170,7 +178,7 @@ class Table:
                 try:
                     for column in self.get_columns():
                         key = column.key
-                        typ = column.type
+                        typ = column.upstream_type
 
                         data_point = record_data.get(key)
                         if data_point is not None:

@@ -52,43 +52,38 @@ RegistryPythonType: TypeAlias = Union[
 ]
 
 
-def to_python_type(
-    registry_type: RegistryType,
-    *,
-    allow_empty: bool = False,
-) -> Type[RegistryPythonType]:
-    ret: Optional[Type[RegistryPythonType]] = None
+def to_python_type(registry_type: RegistryType) -> Type[RegistryPythonType]:
     if "primitive" in registry_type:
         primitive = cast(PrimitiveType, registry_type)["primitive"]
         if primitive == "string":
-            ret = str
-        elif primitive == "datetime":
-            ret = datetime
-        elif primitive == "date":
-            ret = date
-        elif primitive == "integer":
-            ret = int
-        elif primitive == "number":
-            ret = float
-        elif primitive == "blob":
-            ret = get_blob_nodetype(registry_type)
-        elif primitive == "link":
-            ret = Record
-        elif primitive == "enum":
+            return str
+        if primitive == "datetime":
+            return datetime
+        if primitive == "date":
+            return date
+        if primitive == "integer":
+            return int
+        if primitive == "number":
+            return float
+        if primitive == "blob":
+            return get_blob_nodetype(registry_type)
+        if primitive == "link":
+            return Record
+        if primitive == "enum":
             members = cast(PrimitiveTypeEnum, registry_type)["members"]
-            ret = Enum("Enum", members)
-        elif primitive == "null":
-            ret = type(None)
-        elif primitive == "boolean":
-            ret = bool
-        else:
-            raise RegistryTransformerException(f"invalid primitive type: {primitive}")
+            return Enum("Enum", members)
+        if primitive == "null":
+            return type(None)
+        if primitive == "boolean":
+            return bool
 
-    elif "array" in registry_type:
+        raise RegistryTransformerException(f"invalid primitive type: {primitive}")
+
+    if "array" in registry_type:
         array = cast(ArrayType, registry_type)["array"]
-        ret = List[to_python_type(array, allow_empty=False)]
+        return List[to_python_type(array)]
 
-    elif "union" in registry_type:
+    if "union" in registry_type:
         variants: List[Type[RegistryPythonType]] = []
         for key, variant in registry_type["union"].items():
             variants.append(
@@ -96,21 +91,13 @@ def to_python_type(
                 # or preserving it when round-tripping?
                 to_python_type(
                     variant,
-                    allow_empty=False,
                 ),
             )
-        ret = Union[tuple(variants)]
+        return Union[tuple(variants)]
 
-    else:
-        raise RegistryTransformerException(
-            "unknown registry type cannot be converted to a python type:"
-            f" {registry_type}"
-        )
-
-    if allow_empty:
-        return Union[ret, EmptyCell]
-
-    return ret
+    raise RegistryTransformerException(
+        f"unknown registry type cannot be converted to a python type: {registry_type}"
+    )
 
 
 def to_python_literal(
@@ -430,7 +417,7 @@ def to_registry_literal(
 
 def get_blob_nodetype(
     registry_type: RegistryType,
-) -> Type[Union[LatchFile, LatchDir]]:
+) -> Union[Type[LatchFile], Type[LatchDir]]:
     if "primitive" not in registry_type or registry_type["primitive"] != "blob":
         raise RegistryTransformerException(
             f"cannot extract blob nodetype from non-blob type"
