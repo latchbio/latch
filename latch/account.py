@@ -35,17 +35,17 @@ class Account:
     @cache
     def current(cls):
         if user_config.workspace != "":
-            return user_config.workspace
-
-        account_id = execute(
-            document=gql.gql("""
-                query accountInfoQuery {
-                    accountInfoCurrent {
-                        id
+            account_id = user_config.workspace
+        else:
+            account_id = execute(
+                document=gql.gql("""
+                    query accountInfoQuery {
+                        accountInfoCurrent {
+                            id
+                        }
                     }
-                }
-                """),
-        )["accountInfoCurrent"]["id"]
+                    """),
+            )["accountInfoCurrent"]["id"]
 
         return cls(id=account_id)
 
