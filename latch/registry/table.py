@@ -22,9 +22,9 @@ from typing_extensions import override
 
 from latch.gql._execute import execute
 from latch.registry.record import Record
-from latch.registry.types import RecordValue
+from latch.registry.types import InvalidValue, RecordValue
 from latch.registry.upstream_types.types import DBType
-from latch.registry.upstream_types.values import EmptyCell
+from latch.registry.upstream_types.values import DBValue, EmptyCell
 from latch.registry.utils import (
     RegistryPythonValue,
     RegistryTransformerException,
@@ -34,10 +34,11 @@ from latch.registry.utils import (
 )
 
 
-@dataclass(frozen=True)
-class ListRecordsOutput:
-    records: List[Record]
-    errors: List[Exception]
+class _AllRecordsNode(TypedDict):
+    sampleId: str
+    sampleName: str
+    sampleDataKey: str
+    sampleDataValue: DBValue
 
 
 class _ColumnNode(TypedDict):
@@ -55,7 +56,7 @@ class Column:
 @dataclass
 class _Cache:
     display_name: Optional[str] = None
-    columns: Optional[List[Column]] = None
+    columns: Optional[Dict[str, Column]] = None
 
 
 @dataclass(frozen=True)
@@ -92,7 +93,7 @@ class Table:
 
         self._cache.display_name = data["displayName"]
 
-        self._cache.columns = []
+        self._cache.columns = {}
         columns: List[_ColumnNode] = data[
             "catalogExperimentColumnDefinitionsByExperimentId"
         ]["nodes"]
@@ -102,8 +103,7 @@ class Table:
                 py_type = Union[py_type, EmptyCell]
 
             cur = Column(x["key"], py_type, x["type"])
-
-            self._cache.columns.append(cur)
+            self._cache.columns[cur.key] = cur
 
     @overload
     def get_display_name(self, *, load_if_missing: Literal[False]) -> Optional[str]:
@@ -120,114 +120,89 @@ class Table:
         return self._cache.display_name
 
     @overload
-    def get_columns(self, *, load_if_missing: Literal[False]) -> Optional[List[Column]]:
+    def get_columns(
+        self, *, load_if_missing: Literal[False]
+    ) -> Optional[Dict[str, Column]]:
         ...
 
     @overload
-    def get_columns(self, *, load_if_missing: Literal[True] = True) -> List[Column]:
+    def get_columns(
+        self, *, load_if_missing: Literal[True] = True
+    ) -> Dict[str, Column]:
         ...
 
-    def get_columns(self, *, load_if_missing: bool = True) -> Optional[List[Column]]:
+    def get_columns(
+        self, *, load_if_missing: bool = True
+    ) -> Optional[Dict[str, Column]]:
         if self._cache.columns is None and load_if_missing:
             self.load()
 
         return self._cache.columns
 
-    def list_records(self, *, page_size: int = 100) -> Iterator[ListRecordsOutput]:
-        has_next_page = True
-        end_cursor = None
+    def list_records(self, *, page_size: int = 100) -> Iterator[Dict[str, Record]]:
+        cols = self.get_columns()
+        col_types: Dict[str, DBType] = {c.key: c.upstream_type for c in cols.values()}
 
-        while has_next_page:
-            # todo(ayush): switch this to a paginated ver of
-            # app_public.catalog_experiment_all_samples to get around RLS
-            # performance issues
-            data = execute(
-                gql.gql("""
-                    query TableQuery($argTableId: BigInt!, $argAfter: Cursor, $argPageSize: Int) {
-                        catalogExperiment(id: $argTableId) {
-                            catalogSamplesByExperimentId(
-                                condition: { removed: false }
-                                first: $argPageSize
-                                after: $argAfter
-                            ) {
-                                nodes {
-                                    id
-                                    name
-                                    catalogSampleColumnDataBySampleId {
-                                        nodes {
-                                            data
-                                            key
-                                        }
-                                    }
-                                }
-                                pageInfo {
-                                    endCursor
-                                    hasNextPage
-                                }
+        # todo(maximsmol): because allSamples returns each column as its own
+        # row, we can't paginate by samples because we don't know when a sample is finished
+        nodes: List[_AllRecordsNode] = execute(
+            gql.gql("""
+                query TableQuery($id: BigInt!) {
+                    catalogExperiment(id: $id) {
+                        allSamples {
+                            nodes {
+                                sampleId
+                                sampleName
+                                sampleDataKey
+                                sampleDataValue
                             }
                         }
                     }
-                    """),
-                {
-                    "argTableId": self.id,
-                    "argAfter": end_cursor,
-                    "argPageSize": page_size,
-                },
-            )["catalogExperiment"]["catalogSamplesByExperimentId"]
-
-            records = data["nodes"]
-            end_cursor = data["pageInfo"]["endCursor"]
-            has_next_page = data["pageInfo"]["hasNextPage"]
-
-            output: List[Record] = []
-            errors: List[Exception] = []
-
-            for record in records:
-                record_data = {
-                    node["key"]: node["data"]
-                    for node in record["catalogSampleColumnDataBySampleId"]["nodes"]
                 }
+                """),
+            {
+                "id": self.id,
+            },
+        )["catalogExperiment"]["allSamples"]["nodes"]
+        # todo(maximsmol): deal with nonexistent tables
 
-                types: Dict[str, DBType] = {}
-                values: Dict[str, RecordValue] = {}
+        record_names: Dict[str, str] = {}
+        record_values: Dict[str, Dict[str, RecordValue]] = {}
 
-                try:
-                    for column in self.get_columns():
-                        key = column.key
-                        typ = column.upstream_type
-                        types[key] = typ
+        for node in nodes:
+            record_names[node["sampleId"]] = node["sampleName"]
+            vals = record_values.setdefault(node["sampleId"], {})
 
-                        data_point = record_data.get(key)
-                        if data_point is not None:
-                            values[key] = to_python_literal(
-                                data_point,
-                                typ["type"],
-                            )
+            col = cols.get(node["sampleDataKey"])
+            if col is None:
+                continue
 
-                        if key not in values:
-                            values[key] = EmptyCell()
-                except RegistryTransformerException as e:
-                    # todo(ayush): raise immediately and prompt for confirmation
-                    # if the user wants the rest of the page to be processed?
+            # todo(maximsmol): in the future, allow storing or yielding values that failed to parse
+            vals[col.key] = to_python_literal(
+                node["sampleDataValue"], col.upstream_type["type"]
+            )
 
-                    err = ValueError(
-                        f"record {record['id']} ({record['name']}) is invalid"
-                    )
-                    # emulating `raise ... from e`
-                    err.__context__ = e
-                    err.__cause__ = e
-                    errors.append(err)
+        page: Dict[str, Record] = {}
+        for id, values in record_values.items():
+            for col in cols.values():
+                if col.key in values:
                     continue
 
-                res = Record(
-                    id=record["id"],
-                    name=record["name"],
-                )
-                res._cache.types = types
-                res._cache.values = values
-                output.append(res)
+                if not col.upstream_type["allowEmpty"]:
+                    values[col.key] = InvalidValue("")
 
-            yield ListRecordsOutput(records=output, errors=errors)
+            cur = Record(id)
+            cur._cache.name = record_names[id]
+            cur._cache.values = values
+            cur._cache.types = col_types
+            page[id] = cur
+
+            if len(page) == page_size:
+                yield page
+                page = {}
+
+        if len(page) > 0:
+            yield page
 
     def update(self):
         return TableUpdater(self)

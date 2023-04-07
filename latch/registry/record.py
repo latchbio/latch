@@ -1,14 +1,11 @@
 from __future__ import annotations  # deal with circular type imports
 
-import json
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Dict, Literal, Optional, overload
 
-import gql
-
-from latch.gql._execute import execute
 from latch.registry.upstream_types.types import DBType
-from latch.registry.upstream_types.values import EmptyCell
+
+from .upstream_types.values import EmptyCell
 
 if TYPE_CHECKING:  # deal with circular type imports
     from latch.registry.types import RecordValue
@@ -16,6 +13,7 @@ if TYPE_CHECKING:  # deal with circular type imports
 
 @dataclass
 class _Cache:
+    name: Optional[str] = None
     types: Optional[Dict[str, DBType]] = None
     values: Optional[Dict[str, RecordValue]] = None
 
@@ -31,83 +29,114 @@ class Record:
     )
 
     id: str
-    name: str
 
-    def get(self, key: str, default_if_missing: Optional[object] = None):
-        return self._cache.values.get(key, default_if_missing)
+    def load(self):
+        ...
 
-    def __getitem__(self, key: str):
-        if key not in self._cache.values:
-            raise KeyError(f"column not found in record {self.id} ({self.name}): {key}")
-        return self._cache.values[key]
+    @overload
+    def get_name(self, *, load_if_missing: Literal[True] = True) -> str:
+        ...
 
-    @classmethod
-    def from_id(cls, id: str):
-        # circular import
-        from latch.registry.types import InvalidValue
-        from latch.registry.utils import to_python_literal
+    @overload
+    def get_name(self, *, load_if_missing: Literal[False]) -> Optional[str]:
+        ...
 
-        data = execute(
-            gql.gql("""
-                query recordQuery($argRecordId: BigInt!) {
-                    catalogSample(id: $argRecordId) {
-                        id
-                        name
-                        experiment {
-                            id
-                            removed
-                            catalogExperimentColumnDefinitionsByExperimentId {
-                                nodes {
-                                    key
-                                    type
-                                }
-                            }
-                        }
-                        catalogSampleColumnDataBySampleId {
-                            nodes {
-                                data
-                                key
-                            }
-                        }
-                    }
-                }
-                """),
-            {"argRecordId": id},
-        )["catalogSample"]
+    def get_name(self, *, load_if_missing: bool = True) -> Optional[str]:
+        if self._cache.name is None and load_if_missing:
+            self.load()
 
-        if data.get("experiment") is None or data["experiment"]["removed"]:
-            return InvalidValue(json.dumps({"sampleId": id}))
+        return self._cache.name
 
-        record_data_dict = {
-            node["key"]: node["data"]
-            for node in data["catalogSampleColumnDataBySampleId"]["nodes"]
-        }
+    @overload
+    def get_type(
+        self,
+        key: str,
+        default: Optional[DBType] = None,
+        *,
+        load_if_missing: Literal[True] = True,
+    ) -> DBType:
+        ...
 
-        column_types_dict = {
-            node["key"]: node["type"]
-            for node in data["experiment"][
-                "catalogExperimentColumnDefinitionsByExperimentId"
-            ]["nodes"]
-        }
+    @overload
+    def get_type(
+        self,
+        key: str,
+        default: Optional[DBType] = None,
+        *,
+        load_if_missing: Literal[False],
+    ) -> Optional[DBType]:
+        ...
 
-        python_values: Dict[str, RecordValue] = {}
+    def get_type(
+        self,
+        key: str,
+        default: Optional[DBType] = None,
+        *,
+        load_if_missing: bool = True,
+    ) -> Optional[DBType]:
+        if self._cache.types is None and load_if_missing:
+            self.load()
 
-        for key, registry_type in column_types_dict.items():
-            python_literal = EmptyCell()
+        xs = self._cache.types
+        if xs is None:
+            return None
 
-            registry_literal = record_data_dict.get(key)
-            if registry_literal is not None:
-                python_literal = to_python_literal(
-                    registry_literal,
-                    registry_type["type"],
-                )
+        return xs.get(key, default)
 
-            python_values[key] = python_literal
+    @overload
+    def get_value(
+        self,
+        key: str,
+        default: RecordValue = EmptyCell(),
+        *,
+        load_if_missing: Literal[True] = True,
+    ) -> RecordValue:
+        ...
 
-        res = cls(
-            id=id,
-            name=data["name"],
-        )
-        res._cache.types = column_types_dict
-        res._cache.values = python_values
-        return res
+    @overload
+    def get_value(
+        self,
+        key: str,
+        default: RecordValue = EmptyCell(),
+        *,
+        load_if_missing: Literal[False],
+    ) -> Optional[RecordValue]:
+        ...
+
+    def get_value(
+        self,
+        key: str,
+        default: RecordValue = EmptyCell(),
+        *,
+        load_if_missing: bool = True,
+    ) -> Optional[RecordValue]:
+        if self._cache.values is None and load_if_missing:
+            self.load()
+
+        xs = self._cache.values
+        if xs is None:
+            return None
+
+        return xs.get(key, default)
+
+    def __repr__(self):
+        if self._cache.name is None:
+            res = f"Record(id={self.id})"
+        else:
+            res = f"Record(id={self.id}, name={self._cache.name})"
+
+        if self._cache.values is None:
+            return res
+
+        return res + repr({k: v for k, v in self._cache.values.items()})
+
+    def __str__(self):
+        if self._cache.name is None:
+            res = f"Record(id={self.id})"
+        else:
+            res = f"Record(id={self.id}, name={self._cache.name})"
+
+        if self._cache.values is None:
+            return res
+
+        return res + str({k: v for k, v in self._cache.values.items()})

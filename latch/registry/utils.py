@@ -147,7 +147,7 @@ def to_python_literal(
 
         from latch.registry.record import Record
 
-        return Record.from_id(value["sampleId"])
+        return Record(value["sampleId"])
 
     if primitive == "string":
         if isinstance(value, str):
@@ -157,10 +157,12 @@ def to_python_literal(
         )
 
     if primitive == "number":
-        if isinstance(value, float):
-            return value
+        if isinstance(value, float) or isinstance(value, int):
+            return float(value)
+
         raise RegistryTransformerException(
-            f"Cannot convert {value} to float as it is not a primitive number literal"
+            f"Cannot convert {value} ({type(value)}) to float as it is not a primitive"
+            " number literal"
         )
 
     if primitive == "integer":
@@ -309,8 +311,6 @@ def to_registry_literal(
 
         value = python_literal
     elif primitive == "link":
-        from latch.registry.record import Record
-
         if not isinstance(python_literal, Record):
             raise RegistryTransformerException(
                 "cannot convert non-record python literal to registry link"
