@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from functools import cache
-from typing import List, Optional, TypedDict
+from typing import List, Literal, Optional, TypedDict, overload
 
 import gql
 
@@ -74,15 +74,18 @@ class Account:
             cur._cache.display_name = x["displayName"]
             self._cache.catalog_projects.append(cur)
 
-    def list_projects_ext(
-        self, *, load_if_missing: bool = False
+    @overload
+    def list_projects(
+        self, *, load_if_missing: Literal[False]
     ) -> Optional[List[Project]]:
+        ...
+
+    @overload
+    def list_projects(self, *, load_if_missing: Literal[True] = True) -> List[Project]:
+        ...
+
+    def list_projects(self, *, load_if_missing: bool = True) -> Optional[List[Project]]:
         if self._cache.catalog_projects is None and load_if_missing:
             self.load()
 
         return self._cache.catalog_projects
-
-    def list_projects(self) -> List[Project]:
-        res = self.list_projects_ext(load_if_missing=True)
-        assert res is not None
-        return res

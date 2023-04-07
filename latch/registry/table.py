@@ -1,7 +1,18 @@
 import json
 from abc import abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterator, List, Optional, Type, TypedDict, Union
+from typing import (
+    Any,
+    Dict,
+    Iterator,
+    List,
+    Literal,
+    Optional,
+    Type,
+    TypedDict,
+    Union,
+    overload,
+)
 
 import gql
 import graphql.language as l
@@ -94,29 +105,33 @@ class Table:
 
             self._cache.columns.append(cur)
 
-    def get_display_name_ext(self, *, load_if_missing: bool = False) -> Optional[str]:
+    @overload
+    def get_display_name(self, *, load_if_missing: Literal[False]) -> Optional[str]:
+        ...
+
+    @overload
+    def get_display_name(self, *, load_if_missing: Literal[True] = True) -> str:
+        ...
+
+    def get_display_name(self, *, load_if_missing: bool = True) -> Optional[str]:
         if self._cache.display_name is None and load_if_missing:
             self.load()
 
         return self._cache.display_name
 
-    def get_display_name(self) -> str:
-        res = self.get_display_name_ext(load_if_missing=True)
-        assert res is not None
-        return res
+    @overload
+    def get_columns(self, *, load_if_missing: Literal[False]) -> Optional[List[Column]]:
+        ...
 
-    def get_columns_ext(
-        self, *, load_if_missing: bool = False
-    ) -> Optional[List[Column]]:
+    @overload
+    def get_columns(self, *, load_if_missing: Literal[True] = True) -> List[Column]:
+        ...
+
+    def get_columns(self, *, load_if_missing: bool = True) -> Optional[List[Column]]:
         if self._cache.columns is None and load_if_missing:
             self.load()
 
         return self._cache.columns
-
-    def get_columns(self) -> List[Column]:
-        res = self.get_columns_ext(load_if_missing=True)
-        assert res is not None
-        return res
 
     def list_records(self, *, page_size: int = 100) -> Iterator[ListRecordsOutput]:
         has_next_page = True

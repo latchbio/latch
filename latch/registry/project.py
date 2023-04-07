@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Optional, TypedDict
+from typing import List, Literal, Optional, TypedDict, overload
 
 import gql
 
@@ -66,32 +66,36 @@ class Project:
             cur._cache.display_name = x["displayName"]
             self._cache.experiments.append(cur)
 
-    def get_display_name_ext(self, *, load_if_missing: bool = False) -> Optional[str]:
+    @overload
+    def get_display_name(self, *, load_if_missing: Literal[False]) -> Optional[str]:
+        ...
+
+    @overload
+    def get_display_name(self, *, load_if_missing: Literal[True] = True) -> str:
+        ...
+
+    def get_display_name(self, *, load_if_missing: bool = True) -> Optional[str]:
         if self._cache.display_name is None and load_if_missing:
             self.load()
 
         return self._cache.display_name
 
-    def get_display_name(self) -> str:
-        res = self.get_display_name_ext(load_if_missing=True)
-        assert res is not None
-        return res
+    @overload
+    def list_tables(self, *, load_if_missing: Literal[False]) -> Optional[List[Table]]:
+        ...
 
-    def list_tables_ext(
-        self, *, load_if_missing: bool = False
-    ) -> Optional[List[Table]]:
+    @overload
+    def list_tables(self, *, load_if_missing: Literal[True] = True) -> List[Table]:
+        ...
+
+    def list_tables(self, *, load_if_missing: bool = True) -> Optional[List[Table]]:
         if self._cache.experiments is None and load_if_missing:
             self.load()
 
         return self._cache.experiments
 
-    def list_tables(self):
-        res = self.list_tables_ext(load_if_missing=True)
-        assert res is not None
-        return res
-
     def __str__(self):
-        name = self.get_display_name_ext(load_if_missing=False)
+        name = self.get_display_name(load_if_missing=False)
         if name is not None:
             return f"Project({repr(name)})"
 
