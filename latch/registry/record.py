@@ -4,7 +4,7 @@ from typing import Dict, Optional
 
 import gql
 
-from latch.gql.execute import execute
+from latch.gql._execute import execute
 from latch.registry.upstream_types.values import EmptyCell
 
 

@@ -4,7 +4,7 @@ from typing import List, Optional, TypedDict
 
 import gql
 
-from latch.gql.execute import execute
+from latch.gql._execute import execute
 from latch.registry.project import Project
 
 
@@ -34,23 +34,20 @@ class Account:
     @cache
     def current(cls):
         account_id = execute(
-            document=gql.gql(
-                """
+            document=gql.gql("""
                 query accountInfoQuery {
                     accountInfoCurrent {
                         id
                     }
                 }
-                """
-            ),
+                """),
         )["accountInfoCurrent"]["id"]
 
         return cls(id=account_id)
 
     def load(self):
         data = execute(
-            gql.gql(
-                """
+            gql.gql("""
             query AccountQuery($ownerId: BigInt!) {
                 accountInfo(id: $ownerId) {
                     catalogProjectsByOwnerId(
@@ -65,8 +62,7 @@ class Account:
                     }
                 }
             }
-            """
-            ),
+            """),
             {"ownerId": self.id},
         )["accountInfo"]
         # todo(maximsmol): deal with nonexistent accounts

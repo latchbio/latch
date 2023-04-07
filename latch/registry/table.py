@@ -9,7 +9,7 @@ import graphql.type as t
 import graphql.utilities as u
 from typing_extensions import override
 
-from latch.gql.execute import execute
+from latch.gql._execute import execute
 from latch.registry.record import Record
 from latch.registry.upstream_types.types import DBType
 from latch.registry.upstream_types.values import EmptyCell

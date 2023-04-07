@@ -3,7 +3,7 @@ from typing import List, Optional, TypedDict
 
 import gql
 
-from latch.gql.execute import execute
+from latch.gql._execute import execute
 from latch.registry.table import Table
 
 
@@ -32,8 +32,7 @@ class Project:
 
     def load(self):
         data = execute(
-            document=gql.gql(
-                """
+            document=gql.gql("""
                 query ProjectQuery($id: BigInt!) {
                     catalogProject(id: $id) {
                         id
@@ -51,8 +50,7 @@ class Project:
                         }
                     }
                 }
-                """
-            ),
+                """),
             variables={"id": self.id},
         )["catalogProject"]
         # todo(maximsmol): deal with nonexistent projects

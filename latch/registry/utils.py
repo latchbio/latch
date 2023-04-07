@@ -9,7 +9,7 @@ import gql
 from dateutil.parser import parse
 from typing_extensions import TypeAlias
 
-from latch.gql.execute import execute
+from latch.gql._execute import execute
 from latch.registry.record import Record
 from latch.registry.upstream_types.types import (
     ArrayType,
