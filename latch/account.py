@@ -6,6 +6,7 @@ import gql
 
 from latch.gql._execute import execute
 from latch.registry.project import Project
+from latch_cli.config.user import user_config
 
 
 class _CatalogProjectNode(TypedDict):
@@ -33,6 +34,9 @@ class Account:
     @classmethod
     @cache
     def current(cls):
+        if user_config.workspace != "":
+            return user_config.workspace
+
         account_id = execute(
             document=gql.gql("""
                 query accountInfoQuery {
