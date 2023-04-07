@@ -66,12 +66,14 @@ class Project:
             cur._cache.display_name = x["displayName"]
             self._cache.experiments.append(cur)
 
-    @overload
-    def get_display_name(self, *, load_if_missing: Literal[False]) -> Optional[str]:
-        ...
+    # get_display_name
 
     @overload
     def get_display_name(self, *, load_if_missing: Literal[True] = True) -> str:
+        ...
+
+    @overload
+    def get_display_name(self, *, load_if_missing: bool) -> Optional[str]:
         ...
 
     def get_display_name(self, *, load_if_missing: bool = True) -> Optional[str]:
@@ -80,12 +82,14 @@ class Project:
 
         return self._cache.display_name
 
-    @overload
-    def list_tables(self, *, load_if_missing: Literal[False]) -> Optional[List[Table]]:
-        ...
+    # list_tables
 
     @overload
     def list_tables(self, *, load_if_missing: Literal[True] = True) -> List[Table]:
+        ...
+
+    @overload
+    def list_tables(self, *, load_if_missing: bool) -> Optional[List[Table]]:
         ...
 
     def list_tables(self, *, load_if_missing: bool = True) -> Optional[List[Table]]:

@@ -22,11 +22,10 @@ from typing_extensions import override
 
 from latch.gql._execute import execute
 from latch.registry.record import Record
-from latch.registry.types import InvalidValue, RecordValue
+from latch.registry.types import Column, InvalidValue, RecordValue
 from latch.registry.upstream_types.types import DBType
 from latch.registry.upstream_types.values import DBValue, EmptyCell
 from latch.registry.utils import (
-    RegistryPythonValue,
     RegistryTransformerException,
     to_python_literal,
     to_python_type,
@@ -41,16 +40,9 @@ class _AllRecordsNode(TypedDict):
     sampleDataValue: DBValue
 
 
-class _ColumnNode(TypedDict):
+class _ColumnNode(TypedDict("_ColumnNodeReserved", {"def": DBValue})):
     key: str
     type: DBType
-
-
-@dataclass(frozen=True)
-class Column:
-    key: str
-    type: Union[Type[RegistryPythonValue], Type[Union[RegistryPythonValue, EmptyCell]]]
-    upstream_type: DBType
 
 
 @dataclass
@@ -82,6 +74,7 @@ class Table:
                             nodes {
                                 key
                                 type
+                                def
                             }
                         }
                     }
@@ -105,12 +98,14 @@ class Table:
             cur = Column(x["key"], py_type, x["type"])
             self._cache.columns[cur.key] = cur
 
-    @overload
-    def get_display_name(self, *, load_if_missing: Literal[False]) -> Optional[str]:
-        ...
+    # get_display_name
 
     @overload
     def get_display_name(self, *, load_if_missing: Literal[True] = True) -> str:
+        ...
+
+    @overload
+    def get_display_name(self, *, load_if_missing: bool) -> Optional[str]:
         ...
 
     def get_display_name(self, *, load_if_missing: bool = True) -> Optional[str]:
@@ -119,16 +114,16 @@ class Table:
 
         return self._cache.display_name
 
-    @overload
-    def get_columns(
-        self, *, load_if_missing: Literal[False]
-    ) -> Optional[Dict[str, Column]]:
-        ...
+    # get_columns
 
     @overload
     def get_columns(
         self, *, load_if_missing: Literal[True] = True
     ) -> Dict[str, Column]:
+        ...
+
+    @overload
+    def get_columns(self, *, load_if_missing: bool) -> Optional[Dict[str, Column]]:
         ...
 
     def get_columns(
@@ -141,7 +136,6 @@ class Table:
 
     def list_records(self, *, page_size: int = 100) -> Iterator[Dict[str, Record]]:
         cols = self.get_columns()
-        col_types: Dict[str, DBType] = {c.key: c.upstream_type for c in cols.values()}
 
         # todo(maximsmol): because allSamples returns each column as its own
         # row, we can't paginate by samples because we don't know when a sample is finished
@@ -194,7 +188,7 @@ class Table:
             cur = Record(id)
             cur._cache.name = record_names[id]
             cur._cache.values = values
-            cur._cache.types = col_types
+            cur._cache.columns = cols
             page[id] = cur
 
             if len(page) == page_size:

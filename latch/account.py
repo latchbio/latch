@@ -74,14 +74,14 @@ class Account:
             cur._cache.display_name = x["displayName"]
             self._cache.catalog_projects.append(cur)
 
-    @overload
-    def list_projects(
-        self, *, load_if_missing: Literal[False]
-    ) -> Optional[List[Project]]:
-        ...
+    # list_projects
 
     @overload
     def list_projects(self, *, load_if_missing: Literal[True] = True) -> List[Project]:
+        ...
+
+    @overload
+    def list_projects(self, *, load_if_missing: bool) -> Optional[List[Project]]:
         ...
 
     def list_projects(self, *, load_if_missing: bool = True) -> Optional[List[Project]]:
