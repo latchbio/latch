@@ -294,6 +294,13 @@ class Table:
         if reload_on_commit:
             self.load()
 
+    def __str__(self) -> str:
+        name = self.get_display_name(load_if_missing=False)
+        if name is not None:
+            return f"Table({repr(name)})"
+
+        return repr(self)
+
 
 def _parse_selection(x: str) -> l.SelectionNode:
     p = lp.Parser(l.Source(x.lstrip()))
