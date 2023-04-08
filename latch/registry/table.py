@@ -48,7 +48,7 @@ class _Cache:
 class Table:
     """Registry table. Contains :class:`records <Record>`.
 
-    :meth:`Project.list_tables` is the typical way to get a :class:`Project`.
+    :meth:`Project.list_tables` is the typical way to get a :class:`Table`.
 
     Attributes:
         id:
@@ -156,7 +156,7 @@ class Table:
 
         Args:
             load_if_missing:
-                If true, :meth:`load` the display name if not in cache.
+                If true, :meth:`load` the column list if not in cache.
                 If false, return `None` if not in cache.
 
         Returns:

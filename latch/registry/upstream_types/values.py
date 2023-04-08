@@ -95,6 +95,14 @@ DBValue: TypeAlias = Union[PrimitiveValue, ArrayValue, UnionValue]
 
 @dataclass(frozen=True)
 class EmptyCell:
+    """Empty Registry :class:`Record` value. Singleton.
+
+    The constructor returns a referentially identical instance each call. That is,
+    `EmptyCell() is EmptyCell()`
+
+    Used to distinguish explicit `None` values from missing values.
+    """
+
     _singleton: ClassVar[Optional["EmptyCell"]] = None
 
     def __new__(cls) -> Self:

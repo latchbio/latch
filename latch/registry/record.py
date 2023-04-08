@@ -14,6 +14,14 @@ if TYPE_CHECKING:  # avoid circular type imports
 
 
 class NoSuchColumnError(KeyError):
+    """Unknown column reference by Registry method.
+
+    Reloading the containing table might help.
+
+    Attributes:
+        key: The unknown column key.
+    """
+
     def __init__(self, key: str):
         super().__init__(f"no such column: {key}")
 
@@ -60,22 +68,13 @@ class _Cache:
 
 @dataclass(frozen=True)
 class Record:
-    """A python representation of a Registry Record.
+    """Registry record. Contains :class:`records <Record>`.
 
-    A `Record` can either be instantiated directly using its ID or by a call to
-    `Table.list_records()`.
-
-    This class mirrors a Registry Record and exposes methods to get its name as
-    well as its column values. The particular getters are documented further in
-    their own docstrings.
+    :meth:`Table.list_records` is the typical way to get a :class:`Record`.
 
     Attributes:
         id:
-            The ID of the underlying Record as a string.
-        _cache:
-            A private cache for values that need to be queried over the network,
-            should not be interacted with directly.
-
+            Unique identifier.
     """
 
     _cache: _Cache = field(
@@ -89,14 +88,12 @@ class Record:
     id: str
 
     def load(self) -> None:
-        """Loads all properties at once.
+        """(Re-)populate this record instance's cache.
 
-        Performs a GraphQL request and uses the results to populate the
-        `name`, `columns`, and `values` properties of the calling `Record`'s
-        cache. This is called by their respective getters when `load_if_missing`
-        is set to True (the default).
+        Future calls to most getters will return immediately without making a network request.
+
+        Always makes a network request.
         """
-
         # avoid circular type imports
         from latch.registry.types import Column, InvalidValue
         from latch.registry.utils import to_python_literal, to_python_type
@@ -172,21 +169,18 @@ class Record:
         ...
 
     def get_name(self, *, load_if_missing: bool = True) -> Optional[str]:
-        """Returns the name of the underlying Record as a string.
+        """Get the name of this record.
 
-        This function will return the underlying Record's name. If `.load()` has
-        not been called yet, and if `load_if_missing` is set to True, a call to
-        `.load()` will be made to populate everything.
+        Names are unique within a table. Names are not globally unique.
+        Use :attr:`id` if a globally unique identifier is required.
 
         Args:
             load_if_missing:
-                Keyword-only. Controls whether or not a call to `.load()` will
-                be made if the value has not already been queried.
-                True by default.
+                If true, :meth:`load` the name if not in cache.
+                If false, return `None` if not in cache.
 
         Returns:
-            The name of the underlying Record as a string.
-
+            Name of this record.
         """
         if self._cache.name is None and load_if_missing:
             self.load()
@@ -216,23 +210,16 @@ class Record:
         *,
         load_if_missing: bool = True,
     ) -> Optional[Dict[str, Column]]:
-        """Returns a dict of the columns of the Table the `Record` belongs to.
-
-        This function will return a dictionary mapping column keys as strings
-        to `Column` objects. `Column`s are convenience dataclasses that contain
-        information about the column's key and type. See `Table` for more info.
+        """Get the columns of this record's table.
 
         Args:
             load_if_missing:
-                Keyword-only. Controls whether or not a call to `.load()` will
-                be made if the value has not already been queried.
-                True by default.
+                If true, :meth:`load` the column list if not in cache.
+                If false, return `None` if not in cache.
 
         Returns:
-            A dictionary mapping string column keys to `Column` objects.
-
+            Mapping between column keys and :class:`columns <Column>`.
         """
-
         if self._cache.columns is None and load_if_missing:
             self.load()
 
@@ -261,28 +248,19 @@ class Record:
         *,
         load_if_missing: bool = True,
     ) -> Optional[Dict[str, RecordValue]]:
-        """Returns a dictionary mapping column keys to their values.
+        """Get this record's values.
 
-        This function returns a dictionary mapping column keys as strings to the
-        underlying Record's values for that column. Values can either be python
-        values, or the special values `EmptyCell` or `InvalidValue`. The former
-        is returned when the Record has no value for the specified column. The
-        latter is returned when the Record's value in that column is invalid.
-
-        `InvalidValue` is a dataclass, and it contains the actual value of the
-        Record at the specified column as a string in its `raw_value` property.
+        The resulting dictionary is shared between all calls to :meth:`get_values`.
+        Make deep copies if independent mutation is desired.
 
         Args:
             load_if_missing:
-                Keyword-only. Controls whether or not a call to `.load()` will
-                be made if the value has not already been queried.
-                True by default.
+                If true, :meth:`load` the values if not in cache.
+                If false, return `None` if not in cache.
 
         Returns:
-            A dict mapping string column keys to values.
-
+            Mapping between column keys and the corresponding value.
         """
-
         if self._cache.values is None and load_if_missing:
             self.load()
 
