@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.18.1 - 2023-04-08
+
+### Fixed
+
+- Registry API should work in an running asyncio event loop
+
 ## 2.18.0 - 2023-04-08
 
 ### Added

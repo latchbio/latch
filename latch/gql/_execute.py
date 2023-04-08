@@ -3,7 +3,7 @@ from functools import cache
 from typing import Dict, Optional
 
 import gql
-from gql.transport.aiohttp import AIOHTTPTransport
+from gql.transport.requests import RequestsHTTPTransport
 from graphql import DocumentNode
 
 from latch.gql import AuthenticationError
@@ -32,7 +32,7 @@ def _get_client():
         )
 
     return gql.Client(
-        transport=AIOHTTPTransport(
+        transport=RequestsHTTPTransport(
             url=config.gql,
             headers={"Authorization": auth_header},
         )
