@@ -7,18 +7,36 @@ from typing_extensions import Self
 
 from latch.gql._execute import execute
 from latch.registry.project import Project
+from latch.registry.table import Table
 from latch_cli.config.user import user_config
+
+
+class _CatalogExperiment(TypedDict):
+    id: str
+    displayName: str
+
+
+class _CatalogExperimentConnection(TypedDict):
+    nodes: List[_CatalogExperiment]
 
 
 class _CatalogProjectNode(TypedDict):
     id: str
     displayName: str
 
+    catalogExperimentsByProjectId: _CatalogExperimentConnection
+
+
+class _CatalogProjectConnection(TypedDict):
+    nodes: List[_CatalogProjectNode]
+
+
+class _Account(TypedDict):
+    catalogProjectsByOwnerId: _CatalogProjectConnection
+
 
 @dataclass
 class _Cache:
-    """Internal cache class to organize information for a `Account`."""
-
     catalog_projects: Optional[List[Project]] = None
 
 
@@ -42,7 +60,7 @@ class Account:
     a user were to create an `Account` they do not have access to, that
     `Account` would be completely impotent.
 
-    Attributes:
+    Fields:
         id:
             The ID of the underlying Account as a string.
         _cache:
@@ -100,7 +118,7 @@ class Account:
         Accounts's cache. This is called by `.list_projects()` when
         `load_if_missing` is set to True (the default).
         """
-        data = execute(
+        data: _Account = execute(
             gql.gql("""
             query AccountQuery($ownerId: BigInt!) {
                 accountInfo(id: $ownerId) {
@@ -112,6 +130,13 @@ class Account:
                         nodes {
                             id
                             displayName
+
+                            catalogExperimentsByProjectId {
+                                nodes {
+                                    id
+                                    displayName
+                                }
+                            }
                         }
                     }
                 }
@@ -122,11 +147,18 @@ class Account:
         # todo(maximsmol): deal with nonexistent accounts
 
         self._cache.catalog_projects = []
-        x: _CatalogProjectNode
         for x in data["catalogProjectsByOwnerId"]["nodes"]:
             cur = Project(x["id"])
-            cur._cache.display_name = x["displayName"]
             self._cache.catalog_projects.append(cur)
+
+            cur._cache.display_name = x["displayName"]
+
+            cur._cache.experiments = []
+            for t in x["catalogExperimentsByProjectId"]["nodes"]:
+                table = Table(t["id"])
+                cur._cache.experiments.append(table)
+
+                table._cache.display_name = x["displayName"]
 
     # list_projects
 
