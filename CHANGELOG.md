@@ -16,11 +16,21 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.17.1 - 2023-04-07
+## 2.18.0 - 2023-04-08
+
+### Added
+
+- A new API for interacting with Latch Registry
+
+### Dependencies
+
+- Added `gql` and `aiohttp` as dependencies
+
+## 2.17.2 - 2023-04-07
 
 ### Fixed
 
-- Prevent `latch cp` from hitting the s3 part limits which causes large 
+- Prevent `latch cp` from hitting the s3 part limits which causes large
   file uploads to fail
 
 ## 2.17.1 - 2023-04-05
