@@ -93,7 +93,7 @@ class Account:
 
         return cls(id=account_id)
 
-    def load(self):
+    def load(self) -> None:
         """Loads all properties at once.
 
         Performs a GraphQL request and uses the results to populate the calling

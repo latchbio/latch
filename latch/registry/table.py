@@ -19,11 +19,11 @@ import graphql.language as l
 import graphql.language.parser as lp
 
 from latch.gql._execute import execute
-from latch.registry.record import Record
-from latch.registry.types import Column, InvalidValue, RecordValue
+from latch.registry.record import NoSuchColumnError, Record
+from latch.registry.types import Column, InvalidValue, RecordValue, RegistryPythonValue
 from latch.registry.upstream_types.types import DBType
 from latch.registry.upstream_types.values import DBValue, EmptyCell
-from latch.registry.utils import to_python_literal, to_python_type
+from latch.registry.utils import to_python_literal, to_python_type, to_registry_literal
 
 from ..types.json import JsonValue
 
@@ -286,15 +286,21 @@ class Table:
             yield page
 
     @contextmanager
-    def update(self) -> Iterator["TableUpdate"]:
+    def update(self, *, reload_on_commit: bool = True) -> Iterator["TableUpdate"]:
         upd = TableUpdate(self)
         yield upd
         upd.commit()
 
+        if reload_on_commit:
+            self.load()
+
 
 def _parse_selection(x: str) -> l.SelectionNode:
-    p = lp.Parser(l.Source(x))
-    return p.parse_selection()
+    p = lp.Parser(l.Source(x.lstrip()))
+    p.expect_token(l.TokenKind.SOF)
+    res = p.parse_selection()
+    p.expect_token(l.TokenKind.EOF)
+    return res
 
 
 def _name_node(x: str) -> l.NameNode:
@@ -376,6 +382,19 @@ class TableUpdate:
     def upsert_record_raw_unsafe(self, *, name: str, values: Dict[str, DBValue]):
         self._record_upserts.append(_TableRecordsUpsertData(name, values))
 
+    def upsert_record(self, name: str, **values: RegistryPythonValue):
+        cols = self.table.get_columns()
+
+        db_vals: Dict[str, DBValue] = {}
+        for k, v in values.items():
+            col = cols.get(k)
+            if col is None:
+                raise NoSuchColumnError(k)
+
+            db_vals[k] = to_registry_literal(v, col.upstream_type["type"])
+
+        self._record_upserts.append(_TableRecordsUpsertData(name, db_vals))
+
     def _add_record_upserts_selection(self, updates: List[l.SelectionNode]) -> None:
         if len(self._record_upserts) == 0:
             return
@@ -420,7 +439,7 @@ class TableUpdate:
 
         doc = l.parse("""
             mutation TableUpdate {
-                # empty selection will be replaced by the accumulated mutations
+                placeholder
             }
         """)
 

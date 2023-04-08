@@ -13,6 +13,13 @@ if TYPE_CHECKING:  # avoid circular type imports
     from latch.registry.types import Column, RecordValue
 
 
+class NoSuchColumnError(KeyError):
+    def __init__(self, key: str):
+        super().__init__(f"no such column: {key}")
+
+        self.key = key
+
+
 class _ColumnDefinition(TypedDict("_ColumnDefinitionReserved", {"def": DBValue})):
     key: str
     type: DBType
@@ -81,7 +88,7 @@ class Record:
 
     id: str
 
-    def load(self):
+    def load(self) -> None:
         """Loads all properties at once.
 
         Performs a GraphQL request and uses the results to populate the
@@ -95,8 +102,7 @@ class Record:
         from latch.registry.utils import to_python_literal, to_python_type
 
         data: _CatalogSample = execute(
-            gql.gql(
-                """
+            gql.gql("""
             query RecordQuery($id: BigInt!) {
                 catalogSample(id: $id) {
                     id
@@ -118,8 +124,7 @@ class Record:
                     }
                 }
             }
-            """
-            ),
+            """),
             {"id": self.id},
         )["catalogSample"]
         # todo(maximsmol): deal with nonexistent records
@@ -140,8 +145,12 @@ class Record:
 
         vals: Dict[str, RecordValue] = {}
         for k, v in colVals.items():
+            col = self._cache.columns.get(k)
+            if col is None:
+                raise NoSuchColumnError(k)
+
             # todo(maximsmol): allow creating records with mismatching types
-            vals[k] = to_python_literal(v, self._cache.columns[k].upstream_type["type"])
+            vals[k] = to_python_literal(v, col.upstream_type["type"])
 
         for k, c in self._cache.columns.items():
             if k in vals:
