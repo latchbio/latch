@@ -14,6 +14,8 @@ class _CatalogExperimentNode(TypedDict):
 
 @dataclass
 class _Cache:
+    """Internal cache class to organize information for a `Project`."""
+
     display_name: Optional[str] = None
     experiments: Optional[List[Table]] = None
 
