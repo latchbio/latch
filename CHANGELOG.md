@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.17.1 - 2023-04-07
+
+### Fixed
+
+- Prevent `latch cp` from hitting the s3 part limits which causes large 
+  file uploads to fail
+
 ## 2.17.1 - 2023-04-05
 
 ### Fixed
