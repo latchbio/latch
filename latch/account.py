@@ -50,10 +50,6 @@ class Account:
     lacks permissions to fetch some information, the corresponding operations
     will act as if the information does not exist. Update operations will usually
     produce errors.
-
-    Attributes:
-        id:
-            Unique identifier
     """
 
     _cache: _Cache = field(
@@ -65,6 +61,7 @@ class Account:
     )
 
     id: str
+    """Unique identifier."""
 
     @classmethod
     @cache

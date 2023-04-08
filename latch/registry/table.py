@@ -46,13 +46,9 @@ class _Cache:
 
 @dataclass(frozen=True)
 class Table:
-    """Registry table. Contains :class:`records <Record>`.
+    """Registry table. Contains :class:`records <latch.registry.record.Record>`.
 
-    :meth:`Project.list_tables` is the typical way to get a :class:`Table`.
-
-    Attributes:
-        id:
-            Unique identifier.
+    :meth:`~latch.registry.project.Project.list_tables` is the typical way to get a :class:`Table`.
     """
 
     _cache: _Cache = field(
@@ -64,6 +60,7 @@ class Table:
     )
 
     id: str
+    """Unique identifier."""
 
     def load(self) -> None:
         """(Re-)populate this table instance's cache.
@@ -160,7 +157,7 @@ class Table:
                 If false, return `None` if not in cache.
 
         Returns:
-            Mapping between column keys and :class:`columns <Column>`.
+            Mapping between column keys and :class:`columns <latch.registry.types.Column>`.
         """
         if self._cache.columns is None and load_if_missing:
             self.load()
@@ -177,7 +174,7 @@ class Table:
 
         Yields:
             Pages of records. Each page is a mapping between record IDs and
-            :class:`records <Record>`.
+            :class:`records <latch.registry.record.Record>`.
         """
 
         cols = self.get_columns()
@@ -376,14 +373,14 @@ class TableUpdate:
     def upsert_record_raw_unsafe(
         self, *, name: str, values: Dict[str, DBValue]
     ) -> None:
-        """DANGEROUSLY Update or create a record using raw :class:`values <DBValue>`.
+        """DANGEROUSLY Update or create a record using raw :class:`values <latch.registry.upstream_types.values.DBValue>`.
 
         Values are not checked against the existing columns.
 
         A transport error will be thrown if non-existent columns are updated.
 
         The update will succeed if values do not match column types and future
-        reads will produce :class:`invalid values <InvalidValue>`.
+        reads will produce :class:`invalid values <latch.registry.types.InvalidValue>`.
 
         Unsafe:
             The value dictionary is not validated in any way.
@@ -404,7 +401,7 @@ class TableUpdate:
 
         It is possible that the column definitions changed since the table was last
         loaded and the update will be issued with values that do not match current column types.
-        This will succeed with no error and future reads will produce :class:`invalid values <InvalidValue>`.
+        This will succeed with no error and future reads will produce :class:`invalid values <latch.registry.types.InvalidValue>`.
 
         Args:
             name: Target record name.

@@ -20,13 +20,9 @@ class _Cache:
 
 @dataclass(frozen=True)
 class Project:
-    """Registry project (folder containing :class:`tables <Table>`).
+    """Registry project (folder containing :class:`tables <latch.registry.table.Table>`).
 
-    :meth:`Account.list_projects` is the typical way to get a :class:`Project`.
-
-    Attributes:
-        id:
-            Unique identifier.
+    :meth:`~latch.account.Account.list_registry_projects` is the typical way to get a :class:`Project`.
     """
 
     _cache: _Cache = field(
@@ -38,6 +34,7 @@ class Project:
     )
 
     id: str
+    """Unique identifier."""
 
     def load(self) -> None:
         """(Re-)populate this project instance's cache.

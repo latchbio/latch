@@ -14,7 +14,7 @@ if TYPE_CHECKING:  # avoid circular type imports
 
 
 class NoSuchColumnError(KeyError):
-    """Unknown column reference by Registry method.
+    """Unknown column referenced by Registry method.
 
     Reloading the containing table might help.
 
@@ -68,13 +68,9 @@ class _Cache:
 
 @dataclass(frozen=True)
 class Record:
-    """Registry record. Contains :class:`records <Record>`.
+    """Registry record.
 
-    :meth:`Table.list_records` is the typical way to get a :class:`Record`.
-
-    Attributes:
-        id:
-            Unique identifier.
+    :meth:`~latch.registry.table.Table.list_records` is the typical way to get a :class:`Record`.
     """
 
     _cache: _Cache = field(
@@ -86,6 +82,7 @@ class Record:
     )
 
     id: str
+    """Unique identifier."""
 
     def load(self) -> None:
         """(Re-)populate this record instance's cache.
@@ -218,7 +215,7 @@ class Record:
                 If false, return `None` if not in cache.
 
         Returns:
-            Mapping between column keys and :class:`columns <Column>`.
+            Mapping between column keys and :class:`columns <latch.registry.types.Column>`.
         """
         if self._cache.columns is None and load_if_missing:
             self.load()
