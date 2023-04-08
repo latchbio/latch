@@ -3,6 +3,7 @@ from functools import cache
 from typing import List, Literal, Optional, TypedDict, overload
 
 import gql
+from typing_extensions import Self
 
 from latch.gql._execute import execute
 from latch.registry.project import Project
@@ -33,7 +34,7 @@ class Account:
 
     @classmethod
     @cache
-    def current(cls):
+    def current(cls) -> Self:
         if user_config.workspace != "":
             account_id = user_config.workspace
         else:

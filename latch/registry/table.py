@@ -1,5 +1,4 @@
-import json
-from abc import abstractmethod
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import (
     Any,
@@ -8,29 +7,25 @@ from typing import (
     List,
     Literal,
     Optional,
-    Type,
+    Tuple,
     TypedDict,
     Union,
+    cast,
     overload,
 )
 
 import gql
 import graphql.language as l
-import graphql.type as t
-import graphql.utilities as u
-from typing_extensions import override
+import graphql.language.parser as lp
 
 from latch.gql._execute import execute
 from latch.registry.record import Record
 from latch.registry.types import Column, InvalidValue, RecordValue
 from latch.registry.upstream_types.types import DBType
 from latch.registry.upstream_types.values import DBValue, EmptyCell
-from latch.registry.utils import (
-    RegistryTransformerException,
-    to_python_literal,
-    to_python_type,
-    to_registry_literal,
-)
+from latch.registry.utils import to_python_literal, to_python_type
+
+from ..types.json import JsonValue
 
 
 class _AllRecordsNode(TypedDict):
@@ -63,7 +58,7 @@ class Table:
 
     id: str
 
-    def load(self):
+    def load(self) -> None:
         """Loads all properties at once.
 
         Performs a GraphQL request and uses the results to populate the
@@ -73,8 +68,7 @@ class Table:
         """
 
         data = execute(
-            gql.gql(
-                """
+            gql.gql("""
                 query TableQuery($id: BigInt!) {
                     catalogExperiment(id: $id) {
                         id
@@ -88,8 +82,7 @@ class Table:
                         }
                     }
                 }
-                """
-            ),
+                """),
             variables={"id": self.id},
         )["catalogExperiment"]
         # todo(maximsmol): deal with nonexistent tables
@@ -213,8 +206,7 @@ class Table:
         # todo(maximsmol): because allSamples returns each column as its own
         # row, we can't paginate by samples because we don't know when a sample is finished
         nodes: List[_AllRecordsNode] = execute(
-            gql.gql(
-                """
+            gql.gql("""
                 query TableQuery($id: BigInt!) {
                     catalogExperiment(id: $id) {
                         allSamples {
@@ -227,8 +219,7 @@ class Table:
                         }
                     }
                 }
-                """
-            ),
+                """),
             {
                 "id": self.id,
             },
@@ -273,107 +264,154 @@ class Table:
         if len(page) > 0:
             yield page
 
-    def update(self):
-        return TableUpdater(self)
+    @contextmanager
+    def update(self) -> Iterator["TableUpdate"]:
+        upd = TableUpdate(self)
+        yield upd
+        upd.commit()
+
+
+def _parse_selection(x: str) -> l.SelectionNode:
+    p = lp.Parser(l.Source(x))
+    return p.parse_selection()
+
+
+def _name_node(x: str) -> l.NameNode:
+    res = l.NameNode()
+    res.value = x
+    return res
+
+
+def _obj_field(k: str, x: JsonValue) -> l.ObjectFieldNode:
+    res = l.ObjectFieldNode()
+
+    res.name = _name_node(k)
+    res.value = _json_value(x)
+
+    return res
+
+
+def _json_value(x: JsonValue) -> l.ValueNode:
+    # note: this does not support enums
+    if x is None:
+        return l.NullValueNode()
+
+    if isinstance(x, str):
+        res = l.StringValueNode()
+        res.value = x
+        return res
+
+    if isinstance(x, int):
+        if isinstance(x, bool):
+            res = l.BooleanValueNode()
+            res.value = x
+            return res
+
+        res = l.IntValueNode()
+        res.value = str(x)
+        return res
+
+    if isinstance(x, float):
+        res = l.FloatValueNode()
+        res.value = str(x)
+        return res
+
+    if isinstance(x, float):
+        res = l.FloatValueNode()
+        res.value = str(x)
+        return res
+
+    if isinstance(x, list):
+        res = l.ListValueNode()
+        res.values = tuple(_json_value(el) for el in x)
+        return res
+
+    if isinstance(x, dict):
+        res = l.ObjectValueNode()
+        res.fields = tuple(_obj_field(k, v) for k, v in x.items())
+        return res
+
+    raise ValueError(f"cannot Graphql-serialize JSON value of type {type(x)}: {x}")
+
+
+@dataclass(frozen=True)
+class _TableRecordsUpsertData:
+    name: str
+    values: Dict[str, DBValue]
 
 
 @dataclass(frozen=True)
 class TableUpdate:
+    _record_upserts: List[_TableRecordsUpsertData] = field(
+        default_factory=list,
+        init=False,
+        repr=False,
+        hash=False,
+        compare=False,
+    )
+
     table: Table
 
-    # todo(maximsmol): switch to using l.DocumentNode
-    @abstractmethod
-    def get_document(self) -> str:
-        raise NotImplementedError()
+    def upsert_record_raw_unsafe(self, *, name: str, values: Dict[str, DBValue]):
+        self._record_upserts.append(_TableRecordsUpsertData(name, values))
 
+    def _add_record_upserts_selection(self, updates: List[l.SelectionNode]) -> None:
+        if len(self._record_upserts) == 0:
+            return
 
-# todo(ayush): "DeleteRecordUpdate", "UpsertColumnUpdate", "DeleteColumnUpdate"
-@dataclass(frozen=True)
-class UpsertRecordUpdate(TableUpdate):
-    name: str
-    data: Dict[str, object]
-    op_index: int
+        names: JsonValue = [x.name for x in self._record_upserts]
+        values: JsonValue = [
+            cast(Dict[str, JsonValue], x.values) for x in self._record_upserts
+        ]
 
-    @override
-    def get_document(self) -> str:
-        errors: Dict[str, str] = {}
+        res = _parse_selection("""
+            catalogMultiUpsertSamples(input: {}) {
+                clientMutationId
+            }
+        """)
+        assert isinstance(res, l.FieldNode)
 
-        keys: List[str] = []
-        registry_literal_strings: List[str] = []
-
-        columns = self.table.get_columns()
-        for key, python_literal in self.data.items():
-            try:
-                registry_type = columns.get(key).upstream_type
-                registry_literal = to_registry_literal(
-                    python_literal, registry_type["type"]
-                )
-            except RegistryTransformerException as e:
-                errors[key] = f"unable to generate registry literal for {key}: {e}"
-                continue
-
-            keys.append(key)
-            registry_literal_strings.append(json.dumps(registry_literal))
-
-        arg_experiment_id = l.print_ast(
-            u.ast_from_value(self.table.id, t.GraphQLString)
-        )
-        arg_name = l.print_ast(u.ast_from_value(self.name, t.GraphQLString))
-        arg_keys = l.print_ast(u.ast_from_value(keys, t.GraphQLList(t.GraphQLString)))
-        arg_data = l.print_ast(
-            u.ast_from_value(registry_literal_strings, t.GraphQLList(t.GraphQLString))
+        args = l.ArgumentNode()
+        args.name = _name_node("input")
+        args.value = _json_value(
+            {
+                "argExperimentId": self.table.id,
+                "argNames": names,
+                "argData": values,
+            }
         )
 
-        return f"""
-        m{self.op_index}: catalogUpsertSampleWithData(
-            input: {{
-                argExperimentId: {arg_experiment_id}
-                argName: {arg_name}
-                argKeys: {arg_keys}
-                argData: {arg_data}
-            }}
-        ) {{
-            clientMutationId
-        }}
-        """
+        res.alias = _name_node(f"upd{len(updates)}")
+        res.arguments = tuple([args])
 
-
-@dataclass(frozen=True)
-class TableUpdater:
-    table: Table
-    _updates: List[TableUpdate] = field(default_factory=list)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, value, tb):
-        if type is not None or value is not None or tb is not None:
-            return False
-        self.commit()
-
-    def upsert_record(self, record_name: str, column_data: Dict[str, Any]):
-        self._updates.append(
-            UpsertRecordUpdate(
-                self.table,
-                record_name,
-                column_data,
-                len(self._updates),
-            )
-        )
+        updates.append(res)
 
     def commit(self):
-        documents: List[str] = []
+        updates: List[l.SelectionNode] = []
 
-        while len(self._updates) > 0:
-            update = self._updates.pop()
-            documents.append(update.get_document())
+        self._add_record_upserts_selection(updates)
 
-        documents.reverse()
+        if len(updates) == 0:
+            return
 
-        batched_document = f"""
-            mutation UpsertSampleWithData {{
-                {"".join(documents)}
-            }}
-        """
+        sel_set = l.SelectionSetNode()
+        sel_set.selections = tuple(updates)
 
-        execute(gql.gql(batched_document))
+        doc = l.parse("""
+            mutation TableUpdate {
+                # empty selection will be replaced by the accumulated mutations
+            }
+        """)
+
+        assert len(doc.definitions) == 1
+        mut = doc.definitions[0]
+
+        assert isinstance(mut, l.OperationDefinitionNode)
+        mut.selection_set = sel_set
+
+        execute(doc)
+
+        self.clear()
+
+    def clear(self):
+        self._record_upserts.clear()

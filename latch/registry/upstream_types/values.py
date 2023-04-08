@@ -104,4 +104,4 @@ class EmptyCell:
         return cls._singleton
 
 
-Value: TypeAlias = Union[DBValue, DBValue]
+Value: TypeAlias = Union[DBValue, EmptyCell]

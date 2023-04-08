@@ -30,7 +30,7 @@ class Project:
 
     id: str
 
-    def load(self):
+    def load(self) -> None:
         """Loads all properties at once.
 
         Performs a GraphQL request and uses the results to populate the
@@ -40,8 +40,7 @@ class Project:
         """
 
         data = execute(
-            document=gql.gql(
-                """
+            document=gql.gql("""
                 query ProjectQuery($id: BigInt!) {
                     catalogProject(id: $id) {
                         id
@@ -59,8 +58,7 @@ class Project:
                         }
                     }
                 }
-                """
-            ),
+                """),
             variables={"id": self.id},
         )["catalogProject"]
         # todo(maximsmol): deal with nonexistent projects
@@ -145,7 +143,7 @@ class Project:
 
         return self._cache.experiments
 
-    def __str__(self):
+    def __str__(self) -> str:
         name = self.get_display_name(load_if_missing=False)
         if name is not None:
             return f"Project({repr(name)})"
