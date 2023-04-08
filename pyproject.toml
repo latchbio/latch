@@ -1,0 +1,36 @@
+[tool.poetry.dev-dependencies]
+black = "^23.3.0"
+isort = "^5.12.0"
+ruff = "^0.0.261"
+
+[tool.black]
+preview = true
+target-version = ["py39"]
+
+[tool.isort]
+profile = "black"
+
+[tool.ruff]
+target-version = "py39"
+pydocstyle = { convention = "google" }
+extend-select = ["W", "D", "U", "N", "C", "B", "A", "T", "Q", "RUF100"]
+extend-ignore = [
+  "A002",
+  "A003",
+
+  "E402",
+  "E501",
+  "E741",
+
+  "C408",
+  "C901",
+
+  "T201",
+
+  "D415",
+
+  "D100",
+
+  "UP006",
+  "UP035",
+]
