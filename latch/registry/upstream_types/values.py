@@ -82,7 +82,7 @@ PrimitiveValue: TypeAlias = Union[
     PrimitiveBooleanValue,
 ]
 
-ArrayValue: TypeAlias = List[PrimitiveValue]
+ArrayValue: TypeAlias = List["DBValue"]
 
 
 class UnionValue(TypedDict):

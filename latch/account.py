@@ -42,30 +42,18 @@ class _Cache:
 
 @dataclass(frozen=True)
 class Account:
-    """A python representation of an Account on Latch
+    """User or team workspace. Can be used to fetch related resources.
 
-    This class mirrors an Account on Latch and provides a method to list the
-    Projects in the underlying Account.
+    :meth:`current` is the typical way of getting an :class:`Account`.
 
-    `Account`s can be instantiated directly by ID or by using the constructor
-    method `Account.current()`. A call to `Account.current()` will return an
-    `Account` that corresponds to the workspace in which the code was run. In an
-    execution context, this is the workspace in which the execution was run. In
-    a local context, e.g. through `latch develop`, this is the current setting
-    of `latch workspace`, defaulting to the user's personal workspace if no
-    setting is found.
-
-    Even though an `Account` can be instantiated with any ID, its methods will
-    only work if the user running them has access to the underlying Account. If
-    a user were to create an `Account` they do not have access to, that
-    `Account` would be completely impotent.
+    If the current request signer (CLI user or execution context)
+    lacks permissions to fetch some information, the corresponding operations
+    will act as if the information does not exist. Update operations will usually
+    produce errors.
 
     Fields:
         id:
-            The ID of the underlying Account as a string.
-        _cache:
-            A private cache for values that need to be queried over the network,
-            should not be accessed directly.
+            Unique identifier
     """
 
     _cache: _Cache = field(
@@ -81,20 +69,17 @@ class Account:
     @classmethod
     @cache
     def current(cls) -> Self:
-        """Factory for `Account`.
-
-        Will return an `Account` that corresponds to the workspace in which the
-        code was run. This is a convenience method so that users don't have to
-        worry about managing Account IDs directly.
+        """Get current account.
 
         In an execution context, this is the workspace in which the execution
-        was run. In a local context, e.g. through `latch develop`, this is the
-        current setting of `latch workspace`, defaulting to the user's personal
-        workspace if no setting is found.
+        was run.
+
+        In the CLI context (when running `latch` commands) this is the
+        current setting of `latch workspace`, which defaults to the user's personal
+        workspace.
 
         Returns:
-            An `Account` describing the current workspace.
-
+            Current account.
         """
         if user_config.workspace != "":
             account_id = user_config.workspace
@@ -112,11 +97,9 @@ class Account:
         return cls(id=account_id)
 
     def load(self) -> None:
-        """Loads all properties at once.
+        """(Re-)populate this account's cache.
 
-        Performs a GraphQL request and uses the results to populate the calling
-        Accounts's cache. This is called by `.list_projects()` when
-        `load_if_missing` is set to True (the default).
+        Future calls to most getters will return immediately without making a network request.
         """
         data: _Account = execute(
             gql.gql("""
@@ -171,22 +154,15 @@ class Account:
         ...
 
     def list_projects(self, *, load_if_missing: bool = True) -> Optional[List[Project]]:
-        """Returns all Registry Projects in the underlying Account.
-
-        This function returns a list of `Project` objects, each of which is a
-        Project in the underlying Account. By default this will call `.load()`
-        if the Projects have not been queried yet, but this behavior can be
-        disabled by setting `load_if_missing` to False.
+        """List Registry projects owned by this workspace.
 
         Args:
             load_if_missing:
-                Keyword-only. Controls whether or not a call to `.load()` will
-                be made if the value has not already been queried.
-                True by default.
+                If true, :meth:`load` the project list if not in cache.
+                If false, return `None` if not in cache.
 
         Returns:
-            A list of `Project`s.
-
+            Projects owned by this workspace.
         """
 
         if self._cache.catalog_projects is None and load_if_missing:
