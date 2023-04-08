@@ -17,7 +17,7 @@ class _Cache:
     """Internal cache class to organize information for a `Project`."""
 
     display_name: Optional[str] = None
-    experiments: Optional[List[Table]] = None
+    tables: Optional[List[Table]] = None
 
 
 @dataclass(frozen=True)
@@ -60,7 +60,8 @@ class Project:
         """
 
         data = execute(
-            document=gql.gql("""
+            document=gql.gql(
+                """
                 query ProjectQuery($id: BigInt!) {
                     catalogProject(id: $id) {
                         id
@@ -78,21 +79,22 @@ class Project:
                         }
                     }
                 }
-                """),
+                """
+            ),
             variables={"id": self.id},
         )["catalogProject"]
         # todo(maximsmol): deal with nonexistent projects
 
         self._cache.display_name = data["displayName"]
 
-        self._cache.experiments = []
+        self._cache.tables = []
         experiments: List[_CatalogExperimentNode] = data[
             "catalogExperimentsByProjectId"
         ]["nodes"]
         for x in experiments:
             cur = Table(x["id"])
             cur._cache.display_name = x["displayName"]
-            self._cache.experiments.append(cur)
+            self._cache.tables.append(cur)
 
     # get_display_name
 
@@ -158,10 +160,10 @@ class Project:
             `load_if_missing` is set to False.
         """
 
-        if self._cache.experiments is None and load_if_missing:
+        if self._cache.tables is None and load_if_missing:
             self.load()
 
-        return self._cache.experiments
+        return self._cache.tables
 
     def __str__(self) -> str:
         name = self.get_display_name(load_if_missing=False)

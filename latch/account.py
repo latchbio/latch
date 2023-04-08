@@ -85,13 +85,15 @@ class Account:
             account_id = user_config.workspace
         else:
             account_id = execute(
-                document=gql.gql("""
+                document=gql.gql(
+                    """
                     query accountInfoQuery {
                         accountInfoCurrent {
                             id
                         }
                     }
-                    """),
+                    """
+                ),
             )["accountInfoCurrent"]["id"]
 
         return cls(id=account_id)
@@ -102,7 +104,8 @@ class Account:
         Future calls to most getters will return immediately without making a network request.
         """
         data: _Account = execute(
-            gql.gql("""
+            gql.gql(
+                """
             query AccountQuery($ownerId: BigInt!) {
                 accountInfo(id: $ownerId) {
                     catalogProjectsByOwnerId(
@@ -124,7 +127,8 @@ class Account:
                     }
                 }
             }
-            """),
+            """
+            ),
             {"ownerId": self.id},
         )["accountInfo"]
         # todo(maximsmol): deal with nonexistent accounts
@@ -136,10 +140,10 @@ class Account:
 
             cur._cache.display_name = x["displayName"]
 
-            cur._cache.experiments = []
+            cur._cache.tables = []
             for t in x["catalogExperimentsByProjectId"]["nodes"]:
                 table = Table(t["id"])
-                cur._cache.experiments.append(table)
+                cur._cache.tables.append(table)
 
                 table._cache.display_name = x["displayName"]
 

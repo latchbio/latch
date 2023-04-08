@@ -61,7 +61,7 @@ def to_python_type(registry_type: RegistryType) -> Type[RegistryPythonValue]:
 
     if "union" in registry_type:
         variants: List[Type[RegistryPythonValue]] = []
-        for key, variant in registry_type["union"].items():
+        for variant in registry_type["union"].values():
             variants.append(
                 # todo(maximsmol): allow specifying the exact variant we want
                 # or preserving it when round-tripping?
@@ -91,22 +91,21 @@ def to_python_literal(
             to_python_literal(sub_val, registry_type["array"])
             for sub_val in registry_literal
         ]
-
-    if not registry_literal["valid"]:
-        return InvalidValue(registry_literal["rawValue"])
-
-    value = registry_literal["value"]
-
     if "union" in registry_type:
         tag = registry_literal["tag"]
         sub_type = registry_type["union"].get(tag)
         if sub_type is None:
             raise RegistryTransformerException(
-                f"{value} cannot be converted to {registry_type} because its tag"
-                f" `{tag}` is not present."
+                f"{registry_literal} cannot be converted to {registry_type} because its"
+                f" tag `{tag}` is not present."
             )
 
-        return to_python_literal(value["value"], sub_type)
+        return to_python_literal(registry_literal["value"], sub_type)
+
+    if not registry_literal["valid"]:
+        return InvalidValue(registry_literal["rawValue"])
+
+    value = registry_literal["value"]
 
     primitive = registry_type.get("primitive")
     if primitive is None:
@@ -327,7 +326,8 @@ def to_registry_literal(
             )
 
         node_id = execute(
-            gql.gql("""
+            gql.gql(
+                """
             query nodeIdQ($argPath: String!) {
                 ldataResolvePath(
                     path: $argPath
@@ -335,7 +335,8 @@ def to_registry_literal(
                     nodeId
                 }
             }
-            """),
+            """
+            ),
             {"argPath": python_literal.remote_path},
         )["ldataResolvePath"]["nodeId"]
 
