@@ -64,8 +64,17 @@ class Table:
     id: str
 
     def load(self):
+        """Loads all properties at once.
+
+        Performs a GraphQL request and uses the results to populate the
+        `display_name` and `columns` properties of the calling Table's cache.
+        This is called by `.get_display_name()` and `.get_columns()` when
+        `load_if_missing` is set to True (the default).
+        """
+
         data = execute(
-            gql.gql("""
+            gql.gql(
+                """
                 query TableQuery($id: BigInt!) {
                     catalogExperiment(id: $id) {
                         id
@@ -79,7 +88,8 @@ class Table:
                         }
                     }
                 }
-                """),
+                """
+            ),
             variables={"id": self.id},
         )["catalogExperiment"]
         # todo(maximsmol): deal with nonexistent tables
@@ -109,6 +119,24 @@ class Table:
         ...
 
     def get_display_name(self, *, load_if_missing: bool = True) -> Optional[str]:
+        """Gets the display name of the calling Table, loading it if necessary.
+
+        This function will return the calling Table's display name. If
+        `.load()` has not been called yet, and if `load_if_missing` is set to
+        True, a call to `.load()` will be made to populate everything.
+
+        Args:
+            load_if_missing:
+                Keyword-only. Controls whether or not a call to `.load()` will
+                be made if the value has not already been queried.
+                True by default.
+
+        Returns:
+            The display name of the calling Table as a string. Returns None if
+            the display name has not been queried yet and `load_if_missing` is
+            set to False.
+        """
+
         if self._cache.display_name is None and load_if_missing:
             self.load()
 
@@ -129,18 +157,64 @@ class Table:
     def get_columns(
         self, *, load_if_missing: bool = True
     ) -> Optional[Dict[str, Column]]:
+        """Gets the columns of the calling Table, loading them if necessary.
+
+        This function will return the calling Table's columns as a dictionary.
+        The keys of the dictionary are column names, and its values are `Column`
+        objects.
+
+        If `.load()` has not been called yet, and if `load_if_missing` is set to
+        True, a call to `.load()` will be made to populate everything.
+
+        Args:
+            load_if_missing:
+                Keyword-only. Controls whether or not a call to `.load()` will
+                be made if the value has not already been queried.
+                True by default.
+
+        Returns:
+            A dict of the columns of the calling Table. Returns None if the
+            columns have not been queried yet and `load_if_missing` is set to
+            False.
+        """
+
         if self._cache.columns is None and load_if_missing:
             self.load()
 
         return self._cache.columns
 
     def list_records(self, *, page_size: int = 100) -> Iterator[Dict[str, Record]]:
+        """Allows for paginated querying of all records in the calling Table.
+
+        This function returns a generator which yields records one page at a
+        time. Pages are dictionaries with keys being Record IDs and values being
+        the respective `Record` objects.  Records are returned in ascending
+        order by their ID.
+
+        If `.load()` has not been called, this function will call it and load
+        all of the calling Table's data.
+
+        Args:
+            page_size:
+                Keyword-only. Will determine the size of each page yielded by
+                the returned generator. Must be a positive integer. By default
+                set to 100.
+
+        Returns:
+            A generator that yields pages of `Records`. Each page is a
+            dictionary mapping string IDs to `Record` instances. Each `Record`
+            is returned with values already loaded, so calling `.load()` on it
+            is not necessary.
+
+        """
+
         cols = self.get_columns()
 
         # todo(maximsmol): because allSamples returns each column as its own
         # row, we can't paginate by samples because we don't know when a sample is finished
         nodes: List[_AllRecordsNode] = execute(
-            gql.gql("""
+            gql.gql(
+                """
                 query TableQuery($id: BigInt!) {
                     catalogExperiment(id: $id) {
                         allSamples {
@@ -153,7 +227,8 @@ class Table:
                         }
                     }
                 }
-                """),
+                """
+            ),
             {
                 "id": self.id,
             },

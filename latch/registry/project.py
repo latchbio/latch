@@ -31,8 +31,17 @@ class Project:
     id: str
 
     def load(self):
+        """Loads all properties at once.
+
+        Performs a GraphQL request and uses the results to populate the
+        `display_name` and `tables` properties of the calling Project's cache.
+        This is called by `.get_display_name()` and `.list_tables()` when
+        `load_if_missing` is set to True (the default).
+        """
+
         data = execute(
-            document=gql.gql("""
+            document=gql.gql(
+                """
                 query ProjectQuery($id: BigInt!) {
                     catalogProject(id: $id) {
                         id
@@ -50,7 +59,8 @@ class Project:
                         }
                     }
                 }
-                """),
+                """
+            ),
             variables={"id": self.id},
         )["catalogProject"]
         # todo(maximsmol): deal with nonexistent projects
@@ -77,6 +87,24 @@ class Project:
         ...
 
     def get_display_name(self, *, load_if_missing: bool = True) -> Optional[str]:
+        """Gets the display name of the Project, loading it if necessary.
+
+        This function will return the calling Project's display name. If
+        `.load()` has not been called yet, and if `load_if_missing` is set to
+        True, a call to `.load()` will be made to populate everything.
+
+        Args:
+            load_if_missing:
+                Keyword-only. Controls whether or not a call to `.load()` will
+                be made if the value has not already been queried.
+                True by default.
+
+        Returns:
+            The display name of the calling Project as a string. Returns None if
+            the display name has not been queried yet and `load_if_missing` is
+            set to False.
+        """
+
         if self._cache.display_name is None and load_if_missing:
             self.load()
 
@@ -93,6 +121,25 @@ class Project:
         ...
 
     def list_tables(self, *, load_if_missing: bool = True) -> Optional[List[Table]]:
+        """Gets a list of `Table` objects for each table in this Project.
+
+        This function will return a list of `Table` objects, one for each Table
+        in the calling Project. If `.load()` has not been called yet, and if
+        `load_if_missing` is set to True, a call to `.load()` will be made to
+        populate everything.
+
+        Args:
+            load_if_missing:
+                Keyword-only. Controls whether or not a call to `.load()` will
+                be made if the value has not already been queried.
+                True by default.
+
+        Returns:
+            A list of `Table`s, each corresponding to a Table within the calling
+            Project. Returns None if `.load()` has not been called yet and
+            `load_if_missing` is set to False.
+        """
+
         if self._cache.experiments is None and load_if_missing:
             self.load()
 
