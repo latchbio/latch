@@ -14,12 +14,32 @@ class _CatalogExperimentNode(TypedDict):
 
 @dataclass
 class _Cache:
+    """Internal cache class to organize information for a `Project`."""
+
     display_name: Optional[str] = None
     experiments: Optional[List[Table]] = None
 
 
 @dataclass(frozen=True)
 class Project:
+    """A python representation of a Registry Project.
+
+    This class mirrors a Project in Registry, and provides functionality for
+    programmatically getting information about the Project, namely its display
+    name and the Tables it contains.
+
+    `Project`s can be instantiated either by calling `Account.list_projects()`
+    or directly by ID. A `Project` exposes the getters `get_display_name` and
+    `get_tables`. These are documented further in their respective docstrings.
+
+    Attributes:
+        id:
+            The ID of the underlying Project as a string,
+        _cache:
+            A private cache for values that need to be queried over the network,
+            should not be interacted with directly.
+    """
+
     _cache: _Cache = field(
         default_factory=lambda: _Cache(),
         init=False,

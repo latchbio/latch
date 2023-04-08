@@ -42,12 +42,32 @@ class _ColumnNode(TypedDict("_ColumnNodeReserved", {"def": DBValue})):
 
 @dataclass
 class _Cache:
+    """Internal cache class to organize information for a `Table`."""
+
     display_name: Optional[str] = None
     columns: Optional[Dict[str, Column]] = None
 
 
 @dataclass(frozen=True)
 class Table:
+    """A python representation of a Registry Table.
+
+    This class mirrors an existing Table in Registry, and provides a limited set
+    of functions for introspecting and modifying the underlying Table.
+
+    `Table`s can be instantiated either by calling `Project.list_tables()` or
+    directly using their ID. A `Table` object exposes getter methods for its
+    display name and its columns, as well as a context-manager based update
+    system.
+
+    Attributes:
+        id:
+            The ID of the underlying Table as a string.
+        _cache:
+            A private cache for values that need to be queried over the network,
+            should not be interacted with directly.
+    """
+
     _cache: _Cache = field(
         default_factory=lambda: _Cache(),
         init=False,
@@ -180,12 +200,13 @@ class Table:
         """Allows for paginated querying of all records in the calling Table.
 
         This function returns a generator which yields records one page at a
-        time. Pages are dictionaries with keys being Record IDs and values being
-        the respective `Record` objects.  Records are returned in ascending
-        order by their ID.
+        time. If `.load()` has not been called, this function will invoke it and
+        load all of the calling Table's data.
 
-        If `.load()` has not been called, this function will call it and load
-        all of the calling Table's data.
+        Pages are dictionaries with keys being Record IDs and values being
+        the respective `Record` objects.  Records are returned in ascending
+        order by their ID. Each `Record` is returned with values already loaded,
+        so calling `Record.load()` is not necessary.
 
         Args:
             page_size:
