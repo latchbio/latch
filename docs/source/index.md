@@ -16,7 +16,7 @@ Bioinformatics workflows developed with the SDK automatically receive:
 
 ## Problems Latch SDK solves
 
-**Building the infrastructure to share bioinformatics pipelines at scale is time-consuming.** Bioinformatics is dominated by terabytes of data and workflows that require multiple CPUs or GPUs, making sharing and scaling pipelines difficult. 
+**Building the infrastructure to share bioinformatics pipelines at scale is time-consuming.** Bioinformatics is dominated by terabytes of data and workflows that require multiple CPUs or GPUs, making sharing and scaling pipelines difficult.
 
 Lacth SDK allows developers to upload workflows to the full-featured [Latch Platform](https://console.latch.bio) with ease. The platform is built with Kubernetes, ensuring containerization, portability, and scalability are available out-of-the-box. Behind the scene, Latch takes advantage of AWS spot instances, offering ultra-fast runtimes with extremely low cloud costs for teams.
 
@@ -104,6 +104,17 @@ basics/remote_execution
 :caption: Publishing a Workflow
 basics/uploading_test_data
 basics/remote_registration
+```
+
+```{toctree}
+:hidden:
+:maxdepth: 2
+:caption: Registry
+registry/overview.md
+registry/account.md
+registry/project.md
+registry/table.md
+registry/record.md
 ```
 
 ```{toctree}

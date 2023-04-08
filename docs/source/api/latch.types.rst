@@ -28,6 +28,14 @@ latch.types.glob module
    :undoc-members:
    :show-inheritance:
 
+latch.types.json module
+-----------------------
+
+.. automodule:: latch.types.json
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 latch.types.metadata module
 ---------------------------
 
