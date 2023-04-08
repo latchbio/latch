@@ -51,7 +51,7 @@ class Account:
     will act as if the information does not exist. Update operations will usually
     produce errors.
 
-    Fields:
+    Attributes:
         id:
             Unique identifier
     """
@@ -85,27 +85,26 @@ class Account:
             account_id = user_config.workspace
         else:
             account_id = execute(
-                document=gql.gql(
-                    """
+                document=gql.gql("""
                     query accountInfoQuery {
                         accountInfoCurrent {
                             id
                         }
                     }
-                    """
-                ),
+                    """),
             )["accountInfoCurrent"]["id"]
 
         return cls(id=account_id)
 
     def load(self) -> None:
-        """(Re-)populate this account's cache.
+        """(Re-)populate this account instance's cache.
 
         Future calls to most getters will return immediately without making a network request.
+
+        Always makes a network request.
         """
         data: _Account = execute(
-            gql.gql(
-                """
+            gql.gql("""
             query AccountQuery($ownerId: BigInt!) {
                 accountInfo(id: $ownerId) {
                     catalogProjectsByOwnerId(
@@ -127,8 +126,7 @@ class Account:
                     }
                 }
             }
-            """
-            ),
+            """),
             {"ownerId": self.id},
         )["accountInfo"]
         # todo(maximsmol): deal with nonexistent accounts
@@ -147,17 +145,23 @@ class Account:
 
                 table._cache.display_name = x["displayName"]
 
-    # list_projects
+    # list_registry_projects
 
     @overload
-    def list_projects(self, *, load_if_missing: Literal[True] = True) -> List[Project]:
+    def list_registry_projects(
+        self, *, load_if_missing: Literal[True] = True
+    ) -> List[Project]:
         ...
 
     @overload
-    def list_projects(self, *, load_if_missing: bool) -> Optional[List[Project]]:
+    def list_registry_projects(
+        self, *, load_if_missing: bool
+    ) -> Optional[List[Project]]:
         ...
 
-    def list_projects(self, *, load_if_missing: bool = True) -> Optional[List[Project]]:
+    def list_registry_projects(
+        self, *, load_if_missing: bool = True
+    ) -> Optional[List[Project]]:
         """List Registry projects owned by this workspace.
 
         Args:
@@ -168,7 +172,6 @@ class Account:
         Returns:
             Projects owned by this workspace.
         """
-
         if self._cache.catalog_projects is None and load_if_missing:
             self.load()
 

@@ -40,30 +40,19 @@ class _ColumnNode(TypedDict("_ColumnNodeReserved", {"def": DBValue})):
 
 @dataclass
 class _Cache:
-    """Internal cache class to organize information for a `Table`."""
-
     display_name: Optional[str] = None
     columns: Optional[Dict[str, Column]] = None
 
 
 @dataclass(frozen=True)
 class Table:
-    """A python representation of a Registry Table.
+    """Registry table. Contains :class:`records <Record>`.
 
-    This class mirrors an existing Table in Registry, and provides a limited set
-    of functions for introspecting and modifying the underlying Table.
-
-    `Table`s can be instantiated either by calling `Project.list_tables()` or
-    directly using their ID. A `Table` object exposes getter methods for its
-    display name and its columns, as well as a context-manager based update
-    system.
+    :meth:`Project.list_tables` is the typical way to get a :class:`Project`.
 
     Attributes:
         id:
-            The ID of the underlying Table as a string.
-        _cache:
-            A private cache for values that need to be queried over the network,
-            should not be interacted with directly.
+            Unique identifier.
     """
 
     _cache: _Cache = field(
@@ -77,14 +66,12 @@ class Table:
     id: str
 
     def load(self) -> None:
-        """Loads all properties at once.
+        """(Re-)populate this table instance's cache.
 
-        Performs a GraphQL request and uses the results to populate the
-        `display_name` and `columns` properties of the calling Table's cache.
-        This is called by `.get_display_name()` and `.get_columns()` when
-        `load_if_missing` is set to True (the default).
+        Future calls to most getters will return immediately without making a network request.
+
+        Always makes a network request.
         """
-
         data = execute(
             gql.gql("""
                 query TableQuery($id: BigInt!) {
@@ -130,24 +117,21 @@ class Table:
         ...
 
     def get_display_name(self, *, load_if_missing: bool = True) -> Optional[str]:
-        """Gets the display name of the calling Table, loading it if necessary.
+        """Get the display name of this table.
 
-        This function will return the calling Table's display name. If
-        `.load()` has not been called yet, and if `load_if_missing` is set to
-        True, a call to `.load()` will be made to populate everything.
+        This is an opaque string that can contain any valid Unicode data.
+
+        Display names are *not unique* and *must never be used as identifiers*.
+        Use :attr:`id` instead.
 
         Args:
             load_if_missing:
-                Keyword-only. Controls whether or not a call to `.load()` will
-                be made if the value has not already been queried.
-                True by default.
+                If true, :meth:`load` the display name if not in cache.
+                If false, return `None` if not in cache.
 
         Returns:
-            The display name of the calling Table as a string. Returns None if
-            the display name has not been queried yet and `load_if_missing` is
-            set to False.
+            Display name.
         """
-
         if self._cache.display_name is None and load_if_missing:
             self.load()
 
@@ -168,56 +152,32 @@ class Table:
     def get_columns(
         self, *, load_if_missing: bool = True
     ) -> Optional[Dict[str, Column]]:
-        """Gets the columns of the calling Table, loading them if necessary.
-
-        This function will return the calling Table's columns as a dictionary.
-        The keys of the dictionary are column names, and its values are `Column`
-        objects.
-
-        If `.load()` has not been called yet, and if `load_if_missing` is set to
-        True, a call to `.load()` will be made to populate everything.
+        """Get the columns of this table.
 
         Args:
             load_if_missing:
-                Keyword-only. Controls whether or not a call to `.load()` will
-                be made if the value has not already been queried.
-                True by default.
+                If true, :meth:`load` the display name if not in cache.
+                If false, return `None` if not in cache.
 
         Returns:
-            A dict of the columns of the calling Table. Returns None if the
-            columns have not been queried yet and `load_if_missing` is set to
-            False.
+            Mapping between column keys and :class:`columns <Column>`.
         """
-
         if self._cache.columns is None and load_if_missing:
             self.load()
 
         return self._cache.columns
 
     def list_records(self, *, page_size: int = 100) -> Iterator[Dict[str, Record]]:
-        """Allows for paginated querying of all records in the calling Table.
-
-        This function returns a generator which yields records one page at a
-        time. If `.load()` has not been called, this function will invoke it and
-        load all of the calling Table's data.
-
-        Pages are dictionaries with keys being Record IDs and values being
-        the respective `Record` objects.  Records are returned in ascending
-        order by their ID. Each `Record` is returned with values already loaded,
-        so calling `Record.load()` is not necessary.
+        """List Registry records contained in this table.
 
         Args:
             page_size:
-                Keyword-only. Will determine the size of each page yielded by
-                the returned generator. Must be a positive integer. By default
-                set to 100.
+                Maximum size of a page of records. The last page may be shorter
+                than this value.
 
-        Returns:
-            A generator that yields pages of `Records`. Each page is a
-            dictionary mapping string IDs to `Record` instances. Each `Record`
-            is returned with values already loaded, so calling `.load()` on it
-            is not necessary.
-
+        Yields:
+            Pages of records. Each page is a mapping between record IDs and
+            :class:`records <Record>`.
         """
 
         cols = self.get_columns()
@@ -285,6 +245,23 @@ class Table:
 
     @contextmanager
     def update(self, *, reload_on_commit: bool = True) -> Iterator["TableUpdate"]:
+        """Start an update transaction.
+
+        The transaction will commit when the context manager closes unless an error occurs.
+
+        No changes will occur until the transaction commits.
+
+        The transaction can be cancelled by running :meth:`TableUpdate.clear`
+        before closing the context manager.
+
+        Args:
+            reload_on_commit:
+                If true, :meth:`load` this table after the transaction commits.
+
+        Returns:
+            Context manager for the new transaction.
+        """
+
         upd = TableUpdate(self)
         yield upd
         upd.commit()
@@ -374,6 +351,18 @@ class _TableRecordsUpsertData:
 
 @dataclass(frozen=True)
 class TableUpdate:
+    """Ongoing :class:`Table` update transaction.
+
+    Groups requested updates to commit everything together in one network request.
+
+    Transactions are atomic. The entire transaction either commits or fails with an exception.
+    """
+
+    # !!!
+    # WARNING: if you add more than one update type, the transaction will NOT BE ATOMIC
+    # we need to enable a postgraphile plugin to do mutations in transactions
+    # !!!
+
     _record_upserts: List[_TableRecordsUpsertData] = field(
         default_factory=list,
         init=False,
@@ -384,10 +373,43 @@ class TableUpdate:
 
     table: Table
 
-    def upsert_record_raw_unsafe(self, *, name: str, values: Dict[str, DBValue]):
+    def upsert_record_raw_unsafe(
+        self, *, name: str, values: Dict[str, DBValue]
+    ) -> None:
+        """DANGEROUSLY Update or create a record using raw :class:`values <DBValue>`.
+
+        Values are not checked against the existing columns.
+
+        A transport error will be thrown if non-existent columns are updated.
+
+        The update will succeed if values do not match column types and future
+        reads will produce :class:`invalid values <InvalidValue>`.
+
+        Unsafe:
+            The value dictionary is not validated in any way.
+            It is possible to create completely invalid record values that
+            are not a valid Registry value of any type. Future reads will
+            fail catastrophically when trying to parse these values.
+
+        Args:
+            name: Target record name.
+            values: Column values that to set.
+        """
         self._record_upserts.append(_TableRecordsUpsertData(name, values))
 
-    def upsert_record(self, name: str, **values: RegistryPythonValue):
+    def upsert_record(self, name: str, **values: RegistryPythonValue) -> None:
+        """Update or create a record using.
+
+        A transport error will be thrown if non-existent columns are updated.
+
+        It is possible that the column definitions changed since the table was last
+        loaded and the update will be issued with values that do not match current column types.
+        This will succeed with no error and future reads will produce :class:`invalid values <InvalidValue>`.
+
+        Args:
+            name: Target record name.
+            values: Column values to set.
+        """
         cols = self.table.get_columns()
 
         db_vals: Dict[str, DBValue] = {}
@@ -431,7 +453,15 @@ class TableUpdate:
 
         updates.append(res)
 
-    def commit(self):
+    def commit(self) -> None:
+        """Commit this table update transaction.
+
+        May be called multiple times.
+
+        All pending updates are committed with one network request.
+
+        Atomic. The entire transaction either commits or fails with an exception.
+        """
         updates: List[l.SelectionNode] = []
 
         self._add_record_upserts_selection(updates)
@@ -459,4 +489,8 @@ class TableUpdate:
         self.clear()
 
     def clear(self):
+        """Remove pending updates.
+
+        May be called to cancel any pending updates that have not been committed.
+        """
         self._record_upserts.clear()

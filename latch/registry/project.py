@@ -14,30 +14,19 @@ class _CatalogExperimentNode(TypedDict):
 
 @dataclass
 class _Cache:
-    """Internal cache class to organize information for a `Project`."""
-
     display_name: Optional[str] = None
     tables: Optional[List[Table]] = None
 
 
 @dataclass(frozen=True)
 class Project:
-    """A python representation of a Registry Project.
+    """Registry project (folder containing :class:`tables <Table>`).
 
-    This class mirrors a Project in Registry, and provides functionality for
-    programmatically getting information about the Project, namely its display
-    name and the Tables it contains.
-
-    `Project`s can be instantiated either by calling `Account.list_projects()`
-    or directly by ID. A `Project` exposes the getters `get_display_name` and
-    `get_tables`. These are documented further in their respective docstrings.
+    :meth:`Account.list_projects` is the typical way to get a :class:`Project`.
 
     Attributes:
         id:
-            The ID of the underlying Project as a string,
-        _cache:
-            A private cache for values that need to be queried over the network,
-            should not be interacted with directly.
+            Unique identifier.
     """
 
     _cache: _Cache = field(
@@ -51,17 +40,14 @@ class Project:
     id: str
 
     def load(self) -> None:
-        """Loads all properties at once.
+        """(Re-)populate this project instance's cache.
 
-        Performs a GraphQL request and uses the results to populate the
-        `display_name` and `tables` properties of the calling Project's cache.
-        This is called by `.get_display_name()` and `.list_tables()` when
-        `load_if_missing` is set to True (the default).
+        Future calls to most getters will return immediately without making a network request.
+
+        Always makes a network request.
         """
-
         data = execute(
-            document=gql.gql(
-                """
+            document=gql.gql("""
                 query ProjectQuery($id: BigInt!) {
                     catalogProject(id: $id) {
                         id
@@ -79,8 +65,7 @@ class Project:
                         }
                     }
                 }
-                """
-            ),
+                """),
             variables={"id": self.id},
         )["catalogProject"]
         # todo(maximsmol): deal with nonexistent projects
@@ -107,24 +92,21 @@ class Project:
         ...
 
     def get_display_name(self, *, load_if_missing: bool = True) -> Optional[str]:
-        """Gets the display name of the Project, loading it if necessary.
+        """Get the display name of this project.
 
-        This function will return the calling Project's display name. If
-        `.load()` has not been called yet, and if `load_if_missing` is set to
-        True, a call to `.load()` will be made to populate everything.
+        This is an opaque string that can contain any valid Unicode data.
+
+        Display names are *not unique* and *must never be used as identifiers*.
+        Use :attr:`id` instead.
 
         Args:
             load_if_missing:
-                Keyword-only. Controls whether or not a call to `.load()` will
-                be made if the value has not already been queried.
-                True by default.
+                If true, :meth:`load` the display name if not in cache.
+                If false, return `None` if not in cache.
 
         Returns:
-            The display name of the calling Project as a string. Returns None if
-            the display name has not been queried yet and `load_if_missing` is
-            set to False.
+            Display name.
         """
-
         if self._cache.display_name is None and load_if_missing:
             self.load()
 
@@ -141,25 +123,16 @@ class Project:
         ...
 
     def list_tables(self, *, load_if_missing: bool = True) -> Optional[List[Table]]:
-        """Gets a list of `Table` objects for each table in this Project.
-
-        This function will return a list of `Table` objects, one for each Table
-        in the calling Project. If `.load()` has not been called yet, and if
-        `load_if_missing` is set to True, a call to `.load()` will be made to
-        populate everything.
+        """List Registry tables contained in this project.
 
         Args:
             load_if_missing:
-                Keyword-only. Controls whether or not a call to `.load()` will
-                be made if the value has not already been queried.
-                True by default.
+                If true, :meth:`load` the table list if not in cache.
+                If false, return `None` if not in cache.
 
         Returns:
-            A list of `Table`s, each corresponding to a Table within the calling
-            Project. Returns None if `.load()` has not been called yet and
-            `load_if_missing` is set to False.
+            Tables in this project.
         """
-
         if self._cache.tables is None and load_if_missing:
             self.load()
 
