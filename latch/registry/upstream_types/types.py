@@ -1,4 +1,4 @@
-from typing import List, Literal, TypedDict, Union
+from typing import Dict, List, Literal, TypedDict, Union
 
 from typing_extensions import NotRequired, TypeAlias
 
@@ -50,7 +50,7 @@ PrimitiveTypeName = Union[
 
 
 class UnionType(TypedDict):
-    union: "RegistryType"
+    union: Dict[str, "RegistryType"]
 
 
 class ArrayType(TypedDict):
