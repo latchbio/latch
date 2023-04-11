@@ -1,7 +1,16 @@
 from __future__ import annotations  # avoid circular type imports
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Dict, List, Literal, Optional, TypedDict, overload
+from typing import (
+    TYPE_CHECKING,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    TypedDict,
+    overload,
+)
 
 import gql
 
@@ -263,24 +272,28 @@ class Record:
 
         return self._cache.values
 
-    def __repr__(self):
-        if self._cache.name is None:
-            res = f"Record(id={self.id})"
+    def _repr_parts(self) -> Tuple[str, Optional[Dict[str, RecordValue]]]:
+        name = self.get_name(load_if_missing=False)
+        if name is None:
+            base = f"Record(id={self.id})"
         else:
-            res = f"Record(id={self.id}, name={self._cache.name})"
+            base = f"Record(id={self.id}, name={name})"
 
-        if self._cache.values is None:
-            return res
+        values = self.get_values(load_if_missing=False)
+        return base, values
 
-        return res + repr({k: v for k, v in self._cache.values.items()})
+    def __repr__(self):
+        base, vals = self._repr_parts()
+
+        if vals is None:
+            return base
+
+        return base + repr(vals)
 
     def __str__(self):
-        if self._cache.name is None:
-            res = f"Record(id={self.id})"
-        else:
-            res = f"Record(id={self.id}, name={self._cache.name})"
+        base, vals = self._repr_parts()
 
-        if self._cache.values is None:
-            return res
+        if vals is None:
+            return base
 
-        return res + str({k: v for k, v in self._cache.values.items()})
+        return base + str(vals)

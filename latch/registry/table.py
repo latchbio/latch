@@ -266,11 +266,14 @@ class Table:
         if reload_on_commit:
             self.load()
 
-    def __str__(self) -> str:
-        name = self.get_display_name(load_if_missing=False)
-        if name is not None:
-            return f"Table({repr(name)})"
+    def __repr__(self):
+        display_name = self.get_display_name(load_if_missing=False)
+        if display_name is not None:
+            return f"Table(id={self.id}, display_name={display_name})"
 
+        return f"Table(id={self.id})"
+
+    def __str__(self):
         return repr(self)
 
 
