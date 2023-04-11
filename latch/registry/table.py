@@ -1,3 +1,4 @@
+import json
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import (
@@ -6,6 +7,7 @@ from typing import (
     List,
     Literal,
     Optional,
+    Tuple,
     TypedDict,
     Union,
     cast,
@@ -285,6 +287,19 @@ def _parse_selection(x: str) -> l.SelectionNode:
     return res
 
 
+def _var_def_node(x: str, typ: l.TypeNode) -> l.VariableNode:
+    res = l.VariableDefinitionNode()
+    res.variable = _var_node(x)
+    res.type = typ
+    return res
+
+
+def _var_node(x: str) -> l.VariableNode:
+    res = l.VariableNode()
+    res.name = _name_node(x)
+    return res
+
+
 def _name_node(x: str) -> l.NameNode:
     res = l.NameNode()
     res.value = x
@@ -302,6 +317,10 @@ def _obj_field(k: str, x: JsonValue) -> l.ObjectFieldNode:
 
 def _json_value(x: JsonValue) -> l.ValueNode:
     # note: this does not support enums
+
+    if isinstance(x, l.Node):
+        return x
+
     if x is None:
         return l.NullValueNode()
 
@@ -422,7 +441,11 @@ class TableUpdate:
 
         self._record_upserts.append(_TableRecordsUpsertData(name, db_vals))
 
-    def _add_record_upserts_selection(self, updates: List[l.SelectionNode]) -> None:
+    def _add_record_upserts_selection(
+        self,
+        updates: List[l.SelectionNode],
+        vars: Dict[str, Tuple[l.TypeNode, JsonValue]],
+    ) -> None:
         if len(self._record_upserts) == 0:
             return
 
@@ -438,13 +461,15 @@ class TableUpdate:
         """)
         assert isinstance(res, l.FieldNode)
 
+        argDataVar = f"upd{len(updates)}ArgData"
+
         args = l.ArgumentNode()
         args.name = _name_node("input")
         args.value = _json_value(
             {
                 "argExperimentId": self.table.id,
                 "argNames": names,
-                "argData": values,
+                "argData": _var_node(argDataVar),
             }
         )
 
@@ -452,6 +477,7 @@ class TableUpdate:
         res.arguments = tuple([args])
 
         updates.append(res)
+        vars[argDataVar] = (l.parse_type("[JSON]"), values)
 
     def commit(self) -> None:
         """Commit this table update transaction.
@@ -463,8 +489,9 @@ class TableUpdate:
         Atomic. The entire transaction either commits or fails with an exception.
         """
         updates: List[l.SelectionNode] = []
+        vars: Dict[str, Tuple[l.TypeNode, JsonValue]] = {}
 
-        self._add_record_upserts_selection(updates)
+        self._add_record_upserts_selection(updates, vars)
 
         if len(updates) == 0:
             return
@@ -484,7 +511,11 @@ class TableUpdate:
         assert isinstance(mut, l.OperationDefinitionNode)
         mut.selection_set = sel_set
 
-        execute(doc)
+        mut.variable_definitions = tuple(
+            _var_def_node(k, t) for k, (t, _) in vars.items()
+        )
+
+        execute(doc, {k: v for k, (_, v) in vars.items()})
 
         self.clear()
 
