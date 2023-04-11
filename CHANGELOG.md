@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.18.2 - 2023-04-08
+
+### Changed
+
+- Improved Registry API `__str__` and `__repr__`
+
 ## 2.18.1 - 2023-04-08
 
 ### Fixed
