@@ -44,7 +44,8 @@ class Project:
         Always makes a network request.
         """
         data = execute(
-            document=gql.gql("""
+            document=gql.gql(
+                """
                 query ProjectQuery($id: BigInt!) {
                     catalogProject(id: $id) {
                         id
@@ -62,7 +63,8 @@ class Project:
                         }
                     }
                 }
-                """),
+                """
+            ),
             variables={"id": self.id},
         )["catalogProject"]
         # todo(maximsmol): deal with nonexistent projects

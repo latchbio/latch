@@ -82,13 +82,15 @@ class Account:
             account_id = user_config.workspace
         else:
             account_id = execute(
-                document=gql.gql("""
+                document=gql.gql(
+                    """
                     query accountInfoQuery {
                         accountInfoCurrent {
                             id
                         }
                     }
-                    """),
+                    """
+                ),
             )["accountInfoCurrent"]["id"]
 
         return cls(id=account_id)
@@ -101,7 +103,8 @@ class Account:
         Always makes a network request.
         """
         data: _Account = execute(
-            gql.gql("""
+            gql.gql(
+                """
             query AccountQuery($ownerId: BigInt!) {
                 accountInfo(id: $ownerId) {
                     catalogProjectsByOwnerId(
@@ -113,7 +116,7 @@ class Account:
                             id
                             displayName
 
-                            catalogExperimentsByProjectId {
+                            catalogExperimentsByProjectId(condition: {removed: false}) {
                                 nodes {
                                     id
                                     displayName
@@ -123,7 +126,8 @@ class Account:
                     }
                 }
             }
-            """),
+            """
+            ),
             {"ownerId": self.id},
         )["accountInfo"]
         # todo(maximsmol): deal with nonexistent accounts
@@ -140,7 +144,7 @@ class Account:
                 table = Table(t["id"])
                 cur._cache.tables.append(table)
 
-                table._cache.display_name = x["displayName"]
+                table._cache.display_name = t["displayName"]
 
     # list_registry_projects
 
