@@ -374,11 +374,6 @@ class TableUpdate:
     Transactions are atomic. The entire transaction either commits or fails with an exception.
     """
 
-    # !!!
-    # WARNING: if you add more than one update type, the transaction will NOT BE ATOMIC
-    # we need to enable a postgraphile plugin to do mutations in transactions
-    # !!!
-
     _record_mutations: List[_TableRecordsMutationData] = field(
         default_factory=list,
         init=False,
