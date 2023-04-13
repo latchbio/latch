@@ -14,7 +14,7 @@ if CURRENT_PYTHON < MIN_PYTHON_VERSION:
 
 setup(
     name="latch",
-    version="v2.18.2",
+    version="v2.18.3",
     author_email="kenny@latch.bio",
     description="The Latchbio SDK",
     packages=find_packages(),
@@ -47,6 +47,7 @@ setup(
         "prompt-toolkit==3.0.33",
         "watchfiles==0.18.1",
         "gql==3.4.0",
+        "graphql-core==3.2.3",
         "requests-toolbelt==0.10.1",
     ],
     classifiers=[
