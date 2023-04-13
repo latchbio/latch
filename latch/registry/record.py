@@ -15,7 +15,6 @@ from typing import (
 import gql
 
 from latch.gql._execute import execute
-from latch.registry.types import RecordMeta
 from latch.registry.upstream_types.types import DBType
 from latch.registry.upstream_types.values import DBValue
 
