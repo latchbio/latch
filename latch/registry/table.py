@@ -558,26 +558,22 @@ class TableUpdate:
         if len(self._record_mutations) == 0:
             return
 
-        cur = []
-        i = 0
-        while i < len(self._record_mutations):
-            j = i
-            while j < len(self._record_mutations):
-                if not isinstance(
-                    self._record_mutations[j],
-                    type(self._record_mutations[i]),
-                ):
-                    break
-                cur.append(self._record_mutations[j])
-                j += 1
-
+        def _add_record_data_selection(cur):
             if isinstance(cur[0], _TableRecordsUpsertData):
                 self._add_record_upserts_selection(cur, mutations, vars)
             if isinstance(cur[0], _TableRecordsDeleteData):
                 self._add_record_deletes_selection(cur, mutations)
 
-            cur = []
-            i = j
+        cur = [self._record_mutations[0]]
+        for mut in self._record_mutations[1:]:
+            if isinstance(mut, type(cur[0])):
+                cur.append(mut)
+                continue
+
+            _add_record_data_selection(cur)
+            cur = [mut]
+
+        _add_record_data_selection(cur)
 
         sel_set = l.SelectionSetNode()
         sel_set.selections = tuple(mutations)
