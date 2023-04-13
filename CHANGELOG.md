@@ -16,7 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.18.2 - 2023-04-08
+## 2.18.3 - 2023-04-12
+
+### Fixed
+
+- Registry table updates should work with columns that have spaces in names
+
+## 2.18.2 - 2023-04-11
 
 ### Changed
 
