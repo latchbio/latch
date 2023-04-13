@@ -7,6 +7,7 @@ from typing import (
     Literal,
     Optional,
     Tuple,
+    TypeAlias,
     TypedDict,
     Union,
     cast,
@@ -72,7 +73,8 @@ class Table:
         Always makes a network request.
         """
         data = execute(
-            gql.gql("""
+            gql.gql(
+                """
                 query TableQuery($id: BigInt!) {
                     catalogExperiment(id: $id) {
                         id
@@ -86,7 +88,8 @@ class Table:
                         }
                     }
                 }
-                """),
+                """
+            ),
             variables={"id": self.id},
         )["catalogExperiment"]
         # todo(maximsmol): deal with nonexistent tables
@@ -184,7 +187,8 @@ class Table:
         # todo(maximsmol): because allSamples returns each column as its own
         # row, we can't paginate by samples because we don't know when a sample is finished
         nodes: List[_AllRecordsNode] = execute(
-            gql.gql("""
+            gql.gql(
+                """
                 query TableQuery($id: BigInt!) {
                     catalogExperiment(id: $id) {
                         allSamples {
@@ -197,7 +201,8 @@ class Table:
                         }
                     }
                 }
-                """),
+                """
+            ),
             {
                 "id": self.id,
             },
@@ -376,6 +381,17 @@ class _TableRecordsUpsertData:
 
 
 @dataclass(frozen=True)
+class _TableRecordsDeleteData:
+    name: str
+
+
+_TableRecordsMutationData: TypeAlias = Union[
+    _TableRecordsUpsertData,
+    _TableRecordsDeleteData,
+]
+
+
+@dataclass(frozen=True)
 class TableUpdate:
     """Ongoing :class:`Table` update transaction.
 
@@ -384,12 +400,7 @@ class TableUpdate:
     Transactions are atomic. The entire transaction either commits or fails with an exception.
     """
 
-    # !!!
-    # WARNING: if you add more than one update type, the transaction will NOT BE ATOMIC
-    # we need to enable a postgraphile plugin to do mutations in transactions
-    # !!!
-
-    _record_upserts: List[_TableRecordsUpsertData] = field(
+    _record_mutations: List[_TableRecordsMutationData] = field(
         default_factory=list,
         init=False,
         repr=False,
@@ -398,6 +409,8 @@ class TableUpdate:
     )
 
     table: Table
+
+    # upsert record
 
     def upsert_record_raw_unsafe(
         self, *, name: str, values: Dict[str, DBValue]
@@ -421,10 +434,10 @@ class TableUpdate:
             name: Target record name.
             values: Column values that to set.
         """
-        self._record_upserts.append(_TableRecordsUpsertData(name, values))
+        self._record_mutations.append(_TableRecordsUpsertData(name, values))
 
     def upsert_record(self, name: str, **values: RegistryPythonValue) -> None:
-        """Update or create a record using.
+        """Update or create a record.
 
         A transport error will be thrown if non-existent columns are updated.
 
@@ -446,29 +459,30 @@ class TableUpdate:
 
             db_vals[k] = to_registry_literal(v, col.upstream_type["type"])
 
-        self._record_upserts.append(_TableRecordsUpsertData(name, db_vals))
+        self._record_mutations.append(_TableRecordsUpsertData(name, db_vals))
 
     def _add_record_upserts_selection(
         self,
-        updates: List[l.SelectionNode],
+        upserts: List[_TableRecordsUpsertData],
+        mutations: List[l.SelectionNode],
         vars: Dict[str, Tuple[l.TypeNode, JsonValue]],
     ) -> None:
-        if len(self._record_upserts) == 0:
+        if len(upserts) == 0:
             return
 
-        names: _GqlJsonValue = [x.name for x in self._record_upserts]
-        values: JsonValue = [
-            cast(Dict[str, JsonValue], x.values) for x in self._record_upserts
-        ]
+        names: _GqlJsonValue = [x.name for x in upserts]
+        values: JsonValue = [cast(Dict[str, JsonValue], x.values) for x in upserts]
 
-        res = _parse_selection("""
+        res = _parse_selection(
+            """
             catalogMultiUpsertSamples(input: {}) {
                 clientMutationId
             }
-        """)
+        """
+        )
         assert isinstance(res, l.FieldNode)
 
-        argDataVar = f"upd{len(updates)}ArgData"
+        argDataVar = f"upd{len(mutations)}ArgData"
 
         args = l.ArgumentNode()
         args.name = _name_node("input")
@@ -480,11 +494,54 @@ class TableUpdate:
             }
         )
 
-        res.alias = _name_node(f"upd{len(updates)}")
+        res.alias = _name_node(f"upd{len(mutations)}")
         res.arguments = tuple([args])
 
-        updates.append(res)
+        mutations.append(res)
         vars[argDataVar] = (l.parse_type("[JSON]"), values)
+
+    # delete record
+
+    def delete_record(self, name: str) -> None:
+        """Delete a record.
+
+        Args:
+            name: Target record name.
+        """
+        self._record_mutations.append(_TableRecordsDeleteData(name))
+
+    def _add_record_deletes_selection(
+        self, deletes: List[_TableRecordsDeleteData], mutations: List[l.SelectionNode]
+    ) -> None:
+        if len(deletes) == 0:
+            return
+
+        names: _GqlJsonValue = [x.name for x in deletes]
+
+        res = _parse_selection(
+            """
+            catalogMultiDeleteSampleByName(input: {}) {
+                clientMutationId
+            }
+            """
+        )
+        assert isinstance(res, l.FieldNode)
+
+        args = l.ArgumentNode()
+        args.name = _name_node("input")
+        args.value = _json_value(
+            {
+                "argExperimentId": self.table.id,
+                "argNames": names,
+            }
+        )
+
+        res.alias = _name_node(f"upd{len(mutations)}")
+        res.arguments = tuple([args])
+
+        mutations.append(res)
+
+    # transaction
 
     def commit(self) -> None:
         """Commit this table update transaction.
@@ -495,22 +552,39 @@ class TableUpdate:
 
         Atomic. The entire transaction either commits or fails with an exception.
         """
-        updates: List[l.SelectionNode] = []
+        mutations: List[l.SelectionNode] = []
         vars: Dict[str, Tuple[l.TypeNode, JsonValue]] = {}
 
-        self._add_record_upserts_selection(updates, vars)
-
-        if len(updates) == 0:
+        if len(self._record_mutations) == 0:
             return
 
-        sel_set = l.SelectionSetNode()
-        sel_set.selections = tuple(updates)
+        def _add_record_data_selection(cur):
+            if isinstance(cur[0], _TableRecordsUpsertData):
+                self._add_record_upserts_selection(cur, mutations, vars)
+            if isinstance(cur[0], _TableRecordsDeleteData):
+                self._add_record_deletes_selection(cur, mutations)
 
-        doc = l.parse("""
+        cur = [self._record_mutations[0]]
+        for mut in self._record_mutations[1:]:
+            if isinstance(mut, type(cur[0])):
+                cur.append(mut)
+                continue
+
+            _add_record_data_selection(cur)
+            cur = [mut]
+
+        _add_record_data_selection(cur)
+
+        sel_set = l.SelectionSetNode()
+        sel_set.selections = tuple(mutations)
+
+        doc = l.parse(
+            """
             mutation TableUpdate {
                 placeholder
             }
-        """)
+        """
+        )
 
         assert len(doc.definitions) == 1
         mut = doc.definitions[0]
@@ -531,4 +605,4 @@ class TableUpdate:
 
         May be called to cancel any pending updates that have not been committed.
         """
-        self._record_upserts.clear()
+        self._record_mutations.clear()

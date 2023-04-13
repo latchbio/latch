@@ -1,7 +1,17 @@
 import json
 from datetime import date, datetime
 from enum import Enum
-from typing import Dict, List, Optional, Type, TypeVar, Union, cast
+from typing import (
+    Dict,
+    List,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+    get_args,
+    get_origin,
+)
 
 import gql
 from dateutil.parser import parse
