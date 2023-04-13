@@ -516,7 +516,7 @@ class TableUpdate:
         if len(deletes) == 0:
             return
 
-        names: JsonValue = [x.name for x in deletes]
+        names: _GqlJsonValue = [x.name for x in deletes]
 
         res = _parse_selection(
             """
@@ -543,28 +543,6 @@ class TableUpdate:
 
     # transaction
 
-    def _coalesce_mutations(
-        self,
-    ) -> List[Union[List[_TableRecordsUpsertData], List[_TableRecordsDeleteData]]]:
-        output = []
-
-        if len(self._record_mutations) == 0:
-            return output
-
-        cur = [self._record_mutations[0]]
-        for i in range(1, len(self._record_mutations)):
-            next_mut = self._record_mutations[i]
-            if isinstance(next_mut, type(cur[0])):
-                cur.append(next_mut)
-                continue
-
-            output.append(cur)
-            cur = [next_mut]
-
-        output.append(cur)
-
-        return output
-
     def commit(self) -> None:
         """Commit this table update transaction.
 
@@ -577,16 +555,29 @@ class TableUpdate:
         mutations: List[l.SelectionNode] = []
         vars: Dict[str, Tuple[l.TypeNode, JsonValue]] = {}
 
-        coalesced = self._coalesce_mutations()
-
-        for muts in coalesced:
-            if all(isinstance(mut, _TableRecordsUpsertData) for mut in muts):
-                self._add_record_upserts_selection(muts, mutations, vars)
-            if all(isinstance(mut, _TableRecordsDeleteData) for mut in muts):
-                self._add_record_deletes_selection(muts, mutations)
-
-        if len(mutations) == 0:
+        if len(self._record_mutations) == 0:
             return
+
+        cur = []
+        i = 0
+        while i < len(self._record_mutations):
+            j = i
+            while j < len(self._record_mutations):
+                if not isinstance(
+                    self._record_mutations[j],
+                    type(self._record_mutations[i]),
+                ):
+                    break
+                cur.append(self._record_mutations[j])
+                j += 1
+
+            if isinstance(cur[0], _TableRecordsUpsertData):
+                self._add_record_upserts_selection(cur, mutations, vars)
+            if isinstance(cur[0], _TableRecordsDeleteData):
+                self._add_record_deletes_selection(cur, mutations)
+
+            cur = []
+            i = j
 
         sel_set = l.SelectionSetNode()
         sel_set.selections = tuple(mutations)

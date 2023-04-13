@@ -86,43 +86,6 @@ def to_python_type(registry_type: RegistryType) -> Type[RegistryPythonValue]:
     )
 
 
-def to_registry_type(python_type: Type[RegistryPythonValue]) -> RegistryType:
-    if get_origin(python_type) is Union:
-        union: Dict[str, RegistryType] = {}
-        for i, arg in enumerate(get_args(python_type)):
-            union[f"tag{i}"] = to_registry_type(arg)
-
-        return {"union": union}
-
-    if get_origin(python_type) is List:
-        args = get_args(python_type)
-        if len(args) != 1:
-            raise RegistryTransformerException(
-                "cannot convert generic List without element type to registry type"
-            )
-
-        return {"array": to_registry_type(args[0])}
-
-    if python_type is str:
-        return {"primitive": "string"}
-    if python_type is int:
-        return {"primitive": "integer"}
-    if python_type is float:
-        return {"primitive": "number"}
-    if python_type is date:
-        return {"primitive": "date"}
-    if python_type is datetime:
-        return {"primitive": "datetime"}
-    if python_type is LatchFile:
-        return {"primitive": "blob"}
-    if python_type is LatchDir:
-        return {"primitive": "blob", "metadata": {"nodeType": "dir"}}
-    if python_type is bool:
-        return {"primitive": "boolean"}
-    if python_type is type(None):
-        return {"primitive": "null"}
-
-
 def to_python_literal(
     registry_literal: DBValue,
     registry_type: RegistryType,
