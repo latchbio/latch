@@ -369,7 +369,7 @@ _TableRecordsMutationData: TypeAlias = Union[
 class TableUpdate:
     """Ongoing :class:`Table` update transaction.
 
-    Groups requested updates to commit everything together in one network request.
+    Groups requested mutations to commit everything together in one network request.
 
     Transactions are atomic. The entire transaction either commits or fails with an exception.
     """
@@ -441,7 +441,7 @@ class TableUpdate:
         self._record_mutations.append(_TableRecordsUpsertData(name, db_vals))
 
     def _add_record_upserts_selection(
-        self, upserts: List[_TableRecordsUpsertData], updates: List[l.SelectionNode]
+        self, upserts: List[_TableRecordsUpsertData], mutations: List[l.SelectionNode]
     ) -> None:
         if len(upserts) == 0:
             return
@@ -468,10 +468,10 @@ class TableUpdate:
             }
         )
 
-        res.alias = _name_node(f"upd{len(updates)}")
+        res.alias = _name_node(f"upd{len(mutations)}")
         res.arguments = tuple([args])
 
-        updates.append(res)
+        mutations.append(res)
 
     # delete record
 
@@ -484,7 +484,7 @@ class TableUpdate:
         self._record_mutations.append(_TableRecordsDeleteData(name))
 
     def _add_record_deletes_selection(
-        self, deletes: List[_TableRecordsDeleteData], updates: List[l.SelectionNode]
+        self, deletes: List[_TableRecordsDeleteData], mutations: List[l.SelectionNode]
     ) -> None:
         if len(deletes) == 0:
             return
@@ -509,10 +509,10 @@ class TableUpdate:
             }
         )
 
-        res.alias = _name_node(f"del{len(updates)}")
+        res.alias = _name_node(f"del{len(mutations)}")
         res.arguments = tuple([args])
 
-        updates.append(res)
+        mutations.append(res)
 
     # transaction
 
@@ -543,25 +543,25 @@ class TableUpdate:
 
         May be called multiple times.
 
-        All pending updates are committed with one network request.
+        All pending mutations are committed with one network request.
 
         Atomic. The entire transaction either commits or fails with an exception.
         """
-        updates: List[l.SelectionNode] = []
+        mutations: List[l.SelectionNode] = []
 
         coalesced = self._coalesce_mutations()
 
         for muts in coalesced:
             if all(isinstance(mut, _TableRecordsUpsertData) for mut in muts):
-                self._add_record_upserts_selection(muts, updates)
+                self._add_record_upserts_selection(muts, mutations)
             if all(isinstance(mut, _TableRecordsDeleteData) for mut in muts):
-                self._add_record_deletes_selection(muts, updates)
+                self._add_record_deletes_selection(muts, mutations)
 
-        if len(updates) == 0:
+        if len(mutations) == 0:
             return
 
         sel_set = l.SelectionSetNode()
-        sel_set.selections = tuple(updates)
+        sel_set.selections = tuple(mutations)
 
         doc = l.parse(
             """
@@ -582,8 +582,8 @@ class TableUpdate:
         self.clear()
 
     def clear(self):
-        """Remove pending updates.
+        """Remove pending mutations.
 
-        May be called to cancel any pending updates that have not been committed.
+        May be called to cancel any pending mutations that have not been committed.
         """
         self._record_mutations.clear()

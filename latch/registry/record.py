@@ -15,6 +15,7 @@ from typing import (
 import gql
 
 from latch.gql._execute import execute
+from latch.registry.types import RecordMeta
 from latch.registry.upstream_types.types import DBType
 from latch.registry.upstream_types.values import DBValue
 
@@ -105,7 +106,8 @@ class Record:
         from latch.registry.utils import to_python_literal, to_python_type
 
         data: _CatalogSample = execute(
-            gql.gql("""
+            gql.gql(
+                """
             query RecordQuery($id: BigInt!) {
                 catalogSample(id: $id) {
                     id
@@ -127,7 +129,8 @@ class Record:
                     }
                 }
             }
-            """),
+            """
+            ),
             {"id": self.id},
         )["catalogSample"]
         # todo(maximsmol): deal with nonexistent records
