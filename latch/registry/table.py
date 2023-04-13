@@ -395,7 +395,7 @@ _TableRecordsMutationData: TypeAlias = Union[
 class TableUpdate:
     """Ongoing :class:`Table` update transaction.
 
-    Groups requested mutations to commit everything together in one network request.
+    Groups requested updates to commit everything together in one network request.
 
     Transactions are atomic. The entire transaction either commits or fails with an exception.
     """
@@ -536,7 +536,7 @@ class TableUpdate:
             }
         )
 
-        res.alias = _name_node(f"del{len(mutations)}")
+        res.alias = _name_node(f"upd{len(mutations)}")
         res.arguments = tuple([args])
 
         mutations.append(res)
@@ -548,7 +548,7 @@ class TableUpdate:
 
         May be called multiple times.
 
-        All pending mutations are committed with one network request.
+        All pending updates are committed with one network request.
 
         Atomic. The entire transaction either commits or fails with an exception.
         """
@@ -605,8 +605,8 @@ class TableUpdate:
         self.clear()
 
     def clear(self):
-        """Remove pending mutations.
+        """Remove pending updates.
 
-        May be called to cancel any pending mutations that have not been committed.
+        May be called to cancel any pending updates that have not been committed.
         """
         self._record_mutations.clear()
