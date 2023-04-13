@@ -1,4 +1,3 @@
-import json
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import (
@@ -17,6 +16,7 @@ from typing import (
 import gql
 import graphql.language as l
 import graphql.language.parser as lp
+from typing_extensions import TypeAlias
 
 from latch.gql._execute import execute
 from latch.registry.record import NoSuchColumnError, Record
@@ -287,7 +287,7 @@ def _parse_selection(x: str) -> l.SelectionNode:
     return res
 
 
-def _var_def_node(x: str, typ: l.TypeNode) -> l.VariableNode:
+def _var_def_node(x: str, typ: l.TypeNode) -> l.VariableDefinitionNode:
     res = l.VariableDefinitionNode()
     res.variable = _var_node(x)
     res.type = typ
@@ -306,7 +306,14 @@ def _name_node(x: str) -> l.NameNode:
     return res
 
 
-def _obj_field(k: str, x: JsonValue) -> l.ObjectFieldNode:
+_GqlJsonArray: TypeAlias = List["_GqlJsonValue"]
+_GqlJsonObject: TypeAlias = Dict[str, "_GqlJsonValue"]
+_GqlJsonValue: TypeAlias = Union[
+    _GqlJsonObject, _GqlJsonArray, str, int, float, bool, None, l.Node
+]
+
+
+def _obj_field(k: str, x: _GqlJsonValue) -> l.ObjectFieldNode:
     res = l.ObjectFieldNode()
 
     res.name = _name_node(k)
@@ -315,7 +322,7 @@ def _obj_field(k: str, x: JsonValue) -> l.ObjectFieldNode:
     return res
 
 
-def _json_value(x: JsonValue) -> l.ValueNode:
+def _json_value(x: _GqlJsonValue) -> l.ValueNode:
     # note: this does not support enums
 
     if isinstance(x, l.Node):
@@ -449,7 +456,7 @@ class TableUpdate:
         if len(self._record_upserts) == 0:
             return
 
-        names: JsonValue = [x.name for x in self._record_upserts]
+        names: _GqlJsonValue = [x.name for x in self._record_upserts]
         values: JsonValue = [
             cast(Dict[str, JsonValue], x.values) for x in self._record_upserts
         ]

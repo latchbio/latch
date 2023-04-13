@@ -47,6 +47,7 @@ setup(
         "prompt-toolkit==3.0.33",
         "watchfiles==0.18.1",
         "gql==3.4.0",
+        "graphql-core==3.2.3",
         "requests-toolbelt==0.10.1",
     ],
     classifiers=[
