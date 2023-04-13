@@ -6,6 +6,7 @@ from typing import (
     List,
     Literal,
     Optional,
+    Tuple,
     TypeAlias,
     TypedDict,
     Union,
@@ -16,6 +17,7 @@ from typing import (
 import gql
 import graphql.language as l
 import graphql.language.parser as lp
+from typing_extensions import TypeAlias
 
 from latch.gql._execute import execute
 from latch.registry.record import NoSuchColumnError, Record
@@ -290,13 +292,33 @@ def _parse_selection(x: str) -> l.SelectionNode:
     return res
 
 
+def _var_def_node(x: str, typ: l.TypeNode) -> l.VariableDefinitionNode:
+    res = l.VariableDefinitionNode()
+    res.variable = _var_node(x)
+    res.type = typ
+    return res
+
+
+def _var_node(x: str) -> l.VariableNode:
+    res = l.VariableNode()
+    res.name = _name_node(x)
+    return res
+
+
 def _name_node(x: str) -> l.NameNode:
     res = l.NameNode()
     res.value = x
     return res
 
 
-def _obj_field(k: str, x: JsonValue) -> l.ObjectFieldNode:
+_GqlJsonArray: TypeAlias = List["_GqlJsonValue"]
+_GqlJsonObject: TypeAlias = Dict[str, "_GqlJsonValue"]
+_GqlJsonValue: TypeAlias = Union[
+    _GqlJsonObject, _GqlJsonArray, str, int, float, bool, None, l.Node
+]
+
+
+def _obj_field(k: str, x: _GqlJsonValue) -> l.ObjectFieldNode:
     res = l.ObjectFieldNode()
 
     res.name = _name_node(k)
@@ -305,8 +327,12 @@ def _obj_field(k: str, x: JsonValue) -> l.ObjectFieldNode:
     return res
 
 
-def _json_value(x: JsonValue) -> l.ValueNode:
+def _json_value(x: _GqlJsonValue) -> l.ValueNode:
     # note: this does not support enums
+
+    if isinstance(x, l.Node):
+        return x
+
     if x is None:
         return l.NullValueNode()
 
@@ -436,12 +462,15 @@ class TableUpdate:
         self._record_mutations.append(_TableRecordsUpsertData(name, db_vals))
 
     def _add_record_upserts_selection(
-        self, upserts: List[_TableRecordsUpsertData], mutations: List[l.SelectionNode]
+        self,
+        upserts: List[_TableRecordsUpsertData],
+        mutations: List[l.SelectionNode],
+        vars: Dict[str, Tuple[l.TypeNode, JsonValue]],
     ) -> None:
         if len(upserts) == 0:
             return
 
-        names: JsonValue = [x.name for x in upserts]
+        names: _GqlJsonValue = [x.name for x in upserts]
         values: JsonValue = [cast(Dict[str, JsonValue], x.values) for x in upserts]
 
         res = _parse_selection(
@@ -453,13 +482,15 @@ class TableUpdate:
         )
         assert isinstance(res, l.FieldNode)
 
+        argDataVar = f"upd{len(mutations)}ArgData"
+
         args = l.ArgumentNode()
         args.name = _name_node("input")
         args.value = _json_value(
             {
                 "argExperimentId": self.table.id,
                 "argNames": names,
-                "argData": values,
+                "argData": _var_node(argDataVar),
             }
         )
 
@@ -467,6 +498,7 @@ class TableUpdate:
         res.arguments = tuple([args])
 
         mutations.append(res)
+        vars[argDataVar] = (l.parse_type("[JSON]"), values)
 
     # delete record
 
@@ -543,12 +575,13 @@ class TableUpdate:
         Atomic. The entire transaction either commits or fails with an exception.
         """
         mutations: List[l.SelectionNode] = []
+        vars: Dict[str, Tuple[l.TypeNode, JsonValue]] = {}
 
         coalesced = self._coalesce_mutations()
 
         for muts in coalesced:
             if all(isinstance(mut, _TableRecordsUpsertData) for mut in muts):
-                self._add_record_upserts_selection(muts, mutations)
+                self._add_record_upserts_selection(muts, mutations, vars)
             if all(isinstance(mut, _TableRecordsDeleteData) for mut in muts):
                 self._add_record_deletes_selection(muts, mutations)
 
@@ -572,7 +605,11 @@ class TableUpdate:
         assert isinstance(mut, l.OperationDefinitionNode)
         mut.selection_set = sel_set
 
-        execute(doc)
+        mut.variable_definitions = tuple(
+            _var_def_node(k, t) for k, (t, _) in vars.items()
+        )
+
+        execute(doc, {k: v for k, (_, v) in vars.items()})
 
         self.clear()
 
