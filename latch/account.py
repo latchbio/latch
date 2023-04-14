@@ -8,14 +8,7 @@ import graphql.language as l
 from typing_extensions import Self, TypeAlias
 
 from latch.gql._execute import execute
-from latch.gql._utils import (
-    _GqlJsonValue,
-    _json_value,
-    _name_node,
-    _parse_selection,
-    _var_def_node,
-    _var_node,
-)
+from latch.gql._utils import _GqlJsonValue, _json_value, _name_node, _parse_selection
 from latch.registry.project import Project
 from latch.registry.table import Table
 from latch_cli.config.user import user_config
@@ -196,12 +189,12 @@ class Account:
 
         No changes will occur until the transaction commits.
 
-        The transaction can be cancelled by running :meth:`ProjectUpdate.clear`
+        The transaction can be cancelled by running :meth:`AccountUpdate.clear`
         before closing the context manager.
 
         Args:
             reload_on_commit:
-                If true, :meth:`load` this table after the transaction commits.
+                If true, :meth:`load` this account after the transaction commits.
 
         Returns:
             Context manager for the new transaction.
@@ -251,7 +244,13 @@ class AccountUpdate:
     # upsert registry project
 
     def upsert_registry_project(self, display_name: str):
-        """Upsert a registry project."""
+        """Upsert a registry project.
+
+        Not idempotent. Two calls with the same args will create two projects.
+
+        Args:
+            display_name: Display name of the new project.
+        """
         self._mutations.append(_AccountRegistryProjectsUpsertData(display_name))
 
     def _add_registry_projects_upsert_selection(
@@ -290,7 +289,11 @@ class AccountUpdate:
     # delete registry project
 
     def delete_registry_project(self, id: str):
-        """Delete a registry project."""
+        """Delete a registry project.
+
+        Args:
+            id: The ID of the target project.
+        """
         self._mutations.append(_AccountRegistryProjectsDeleteData(id))
 
     def _add_registry_projects_delete_selection(

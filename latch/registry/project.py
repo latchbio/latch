@@ -154,7 +154,7 @@ class Project:
 
         Args:
             reload_on_commit:
-                If true, :meth:`load` this table after the transaction commits.
+                If true, :meth:`load` this project after the transaction commits.
 
         Returns:
             Context manager for the new transaction.
@@ -208,7 +208,13 @@ class ProjectUpdate:
     # upsert table
 
     def upsert_table(self, display_name: str):
-        """Creates a table."""
+        """Creates a table.
+
+        Not idempotent. Two calls with the same args will create two tables.
+
+        Args:
+            display_name: The display name of the new table.
+        """
         self._table_mutations.append(_ProjectTablesUpsertData(display_name))
 
     def _add_table_upserts_selection(
@@ -245,7 +251,11 @@ class ProjectUpdate:
     # delete table
 
     def delete_table(self, id: str):
-        """Deletes a table."""
+        """Deletes a table.
+
+        Args:
+            id: The ID of the target table.
+        """
         self._table_mutations.append(_ProjectTablesDeleteData(id))
 
     def _add_table_deletes_selection(
