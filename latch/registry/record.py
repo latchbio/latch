@@ -37,21 +37,6 @@ class NoSuchColumnError(KeyError):
         self.key = key
 
 
-class InvalidColumnError(ValueError):
-    """Invalid column constructed by Registry method.
-
-    Attributes:
-        name: The offending column name.
-        type: The offending column type.
-    """
-
-    def __init__(self, name: str, type: str, msg: str):
-        super().__init__(f"invalid column `{name}`, `{type}`: {msg}")
-
-        self.name = name
-        self.type = type
-
-
 class _ColumnDefinition(TypedDict("_ColumnDefinitionReserved", {"def": DBValue})):
     key: str
     type: DBType
@@ -120,8 +105,7 @@ class Record:
         from latch.registry.utils import to_python_literal, to_python_type
 
         data: _CatalogSample = execute(
-            gql.gql(
-                """
+            gql.gql("""
             query RecordQuery($id: BigInt!) {
                 catalogSample(id: $id) {
                     id
@@ -143,8 +127,7 @@ class Record:
                     }
                 }
             }
-            """
-            ),
+            """),
             {"id": self.id},
         )["catalogSample"]
         # todo(maximsmol): deal with nonexistent records

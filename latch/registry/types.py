@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import List, Type, Union
+from enum import Enum
+from typing import Generic, List, Literal, Tuple, Type, TypeVar, Union
 
 from typing_extensions import TypeAlias
 
@@ -8,6 +9,13 @@ from latch.registry.record import Record
 from latch.registry.upstream_types.types import DBType
 from latch.registry.upstream_types.values import EmptyCell
 from latch.types import LatchDir, LatchFile
+
+try:
+    from enum import StrEnum
+except ImportError:
+
+    class StrEnum(str, Enum):
+        ...
 
 
 @dataclass(frozen=True)
@@ -60,3 +68,39 @@ class Column:
 
     Used to convert between Python values and Registry values.
     """
+
+
+RegistryEnumDefinitionArg = TypeVar("RegistryEnumDefinitionArg", bound=Tuple[str, ...])
+
+
+class RegistryEnumDefinition(Generic[RegistryEnumDefinitionArg]):
+    def __init__(self, *values: str):
+        return RegistryEnumDefinition[Tuple[values]]
+
+
+LinkedRecordTypeArg = TypeVar("LinkedRecordTypeArg", bound=str)
+
+
+class LinkedRecordType(Generic[LinkedRecordTypeArg]):
+    ...
+
+
+RegistryPrimitivePythonType = Union[
+    Type[str],
+    Type[int],
+    Type[float],
+    Type[date],
+    Type[datetime],
+    Type[bool],
+    Type[LatchFile],
+    Type[LatchDir],
+    Type[StrEnum],
+    RegistryEnumDefinition,
+    LinkedRecordType,
+]
+RegistryPythonType = Union[
+    RegistryPrimitivePythonType,
+    Type[List[LatchFile]],
+    Type[List[LatchDir]],
+    List[LinkedRecordType],
+]
