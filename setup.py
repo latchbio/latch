@@ -2,7 +2,7 @@ import sys
 
 from setuptools import find_packages, setup
 
-MIN_PYTHON_VERSION = (3, 7)
+MIN_PYTHON_VERSION = (3, 8)
 CURRENT_PYTHON = sys.version_info[:2]
 
 if CURRENT_PYTHON < MIN_PYTHON_VERSION:
@@ -14,7 +14,7 @@ if CURRENT_PYTHON < MIN_PYTHON_VERSION:
 
 setup(
     name="latch",
-    version="v2.18.3",
+    version="v2.19.0",
     author_email="kenny@latch.bio",
     description="The Latchbio SDK",
     packages=find_packages(),

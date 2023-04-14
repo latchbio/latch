@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.19.0
+
+### Added
+
+- Functions for creating/deleting Projects and Tables, and creating Table columns in the Registry API
+
 ## 2.18.3 - 2023-04-12
 
 ### Fixed
