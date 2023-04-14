@@ -80,15 +80,16 @@ RegistryEnumDefinitionArg = TypeVar("RegistryEnumDefinitionArg", bound=Tuple[str
 
 
 class RegistryEnumDefinition(Generic[RegistryEnumDefinitionArg]):
-    def __init__(self, *values: str):
-        return RegistryEnumDefinition[Tuple[values]]
+    def __new__(cls, *values: str):
+        return RegistryEnumDefinition[Tuple[tuple(Literal[v] for v in values)]]
 
 
 LinkedRecordTypeArg = TypeVar("LinkedRecordTypeArg", bound=str)
 
 
 class LinkedRecordType(Generic[LinkedRecordTypeArg]):
-    ...
+    def __new__(cls, id: str):
+        return LinkedRecordType[Literal[id]]
 
 
 RegistryPrimitivePythonType = Union[
