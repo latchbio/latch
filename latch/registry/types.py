@@ -95,12 +95,12 @@ RegistryPrimitivePythonType = Union[
     Type[LatchFile],
     Type[LatchDir],
     Type[StrEnum],
-    RegistryEnumDefinition,
-    LinkedRecordType,
+    Type[RegistryEnumDefinition],
+    Type[LinkedRecordType],
 ]
 RegistryPythonType = Union[
     RegistryPrimitivePythonType,
     Type[List[LatchFile]],
     Type[List[LatchDir]],
-    List[LinkedRecordType],
+    Type[List[LinkedRecordType]],
 ]
