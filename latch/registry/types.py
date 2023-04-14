@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import date, datetime
 from enum import Enum
-from typing import Generic, List, Literal, Tuple, Type, TypeVar, Union
+from typing import TYPE_CHECKING, Generic, List, Literal, Tuple, Type, TypeVar, Union
 
 from typing_extensions import TypeAlias
 
@@ -10,9 +10,15 @@ from latch.registry.upstream_types.types import DBType
 from latch.registry.upstream_types.values import EmptyCell
 from latch.types import LatchDir, LatchFile
 
-try:
-    from enum import StrEnum
-except ImportError:
+if not TYPE_CHECKING:
+    try:
+        from enum import StrEnum
+    except ImportError:
+
+        class StrEnum(str, Enum):
+            ...
+
+else:
 
     class StrEnum(str, Enum):
         ...
