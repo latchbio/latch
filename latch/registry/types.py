@@ -21,17 +21,22 @@ class InvalidValue:
     """
 
 
-RegistryPythonValue: TypeAlias = Union[
+RegistryPrimitivePythonValue: TypeAlias = Union[
     str,
     datetime,
     date,
     int,
     float,
-    Record,
-    None,
-    List["RegistryPythonValue"],
     LatchFile,
     LatchDir,
+    None,
+    bool,
+]
+
+RegistryPythonValue: TypeAlias = Union[
+    RegistryPrimitivePythonValue,
+    Record,
+    List["RegistryPythonValue"],
 ]
 
 RecordValue: TypeAlias = Union[RegistryPythonValue, EmptyCell, InvalidValue]

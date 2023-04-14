@@ -1,5 +1,7 @@
+import datetime
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from datetime import date
 from typing import (
     Dict,
     Iterator,
@@ -7,10 +9,12 @@ from typing import (
     Literal,
     Optional,
     Tuple,
+    Type,
     TypeAlias,
     TypedDict,
     Union,
     cast,
+    get_origin,
     overload,
 )
 
@@ -20,11 +24,19 @@ import graphql.language.parser as lp
 from typing_extensions import TypeAlias
 
 from latch.gql._execute import execute
-from latch.registry.record import NoSuchColumnError, Record
-from latch.registry.types import Column, InvalidValue, RecordValue, RegistryPythonValue
-from latch.registry.upstream_types.types import DBType
+from latch.registry.record import InvalidColumnError, NoSuchColumnError, Record
+from latch.registry.types import (
+    Column,
+    InvalidValue,
+    RecordValue,
+    RegistryPrimitivePythonValue,
+    RegistryPythonValue,
+)
+from latch.registry.upstream_types.types import DBType, RegistryType
 from latch.registry.upstream_types.values import DBValue, EmptyCell
 from latch.registry.utils import to_python_literal, to_python_type, to_registry_literal
+from latch.types.directory import LatchDir
+from latch.types.file import LatchFile
 
 from ..types.json import JsonValue
 
@@ -385,9 +397,16 @@ class _TableRecordsDeleteData:
     name: str
 
 
+@dataclass(frozen=True)
+class _TableColumnUpsertData:
+    key: str
+    type: DBType
+
+
 _TableRecordsMutationData: TypeAlias = Union[
     _TableRecordsUpsertData,
     _TableRecordsDeleteData,
+    _TableColumnUpsertData,
 ]
 
 
@@ -541,6 +560,119 @@ class TableUpdate:
 
         mutations.append(res)
 
+    # upsert column
+
+    def create_column(
+        self,
+        key: str,
+        type: Union[Type[RegistryPrimitivePythonValue], str, List[str]],
+        *,
+        allow_multiple_entries: bool = False,
+        required: bool = False,
+    ):
+        """Create a column.
+
+        A transport error is thrown if a column of the same name already exists.
+
+        Args:
+            name: New column name.
+            type: Type of new column. If a string is provided, it is treated
+                as the id of Table and will produce a link column. If a list of
+                strings is provided, they are treated as members of an Enum and
+                will produce a select column.
+            allow_multiple: Whether or not to allow multiple entries in the
+                new column. Only valid if `type` is a file, directory, or link.
+            required: Whether or not a value is required in the new column.
+
+        """
+
+        if allow_multiple_entries:
+            if type in {str, int, float, date, datetime, bool}:
+                raise InvalidColumnError(
+                    key, str(type), f"{str(type)} columns cannot have multiple entries"
+                )
+            if isinstance(type, List):
+                raise InvalidColumnError(
+                    key, "enum", "enum columns cannot have multiple entries"
+                )
+
+        registry_type: Optional[RegistryType] = None
+        if type is str:
+            registry_type = {"primitive": "string"}
+        if type is int:
+            registry_type = {"primitive": "integer"}
+        if type is float:
+            registry_type = {"primitive": "number"}
+        if type is date:
+            registry_type = {"primitive": "date"}
+        if type is datetime:
+            registry_type = {"primitive": "datetime"}
+        if type is bool:
+            registry_type = {"primitive": "boolean"}
+        if type is LatchFile:
+            registry_type = {"primitive": "blob"}
+        if type is LatchDir:
+            registry_type = {"primitive": "blob", "metadata": {"nodeType": "dir"}}
+
+        if isinstance(type, str):
+            registry_type = {"primitive": "link", "experimentId": type}
+        if isinstance(type, List):
+            if all(isinstance(t, str) for t in type):
+                registry_type = {"primitive": "enum", "members": type}
+
+        if registry_type is None:
+            raise InvalidColumnError(
+                key,
+                str(type),
+                f"python type {type} could not be converted to registry type",
+            )
+
+        if allow_multiple_entries:
+            registry_type = {"array": registry_type}
+
+        db_type: DBType = {"type": registry_type, "allowEmpty": not required}
+
+        self._record_mutations.append(_TableColumnUpsertData(key, db_type))
+
+    def _add_column_upserts_selection(
+        self,
+        upserts: List[_TableColumnUpsertData],
+        mutations: List[l.SelectionNode],
+        vars: Dict[str, Tuple[l.TypeNode, JsonValue]],
+    ) -> None:
+        if len(upserts) == 0:
+            return
+
+        keys: _GqlJsonValue = [x.key for x in upserts]
+        types: JsonValue = [cast(JsonValue, x.type) for x in upserts]
+
+        res = _parse_selection(
+            """
+            catalogExperimentColumnDefinitionMultiUpsert(input: {}) {
+                clientMutationId
+            }
+        """
+        )
+        assert isinstance(res, l.FieldNode)
+
+        argTypesVar = f"upd{len(mutations)}ArgTypes"
+
+        args = l.ArgumentNode()
+        args.name = _name_node("input")
+        args.value = _json_value(
+            {
+                "argExperimentId": self.table.id,
+                "argKeys": keys,
+                "argTypes": _var_node(argTypesVar),
+            }
+        )
+
+        res.alias = _name_node(f"upd{len(mutations)}")
+        res.arguments = tuple([args])
+
+        mutations.append(res)
+        vars[argTypesVar] = (l.parse_type("[JSON]"), types)
+
     # transaction
 
     def commit(self) -> None:
@@ -563,6 +695,8 @@ class TableUpdate:
                 self._add_record_upserts_selection(cur, mutations, vars)
             if isinstance(cur[0], _TableRecordsDeleteData):
                 self._add_record_deletes_selection(cur, mutations)
+            if isinstance(cur[0], _TableColumnUpsertData):
+                self._add_column_upserts_selection(cur, mutations, vars)
 
         cur = [self._record_mutations[0]]
         for mut in self._record_mutations[1:]:
