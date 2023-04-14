@@ -630,7 +630,8 @@ class TableUpdate:
         origin = get_origin(type)
         if origin is not None:
             if issubclass(origin, List):
-                inner_type = get_args(origin)[0]
+                inner_type = get_args(type)[0]
+                print(inner_type)
                 if issubclass(inner_type, LatchFile):
                     registry_type = {"array": {"primitive": "blob"}}
                 elif issubclass(inner_type, LatchDir):
@@ -638,7 +639,7 @@ class TableUpdate:
                         "array": {"primitive": "blob", "metadata": {"nodeType": "dir"}}
                     }
                 elif issubclass(inner_type, LinkedRecordType):
-                    experiment_id = get_args(origin)[0]
+                    experiment_id = get_args(get_args(origin)[0])[0]
                     registry_type = {
                         "array": {"primitive": "link", "experimentId": experiment_id}
                     }
