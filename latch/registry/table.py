@@ -1,5 +1,7 @@
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from datetime import date, datetime
+from enum import Enum
 from typing import (
     Dict,
     Iterator,
@@ -7,10 +9,12 @@ from typing import (
     Literal,
     Optional,
     Tuple,
-    TypeAlias,
+    Type,
     TypedDict,
     Union,
     cast,
+    get_args,
+    get_origin,
     overload,
 )
 
@@ -29,10 +33,20 @@ from latch.gql._utils import (
     _var_node,
 )
 from latch.registry.record import NoSuchColumnError, Record
-from latch.registry.types import Column, InvalidValue, RecordValue, RegistryPythonValue
-from latch.registry.upstream_types.types import DBType
+from latch.registry.types import (
+    Column,
+    InvalidValue,
+    LinkedRecordType,
+    RecordValue,
+    RegistryEnumDefinition,
+    RegistryPythonType,
+    RegistryPythonValue,
+)
+from latch.registry.upstream_types.types import DBType, RegistryType
 from latch.registry.upstream_types.values import DBValue, EmptyCell
 from latch.registry.utils import to_python_literal, to_python_type, to_registry_literal
+from latch.types.directory import LatchDir
+from latch.types.file import LatchFile
 
 from ..types.json import JsonValue
 
@@ -303,10 +317,36 @@ class _TableRecordsDeleteData:
     name: str
 
 
+@dataclass(frozen=True)
+class _TableColumnUpsertData:
+    key: str
+    type: DBType
+
+
 _TableRecordsMutationData: TypeAlias = Union[
     _TableRecordsUpsertData,
     _TableRecordsDeleteData,
+    _TableColumnUpsertData,
 ]
+
+
+class InvalidColumnTypeError(ValueError):
+    """Failure to use an invalid column type.
+
+    Attributes:
+        key: Identifier of the invalid column.
+        invalid_type: Requested column type.
+    """
+
+    def __init__(
+        self, key: str, invalid_type: Union[Type[object], RegistryPythonType], msg: str
+    ):
+        super().__init__(
+            f"invalid column type for {repr(key)}. {msg}: {repr(invalid_type)}"
+        )
+
+        self.key = key
+        self.invalid_type = invalid_type
 
 
 @dataclass(frozen=True)
@@ -459,6 +499,165 @@ class TableUpdate:
 
         mutations.append(res)
 
+    # upsert column
+
+    def upsert_column(
+        self,
+        key: str,
+        type: RegistryPythonType,
+        *,
+        required: bool = False,
+    ):
+        """Create a column. Support for updating columns is planned.
+
+        Args:
+            key: Identifier of the new column.
+            type:
+                Type of the new column.
+
+                Only a limited set of Python types is currently supported and
+                will be expanded over time.
+
+                :class:`latch.registry.types.RegistryPythonType` represents the currently supported types.
+            required:
+                If true, records without a value for this column are considered invalid.
+
+                Note that an explicit `None` value is different from a missing/empty value.
+                `None` is a valid value for an `Optional` (nullable) column marked as required.
+
+        """
+
+        registry_type: Optional[RegistryType] = None
+        if type is str:
+            registry_type = {"primitive": "string"}
+        if type is int:
+            registry_type = {"primitive": "integer"}
+        if type is float:
+            registry_type = {"primitive": "number"}
+        if type is date:
+            registry_type = {"primitive": "date"}
+        if type is datetime:
+            registry_type = {"primitive": "datetime"}
+        if type is bool:
+            registry_type = {"primitive": "boolean"}
+        if type is LatchFile:
+            registry_type = {"primitive": "blob"}
+        if type is LatchDir:
+            registry_type = {"primitive": "blob", "metadata": {"nodeType": "dir"}}
+
+        origin = get_origin(type)
+        if origin is not None:
+            if issubclass(origin, List):
+                inner_type = get_args(type)[0]
+                inner_type_origin = get_origin(inner_type)
+
+                if inner_type_origin is not None:
+                    if issubclass(inner_type_origin, LinkedRecordType):
+                        experiment_id = get_args(get_args(inner_type)[0])[0]
+                        registry_type = {
+                            "array": {
+                                "primitive": "link",
+                                "experimentId": experiment_id,
+                            }
+                        }
+                    else:
+                        raise InvalidColumnTypeError(
+                            key, type, "Unsupported list inner type"
+                        )
+                elif issubclass(inner_type, LatchFile):
+                    registry_type = {"array": {"primitive": "blob"}}
+                elif issubclass(inner_type, LatchDir):
+                    registry_type = {
+                        "array": {"primitive": "blob", "metadata": {"nodeType": "dir"}}
+                    }
+                else:
+                    raise InvalidColumnTypeError(
+                        key, type, "Unsupported list inner type"
+                    )
+
+            if issubclass(origin, LinkedRecordType):
+                experiment_id = get_args(get_args(type)[0])[0]
+                registry_type = {"primitive": "link", "experimentId": experiment_id}
+
+            if issubclass(origin, RegistryEnumDefinition):
+                members = list(get_args(t)[0] for t in get_args(get_args(type)[0]))
+                for x in members:
+                    if isinstance(x, str):
+                        continue
+                    raise InvalidColumnTypeError(
+                        key, type, f"Enum value {repr(x)} is not a string"
+                    )
+
+                registry_type = {
+                    "primitive": "enum",
+                    "members": members,
+                }
+
+        if isinstance(type, Enum):
+            members: List[str] = []
+            for f in cast(Type[Enum], type):
+                if not isinstance(f.value, str):
+                    raise InvalidColumnTypeError(
+                        key,
+                        type,
+                        (
+                            f"Enum value for {repr(f.name)} ({repr(f.value)}) is not a"
+                            " string"
+                        ),
+                    )
+
+                members.append(f.value)
+
+            registry_type = {
+                "primitive": "enum",
+                "members": members,
+            }
+
+        if registry_type is None:
+            raise InvalidColumnTypeError(key, type, "Unsupported type")
+
+        db_type: DBType = {"type": registry_type, "allowEmpty": not required}
+        self._record_mutations.append(_TableColumnUpsertData(key, db_type))
+
+    def _add_column_upserts_selection(
+        self,
+        upserts: List[_TableColumnUpsertData],
+        mutations: List[l.SelectionNode],
+        vars: Dict[str, Tuple[l.TypeNode, JsonValue]],
+    ) -> None:
+        if len(upserts) == 0:
+            return
+
+        keys: _GqlJsonValue = [x.key for x in upserts]
+        types: JsonValue = [cast(JsonValue, x.type) for x in upserts]
+
+        res = _parse_selection(
+            """
+            catalogExperimentColumnDefinitionMultiUpsert(input: {}) {
+                clientMutationId
+            }
+        """
+        )
+        assert isinstance(res, l.FieldNode)
+
+        argTypesVar = f"upd{len(mutations)}ArgTypes"
+
+        args = l.ArgumentNode()
+        args.name = _name_node("input")
+        args.value = _json_value(
+            {
+                "argExperimentId": self.table.id,
+                "argKeys": keys,
+                "argTypes": _var_node(argTypesVar),
+            }
+        )
+
+        res.alias = _name_node(f"upd{len(mutations)}")
+        res.arguments = tuple([args])
+
+        mutations.append(res)
+        vars[argTypesVar] = (l.parse_type("[JSON]!"), types)
+
     # transaction
 
     def commit(self) -> None:
@@ -481,6 +680,8 @@ class TableUpdate:
                 self._add_record_upserts_selection(cur, mutations, vars)
             if isinstance(cur[0], _TableRecordsDeleteData):
                 self._add_record_deletes_selection(cur, mutations)
+            if isinstance(cur[0], _TableColumnUpsertData):
+                self._add_column_upserts_selection(cur, mutations, vars)
 
         cur = [self._record_mutations[0]]
         for mut in self._record_mutations[1:]:
@@ -514,6 +715,8 @@ class TableUpdate:
             _var_def_node(k, t) for k, (t, _) in vars.items()
         )
 
+        # todo(maximsmol): catch errors here and raise appropriate Python exceptions
+        # 1. column upsert: already exists
         execute(doc, {k: v for k, (_, v) in vars.items()})
 
         self.clear()

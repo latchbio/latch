@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import List, Type, Union
+from enum import Enum
+from typing import TYPE_CHECKING, Generic, List, Literal, Tuple, Type, TypeVar, Union
 
 from typing_extensions import TypeAlias
 
@@ -8,6 +9,19 @@ from latch.registry.record import Record
 from latch.registry.upstream_types.types import DBType
 from latch.registry.upstream_types.values import EmptyCell
 from latch.types import LatchDir, LatchFile
+
+if not TYPE_CHECKING:
+    try:
+        from enum import StrEnum
+    except ImportError:
+
+        class StrEnum(str, Enum):
+            ...
+
+else:
+
+    class StrEnum(str, Enum):
+        ...
 
 
 @dataclass(frozen=True)
@@ -21,17 +35,22 @@ class InvalidValue:
     """
 
 
-RegistryPythonValue: TypeAlias = Union[
+RegistryPrimitivePythonValue: TypeAlias = Union[
     str,
     datetime,
     date,
     int,
     float,
-    Record,
-    None,
-    List["RegistryPythonValue"],
     LatchFile,
     LatchDir,
+    None,
+    bool,
+]
+
+RegistryPythonValue: TypeAlias = Union[
+    RegistryPrimitivePythonValue,
+    Record,
+    List["RegistryPythonValue"],
 ]
 
 RecordValue: TypeAlias = Union[RegistryPythonValue, EmptyCell, InvalidValue]
@@ -55,3 +74,40 @@ class Column:
 
     Used to convert between Python values and Registry values.
     """
+
+
+RegistryEnumDefinitionArg = TypeVar("RegistryEnumDefinitionArg", bound=Tuple[str, ...])
+
+
+class RegistryEnumDefinition(Generic[RegistryEnumDefinitionArg]):
+    def __new__(cls, *values: str):
+        return RegistryEnumDefinition[Tuple[tuple(Literal[v] for v in values)]]
+
+
+LinkedRecordTypeArg = TypeVar("LinkedRecordTypeArg", bound=str)
+
+
+class LinkedRecordType(Generic[LinkedRecordTypeArg]):
+    def __new__(cls, id: str):
+        return LinkedRecordType[Literal[id]]
+
+
+RegistryPrimitivePythonType = Union[
+    Type[str],
+    Type[int],
+    Type[float],
+    Type[date],
+    Type[datetime],
+    Type[bool],
+    Type[LatchFile],
+    Type[LatchDir],
+    Type[StrEnum],
+    Type[RegistryEnumDefinition],
+    Type[LinkedRecordType],
+]
+RegistryPythonType = Union[
+    RegistryPrimitivePythonType,
+    Type[List[LatchFile]],
+    Type[List[LatchDir]],
+    Type[List[LinkedRecordType]],
+]
