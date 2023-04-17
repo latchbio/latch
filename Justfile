@@ -18,7 +18,12 @@ dev-requirements:
   pip-compile dev-requirements.in
 
 build-api-docs:
-  sphinx-apidoc --force -o docs/source/api/ . 'latch_cli/services/init/*/**'
+  sphinx-apidoc \
+    --force \
+    -o docs/source/api/ . \
+    'latch_cli/services/init/*/**' \
+    'setup.py' \
+    'tests/*'
 
 build-docs:
   make --directory docs html

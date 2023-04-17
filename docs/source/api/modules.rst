@@ -6,5 +6,3 @@ latch
 
    latch
    latch_cli
-   setup
-   tests
