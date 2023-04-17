@@ -18,3 +18,10 @@ The only non-getter method on an `Account` is `Account.load()`. This method, if 
 All property getters have an optional `load_if_missing` boolean argument which, if `True`, will call `Account.load()` if the requested property has not been loaded already. This defaults to `True`.
 
 - `Account.list_projects()` will return a list of `Project` objects, each correspondng to a project within the calling `Account`.
+
+### Updater
+
+A `Account` can be modified by using the `Account.update()` function. `Account.update()` returns a context manager (and hence must be called using `with` syntax) with the following methods:
+
+- `upsert_project(name: str)` will create a project with name `name`.
+- `delete_project(id: str)` will delete the project with id `id`. If no such project exists, the method call will be a noop.
