@@ -40,12 +40,11 @@ All property getters have an optional `load_if_missing` boolean argument which, 
 A `Table` can be modified by using the `Table.update()` function. `Table.update()` returns a context manager (and hence must be called using `with` syntax) with the following methods:
 
 - `upsert_record(record_name: str, column_data: Dict[str, Any])` will either (up)date or in(sert) a record with name `record_name` with the column values prescribed in `column_data`. Each key of `column_data` must be a valid column key (meaning that there must be a column in the calling `Table` with the same key), and the value corresponding to that key must be same type as the column (meaning that it is an instance of the column's (python) type).
+- `delete_record(name: str)` will delete the record with name `name`. If no such record exists, the method call will be a noop.
+- `upsert_column(key: str, type: RegistryPythonType, *, required: bool = False)` will create a column with key `key` and type `type`. For now, updating column types (i.e. calling `upsert_column` with a key that already exists, and a type that differs from the type of the column) is not allowed, and attempting to do so will raise an exception.
 
 #### Planned Methods (Not Implemented Yet)
 
-- `delete_record(record_name: str)`
-  <!-- should we use Column objects here? -->
-- `upsert_column(column_name: str, type: Type)`
 - `delete_column(column_name: str)`
 
 The following is an example for how to update a `Table`.
