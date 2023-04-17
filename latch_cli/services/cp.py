@@ -1,7 +1,6 @@
 """Service to copy files. """
 
 import concurrent.futures as cf
-import json
 import math
 import threading
 from pathlib import Path
