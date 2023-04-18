@@ -92,7 +92,7 @@ class LinkedRecordType(Generic[LinkedRecordTypeArg]):
         return LinkedRecordType[Literal[id]]
 
 
-RegistryPrimitivePythonType = Union[
+RegistryPrimitivePythonType: TypeAlias = Union[
     Type[str],
     Type[int],
     Type[float],
@@ -105,7 +105,7 @@ RegistryPrimitivePythonType = Union[
     Type[RegistryEnumDefinition],
     Type[LinkedRecordType],
 ]
-RegistryPythonType = Union[
+RegistryPythonType: TypeAlias = Union[
     RegistryPrimitivePythonType,
     Type[List[LatchFile]],
     Type[List[LatchDir]],
