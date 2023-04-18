@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.abspath("../.."))
 # -- Project information -----------------------------------------------------
 
 project = "latch"
-copyright = "2022, LatchBio"
+copyright = "2023, LatchBio"
 
 # -- General configuration ---------------------------------------------------
 
