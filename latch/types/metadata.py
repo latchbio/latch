@@ -10,18 +10,12 @@ import yaml
 
 @dataclass
 class LatchRule:
-    """Class describing a rule that a parameter input must follow
-
-    Fields:
-        regex:
-            A string regular expression which inputs must match
-        message:
-            The message to render when an input does not match
-            the regex
-    """
+    """Class describing a rule that a parameter input must follow"""
 
     regex: str
+    """A string regular expression which inputs must match"""
     message: str
+    """The message to render when an input does not match the regex"""
 
     @property
     def dict(self):
@@ -41,20 +35,14 @@ class LatchAppearanceType(Enum):
 
 @dataclass
 class LatchAuthor:
-    """Class describing metadata about the workflow author
-
-    Fields:
-        name:
-            The name of the author
-        email:
-            The email of the author
-        github:
-            A link to the github profile of the author
-    """
+    """Class describing metadata about the workflow author"""
 
     name: Optional[str] = None
+    """The name of the author"""
     email: Optional[str] = None
+    """The email of the author"""
     github: Optional[str] = None
+    """A link to the github profile of the author"""
 
 
 @dataclass(frozen=True)
@@ -158,17 +146,12 @@ class Section(FlowBase):
     ) -> LatchDir:
         ...
     ```
-
-    Args:
-        section:
-            Title of the section
-
-        flow:
-            Flow displayed in the section card
     """
 
     section: str
+    """Title of the section"""
     flow: List[FlowBase]
+    """Flow displayed in the section card"""
 
     def __init__(self, section: str, *flow: FlowBase):
         object.__setattr__(self, "section", section)
@@ -177,39 +160,29 @@ class Section(FlowBase):
 
 @dataclass(frozen=True)
 class Text(FlowBase):
-    """Flow element that displays a markdown string
-
-    Args:
-        text:
-            Markdown body text
-    """
+    """Flow element that displays a markdown string"""
 
     text: str
+    """Markdown body text"""
 
 
 @dataclass(frozen=True)
 class Title(FlowBase):
-    """Flow element that displays a markdown title
-
-    Args:
-        title:
-            Markdown title text
-    """
+    """Flow element that displays a markdown title"""
 
     title: str
+    """Markdown title text"""
 
 
 @dataclass(frozen=True, init=False)
 class Params(FlowBase):
-    """Flow element that displays parameter widgets
-
-    Args:
-        params:
-            Names of parameters whose widgets will be displayed.
-            Order is preserved. Duplicates are allowed
-    """
+    """Flow element that displays parameter widgets"""
 
     params: List[str]
+    """
+    Names of parameters whose widgets will be displayed.
+    Order is preserved. Duplicates are allowed
+    """
 
     def __init__(self, *args: str):
         object.__setattr__(self, "params", list(args))
@@ -217,18 +190,12 @@ class Params(FlowBase):
 
 @dataclass(frozen=True, init=False)
 class Spoiler(FlowBase):
-    """Flow element that displays a collapsible card with a given title
-
-    Args:
-        spoiler:
-            Title of the spoiler
-
-        flow:
-            Flow displayed in the spoiler card
-    """
+    """Flow element that displays a collapsible card with a given title"""
 
     spoiler: str
+    """Title of the spoiler"""
     flow: List[FlowBase]
+    """Flow displayed in the spoiler card"""
 
     def __init__(self, spoiler: str, *flow: FlowBase):
         object.__setattr__(self, "spoiler", spoiler)
@@ -237,18 +204,12 @@ class Spoiler(FlowBase):
 
 @dataclass(frozen=True, init=False)
 class ForkBranch:
-    """Definition of a :class:`~latch.types.metadata.Fork` branch
-
-    Args:
-        display_name:
-            String displayed in the fork's multibutton
-
-        flow:
-            Child flow displayed in the fork card when the branch is active
-    """
+    """Definition of a :class:`~latch.types.metadata.Fork` branch"""
 
     display_name: str
+    """String displayed in the fork's multibutton"""
     flow: List[FlowBase]
+    """Child flow displayed in the fork card when the branch is active"""
 
     def __init__(self, display_name: str, *flow: FlowBase):
         object.__setattr__(self, "display_name", display_name)
@@ -261,22 +222,17 @@ class Fork(FlowBase):
 
     Displays a title, followed by a horizontal multibutton for selecting a branch,
     then a card for the active branch
-
-    Args:
-        fork:
-            Name of a `str`-typed parameter to store the active branch's key
-
-        display_name:
-            Title shown above the fork selector
-
-        flows:
-            Mapping between branch keys to branch definitions.
-            Order determines the order of options in the multibutton
     """
 
     fork: str
+    """Name of a `str`-typed parameter to store the active branch's key"""
     display_name: str
+    """Title shown above the fork selector"""
     flows: Dict[str, ForkBranch]
+    """
+    Mapping between branch keys to branch definitions.
+    Order determines the order of options in the multibutton
+    """
 
     def __init__(self, fork: str, display_name: str, **flows: ForkBranch):
         object.__setattr__(self, "fork", fork)
@@ -286,52 +242,49 @@ class Fork(FlowBase):
 
 @dataclass
 class LatchParameter:
-    """Class for organizing parameter metadata
-
-    Fields:
-        display_name:
-            The name used to display the parameter on Latch Console
-        description:
-            The description of the parameter's role in the workflow
-        hidden:
-            Whether or not the parameter should be hidden by default
-        section_title:
-            Whether this parameter should start a new section
-        placeholder:
-            What should be rendered as a placeholder in the input box
-            of the parameter before any value is inputed.
-        comment:
-            Any comment on the parameter itself
-        output:
-            Whether or not this parameter is an output (used to disable
-            path validation before launching a workflow)
-        batch_table_column:
-            Whether this parameter should be given a column in the batch
-            table at the top of the workflow inputs
-        appearance_type:
-            Whether the parameter should be rendered as a line or paragraph
-            (must be exactly one of either LatchAppearanceType.line or
-            LatchAppearanceType.paragraph)
-        rules:
-            A list of LatchRule objects that inputs to this parameter must
-            follow.
-        samplesheet:
-            Use samplesheet input UI. Allows importing from Latch Registry.
-            Parameter type must be a list of dataclasses
-    """
+    """Class for organizing parameter metadata"""
 
     display_name: Optional[str] = None
+    """The name used to display the parameter on Latch Console"""
     description: Optional[str] = None
+    """The description of the parameter's role in the workflow"""
     hidden: bool = False
+    """Whether or not the parameter should be hidden by default"""
     section_title: Optional[str] = None
+    """Whether this parameter should start a new section"""
     placeholder: Optional[str] = None
+    """
+    What should be rendered as a placeholder in the input box
+    of the parameter before any value is inputed.
+    """
     comment: Optional[str] = None
+    """Any comment on the parameter itself"""
     output: bool = False
+    """
+    Whether or not this parameter is an output (used to disable
+    path validation before launching a workflow)
+    """
     batch_table_column: bool = False
+    """
+    Whether this parameter should be given a column in the batch
+    table at the top of the workflow inputs
+    """
     appearance_type: LatchAppearanceType = LatchAppearanceType.line
+    """
+    Whether the parameter should be rendered as a line or paragraph
+    (must be exactly one of either LatchAppearanceType.line or
+    LatchAppearanceType.paragraph)
+    """
     rules: List[LatchRule] = field(default_factory=list)
+    """
+    A list of LatchRule objects that inputs to this parameter must follow
+    """
     detail: Optional[str] = None
     samplesheet: Optional[bool] = None
+    """
+    Use samplesheet input UI. Allows importing from Latch Registry.
+    Parameter type must be a list of dataclasses
+    """
     _custom_ingestion: Optional[str] = None
 
     def __str__(self):
@@ -421,39 +374,31 @@ class LatchMetadata:
     def wf(read1: LatchFile):
         ...
     ```
-
-
-    Fields:
-        display_name:
-            The name of the workflow
-        author:
-            A `LatchAuthor` object that describes the author of the workflow
-        documentation:
-            A link to documentation for the workflow itself
-        repository:
-            A link to the repository where the code for the workflow is hosted
-        license:
-            A SPDX identifier
-        parameters:
-            A dictionary mapping parameter names (strings) to `LatchParameter` objects
-        no_standard_bulk_execution:
-            Disable the standard CSV-based bulk execution. Intended for workflows that
-            support an aleternative way of processing bulk data e.g. using a samplesheet
-            parameter
     """
 
     display_name: str
+    """The name of the workflow"""
     author: LatchAuthor
+    """ A `LatchAuthor` object that describes the author of the workflow"""
     documentation: Optional[str] = None
+    """A link to documentation for the workflow itself"""
     repository: Optional[str] = None
+    """A link to the repository where the code for the workflow is hosted"""
     license: str = "MIT"
+    """A SPDX identifier"""
     parameters: Dict[str, LatchParameter] = field(default_factory=dict)
+    """A dictionary mapping parameter names (strings) to `LatchParameter` objects"""
     wiki_url: Optional[str] = None
     video_tutorial: Optional[str] = None
     tags: List[str] = field(default_factory=list)
     flow: List[FlowBase] = field(default_factory=list)
 
     no_standard_bulk_execution: bool = False
+    """
+    Disable the standard CSV-based bulk execution. Intended for workflows that
+    support an aleternative way of processing bulk data e.g. using a samplesheet
+    parameter
+    """
     _non_standard: Dict[str, object] = field(default_factory=dict)
 
     @property

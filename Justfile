@@ -18,11 +18,15 @@ dev-requirements:
   pip-compile dev-requirements.in
 
 build-api-docs:
-  sphinx-apidoc . -f -o docs/source/api/
+  sphinx-apidoc \
+    --force \
+    -o docs/source/api/ . \
+    'latch_cli/services/init/*/**' \
+    'setup.py' \
+    'tests/*'
 
 build-docs:
-  rm -rf docs/build
-  make -C docs html
+  make --directory docs html
 
 test:
   export TEST_TOKEN=$(cat ~/.latch/token) &&\
