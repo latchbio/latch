@@ -4,9 +4,11 @@ import concurrent.futures as cf
 import math
 import threading
 from pathlib import Path
+from typing import Dict, Literal, Optional, TypedDict, Union
 
 import tqdm as _tqdm
 from tqdm.auto import tqdm
+from typing_extensions import TypeAlias
 
 import latch_cli.tinyrequests as tinyrequests
 from latch_cli.config.latch import config
@@ -197,6 +199,33 @@ def _upload_file_chunk(
     return {"ETag": etag, "PartNumber": part_index + 1}
 
 
+# todo(ayush): switch this over to nucleus-data so its not this dumb
+class DownloadDirResponseData(TypedDict):
+    dir: Literal[True]
+    url: Dict[str, "DownloadResponseData"]
+
+
+class DownloadFileResponseData(TypedDict):
+    dir: Literal[False]
+    url: str
+
+
+DownloadResponseData: TypeAlias = Union[
+    DownloadDirResponseData, DownloadFileResponseData
+]
+
+
+def _get_total_download_size(response_data: DownloadResponseData) -> int:
+    if response_data["dir"]:
+        total = 0
+        for sub_res in response_data["url"].values():
+            total += _get_total_download_size(sub_res)
+        return total
+
+    with tinyrequests.get(response_data["url"], stream=True) as res:
+        return int(res.headers["Content-Length"])
+
+
 def download(
     remote_source: str,
     local_dest: str,
@@ -246,15 +275,26 @@ def download(
         },
     )
 
-    print("Downloading...")
     response_data = response.json()
+
+    total = _get_total_download_size(response_data)
+    pbar = tqdm(
+        text="Downloading",
+        total=total,
+        unit="B",
+        unit_scale=True,
+        unit_divisor=1000,
+        leave=False,
+        colour="green",
+    )
+
     if response_data["dir"]:
         futures = []
-        _download_dir(output_dir, response_data, futures, _executor)
-        for _ in _tqdm.tqdm(cf.as_completed(futures), total=len(futures)):
+        _download_dir(output_dir, response_data, futures, _executor, pbar)
+        for _ in cf.as_completed(futures):
             continue
     else:
-        _download_file(response_data["url"], output_dir)
+        _download_file(response_data["url"], output_dir, pbar)
 
 
 def _download_dir(
@@ -262,6 +302,7 @@ def _download_dir(
     response_data: dict,
     futures: list,
     executor: cf.ThreadPoolExecutor,
+    pbar: _tqdm.tqdm,
 ):
     output_dir.mkdir(exist_ok=True)
     urls = response_data["url"]
@@ -274,6 +315,7 @@ def _download_dir(
                 response_data=urls[name],
                 futures=futures,
                 executor=executor,
+                pbar=pbar,
             )
         else:
             futures.append(
@@ -281,16 +323,19 @@ def _download_dir(
                     _download_file,
                     url=urls[name]["url"],
                     output_path=sub_path,
+                    pbar=pbar,
                 )
             )
 
 
-def _download_file(url: str, output_path: Path):
+def _download_file(url: str, output_path: Path, pbar: _tqdm.tqdm):
     with tinyrequests.get(url, stream=True) as r:
         r.raise_for_status()
         with open(output_path.resolve(), "wb") as f:
             for chunk in r.iter_content(chunk_size=latch_constants.file_chunk_size):
                 f.write(chunk)
+                with IO_LOCK:
+                    pbar.update(len(chunk))
     return output_path
 
 

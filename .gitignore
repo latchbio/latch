@@ -18,3 +18,4 @@ docs/build
 scratch.py
 /scratch
 test_*
+_chunks
