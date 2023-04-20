@@ -302,7 +302,7 @@ def download(
     if show_progress:
         total = _get_total_download_size(response_data)
         pbar = tqdm(
-            text="Downloading",
+            desc="Downloading",
             total=total,
             unit="B",
             unit_scale=True,
