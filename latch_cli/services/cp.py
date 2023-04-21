@@ -1,13 +1,15 @@
 """Service to copy files. """
 
 import concurrent.futures as cf
-import json
 import math
+import re
 import threading
 from pathlib import Path
+from typing import Dict, Literal, Optional, TypedDict, Union
 
 import tqdm as _tqdm
 from tqdm.auto import tqdm
+from typing_extensions import TypeAlias
 
 import latch_cli.tinyrequests as tinyrequests
 from latch_cli.config.latch import config
@@ -38,6 +40,8 @@ def upload(
     local_source: str,
     remote_dest: str,
     _executor: cf.ThreadPoolExecutor,
+    *,
+    show_progress: bool = True,
 ):
     """Allows movement of files/directories from local machines -> Latch. Called
     by `cp`.
@@ -87,15 +91,27 @@ def upload(
             mkdir(remote_directory=remote_dest)
         for sub_dir in local_source_p.iterdir():
             # do files in serial for now to prevent deadlocks
-            upload(sub_dir, f"{remote_dest}/{sub_dir.name}", _executor)
+            upload(
+                sub_dir,
+                f"{remote_dest}/{sub_dir.name}",
+                _executor,
+                show_progress=show_progress,
+            )
     else:
-        _upload_file(local_source_p, remote_dest, _executor)
+        _upload_file(
+            local_source_p,
+            remote_dest,
+            _executor,
+            show_progress=show_progress,
+        )
 
 
 def _upload_file(
     local_source: Path,
     remote_dest: str,
     executor: cf.ThreadPoolExecutor,
+    *,
+    show_progress: bool = True,
 ):
     with open(local_source, "rb") as f:
         f.seek(0, 2)
@@ -132,16 +148,17 @@ def _upload_file(
     else:
         text = f"Copying {local_source} -> {remote_dest}:"
 
-    with IO_LOCK:
-        progress_bar = tqdm(
-            total=total_bytes,
-            desc=text,
-            unit="B",
-            unit_scale=True,
-            unit_divisor=1000,
-            leave=False,
-            colour="green",
-        )
+    if show_progress:
+        with IO_LOCK:
+            progress_bar = tqdm(
+                total=total_bytes,
+                desc=text,
+                unit="B",
+                unit_scale=True,
+                leave=False,
+            )
+    else:
+        progress_bar = None
 
     parts_futures = []
     for i in range(num_parts):
@@ -174,16 +191,18 @@ def _upload_file(
 
     response.raise_for_status()
 
-    with IO_LOCK:
-        progress_bar.close()
-        print(text.replace("Copying", "Copied"))
+    if progress_bar is not None:
+        with IO_LOCK:
+            progress_bar.close()
+
+    print(text.replace("Copying", "Copied"))
 
 
 def _upload_file_chunk(
     url: str,
     local_source: Path,
     part_index: int,
-    progress_bar: _tqdm.tqdm,
+    progress_bar: Optional[_tqdm.tqdm] = None,
     chunk_size: int = latch_constants.file_chunk_size,
 ):
     with open(local_source, "rb") as f:
@@ -192,16 +211,52 @@ def _upload_file_chunk(
         resp = tinyrequests.request("PUT", url, data=payload)
         etag = resp.headers["ETag"]
 
-    with IO_LOCK:
-        progress_bar.update(len(payload))
+    if progress_bar is not None:
+        with IO_LOCK:
+            progress_bar.update(len(payload))
 
     return {"ETag": etag, "PartNumber": part_index + 1}
+
+
+# todo(ayush): switch this over to nucleus-data so its not this dumb
+class DownloadDirResponseData(TypedDict):
+    dir: Literal[True]
+    url: Dict[str, "DownloadResponseData"]
+
+
+class DownloadFileResponseData(TypedDict):
+    dir: Literal[False]
+    url: str
+
+
+DownloadResponseData: TypeAlias = Union[
+    DownloadDirResponseData, DownloadFileResponseData
+]
+
+size_regex = re.compile(r"bytes \d+-\d+/(?P<size>\d+)")
+
+
+def _get_total_download_size(response_data: DownloadResponseData) -> int:
+    if response_data["dir"]:
+        total = 0
+        for sub_res in response_data["url"].values():
+            total += _get_total_download_size(sub_res)
+        return total
+
+    with tinyrequests.get(response_data["url"], headers={"Range": "bytes=0-0"}) as res:
+        match = size_regex.match(res.headers["Content-Range"])
+        if not match:
+            raise ValueError("unable to parse content length")
+
+        return int(match.group("size"))
 
 
 def download(
     remote_source: str,
     local_dest: str,
     _executor: cf.ThreadPoolExecutor,
+    *,
+    show_progress: bool = True,
 ):
     """Allows movement of files/directories from Latch -> local machines. Called
     by `cp`.
@@ -247,15 +302,27 @@ def download(
         },
     )
 
-    print("Downloading...")
     response_data = response.json()
+
+    if show_progress:
+        total = _get_total_download_size(response_data)
+        pbar = tqdm(
+            desc="Downloading",
+            total=total,
+            unit="B",
+            unit_scale=True,
+            leave=False,
+        )
+    else:
+        pbar = None
+
     if response_data["dir"]:
         futures = []
-        _download_dir(output_dir, response_data, futures, _executor)
-        for _ in _tqdm.tqdm(cf.as_completed(futures), total=len(futures)):
+        _download_dir(output_dir, response_data, futures, _executor, pbar)
+        for _ in cf.as_completed(futures):
             continue
     else:
-        _download_file(response_data["url"], output_dir)
+        _download_file(response_data["url"], output_dir, pbar)
 
 
 def _download_dir(
@@ -263,6 +330,7 @@ def _download_dir(
     response_data: dict,
     futures: list,
     executor: cf.ThreadPoolExecutor,
+    pbar: Optional[_tqdm.tqdm] = None,
 ):
     output_dir.mkdir(exist_ok=True)
     urls = response_data["url"]
@@ -275,6 +343,7 @@ def _download_dir(
                 response_data=urls[name],
                 futures=futures,
                 executor=executor,
+                pbar=pbar,
             )
         else:
             futures.append(
@@ -282,20 +351,24 @@ def _download_dir(
                     _download_file,
                     url=urls[name]["url"],
                     output_path=sub_path,
+                    pbar=pbar,
                 )
             )
 
 
-def _download_file(url: str, output_path: Path):
+def _download_file(url: str, output_path: Path, pbar: Optional[_tqdm.tqdm] = None):
     with tinyrequests.get(url, stream=True) as r:
         r.raise_for_status()
         with open(output_path.resolve(), "wb") as f:
             for chunk in r.iter_content(chunk_size=latch_constants.file_chunk_size):
                 f.write(chunk)
+                if pbar is not None:
+                    with IO_LOCK:
+                        pbar.update(len(chunk))
     return output_path
 
 
-def cp(source_file: str, destination_file: str):
+def cp(source_file: str, destination_file: str, *, show_progress: bool = True):
     """Function called by the Latch CLI to allow files/directories to be copied
     between local machines and Latch Data.
 
@@ -329,13 +402,15 @@ def cp(source_file: str, destination_file: str):
             or destination_file.startswith("latch://account")
             or destination_file.startswith("latch:///")
         ):
-            upload(source_file, destination_file, executor)
+            upload(source_file, destination_file, executor, show_progress=show_progress)
         elif (
             source_file.startswith("latch:///")
             or source_file.startswith("latch://shared")
             or source_file.startswith("latch://account")
         ) and not destination_file.startswith("latch://"):
-            download(source_file, destination_file, executor)
+            download(
+                source_file, destination_file, executor, show_progress=show_progress
+            )
         else:
             raise ValueError(
                 "latch cp can only be used to either copy remote -> local or local ->"

@@ -8,6 +8,7 @@ latch.egg-info
 /.mypy_cache
 /.ruff_cache
 .env/
+.venv
 
 __pycache__
 
@@ -18,3 +19,4 @@ docs/build
 scratch.py
 /scratch
 test_*
+.latch_report.tar.gz
