@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.19.1 - 2023-04-21
+
+### Changed
+
+- `latch cp` now has a progress bar for downloads (previously they only showed for uploads)
+
 ## 2.19.0 - 2023-04-14
 
 ### Added
