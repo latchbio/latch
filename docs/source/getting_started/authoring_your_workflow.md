@@ -174,7 +174,7 @@ env FLYTE_INTERNAL_IMAGE $tag
 workdir /root
 ```
 
-See the [Workflow Environment] page(../basics/defining_environment.md) for further information configuring the environment for other use dependencies such as R or Conda.
+See the [Workflow Environment](../basics/defining_environment.md) page for further information configuring the environment for other use dependencies such as R or Conda.
 
 ## 5. Customize user interface
 There are two pages that you can customize: the **About** page for your workflow and a **Parameters** page for workflow input parameters.
