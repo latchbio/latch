@@ -2,6 +2,7 @@
 
 import concurrent.futures as cf
 import math
+import re
 import threading
 from pathlib import Path
 from typing import Dict, Literal, Optional, TypedDict, Union
@@ -232,6 +233,8 @@ DownloadResponseData: TypeAlias = Union[
     DownloadDirResponseData, DownloadFileResponseData
 ]
 
+size_regex = re.compile(r"bytes \d+-\d+/(?P<size>\d+)")
+
 
 def _get_total_download_size(response_data: DownloadResponseData) -> int:
     if response_data["dir"]:
@@ -240,8 +243,12 @@ def _get_total_download_size(response_data: DownloadResponseData) -> int:
             total += _get_total_download_size(sub_res)
         return total
 
-    with tinyrequests.get(response_data["url"], stream=True) as res:
-        return int(res.headers["Content-Length"])
+    with tinyrequests.get(response_data["url"], headers={"Range": "bytes=0-0"}) as res:
+        match = size_regex.match(res.headers["Content-Range"])
+        if not match:
+            raise ValueError("unable to parse content length")
+
+        return int(match.group("size"))
 
 
 def download(
