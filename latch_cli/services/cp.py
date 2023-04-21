@@ -154,9 +154,7 @@ def _upload_file(
                 desc=text,
                 unit="B",
                 unit_scale=True,
-                unit_divisor=1000,
                 leave=False,
-                colour="green",
             )
     else:
         progress_bar = None
@@ -306,9 +304,7 @@ def download(
             total=total,
             unit="B",
             unit_scale=True,
-            unit_divisor=1000,
             leave=False,
-            colour="green",
         )
     else:
         pbar = None
