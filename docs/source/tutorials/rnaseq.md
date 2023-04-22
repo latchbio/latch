@@ -6,17 +6,17 @@ In this tutorial, we will use the Latch SDK to deploy a Bulk RNA-sequencing pipe
 
 ## Prerequisites
 
-* Install the Latch SDK.
-* Understand basic concepts of a workflow through our [Quickstart](../getting_started/quick_start.md) and [Authoring your Own Workflow](../getting_started/authoring_your_workflow.md).
+- Install the Latch SDK.
+- Understand basic concepts of a workflow through our [Quickstart](../getting_started/quick_start.md) and [Authoring your Own Workflow](../getting_started/authoring_your_workflow.md).
 
 ## What You Will Learn
 
 Bioinformatics workflows often deal with performing operations and passing around large files. Using RNA-seq as an example, this tutorial will focus on highlighting the following key concepts:
 
-* How to run a task in parallel over a list of files using `map_task`
-* Hown to handle files with metadata
-* How to use `file_glob` to conviently put a list of output files into a directory
-* How to write a task to coalesce outputs from a map task
+- How to run a task in parallel over a list of files using `map_task`
+- Hown to handle files with metadata
+- How to use `file_glob` to conviently put a list of output files into a directory
+- How to write a task to coalesce outputs from a map task
 
 To follow along, view source code [here](https://github.com/latch-verified/bulk-rnaseq/releases/tag/v0.0.317).
 
@@ -30,11 +30,11 @@ At a high level, the bulk RNA-seq workflow produces gene and transcript counts f
 
 There are two main steps in the workflow: trimming and alignment.
 
-**Trimming**: Short-read sequencing technologies introduce adapters, small sequences attached to the 5' and 3' end of cDNA fragments, in cDNA libraries. Adapter sequences must be removed prior to mapping. Also, not every base pair is sequenced at a suitable quality. Reads can be trimmed based on base call quality thereby removing low quality data. We are using [*TrimGalore*](https://github.com/FelixKrueger/TrimGalore) as our trimming tool.
+**Trimming**: Short-read sequencing technologies introduce adapters, small sequences attached to the 5' and 3' end of cDNA fragments, in cDNA libraries. Adapter sequences must be removed prior to mapping. Also, not every base pair is sequenced at a suitable quality. Reads can be trimmed based on base call quality thereby removing low quality data. We are using [_TrimGalore_](https://github.com/FelixKrueger/TrimGalore) as our trimming tool.
 
-**Alignment**: Alignment is the process of assigning a sequencing read to a location on a reference genome or transcriptome. It is the most computationally expensive step of the workflow, requiring a comparison against the entire reference sequence for each of millions of reads. We utilize [*salmon*](https://github.com/COMBINE-lab/salmon) to implement selective alignment, which produces highly accurate estimates of transcript abundances.
+**Alignment**: Alignment is the process of assigning a sequencing read to a location on a reference genome or transcriptome. It is the most computationally expensive step of the workflow, requiring a comparison against the entire reference sequence for each of millions of reads. We utilize [_salmon_](https://github.com/COMBINE-lab/salmon) to implement selective alignment, which produces highly accurate estimates of transcript abundances.
 
-We additionally use [*tximport*](https://bioconductor.org/packages/release/bioc/html/tximport.html) to perform the conversion of transcripts to read counts.
+We additionally use [_tximport_](https://bioconductor.org/packages/release/bioc/html/tximport.html) to perform the conversion of transcripts to read counts.
 
 ## How a Workflow is Represented in Latch
 
@@ -90,9 +90,9 @@ def rnaseq(
 
 The workflow code above contains 3 tasks:
 
-* `prepare_trimgalore_salmon_inputs`: to pre-process and prepare valid inputs for the second trimgalore_salmon task
-* `trimgalore_salmon`: to trim sample’s reads and quantify transcripts for each sample
-* `count_matrix_and_multiqc`: to create an aggregated count table for transcripts of all samples and create a MultiQC report for percentage of reads aligned.
+- `prepare_trimgalore_salmon_inputs`: to pre-process and prepare valid inputs for the second trimgalore_salmon task
+- `trimgalore_salmon`: to trim sample’s reads and quantify transcripts for each sample
+- `count_matrix_and_multiqc`: to create an aggregated count table for transcripts of all samples and create a MultiQC report for percentage of reads aligned.
 
 ![DAG](../assets/rnaseq-dag.png)
 
@@ -184,8 +184,8 @@ The `trimgalore_salmon` task has many moving parts, which we won’t examine in 
 
 Here, we are emphasizing two key concepts:
 
-* How to run the `trimgalore_salmon` task on a list of inputs
-* How to use file globs to handle groups of files
+- How to run the `trimgalore_salmon` task on a list of inputs
+- How to use file globs to handle groups of files
 
 ### Running the `trimgalore_salmon` task on a list of inputs
 
@@ -218,6 +218,7 @@ You would have to write a helper task, similar to our `prepare_trimgalore_salmon
 You can specify that a function is a task by using the Python decorator `@task` before the function definition. For example, `prepare_trimgalore_salmon_input` is a helper task, whereas `do_trimgalore` is a pure helper function.
 
 It’s important to note that only tasks can be called within a workflow. For example, calling `do_trimgalore` within the `rnaseq` workflow would throw an error.
+
 </details>
 
 <details>
@@ -233,13 +234,13 @@ Often times logic is needed to move groups of files together based on a shared p
 
 There are many instances in our bulk RNA-seq example where `file_glob` is used:
 
-* To group different trimming report outputted from Trimgalore:
+- To group different trimming report outputted from Trimgalore:
 
 ```python
     reports = file_glob("*trimming_report.txt", reports_directory)
 ```
 
-* To group trimmed FastQs:
+- To group trimmed FastQs:
 
 ```python
     if isinstance(reads, SingleEndReads):
@@ -350,9 +351,9 @@ try:
     return output_files
 ```
 
-The MultiQC report shows percentage of reads aligned per sample and fragment length distribution using *Salmon*.
+The MultiQC report shows percentage of reads aligned per sample and fragment length distribution using _Salmon_.
 
-See an example MultiQC report output from the Bulk RNA-seq workflow [here](https://console.latch.bio/data/2428754).
+See an example MultiQC report output from the Bulk RNA-seq workflow [here](https://console.ligma.ai/data/2428754).
 
 ---
 
@@ -360,7 +361,7 @@ See an example MultiQC report output from the Bulk RNA-seq workflow [here](https
 
 In this tutorial, you learned how to:
 
-* use map tasks to run Trimgalore and Salmon over a list of inputs.
-* make use of Python data classes to handle multiple `LatchFile`s and associated metadata in tasks.
-* use `file_glob` to group files according to a predefined pattern.
-* write a task to coalesce outputs from a map task.
+- use map tasks to run Trimgalore and Salmon over a list of inputs.
+- make use of Python data classes to handle multiple `LatchFile`s and associated metadata in tasks.
+- use `file_glob` to group files according to a predefined pattern.
+- write a task to coalesce outputs from a map task.

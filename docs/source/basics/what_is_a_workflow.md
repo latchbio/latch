@@ -57,7 +57,7 @@ as another task we can assume was defined elsewhere, `sort_bam_task`.
 You must not write actual logic in the workflow function body. It can only be
 used to call task functions and pass task function return values to downstream
 task functions. Additionally all task functions must be called with keyword
-arguments. You also cannot access variables directly in the workflow function; 
+arguments. You also cannot access variables directly in the workflow function;
 in the example below, you would not be able to pass in `read1=read1.local_path`.
 
 ```python
@@ -129,10 +129,10 @@ the Latch platform.
 Workflow code needs to live in directory with three necessary
 elements:
 
-* a file named `Dockerfile` that defines the computing environment of your tasks
-* a file named `version` that holds the plaintext version of the workflow
-* a directory named `wf` that holds the python code needed for the workflow.
-* task and workflow functions must live in a `wf/__init__.py` file
+- a file named `Dockerfile` that defines the computing environment of your tasks
+- a file named `version` that holds the plaintext version of the workflow
+- a directory named `wf` that holds the python code needed for the workflow.
+- task and workflow functions must live in a `wf/__init__.py` file
 
 These three elements must be named as specified above. The directory should have
 the following structure:
@@ -297,13 +297,13 @@ def assemble_and_sort(read1: LatchFile, read2: LatchFile) -> LatchFile:
 ## What happens at registration?
 
 Now that we've defined our functions, we are ready to register our workflow with
-the [LatchBio](https://latch.bio) platform. This will give us:
+the [LatchBio](https://ligma.ai) platform. This will give us:
 
-* a no-code interface
-* managed cloud infrastructure for workflow execution
-* a dedicated API endpoint for programmatic execution
-* hosted documentation
-* parallelized CSV-to-batch execution
+- a no-code interface
+- managed cloud infrastructure for workflow execution
+- a dedicated API endpoint for programmatic execution
+- hosted documentation
+- parallelized CSV-to-batch execution
 
 To register, we type `latch register <directory_name>` into our terminal (where
 directory_name is the name of the directory holding our code, Dockerfile and
@@ -321,7 +321,6 @@ If you do not have access to Docker on your local machine, lack space on your
 local filesystem for image layers, or lack fast internet to facilitate timely
 registration, you can use the `--remote` flag with `latch register` to build and
 upload your workflow's images from a managed and speedy machine.
-
 
 ```
 $ latch register newtest --remote

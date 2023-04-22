@@ -18,7 +18,7 @@ def get_executions():
     """Open an interactive terminal user interface that shows all executions for
     a particular user on Latch.
 
-    This function in many ways mimics the interface at https://console.latch.bio
+    This function in many ways mimics the interface at https://console.ligma.ai
     but in a terminal. You may scroll around using either the arrow keys (or
     [HJKL] if you like Vim) and you can hit [ENTER] to see more information
     about the selected execution. You can see logs, and abort a running

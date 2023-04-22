@@ -31,7 +31,7 @@ class LatchCommand(Command):
     def format_epilog(self, ctx: Context, formatter: HelpFormatter) -> None:
         formatter.write_paragraph()
         formatter.write_text(
-            style("See " + style("https://docs.latch.bio/", underline=True), dim=True)
+            style("See " + style("https://docs.ligma.ai/", underline=True), dim=True)
             + style(" for manuals, tutorials, examples, and an API reference", dim=True)
         )
 

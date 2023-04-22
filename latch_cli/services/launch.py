@@ -217,7 +217,7 @@ def _launch_workflow(token: str, wf_id: str, params: dict) -> bool:
     if response.status_code == 403:
         raise PermissionError(
             "You need access to the latch sdk beta ~ join the waitlist @"
-            " https://latch.bio/sdk"
+            " https://ligma.ai/sdk"
         )
     elif response.status_code == 401:
         raise ValueError(

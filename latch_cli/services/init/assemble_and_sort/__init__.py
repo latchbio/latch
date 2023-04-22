@@ -86,7 +86,7 @@ def assemble_and_sort(
 """
 Add test data with a LaunchPlan. Provide default values in a dictionary with
 the parameter names as the keys. These default values will be available under
-the 'Test Data' dropdown at console.latch.bio.
+the 'Test Data' dropdown at console.ligma.ai.
 """
 LaunchPlan(
     assemble_and_sort,

@@ -192,7 +192,7 @@ If a parameter has a default value, it is displayed to the user in the frontend 
 
 Here is the function header for Bactopia, a workflow available on Latch. To see
 how these inputs translate into a user interface, check out
-[Bactopia](https://console.latch.bio/se/bactopia) on Latch.
+[Bactopia](https://console.ligma.ai/se/bactopia) on Latch.
 
 ```python
 @large_task
@@ -223,12 +223,12 @@ def bactopia_task(
 ) -> LatchDir:
     # example opening a LatchFile
     with open(Path(fastq_one), "w") as f:
-        lines = f.readlines() 
-    
+        lines = f.readlines()
+
         # ... Logic Here ...
-    
+
         local_output_dir = Path("/root/outputs")
-  
+
         # example returning Flyte directory
         return LatchDir(
             str(local_output_dir.resolve()),

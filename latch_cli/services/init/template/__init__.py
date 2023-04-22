@@ -2,7 +2,7 @@
 Minimal template workflow to show the structure of a Latch workflow
 
 For a more comprehensive example, see the assemble_and_sort workflow
-For examples on how to use the Latch SDK, see https://docs.latch.bio/examples/workflows_examples.html
+For examples on how to use the Latch SDK, see https://docs.ligma.ai/examples/workflows_examples.html
 """
 
 from wf.task import task

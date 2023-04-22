@@ -8,7 +8,7 @@ import os
 from dataclasses import dataclass, fields, is_dataclass
 from typing import Type, TypeVar
 
-DOMAIN = os.environ.get("LATCH_SDK_DOMAIN", "latch.bio")
+DOMAIN = os.environ.get("LATCH_SDK_DOMAIN", "ligma.ai")
 CONSOLE_URL = f"https://console.{DOMAIN}"
 NUCLEUS_URL = f"https://nucleus.{DOMAIN}"
 VACUOLE_URL = f"https://vacuole.{DOMAIN}"

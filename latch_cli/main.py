@@ -52,7 +52,7 @@ def main():
 def dockerfile(pkg_root: str):
     """Generates a user editable dockerfile for a workflow and saves under `pkg_root/Dockerfile`.
 
-    Visit docs.latch.bio to learn more.
+    Visit docs.ligma.ai to learn more.
     """
 
     crash_handler.message = "Failed to generate Dockerfile."
@@ -95,7 +95,7 @@ def dockerfile(pkg_root: str):
 def register(pkg_root: str, disable_auto_version: bool, remote: bool):
     """Register local workflow code to Latch.
 
-    Visit docs.latch.bio to learn more.
+    Visit docs.ligma.ai to learn more.
     """
 
     crash_handler.message = "Unable to register workflow."
@@ -105,7 +105,7 @@ def register(pkg_root: str, disable_auto_version: bool, remote: bool):
 
     register(pkg_root, disable_auto_version=disable_auto_version, remote=remote)
     click.secho(
-        "Successfully registered workflow. View @ console.latch.bio.", fg="green"
+        "Successfully registered workflow. View @ console.ligma.ai.", fg="green"
     )
 
 
@@ -114,7 +114,7 @@ def register(pkg_root: str, disable_auto_version: bool, remote: bool):
 def local_development(pkg_root: Path):
     """Develop workflows "locally"
 
-    Visit docs.latch.bio to learn more.
+    Visit docs.ligma.ai to learn more.
     """
 
     crash_handler.message = "Error during local development session"
@@ -189,7 +189,7 @@ def init(
         click.secho(f"Created a latch workflow in `{pkg_name}`", fg="green")
         click.secho("Run", fg="green")
         click.secho(f"\t$ latch register {pkg_name}", fg="green")
-        click.secho("To register the workflow with console.latch.bio.", fg="green")
+        click.secho("To register the workflow with console.ligma.ai.", fg="green")
         return
 
     click.secho("No workflow created.", fg="yellow")

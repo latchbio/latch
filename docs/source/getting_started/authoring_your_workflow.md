@@ -5,18 +5,21 @@ In this demonstration, we will examine a workflow which sorts and assembles COVI
 This document aims to be an extension to the [Quickstart](../getting_started/quick_start.md) to help you better understand the structure of a workflow and write your own.
 
 **Prerequisite:**
-* Complete the [Quickstart](../getting_started/quick_start.md) guide.
+
+- Complete the [Quickstart](../getting_started/quick_start.md) guide.
 
 **What you will learn:**
-* How to write a task and create a workflow
-* How to define compute and storage requirements
-* How to manage third-party dependencies
-* How to customize a user-friendly interface
-* How to test your workflow from the Latch CLI and Latch Console
+
+- How to write a task and create a workflow
+- How to define compute and storage requirements
+- How to manage third-party dependencies
+- How to customize a user-friendly interface
+- How to test your workflow from the Latch CLI and Latch Console
 
 ---
 
 ## 1: Initialize Workflow Directory
+
 Bootstrap a new workflow directory by running `latch init` from the command line.
 
 ```shell-session
@@ -24,10 +27,11 @@ $ latch init covid-wf --template subprocess
 Created a latch workflow in `covid-wf`
 Run
         $ latch register covid-wf
-To register the workflow with console.latch.bio.
+To register the workflow with console.ligma.ai.
 ```
 
 File Tree:
+
 ```shell-session
 covid-wf
 ├── LICENSE
@@ -54,10 +58,9 @@ A task is a Python function that takes in inputs and returns outputs to the Latc
 
 ### Working with `LatchFile`s and `LatchDir`s
 
-`LatchFile` and `LatchDir` are types built into the Latch SDK which allow users to use files and directories stored remotely on Latch as inputs and outputs to workflows. They point to remote file locations in our user interface on [the Latch Console](https://console.latch.bio/data) and implement the necessary operations to ensure data is available in the task environment and outputs are uploaded to your Latch account.
+`LatchFile` and `LatchDir` are types built into the Latch SDK which allow users to use files and directories stored remotely on Latch as inputs and outputs to workflows. They point to remote file locations in our user interface on [the Latch Console](https://console.ligma.ai/data) and implement the necessary operations to ensure data is available in the task environment and outputs are uploaded to your Latch account.
 
 The first time you read or resolve the path of a file or directory in a task, the data will be downloaded and will be accessible within the task. For example the line `local_file = Path(read1)` in the snippet below will download the file from Latch and return a path to the local copy.
-
 
 ```python
 from latch.types import LatchFile, LatchOutputDir
@@ -89,7 +92,6 @@ bowtie2_cmd = [
     str(sam_file),
 ]
 ```
-
 
 Returning a LatchFile or LatchDirectory from a task will upload it to the latch platform in the location specified by the second argument. For example, after running a task which ends in the following snippet, the file `covid_assembly.sam` will be available in the root directory of Latch Data.
 
@@ -123,6 +125,7 @@ def inference(
 See an exhaustive reference to larger CPU and GPU tasks [here](../basics/defining_cloud_resources.md).
 
 To arbitrarily specify resource requirements, use:
+
 ```python
 from latch import custom_task
 
@@ -177,12 +180,14 @@ workdir /root
 See the [Workflow Environment](../basics/defining_environment.md) page for further information configuring the environment for other use dependencies such as R or Conda.
 
 ## 5. Customize user interface
+
 There are two pages that you can customize: the **About** page for your workflow and a **Parameters** page for workflow input parameters.
 
 To modify the About page, simply write your description in Markdown in the docstring of the workflow function.
 ![Description UI](../assets/description-md.png)
 
 Latch provides a suite of front-end components out-of-the-box that can be defined by using Python objects `LatchMetadata` and `LatchParameter`:
+
 ```python
 from latch.types import LatchAuthor, LatchDir, LatchFile, LatchMetadata, LatchParameter
 
@@ -235,9 +240,11 @@ Dockerfile      reference       version         wf
 ```
 
 Then, type the following command:
+
 ```bash
 latch preview assemble_and_sort
 ```
+
 Make sure what comes after `preview` is the exactly same as the name of your workflow function.
 
 `latch preview` will open up a browser displaying your interface.
@@ -251,6 +258,7 @@ $ latch test-data upload <path_to_local_file>
 ```
 
 Confirm that your file has been successfully uploaded:
+
 ```bash
 $ latch test-data ls
 
@@ -290,6 +298,7 @@ These default values will be available under the 'Test Data' dropdown at Latch C
 ![Launch Plan](../assets/launchplan.png)
 
 ## 7. Register your workflow to Latch
+
 You can release a live version of your workflow by registering it on Latch:
 
 ```bash
@@ -297,11 +306,12 @@ latch register --remote <path_to_workflow_dir>
 ```
 
 The registration process will:
-* Build a Docker image containing your workflow code
-* Serialize your code and register it with your LatchBio account
-* Push your docker image to a managed container registry
 
-When registration has completed, you should be able to navigate [here](https://console.latch.bio/workflows) and see your new workflow in your account.
+- Build a Docker image containing your workflow code
+- Serialize your code and register it with your LatchBio account
+- Push your docker image to a managed container registry
+
+When registration has completed, you should be able to navigate [here](https://console.ligma.ai/workflows) and see your new workflow in your account.
 
 ## 8. Test your workflow
 
@@ -312,7 +322,9 @@ To test your first workflow on Console, select the **Test Data** and click Launc
 ![Interface UI](../assets/interface.png)
 
 ### Using Latch CLI
+
 Using `latch get-wf`, you can view the names of all workflows available in your workspace:
+
 ```shell-session
 $ latch get-wf
 
@@ -325,10 +337,13 @@ ID     	Name                                          	Version
 ```
 
 To launch the workflow on Latch Console from the CLI, first generate a parameters file by using `latch get-params` and passing in the name of your workflow like so:
+
 ```shell-session
 $ latch get-params wf.__init__.assemble_and_sort
 ```
+
 which will return a parameters file called `wf.__init__.assemble_and_sort.params.py`, whose contents are as below:
+
 ```python
 """Run `latch launch wf.__init__.assemble_and_sort.params.py` to launch this workflow"""
 
@@ -348,6 +363,7 @@ $ latch launch [--version=VERSION] wf.__init__.assemble_and_sort.params.py
 ```
 
 You can view execution statuses from the CLI, run:
+
 ```shell-session
 $ latch get-executions
 ```
@@ -357,9 +373,11 @@ $ latch get-executions
 The command will open up a Terminal UI with the same capabilities on the Executions page on the Latch Platform, where you will see a list of executions, tasks, and logs for easy debugging.
 
 ---
+
 # Next Steps
-* Understand [how to test and debug your workflow](../basics/local_development.md).
-* Read the [Concepts](../basics/what_is_a_workflow.md) page
-* Visit [Examples](../examples/workflows_examples.md) to see real-world bioinformatics workflows being built using Latch SDK
-* Learn through examples with [Tutorials](../tutorials/rnaseq.md)
-* Join the SDK open-source community on Slack [here](https://forms.gle/sCjr8tdjzx5HjVW27)!
+
+- Understand [how to test and debug your workflow](../basics/local_development.md).
+- Read the [Concepts](../basics/what_is_a_workflow.md) page
+- Visit [Examples](../examples/workflows_examples.md) to see real-world bioinformatics workflows being built using Latch SDK
+- Learn through examples with [Tutorials](../tutorials/rnaseq.md)
+- Join the SDK open-source community on Slack [here](https://forms.gle/sCjr8tdjzx5HjVW27)!

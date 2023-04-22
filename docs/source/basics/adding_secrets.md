@@ -6,7 +6,7 @@ special utilities that handle this securely.
 
 ## Adding Secrets
 
-To add a secret, simply navigate to the [Latch Console](https://console.latch.bio)
+To add a secret, simply navigate to the [Latch Console](https://console.ligma.ai)
 and head to Account Settings.
 
 ![How to get to Account Settings](../assets/settings-menu.png)

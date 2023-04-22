@@ -4,8 +4,8 @@ In this tutorial, we will use the Latch SDK to build **metamage**, a workflow fo
 
 ## Prerequisites
 
-* Install the Latch SDK.
-* Understand basic concepts of a workflow through our [Quickstart](../getting_started/quick_start.md) and [Authoring your Own Workflow](../getting_started/authoring_your_workflow.md).
+- Install the Latch SDK.
+- Understand basic concepts of a workflow through our [Quickstart](../getting_started/quick_start.md) and [Authoring your Own Workflow](../getting_started/authoring_your_workflow.md).
 
 ## What You Will Learn
 
@@ -27,38 +27,38 @@ The workflow is composed of:
 
 ### Read pre-processing and host read removal
 
-* [fastp](https://github.com/OpenGene/fastp) for read trimming and other general pre-processing
-* [BowTie2](https://github.com/BenLangmead/bowtie2) for mapping to the host genome and extracting unaligned reads
+- [fastp](https://github.com/OpenGene/fastp) for read trimming and other general pre-processing
+- [BowTie2](https://github.com/BenLangmead/bowtie2) for mapping to the host genome and extracting unaligned reads
 
 ### Assembly
 
-* [MEGAHIT](https://github.com/voutcn/megahit) for assembly
-* [MetaQuast](https://github.com/ablab/quast) for assembly evaluation
+- [MEGAHIT](https://github.com/voutcn/megahit) for assembly
+- [MetaQuast](https://github.com/ablab/quast) for assembly evaluation
 
 ### Functional annotation
 
-* [Macrel](https://github.com/BigDataBiology/macrel) for predicting Antimicrobial Peptide
-    (AMP)-like sequences from contigs
-* [fARGene](https://github.com/fannyhb/fargene) for identifying Antimicrobial Resistance Genes
-    (ARGs) from contigs
-* [Gecco](https://github.com/zellerlab/GECCO) for predicting biosynthetic gene clusters
-    (BCGs) from contigs
-* [Prodigal](https://github.com/hyattpd/Prodigal) for protein-coding
-    gene prediction from contigs.
+- [Macrel](https://github.com/BigDataBiology/macrel) for predicting Antimicrobial Peptide
+  (AMP)-like sequences from contigs
+- [fARGene](https://github.com/fannyhb/fargene) for identifying Antimicrobial Resistance Genes
+  (ARGs) from contigs
+- [Gecco](https://github.com/zellerlab/GECCO) for predicting biosynthetic gene clusters
+  (BCGs) from contigs
+- [Prodigal](https://github.com/hyattpd/Prodigal) for protein-coding
+  gene prediction from contigs.
 
 ### Binning
 
-* BowTie2 and [Samtools](https://github.com/samtools/samtools) to
-    building depth files for binning.
-* [MetaBAT2](https://bitbucket.org/berkeleylab/metabat/src/master/) for
-    binning
+- BowTie2 and [Samtools](https://github.com/samtools/samtools) to
+  building depth files for binning.
+- [MetaBAT2](https://bitbucket.org/berkeleylab/metabat/src/master/) for
+  binning
 
 ### Taxonomic classification of reads
 
-* [Kaiju](https://github.com/bioinformatics-centre/kaiju) for
-    taxonomic classification
-* [KronaTools](https://github.com/marbl/Krona/wiki/KronaTools) for
-    visualizing taxonomic classification results
+- [Kaiju](https://github.com/bioinformatics-centre/kaiju) for
+  taxonomic classification
+- [KronaTools](https://github.com/marbl/Krona/wiki/KronaTools) for
+  visualizing taxonomic classification results
 
 ---
 
@@ -94,11 +94,11 @@ metamage_latch
 
 The 5 steps in the overview above can be seen in 5 Python files, each of which defines a smaller workflow in Latch:
 
-* **host_removal.py** for read pre-processing and host read removal
-* **metassembly.py** for assembly
-* **functional.py** for functional annotation
-* **binning.py** for binning
-* **kaiju.py** for taxonomic classification of reads
+- **host_removal.py** for read pre-processing and host read removal
+- **metassembly.py** for assembly
+- **functional.py** for functional annotation
+- **binning.py** for binning
+- **kaiju.py** for taxonomic classification of reads
 
 These five workflows can be imported for reuse in `__init__.py` like so:
 
@@ -195,7 +195,7 @@ To upload the full workflow on the Latch Platform, use:
 latch register --remote metamage_latch
 ```
 
-The workflow will show up in [console.latch.bio/workflows](https://console.latch.bio/workflows).
+The workflow will show up in [console.ligma.ai/workflows](https://console.ligma.ai/workflows).
 
 ## Viewing the DAG for subworkflows
 
@@ -209,5 +209,5 @@ Pressing "Enter" on your keyboard allows you to view an expanded version of the 
 
 ## Key Takeaways
 
-* For medium to complex workflows with many tasks, it is recommended that you group tasks into a workflow.
-* Each workflow can be reused as a subworkflow of a new, larger workflow.
+- For medium to complex workflows with many tasks, it is recommended that you group tasks into a workflow.
+- Each workflow can be reused as a subworkflow of a new, larger workflow.
