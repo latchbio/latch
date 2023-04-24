@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.19.2 - 2023-04-24
+
+### Dependencies
+
+* Upgrades lytekit to `0.14.10`
+
 ## 2.19.1 - 2023-04-21
 
 ### Changed
