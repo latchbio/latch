@@ -18,7 +18,7 @@ Types of changes
 
 ## 2.19.3 - 2023-04-26
 
-### Dependencies
+### Fixed
 
 - Tasks stuck initializing on nodes that ran multiple tasks before
 
