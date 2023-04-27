@@ -87,7 +87,11 @@ def _get_large_pod() -> Pod:
     primary_container.resources = resources
 
     return Pod(
-        annotations={"io.kubernetes.cri-o.userns-mode": "auto:size=65536"},
+        annotations={
+            "io.kubernetes.cri-o.userns-mode": (
+                "private:uidmapping=0:1048576:65536;gidmapping=0:1048576:65536"
+            )
+        },
         pod_spec=V1PodSpec(
             runtime_class_name="sysbox-runc",
             containers=[primary_container],
@@ -110,7 +114,11 @@ def _get_medium_pod() -> Pod:
     primary_container.resources = resources
 
     return Pod(
-        annotations={"io.kubernetes.cri-o.userns-mode": "auto:size=65536"},
+        annotations={
+            "io.kubernetes.cri-o.userns-mode": (
+                "private:uidmapping=0:1048576:65536;gidmapping=0:1048576:65536"
+            )
+        },
         pod_spec=V1PodSpec(
             runtime_class_name="sysbox-runc",
             containers=[primary_container],
@@ -133,7 +141,11 @@ def _get_small_pod() -> Pod:
     primary_container.resources = resources
 
     return Pod(
-        annotations={"io.kubernetes.cri-o.userns-mode": "auto:size=65536"},
+        annotations={
+            "io.kubernetes.cri-o.userns-mode": (
+                "private:uidmapping=0:1048576:65536;gidmapping=0:1048576:65536"
+            )
+        },
         pod_spec=V1PodSpec(
             runtime_class_name="sysbox-runc",
             containers=[primary_container],
@@ -295,7 +307,11 @@ def custom_task(cpu: int, memory: int):
     primary_container.resources = resources
     if cpu < 32 and memory < 128:
         task_config = Pod(
-            annotations={"io.kubernetes.cri-o.userns-mode": "auto:size=65536"},
+            annotations={
+                "io.kubernetes.cri-o.userns-mode": (
+                    "private:uidmapping=0:1048576:65536;gidmapping=0:1048576:65536"
+                )
+            },
             pod_spec=V1PodSpec(
                 runtime_class_name="sysbox-runc",
                 containers=[primary_container],
@@ -307,7 +323,11 @@ def custom_task(cpu: int, memory: int):
         )
     elif cpu < 96 and memory < 180:
         task_config = Pod(
-            annotations={"io.kubernetes.cri-o.userns-mode": "auto:size=65536"},
+            annotations={
+                "io.kubernetes.cri-o.userns-mode": (
+                    "private:uidmapping=0:1048576:65536;gidmapping=0:1048576:65536"
+                )
+            },
             pod_spec=V1PodSpec(
                 runtime_class_name="sysbox-runc",
                 containers=[primary_container],
@@ -326,7 +346,8 @@ def custom_task(cpu: int, memory: int):
             )
         else:
             raise ValueError(
-                f"custom task resource limit is too high: {cpu} (max 95) or {memory} GiB (max 179 GiB)"
+                f"custom task resource limit is too high: {cpu} (max 95) or"
+                f" {memory} GiB (max 179 GiB)"
             )
 
     return functools.partial(task(task_config=task_config))

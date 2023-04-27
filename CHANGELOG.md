@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.19.3 - 2023-04-26
+
+### Dependencies
+
+- Tasks stuck initializing on nodes that ran multiple tasks before
+
 ## 2.19.2 - 2023-04-24
 
 ### Dependencies
