@@ -8,7 +8,7 @@ Workflows can use the Registry as a source of tabular data. A common use case is
 
 For example, our Bulk RNA-Seq workflow uses a sample sheet to specify a list of read pairs for processing. These can be imported directly from Registry where they can be stored alongside information about the sequenced sample like sequencing date, batch, etc.
 
-In this tutorial, we will examine a workflow which assembles COVID sequencing data using Bowtie2. The workflow will take in a list of samples and sequencing reads from Registry.
+In this tutorial, we write a workflow which reads COVID sequencing data from Registry and assembles it using [Bowtie 2](https://bowtie-bio.sourceforge.net/bowtie2/index.shtml).
 
 ## Prerequisites
 
