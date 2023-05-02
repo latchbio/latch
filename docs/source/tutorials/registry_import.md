@@ -4,7 +4,9 @@
 
 ![The spreadsheet interface from Latch Registry that shows files and metadata](../assets/registry/registry.png)
 
-Bioinformatics workflows, such as bulk or single-cell RNA-seq, use sample sheets as input to specify the data for analysis. The SDK provides a simple way to import sample sheets from Latch Registry to the workflow. 
+Workflows can use the Registry as a source of tabular data. A common use case is to import sample sheets which contain links to sequence files and associated labels and metadata.
+
+For example, our Bulk RNA-Seq workflow uses a sample sheet to specify a list of read pairs for processing. These can be imported directly from Registry where they can be stored alongside information about the sequenced sample like sequencing date, batch, etc.
 
 In this tutorial, we will examine a workflow which assembles COVID sequencing data using Bowtie2. The workflow will take in a list of samples and sequencing reads from Registry.
 
