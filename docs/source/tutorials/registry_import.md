@@ -15,7 +15,7 @@ In this tutorial, we write a workflow which reads COVID sequencing data from Reg
 * Install the [Latch SDK](../getting_started/quick_start.md)
 * To follow along, clone [the GitHub repository here](https://github.com/latchbio/assembly-registry-wf).
 
-## Define a Sample Sheet in the SDK
+## Defining a Sample Sheet with the SDK
 A sample sheet component is defined as a list of `dataclass`es in the SDK. 
 
 First, let's define a task called `assembly_task` that accepts a single `dataclass` as an input parameter.
