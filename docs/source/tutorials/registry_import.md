@@ -108,7 +108,7 @@ Here, you can select the table of interest and samples to be used in the workflo
 
 ## Note on Registry Types
 
-* The types of columns in a Registry table must match one-to-one with the Python types of the data class defined in SDK. 
+The types of the fields of the Python `dataclass` used in the sample sheet input determine which Registry columns will be available for import. The names of the fields only server to inform the default assignment of columns to fields.
 * For example, the Registry table in the picture above has three columns: **Name**, **r1**, and **r2**, which have the types **Text**, **File**, and **File** in Registry, respectively. Similarly, the property `name`, `r1`, and `r2` in the data class `Sample` has the Python types `str`, `LatchFile`, and `LatchFile`.
 
 ![A preview of the sample sheet component on the workflow GUI](../assets/registry/match-columns.png)
