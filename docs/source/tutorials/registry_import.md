@@ -51,7 +51,7 @@ def assembly_task(sample: Sample) -> LatchFile:
 
     ...
 
-    output_location = f"latch:///Assembly Outputs/{sample.name}/covid_assembly.sam"
+    output_location = f"latch:///Assembly Outputs/{sample.name.replace('/', '_')}/covid_assembly.sam"
 
     return LatchFile(str(sam_file), output_location)
 ```
