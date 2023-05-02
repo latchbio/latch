@@ -160,7 +160,7 @@ def rnaseq(
 
 ### Dataclasses
 
-Complex object types should be represented using a `dataclass`. They render a group of input elements for each of the fields of the dataclass. These can be used in lists and maps, and are useful to model interdependent data, for example, pairs of reads or named samples.
+Complex object types should be represented using a :class:`~dataclasses.dataclass`. They render a group of input elements for each of the fields of the dataclass. These can be used in lists and maps, and are useful to model interdependent data, for example, pairs of reads or named samples.
 
 ```python
 from dataclasses import dataclass
