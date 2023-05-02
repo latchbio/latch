@@ -1,4 +1,4 @@
-# Tutorial: Import Sample Sheet from Registry
+# Tutorial: Workflow Sample Sheet Input Using Registry
 
 [Latch Registry](https://latch.wiki/what-is-registry) is a flexible sample management system that links files on Latch Data with metadata.
 
