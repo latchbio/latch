@@ -55,6 +55,9 @@ def _import_flyte_objects(paths: List[Path], module_name: str = "wf"):
                     def __new__(*args, **kwargs):
                         return None
 
+                    def __call__(self, *args, **kwargs):
+                        return
+
                     def __lt__(self, other):
                         return False
 
