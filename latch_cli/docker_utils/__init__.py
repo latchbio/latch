@@ -128,8 +128,6 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
                 commands=[
                     "copy environment.yaml /opt/latch/environment.yaml",
                     f"run conda env create --file /opt/latch/environment.yaml --name {env_name}",
-                    f'shell ["conda", "run", "--name", "{env_name}", "/bin/bash", "-c"]',
-                    "run pip install --upgrade latch",
                 ],
                 order=DockerCmdBlockOrder.precopy,
             ),

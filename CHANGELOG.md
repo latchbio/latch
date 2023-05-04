@@ -13,6 +13,13 @@ Types of changes
     *Security* in case of vulnerabilities.
 
 -->
+# Latch SDK Changelog
+
+## 2.19.4 - 2023-05-04
+
+### Fixed
+
+- Conda template registration issue and run in correct environment issue
 
 # Latch SDK Changelog
 
