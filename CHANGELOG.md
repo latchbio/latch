@@ -15,6 +15,12 @@ Types of changes
 -->
 # Latch SDK Changelog
 
+## 2.19.5 - 2023-05-06
+
+### Fixed
+
+- `latch workspace` options should be ordered alphabetically
+
 ## 2.19.4 - 2023-05-04
 
 ### Fixed

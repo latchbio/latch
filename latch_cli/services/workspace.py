@@ -1,5 +1,3 @@
-from typing import List
-
 import click
 
 from latch_cli.config.latch import config
@@ -29,7 +27,9 @@ def workspace():
     data = resp.json()
     ids = {}
 
-    for id, name in data.items():
+    for id, name in sorted(
+        data.items(), key=lambda x: "" if x[1] == "Personal Workspace" else x[1]
+    ):
         ids[name] = id
         options.append(name)
 
