@@ -35,12 +35,10 @@ def main():
     latest_ver = parse_version(get_latest_package_version())
     if local_ver < latest_ver:
         click.secho(
-            textwrap.dedent(
-                f"""
+            textwrap.dedent(f"""
                 WARN: Your local version of latch ({local_ver}) is out of date. This may result in unexpected behavior.
                 Please upgrade to the latest version ({latest_ver}) using `python3 -m pip install --upgrade latch`.
-                """
-            ).strip("\n"),
+                """).strip("\n"),
             fg="yellow",
         )
 
@@ -92,7 +90,15 @@ def dockerfile(pkg_root: str):
     type=bool,
     help="Use a remote server to build workflow.",
 )
-def register(pkg_root: str, disable_auto_version: bool, remote: bool):
+@click.option(
+    "-y",
+    "--yes",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Skip the confirmation dialog.",
+)
+def register(pkg_root: str, disable_auto_version: bool, remote: bool, yes: bool):
     """Register local workflow code to Latch.
 
     Visit docs.latch.bio to learn more.
@@ -103,9 +109,8 @@ def register(pkg_root: str, disable_auto_version: bool, remote: bool):
 
     from latch_cli.services.register import register
 
-    register(pkg_root, disable_auto_version=disable_auto_version, remote=remote)
-    click.secho(
-        "Successfully registered workflow. View @ console.latch.bio.", fg="green"
+    register(
+        pkg_root, disable_auto_version=disable_auto_version, remote=remote, yes=yes
     )
 
 
@@ -252,21 +257,27 @@ def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]
         formatted = []
         for row in output:
             vals = {
-                "contentSize": click.style(
-                    with_si_suffix(int(row["contentSize"]), suffix="", styled=True),
-                    fg="bright_green",
-                )
-                if row["contentSize"] != "-" and row["type"] != "dir"
-                else click.style("-", dim=True),
-                "modifyTime": click.style(
-                    datetime.fromisoformat(row["modifyTime"]).strftime("%d %b %H:%M"),
-                    fg="blue",
-                )
-                if row["modifyTime"] != "-" and row["type"] != "dir"
-                else click.style("-", dim=True),
-                "name": row["name"]
-                if len(row["name"]) <= 50
-                else f"{row['name'][:47]}...",
+                "contentSize": (
+                    click.style(
+                        with_si_suffix(int(row["contentSize"]), suffix="", styled=True),
+                        fg="bright_green",
+                    )
+                    if row["contentSize"] != "-" and row["type"] != "dir"
+                    else click.style("-", dim=True)
+                ),
+                "modifyTime": (
+                    click.style(
+                        datetime.fromisoformat(row["modifyTime"]).strftime(
+                            "%d %b %H:%M"
+                        ),
+                        fg="blue",
+                    )
+                    if row["modifyTime"] != "-" and row["type"] != "dir"
+                    else click.style("-", dim=True)
+                ),
+                "name": (
+                    row["name"] if len(row["name"]) <= 50 else f"{row['name'][:47]}..."
+                ),
             }
 
             if row["type"] == "dir":
@@ -355,8 +366,10 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
     if version is None:
         version = "latest"
     click.secho(
-        f"Successfully generated python param map named {wf_name}.params.py with"
-        f" version {version}\n Run `latch launch {wf_name}.params.py` to launch it.",
+        (
+            f"Successfully generated python param map named {wf_name}.params.py with"
+            f" version {version}\n Run `latch launch {wf_name}.params.py` to launch it."
+        ),
         fg="green",
     )
 
