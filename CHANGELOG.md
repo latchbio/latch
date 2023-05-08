@@ -15,6 +15,12 @@ Types of changes
 -->
 # Latch SDK Changelog
 
+## 2.19.5 - 2023-05-08
+
+### Fixed
+
+- Registry APIs should properly resolve files when using workspaces instead of always using the signer account
+
 ## 2.19.5 - 2023-05-06
 
 ### Fixed
