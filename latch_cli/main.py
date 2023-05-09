@@ -83,10 +83,9 @@ def dockerfile(pkg_root: str):
     ),
 )
 @click.option(
-    "-r",
-    "--remote",
+    "--remote/--no-remote",
     is_flag=True,
-    default=False,
+    default=True,
     type=bool,
     help="Use a remote server to build workflow.",
 )

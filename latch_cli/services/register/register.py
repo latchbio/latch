@@ -276,7 +276,7 @@ def register(
 
         click.secho("Initializing registration", bold=True)
         if remote:
-            print("Connecting to remote server for docker build [alpha]...")
+            print("Connecting to remote server for docker build...")
 
         with contextlib.ExitStack() as stack:
             td = stack.enter_context(
