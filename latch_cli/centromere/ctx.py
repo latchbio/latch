@@ -135,6 +135,7 @@ class _CentromereCtx:
             )
 
             if remote is True:
+                # todo(maximsmol): connect only AFTER confirming registration
                 self.ssh_key_path = Path(self.pkg_root) / latch_constants.pkg_ssh_key
                 self.public_key = generate_temporary_ssh_credentials(self.ssh_key_path)
 
@@ -190,8 +191,10 @@ class _CentromereCtx:
         match = re.match("^[a-zA-Z0-9_][a-zA-Z0-9._-]{,127}$", self.version)
         if match is None:
             raise ValueError(
-                f"{self.version} is an invalid version for AWS "
-                "ECR. Please provide a version that accomodates the ",
+                (
+                    f"{self.version} is an invalid version for AWS "
+                    "ECR. Please provide a version that accomodates the "
+                ),
                 "tag restrictions listed here - ",
                 "https://docs.aws.amazon.com/AmazonECR/latest/userguide/ecr-using-tags.html",
             )

@@ -8,6 +8,7 @@ import tempfile
 from pathlib import Path
 from typing import List, Optional
 
+import click
 from scp import SCPClient
 
 from latch_cli.centromere.ctx import _CentromereCtx
@@ -19,6 +20,9 @@ from latch_cli.services.register.utils import (
     _serialize_pkg_in_container,
     _upload_image,
 )
+from latch_cli.utils import current_workspace
+
+from ..workspace import _get_workspaces
 
 
 def _delete_lines(lines: List[str]):
@@ -99,7 +103,7 @@ def _print_upload_logs(upload_image_logs, image):
             i += 1
         if prog_chunk == "":
             return 0
-        print(prog_chunk, end=f"\x1B[{i}A")
+        print(prog_chunk, end=f"\x1b[{i}A")
         return i
 
     prev_lines = 0
@@ -185,6 +189,7 @@ def register(
     pkg_root: str,
     disable_auto_version: bool = False,
     remote: bool = False,
+    skip_confirmation: bool = False,
 ):
     """Registers a workflow, defined as python code, with Latch.
 
@@ -237,9 +242,47 @@ def register(
         disable_auto_version=disable_auto_version,
         remote=remote,
     ) as ctx:
-        print(f"Initializing registration for {pkg_root}")
+        assert ctx.workflow_name is not None, "Unable to determine workflow name"
+        assert ctx.version is not None, "Unable to determine workflow version"
+
+        # todo(maximsmol): we really want the workflow display name here
+        click.echo(
+            " ".join(
+                [click.style("Workflow name:", fg="bright_blue"), ctx.workflow_name]
+            )
+        )
+        click.echo(" ".join([click.style("Version:", fg="bright_blue"), ctx.version]))
+
+        workspaces = _get_workspaces()
+        ws_name = next(
+            (
+                x[1]
+                for x in workspaces.items()
+                if x[0] == current_workspace()
+                or (current_workspace() == "" and x[1] == "Personal Workspace")
+            ),
+            "N/A",
+        )
+        click.echo(
+            " ".join(
+                [
+                    click.style("Target workspace:", fg="bright_blue"),
+                    ws_name,
+                    f"({current_workspace()})",
+                ]
+            )
+        )
+
+        if not skip_confirmation:
+            if not click.confirm("Start registration?"):
+                click.secho("Cancelled", bold=True)
+                return
+        else:
+            click.secho("Skipping confirmation because of --yes", bold=True)
+
+        click.secho("Initializing registration", bold=True)
         if remote:
-            print("Connecting to remote server for docker build [alpha]...")
+            print("Connecting to remote server for docker build...")
 
         with contextlib.ExitStack() as stack:
             td = stack.enter_context(
@@ -312,3 +355,8 @@ def register(
 
             reg_resp = _register_serialized_pkg(ctx, protos)
             _print_reg_resp(reg_resp, ctx.default_container.image_name)
+
+            click.secho(
+                "Successfully registered workflow. View @ console.latch.bio.",
+                fg="green",
+            )

@@ -29,7 +29,6 @@ def _add_sys_paths(paths: List[Path]) -> Iterator[None]:
 
 
 def _import_flyte_objects(paths: List[Path], module_name: str = "wf"):
-
     with _add_sys_paths(paths):
 
         class FakeModule(ModuleType):
@@ -103,7 +102,6 @@ def _construct_dkr_client(ssh_host: Optional[str] = None):
     """
 
     def _from_env():
-
         host = environment.get("DOCKER_HOST")
 
         # empty string for cert path is the same as unset.
@@ -168,9 +166,9 @@ def _construct_dkr_client(ssh_host: Optional[str] = None):
 
 
 def _construct_ssh_client(host_ip: str, username: str):
-
     ssh = paramiko.SSHClient()
     ssh.load_system_host_keys()
+    ssh.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy())
     ssh.connect(host_ip, username=username)
     return ssh
 
@@ -180,7 +178,6 @@ class _TmpDir:
     """Represents a temporary directory that can be local or on a remote machine."""
 
     def __init__(self, ssh_client=None, remote=False):
-
         if remote and not ssh_client:
             raise ValueError("Must provide an ssh client if remote is True.")
 

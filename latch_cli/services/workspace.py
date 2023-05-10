@@ -7,24 +7,27 @@ from latch_cli.tui import select_tui
 from latch_cli.utils import current_workspace, retrieve_or_login
 
 
-def workspace():
-    """Opens a terminal user interface in which a user can select the workspace
-    the want to switch to.
-
-    Like `get_executions`, this function should only be called from the CLI.
-    """
-
+def _get_workspaces():
     headers = {"Authorization": f"Bearer {retrieve_or_login()}"}
 
     resp = post(
         url=config.api.user.list_workspaces,
         headers=headers,
     )
-
     resp.raise_for_status()
 
-    options = []
     data = resp.json()
+    return data
+
+
+def workspace():
+    """Opens a terminal user interface in which a user can select the workspace
+    the want to switch to.
+
+    Like `get_executions`, this function should only be called from the CLI.
+    """
+    options = []
+    data = _get_workspaces()
     ids = {}
 
     for id, name in sorted(

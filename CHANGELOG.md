@@ -15,7 +15,21 @@ Types of changes
 -->
 # Latch SDK Changelog
 
-## 2.19.5 - 2023-05-08
+## 2.19.7 - 2023-05-09
+
+### Added
+
+- `latch register` will ask for confirmation unless `--yes` is provided on the command line
+
+### Changed
+
+- `latch register --remote` is now the default. Use `--no-remote` to build the workflow image locally
+
+### Fixed
+
+- `latch register --remote` will no longer ask for host key fingerprint verification
+
+## 2.19.6 - 2023-05-08
 
 ### Fixed
 
