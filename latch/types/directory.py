@@ -35,13 +35,13 @@ class LatchDir(FlyteDirectory):
     latch or s3 url, can be inspected from an object passed to the task to
     reveal its remote source.
 
-    It can also to deposit the file to a latch path when the directory is
+    It can also to deposit the directory to a latch path when the directory is
     returned from a task.
 
     ..
 
         @task
-        def task(dir: LatchFile):
+        def task(dir: LatchDir):
 
 
             # Manipulate directory contents locally and return back to
@@ -92,7 +92,7 @@ class LatchDir(FlyteDirectory):
 
     @property
     def local_path(self) -> str:
-        """File path local to the environment executing the task."""
+        """Directory path local to the environment executing the task."""
 
         # This will manually download object to local disk in the case of a
         # user wishing to access the file without using `open`.
@@ -102,9 +102,14 @@ class LatchDir(FlyteDirectory):
 
     @property
     def remote_path(self) -> Optional[str]:
-        """A url referencing in object in LatchData or s3."""
+        """A url referencing a path prefix in LatchData or s3."""
         return self._remote_directory
-
+    
+    @property
+    def maybe_remote_path(self) -> str:
+        """The remote path if it exists, otherwise the local path."""
+        return self.local_path if self.remote_path is None else self.remote_path
+    
     def __repr__(self):
         if self.remote_path is None:
             return f'LatchDir("{self.local_path}")'
