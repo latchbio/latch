@@ -107,6 +107,11 @@ class LatchFile(FlyteFile):
     def remote_path(self) -> Optional[str]:
         """A url referencing in object in LatchData or s3."""
         return self._remote_path
+    
+    @property
+    def maybe_remote_path(self) -> str:
+        """The remote path if it exists, otherwise the local path."""
+        return self.local_path if self.remote_path is None else self.remote_path
 
     def __repr__(self):
         if self.remote_path is None:
