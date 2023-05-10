@@ -22,7 +22,7 @@ from latch_cli.services.register.utils import (
 )
 from latch_cli.utils import current_workspace
 
-from ..workspace import get_workspaces
+from ..workspace import _get_workspaces
 
 
 def _delete_lines(lines: List[str]):
@@ -189,7 +189,7 @@ def register(
     pkg_root: str,
     disable_auto_version: bool = False,
     remote: bool = False,
-    yes: bool = False,
+    skip_confirmation: bool = False,
 ):
     """Registers a workflow, defined as python code, with Latch.
 
@@ -253,9 +253,15 @@ def register(
         )
         click.echo(" ".join([click.style("Version:", fg="bright_blue"), ctx.version]))
 
-        workspaces = get_workspaces()
+        workspaces = _get_workspaces()
         ws_name = next(
-            (x[1] for x in workspaces.items() if x[0] == current_workspace()), "N/A"
+            (
+                x[1]
+                for x in workspaces.items()
+                if x[0] == current_workspace()
+                or (current_workspace() == "" and x[1] == "Personal Workspace")
+            ),
+            "N/A",
         )
         click.echo(
             " ".join(
@@ -267,7 +273,7 @@ def register(
             )
         )
 
-        if not yes:
+        if not skip_confirmation:
             if not click.confirm("Start registration?"):
                 click.secho("Cancelled", bold=True)
                 return

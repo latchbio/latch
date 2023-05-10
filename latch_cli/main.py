@@ -109,7 +109,10 @@ def register(pkg_root: str, disable_auto_version: bool, remote: bool, yes: bool)
     from latch_cli.services.register import register
 
     register(
-        pkg_root, disable_auto_version=disable_auto_version, remote=remote, yes=yes
+        pkg_root,
+        disable_auto_version=disable_auto_version,
+        remote=remote,
+        skip_confirmation=yes,
     )
 
 

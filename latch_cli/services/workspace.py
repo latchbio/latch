@@ -7,7 +7,7 @@ from latch_cli.tui import select_tui
 from latch_cli.utils import current_workspace, retrieve_or_login
 
 
-def get_workspaces():
+def _get_workspaces():
     headers = {"Authorization": f"Bearer {retrieve_or_login()}"}
 
     resp = post(
@@ -27,7 +27,7 @@ def workspace():
     Like `get_executions`, this function should only be called from the CLI.
     """
     options = []
-    data = get_workspaces()
+    data = _get_workspaces()
     ids = {}
 
     for id, name in sorted(
