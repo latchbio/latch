@@ -330,20 +330,35 @@ def to_registry_literal(
         if ws_id == "":
             ws_id = None
 
-        data = execute(
-            gql.gql("""
-            query nodeIdQ($argPath: String!, $wsId: BigInt!) {
-                ldataResolvePathExt(
-                    path: $argPath,
-                    accId: $wsId
-                ) {
-                    nodeId
-                    path
+        if ws_id is None:
+            data = execute(
+                gql.gql("""
+                query nodeIdQ($argPath: String!) {
+                    ldataResolvePath(
+                        path: $argPath
+                    ) {
+                        nodeId
+                        path
+                    }
                 }
-            }
-            """),
-            {"argPath": python_literal.remote_path, "wsId": ws_id},
-        )["ldataResolvePathExt"]
+                """),
+                {"argPath": python_literal.remote_path},
+            )["ldataResolvePath"]
+        else:
+            data = execute(
+                gql.gql("""
+                query nodeIdQ($argPath: String!, $wsId: BigInt!) {
+                    ldataResolvePathExt(
+                        path: $argPath,
+                        accId: $wsId
+                    ) {
+                        nodeId
+                        path
+                    }
+                }
+                """),
+                {"argPath": python_literal.remote_path, "wsId": ws_id},
+            )["ldataResolvePathExt"]
 
         if data["path"] is not None and data["path"] != "":
             # todo(maximsmol): store an invalid value instead?

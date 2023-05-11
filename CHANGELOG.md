@@ -15,6 +15,12 @@ Types of changes
 -->
 # Latch SDK Changelog
 
+## 2.19.8 - 2023-05-11
+
+### Fixed
+
+- Registry API crashes when resolving paths if `~/.latch/workspace` does not exist
+
 ## 2.19.7 - 2023-05-09
 
 ### Added
