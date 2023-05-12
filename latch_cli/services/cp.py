@@ -2,8 +2,10 @@
 
 import concurrent.futures as cf
 import math
+import mimetypes
 import re
 import threading
+import traceback
 from pathlib import Path
 from typing import Dict, Literal, Optional, TypedDict, Union
 
@@ -125,6 +127,23 @@ def _upload_file(
         touch(remote_dest)
         return
 
+    typ, _ = mimetypes.guess_type(remote_dest)
+    if typ is None:
+        typ = "application/octet-stream"
+
+        try:
+            with local_source.open("rb") as f:
+                sample = f.read(1024)
+
+            try:
+                sample.decode()
+                typ = "text/plain"
+            except UnicodeDecodeError:
+                pass
+        except Exception:
+            traceback.print_exc()
+            print(f"Failed to sample {local_source} to determine whether it's a binary")
+
     num_parts = math.ceil(total_bytes / upload_chunk_size)
     response = tinyrequests.post(
         config.api.data.begin_upload,
@@ -133,7 +152,7 @@ def _upload_file(
             "ws_account_id": current_workspace(),
             "dest_path": remote_dest,
             "node_name": local_source.name,
-            "content_type": "text/plain",
+            "content_type": typ,
             "nrof_parts": num_parts,
         },
     )
