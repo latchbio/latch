@@ -15,6 +15,12 @@ Types of changes
 -->
 # Latch SDK Changelog
 
+## 2.19.9 - 2023-05-12
+
+### Fixed
+
+- `latch cp` should automatically detect file content type
+
 ## 2.19.8 - 2023-05-11
 
 ### Fixed
