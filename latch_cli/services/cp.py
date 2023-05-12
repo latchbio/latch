@@ -127,7 +127,7 @@ def _upload_file(
         touch(remote_dest)
         return
 
-    (typ, _) = mimetypes.guess_type(remote_dest)
+    typ, _ = mimetypes.guess_type(remote_dest)
     if typ is None:
         typ = "application/octet-stream"
 
