@@ -26,7 +26,7 @@ def workflow(metadata: Callable[P, T]) -> Callable[P, T]:
 
 def workflow(
     metadata: Union[LatchMetadata, Callable[P, T]]
-) -> Union[Callable[[Callable[P, T]], Callable[P, T]], Callable[P, T],]:
+) -> Union[Callable[[Callable[P, T]], Callable[P, T]], Callable[P, T]]:
     if isinstance(metadata, Callable):
         return _workflow(metadata)
     else:
