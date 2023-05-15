@@ -20,15 +20,13 @@ def workflow(metadata: LatchMetadata) -> Callable[[Callable[P, T]], Callable[P, 
 
 
 @overload
-def workflow(
-    metadata: Union[Callable[P, T], LatchMetadata]
-) -> Union[Callable[P, T], Callable[[Callable[P, T]], Callable[P, T]]]:
+def workflow(metadata: Callable[P, T]) -> Callable[P, T]:
     ...
 
 
 def workflow(
     metadata: Union[LatchMetadata, Callable[P, T]]
-) -> Union[Callable[P, T], Callable]:
+) -> Union[Callable[[Callable[P, T]], Callable[P, T]], Callable[P, T],]:
     if isinstance(metadata, Callable):
         return _workflow(metadata)
     else:
