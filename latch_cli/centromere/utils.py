@@ -54,28 +54,7 @@ def _import_flyte_objects(paths: List[Path], module_name: str = "wf"):
                     def __new__(*args, **kwargs):
                         return None
 
-                    def __call__(self, *args, **kwargs):
-                        return
-
-                    def __lt__(self, other):
-                        return False
-
-                    def __le__(self, other):
-                        return False
-
-                    def __eq__(self, other):
-                        return False
-
-                    def __ge__(self, other):
-                        return False
-
-                    def __gt__(self, other):
-                        return False
-
-                    def __ne__(self, other):
-                        return False
-
-                return FakeAttr()
+                return FakeAttr
 
             __all__ = []
 
