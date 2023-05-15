@@ -27,7 +27,6 @@ class LaunchPlan:
     """
 
     def __init__(self, workflow: Callable, name: str, default_params: Dict[str, Any]):
-
         # This constructor is invoked twice when task code is executed.
         #   1. When the pyflyte-execute entrypoint is invoked to start task.
         #      `mod.__name__`  of caller is `wf`

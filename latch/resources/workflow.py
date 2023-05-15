@@ -1,26 +1,35 @@
 import inspect
 from dataclasses import is_dataclass
 from textwrap import dedent
-from typing import Callable, Union, get_args, get_origin
+from typing import Callable, TypeVar, Union, get_args, get_origin, overload
 
-import typing_inspect
 from flytekit import workflow as _workflow
-from flytekit.core.workflow import PythonFunctionWorkflow
+from typing_extensions import ParamSpec
 
 from latch.types.metadata import LatchMetadata
 
+P = ParamSpec("P")
+T = TypeVar("T")
 
-# this weird Union thing is to ensure backwards compatibility,
-# so that when users call @workflow without any arguments or
-# parentheses, the workflow still serializes as expected
+
+@overload
+def workflow(metadata: LatchMetadata) -> Callable[[Callable[P, T]], Callable[P, T]]:
+    ...
+
+
+@overload
+def workflow(metadata: Callable[P, T]) -> Callable[P, T]:
+    ...
+
+
 def workflow(
-    metadata: Union[LatchMetadata, Callable]
-) -> Union[PythonFunctionWorkflow, Callable]:
+    metadata: Union[LatchMetadata, Callable[P, T]]
+) -> Union[Callable[[Callable[P, T]], Callable[P, T]], Callable[P, T]]:
     if isinstance(metadata, Callable):
         return _workflow(metadata)
     else:
 
-        def decorator(f: Callable):
+        def decorator(f: Callable[P, T]) -> Callable[P, T]:
             if f.__doc__ is None:
                 f.__doc__ = f"{f.__name__}\n\nSample Description"
             short_desc, long_desc = f.__doc__.split("\n", 1)

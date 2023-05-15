@@ -24,7 +24,7 @@ exported decorators.
     https://docs.flyte.org/en/latest/
 """
 
-import functools
+from typing import Callable
 
 from flytekit import task
 from flytekitplugins.pod import Pod
@@ -34,6 +34,10 @@ from kubernetes.client.models import (
     V1ResourceRequirements,
     V1Toleration,
 )
+from typing_extensions import ParamSpec, TypeVar
+
+P = ParamSpec("P")
+T = TypeVar("T")
 
 
 def _get_large_gpu_pod() -> Pod:
@@ -154,7 +158,10 @@ def _get_small_pod() -> Pod:
     )
 
 
-large_gpu_task = functools.partial(task, task_config=_get_large_gpu_pod())
+def large_gpu_task(f: Callable[P, T]) -> Callable[P, T]:
+    return task(f, task_config=_get_large_gpu_pod())
+
+
 """This task will get scheduled on a large GPU-enabled node.
 
 This node is not necessarily dedicated to the task, but the node itself will be
@@ -182,7 +189,10 @@ on-demand.
 """
 
 
-small_gpu_task = functools.partial(task, task_config=_get_small_gpu_pod())
+def small_gpu_task(f: Callable[P, T]) -> Callable[P, T]:
+    return task(f, task_config=_get_small_gpu_pod())
+
+
 """This task will get scheduled on a small GPU-enabled node.
 
 This node will be dedicated to the task. No other tasks will be allowed to run
@@ -210,7 +220,10 @@ on it.
 """
 
 
-large_task = functools.partial(task, task_config=_get_large_pod())
+def large_task(f: Callable[P, T]) -> Callable[P, T]:
+    return task(f, task_config=_get_large_pod())
+
+
 """This task will get scheduled on a large node.
 
 This node will be dedicated to the task. No other tasks will be allowed to run
@@ -238,7 +251,10 @@ on it.
 """
 
 
-medium_task = functools.partial(task, task_config=_get_medium_pod())
+def medium_task(f: Callable[P, T]) -> Callable[P, T]:
+    return task(f, task_config=_get_medium_pod())
+
+
 """This task will get scheduled on a medium node.
 
 This node will be dedicated to the task. No other tasks will be allowed to run
@@ -266,7 +282,10 @@ on it.
 """
 
 
-small_task = functools.partial(task, task_config=_get_small_pod())
+def small_task(f: Callable[P, T]) -> Callable[P, T]:
+    return task(f, task_config=_get_small_pod())
+
+
 """This task will get scheduled on a small node.
 
 .. list-table:: Title
@@ -291,7 +310,7 @@ small_task = functools.partial(task, task_config=_get_small_pod())
 """
 
 
-def custom_task(cpu: int, memory: int):
+def custom_task(cpu: int, memory: int) -> Callable[[Callable[P, T]], Callable[P, T]]:
     """Returns a custom task configuration requesting
     the specified CPU/RAM allocations
 
@@ -350,4 +369,7 @@ def custom_task(cpu: int, memory: int):
                 f" {memory} GiB (max 179 GiB)"
             )
 
-    return functools.partial(task(task_config=task_config))
+    def decorated(f: Callable[P, T]) -> Callable[P, T]:
+        return task(f, task_config=task_config)
+
+    return decorated
