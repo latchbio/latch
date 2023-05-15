@@ -26,7 +26,7 @@ Workflows developed with the SDK feature:
   * First class static typing
   * Containerization + versioning of every registered change
   * Reliable + scalable managed cloud infrastructure
-  * Singe line definition of arbitrary resource requirements (eg. CPU, GPU) for serverless execution
+  * Single line definition of arbitrary resource requirements (eg. CPU, GPU) for serverless execution
 
 The Latch SDK is a framework to build workflows. A collection of existing and
 maintained workflows for common biological assays can be found at [Latch

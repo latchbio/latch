@@ -10,7 +10,7 @@ Bioinformatics workflows developed with the SDK automatically receive:
 * First class static typing
 * Containerization and versioning of every registered change
 * Reliable and scalable managed cloud infrastructure
-* Singe line definition of arbitrary resource requirements (eg. CPU, GPU) for serverless execution
+* Single line definition of arbitrary resource requirements (eg. CPU, GPU) for serverless execution
 
 ![SDK Overview](./assets/sdk-intro.png)
 
