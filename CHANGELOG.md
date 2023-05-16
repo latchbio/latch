@@ -15,6 +15,12 @@ Types of changes
 -->
 # Latch SDK Changelog
 
+## 2.19.11 - 2023-05-16
+
+### Fixed
+
+- Revert an undocumented change that caused custom task settings to not work
+
 ## 2.19.10 - 2023-05-16
 
 ### Fixed
