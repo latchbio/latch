@@ -15,6 +15,12 @@ Types of changes
 -->
 # Latch SDK Changelog
 
+## 2.19.10 - 2023-05-16
+
+### Fixed
+
+- Typo in `latch init` R template
+
 ## 2.19.9 - 2023-05-12
 
 ### Fixed
