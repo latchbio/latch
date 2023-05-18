@@ -140,6 +140,7 @@ class _CentromereCtx:
             # We do not support per task containers for snakemake rn
             self.container_map = {}
             if self.workflow_type == WorkflowType.latchbiosdk:
+                _import_flyte_objects([self.pkg_root])
                 for entity in FlyteEntities.entities:
                     if isinstance(entity, PythonFunctionWorkflow):
                         self.workflow_name = entity.name
