@@ -15,7 +15,6 @@ metadata = LatchMetadata(
     display_name="WF_NAME",
     author=LatchAuthor(
         name="AUTHOR_NAME",
-        email="AUTHOR_EMAIL",
     ),
     parameters={
         "input_file": LatchParameter(

@@ -134,9 +134,6 @@ def _gen_template(pkg_root: Path):
         "AUTHOR_NAME": click.prompt(
             "Author name", default="CHANGE ME", show_default=False
         ),
-        "AUTHOR_EMAIL": click.prompt(
-            "Author email", default="CHANGE ME", show_default=False
-        ),
     }
 
     with open(pkg_root / "wf" / "__init__.py", "r+") as f:

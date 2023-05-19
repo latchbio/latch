@@ -15,6 +15,18 @@ Types of changes
 -->
 # Latch SDK Changelog
 
+## 2.19.12 - 2023-05-19 
+
+### Changed 
+
+- Replace docker example workflow with blastp
+
+### Added
+
+- NFCore example workflow
+- Docker image selection when creating an empty workflow 
+- Workflow Name, Author Name and Email prompts when creating an empty workflow 
+
 ## 2.19.11 - 2023-05-16
 
 ### Fixed
