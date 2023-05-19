@@ -21,9 +21,7 @@ metadata = LatchMetadata(
     display_name="nf-core/fetchngs",
     documentation="https://nf-co.re/fetchngs/1.8/usage",
     author=LatchAuthor(
-        name="Author",
-        email="author@gmail.com",
-        github="github.com/author",
+        name="nf-core",
     ),
     parameters={
         "ids": LatchParameter(

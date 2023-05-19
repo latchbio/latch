@@ -63,7 +63,7 @@ def blastp_task(
         "-v",
         f"{query_file_path.parent}:/data/",  # mount the query file directory into the container
         "-v",
-        f"{database_path.parent}:/db/",  # mount the database file directory file into the container
+        f"{database_path.parent}:/db/",  # mount the database file directory into the container
         "-v",
         f"{outdir}:/output/",  # mount the output directory into the container
         "biocontainers/blast:2.2.31",
