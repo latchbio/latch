@@ -2,7 +2,7 @@
 Minimal template workflow to show how to run workflows that use docker in Latch
 
 For a more comprehensive template, see the assemble_and_sort workflow
-For examples on how to use conda in Latch, see https://docs.latch.bio/examples/workflows_examples.html
+For examples on how to use docker in Latch, see https://docs.latch.bio/examples/workflows_examples.html
 """
 
 from wf.task import blastp_task
