@@ -23,17 +23,17 @@ def _get_boilerplate(pkg_root: Path, source_path: Path):
     for f in source_path.glob("*.py"):
         shutil.copy(f, wf_root)
 
-    for f in source_path.glob("LICENSE*"):
-        shutil.copy(f, pkg_root)
+    pkg_root_globs = [
+        "LICENSE*",
+        "README*",
+        "*requirements*",
+        "env*",
+        "Dockerfile*",
+    ]
 
-    for f in source_path.glob("README*"):
-        shutil.copy(f, pkg_root)
-
-    for f in source_path.glob("*requirements*"):
-        shutil.copy(f, pkg_root)
-
-    for f in source_path.glob("env*"):
-        shutil.copy(f, pkg_root)
+    for g in pkg_root_globs:
+        for f in source_path.glob(g):
+            shutil.copy(f, pkg_root)
 
     if (source_path / ".env").exists():
         shutil.copy(source_path / ".env", pkg_root)
@@ -110,7 +110,11 @@ def _gen_assemble_and_sort(pkg_root: Path):
         shell=True,
     )
     subprocess.run(
-        f"rm -r {str(pkg_root / bowtie2_base_name)} {str(pkg_root / bowtie2_base_name)}.zip {str(pkg_root / 'bowtie2')}/*-debug*",
+        (
+            "rm -r"
+            f" {str(pkg_root / bowtie2_base_name)} {str(pkg_root / bowtie2_base_name)}.zip"
+            f" {str(pkg_root / 'bowtie2')}/*-debug*"
+        ),
         check=True,
         shell=True,
     )
@@ -122,6 +126,25 @@ def _gen_template(pkg_root: Path):
     source_path = Path(__file__).parent / "template"
 
     _get_boilerplate(pkg_root, source_path)
+
+    wf_metadata_params = {
+        "WF_NAME": click.prompt(
+            "Workflow name", default="CHANGE ME", show_default=False
+        ),
+        "AUTHOR_NAME": click.prompt(
+            "Author name", default="CHANGE ME", show_default=False
+        ),
+        "AUTHOR_EMAIL": click.prompt(
+            "Author email", default="CHANGE ME", show_default=False
+        ),
+    }
+
+    with open(pkg_root / "wf" / "__init__.py", "r+") as f:
+        lines = f.read()
+        f.seek(0)
+        for k, v in wf_metadata_params.items():
+            lines = lines.replace(k, v)
+        f.write(lines)
 
 
 def _gen_example_r(pkg_root: Path):
@@ -144,15 +167,16 @@ def _gen_example_conda(pkg_root: Path):
 
 def _gen_example_docker(pkg_root: Path):
     pkg_root = pkg_root.resolve()
-    source_path = Path(__file__).parent / "assemble_and_sort"
+    source_docker_path = Path(__file__).parent / "example_docker"
+
+    _get_boilerplate(pkg_root, source_docker_path)
+
+
+def _gen_example_nfcore(pkg_root: Path):
+    pkg_root = pkg_root.resolve()
+    source_path = Path(__file__).parent / "example_nfcore"
 
     _get_boilerplate(pkg_root, source_path)
-    _get_example_reference(pkg_root)
-
-    source_docker_path = Path(__file__).parent / "example_docker"
-    shutil.copy(source_docker_path / "assemble.py", pkg_root / "wf/assemble.py")
-
-    (pkg_root / ".env").unlink()
 
 
 option_map = {
@@ -161,6 +185,7 @@ option_map = {
     "R Example": _gen_example_r,
     "Conda Example": _gen_example_conda,
     "Docker Example": _gen_example_docker,
+    "NFCore Example": _gen_example_nfcore,
 }
 
 
@@ -170,6 +195,15 @@ template_flag_to_option = {
     "subprocess": "Subprocess Example",
     "r": "R Example",
     "conda": "Conda Example",
+    "nfcore": "NFCore Example",
+}
+
+
+base_docker_image_options = {
+    "Default Latch Docker image with No Dependencies": "default",
+    "Latch Docker image with Nvidia CUDA/cuDNN (cuda 11.4.2, cudnn 8) drivers": "cuda",
+    "Latch Docker image with OpenCL (ubuntu 18.04) drivers": "opencl",
+    "Latch Docker image with the Docker daemon": "docker",
 }
 
 
@@ -217,8 +251,8 @@ def init(
     pkg_root = Path(pkg_name).resolve()
     pkg_name = pkg_root.name
 
-    append_ctx_to_error: Callable[[str], str] = (
-        lambda x: f"{x}. Current directory name: {pkg_root}"
+    append_ctx_to_error: Callable[[str], str] = lambda x: (
+        f"{x}. Current directory name: {pkg_root}"
         if pkg_root == Path.cwd()
         else f"{x}. Supplied name: {pkg_root}"
     )
@@ -250,7 +284,8 @@ def init(
         if not char.isalnum and char not in ["-", "_"]:
             raise ValueError(
                 append_ctx_to_error(
-                    f"package name must only contain alphanumeric characters, hyphens, and underscores: found `{char}`."
+                    "package name must only contain alphanumeric characters, hyphens,"
+                    f" and underscores: found `{char}`."
                 ),
             )
 
@@ -263,12 +298,6 @@ def init(
         else template_flag_to_option[template]
     )
 
-    if base_image_type_str not in BaseImageOptions.__members__:
-        raise ValueError(
-            f"Invalid base image type: {base_image_type_str}. Must be one of {list(BaseImageOptions.__members__.keys())}"
-        )
-
-
     if selected_option is None:
         return False
 
@@ -279,20 +308,32 @@ def init(
     except FileExistsError:
         if not pkg_root.is_dir():
             raise ValueError(
-                f"Cannot create directory `{pkg_name}`. A file with that name already exists."
+                f"Cannot create directory `{pkg_name}`. A file with that name already"
+                " exists."
             )
 
         if not click.confirm(
-            f"Warning -- existing files in directory `{pkg_name}` may be overwritten by boilerplate. Continue?"
+            f"Warning -- existing files in directory `{pkg_name}` may be overwritten by"
+            " boilerplate. Continue?"
         ):
             return False
 
     template_func(pkg_root)
 
-    base_image_type = BaseImageOptions.__members__[base_image_type_str]
-
     if selected_option == "Docker Example":
-        base_image_type = BaseImageOptions.docker
+        base_image_type_str = "docker"
+
+    if selected_option == "Empty workflow":
+        selected_image = select_tui(
+            title="Select the base docker image to use for the workflow",
+            options=list(base_docker_image_options.keys()),
+        )
+
+        base_image_type_str = base_docker_image_options.get(
+            str(selected_image), base_image_type_str
+        )
+
+    base_image_type = BaseImageOptions.__members__[base_image_type_str]
 
     create_and_write_config(pkg_root, base_image_type)
 
