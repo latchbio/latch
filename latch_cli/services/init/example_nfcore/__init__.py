@@ -42,7 +42,7 @@ metadata = LatchMetadata(
 
 
 @workflow(metadata)
-def nfcore_fetchngs(ids: LatchFile, output_directory: LatchOutputDir) -> List[Union[LatchFile, LatchDir]]:
+def nfcore_fetchngs(ids: LatchFile, output_directory: LatchOutputDir) -> LatchDir:
     return run_nfcore_fetchngs(ids=ids, output_directory=output_directory)
 
 
