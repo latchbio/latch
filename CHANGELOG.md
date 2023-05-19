@@ -25,7 +25,7 @@ Types of changes
 
 - NFCore example workflow
 - Docker image selection when creating an empty workflow 
-- Workflow Name, Author Name and Email prompts when creating an empty workflow 
+- Workflow Name, Author Name prompts when creating an empty workflow 
 
 ## 2.19.11 - 2023-05-16
 
