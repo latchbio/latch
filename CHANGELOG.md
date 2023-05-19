@@ -24,6 +24,9 @@ Types of changes
 ### Added
 
 - NFCore example workflow
+
+### Changd
+
 - Docker image selection when creating an empty workflow 
 - Workflow Name, Author Name prompts when creating an empty workflow 
 
