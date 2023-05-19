@@ -1,5 +1,3 @@
-from typing import List
-
 from wf.task import task
 
 from latch import workflow
@@ -32,5 +30,5 @@ metadata = LatchMetadata(
 @workflow(metadata)
 def template_workflow(
     input_file: LatchFile, output_directory: LatchOutputDir
-) -> List[LatchFile]:
+) -> LatchFile:
     return task(input_file=input_file, output_directory=output_directory)
