@@ -4,8 +4,6 @@ Minimal template workflow to show how to run workflows that use nextflow in Latc
 For a more comprehensive template, see the assemble_and_sort workflow
 For examples on how to use nextflow in Latch, see https://docs.latch.bio/examples/workflows_examples.html
 """
-from typing import List, Union
-
 from wf.task import run_nfcore_fetchngs
 
 from latch import workflow
