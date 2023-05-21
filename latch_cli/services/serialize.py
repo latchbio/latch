@@ -5,11 +5,6 @@ from pathlib import Path
 
 from flytekit import LaunchPlan
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
-from flytekit.core.workflow import (
-    WorkflowFailurePolicy,
-    WorkflowMetadata,
-    WorkflowMetadataDefaults,
-)
 from flytekit.models import launch_plan as launch_plan_models
 from flytekit.models import literals as literals_models
 from flytekit.models import task as task_models
@@ -98,7 +93,7 @@ class SnakemakeWorkflowExtractor(Workflow):
         dag.update_checkpoint_dependencies()
         dag.check_dynamic()
 
-        return self, dag
+        return dag
 
 
 def serialize(pkg_root: Path):
@@ -116,19 +111,12 @@ def serialize(pkg_root: Path):
         snakefile,
         overwrite_default_target=True,
     )
-    _, dag = workflow.extract()
+    dag = workflow.extract()
 
     wf_name = "snakemake_wf"
-    metadata = WorkflowMetadata(on_failure=WorkflowFailurePolicy.FAIL_IMMEDIATELY)
-
-    interruptible = False
-    workflow_metadata_defaults = WorkflowMetadataDefaults(interruptible)
-
     wf = SnakemakeWorkflow(
         wf_name,
         dag,
-        metadata=metadata,
-        default_metadata=workflow_metadata_defaults,
     )
     wf.compile()
 

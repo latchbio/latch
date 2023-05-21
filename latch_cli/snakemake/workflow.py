@@ -23,6 +23,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.core.utils import _dnsify
 from flytekit.core.workflow import (
     WorkflowBase,
+    WorkflowFailurePolicy,
     WorkflowMetadata,
     WorkflowMetadataDefaults,
 )
@@ -148,8 +149,6 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         self,
         name: str,
         dag: DAG,
-        metadata: Optional[WorkflowMetadata],
-        default_metadata: Optional[WorkflowMetadataDefaults],
     ):
 
         parameter_metadata = {}
@@ -178,10 +177,14 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         self._input_parameters = None
         self._dag = dag
 
+        workflow_metadata = WorkflowMetadata(
+            on_failure=WorkflowFailurePolicy.FAIL_IMMEDIATELY
+        )
+        workflow_metadata_defaults = WorkflowMetadataDefaults(False)
         super().__init__(
             name=name,
-            workflow_metadata=metadata,
-            workflow_metadata_defaults=default_metadata,
+            workflow_metadata=workflow_metadata,
+            workflow_metadata_defaults=workflow_metadata_defaults,
             python_interface=native_interface,
         )
 

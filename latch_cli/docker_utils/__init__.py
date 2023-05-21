@@ -43,7 +43,7 @@ def get_prologue(config: LatchWorkflowConfig) -> List[str]:
     ]
 
 
-def get_epilogue(wf_type: WorkflowType = WorkflowType.latchbiosdk) -> List[str]:
+def get_epilogue(wf_type: WorkflowType = WorkflowType.LATCHBIOSDK) -> List[str]:
     cmds = [
         (
             "# latch internal tagging system + expected root directory --- changing"

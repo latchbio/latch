@@ -84,7 +84,7 @@ def serialize_pkg_in_container(
 ) -> List[str]:
     _serialize_cmd = ["make"]
 
-    if ctx.workflow_type == WorkflowType.latchbiosdk:
+    if ctx.workflow_type == WorkflowType.LATCHBIOSDK:
         _serialize_cmd.append("serialize")
     else:
         _serialize_cmd.append("snakemake-serialize")

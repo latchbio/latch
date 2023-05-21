@@ -108,13 +108,13 @@ class _CentromereCtx:
                 self.pkg_root.joinpath("Snakefile").exists()
                 and not self.pkg_root.joinpath("wf").exists()
             ):
-                self.workflow_type = WorkflowType.snakemake
+                self.workflow_type = WorkflowType.SNAKEMAKE
             else:
-                self.workflow_type = WorkflowType.latchbiosdk
+                self.workflow_type = WorkflowType.LATCHBIOSDK
 
             # We do not support per task containers for snakemake rn
             self.container_map = {}
-            if self.workflow_type == WorkflowType.latchbiosdk:
+            if self.workflow_type == WorkflowType.LATCHBIOSDK:
                 _import_flyte_objects([self.pkg_root])
                 for entity in FlyteEntities.entities:
                     if isinstance(entity, PythonFunctionWorkflow):
