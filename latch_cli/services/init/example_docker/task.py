@@ -12,7 +12,7 @@ def run(cmd: List[str]):
         return subprocess.run(cmd, check=True, capture_output=True)
     except subprocess.CalledProcessError as e:
         stderr = e.stderr.decode("utf-8")
-        if stderr:
+        if stderr != "":
             message(
                 "error",
                 {"title": "Blastp Failed", "body": f"Stderr: {stderr}"},
