@@ -13,7 +13,6 @@ class BaseImageOptions(str, Enum):
     default = "default"
     cuda = "cuda"
     opencl = "opencl"
-    docker = "docker"
 
 
 @dataclass(frozen=True)
@@ -31,7 +30,6 @@ class LatchWorkflowConfig:
 def create_and_write_config(
     pkg_root: Path, base_image_type: BaseImageOptions = BaseImageOptions.default
 ):
-
     base_image = latch_constants.base_image
 
     if base_image_type != BaseImageOptions.default:

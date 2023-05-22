@@ -1,6 +1,6 @@
 # latch base image + dependencies for latch SDK --- removing these will break the workflow
 from 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base-docker:9c8f-main
-run pip install latch==2.19.9
+run pip install latch==2.19.12
 run mkdir /opt/latch
 
 # install dependencies for nfcore

@@ -16,6 +16,7 @@ from latch.types import (
     LatchParameter,
 )
 from latch.types.directory import LatchDir
+from latch.types.metadata import LatchRule
 
 """The metadata included here will be injected into your interface."""
 metadata = LatchMetadata(
@@ -29,6 +30,13 @@ metadata = LatchMetadata(
             display_name="IDs CSV",
             description="CSV file containing ids from SRA, ENA, DDBJ or Synapse",
             batch_table_column=True,  # Show this parameter in batched mode
+            rules=[
+                # validate the input file using regex
+                LatchRule(
+                    regex="(.csv)$",
+                    message="Only csv extension is valid",
+                )
+            ],
         ),
         "output_directory": LatchParameter(
             display_name="Output Directory",

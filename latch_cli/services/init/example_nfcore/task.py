@@ -26,15 +26,15 @@ def run_nfcore_fetchngs(
     ]
 
     try:
-        # When using shell=True, we pass the entire command as a single string as
-        # opposed to a list since the shell will parse the string into a list
-        # using its own rules.
-        subprocess.run(" ".join(nfcore_cmd), shell=True, check=True)
+        subprocess.run(" ".join(nfcore_cmd), check=True, capture_output=True)
     except subprocess.CalledProcessError as e:
-        message(
-            "error",
-            {"title": "NFCore fetchngs Failed", "body": f"Error: {str(e)}"},
-        )
+        stderr = e.stderr.decode("utf-8")
+        if stderr:
+            message(
+                "error",
+                {"title": "Blastp Failed", "body": f"Stderr: {stderr}"},
+            )
+        print(stderr)
         raise e
 
     return LatchDir(path=str(outdir), remote_path=output_directory.remote_path)

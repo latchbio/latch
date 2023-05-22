@@ -16,6 +16,7 @@ from latch.types import (
     LatchOutputDir,
     LatchParameter,
 )
+from latch.types.metadata import LatchRule
 
 metadata = LatchMetadata(
     display_name="biocontainers/blastp",
@@ -26,6 +27,13 @@ metadata = LatchMetadata(
         "query_file": LatchParameter(
             display_name="Input FASTA File",
             batch_table_column=True,  # Show this parameter in batched mode.
+            rules=[
+                # validate the input file using regex
+                LatchRule(
+                    regex="(.fasta|.fa|)$",
+                    message="Only fasta, fa, extensions are valid",
+                )
+            ],
         ),
         "database": LatchParameter(
             display_name="Database to run blastp against (.faa file)",

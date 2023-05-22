@@ -9,12 +9,7 @@ from latch.types import LatchFile, LatchOutputDir
 
 def run(cmd: List[str]):
     try:
-        # When using shell=True, we pass the entire command as a single string as
-        # opposed to a list since the shell will parse the string into a list
-        # using its own rules.
-        return subprocess.run(
-            " ".join(cmd), shell=True, check=True, capture_output=True
-        )
+        return subprocess.run(cmd, check=True, capture_output=True)
     except subprocess.CalledProcessError as e:
         stderr = e.stderr.decode("utf-8")
         if stderr:
@@ -81,7 +76,11 @@ def blastp_task(
 
     # intended output path of the file in Latch console, constructed from
     # the user provided output directory
-    output_location = f"{output_directory.remote_directory}/results.txt"
+    output_location = (
+        f"{output_directory.remote_directory}results.txt"
+        if output_directory.remote_directory.endswith("/")
+        else f"{output_directory.remote_directory}/results.txt"
+    )
     local_sam_file = outdir / "results.txt"
 
     return LatchFile(str(local_sam_file), output_location)

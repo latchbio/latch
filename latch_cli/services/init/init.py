@@ -109,16 +109,18 @@ def _gen_assemble_and_sort(pkg_root: Path):
         check=True,
         shell=True,
     )
-    subprocess.run(
-        (
-            "rm -r"
-            f" {str(pkg_root / bowtie2_base_name)} {str(pkg_root / bowtie2_base_name)}.zip"
-            f" {str(pkg_root / 'bowtie2')}/*-debug*"
-        ),
-        check=True,
-        shell=True,
-    )
-    print()
+
+    paths_to_remove = [
+        pkg_root / bowtie2_base_name,
+        pkg_root / f"{bowtie2_base_name}.zip",
+    ]
+    paths_to_remove.extend((pkg_root / "bowtie2").glob("*-debug*"))
+
+    for f in paths_to_remove:
+        if f.is_file():
+            f.unlink()
+        else:
+            shutil.rmtree(str(f))
 
 
 def _gen_template(pkg_root: Path):
@@ -129,10 +131,10 @@ def _gen_template(pkg_root: Path):
 
     wf_metadata_params = {
         "WF_NAME": click.prompt(
-            "Workflow name", default="CHANGE ME", show_default=False
+            "Workflow Name", default="CHANGE ME", show_default=False
         ),
         "AUTHOR_NAME": click.prompt(
-            "Author name", default="CHANGE ME", show_default=False
+            "Author Name", default="CHANGE ME", show_default=False
         ),
     }
 
@@ -200,7 +202,6 @@ base_docker_image_options = {
     "Default Latch Docker image with No Dependencies": "default",
     "Latch Docker image with Nvidia CUDA/cuDNN (cuda 11.4.2, cudnn 8) drivers": "cuda",
     "Latch Docker image with OpenCL (ubuntu 18.04) drivers": "opencl",
-    "Latch Docker image with the Docker daemon": "docker",
 }
 
 
@@ -316,9 +317,6 @@ def init(
             return False
 
     template_func(pkg_root)
-
-    if selected_option == "Docker Example":
-        base_image_type_str = "docker"
 
     if selected_option == "Empty workflow":
         selected_image = select_tui(
