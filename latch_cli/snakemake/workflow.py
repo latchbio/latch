@@ -404,7 +404,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         )
         snakemake_cmd.extend(["--allowed-rules", *self.job.rules])
         snakemake_cmd.extend(["--local-groupid", str(self.job.jobid)])
-        snakemake_cmd.extend(["--cores", "8"])
+        snakemake_cmd.extend(["--cores", str(self.job.threads)])
 
         if not self.job.is_group():
             snakemake_cmd.append("--force-use-threads")
