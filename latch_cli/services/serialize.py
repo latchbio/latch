@@ -124,6 +124,7 @@ def extract_snakemake_workflow(snakefile: Path) -> (str, SnakemakeWorkflow):
         snakefile,
         overwrite_default_target=True,
     )
+    # TODO - get default parameter and file values from workflow.globals
     dag = workflow.extract()
 
     wf_name = "snakemake_wf"
@@ -139,7 +140,7 @@ def get_snakefile(pkg_root: Path) -> Path:
     return Path("Snakefile")
 
 
-def serialize(pkg_root: Path, output_dir: Path, dkr_repo: str, version: str):
+def serialize(pkg_root: Path, output_dir: Path, image_name: str, dkr_repo: str):
     """Serializes workflow code into lyteidl protobuf.
 
     Args:
@@ -150,11 +151,12 @@ def serialize(pkg_root: Path, output_dir: Path, dkr_repo: str, version: str):
     pkg_root = Path(pkg_root).resolve()
     snakefile = get_snakefile(pkg_root)
 
-    wf_name, wf = extract_snakemake_workflow(snakefile)
+    _, wf = extract_snakemake_workflow(snakefile)
 
+    image_name_no_version, version = image_name.split(":")
     default_img = Image(
-        name=wf_name,
-        fqn=f"{dkr_repo}/{wf_name}",
+        name=image_name,
+        fqn=f"{dkr_repo}/{image_name_no_version}",
         tag=version,
     )
     settings = SerializationSettings(

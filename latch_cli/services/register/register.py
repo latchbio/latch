@@ -181,7 +181,7 @@ def build_and_serialize(
                 f"Serialization exited with nonzero exit code: {exit_status['Error']}"
             )
     else:
-        serialize(ctx.pkg_root, tmp_dir, ctx.dkr_repo, ctx.version)
+        serialize(ctx.pkg_root, tmp_dir, image_name, ctx.dkr_repo)
 
     upload_image_logs = upload_image(ctx, image_name)
     print_upload_logs(upload_image_logs, image_name)

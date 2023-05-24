@@ -68,6 +68,7 @@ def snakemake_dag_to_interface(
 
     inputs: Dict[str, Type] = {}
     for job in dag.jobs:
+
         dep_outputs = []
         for dep, dep_files in dag.dependencies[job].items():
             for o in dep.output:
@@ -306,6 +307,8 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 for j in self._dag.targetjobs:
                     for depen, files in self._dag.dependencies[j].items():
                         for f in files:
+                            # TODO - better link than str representation of
+                            # target file
                             if variable_name_for_value(f) == out:
                                 return depen.jobid, variable_name_for_value(
                                     f, depen.output
