@@ -9,6 +9,7 @@ import click
 from packaging.version import parse as parse_version
 
 import latch_cli.click_utils
+from latch_cli.click_utils import EnumChoice
 from latch_cli.exceptions.handler import CrashHandler
 from latch_cli.services.cp.config import Progress
 from latch_cli.services.init.init import template_flag_to_option
@@ -17,7 +18,7 @@ from latch_cli.workflow_config import BaseImageOptions
 
 latch_cli.click_utils.patch()
 
-from latch_cli.constants import latch_constants
+from latch_cli.constants import latch_constants, units
 
 crash_handler = CrashHandler()
 
@@ -206,8 +207,8 @@ def init(
 
 
 @main.command("cp")
-@click.argument("src", nargs=1)
-@click.argument("dest", nargs=1)
+@click.argument("src")
+@click.argument("dest")
 @click.option(
     "--max-concurrent-files",
     "--mcf",
@@ -219,7 +220,7 @@ def init(
 @click.option(
     "--progress",
     help="Type of progress information to show while copying",
-    type=click.Choice(list(Progress._member_names_), case_sensitive=False),
+    type=EnumChoice(Progress, case_sensitive=False),
     default="tasks",
     show_default=True,
 )
@@ -235,9 +236,13 @@ def init(
     "--chunk-size",
     help=(
         "Chunk size (in bytes) to use when copying. Must be between 5 MiB and 5 GiB"
-        " inclusive."
+        " inclusive. Any value outside of this range will be clamped."
     ),
-    type=int,
+    type=click.IntRange(
+        min=5 * units.MiB,
+        max=5 * units.GiB,
+        clamp=True,
+    ),
     default=latch_constants.file_chunk_size,
     show_default=True,
 )
@@ -245,7 +250,7 @@ def cp(
     src: str,
     dest: str,
     max_concurrent_files: int,
-    progress: str,
+    progress: Progress,
     verbose: bool,
     chunk_size: int,
 ):
@@ -260,11 +265,10 @@ def cp(
         src,
         dest,
         max_concurrent_files=max_concurrent_files,
-        progress=Progress(progress),
+        progress=progress,
         verbose=verbose,
         chunk_size=chunk_size,
     )
-    click.secho(f"\nSuccessfully copied {src} to {dest}.", fg="green")
 
 
 @main.command("ls")
@@ -275,7 +279,6 @@ def cp(
     is_flag=True,
     default=False,
 )
-# Allows the user to provide unlimited arguments (including zero)
 @click.argument("remote_directories", nargs=-1)
 def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]):
     """

@@ -13,16 +13,10 @@ from latch_cli import tinyrequests
 from latch_cli.config.latch import config as latch_config
 from latch_cli.constants import latch_constants, units
 from latch_cli.services.cp.config import CPConfig, Progress
+from latch_cli.services.cp.ldata_utils import LDataNodeType, get_node_data
+from latch_cli.services.cp.path_utils import normalize_path, remote_joinpath
 from latch_cli.services.cp.progress import ProgressBarManager, ProgressBars
-from latch_cli.services.cp.utils import (
-    LDataNodeType,
-    get_auth_header,
-    get_node_data,
-    human_readable_time,
-    normalize_path,
-    pluralize,
-    remote_joinpath,
-)
+from latch_cli.services.cp.utils import get_auth_header, human_readable_time, pluralize
 from latch_cli.utils import with_si_suffix
 
 

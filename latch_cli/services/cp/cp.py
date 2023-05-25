@@ -2,8 +2,8 @@ from pathlib import Path
 
 from latch_cli.services.cp.config import CPConfig, Progress
 from latch_cli.services.cp.download import download
+from latch_cli.services.cp.path_utils import is_remote_path
 from latch_cli.services.cp.upload import upload
-from latch_cli.services.cp.utils import is_remote_path
 
 
 def cp(
