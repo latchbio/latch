@@ -105,17 +105,30 @@ def get(
     url: str,
     *,
     headers: Dict[str, str] = {},
+    data: Optional[bytes] = None,
     json: Optional[Any] = None,
     stream: bool = False,
 ):
-    return request("GET", url, headers=headers, json=json, stream=stream)
+    return request("GET", url, headers=headers, data=data, json=json, stream=stream)
+
+
+def put(
+    url: str,
+    *,
+    headers: Dict[str, str] = {},
+    data: Optional[bytes] = None,
+    json: Optional[Any] = None,
+    stream: bool = False,
+):
+    return request("PUT", url, headers=headers, data=data, json=json, stream=stream)
 
 
 def post(
     url: str,
     *,
     headers: Dict[str, str] = {},
+    data: Optional[bytes] = None,
     json: Optional[Any] = None,
     stream: bool = False,
 ):
-    return request("POST", url, headers=headers, json=json, stream=stream)
+    return request("POST", url, headers=headers, data=data, json=json, stream=stream)

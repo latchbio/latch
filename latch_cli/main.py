@@ -10,11 +10,14 @@ from packaging.version import parse as parse_version
 
 import latch_cli.click_utils
 from latch_cli.exceptions.handler import CrashHandler
+from latch_cli.services.cp.config import Progress
 from latch_cli.services.init.init import template_flag_to_option
 from latch_cli.utils import get_latest_package_version, get_local_package_version
 from latch_cli.workflow_config import BaseImageOptions
 
 latch_cli.click_utils.patch()
+
+from latch_cli.constants import latch_constants
 
 crash_handler = CrashHandler()
 
@@ -203,24 +206,68 @@ def init(
 
 
 @main.command("cp")
-@click.argument("source_file", nargs=1)
-@click.argument("destination_file", nargs=1)
-def cp(source_file: str, destination_file: str):
+@click.argument("src", nargs=1)
+@click.argument("dest", nargs=1)
+@click.option(
+    "--max-concurrent-files",
+    "--mcf",
+    help="Maximum number of files to copy concurrently.",
+    type=int,
+    default=4,
+    show_default=True,
+)
+@click.option(
+    "--progress",
+    help="Type of progress information to show while copying",
+    type=click.Choice(list(Progress._member_names_), case_sensitive=False),
+    default="tasks",
+    show_default=True,
+)
+@click.option(
+    "--verbose",
+    "-v",
+    help="Print file names as they are copied",
+    is_flag=True,
+    default=False,
+    show_default=True,
+)
+@click.option(
+    "--chunk-size",
+    help=(
+        "Chunk size (in bytes) to use when copying. Must be between 5 MiB and 5 GiB"
+        " inclusive."
+    ),
+    type=int,
+    default=latch_constants.file_chunk_size,
+    show_default=True,
+)
+def cp(
+    src: str,
+    dest: str,
+    max_concurrent_files: int,
+    progress: str,
+    verbose: bool,
+    chunk_size: int,
+):
     """Copy local files to LatchData and vice versa."""
 
-    crash_handler.message = f"Unable to copy {source_file} to {destination_file}"
+    crash_handler.message = f"Unable to copy {src} to {dest}"
     crash_handler.pkg_root = str(Path.cwd())
 
-    from latch_cli.services.cp import cp
+    from latch_cli.services.cp.cp import cp
 
-    cp(source_file, destination_file)
-    click.secho(
-        f"\nSuccessfully copied {source_file} to {destination_file}.", fg="green"
+    cp(
+        src,
+        dest,
+        max_concurrent_files=max_concurrent_files,
+        progress=Progress(progress),
+        verbose=verbose,
+        chunk_size=chunk_size,
     )
+    click.secho(f"\nSuccessfully copied {src} to {dest}.", fg="green")
 
 
 @main.command("ls")
-# Allows the user to provide unlimited arguments (including zero)
 @click.option(
     "--group-directories-first",
     "--gdf",
@@ -228,6 +275,7 @@ def cp(source_file: str, destination_file: str):
     is_flag=True,
     default=False,
 )
+# Allows the user to provide unlimited arguments (including zero)
 @click.argument("remote_directories", nargs=-1)
 def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]):
     """
