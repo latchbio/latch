@@ -221,14 +221,15 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 if job in self._dag.targetjobs:
                     continue
 
-                target_file_for_param: Dict[str, str] = {}
+                target_file_for_output_param: Dict[str, str] = {}
+                target_file_for_input_param: Dict[str, str] = {}
 
                 python_outputs: Dict[str, Type] = {}
                 for x in job.output:
                     if x in target_files:
                         is_target = True
                     param = variable_name_for_value(x, job.output)
-                    target_file_for_param[param] = x
+                    target_file_for_output_param[param] = x
                     python_outputs[param] = LatchFile
 
                 dep_outputs = {}
@@ -241,7 +242,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 promise_map: Dict[str, str] = {}
                 for x in job.input:
                     param = variable_name_for_value(x, job.input)
-                    target_file_for_param[param] = x
+                    target_file_for_input_param[param] = x
                     python_inputs[param] = LatchFile
                     if x in dep_outputs:
                         promise_map[param] = dep_outputs[x]
@@ -251,7 +252,8 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     job=job,
                     inputs=python_inputs,
                     outputs=python_outputs,
-                    target_file_for_param=target_file_for_param,
+                    target_file_for_input_param=target_file_for_input_param,
+                    target_file_for_output_param=target_file_for_output_param,
                     is_target=is_target,
                     interface=interface,
                 )
@@ -341,7 +343,8 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         job: snakemake.jobs.Job,
         inputs: Dict[str, Type],
         outputs: Dict[str, Type],
-        target_file_for_param: Dict[str, str],
+        target_file_for_input_param: Dict[str, str],
+        target_file_for_output_param: Dict[str, str],
         is_target: bool,
         interface: Interface,
         task_type="python-task",
@@ -353,7 +356,8 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         self._is_target = is_target
         self._python_inputs = inputs
         self._python_outputs = outputs
-        self._target_file_for_param = target_file_for_param
+        self._target_file_for_input_param = target_file_for_input_param
+        self._target_file_for_output_param = target_file_for_output_param
 
         def placeholder():
             ...
@@ -396,7 +400,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
 
         for param, t in self._python_inputs.items():
             if t == LatchFile:
-                code_block += f'\n\tPath({param}).resolve().rename(ensure_parents_exist(Path("{self._target_file_for_param[param]}")))'
+                code_block += f'\n\tPath({param}).resolve().rename(ensure_parents_exist(Path("{self._target_file_for_input_param[param]}")))'
 
         snakemake_cmd = ["snakemake"]
         snakemake_cmd.extend(
@@ -433,11 +437,11 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         for i, x in enumerate(self._python_outputs):
             if self._is_target:
                 return_stmt += (
-                    f"LatchFile('{self._target_file_for_param[x]}',"
-                    f" 'latch:///{self._target_file_for_param[x]}')"
+                    f"LatchFile('{self._target_file_for_output_param[x]}',"
+                    f" 'latch:///{self._target_file_for_output_param[x]}')"
                 )
             else:
-                return_stmt += f"LatchFile('{self._target_file_for_param[x]}')"
+                return_stmt += f"LatchFile('{self._target_file_for_output_param[x]}')"
             if i == len(self._python_outputs) - 1:
                 return_stmt += ")"
             else:
