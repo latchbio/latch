@@ -76,7 +76,7 @@ class ProgressBars:
 
         self.usage[index] = amount
 
-    def dec_usage(self, index: int):
+    def dec_usage(self, index: int, msg: Optional[str] = None):
         if index < 0 or self.usage[index] == 0:
             return
 
@@ -84,6 +84,9 @@ class ProgressBars:
         if self.usage[index] == 0:
             self.return_task_bar(index)
             self.update_total_progress(1)
+
+            if msg is not None:
+                self.write(msg)
 
     def set_total(self, total: int, desc: Optional[str] = None):
         if self.total_bar is None:

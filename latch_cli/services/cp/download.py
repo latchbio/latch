@@ -179,11 +179,3 @@ def download_file(
                 total_bytes += len(data)
 
             return total_bytes
-
-
-if __name__ == "__main__":
-    download(
-        "latch:///Yost SRA Download SRP173389/SRX5128489",
-        Path.cwd() / "outputs",
-        CPConfig.default(),
-    )

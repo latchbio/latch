@@ -93,38 +93,38 @@ def upload(
                     total_bytes += rel_path.stat().st_size
 
             num_files = len(srcs)
-            num_bars = min(num_bars, num_files)
 
             url_generation_bar: ProgressBars = manager.ProgressBars(
                 0, show_total_progress=(config.progress != Progress.none)
             )
             url_generation_bar.set_total(num_files, "Generating URLs")
 
-            upload_data: List[Future[Optional[StartUploadReturnType]]] = []
+            start_upload_futs: List[Future[Optional[StartUploadReturnType]]] = []
 
             start = time.perf_counter()
             for s, d in zip(srcs, dests):
-                upload_data.append(
+                start_upload_futs.append(
                     executor.submit(
                         start_upload, s, d, config.chunk_size, url_generation_bar
                     )
                 )
 
-            wait(upload_data)
+            wait(start_upload_futs)
             url_generation_bar.close()
 
             chunk_upload_bars: ProgressBars = manager.ProgressBars(
-                num_bars,
+                min(num_bars, num_files),
                 show_total_progress=show_total_progress,
                 verbose=config.verbose,
             )
             chunk_upload_bars.set_total(num_files)
 
-            # todo(ayush): this is a bit jank and also gives the illusion of synchronous execution
+            # todo(ayush): this is jank and also gives the illusion of synchronous execution
             # since nothing gets interleaved
+            #
             # perhaps do each file in its own process and have the chunks be uploaded with asyncio?
             chunk_futs: List[Future[CompletedPart]] = []
-            for data in upload_data:
+            for data in start_upload_futs:
                 res = data.result()
 
                 if res is None:
@@ -162,7 +162,7 @@ def upload(
                 parts_by_source[res.src].append(res)
 
             end_upload_futs: List[Future[None]] = []
-            for data in upload_data:
+            for data in start_upload_futs:
                 res = data.result()
                 if res is None:
                     finalize_uploads_bar.update_total_progress(1)
@@ -334,7 +334,7 @@ def upload_file_chunk(
         raise RuntimeError(f"Failed to upload part {part_index} of {src}")
 
     progress_bars.update(pbar_index, len(data))
-    progress_bars.dec_usage(pbar_index)
+    progress_bars.dec_usage(pbar_index, f"Copied {src.name}")
 
     return CompletedPart(
         src=src,
@@ -370,7 +370,3 @@ def end_upload(
 
     if progress_bars is not None:
         progress_bars.update_total_progress(1)
-
-
-if __name__ == "__main__":
-    upload("outputs", "latch:///test_upload", CPConfig.default())

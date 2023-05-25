@@ -26,16 +26,6 @@ def get_auth_header() -> Dict[str, str]:
     return headers
 
 
-# path transform rules:
-#   ://domain/a/b/c => latch://domain/a/b/c
-#   /a/b/c => latch:///a/b/c
-#   a/b/c => latch:///a/b/c
-#
-# domain transform rules:
-#   latch:///a/b/c => latch://xxx.account/a/b/c
-#   latch://shared/a/b/c => latch://shared.xxx.account/a/b/c
-#   latch://any_other_domain/a/b/c => unchanged
-
 is_valid_path_expr = re.compile(r"^(latch)?://")
 
 
@@ -61,6 +51,15 @@ domain_expr = re.compile(
 )
 
 
+# path transform rules:
+#   ://domain/a/b/c => latch://domain/a/b/c
+#   /a/b/c => latch:///a/b/c
+#   a/b/c => latch:///a/b/c
+#
+# domain transform rules:
+#   latch:///a/b/c => latch://xxx.account/a/b/c
+#   latch://shared/a/b/c => latch://shared.xxx.account/a/b/c
+#   latch://any_other_domain/a/b/c => unchanged
 def normalize_path(path: str) -> str:
     if legacy_expr.match(path):
         return path  # let nuke-data deal with legacy paths
