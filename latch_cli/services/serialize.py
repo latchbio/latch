@@ -180,7 +180,9 @@ def serialize_snakemake(
     persist_registrable_entities(registrable_entities, output_dir)
 
 
-def generate_snakemake_entrypoint(wf: SnakemakeWorkflow, ctx: _CentromereCtx):
+def generate_snakemake_entrypoint(
+    wf: SnakemakeWorkflow, ctx: _CentromereCtx, snakefile: Path
+):
 
     entrypoint_code_block = textwrap.dedent(
         """\
@@ -197,7 +199,10 @@ def generate_snakemake_entrypoint(wf: SnakemakeWorkflow, ctx: _CentromereCtx):
            """
     )
     for task in wf.snakemake_tasks:
-        entrypoint_code_block += task.get_fn_code()
+        snakefile_path_in_container = str(snakefile.resolve())[
+            len(str(ctx.pkg_root.resolve())) + 1 :
+        ]
+        entrypoint_code_block += task.get_fn_code(snakefile_path_in_container)
 
     entrypoint = ctx.pkg_root.joinpath(".latch/latch_entrypoint.py")
     with open(entrypoint, "w") as f:

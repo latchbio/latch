@@ -163,7 +163,7 @@ def build_and_serialize(
 
     if ctx.workflow_type == WorkflowType.SNAKEMAKE:
         _, wf = extract_snakemake_workflow(ctx.snakefile)
-        generate_snakemake_entrypoint(wf, ctx)
+        generate_snakemake_entrypoint(wf, ctx, ctx.snakefile)
 
     image_build_logs = build_image(ctx, image_name, context_path, dockerfile)
     print_and_write_build_logs(image_build_logs, image_name, ctx.pkg_root)

@@ -380,7 +380,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             task_resolver=SnakemakeJobTaskResolver(),
         )
 
-    def get_fn_code(self):
+    def get_fn_code(self, snakefile_path_in_container: str):
 
         code_block = ""
 
@@ -411,6 +411,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                 code_block += f'\n\tPath({param}).resolve().rename(ensure_parents_exist(Path("{self._target_file_for_input_param[param]}")))'
 
         snakemake_cmd = ["snakemake"]
+        snakemake_cmd.extend(["-s", snakefile_path_in_container])
         snakemake_cmd.extend(
             ["--target-jobs", *encode_target_jobs_cli_args(self.job.get_target_spec())]
         )
