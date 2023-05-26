@@ -4,7 +4,9 @@ config.user
 Repository for retrieving + updating user config values.
 """
 
+import json
 from pathlib import Path
+from typing import Optional
 
 
 class _UserConfig:
@@ -52,10 +54,30 @@ class _UserConfig:
             return ""
 
     @property
-    def workspace(self) -> str:
+    def workspace_id(self) -> str:
         try:
             with open(self.workspace_path, "r") as f:
-                return f.read().strip()
+                s = f.read().strip()
+
+                try:
+                    ret = json.loads(s)
+                    return ret["workspace_id"]
+                except json.decoder.JSONDecodeError:
+                    return s
+        except FileNotFoundError:
+            return ""
+
+    @property
+    def workspace_name(self) -> Optional[str]:
+        try:
+            with open(self.workspace_path, "r") as f:
+                s = f.read().strip()
+
+                try:
+                    ret = json.loads(s)
+                    return ret["name"]
+                except json.decoder.JSONDecodeError:
+                    return None
         except FileNotFoundError:
             return ""
 
@@ -64,9 +86,9 @@ class _UserConfig:
         with open(self.token_path, "w") as f:
             f.write(token)
 
-    def update_workspace(self, workspace: str):
+    def update_workspace(self, workspace_id: str, name: Optional[str] = None):
         with open(self.workspace_path, "w") as f:
-            f.write(workspace)
+            f.write(json.dumps({"workspace_id": workspace_id, "name": name}))
 
 
 user_config = _UserConfig()

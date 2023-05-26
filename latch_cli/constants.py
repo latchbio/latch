@@ -2,6 +2,9 @@
 
 import re
 from dataclasses import dataclass
+from typing import ClassVar, Optional
+
+from typing_extensions import Self
 
 
 @dataclass(frozen=True)
@@ -18,6 +21,14 @@ class Units:
     TiB = 2**40
     TB = 10**12
 
+    _singleton: ClassVar[Optional["Units"]] = None
+
+    def __new__(cls) -> Self:
+        if cls._singleton is None:
+            cls._singleton = super().__new__(cls)
+
+        return cls._singleton
+
 
 units = Units()
 
@@ -29,7 +40,7 @@ class LatchConstants:
     )
 
     file_max_size: int = 4 * units.MiB
-    file_chunk_size: int = 5 * units.MiB
+    file_chunk_size: int = 256 * units.MiB
 
     # https://docs.aws.amazon.com/AmazonS3/latest/userguide/qfacts.html
     maximum_upload_parts = 10000

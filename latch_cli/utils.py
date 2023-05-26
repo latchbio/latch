@@ -30,10 +30,10 @@ def retrieve_or_login() -> str:
 
 
 def current_workspace() -> str:
-    ws = user_config.workspace
+    ws = user_config.workspace_id
     if ws == "":
         ws = account_id_from_token(retrieve_or_login())
-        user_config.update_workspace(ws)
+        user_config.update_workspace(ws, "Personal Workspace")
     return ws
 
 

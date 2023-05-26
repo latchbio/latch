@@ -4,6 +4,8 @@ config.latch
 Platform wide configuration, eg. api endpoints, callback server ports...
 """
 
+# todo(ayush): put all configs into a `latch-config` package
+
 import os
 from dataclasses import dataclass, fields, is_dataclass
 from typing import Type, TypeVar

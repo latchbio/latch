@@ -81,19 +81,17 @@ class Account:
         Returns:
             Current account.
         """
-        if user_config.workspace != "":
-            account_id = user_config.workspace
+        if user_config.workspace_id != "":
+            account_id = user_config.workspace_id
         else:
             account_id = execute(
-                document=gql.gql(
-                    """
+                document=gql.gql("""
                     query accountInfoQuery {
                         accountInfoCurrent {
                             id
                         }
                     }
-                    """
-                ),
+                    """),
             )["accountInfoCurrent"]["id"]
 
         return cls(id=account_id)
@@ -106,8 +104,7 @@ class Account:
         Always makes a network request.
         """
         data: _Account = execute(
-            gql.gql(
-                """
+            gql.gql("""
             query AccountQuery($ownerId: BigInt!) {
                 accountInfo(id: $ownerId) {
                     catalogProjectsByOwnerId(
@@ -129,8 +126,7 @@ class Account:
                     }
                 }
             }
-            """
-            ),
+            """),
             {"ownerId": self.id},
         )["accountInfo"]
         # todo(maximsmol): deal with nonexistent accounts
@@ -263,13 +259,11 @@ class AccountUpdate:
 
         display_names: _GqlJsonValue = [x.display_name for x in upserts]
 
-        res = _parse_selection(
-            """
+        res = _parse_selection("""
             catalogMultiUpsertProjects(input: {}) {
                 clientMutationId
             }
-            """
-        )
+            """)
         assert isinstance(res, l.FieldNode)
 
         args = l.ArgumentNode()
@@ -306,13 +300,11 @@ class AccountUpdate:
 
         ids: _GqlJsonValue = [x.id for x in deletes]
 
-        res = _parse_selection(
-            """
+        res = _parse_selection("""
             catalogMultiDeleteProjects(input: {}) {
                 clientMutationId
             }
-            """
-        )
+            """)
         assert isinstance(res, l.FieldNode)
 
         args = l.ArgumentNode()
@@ -364,13 +356,11 @@ class AccountUpdate:
         sel_set = l.SelectionSetNode()
         sel_set.selections = tuple(mutations)
 
-        doc = l.parse(
-            """
+        doc = l.parse("""
             mutation AccountUpdate {
                 placeholder
             }
-        """
-        )
+        """)
 
         assert len(doc.definitions) == 1
         mut = doc.definitions[0]

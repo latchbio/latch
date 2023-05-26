@@ -31,6 +31,11 @@ def cp(
         upload(src, dest, config)
     elif src_remote and dest_remote:
         # todo(ayush): remote copy
-        raise NotImplementedError()
+        raise NotImplementedError(
+            "For now, `latch cp` cannot be used for purely remote file copying."
+        )
     else:
-        raise ValueError(f"Neither {src} nor {dest} are remote paths.")
+        raise ValueError(
+            f"`latch cp` cannot be used for purely local file copying. Please make sure"
+            f" one of your paths is a remote path (beginning with `latch://`)"
+        )

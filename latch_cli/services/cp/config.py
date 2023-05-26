@@ -1,8 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
 
-from latch_cli.constants import latch_constants
-
 
 class Progress(Enum):
     none = "none"

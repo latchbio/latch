@@ -4,16 +4,11 @@ Assemble and sort some COVID reads...
 from wf.assemble import assembly_task
 from wf.sort import sort_bam_task
 
-from latch import workflow
 from latch.resources.launch_plan import LaunchPlan
-from latch.types import (
-    LatchAuthor,
-    LatchFile,
-    LatchMetadata,
-    LatchOutputDir,
-    LatchParameter,
-    LatchRule,
-)
+from latch.resources.workflow import workflow
+from latch.types.directory import LatchOutputDir
+from latch.types.file import LatchFile
+from latch.types.metadata import LatchAuthor, LatchMetadata, LatchParameter, LatchRule
 
 """The metadata included here will be injected into your interface."""
 metadata = LatchMetadata(

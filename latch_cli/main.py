@@ -259,7 +259,7 @@ def cp(
     crash_handler.message = f"Unable to copy {src} to {dest}"
     crash_handler.pkg_root = str(Path.cwd())
 
-    from latch_cli.services.cp.cp import cp
+    from latch_cli.services.cp.main import cp
 
     cp(
         src,

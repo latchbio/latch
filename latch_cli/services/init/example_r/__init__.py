@@ -7,14 +7,11 @@ For examples on how to use R in Latch, see https://docs.latch.bio/examples/workf
 
 from wf.r_task import r_task
 
-from latch import small_task, workflow
-from latch.types import (
-    LatchAuthor,
-    LatchFile,
-    LatchMetadata,
-    LatchOutputDir,
-    LatchParameter,
-)
+from latch.resources.tasks import small_task
+from latch.resources.workflow import workflow
+from latch.types.directory import LatchOutputDir
+from latch.types.file import LatchFile
+from latch.types.metadata import LatchAuthor, LatchMetadata, LatchParameter
 
 """Minimal metadata object - fill in fields with your own values"""
 metadata = LatchMetadata(
