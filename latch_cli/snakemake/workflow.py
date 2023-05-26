@@ -1,6 +1,7 @@
 import importlib
 import typing
 from collections import OrderedDict
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Type, TypeVar, Union
 
@@ -227,11 +228,21 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     target_file_for_output_param[param] = x
                     python_outputs[param] = LatchFile
 
+                @dataclass
+                class JobOutputInfo:
+                    jobid: str
+                    output_param_name: str
+
                 dep_outputs = {}
                 for dep, dep_files in self._dag.dependencies[job].items():
                     for o in dep.output:
                         if o in dep_files:
-                            dep_outputs[o] = dep.jobid
+                            dep_outputs[o] = JobOutputInfo(
+                                jobid=dep.jobid,
+                                output_param_name=variable_name_for_value(
+                                    o, dep.output
+                                ),
+                            )
 
                 python_inputs: Dict[str, Type] = {}
                 promise_map: Dict[str, str] = {}
@@ -261,11 +272,12 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
                     var = typed_interface.inputs[k]
                     if var.description in promise_map:
+                        job_output_info = promise_map[var.description]
                         promise_to_bind = Promise(
                             var=k,
                             val=NodeOutput(
-                                node=node_map[promise_map[var.description]],
-                                var=var.description,
+                                node=node_map[job_output_info.jobid],
+                                var=job_output_info.output_param_name,
                             ),
                         )
                     else:
