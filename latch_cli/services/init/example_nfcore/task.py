@@ -7,9 +7,7 @@ from latch.types import LatchDir, LatchFile, LatchOutputDir
 
 
 @medium_task
-def run_nfcore_fetchngs(
-    ids: LatchFile, output_directory: LatchOutputDir
-) -> LatchDir:
+def run_nfcore_fetchngs(ids: LatchFile, output_directory: LatchOutputDir) -> LatchDir:
     outdir = Path("/root/outputs").resolve()
     outdir.mkdir(exist_ok=True)
 
@@ -26,7 +24,7 @@ def run_nfcore_fetchngs(
     ]
 
     try:
-        subprocess.run(" ".join(nfcore_cmd), check=True, capture_output=True)
+        subprocess.run(nfcore_cmd, check=True, capture_output=True)
     except subprocess.CalledProcessError as e:
         stderr = e.stderr.decode("utf-8")
         if stderr:
