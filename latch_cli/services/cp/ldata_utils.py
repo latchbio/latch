@@ -8,7 +8,11 @@ import gql
 
 from latch_cli.config.user import user_config
 from latch_cli.services.cp.exceptions import PathResolutionError
-from latch_cli.services.cp.path_utils import is_account_relative, normalize_path
+from latch_cli.services.cp.path_utils import (
+    append_scheme,
+    is_account_relative,
+    normalize_path,
+)
 from latch_cli.services.cp.utils import get_auth_header
 
 auth = re.compile(
@@ -96,6 +100,9 @@ def get_node_data(
         final_link_target = node["ldataNode"]["finalLinkTarget"]
         remaining = node["path"]
 
+        if final_link_target is None:
+            raise ValueError("Cannot resolve path")
+
         is_parent = remaining is not None and remaining != ""
 
         if not allow_resolve_to_parent and is_parent:
@@ -110,7 +117,7 @@ def get_node_data(
             is_parent=is_parent,
         )
 
-    except (TypeError, ValueError) as e:
+    except ValueError as e:
         auth_header = get_auth_header()
         match = auth.match(auth_header)
         if match is None:
@@ -139,7 +146,7 @@ def get_node_data(
             ws_str = f"{ws_str} ({ws_name})"
         ws_str += "\n"
 
-        account_relative = is_account_relative(normalized)
+        account_relative = is_account_relative(append_scheme(remote_path))
 
         raise PathResolutionError(
             click.style(
@@ -155,4 +162,4 @@ def get_node_data(
 For privacy reasons, non-viewable objects and non-existent objects are indistinguishable""",
                 fg="red",
             )
-        )
+        ) from e

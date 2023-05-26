@@ -56,28 +56,31 @@ class _UserConfig:
     @property
     def workspace_id(self) -> str:
         try:
-            with open(self.workspace_path, "r") as f:
-                s = f.read().strip()
-
+            s = self.workspace_path.read_text().strip()
+            try:
+                ret = json.loads(s)
+                return ret["workspace_id"]
+            except (json.decoder.JSONDecodeError, TypeError):
                 try:
-                    ret = json.loads(s)
-                    return ret["workspace_id"]
-                except (json.decoder.JSONDecodeError, TypeError):
-                    return s
+                    int(s)
+                except ValueError as e:
+                    raise ValueError(
+                        "Corrupted workspace configuration - please run `latch"
+                        " workspace` to reset."
+                    ) from e
+                return s
         except FileNotFoundError:
             return ""
 
     @property
     def workspace_name(self) -> Optional[str]:
         try:
-            with open(self.workspace_path, "r") as f:
-                s = f.read().strip()
-
-                try:
-                    ret = json.loads(s)
-                    return ret["name"]
-                except (json.decoder.JSONDecodeError, TypeError):
-                    return None
+            s = self.workspace_path.read_text().strip()
+            try:
+                ret = json.loads(s)
+                return ret["name"]
+            except (json.decoder.JSONDecodeError, TypeError):
+                return None
         except FileNotFoundError:
             return ""
 

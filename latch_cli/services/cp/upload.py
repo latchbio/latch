@@ -83,7 +83,7 @@ def upload(
         num_bars = 0
         show_total_progress = True
     else:
-        num_bars = config.max_concurrent_files
+        num_bars = min(get_max_workers(), 8)
         show_total_progress = True
 
     with (
@@ -135,7 +135,6 @@ def upload(
                             start_upload,
                             job.src,
                             job.dest,
-                            config.chunk_size,
                             url_generation_bar,
                         )
                     )
@@ -215,7 +214,7 @@ def upload(
                 pbar_index = progress_bars.get_free_task_bar_index()
 
                 start = time.monotonic()
-                res = start_upload(src_path, dest, config.chunk_size)
+                res = start_upload(src_path, dest)
 
                 if res is not None:
                     progress_bars.set(pbar_index, res.src.stat().st_size, res.src.name)
@@ -267,7 +266,6 @@ class StartUploadReturnType:
 def start_upload(
     src: Path,
     dest: str,
-    chunk_size: int,
     progress_bars: Optional[ProgressBars] = None,
 ) -> Optional[StartUploadReturnType]:
     if not src.exists():
@@ -296,10 +294,10 @@ def start_upload(
 
     part_count = min(
         latch_constants.maximum_upload_parts,
-        math.ceil(file_size / chunk_size),
+        math.ceil(file_size / latch_constants.file_chunk_size),
     )
     part_size = max(
-        chunk_size,
+        latch_constants.file_chunk_size,
         math.ceil(file_size / latch_constants.maximum_upload_parts),
     )
 

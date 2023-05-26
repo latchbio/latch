@@ -210,14 +210,6 @@ def init(
 @click.argument("src")
 @click.argument("dest")
 @click.option(
-    "--max-concurrent-files",
-    "--mcf",
-    help="Maximum number of files to copy concurrently.",
-    type=int,
-    default=4,
-    show_default=True,
-)
-@click.option(
     "--progress",
     help="Type of progress information to show while copying",
     type=EnumChoice(Progress, case_sensitive=False),
@@ -232,27 +224,11 @@ def init(
     default=False,
     show_default=True,
 )
-@click.option(
-    "--chunk-size",
-    help=(
-        "Chunk size (in bytes) to use when copying. Must be between 5 MiB and 5 GiB"
-        " inclusive. Any value outside of this range will be clamped."
-    ),
-    type=click.IntRange(
-        min=5 * units.MiB,
-        max=5 * units.GiB,
-        clamp=True,
-    ),
-    default=latch_constants.file_chunk_size,
-    show_default=True,
-)
 def cp(
     src: str,
     dest: str,
-    max_concurrent_files: int,
     progress: Progress,
     verbose: bool,
-    chunk_size: int,
 ):
     """Copy local files to LatchData and vice versa."""
 
@@ -264,10 +240,8 @@ def cp(
     cp(
         src,
         dest,
-        max_concurrent_files=max_concurrent_files,
         progress=progress,
         verbose=verbose,
-        chunk_size=chunk_size,
     )
 
 

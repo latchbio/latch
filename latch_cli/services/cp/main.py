@@ -6,23 +6,20 @@ from latch_cli.services.cp.path_utils import is_remote_path
 from latch_cli.services.cp.upload import upload
 
 
+# todo(ayush): come up with a better behavior scheme than unix cp
 def cp(
     src: str,
     dest: str,
     *,
-    max_concurrent_files: int,
     progress: Progress,
     verbose: bool,
-    chunk_size: int,
 ):
     src_remote = is_remote_path(src)
     dest_remote = is_remote_path(dest)
 
     config = CPConfig(
-        max_concurrent_files=max_concurrent_files,
         progress=progress,
         verbose=verbose,
-        chunk_size=chunk_size,
     )
 
     if src_remote and not dest_remote:

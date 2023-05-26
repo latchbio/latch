@@ -1,11 +1,12 @@
 import re
 import urllib.parse
+from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
 from latch_cli.services.cp.exceptions import PathResolutionError
 
 # todo(ayush): need a better way to check if "latch" has been appended to urllib
-if urllib.parse.uses_netloc[-1] != "latch":
+if "latch" not in urllib.parse.uses_netloc:
     urllib.parse.uses_netloc.append("latch")
     urllib.parse.uses_relative.append("latch")
 
@@ -65,16 +66,20 @@ scheme = re.compile(
 )
 domain = re.compile(
     r"""
-    ^(
-        | # empty
-        (?P<account_relative>
+    (?P<account_relative>
+        ^$| # empty
+        (?P<shared>^shared$)
+    ) |
+    (
+        ^
+        (
+            (shared\.\d+\.account) |
             (\d+\.account) |
-            (?P<shared>shared) |
-            (shared\.\d+\.account)
-        ) |
-        ([^/]+\.mount) |
-        (\d+\.node)
-    )$
+            ([^/]+\.mount) |
+            (\d+\.node)
+        )
+        $
+    )
     """,
     re.VERBOSE,
 )
@@ -83,7 +88,7 @@ domain = re.compile(
 # scheme inference rules:
 #   ://domain/a/b/c => latch://domain/a/b/c
 #   /a/b/c => file:///a/b/c
-#   a/b/c => file:///a/b/c
+#   a/b/c => file://${pwd}/a/b/c
 def append_scheme(path: str) -> str:
     match = scheme.match(path)
     if match is None:
@@ -94,7 +99,7 @@ def append_scheme(path: str) -> str:
     elif match["absolute_path"] is not None:
         path = f"file://{path}"
     elif match["relative_path"] is not None:
-        path = f"file:///{path}"
+        path = f"file://{Path.cwd()}/{path}"
 
     return path
 

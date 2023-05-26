@@ -47,7 +47,7 @@ def download(
     config: CPConfig,
 ):
     normalized = normalize_path(src)
-    node_data = get_node_data(normalized)
+    node_data = get_node_data(src)
 
     can_have_children = node_data.type in {
         LDataNodeType.account_root,
@@ -88,15 +88,15 @@ def download(
 
         unconfirmed_jobs: List[DownloadJob] = []
         confirmed_jobs: List[DownloadJob] = []
-        rejected_jobs: Set[DownloadJob] = set()
+        rejected_jobs: Set[Path] = set()
 
         for rel_path, url in dir_data["urls"].items():
             unconfirmed_jobs.append(DownloadJob(url, dest / rel_path))
 
         for job in unconfirmed_jobs:
             reject_job = False
-            for rejected in rejected_jobs:
-                if rejected.dest.parent in job.dest.parents:
+            for parent in job.dest.parents:
+                if parent in rejected_jobs:
                     reject_job = True
                     break
 
@@ -115,7 +115,7 @@ def download(
                     job.dest.parent.mkdir(parents=True, exist_ok=True)
                     confirmed_jobs.append(job)
                 else:
-                    rejected_jobs.add(job)
+                    rejected_jobs.add(job.dest.parent)
 
         num_files = len(confirmed_jobs)
 
@@ -126,7 +126,7 @@ def download(
             num_bars = 0
             show_total_progress = True
         else:
-            num_bars = min(config.max_concurrent_files, num_files)
+            num_bars = min(get_max_workers(), num_files, 8)
             show_total_progress = True
 
         with ProgressBarManager() as manager:
@@ -199,18 +199,17 @@ def download_file(
     job: DownloadJob,
     progress_bars: ProgressBars,
 ) -> int:
-    signed_url = job.signed_url
-    dest = job.dest
-
     # todo(ayush): benchmark parallelized downloads using the range header
-    with open(dest, "wb") as f:
-        res = tinyrequests.get(signed_url, stream=True)
+    with open(job.dest, "wb") as f:
+        res = tinyrequests.get(job.signed_url, stream=True)
 
         total_bytes = res.headers.get("Content-Length")
         assert total_bytes is not None, "Must have a content-length header"
 
         with get_free_index(progress_bars) as pbar_index:
-            progress_bars.set(index=pbar_index, total=int(total_bytes), desc=dest.name)
+            progress_bars.set(
+                index=pbar_index, total=int(total_bytes), desc=job.dest.name
+            )
 
             start = time.monotonic()
             try:
@@ -221,8 +220,8 @@ def download_file(
                 end = time.monotonic()
                 progress_bars.update_total_progress(1)
                 progress_bars.write(
-                    f"Downloaded {dest.name} ({with_si_suffix(int(total_bytes))}) in"
-                    f" {human_readable_time(end - start)}"
+                    f"Downloaded {job.dest.name} ({with_si_suffix(int(total_bytes))})"
+                    f" in {human_readable_time(end - start)}"
                 )
 
         return int(total_bytes)

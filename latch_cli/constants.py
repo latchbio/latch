@@ -2,13 +2,10 @@
 
 import re
 from dataclasses import dataclass
-from typing import ClassVar, Optional
-
-from typing_extensions import Self
+from enum import Enum
 
 
-@dataclass(frozen=True)
-class Units:
+class Units(int, Enum):
     KiB = 2**10
     kB = 10**3
 
@@ -21,16 +18,8 @@ class Units:
     TiB = 2**40
     TB = 10**12
 
-    _singleton: ClassVar[Optional["Units"]] = None
 
-    def __new__(cls) -> Self:
-        if cls._singleton is None:
-            cls._singleton = super().__new__(cls)
-
-        return cls._singleton
-
-
-units = Units()
+units = Units
 
 
 @dataclass(frozen=True)

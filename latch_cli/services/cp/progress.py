@@ -35,7 +35,6 @@ class ProgressBars:
         self.total_sema = BoundedSemaphore(1)
 
         self.verbose = verbose
-        self.verbose_sema = BoundedSemaphore(1)
 
         self.task_bars: List[tqdm.tqdm] = [
             get_progress_bar() for _ in range(num_task_bars)
@@ -52,8 +51,7 @@ class ProgressBars:
         if not self.verbose:
             return
 
-        with self.verbose_sema:
-            tqdm.tqdm.write(msg)
+        tqdm.tqdm.write(msg)
 
     def get_free_task_bar_index(self) -> Optional[int]:
         if len(self.task_bars) == 0:
