@@ -62,7 +62,7 @@ class _UserConfig:
                 try:
                     ret = json.loads(s)
                     return ret["workspace_id"]
-                except json.decoder.JSONDecodeError:
+                except (json.decoder.JSONDecodeError, TypeError):
                     return s
         except FileNotFoundError:
             return ""
@@ -76,7 +76,7 @@ class _UserConfig:
                 try:
                     ret = json.loads(s)
                     return ret["name"]
-                except json.decoder.JSONDecodeError:
+                except (json.decoder.JSONDecodeError, TypeError):
                     return None
         except FileNotFoundError:
             return ""
