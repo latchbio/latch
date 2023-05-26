@@ -11,6 +11,7 @@ import click
 
 from latch_cli import tinyrequests
 from latch_cli.config.latch import config as latch_config
+from latch_cli.constants import Units
 from latch_cli.services.cp.config import CPConfig, Progress
 from latch_cli.services.cp.ldata_utils import LDataNodeType, get_node_data
 from latch_cli.services.cp.path_utils import normalize_path
@@ -213,7 +214,9 @@ def download_file(
 
             start = time.monotonic()
             try:
-                for data in res.iter_content(chunk_size=None):
+                for data in res.iter_content(
+                    chunk_size=5 * Units.MiB
+                ):  # todo(ayush): figure out why chunk_size = None breaks in pods
                     f.write(data)
                     progress_bars.update(pbar_index, len(data))
             finally:
