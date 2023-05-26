@@ -4,9 +4,12 @@ config.latch
 Platform wide configuration, eg. api endpoints, callback server ports...
 """
 
+# todo(ayush): put all configs into a `latch-config` package
+
 import os
 from dataclasses import dataclass, fields, is_dataclass
 from typing import Type, TypeVar
+from urllib.parse import urljoin
 
 DOMAIN = os.environ.get("LATCH_SDK_DOMAIN", "latch.bio")
 CONSOLE_URL = f"https://console.{DOMAIN}"
@@ -18,9 +21,6 @@ T = TypeVar("T")
 
 @dataclass
 class _DataAPI:
-    begin_upload: str = "/sdk/initiate-multipart-upload"
-    complete_upload: str = "/sdk/complete-multipart-upload"
-    download: str = "/sdk/download"
     id: str = "/sdk/node-id"
     list: str = "/sdk/list"
     remove: str = "/sdk/rm"
@@ -28,6 +28,11 @@ class _DataAPI:
     mkdir: str = "/sdk/mkdir"
     verify: str = "/sdk/verify"
     test_data: str = "/sdk/get-test-data-creds"
+
+    get_signed_url: str = "/ldata/get-signed-url"
+    get_signed_urls_recursive: str = "/ldata/get-signed-urls-recursive"
+    start_upload: str = "/ldata/start-upload"
+    end_upload: str = "/ldata/end-upload"
 
 
 @dataclass
@@ -78,7 +83,7 @@ class _API:
 
 @dataclass
 class _ConsoleRoutes:
-    developer: str = f"{CONSOLE_URL}/settings/developer"
+    developer: str = urljoin(CONSOLE_URL, "/settings/developer")
 
 
 @dataclass
@@ -92,15 +97,15 @@ class _LatchConfig:
     vacuole_url: str = VACUOLE_URL
 
 
-def build_endpoints(x: Type[T] = _API) -> T:
+def build_endpoints(x: Type[T]) -> T:
     res = {}
     for field in fields(x):
         if is_dataclass(field.type):
             res[field.name] = build_endpoints(field.type)
         elif field.type is str:
-            res[field.name] = NUCLEUS_URL + field.default
+            res[field.name] = urljoin(NUCLEUS_URL, str(field.default))
     return x(**res)
 
 
 # singleton config instance
-config = _LatchConfig(api=build_endpoints())
+config = _LatchConfig(api=build_endpoints(_API))

@@ -1,14 +1,14 @@
 import subprocess
 from pathlib import Path
 
-from latch import small_task
 from latch.functions.messages import message
-from latch.types import LatchFile, LatchOutputDir
+from latch.resources.tasks import small_task
+from latch.types.directory import LatchOutputDir
+from latch.types.file import LatchFile
 
 
 @small_task
 def sort_bam_task(sam: LatchFile, output_directory: LatchOutputDir) -> LatchFile:
-
     bam_file = Path("covid_sorted.bam").resolve()
 
     samtools_sort_cmd = [

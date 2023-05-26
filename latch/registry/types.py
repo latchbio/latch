@@ -8,7 +8,8 @@ from typing_extensions import TypeAlias
 from latch.registry.record import Record
 from latch.registry.upstream_types.types import DBType
 from latch.registry.upstream_types.values import EmptyCell
-from latch.types import LatchDir, LatchFile
+from latch.types.directory import LatchDir
+from latch.types.file import LatchFile
 
 if not TYPE_CHECKING:
     try:

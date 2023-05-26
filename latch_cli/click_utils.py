@@ -1,7 +1,22 @@
-from typing import IO, Optional, Sequence, Tuple
+from enum import Enum
+from typing import IO, Any, Optional, Sequence, Tuple, Type
 
-from click import Command, Context, Group, HelpFormatter, echo, style
+from click import Choice, Command, Context, Group, HelpFormatter, Parameter, echo, style
 from click._compat import get_text_stderr
+
+
+class EnumChoice(Choice):
+    def __init__(self, choices: Type[Enum], case_sensitive: bool = True):
+        self.enum = choices
+        return super().__init__(choices._member_names_, case_sensitive)
+
+    def convert(
+        self, value: Any, param: Optional[Parameter], ctx: Optional[Context]
+    ) -> Any:
+        ret = super().convert(value, param, ctx)
+        return self.enum(ret)
+
+    # todo(ayush): override `shell_complete` once we support it
 
 
 class ColoredHelpFormatter(HelpFormatter):

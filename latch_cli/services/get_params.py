@@ -15,7 +15,8 @@ from flyteidl.core.types_pb2 import LiteralType as _LiteralType
 from flytekit.models.literals import Literal
 from flytekit.models.types import LiteralType
 
-from latch.types import LatchDir, LatchFile
+from latch.types.directory import LatchDir
+from latch.types.file import LatchFile
 from latch_cli.services.launch import _get_workflow_interface
 from latch_cli.utils import retrieve_or_login
 

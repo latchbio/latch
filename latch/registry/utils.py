@@ -16,7 +16,8 @@ from latch.registry.upstream_types.types import (
     RegistryType,
 )
 from latch.registry.upstream_types.values import DBValue
-from latch.types import LatchDir, LatchFile
+from latch.types.directory import LatchDir
+from latch.types.file import LatchFile
 from latch_cli.config.user import user_config
 
 # todo(maximsmol): hopefully, PyLance eventually narrows `TypedDict`` unions using `in`
@@ -326,7 +327,7 @@ def to_registry_literal(
                 "cannot convert non-blob python literal to registry blob"
             )
 
-        ws_id = user_config.workspace
+        ws_id = user_config.workspace_id
         if ws_id == "":
             ws_id = None
 

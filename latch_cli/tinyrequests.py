@@ -105,17 +105,36 @@ def get(
     url: str,
     *,
     headers: Dict[str, str] = {},
+    data: Optional[bytes] = None,
     json: Optional[Any] = None,
     stream: bool = False,
 ):
-    return request("GET", url, headers=headers, json=json, stream=stream)
+    assert data is None or json is None, "At most one of `data` and `json` can be set"
+
+    return request("GET", url, headers=headers, data=data, json=json, stream=stream)
+
+
+def put(
+    url: str,
+    *,
+    headers: Dict[str, str] = {},
+    data: Optional[bytes] = None,
+    json: Optional[Any] = None,
+    stream: bool = False,
+):
+    assert data is None or json is None, "At most one of `data` and `json` can be set"
+
+    return request("PUT", url, headers=headers, data=data, json=json, stream=stream)
 
 
 def post(
     url: str,
     *,
     headers: Dict[str, str] = {},
+    data: Optional[bytes] = None,
     json: Optional[Any] = None,
     stream: bool = False,
 ):
-    return request("POST", url, headers=headers, json=json, stream=stream)
+    assert data is None or json is None, "At most one of `data` and `json` can be set"
+
+    return request("POST", url, headers=headers, data=data, json=json, stream=stream)

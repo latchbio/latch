@@ -3,7 +3,6 @@ from dataclasses import is_dataclass
 from textwrap import dedent
 from typing import Callable, Union, get_args, get_origin
 
-import typing_inspect
 from flytekit import workflow as _workflow
 from flytekit.core.workflow import PythonFunctionWorkflow
 

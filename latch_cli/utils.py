@@ -8,11 +8,9 @@ from pathlib import Path
 from typing import List
 
 import jwt
-from docker.utils import exclude_paths
 
 from latch_cli.config.user import user_config
 from latch_cli.constants import latch_constants
-from latch_cli.services.login import login
 from latch_cli.tinyrequests import get
 
 
@@ -23,6 +21,8 @@ def retrieve_or_login() -> str:
         A JWT
     """
 
+    from latch_cli.services.login import login
+
     token = user_config.token
     if token == "":
         token = login()
@@ -30,10 +30,10 @@ def retrieve_or_login() -> str:
 
 
 def current_workspace() -> str:
-    ws = user_config.workspace
+    ws = user_config.workspace_id
     if ws == "":
         ws = account_id_from_token(retrieve_or_login())
-        user_config.update_workspace(ws)
+        user_config.update_workspace(ws, "Personal Workspace")
     return ws
 
 
@@ -131,6 +131,8 @@ def hash_directory(dir_path: Path) -> str:
             exclude.append(l)
     except FileNotFoundError:
         print("No .dockerignore file found --- including all files")
+
+    from docker.utils import exclude_paths
 
     paths = list(exclude_paths(dir_path, exclude))
     paths.sort()

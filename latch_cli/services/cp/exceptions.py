@@ -1,0 +1,6 @@
+class PathResolutionError(ValueError):
+    ...
+
+
+class AuthenticationError(RuntimeError):
+    ...
