@@ -41,14 +41,14 @@ def workspace():
         options=options,
     )
 
-    if not selected_option:
+    if selected_option is None:
         return
 
     new_id = ids[selected_option]
+    user_config.update_workspace(new_id, selected_option)
 
     old_id = current_workspace()
     if old_id != new_id:
-        user_config.update_workspace(new_id)
         click.secho(f"Successfully switched to context {selected_option}", fg="green")
     else:
         click.secho(f"Already in context {selected_option}.", fg="green")

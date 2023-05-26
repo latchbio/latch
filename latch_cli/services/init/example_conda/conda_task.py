@@ -1,14 +1,16 @@
 import subprocess
-
-from latch import small_task
-from latch.types import LatchFile, LatchOutputDir
 from typing import List
 
-def run(command: List[str], check: bool = True, capture_output: bool = False):
+from latch.resources.tasks import small_task
+from latch.types.directory import LatchOutputDir
+from latch.types.file import LatchFile
 
+
+def run(command: List[str], check: bool = True, capture_output: bool = False):
     cmd = ["conda", "run", "--name", "example", "/bin/bash", "-c", " ".join(command)]
 
     return subprocess.run(cmd, check=check, capture_output=capture_output)
+
 
 # change the name of this function to something more descriptive
 @small_task

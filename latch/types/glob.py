@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import List, Optional
 
-from latch.types import LatchFile
+from latch.types.file import LatchFile
 from latch.types.utils import _is_valid_url
 
 

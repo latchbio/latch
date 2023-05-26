@@ -1,9 +1,8 @@
-import json
 import re
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from textwrap import indent
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import yaml
 

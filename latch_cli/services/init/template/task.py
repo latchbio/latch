@@ -1,5 +1,6 @@
-from latch import small_task
-from latch.types import LatchFile, LatchOutputDir
+from latch.resources.tasks import small_task
+from latch.types.directory import LatchOutputDir
+from latch.types.file import LatchFile
 
 
 @small_task

@@ -1,13 +1,9 @@
 from wf.task import task
 
-from latch import workflow
-from latch.types import (
-    LatchAuthor,
-    LatchFile,
-    LatchMetadata,
-    LatchOutputDir,
-    LatchParameter,
-)
+from latch.resources.workflow import workflow
+from latch.types.directory import LatchOutputDir
+from latch.types.file import LatchFile
+from latch.types.metadata import LatchAuthor, LatchMetadata, LatchParameter
 
 metadata = LatchMetadata(
     display_name="WF_NAME",
