@@ -111,6 +111,6 @@ Here, you can select the table of interest and samples to be used in the workflo
 The types of the fields of the Python `dataclass` used in the sample sheet input determine which Registry columns will be available for import. The names of the fields only server to inform the default assignment of columns to fields.
 For example, the Registry table in the screenshot above has three columns: "Name", "r1", and "r2", which have the types "Text", "File", and "File", respectively. The `Sample` `dataclass` has matching fields: `name: str`, `r1: LatchFile`, and `r2: LatchFile`. If the Registry used the "Text" type for column "r1", it would not be available for matching with the `r1` field.
 
-![A preview of the sample sheet component on the workflow GUI](../assets/registry/match-columns.png)
+![A screenshot of the column matching stage of the "Import from registry" modal. It shows the dataclass fields on the left and a selector for Registry columns on the right](../assets/registry/match-columns.png)
 
 To learn more about how to create columns with specific types in Registry, visit our [Registry Wiki here](https://latch.wiki/create-a-table).
