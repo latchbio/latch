@@ -189,8 +189,8 @@ def download(
         f"""
 {click.style("Download Complete", fg="green")}
 
-{click.style("Time Elapsed: ", fg="blue")}: {human_readable_time(total_time)}
-{click.style("Files Downloaded: ", fg="blue")}: {num_files} ({with_si_suffix(total_bytes)})"""
+{click.style("Time Elapsed: ", fg="blue")}{human_readable_time(total_time)}
+{click.style("Files Downloaded: ", fg="blue")}{num_files} ({with_si_suffix(total_bytes)})"""
     )
 
 

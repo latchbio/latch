@@ -15,17 +15,29 @@ Types of changes
 -->
 # Latch SDK Changelog
 
-## 2.19.12 - 2023-05-26
-
-### Changed 
-
-- Replace docker example workflow with blastp
-- Docker image selection when creating an empty workflow 
-- Workflow Name, Author Name prompts when creating an empty workflow 
+## 2.20.3 - 2023-05-26
 
 ### Added
 
 - NFCore example workflow
+
+### Changed
+
+- Replace docker example workflow with blastp
+- Docker image selection when creating an empty workflow
+- Workflow Name, Author Name prompts when creating an empty workflow
+
+- `latch cp` has been rewritten and now allows for latch paths of the form
+  - `latch:///a/b/c`
+  - `latch://xxx.account/a/b/c` where `xxx` is the account ID
+  - `latch://shared.xxx.account/a/b/c`
+  - `latch://shared/a/b/c`
+  - `latch://mount/a/b/c`
+  - `latch://xxx.node` where `xxx` is the data ID (viewable in Latch Console)
+
+### Removed
+
+- Unnecessary imports in `__init__.py` files have been removed. Statements like `from latch.types import LatchFile` will no longer work, and such objects should be imported from their defining files instead (in this example, the correct import is `from latch.types.file import LatchFile`)
 
 ## 2.19.11 - 2023-05-16
 

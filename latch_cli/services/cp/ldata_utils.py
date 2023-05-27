@@ -100,9 +100,6 @@ def get_node_data(
         final_link_target = node["ldataNode"]["finalLinkTarget"]
         remaining = node["path"]
 
-        if final_link_target is None:
-            raise ValueError("Cannot resolve path")
-
         is_parent = remaining is not None and remaining != ""
 
         if not allow_resolve_to_parent and is_parent:
@@ -117,7 +114,7 @@ def get_node_data(
             is_parent=is_parent,
         )
 
-    except ValueError as e:
+    except (TypeError, ValueError) as e:
         auth_header = get_auth_header()
         match = auth.match(auth_header)
         if match is None:

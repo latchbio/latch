@@ -214,7 +214,7 @@ def upload(
                 pbar_index = progress_bars.get_free_task_bar_index()
 
                 start = time.monotonic()
-                res = start_upload(src_path, dest)
+                res = start_upload(src_path, normalized)
 
                 if res is not None:
                     progress_bars.set(pbar_index, res.src.stat().st_size, res.src.name)
@@ -236,7 +236,7 @@ def upload(
                     wait(chunk_futs)
 
                     end_upload(
-                        dest,
+                        normalized,
                         res.upload_id,
                         [fut.result() for fut in chunk_futs],
                     )
@@ -248,8 +248,8 @@ def upload(
         f"""
 {click.style("Upload Complete", fg="green")}
 
-{click.style("Time Elapsed: ", fg="blue")}: {human_readable_time(total_time)}
-{click.style("Files Downloaded: ", fg="blue")}: {num_files} ({with_si_suffix(total_bytes)})"""
+{click.style("Time Elapsed: ", fg="blue")}{human_readable_time(total_time)}
+{click.style("Files Downloaded: ", fg="blue")}{num_files} ({with_si_suffix(total_bytes)})"""
     )
 
 
