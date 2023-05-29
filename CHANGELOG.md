@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.21.6
+
+### Dependencies
+
+- Upgraded dependency `lytekit` to version `0.14.11`.
+
 ## 2.21.5
 
 ### Fixed
