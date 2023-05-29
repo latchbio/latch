@@ -2,9 +2,10 @@ import subprocess
 from pathlib import Path
 from typing import List
 
-from latch import small_task
 from latch.functions.messages import message
-from latch.types import LatchFile, LatchOutputDir
+from latch.resources.tasks import small_task
+from latch.types.directory import LatchOutputDir
+from latch.types.file import LatchFile
 
 
 def run(cmd: List[str]):
