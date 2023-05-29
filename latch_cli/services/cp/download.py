@@ -48,7 +48,9 @@ def download(
     config: CPConfig,
 ):
     normalized = normalize_path(src)
-    node_data = get_node_data(src)
+    _, data = get_node_data(src)
+
+    node_data = data[src]
 
     can_have_children = node_data.type in {
         LDataNodeType.account_root,

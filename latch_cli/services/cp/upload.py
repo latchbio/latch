@@ -57,7 +57,8 @@ def upload(
     if not src_path.exists():
         raise ValueError(f"Could not find {src_path}.")
 
-    dest_data = get_node_data(dest, allow_resolve_to_parent=True)
+    _, data = get_node_data(dest, allow_resolve_to_parent=True)
+    dest_data = data["dest"]
     normalized = normalize_path(dest)
 
     dest_exists = not dest_data.is_parent
