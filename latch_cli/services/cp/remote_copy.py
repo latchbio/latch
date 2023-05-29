@@ -2,7 +2,7 @@ import click
 import gql
 
 from latch.gql._execute import execute
-from latch_cli.services.cp.ldata_utils import get_node_data
+from latch_cli.services.cp.ldata_utils import LDataNodeType, get_node_data
 from latch_cli.services.cp.path_utils import get_path_error
 
 
@@ -13,20 +13,32 @@ def remote_copy(
 ):
     acc_id, data = get_node_data(src, dest, allow_resolve_to_parent=True)
 
-    if data[src].is_parent:
+    src_data = data[src]
+    dest_data = data[dest]
+
+    if src_data.is_parent:
         raise get_path_error(dest, "not found", acc_id)
-    if not data[dest].is_parent:
-        raise get_path_error(
-            dest, "node already exists at path, refusing to copy", acc_id
-        )
+    if not dest_data.is_parent:
+        dest_data.type in {
+            LDataNodeType.account_root,
+            LDataNodeType.dir,
+            LDataNodeType.mount,
+        }
 
     execute(
         gql.gql("""
-        mutation Copy($argSrcNode: BigInt!, $argDstParent: BigInt!) {
-            ldataCopy(input: {
-                argSrcNode: $argSrcNode,
-                argDstParent: $argDstParent
-            }) {
+        mutation Copy(
+            $argSrcNode: BigInt!
+            $argDstParent: BigInt!
+            $argNewName: String
+        ) {
+            ldataCopy(
+                input: {
+                    argSrcNode: $argSrcNode
+                    argDstParent: $argDstParent
+                    argNewName: $argNewName
+                }
+            ) {
                 clientMutationId
             }
         }"""),
