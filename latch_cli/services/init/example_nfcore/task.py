@@ -1,9 +1,10 @@
 import subprocess
 from pathlib import Path
 
-from latch import medium_task
 from latch.functions.messages import message
-from latch.types import LatchDir, LatchFile, LatchOutputDir
+from latch.resources.tasks import medium_task
+from latch.types.directory import LatchDir, LatchOutputDir
+from latch.types.file import LatchFile
 
 
 @medium_task

@@ -15,7 +15,13 @@ Types of changes
 -->
 # Latch SDK Changelog
 
-## 2.20.3 - 2023-05-26
+## 2.21.4
+
+### Fixed
+
+- Imports in docker/NF-core template workflows have been updated to reflect the import changes outlined in the previous version.
+
+## 2.21.3 - 2023-05-26
 
 ### Added
 
