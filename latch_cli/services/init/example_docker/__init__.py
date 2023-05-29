@@ -7,16 +7,11 @@ For examples on how to use docker in Latch, see https://docs.latch.bio/examples/
 
 from wf.task import blastp_task
 
-from latch import workflow
 from latch.resources.launch_plan import LaunchPlan
-from latch.types import (
-    LatchAuthor,
-    LatchFile,
-    LatchMetadata,
-    LatchOutputDir,
-    LatchParameter,
-)
-from latch.types.metadata import LatchRule
+from latch.resources.workflow import workflow
+from latch.types.directory import LatchOutputDir
+from latch.types.file import LatchFile
+from latch.types.metadata import LatchAuthor, LatchMetadata, LatchParameter, LatchRule
 
 metadata = LatchMetadata(
     display_name="biocontainers/blastp",
