@@ -6,17 +6,11 @@ For examples on how to use nextflow in Latch, see https://docs.latch.bio/example
 """
 from wf.task import run_nfcore_fetchngs
 
-from latch import workflow
 from latch.resources.launch_plan import LaunchPlan
-from latch.types import (
-    LatchAuthor,
-    LatchFile,
-    LatchMetadata,
-    LatchOutputDir,
-    LatchParameter,
-)
-from latch.types.directory import LatchDir
-from latch.types.metadata import LatchRule
+from latch.resources.workflow import workflow
+from latch.types.directory import LatchDir, LatchOutputDir
+from latch.types.file import LatchFile
+from latch.types.metadata import LatchAuthor, LatchMetadata, LatchParameter, LatchRule
 
 """The metadata included here will be injected into your interface."""
 metadata = LatchMetadata(
