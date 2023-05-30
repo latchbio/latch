@@ -4,14 +4,23 @@ from gql.transport.exceptions import TransportQueryError
 
 from latch.gql._execute import execute
 from latch_cli.services.cp.ldata_utils import LDataNodeType, get_node_data
-from latch_cli.services.cp.path_utils import get_name_from_path, get_path_error
+from latch_cli.services.cp.path_utils import (
+    get_name_from_path,
+    get_path_error,
+    is_remote_path,
+)
 
 
-# todo(ayush): figure out how to do progress for this
-def remote_copy(
+def move(
     src: str,
     dest: str,
 ):
+    if not (is_remote_path(src) and is_remote_path(dest)):
+        raise ValueError(
+            f"`latch mv` cannot be used for local file operations. Please make sure"
+            f" both of your input paths are remote (beginning with `latch://`)"
+        )
+
     acc_id, data = get_node_data(src, dest, allow_resolve_to_parent=True)
 
     src_data = data[src]
@@ -28,18 +37,20 @@ def remote_copy(
     elif dest_data.type in {LDataNodeType.obj, LDataNodeType.link}:
         raise get_path_error(dest, "object already exists at path.", acc_id)
 
+    success_msg = "Move Succeeded."
+
     try:
         execute(
             gql.gql("""
-            mutation Copy(
-                $argSrcNode: BigInt!
-                $argDstParent: BigInt!
+            mutation Move(
+                $argNode: BigInt!
+                $argDestParent: BigInt!
                 $argNewName: String
             ) {
-                ldataCopy(
+                ldataMove(
                     input: {
-                        argSrcNode: $argSrcNode
-                        argDstParent: $argDstParent
+                        argNode: $argNode
+                        argDestParent: $argDestParent
                         argNewName: $argNewName
                     }
                 ) {
@@ -47,8 +58,8 @@ def remote_copy(
                 }
             }"""),
             {
-                "argSrcNode": src_data.id,
-                "argDstParent": dest_data.id,
+                "argNode": src_data.id,
+                "argDestParent": dest_data.id,
                 "argNewName": new_name,
             },
         )
@@ -74,19 +85,28 @@ def remote_copy(
                 path = dest
 
             raise get_path_error(path, f"is a share link.", acc_id) from e
-        elif msg.startswith("Refusing to copy account root"):
+        elif msg.startswith("Refusing to move account root"):
             raise get_path_error(src, "is an account root.", acc_id) from e
-        elif msg.startswith("Refusing to copy removed node"):
+        elif msg.startswith("Refusing to move removed node"):
             raise get_path_error(src, "not found.", acc_id) from e
-        elif msg.startswith("Refusing to copy already in-transit node"):
-            raise get_path_error(src, "copy already in progress.", acc_id) from e
+        elif msg.startswith("Refusing to move already moved node"):
+            raise get_path_error(
+                src,
+                (
+                    "copy in progress. Please wait until the node has finished copying"
+                    " before moving."
+                ),
+                acc_id,
+            ) from e
         elif msg == "Conflicting object in destination":
             raise get_path_error(dest, "object exists at path.", acc_id) from e
-
-        raise e
+        elif msg.startswith("Refusing to do noop move"):
+            success_msg = "No Nodes Moved."
+        else:
+            raise e
 
     click.echo(f"""
-{click.style("Copy Requested.", fg="green")}
+{click.style(success_msg, fg="green")}
 
 {click.style("Source: ", fg="blue")}{(src)}
 {click.style("Destination: ", fg="blue")}{(dest)}""")

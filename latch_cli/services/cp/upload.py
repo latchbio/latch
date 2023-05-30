@@ -84,7 +84,7 @@ def upload(
         num_bars = 0
         show_total_progress = True
     else:
-        num_bars = min(get_max_workers(), 8)
+        num_bars = get_max_workers()
         show_total_progress = True
 
     with (

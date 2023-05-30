@@ -129,7 +129,7 @@ def download(
             num_bars = 0
             show_total_progress = True
         else:
-            num_bars = min(get_max_workers(), num_files, 8)
+            num_bars = min(get_max_workers(), num_files)
             show_total_progress = True
 
         with ProgressBarManager() as manager:

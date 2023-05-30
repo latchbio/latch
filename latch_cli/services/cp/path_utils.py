@@ -213,3 +213,13 @@ For privacy reasons, non-viewable objects and non-existent objects are indisting
             fg="red",
         )
     )
+
+
+path = re.compile(r"^.*/(?P<name>[^/]+)/?$")
+
+
+def get_name_from_path(p: str):
+    match = path.match(p)
+    if match is None:
+        raise PathResolutionError(f"{p} is not a valid path")
+    return match["name"]

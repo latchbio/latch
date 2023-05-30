@@ -3,6 +3,7 @@ from pathlib import Path
 from latch_cli.services.cp.config import CPConfig, Progress
 from latch_cli.services.cp.download import download
 from latch_cli.services.cp.path_utils import is_remote_path
+from latch_cli.services.cp.remote_copy import remote_copy
 from latch_cli.services.cp.upload import upload
 
 
@@ -27,12 +28,9 @@ def cp(
     elif not src_remote and dest_remote:
         upload(src, dest, config)
     elif src_remote and dest_remote:
-        # todo(ayush): remote copy
-        raise NotImplementedError(
-            "For now, `latch cp` cannot be used for purely remote file copying."
-        )
+        remote_copy(src, dest)
     else:
         raise ValueError(
             f"`latch cp` cannot be used for purely local file copying. Please make sure"
-            f" one of your paths is a remote path (beginning with `latch://`)"
+            f" at least one of your paths is a remote path (beginning with `latch://`)"
         )
