@@ -2,9 +2,8 @@ import os
 import textwrap
 from itertools import chain, filterfalse
 from pathlib import Path
-from typing import Optional, Union
+from typing import List, Set, Union, get_args
 
-import click
 from flytekit import LaunchPlan
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.models import launch_plan as launch_plan_models
@@ -32,79 +31,34 @@ RegistrableEntity = Union[
 ]
 
 
-def should_register_with_admin(entity) -> bool:
-    return isinstance(
-        entity,
-        (
-            task_models.TaskSpec,
-            launch_plan_models.LaunchPlan,
-            admin_workflow_models.WorkflowSpec,
-        ),
-    )
+def should_register_with_admin(entity: RegistrableEntity) -> bool:
+    return isinstance(entity, get_args(RegistrableEntity))
 
 
 class SnakemakeWorkflowExtractor(Workflow):
-    def __init__(self, snakefile):
+    def __init__(self, snakefile: Path):
         super().__init__(snakefile=snakefile)
 
-    def extract(self):
-        def rules(items):
-            return map(self._rules.__getitem__, filter(self.is_rule, items))
-
-        def files(items):
-            def relpath(f):
-                return (
-                    f
-                    if os.path.isabs(f) or f.startswith("root://")
-                    else os.path.relpath(f)
-                )
-
-            return map(relpath, filterfalse(self.is_rule, items))
-
-        # if not targets and not target_jobs:
-        targets = [self.default_target] if self.default_target is not None else list()
-
-        prioritytargets = list()
-        forcerun = list()
-        until = list()
-        omit_from = list()
-
-        priorityrules = set(rules(prioritytargets))
-        priorityfiles = set(files(prioritytargets))
-        forcerules = set(rules(forcerun))
-        forcefiles = set(files(forcerun))
-        untilrules = set(rules(until))
-        untilfiles = set(files(until))
-        omitrules = set(rules(omit_from))
-        omitfiles = set(files(omit_from))
-        targetrules = set(
-            chain(
-                rules(targets),
-                filterfalse(Rule.has_wildcards, priorityrules),
-                filterfalse(Rule.has_wildcards, forcerules),
-                filterfalse(Rule.has_wildcards, untilrules),
-            )
+    def extract_dag(self):
+        targets: List[str] = (
+            [self.default_target] if self.default_target is not None else []
         )
-        targetfiles = set(chain(files(targets), priorityfiles, forcefiles, untilfiles))
+        targetrules: Set[Rule] = set(
+            map(self._rules.__getitem__, filter(self.is_rule, targets))
+        )
 
-        if ON_WINDOWS:
-            targetfiles = set(tf.replace(os.sep, os.altsep) for tf in targetfiles)
-
-        rules = self.rules
+        targetfiles = set()
+        for f in filterfalse(self.is_rule, targets):
+            if os.path.isabs(f) or f.startswith("root://"):
+                targetfiles.add(f)
+            else:
+                targetfiles.add(os.path.relpath(f))
 
         dag = DAG(
             self,
-            rules,
+            self.rules,
             targetfiles=targetfiles,
             targetrules=targetrules,
-            forcefiles=forcefiles,
-            forcerules=forcerules,
-            priorityfiles=priorityfiles,
-            priorityrules=priorityrules,
-            untilfiles=untilfiles,
-            untilrules=untilrules,
-            omitfiles=omitfiles,
-            omitrules=omitrules,
         )
 
         self.persistence = Persistence(
@@ -126,7 +80,7 @@ def extract_snakemake_workflow(snakefile: Path) -> (str, SnakemakeWorkflow):
         snakefile,
         overwrite_default_target=True,
     )
-    dag = workflow.extract()
+    dag = workflow.extract_dag()
 
     wf_name = "snakemake_wf"
     wf = SnakemakeWorkflow(
