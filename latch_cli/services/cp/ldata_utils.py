@@ -120,10 +120,10 @@ def get_node_data(
             is_parent = remaining is not None and remaining != ""
 
             if not allow_resolve_to_parent and is_parent:
-                raise ValueError
+                raise ValueError("node does not exist")
 
             if remaining is not None and "/" in remaining:
-                raise ValueError
+                raise ValueError("node and parent does not exist")
 
             ret[remote_path] = GetNodeDataResult(
                 id=final_link_target["id"],

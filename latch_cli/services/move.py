@@ -37,8 +37,6 @@ def move(
     elif dest_data.type in {LDataNodeType.obj, LDataNodeType.link}:
         raise get_path_error(dest, "object already exists at path.", acc_id)
 
-    success_msg = "Move Succeeded."
-
     try:
         execute(
             gql.gql("""
@@ -101,12 +99,12 @@ def move(
         elif msg == "Conflicting object in destination":
             raise get_path_error(dest, "object exists at path.", acc_id) from e
         elif msg.startswith("Refusing to do noop move"):
-            success_msg = "No Nodes Moved."
+            raise get_path_error(dest, "cannot move node to itself.", acc_id) from e
         else:
             raise e
 
     click.echo(f"""
-{click.style(success_msg, fg="green")}
+{click.style("Move Succeeded.", fg="green")}
 
 {click.style("Source: ", fg="blue")}{(src)}
 {click.style("Destination: ", fg="blue")}{(dest)}""")
