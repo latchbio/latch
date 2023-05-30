@@ -249,7 +249,7 @@ def cp(
 @click.argument("src")
 @click.argument("dest")
 def mv(src: str, dest: str):
-    """Copy local files to LatchData and vice versa."""
+    """Move remote files in LatchData."""
 
     crash_handler.message = f"Unable to move {src} to {dest}"
     crash_handler.pkg_root = str(Path.cwd())
