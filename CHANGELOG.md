@@ -16,19 +16,25 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.21.6
+## 2.21.7 - 2023-05-29
+
+### Fixed
+
+- Semver violation related to removed `__init__.py` files. These will happen again in the future but a proper major release will be created, communicated, and marketed.
+
+## 2.21.6 - 2023-05-29
 
 ### Dependencies
 
 - Upgraded dependency `lytekit` to version `0.14.11`.
 
-## 2.21.5
+## 2.21.5 - 2023-05-29
 
 ### Fixed
 
 - More imports in docker/NF-core template workflows have been updated to reflect the import changes outlined in the previous version.
 
-## 2.21.4
+## 2.21.4 - 2023-05-29
 
 ### Fixed
 
