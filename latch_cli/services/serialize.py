@@ -11,7 +11,6 @@ from flytekit.models import literals as literals_models
 from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.tools.serialize_helpers import persist_registrable_entities
-from snakemake.common import ON_WINDOWS
 from snakemake.dag import DAG
 from snakemake.persistence import Persistence
 from snakemake.rules import Rule
@@ -19,6 +18,7 @@ from snakemake.workflow import Workflow
 
 from latch_cli.centromere.ctx import _CentromereCtx
 from latch_cli.snakemake.serialize_utils import (
+    EntityCache,
     get_serializable_launch_plan,
     get_serializable_workflow,
 )
@@ -43,22 +43,22 @@ class SnakemakeWorkflowExtractor(Workflow):
         targets: List[str] = (
             [self.default_target] if self.default_target is not None else []
         )
-        targetrules: Set[Rule] = set(
+        target_rules: Set[Rule] = set(
             map(self._rules.__getitem__, filter(self.is_rule, targets))
         )
 
-        targetfiles = set()
+        target_files = set()
         for f in filterfalse(self.is_rule, targets):
             if os.path.isabs(f) or f.startswith("root://"):
-                targetfiles.add(f)
+                target_files.add(f)
             else:
-                targetfiles.add(os.path.relpath(f))
+                target_files.add(os.path.relpath(f))
 
         dag = DAG(
             self,
             self.rules,
-            targetfiles=targetfiles,
-            targetrules=targetrules,
+            targetfiles=target_files,
+            targetrules=target_rules,
         )
 
         self.persistence = Persistence(
@@ -111,7 +111,7 @@ def serialize_snakemake(
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
 
-    registrable_entity_cache = {}
+    registrable_entity_cache: EntityCache = {}
 
     get_serializable_workflow(wf, settings, registrable_entity_cache)
 

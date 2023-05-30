@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Dict, TypeAlias, Union
 
 from flytekit import LaunchPlan
 from flytekit.configuration import SerializationSettings
@@ -16,28 +16,31 @@ from flytekit.models.core import identifier as identifier_model
 from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.workflow import TaskNodeOverrides
 
-FlyteLocalEntity = Union[
+FlyteLocalEntity: TypeAlias = Union[
     PythonTask,
     Node,
     LaunchPlan,
     WorkflowBase,
 ]
 
-FlyteSerializableModel = Union[
+FlyteSerializableModel: TypeAlias = Union[
     task_models.TaskSpec,
     workflow_model.Node,
     launch_plan_models.LaunchPlan,
     admin_workflow_models.WorkflowSpec,
 ]
 
-EntityCache = dict[FlyteLocalEntity, FlyteSerializableModel]
+EntityCache: TypeAlias = Dict[FlyteLocalEntity, FlyteSerializableModel]
 
 
 def get_serializable_launch_plan(
-    settings: SerializationSettings,
     entity: LaunchPlan,
+    settings: SerializationSettings,
     cache: EntityCache,
 ) -> launch_plan_models.LaunchPlan:
+    if entity in cache:
+        return cache[entity]
+
     wf_id = identifier_model.Identifier(
         resource_type=identifier_model.ResourceType.WORKFLOW,
         project=settings.project,
@@ -45,7 +48,6 @@ def get_serializable_launch_plan(
         name=entity.workflow.name,
         version=settings.version,
     )
-    raw = None
 
     lps = launch_plan_models.LaunchPlanSpec(
         workflow_id=wf_id,
@@ -58,9 +60,7 @@ def get_serializable_launch_plan(
         labels=common_models.Labels({}),
         annotations=entity.annotations or common_models.Annotations({}),
         auth_role=None,
-        raw_output_data_config=raw
-        or entity.raw_output_data_config
-        or common_models.RawOutputDataConfig(""),
+        raw_output_data_config=None,
         max_parallelism=entity.max_parallelism,
         security_context=entity.security_context,
     )
@@ -81,6 +81,7 @@ def get_serializable_launch_plan(
             expected_outputs=interface_models.VariableMap({}),
         ),
     )
+    cache[entity] = lp_model
 
     return lp_model
 
