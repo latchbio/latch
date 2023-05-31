@@ -58,9 +58,17 @@ def get_serializable_launch_plan(
         default_inputs=entity.parameters,
         fixed_inputs=entity.fixed_inputs,
         labels=common_models.Labels({}),
-        annotations=entity.annotations or common_models.Annotations({}),
+        annotations=(
+            entity.annotations
+            if entity.annotations is not None
+            else common_models.Annotations({})
+        ),
         auth_role=None,
-        raw_output_data_config=None,
+        raw_output_data_config=(
+            entity.raw_output_data_config
+            if entity.raw_output_data_config is not None
+            else common_models.RawOutputDataConfig("")
+        ),
         max_parallelism=entity.max_parallelism,
         security_context=entity.security_context,
     )
@@ -123,6 +131,10 @@ def get_serializable_task(
     return task_model
 
 
+class SerializationError(Exception):
+    pass
+
+
 def get_serializable_node(
     entity: Node,
     settings: SerializationSettings,
@@ -132,7 +144,9 @@ def get_serializable_node(
         return cache[entity]
 
     if entity.flyte_entity is None:
-        raise Exception(f"Node {entity.id} has no flyte entity")
+        raise SerializationError(
+            f"SnakemakeWorkflow Node {entity.id} has no task and cannot be serialized."
+        )
 
     upstream_sdk_nodes = [
         get_serializable_node(n, settings, cache)
@@ -156,8 +170,9 @@ def get_serializable_node(
         cache[entity] = node_model
         return node_model
     else:
-        raise Exception(
-            f"Node contained non-serializable entity {entity._flyte_entity}"
+        raise SerializationError(
+            "Cannot serialize a SnakemakeWorkflow node {entity.id} containing a task"
+            f" of type {entity._flyte_entity}.The task must be a PythonTask."
         )
 
 

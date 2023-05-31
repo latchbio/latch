@@ -122,7 +122,7 @@ def serialize_snakemake(
         parameters=parameter_map,
         fixed_inputs=literals_models.LiteralMap(literals={}),
     )
-    admin_lp = get_serializable_launch_plan(settings, lp, registrable_entity_cache)
+    admin_lp = get_serializable_launch_plan(lp, settings, registrable_entity_cache)
 
     registrable_entities = [
         x.to_flyte_idl()
@@ -145,7 +145,9 @@ def generate_snakemake_entrypoint(
            from latch import small_task
            from latch.types import LatchFile
 
-           def ensure_parents_exist(path: Path):
+           def check_exists_and_ensure_parents(path: Path):
+               if path.exists():
+                   print(f"A file already exists at {path} and will be overwritten.")
                path.parent.mkdir(parents=True, exist_ok=True)
                return path
            """)

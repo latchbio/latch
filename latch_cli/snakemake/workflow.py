@@ -2,7 +2,7 @@ import importlib
 import typing
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TypeAlias, TypeVar, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, TypeAlias, TypeVar, Union
 
 import snakemake
 from flytekit.configuration import SerializationSettings
@@ -35,15 +35,28 @@ from latch.types import LatchAuthor, LatchFile, LatchMetadata, LatchParameter
 SnakemakeInputVal: TypeAlias = snakemake.io._IOFile
 
 
+T = TypeVar("T")
+
+
+@dataclass
+class JobOutputInfo:
+    jobid: str
+    output_param_name: str
+
+
+def task_fn_placeholder():
+    ...
+
+
 def variable_name_for_file(file: snakemake.io.AnnotatedString):
     return file.replace("/", "_").replace(".", "__").replace("-", "____")
 
 
 def variable_name_for_value(
     val: SnakemakeInputVal,
-    params: Union[snakemake.io.InputFiles, snakemake.io.OutputFiles] = None,
+    params: Union[snakemake.io.InputFiles, snakemake.io.OutputFiles, None] = None,
 ) -> str:
-    if params:
+    if params is not None:
         for name, v in params.items():
             if val == v:
                 return name
@@ -60,7 +73,7 @@ def snakemake_dag_to_interface(
         for x in target.input:
             outputs[variable_name_for_value(x, target.input)] = LatchFile
 
-    inputs: Dict[str, LatchFile] = {}
+    inputs: Dict[str, Tuple[LatchFile, None]] = {}
     for job in dag.jobs:
         dep_outputs = []
         for dep, dep_files in dag.dependencies[job].items():
@@ -81,8 +94,8 @@ def snakemake_dag_to_interface(
 def binding_data_from_python(
     expected_literal_type: type_models.LiteralType,
     t_value: typing.Any,
-    t_value_type: Optional[type] = None,
-) -> literals_models.BindingData:
+    t_value_type: Optional[Type] = None,
+) -> Optional[literals_models.BindingData]:
     if isinstance(t_value, Promise):
         if not t_value.is_ready:
             return literals_models.BindingData(promise=t_value.ref)
@@ -92,7 +105,7 @@ def binding_from_python(
     var_name: str,
     expected_literal_type: type_models.LiteralType,
     t_value: typing.Any,
-    t_value_type: type,
+    t_value_type: Type,
 ) -> literals_models.Binding:
     binding_data = binding_data_from_python(
         expected_literal_type, t_value, t_value_type
@@ -100,14 +113,16 @@ def binding_from_python(
     return literals_models.Binding(var=var_name, binding=binding_data)
 
 
-def transform_type(x: type, description: str = None) -> interface_models.Variable:
+def transform_type(
+    x: Type, description: Optional[str] = None
+) -> interface_models.Variable:
     return interface_models.Variable(
         type=TypeEngine.to_literal_type(x), description=description
     )
 
 
 def transform_types_in_variable_map(
-    variable_map: Dict[str, type],
+    variable_map: Dict[str, Type],
     descriptions: Dict[str, str] = {},
 ) -> Dict[str, interface_models.Variable]:
     res = {}
@@ -118,7 +133,7 @@ def transform_types_in_variable_map(
 
 
 def interface_to_parameters(
-    interface: Interface,
+    interface: Optional[Interface],
 ) -> interface_models.ParameterMap:
     if interface is None or interface.inputs_with_defaults is None:
         return interface_models.ParameterMap({})
@@ -129,14 +144,13 @@ def interface_to_parameters(
             interface.inputs, interface.docstring.input_descriptions
         )
     params: Dict[str, interface_models.ParameterMap] = {}
-    inputs_with_def = interface.inputs_with_defaults
     for k, v in inputs_vars.items():
-        val, _default = inputs_with_def[k]
-        required = _default is None
+        val, default = interface.inputs_with_defaults[k]
+        required = default is None
         default_lv = None
-        if _default is not None:
+        if default is not None:
             default_lv = TypeEngine.to_literal(
-                None, _default, python_type=interface.inputs[k], expected=v.type
+                None, default, python_type=interface.inputs[k], expected=v.type
             )
         params[k] = interface_models.Parameter(
             var=v, default=default_lv, required=required
@@ -220,11 +234,6 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     target_file_for_output_param[param] = x
                     python_outputs[param] = LatchFile
 
-                @dataclass
-                class JobOutputInfo:
-                    jobid: str
-                    output_param_name: str
-
                 dep_outputs = {}
                 for dep, dep_files in self._dag.dependencies[job].items():
                     for o in dep.output:
@@ -258,9 +267,8 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 self.snakemake_tasks.append(task)
 
                 typed_interface = transform_interface_to_typed_interface(interface)
-                self.interface.inputs.keys()
-                bindings = []
-                for k in sorted(interface.inputs):
+                bindings: List[literals_models.Binding] = []
+                for k in interface.inputs:
                     var = typed_interface.inputs[k]
                     if var.description in promise_map:
                         job_output_info = promise_map[var.description]
@@ -299,20 +307,9 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 )
                 node_map[job.jobid] = node
 
-        bindings = []
-        output_names = list(self.interface.outputs.keys())
-        for i, out in enumerate(output_names):
-
-            def find_upstream_node():
-                for j in self._dag.targetjobs:
-                    for depen, files in self._dag.dependencies[j].items():
-                        for f in files:
-                            if variable_name_for_file(f) == out:
-                                return depen.jobid, variable_name_for_value(
-                                    f, depen.output
-                                )
-
-            upstream_id, upstream_var = find_upstream_node()
+        bindings: List[literals_models.Binding] = []
+        for i, out in enumerate(self.interface.outputs.keys()):
+            upstream_id, upstream_var = self.find_upstream_node_matching_output_var(out)
             promise_to_bind = Promise(
                 var=out,
                 val=NodeOutput(node=node_map[upstream_id], var=upstream_var),
@@ -329,11 +326,15 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         self._nodes = list(node_map.values())
         self._output_bindings = bindings
 
+    def find_upstream_node_matching_output_var(self, out_var: str):
+        for j in self._dag.targetjobs:
+            for depen, files in self._dag.dependencies[j].items():
+                for f in files:
+                    if variable_name_for_file(f) == out_var:
+                        return depen.jobid, variable_name_for_value(f, depen.output)
+
     def execute(self, **kwargs):
         return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
-
-
-T = TypeVar("T")
 
 
 class SnakemakeJobTask(PythonAutoContainerTask[T]):
@@ -357,10 +358,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         self._target_file_for_input_param = target_file_for_input_param
         self._target_file_for_output_param = target_file_for_output_param
 
-        def placeholder():
-            ...
-
-        self._task_function = placeholder
+        self._task_function = task_fn_placeholder
 
         super().__init__(
             task_type=task_type,
@@ -374,22 +372,22 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         code_block = ""
 
         fn_interface = f"\n\n@small_task\ndef {self.name}("
-        for idx, (param, t) in enumerate(self._python_inputs.items()):
-            fn_interface += f"{param}: {t.__name__}"
-            if idx == len(self._python_inputs) - 1:
-                fn_interface += ")"
-            else:
-                fn_interface += ", "
+        fn_interface += (
+            "("
+            + ", ".join(
+                f"{param}: {t.__name__}" for param, t in self._python_inputs.items()
+            )
+            + ")"
+        )
 
         if len(self._python_outputs.items()) > 0:
-            for idx, (param, t) in enumerate(self._python_outputs.items()):
-                if idx == 0:
-                    fn_interface += f" -> NamedTuple('{self.name}_output', "
-                fn_interface += f"{param}={t.__name__}"
-                if idx == len(self._python_outputs) - 1:
-                    fn_interface += "):"
-                else:
-                    fn_interface += ", "
+            fn_interface += (
+                f" -> NamedTuple('{self.name}_output', "
+                + ", ".join(
+                    f"{param}={t.__name__}" for param, t in self._python_outputs.items()
+                )
+                + "):"
+            )
         else:
             fn_interface += ":"
 
@@ -397,17 +395,23 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
 
         for param, t in self._python_inputs.items():
             if t == LatchFile:
-                code_block += f'\n\tPath({param}).resolve().rename(ensure_parents_exist(Path("{self._target_file_for_input_param[param]}")))'
+                code_block += f'\n\tPath({param}).resolve().rename(check_exists_and_ensure_parents(Path("{self._target_file_for_input_param[param]}")))'
 
-        snakemake_cmd = ["snakemake"]
-        snakemake_cmd.extend(["-s", snakefile_path_in_container])
-        snakemake_cmd.extend(
-            ["--target-jobs", *encode_target_jobs_cli_args(self.job.get_target_spec())]
-        )
-        snakemake_cmd.extend(["--allowed-rules", *self.job.rules])
-        snakemake_cmd.extend(["--local-groupid", str(self.job.jobid)])
-        snakemake_cmd.extend(["--cores", str(self.job.threads)])
-
+        snakemake_cmd = [
+            "snakemake",
+            "-s",
+            snakefile_path_in_container,
+            "--target-jobs",
+            *encode_target_jobs_cli_args(self.job.get_target_spec()),
+            "--allowed-rules",
+            *self.job.rules,
+            "--allowed-rules",
+            *self.job.rules,
+            "--local-groupid",
+            str(self.job.jobid),
+            "--cores",
+            str(self.job.threads),
+        ]
         if not self.job.is_group():
             snakemake_cmd.append("--force-use-threads")
 
@@ -420,16 +424,9 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             for resource, value in allowed_resources:
                 snakemake_cmd.append(f"{resource}={value}")
 
-        formatted_snakemake_cmd = "\n\n\tsubprocess.run(["
-
-        for i, arg in enumerate(snakemake_cmd):
-            arg_wo_quotes = arg.strip('"').strip("'")
-            formatted_snakemake_cmd += f'"{arg_wo_quotes}"'
-            if i == len(snakemake_cmd) - 1:
-                formatted_snakemake_cmd += "], check=True)"
-            else:
-                formatted_snakemake_cmd += ", "
-        code_block += formatted_snakemake_cmd
+        code_block += (
+            "\n\n\tsubprocess.run({repr(formatted_snakemake_cmd)}, check=True)"
+        )
 
         return_stmt = "\n\treturn ("
         for i, x in enumerate(self._python_outputs):
