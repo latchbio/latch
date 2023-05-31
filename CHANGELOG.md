@@ -16,6 +16,17 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.22.0
+
+### Fixed
+
+- `latch cp` occasionally throwing an error when finalizing uploads for directories.
+
+### Added
+
+- `latch cp` now supports remote -> remote copying (i.e. both source and destination are remote paths). This enables copying files across workspaces
+- `latch mv` for moving remote files.
+
 ## 2.21.7 - 2023-05-29
 
 ### Fixed
