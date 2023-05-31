@@ -57,7 +57,9 @@ def upload(
     if not src_path.exists():
         raise ValueError(f"Could not find {src_path}.")
 
-    dest_data = get_node_data(dest, allow_resolve_to_parent=True)
+    node_data = get_node_data(dest, allow_resolve_to_parent=True)
+    dest_data = node_data.data[dest]
+
     normalized = normalize_path(dest)
 
     dest_exists = not dest_data.is_parent
@@ -83,12 +85,12 @@ def upload(
         num_bars = 0
         show_total_progress = True
     else:
-        num_bars = min(get_max_workers(), 8)
+        num_bars = get_max_workers()
         show_total_progress = True
 
     with (
         ProcessPoolExecutor(max_workers=get_max_workers()) as executor,
-        ProcessPoolExecutor(max_workers=1) as end_upload_executor,
+        ProcessPoolExecutor(max_workers=get_max_workers()) as end_upload_executor,
         ProgressBarManager() as pbar_manager,
         SyncManager() as state_manager,
     ):
@@ -147,12 +149,15 @@ def upload(
                     upload_info_by_src[res.src] = res
 
             queue: "QueueType" = state_manager.Queue()
-            end_upload_executor.submit(
-                end_upload_listener,
-                queue=queue,
-                parts_by_src=parts_by_src,
-                upload_info_by_src=upload_info_by_src,
-            )
+            listeners = [
+                end_upload_executor.submit(
+                    end_upload_listener,
+                    queue=queue,
+                    parts_by_src=parts_by_src,
+                    upload_info_by_src=upload_info_by_src,
+                )
+                for _ in range(get_max_workers())
+            ]
 
             chunk_upload_bars: ProgressBars
             with closing(
@@ -199,6 +204,8 @@ def upload(
                 wait(chunk_futs)
 
             queue.put(None)
+            print("Finalizing uploads...")
+            wait(listeners)
         else:
             num_files = 1
             total_bytes = src_path.stat().st_size
@@ -244,9 +251,9 @@ def upload(
     end = time.monotonic()
     total_time = end - start
 
+    click.clear()
     click.echo(
-        f"""
-{click.style("Upload Complete", fg="green")}
+        f"""{click.style("Upload Complete", fg="green")}
 
 {click.style("Time Elapsed: ", fg="blue")}{human_readable_time(total_time)}
 {click.style("Files Downloaded: ", fg="blue")}{num_files} ({with_si_suffix(total_bytes)})"""
@@ -414,6 +421,7 @@ def end_upload_listener(
     while True:
         src = queue.get()
         if src is None:
+            queue.put(None)
             return
 
         upload_info = upload_info_by_src[src]

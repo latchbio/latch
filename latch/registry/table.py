@@ -95,8 +95,7 @@ class Table:
         Always makes a network request.
         """
         data = execute(
-            gql.gql(
-                """
+            gql.gql("""
                 query TableQuery($id: BigInt!) {
                     catalogExperiment(id: $id) {
                         id
@@ -110,8 +109,7 @@ class Table:
                         }
                     }
                 }
-                """
-            ),
+                """),
             variables={"id": self.id},
         )["catalogExperiment"]
         # todo(maximsmol): deal with nonexistent tables
@@ -209,8 +207,7 @@ class Table:
         # todo(maximsmol): because allSamples returns each column as its own
         # row, we can't paginate by samples because we don't know when a sample is finished
         nodes: List[_AllRecordsNode] = execute(
-            gql.gql(
-                """
+            gql.gql("""
                 query TableQuery($id: BigInt!) {
                     catalogExperiment(id: $id) {
                         allSamples {
@@ -223,8 +220,7 @@ class Table:
                         }
                     }
                 }
-                """
-            ),
+                """),
             {
                 "id": self.id,
             },
@@ -431,13 +427,11 @@ class TableUpdate:
         names: _GqlJsonValue = [x.name for x in upserts]
         values: JsonValue = [cast(Dict[str, JsonValue], x.values) for x in upserts]
 
-        res = _parse_selection(
-            """
+        res = _parse_selection("""
             catalogMultiUpsertSamples(input: {}) {
                 clientMutationId
             }
-        """
-        )
+        """)
         assert isinstance(res, l.FieldNode)
 
         argDataVar = f"upd{len(mutations)}ArgData"
@@ -476,13 +470,11 @@ class TableUpdate:
 
         names: _GqlJsonValue = [x.name for x in deletes]
 
-        res = _parse_selection(
-            """
+        res = _parse_selection("""
             catalogMultiDeleteSampleByName(input: {}) {
                 clientMutationId
             }
-            """
-        )
+            """)
         assert isinstance(res, l.FieldNode)
 
         args = l.ArgumentNode()
@@ -631,13 +623,11 @@ class TableUpdate:
         keys: _GqlJsonValue = [x.key for x in upserts]
         types: JsonValue = [cast(JsonValue, x.type) for x in upserts]
 
-        res = _parse_selection(
-            """
+        res = _parse_selection("""
             catalogExperimentColumnDefinitionMultiUpsert(input: {}) {
                 clientMutationId
             }
-        """
-        )
+        """)
         assert isinstance(res, l.FieldNode)
 
         argTypesVar = f"upd{len(mutations)}ArgTypes"
@@ -697,13 +687,11 @@ class TableUpdate:
         sel_set = l.SelectionSetNode()
         sel_set.selections = tuple(mutations)
 
-        doc = l.parse(
-            """
+        doc = l.parse("""
             mutation TableUpdate {
                 placeholder
             }
-        """
-        )
+        """)
 
         assert len(doc.definitions) == 1
         mut = doc.definitions[0]

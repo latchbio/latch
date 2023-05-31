@@ -245,6 +245,20 @@ def cp(
     )
 
 
+@main.command("mv")
+@click.argument("src")
+@click.argument("dest")
+def mv(src: str, dest: str):
+    """Move remote files in LatchData."""
+
+    crash_handler.message = f"Unable to move {src} to {dest}"
+    crash_handler.pkg_root = str(Path.cwd())
+
+    from latch_cli.services.move import move
+
+    move(src, dest)
+
+
 @main.command("ls")
 @click.option(
     "--group-directories-first",

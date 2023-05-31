@@ -1,29 +1,12 @@
-import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import TypedDict
+from typing import Dict, List, TypedDict
 
-import click
-import gql
+import graphql.language as l
 
-from latch_cli.config.user import user_config
-from latch_cli.services.cp.exceptions import PathResolutionError
-from latch_cli.services.cp.path_utils import (
-    append_scheme,
-    is_account_relative,
-    normalize_path,
-)
-from latch_cli.services.cp.utils import get_auth_header
-
-auth = re.compile(
-    r"""
-    ^(
-        (?P<sdk>Latch-SDK-Token) |
-        (?P<execution>Latch-Execution-Token)
-    )\s.*$
-""",
-    re.VERBOSE,
-)
+from latch.gql._execute import execute
+from latch.gql._utils import _name_node, _parse_selection, _var_def_node
+from latch_cli.services.cp.path_utils import get_path_error, normalize_path
 
 
 class LDataNodeType(str, Enum):
@@ -35,6 +18,7 @@ class LDataNodeType(str, Enum):
 
 
 class FinalLinkTargetPayload(TypedDict):
+    id: str
     type: str
     name: str
 
@@ -52,111 +36,106 @@ class AccountInfoCurrentPayload(TypedDict):
     id: str
 
 
-class GetNodeTypePayload(TypedDict):
-    accountInfoCurrent: AccountInfoCurrentPayload
-    ldataResolvePathToNode: LdataResolvePathToNodePayload
-
-
 @dataclass(frozen=True)
-class GetNodeDataResult:
+class NodeData:
+    id: str
     name: str
     type: LDataNodeType
     is_parent: bool
 
 
+@dataclass(frozen=True)
+class GetNodeDataResult:
+    acc_id: str
+    data: Dict[str, NodeData]
+
+
 def get_node_data(
-    remote_path: str, *, allow_resolve_to_parent: bool = False
+    *remote_paths: str, allow_resolve_to_parent: bool = False
 ) -> GetNodeDataResult:
-    normalized = normalize_path(remote_path)
+    normalized: Dict[str, str] = {}
 
-    from latch.gql._execute import execute
+    acc_sel = _parse_selection("""
+        accountInfoCurrent {
+            id
+        }
+    """)
+    assert isinstance(acc_sel, l.FieldNode)
 
-    res = execute(
-        gql.gql("""
-        query GetNodeType($path: String!) {
-            accountInfoCurrent {
-                id
-            }
-            ldataResolvePathToNode(path: $path) {
+    sels: List[l.FieldNode] = [acc_sel]
+
+    for i, remote_path in enumerate(remote_paths):
+        normalized[remote_path] = normalize_path(remote_path)
+
+        sel = _parse_selection("""
+            ldataResolvePathToNode(path: {}) {
                 path
                 ldataNode {
                     finalLinkTarget {
+                        id
                         name
                         type
                     }
                 }
             }
+        """)
+        assert isinstance(sel, l.FieldNode)
+
+        val = l.StringValueNode()
+        val.value = normalized[remote_path]
+
+        args = l.ArgumentNode()
+        args.name = _name_node("path")
+        args.value = val
+
+        sel.alias = _name_node(f"q{i}")
+        sel.arguments = (args,)
+
+        sels.append(sel)
+
+    sel_set = l.SelectionSetNode()
+    sel_set.selections = tuple(sels)
+
+    doc = l.parse("""
+        query GetNodeType {
+            placeholder
         }
-    """),
-        {"path": normalized},
-    )
+        """)
+
+    assert len(doc.definitions) == 1
+    query = doc.definitions[0]
+
+    assert isinstance(query, l.OperationDefinitionNode)
+    query.selection_set = sel_set
+
+    res = execute(doc)
 
     acc_info: AccountInfoCurrentPayload = res["accountInfoCurrent"]
-    node: LdataResolvePathToNodePayload = res["ldataResolvePathToNode"]
-
     acc_id = acc_info["id"]
 
-    try:
-        final_link_target = node["ldataNode"]["finalLinkTarget"]
-        remaining = node["path"]
+    ret: Dict[str, NodeData] = {}
+    for i, remote_path in enumerate(remote_paths):
+        node: LdataResolvePathToNodePayload = res[f"q{i}"]
 
-        is_parent = remaining is not None and remaining != ""
+        try:
+            final_link_target = node["ldataNode"]["finalLinkTarget"]
+            remaining = node["path"]
 
-        if not allow_resolve_to_parent and is_parent:
-            raise ValueError("Node cannot be resolved in this workspace")
+            is_parent = remaining is not None and remaining != ""
 
-        if remaining is not None and "/" in remaining:
-            raise ValueError("Node cannot be resolved in this workspace")
+            if not allow_resolve_to_parent and is_parent:
+                raise ValueError("node does not exist")
 
-        return GetNodeDataResult(
-            name=final_link_target["name"],
-            type=LDataNodeType(final_link_target["type"].lower()),
-            is_parent=is_parent,
-        )
+            if remaining is not None and "/" in remaining:
+                raise ValueError("node and parent does not exist")
 
-    except (TypeError, ValueError) as e:
-        auth_header = get_auth_header()
-        match = auth.match(auth_header)
-        if match is None:
-            auth_type = auth_header
-        elif match["sdk"] is not None:
-            auth_type = "SDK Token"
-        else:
-            auth_type = "Execution Token"
-
-        auth_str = (
-            f"{click.style(f'Authorized using:', bold=True, reset=False)} {click.style(auth_type, bold=False, reset=False)}"
-            + "\n"
-        )
-
-        ws_id = user_config.workspace_id
-        ws_name = user_config.workspace_name
-
-        resolve_str = (
-            f"{click.style(f'Relative path resolved to:', bold=True, reset=False)} {click.style(normalized, bold=False, reset=False)}"
-            + "\n"
-        )
-        ws_str = (
-            f"{click.style(f'Using Workspace:', bold=True, reset=False)} {click.style(ws_id, bold=False, reset=False)}"
-        )
-        if ws_name is not None:
-            ws_str = f"{ws_str} ({ws_name})"
-        ws_str += "\n"
-
-        account_relative = is_account_relative(append_scheme(remote_path))
-
-        raise PathResolutionError(
-            click.style(
-                f"""
-{click.style(f'{remote_path}:', bold=True, reset=False)}{click.style(f" not found", bold=False, reset=False)}
-{resolve_str if account_relative else ""}{ws_str if account_relative else ""}
-{auth_str}
-{click.style("Check that:", bold=True, reset=False)}
-{click.style("1. The target object exists", bold=False, reset=False)}
-{click.style(f"2. Account ", bold=False, reset=False)}{click.style(acc_id, bold=True, reset=False)}{click.style(" has permission to view the target object", bold=False, reset=False)}
-{"3. The correct workspace is selected" if account_relative else ""}
-
-For privacy reasons, non-viewable objects and non-existent objects are indistinguishable""",
-                fg="red",
+            ret[remote_path] = NodeData(
+                id=final_link_target["id"],
+                name=final_link_target["name"],
+                type=LDataNodeType(final_link_target["type"].lower()),
+                is_parent=is_parent,
             )
-        ) from e
+        except (TypeError, ValueError) as e:
+            raise get_path_error(remote_path, "not found", acc_id) from e
+
+    return GetNodeDataResult(acc_id, ret)

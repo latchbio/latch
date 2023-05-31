@@ -48,7 +48,9 @@ def download(
     config: CPConfig,
 ):
     normalized = normalize_path(src)
-    node_data = get_node_data(src)
+    data = get_node_data(src)
+
+    node_data = data.data[src]
 
     can_have_children = node_data.type in {
         LDataNodeType.account_root,
@@ -127,7 +129,7 @@ def download(
             num_bars = 0
             show_total_progress = True
         else:
-            num_bars = min(get_max_workers(), num_files, 8)
+            num_bars = min(get_max_workers(), num_files)
             show_total_progress = True
 
         with ProgressBarManager() as manager:
@@ -185,9 +187,9 @@ def download(
 
     total_time = end - start
 
+    click.clear()
     click.echo(
-        f"""
-{click.style("Download Complete", fg="green")}
+        f"""{click.style("Download Complete", fg="green")}
 
 {click.style("Time Elapsed: ", fg="blue")}{human_readable_time(total_time)}
 {click.style("Files Downloaded: ", fg="blue")}{num_files} ({with_si_suffix(total_bytes)})"""
