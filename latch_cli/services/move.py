@@ -15,18 +15,19 @@ def move(
     src: str,
     dest: str,
 ):
-    if not (is_remote_path(src) and is_remote_path(dest)):
+    if not is_remote_path(src) or not is_remote_path(dest):
         raise ValueError(
             f"`latch mv` cannot be used for local file operations. Please make sure"
             f" both of your input paths are remote (beginning with `latch://`)"
         )
 
-    acc_id, data = get_node_data(src, dest, allow_resolve_to_parent=True)
+    node_data = get_node_data(src, dest, allow_resolve_to_parent=True)
 
-    src_data = data[src]
-    dest_data = data[dest]
+    src_data = node_data.data[src]
+    dest_data = node_data.data[dest]
+    acc_id = node_data.acc_id
 
-    path_by_id = {v.id: k for k, v in data.items()}
+    path_by_id = {v.id: k for k, v in node_data.data.items()}
 
     if src_data.is_parent:
         raise get_path_error(src, "not found", acc_id)

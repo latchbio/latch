@@ -32,5 +32,5 @@ def cp(
     else:
         raise ValueError(
             f"`latch cp` cannot be used for purely local file copying. Please make sure"
-            f" at least one of your paths is a remote path (beginning with `latch://`)"
+            f" one or both of your paths is a remote path (beginning with `latch://`)"
         )

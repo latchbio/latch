@@ -12,12 +12,13 @@ def remote_copy(
     src: str,
     dest: str,
 ):
-    acc_id, data = get_node_data(src, dest, allow_resolve_to_parent=True)
+    node_data = get_node_data(src, dest, allow_resolve_to_parent=True)
 
-    src_data = data[src]
-    dest_data = data[dest]
+    src_data = node_data.data[src]
+    dest_data = node_data.data[dest]
+    acc_id = node_data.acc_id
 
-    path_by_id = {v.id: k for k, v in data.items()}
+    path_by_id = {v.id: k for k, v in node_data.data.items()}
 
     if src_data.is_parent:
         raise get_path_error(src, "not found", acc_id)

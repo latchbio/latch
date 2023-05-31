@@ -1,13 +1,11 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Tuple, TypedDict
+from typing import Dict, List, TypedDict
 
-import gql
 import graphql.language as l
 
 from latch.gql._execute import execute
 from latch.gql._utils import _name_node, _parse_selection, _var_def_node
-from latch.types.json import JsonValue
 from latch_cli.services.cp.path_utils import get_path_error, normalize_path
 
 
@@ -39,16 +37,22 @@ class AccountInfoCurrentPayload(TypedDict):
 
 
 @dataclass(frozen=True)
-class GetNodeDataResult:
+class NodeData:
     id: str
     name: str
     type: LDataNodeType
     is_parent: bool
 
 
+@dataclass(frozen=True)
+class GetNodeDataResult:
+    acc_id: str
+    data: Dict[str, NodeData]
+
+
 def get_node_data(
     *remote_paths: str, allow_resolve_to_parent: bool = False
-) -> Tuple[str, Dict[str, GetNodeDataResult]]:
+) -> GetNodeDataResult:
     normalized: Dict[str, str] = {}
 
     acc_sel = _parse_selection("""
@@ -109,7 +113,7 @@ def get_node_data(
     acc_info: AccountInfoCurrentPayload = res["accountInfoCurrent"]
     acc_id = acc_info["id"]
 
-    ret: Dict[str, GetNodeDataResult] = {}
+    ret: Dict[str, NodeData] = {}
     for i, remote_path in enumerate(remote_paths):
         node: LdataResolvePathToNodePayload = res[f"q{i}"]
 
@@ -125,7 +129,7 @@ def get_node_data(
             if remaining is not None and "/" in remaining:
                 raise ValueError("node and parent does not exist")
 
-            ret[remote_path] = GetNodeDataResult(
+            ret[remote_path] = NodeData(
                 id=final_link_target["id"],
                 name=final_link_target["name"],
                 type=LDataNodeType(final_link_target["type"].lower()),
@@ -134,4 +138,4 @@ def get_node_data(
         except (TypeError, ValueError) as e:
             raise get_path_error(remote_path, "not found", acc_id) from e
 
-    return acc_id, ret
+    return GetNodeDataResult(acc_id, ret)

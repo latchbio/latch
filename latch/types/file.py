@@ -1,18 +1,12 @@
 from os import PathLike
 from typing import Optional, Type, Union
 
-from latch_cli.services.cp import download
-
-try:
-    from typing import Annotated
-except ImportError:
-    from typing_extensions import Annotated
-
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.models.literals import Literal
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
+from typing_extensions import Annotated
 
 from latch.types.utils import _is_valid_url
 
@@ -144,7 +138,6 @@ class LatchFilePathTransformer(FlyteFilePathTransformer):
         lv: Literal,
         expected_python_type: Union[Type[LatchFile], PathLike],
     ) -> FlyteFile:
-
         uri = lv.scalar.blob.uri
         if expected_python_type is PathLike:
             raise TypeError(
