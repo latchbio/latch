@@ -373,8 +373,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
 
         fn_interface = f"\n\n@small_task\ndef {self.name}("
         fn_interface += (
-            "("
-            + ", ".join(
+            ", ".join(
                 f"{param}: {t.__name__}" for param, t in self._python_inputs.items()
             )
             + ")"
@@ -424,9 +423,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             for resource, value in allowed_resources:
                 snakemake_cmd.append(f"{resource}={value}")
 
-        code_block += (
-            "\n\n\tsubprocess.run({repr(formatted_snakemake_cmd)}, check=True)"
-        )
+        code_block += f"\n\n\tsubprocess.run({repr(snakemake_cmd)}, check=True)"
 
         return_stmt = "\n\treturn ("
         for i, x in enumerate(self._python_outputs):
