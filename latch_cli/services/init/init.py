@@ -298,15 +298,6 @@ def init(
         else template_flag_to_option[template]
     )
 
-<<<<<<< HEAD
-=======
-    if base_image_type_str not in BaseImageOptions.__members__:
-        raise ValueError(
-            f"Invalid base image type: {base_image_type_str}. Must be one of"
-            f" {list(BaseImageOptions.__members__.keys())}"
-        )
-
->>>>>>> 9ddde0b (black 23.3.0)
     if selected_option is None:
         return False
 
