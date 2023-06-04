@@ -31,13 +31,13 @@ nitpicky = True
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "myst_parser",
-    "sphinx_copybutton",
     "sphinx.ext.autodoc",
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
     "sphinx.ext.todo",
     "sphinx.ext.intersphinx",
+    "sphinx_click",
+    "sphinx_copybutton",
 ]
 
 intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
