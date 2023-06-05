@@ -207,6 +207,9 @@ def upload(
             print("Finalizing uploads...")
             wait(listeners)
         else:
+            if dest_exists and dest_is_dir:
+                normalized = urljoins(normalized, src_path.name)
+
             num_files = 1
             total_bytes = src_path.stat().st_size
 
