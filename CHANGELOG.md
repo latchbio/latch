@@ -16,13 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.22.1
+## 2.22.1 - 2023-06-05
 
 ### Fixed
 
 - `latch cp` failing when uploading a file into a directory without specifying the resulting filename.
 
-## 2.22.0
+## 2.22.0 - 2023-05-31
 
 ### Fixed
 
