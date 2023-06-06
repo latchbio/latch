@@ -32,7 +32,6 @@ class Sample:
 @small_task
 def assembly_task(sample: Sample) -> LatchFile:
 
-    # A reference to our output.
     sam_file = Path("covid_assembly.sam").resolve()
 
     bowtie2_cmd = [
@@ -51,9 +50,9 @@ def assembly_task(sample: Sample) -> LatchFile:
 
     ...
 
-    output_location = f"latch:///Assembly Outputs/{sample.name.replace('/', '_')}/covid_assembly.sam"
+    resulting_sam_file = f"latch:///Assembly Outputs/{sample.name.replace('/', '_')}/covid_assembly.sam"
 
-    return LatchFile(str(sam_file), output_location)
+    return LatchFile(str(sam_file), resulting_sam_file)
 ```
 
 Next, we can define a workflow that takes in a list of `dataclass`es. The workflow will use the [`map_task` construct](../basics/map_task.md) in the SDK to parallelize the `assembly_task` across a list of inputs.
