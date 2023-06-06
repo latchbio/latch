@@ -2,7 +2,7 @@
 
 [Latch Registry](https://latch.wiki/what-is-registry) is a flexible sample management system that links files on Latch Data with metadata.
 
-![The spreadsheet interface from Latch Registry that shows files and metadata](../assets/registry/registry.png)
+![A screenshot of the Latch Registry spreadsheet interface that shows files and metadata](../assets/registry/registry.png)
 
 Workflows can use the Registry as a source of tabular data. A common use case is to import sample sheets which contain links to sequence files and associated labels and metadata.
 
@@ -55,15 +55,15 @@ def assembly_task(sample: Sample) -> LatchFile:
     return LatchFile(str(sam_file), resulting_sam_file)
 ```
 
-Next, we can define a workflow that takes in a list of `dataclass`es. The workflow will use the [`map_task` construct](../basics/map_task.md) in the SDK to parallelize the `assembly_task` across a list of inputs.
+Next, we define the combined workflow using [`map_task`](../basics/map_task.md) to run assembly on each input in parallel.
 
 ```python
-@workflow(metadata)
+@workflow(metadata) # metadata is defined in the next step
 def assemble_and_sort(samples: List[Sample]) -> List[LatchFile]:
     return map_task(assembly_task)(sample=samples)
 ```
 
-Now that we have set up the workflow logic, we can customize the workflow interface to display a sample sheet. To do so, we can set the `samplesheet` flag of `LatchParameter` equal to `True`.
+Finally, we define the workflow metadata and customize the interface. Note the `samplesheet=True` setting which switches the `samples` parameter from a generic `dataclass` input to the Registry input.
 
 ```python
 """The metadata included here will be injected into your interface."""
@@ -80,7 +80,7 @@ metadata = LatchMetadata(
     parameters={
         "samples": LatchParameter(
             display_name="Sample sheet",
-            samplesheet=True, # <======= flag to display sample sheet component
+            samplesheet=True, # <======= use the sample sheet input UI element
             description="A list of samples and their sequencing reads",
         )
     },
@@ -88,22 +88,22 @@ metadata = LatchMetadata(
 )
 ```
 
-To preview what the workflow interface looks like, you can type:
+Before publishing, we preview the workflow interface:
 ```bash
 latch preview <path_to_workflow_directory>
 ```
 
-The command will open up a new page in the browser that displays a preview of the sample sheet component.
+The command will open the workflow UI in a new page in the default browser. It will include the sample sheet import element:
 
-![A preview of the sample sheet component on the workflow GUI](../assets/registry/samplesheet.png)
+![A screenshot of the sample sheet import component on the workflow GUI](../assets/registry/samplesheet.png)
 
-When you click "Import from Registry", a new import modal will pop up. 
+The "Import from Registry" button opens an import modal: 
 
-![A preview of the sample sheet component on the workflow GUI](../assets/registry/import.png)
+![A screenshot of the "Import from registry" modal](../assets/registry/import.png)
 
-Here, you can select the table of interest and samples to be used in the workflow.
+Select the source table and samples to use in the workflow:
 
-![A preview of the sample sheet component on the workflow GUI](../assets/registry/sample-selection.png)
+![A screenshot of the sample selection stage of the "Import from registry" modal. It shows a spreadsheet interface similar to the main Registry interface but in read-only mode. Selected rows will be passed to the workflow](../assets/registry/sample-selection.png)
 
 ## Note on Registry Types
 
@@ -112,4 +112,4 @@ For example, the Registry table in the screenshot above has three columns: "Name
 
 ![A screenshot of the column matching stage of the "Import from registry" modal. It shows the dataclass fields on the left and a selector for Registry columns on the right](../assets/registry/match-columns.png)
 
-To learn more about how to create columns with specific types in Registry, visit our [Registry Wiki here](https://latch.wiki/create-a-table).
+[See the wiki section on Registry types](https://latch.wiki/create-a-table) for more information.
