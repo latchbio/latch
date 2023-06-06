@@ -59,7 +59,7 @@ def assembly_task(sample: Sample) -> LatchFile:
 Next, we define the combined workflow using [`map_task`](../basics/map_task.md) to run assembly on each input in parallel.
 
 ```python
-@workflow(metadata)
+@workflow(metadata) # metadata is defined in the next step
 def assemble_and_sort(samples: List[Sample]) -> List[LatchFile]:
     return map_task(assembly_task)(sample=samples)
 ```
