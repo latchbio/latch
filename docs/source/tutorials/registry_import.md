@@ -94,7 +94,7 @@ Before publishing, we preview the workflow interface:
 latch preview <path_to_workflow_directory>
 ```
 
-The command will open up a new page in the browser that displays a preview of the sample sheet component.
+The command will open the workflow UI in a new page in the default browser. It will include the sample sheet import element:
 
 ![A preview of the sample sheet component on the workflow GUI](../assets/registry/samplesheet.png)
 
