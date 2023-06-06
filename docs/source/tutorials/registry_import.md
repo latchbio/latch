@@ -113,4 +113,4 @@ For example, the Registry table in the screenshot above has three columns: "Name
 
 ![A screenshot of the column matching stage of the "Import from registry" modal. It shows the dataclass fields on the left and a selector for Registry columns on the right](../assets/registry/match-columns.png)
 
-To learn more about how to create columns with specific types in Registry, visit our [Registry Wiki here](https://latch.wiki/create-a-table).
+[See the wiki section on Registry types](https://latch.wiki/create-a-table) for more information.
