@@ -81,7 +81,7 @@ metadata = LatchMetadata(
     parameters={
         "samples": LatchParameter(
             display_name="Sample sheet",
-            samplesheet=True, # <======= flag to display sample sheet component
+            samplesheet=True, # <======= use the sample sheet input UI element
             description="A list of samples and their sequencing reads",
         )
     },
