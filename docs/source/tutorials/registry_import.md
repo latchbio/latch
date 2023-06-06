@@ -102,7 +102,7 @@ The "Import from Registry" button opens an import modal:
 
 ![A screenshot of the "Import from registry" modal](../assets/registry/import.png)
 
-Here, you can select the table of interest and samples to be used in the workflow.
+Select the source table and samples to use in the workflow:
 
 ![A preview of the sample sheet component on the workflow GUI](../assets/registry/sample-selection.png)
 
