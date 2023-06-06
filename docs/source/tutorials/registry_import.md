@@ -2,7 +2,7 @@
 
 [Latch Registry](https://latch.wiki/what-is-registry) is a flexible sample management system that links files on Latch Data with metadata.
 
-![The spreadsheet interface from Latch Registry that shows files and metadata](../assets/registry/registry.png)
+![A screenshot of the Latch Registry spreadsheet interface that shows files and metadata](../assets/registry/registry.png)
 
 Workflows can use the Registry as a source of tabular data. A common use case is to import sample sheets which contain links to sequence files and associated labels and metadata.
 
