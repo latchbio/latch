@@ -96,7 +96,7 @@ latch preview <path_to_workflow_directory>
 
 The command will open the workflow UI in a new page in the default browser. It will include the sample sheet import element:
 
-![A preview of the sample sheet component on the workflow GUI](../assets/registry/samplesheet.png)
+![A screenshot of the sample sheet import component on the workflow GUI](../assets/registry/samplesheet.png)
 
 The "Import from Registry" button opens an import modal: 
 
