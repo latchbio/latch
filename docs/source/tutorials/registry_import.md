@@ -98,7 +98,7 @@ The command will open the workflow UI in a new page in the default browser. It w
 
 ![A preview of the sample sheet component on the workflow GUI](../assets/registry/samplesheet.png)
 
-When you click "Import from Registry", a new import modal will pop up. 
+The "Import from Registry" button opens an import modal: 
 
 ![A preview of the sample sheet component on the workflow GUI](../assets/registry/import.png)
 
