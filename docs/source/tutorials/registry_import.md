@@ -100,7 +100,7 @@ The command will open the workflow UI in a new page in the default browser. It w
 
 The "Import from Registry" button opens an import modal: 
 
-![A preview of the sample sheet component on the workflow GUI](../assets/registry/import.png)
+![A screenshot of the "Import from registry" modal](../assets/registry/import.png)
 
 Here, you can select the table of interest and samples to be used in the workflow.
 
