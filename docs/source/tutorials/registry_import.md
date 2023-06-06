@@ -64,7 +64,7 @@ def assemble_and_sort(samples: List[Sample]) -> List[LatchFile]:
     return map_task(assembly_task)(sample=samples)
 ```
 
-Now that we have set up the workflow logic, we can customize the workflow interface to display a sample sheet. To do so, we can set the `samplesheet` flag of `LatchParameter` equal to `True`.
+Finally, we define the workflow metadata and customize the interface. Note the `samplesheet=True` setting which switches the `samples` parameter from a generic `dataclass` input to the Registry input.
 
 ```python
 """The metadata included here will be injected into your interface."""
