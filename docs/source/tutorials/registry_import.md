@@ -89,7 +89,7 @@ metadata = LatchMetadata(
 )
 ```
 
-To preview what the workflow interface looks like, you can type:
+Before publishing, we preview the workflow interface:
 ```bash
 latch preview <path_to_workflow_directory>
 ```
