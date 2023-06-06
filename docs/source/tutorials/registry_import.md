@@ -56,7 +56,7 @@ def assembly_task(sample: Sample) -> LatchFile:
     return LatchFile(str(sam_file), output_location)
 ```
 
-Next, we can define a workflow that takes in a list of `dataclass`es. The workflow will use the [`map_task` construct](../basics/map_task.md) in the SDK to parallelize the `assembly_task` across a list of inputs.
+Next, we define the combined workflow using [`map_task`](../basics/map_task.md) to run assembly on each input in parallel.
 
 ```python
 @workflow(metadata)
