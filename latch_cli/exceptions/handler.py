@@ -81,9 +81,9 @@ class CrashHandler:
                     for f in fnames:
                         p = (Path(dp) / f).resolve()
                         if (
-                            p.is_symlink()
-                            or os.path.getsize(p) < latch_constants.file_max_size
-                            or latch_constants.ignore_regex.search(str(p))
+                            latch_constants.ignore_regex.search(str(p))
+                            or p.is_symlink()
+                            or p.stat().st_size > latch_constants.file_max_size
                         ):
                             continue
 
