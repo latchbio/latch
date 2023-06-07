@@ -7,6 +7,7 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
+   latch_cli.services.cp
    latch_cli.services.deprecated
    latch_cli.services.init
    latch_cli.services.register
@@ -14,14 +15,6 @@ Subpackages
 
 Submodules
 ----------
-
-latch\_cli.services.cp module
------------------------------
-
-.. automodule:: latch_cli.services.cp
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
 latch\_cli.services.execute module
 ----------------------------------
@@ -83,6 +76,14 @@ latch\_cli.services.ls module
 -----------------------------
 
 .. automodule:: latch_cli.services.ls
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+latch\_cli.services.move module
+-------------------------------
+
+.. automodule:: latch_cli.services.move
    :members:
    :undoc-members:
    :show-inheritance:
