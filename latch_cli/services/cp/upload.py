@@ -88,168 +88,178 @@ def upload(
         num_bars = get_max_workers()
         show_total_progress = True
 
-    with (
-        ProcessPoolExecutor(max_workers=get_max_workers()) as executor,
-        ProcessPoolExecutor(max_workers=get_max_workers()) as end_upload_executor,
-        ProgressBarManager() as pbar_manager,
-        SyncManager() as state_manager,
-    ):
-        parts_by_src: "PartsBySrcType" = state_manager.dict()
-        upload_info_by_src: "UploadInfoBySrcType" = state_manager.dict()
+    with ProcessPoolExecutor(max_workers=get_max_workers()) as executor:
+        with ProcessPoolExecutor(max_workers=get_max_workers()) as end_upload_executor:
+            with ProgressBarManager() as pbar_manager:
+                with SyncManager() as state_manager:
+                    parts_by_src: "PartsBySrcType" = state_manager.dict()
+                    upload_info_by_src: "UploadInfoBySrcType" = state_manager.dict()
 
-        if src_path.is_dir():
-            if dest_exists and not src.endswith("/"):
-                normalized = urljoins(normalized, src_path.name)
+                    if src_path.is_dir():
+                        if dest_exists and not src.endswith("/"):
+                            normalized = urljoins(normalized, src_path.name)
 
-            jobs: List[UploadJob] = []
-            total_bytes = 0
+                        jobs: List[UploadJob] = []
+                        total_bytes = 0
 
-            for dir_path, _, file_names in os.walk(src_path, followlinks=True):
-                for file_name in file_names:
-                    rel_path = Path(dir_path) / file_name
+                        for dir_path, _, file_names in os.walk(
+                            src_path, followlinks=True
+                        ):
+                            for file_name in file_names:
+                                rel_path = Path(dir_path) / file_name
 
-                    parts_by_src[rel_path] = state_manager.list()
-                    jobs.append(
-                        UploadJob(
-                            rel_path,
-                            urljoins(normalized, str(rel_path.relative_to(src_path))),
-                        )
-                    )
+                                parts_by_src[rel_path] = state_manager.list()
+                                jobs.append(
+                                    UploadJob(
+                                        rel_path,
+                                        urljoins(
+                                            normalized,
+                                            str(rel_path.relative_to(src_path)),
+                                        ),
+                                    )
+                                )
 
-                    total_bytes += rel_path.stat().st_size
+                                total_bytes += rel_path.stat().st_size
 
-            num_files = len(jobs)
+                        num_files = len(jobs)
 
-            url_generation_bar: ProgressBars
-            with closing(
-                pbar_manager.ProgressBars(
-                    0, show_total_progress=(config.progress != Progress.none)
-                )
-            ) as url_generation_bar:
-                url_generation_bar.set_total(num_files, "Generating URLs")
+                        url_generation_bar: ProgressBars
+                        with closing(
+                            pbar_manager.ProgressBars(
+                                0,
+                                show_total_progress=(config.progress != Progress.none),
+                            )
+                        ) as url_generation_bar:
+                            url_generation_bar.set_total(num_files, "Generating URLs")
 
-                start_upload_futs: List[Future[Optional[StartUploadReturnType]]] = []
+                            start_upload_futs: List[
+                                Future[Optional[StartUploadReturnType]]
+                            ] = []
 
-                start = time.monotonic()
-                for job in jobs:
-                    start_upload_futs.append(
-                        executor.submit(
-                            start_upload,
-                            job.src,
-                            job.dest,
-                            url_generation_bar,
-                        )
-                    )
+                            start = time.monotonic()
+                            for job in jobs:
+                                start_upload_futs.append(
+                                    executor.submit(
+                                        start_upload,
+                                        job.src,
+                                        job.dest,
+                                        url_generation_bar,
+                                    )
+                                )
 
-                wait(start_upload_futs)
+                            wait(start_upload_futs)
 
-            for fut in start_upload_futs:
-                res = fut.result()
-                if res is not None:
-                    upload_info_by_src[res.src] = res
+                        for fut in start_upload_futs:
+                            res = fut.result()
+                            if res is not None:
+                                upload_info_by_src[res.src] = res
 
-            queue: "QueueType" = state_manager.Queue()
-            listeners = [
-                end_upload_executor.submit(
-                    end_upload_listener,
-                    queue=queue,
-                    parts_by_src=parts_by_src,
-                    upload_info_by_src=upload_info_by_src,
-                )
-                for _ in range(get_max_workers())
-            ]
-
-            chunk_upload_bars: ProgressBars
-            with closing(
-                pbar_manager.ProgressBars(
-                    min(num_bars, num_files),
-                    show_total_progress=show_total_progress,
-                    verbose=config.verbose,
-                )
-            ) as chunk_upload_bars:
-                chunk_upload_bars.set_total(num_files, "Uploading Files")
-
-                # todo(ayush): async-ify
-                chunk_futs: List[Future[CompletedPart]] = []
-                for data in start_upload_futs:
-                    res = data.result()
-
-                    if res is None:
-                        chunk_upload_bars.update_total_progress(1)
-                        continue
-
-                    pbar_index = chunk_upload_bars.get_free_task_bar_index()
-                    chunk_upload_bars.set(
-                        pbar_index,
-                        res.src.stat().st_size,
-                        res.src.name,
-                    )
-                    chunk_upload_bars.set_usage(str(res.src), res.part_count)
-
-                    for part_index, url in enumerate(res.urls):
-                        chunk_futs.append(
-                            executor.submit(
-                                upload_file_chunk,
-                                src=res.src,
-                                url=url,
-                                part_index=part_index,
-                                part_size=res.part_size,
-                                progress_bars=chunk_upload_bars,
-                                pbar_index=pbar_index,
+                        queue: "QueueType" = state_manager.Queue()
+                        listeners = [
+                            end_upload_executor.submit(
+                                end_upload_listener,
                                 queue=queue,
-                                parts_by_source=parts_by_src,
+                                parts_by_src=parts_by_src,
+                                upload_info_by_src=upload_info_by_src,
                             )
-                        )
+                            for _ in range(get_max_workers())
+                        ]
 
-                wait(chunk_futs)
-
-            queue.put(None)
-            print("Finalizing uploads...")
-            wait(listeners)
-        else:
-            if dest_exists and dest_is_dir:
-                normalized = urljoins(normalized, src_path.name)
-
-            num_files = 1
-            total_bytes = src_path.stat().st_size
-
-            progress_bars: ProgressBars
-            with closing(
-                pbar_manager.ProgressBars(
-                    num_bars,
-                    show_total_progress=show_total_progress,
-                    verbose=config.verbose,
-                )
-            ) as progress_bars:
-                pbar_index = progress_bars.get_free_task_bar_index()
-
-                start = time.monotonic()
-                res = start_upload(src_path, normalized)
-
-                if res is not None:
-                    progress_bars.set(pbar_index, res.src.stat().st_size, res.src.name)
-
-                    chunk_futs: List[Future[CompletedPart]] = []
-                    for part_index, url in enumerate(res.urls):
-                        chunk_futs.append(
-                            executor.submit(
-                                upload_file_chunk,
-                                src_path,
-                                url,
-                                part_index,
-                                res.part_size,
-                                progress_bars,
-                                pbar_index,
+                        chunk_upload_bars: ProgressBars
+                        with closing(
+                            pbar_manager.ProgressBars(
+                                min(num_bars, num_files),
+                                show_total_progress=show_total_progress,
+                                verbose=config.verbose,
                             )
-                        )
+                        ) as chunk_upload_bars:
+                            chunk_upload_bars.set_total(num_files, "Uploading Files")
 
-                    wait(chunk_futs)
+                            # todo(ayush): async-ify
+                            chunk_futs: List[Future[CompletedPart]] = []
+                            for data in start_upload_futs:
+                                res = data.result()
 
-                    end_upload(
-                        normalized,
-                        res.upload_id,
-                        [fut.result() for fut in chunk_futs],
-                    )
+                                if res is None:
+                                    chunk_upload_bars.update_total_progress(1)
+                                    continue
+
+                                pbar_index = chunk_upload_bars.get_free_task_bar_index()
+                                chunk_upload_bars.set(
+                                    pbar_index,
+                                    res.src.stat().st_size,
+                                    res.src.name,
+                                )
+                                chunk_upload_bars.set_usage(
+                                    str(res.src), res.part_count
+                                )
+
+                                for part_index, url in enumerate(res.urls):
+                                    chunk_futs.append(
+                                        executor.submit(
+                                            upload_file_chunk,
+                                            src=res.src,
+                                            url=url,
+                                            part_index=part_index,
+                                            part_size=res.part_size,
+                                            progress_bars=chunk_upload_bars,
+                                            pbar_index=pbar_index,
+                                            queue=queue,
+                                            parts_by_source=parts_by_src,
+                                        )
+                                    )
+
+                            wait(chunk_futs)
+
+                        queue.put(None)
+                        print("Finalizing uploads...")
+                        wait(listeners)
+                    else:
+                        if dest_exists and dest_is_dir:
+                            normalized = urljoins(normalized, src_path.name)
+
+                        num_files = 1
+                        total_bytes = src_path.stat().st_size
+
+                        progress_bars: ProgressBars
+                        with closing(
+                            pbar_manager.ProgressBars(
+                                num_bars,
+                                show_total_progress=show_total_progress,
+                                verbose=config.verbose,
+                            )
+                        ) as progress_bars:
+                            pbar_index = progress_bars.get_free_task_bar_index()
+
+                            start = time.monotonic()
+                            res = start_upload(src_path, normalized)
+
+                            if res is not None:
+                                progress_bars.set(
+                                    pbar_index, res.src.stat().st_size, res.src.name
+                                )
+
+                                chunk_futs: List[Future[CompletedPart]] = []
+                                for part_index, url in enumerate(res.urls):
+                                    chunk_futs.append(
+                                        executor.submit(
+                                            upload_file_chunk,
+                                            src_path,
+                                            url,
+                                            part_index,
+                                            res.part_size,
+                                            progress_bars,
+                                            pbar_index,
+                                        )
+                                    )
+
+                                wait(chunk_futs)
+
+                                end_upload(
+                                    normalized,
+                                    res.upload_id,
+                                    [fut.result() for fut in chunk_futs],
+                                )
 
     end = time.monotonic()
     total_time = end - start

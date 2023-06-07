@@ -16,6 +16,23 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.22.2 - 2023-06-07
+
+### Added
+
+- When a CLI command fails, metadata (`latch` version, current python, os info, etc) is printed.
+- There is now a prompt on failure to generate a crash report. Previously reports were generated automatically which was slow and sometimes error-prone.
+
+### Fixed
+
+- Bugs that broke support for Python 3.8 users:
+  - Fixed imports of `functools.cache`
+  - Fixed `with` statements with multiple contexts
+
+### Dependencies
+
+- Removed `awscli`, `uvloop`, and `prompt-toolkit` as they were unused.
+
 ## 2.22.1 - 2023-06-05
 
 ### Fixed
