@@ -77,8 +77,8 @@ basics/when_to_create_task
 
 basics/defining_environment
 basics/working_with_files
-basics/parameter_types
 basics/customizing_interface
+basics/parameter_types
 basics/preview_interface
 basics/customize_docs
 basics/messages
@@ -131,6 +131,7 @@ examples/workflows_examples
 tutorials/overview
 tutorials/rnaseq
 tutorials/metamage
+tutorials/registry_import
 ```
 
 ```{toctree}
