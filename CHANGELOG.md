@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.22.2 - 2023-06-05
+
+### Fixed
+
+- `workspace_id` failing when file is empty
+
 ## 2.22.1 - 2023-06-05
 
 ### Fixed
