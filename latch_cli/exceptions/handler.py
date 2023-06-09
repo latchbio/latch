@@ -4,14 +4,35 @@ import platform
 import sys
 import tarfile
 import tempfile
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from traceback import print_exc, walk_tb
+from textwrap import dedent
+from traceback import print_exc
 from types import TracebackType
-from typing import Optional, Type
+from typing import List, Optional, Type
+
+import click
 
 from latch_cli.constants import latch_constants
 from latch_cli.exceptions.traceback import _Traceback
 from latch_cli.utils import get_local_package_version
+
+
+@dataclass(frozen=True)
+class _Metadata:
+    os_name: str = os.name
+    os_version: str = platform.version()
+    latch_version: str = get_local_package_version()
+    py_version: str = sys.version
+    platform: str = platform.platform()
+
+    def __str__(self):
+        return dedent(f"""
+            Latch Version: {self.latch_version}
+            Python Version: {self.py_version}
+            Platform: {self.platform}
+            OS: {self.os_name}, {self.os_version}
+        """)
 
 
 class CrashHandler:
@@ -23,13 +44,7 @@ class CrashHandler:
     """
 
     def __init__(self):
-        self.metadata = {
-            "latch_version": get_local_package_version(),
-            "platform": platform.system(),
-            "os_name": os.name,
-            "os_version": platform.version(),
-        }
-
+        self.metadata: _Metadata = _Metadata()
         self.message: Optional[str] = None
         self.pkg_root: Optional[str] = None
 
@@ -61,29 +76,28 @@ class CrashHandler:
                 if (pkg_path / ".logs").exists():
                     tf.add(pkg_path / ".logs", arcname="logs")
 
-                pkg_files = [
-                    Path(dp) / f
-                    for dp, _, filenames in os.walk(pkg_path)
-                    for f in filenames
-                    if latch_constants.ignore_regex.search(str(Path(dp) / f)) is None
-                ]
+                pkg_files: List[Path] = []
+                for dp, _, fnames in os.walk(pkg_path):
+                    for f in fnames:
+                        p = (Path(dp) / f).resolve()
+                        if (
+                            latch_constants.ignore_regex.search(str(p))
+                            or p.is_symlink()
+                            or p.stat().st_size > latch_constants.file_max_size
+                        ):
+                            continue
+
+                        pkg_files.append(p)
+
                 for file_path in pkg_files:
-                    if os.path.getsize(file_path) < latch_constants.file_max_size:
-                        tf.add(file_path)
-                    else:
-                        with tempfile.NamedTemporaryFile("wb+") as ntf:
-                            ntf.write(f"# first 4 MB of {file_path}\n".encode("utf-8"))
-                            with open(file_path, "rb") as f:
-                                ntf.write(f.read(latch_constants.file_max_size))
-                                ntf.seek(0)
-                            tf.add(ntf.name, arcname=file_path)
+                    tf.add(file_path)
 
             with tempfile.NamedTemporaryFile("w+") as ntf:
-                json.dump(self.metadata, ntf)
+                json.dump(asdict(self.metadata), ntf)
                 ntf.seek(0)
                 tf.add(ntf.name, arcname="metadata.json")
 
-            print("\n>> Crash report written to .latch_report.tar.gz <<")
+        print(f"Crash report written to {tarball_path}")
 
     def init(self):
         """Custom error handling.
@@ -102,6 +116,9 @@ class CrashHandler:
         ) -> None:
             print(f"{self.message} - printing traceback:\n")
             _Traceback(type_, value, traceback).pretty_print()
-            self._write_state_to_tarball()
+            print(self.metadata)
+            if click.confirm("Generate a crash report?"):
+                print("Generating...")
+                self._write_state_to_tarball()
 
         sys.excepthook = _excepthook

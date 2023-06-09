@@ -1,6 +1,11 @@
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from functools import cache
+
+try:
+    from functools import cache
+except ImportError:
+    from functools import lru_cache as cache
+
 from typing import Iterator, List, Literal, Optional, TypedDict, Union, overload
 
 import gql
