@@ -16,7 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.22.2 - 2023-06-05
+## 2.22.3 - 2023-06-08
+
+### Fixed
+
+- `catalogMultiCreateProjects` instead of `catalogMultiUpsertProjects` in registry API
+
+## 2.22.2 - 2023-06-08
 
 ### Fixed
 
