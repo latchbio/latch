@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.22.4 - 2023-06-08
+
+### Fixed
+
+- `catalogMultiCreateExperiments` instead of `catalogMultiUpsertExperiments` in registry API
+
 ## 2.22.3 - 2023-06-08
 
 ### Fixed
