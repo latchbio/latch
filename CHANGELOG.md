@@ -16,7 +16,7 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.22.2 - 2023-06-07
+## 2.22.5 - 2023-06-07
 
 ### Added
 
@@ -32,6 +32,24 @@ Types of changes
 ### Dependencies
 
 - Removed `awscli`, `uvloop`, and `prompt-toolkit` as they were unused.
+
+## 2.22.4 - 2023-06-08
+
+### Fixed
+
+- `catalogMultiCreateExperiments` instead of `catalogMultiUpsertExperiments` in registry API
+
+## 2.22.3 - 2023-06-08
+
+### Fixed
+
+- `catalogMultiCreateProjects` instead of `catalogMultiUpsertProjects` in registry API
+
+## 2.22.2 - 2023-06-08
+
+### Fixed
+
+- `workspace_id` failing when file is empty
 
 ## 2.22.1 - 2023-06-05
 

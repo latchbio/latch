@@ -61,6 +61,8 @@ class _UserConfig:
                 ret = json.loads(s)
                 return ret["workspace_id"]
             except (json.decoder.JSONDecodeError, TypeError):
+                if s == "":
+                    return ""
                 try:
                     int(s)
                 except ValueError as e:

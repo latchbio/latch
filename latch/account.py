@@ -265,7 +265,7 @@ class AccountUpdate:
         display_names: _GqlJsonValue = [x.display_name for x in upserts]
 
         res = _parse_selection("""
-            catalogMultiUpsertProjects(input: {}) {
+            catalogMultiCreateProjects(input: {}) {
                 clientMutationId
             }
             """)

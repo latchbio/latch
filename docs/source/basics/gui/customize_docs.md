@@ -1,4 +1,4 @@
-# Adding Documentation to your Workflow
+# Workflow Documentation
 
 While most of the metadata of a workflow will be encapsulated in a LatchMetadata object, we still require a docstring in the body of the workflow function which specifies both a short and long-form description.
 
@@ -21,7 +21,7 @@ def rnaseq(
     ...
 ```
 
-![A short description of the workflow displayed under the workflow name once the workflow is published](../assets/ui/one-line-description.png)
+![A short description of the workflow displayed under the workflow name once the workflow is published](../../assets/ui/one-line-description.png)
 
 ## Long Description
 
@@ -64,4 +64,4 @@ def rnaseq(
     """
 ```
 
-![Workflow "About" tab displaying the workflow description from the example above](../assets/ui/long-form-description.png)
+![Workflow "About" tab displaying the workflow description from the example above](../../assets/ui/long-form-description.png)

@@ -227,7 +227,7 @@ class ProjectUpdate:
 
         res = _parse_selection(
             """
-            catalogMultiUpsertExperiments(input: {}) {
+            catalogMultiCreateExperiments(input: {}) {
                 clientMutationId
             }
             """
