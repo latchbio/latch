@@ -343,7 +343,12 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
             on_failure=WorkflowFailurePolicy.FAIL_IMMEDIATELY
         )
         workflow_metadata_defaults = WorkflowMetadataDefaults(False)
-        python_interface = self.python_interface
+        out_parameter_name = "latch_entrypoint"
+        python_interface = Interface(
+            self.python_interface.inputs,
+            {out_parameter_name: LatchFile},
+            docstring=self.python_interface.docstring,
+        )
         wrapper_wf = JITRegisterWorkflow(
             name=f"{self.name}_jit_register",
             workflow_metadata=workflow_metadata,
@@ -395,23 +400,20 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
             flyte_entity=task,
         )
 
-        wf_bindings: List[literals_models.Binding] = []
-        for i, out in enumerate(python_interface.outputs.keys()):
-            promise_to_bind = Promise(
-                var=out,
-                val=NodeOutput(node=task_node, var=out),
-            )
-            t = python_interface.outputs[out]
-            b = binding_from_python(
-                out,
-                self.interface.outputs[out].type,
-                promise_to_bind,
-                t,
-            )
-            wf_bindings.append(b)
+        promise_to_bind = Promise(
+            var=out_parameter_name,
+            val=NodeOutput(node=task_node, var=out_parameter_name),
+        )
+        t = python_interface.outputs[out_parameter_name]
+        output_binding = binding_from_python(
+            out_parameter_name,
+            LatchFile,
+            promise_to_bind,
+            t,
+        )
 
         wrapper_wf._nodes = [task_node]
-        wrapper_wf._output_bindings = wf_bindings
+        wrapper_wf._output_bindings = [output_binding]
         return wrapper_wf
 
     def find_upstream_node_matching_output_var(self, out_var: str):
@@ -453,16 +455,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         return fn_interface
 
     def get_fn_return_stmt(self):
-        return_stmt = (
-            "\n\treturn ("
-            + ", ".join(
-                f"LatchFile('{self._target_file_for_output_param[x]}')"
-                for x in self.python_interface.outputs
-            )
-            + ")"
-        )
-
-        return return_stmt
+        return "\n\treturn LatchFile('latch_entrypoint.py')"
 
     def get_fn_code(
         self, snakefile_path: str, version: str, image_name: str, account_id: str
