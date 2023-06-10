@@ -223,6 +223,7 @@ def generate_jit_register_code(
            from functools import partial
            from pathlib import Path
            from typing import List, NamedTuple, Optional, TypedDict
+           import inspect
 
            import google.protobuf.json_format as gpjson
            import gql

@@ -500,7 +500,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
             serialize_snakemake(pkg_root, snakefile, td, image_name, config.dkr_repo)
 
             protos = _recursive_list(td)
-            reg_resp = register_serialized_pkg(protos, None, version)
+            reg_resp = register_serialized_pkg(protos, None, version, account_id)
             _print_reg_resp(reg_resp, image_name)
 
 
@@ -533,12 +533,11 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         print(nodes)
         wf_id = nodes[0]["id"]
 
-
-        local_inputs_file = os.path.join(FlyteContext.execution_state.working_dir, "inputs.pb")
+        exec_ctx = inspect.stack()[6][0].f_locals["ctx"]
+        local_inputs_file = os.path.join(exec_ctx.execution_state.working_dir, "inputs.pb")
         input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
 
         params = json.loads(gpjson.MessageToJson(input_proto))["literals"]
-        gpjson.MessageToJson()
 
         token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", "")
         headers = {

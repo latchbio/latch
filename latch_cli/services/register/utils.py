@@ -108,6 +108,7 @@ def register_serialized_pkg(
     files: List[Path],
     token: Optional[str],
     version: str,
+    workspace_id: str,
     latch_register_url: str = config.api.workflow.register,
 ) -> dict:
     if token is None:
@@ -123,7 +124,7 @@ def register_serialized_pkg(
 
     serialize_files = {
         "version": version.encode("utf-8"),
-        ".latch_ws": current_workspace().encode("utf-8"),
+        ".latch_ws": workspace_id,
     }
     with contextlib.ExitStack() as stack:
         file_handlers = [stack.enter_context(open(file, "rb")) for file in files]

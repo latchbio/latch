@@ -381,7 +381,9 @@ def register(
                         f"{container.dockerfile} given to {task_name} is invalid.",
                     ) from e
 
-            reg_resp = register_serialized_pkg(protos, ctx.token, ctx.version)
+            reg_resp = register_serialized_pkg(
+                protos, ctx.token, ctx.version, current_workspace().encode("utf-8")
+            )
             _print_reg_resp(reg_resp, ctx.default_container.image_name)
 
             click.secho(
