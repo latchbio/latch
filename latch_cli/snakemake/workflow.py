@@ -472,7 +472,6 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
             textwrap.dedent(f"""
 
         image_name = "{image_name}"
-        version = "{version}"
         account_id = "{account_id}"
         snakefile = Path("{snakefile_path}")
 
@@ -483,6 +482,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         code_block += textwrap.indent(
             textwrap.dedent("""
         pkg_root = Path(".")
+        version = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
 
         wf = extract_snakemake_workflow(snakefile)
         wf_name = wf.name
@@ -540,7 +540,6 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         _interface_request = {
             "workflow_id": wf_id,
             "params": params,
-            "execution_token": token,
         }
         url = "https://console.ligma.ai/api/create-execution"
 
