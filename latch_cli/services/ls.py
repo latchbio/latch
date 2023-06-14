@@ -36,11 +36,13 @@ def ls(remote_directory: str) -> List[Dict[str, str]]:
     token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", "")
     if token != "":
         auth_header = f"Latch-Execution-Token {token}"
+        ws_id = {}
     else:
         auth_header = f"Bearer {retrieve_or_login()}"
+        ws_id = {"ws_account_id": current_workspace()}
 
     headers = {"Authorization": auth_header}
-    data = {"directory": remote_directory, "ws_account_id": current_workspace()}
+    data = {"directory": remote_directory, **ws_id}
 
     response = tinyrequests.post(url, headers=headers, json=data)
 
