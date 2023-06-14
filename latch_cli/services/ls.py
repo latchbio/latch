@@ -1,5 +1,6 @@
 """Service to list files in a remote directory."""
 
+import os
 from typing import Dict, List
 
 import latch_cli.tinyrequests as tinyrequests
@@ -31,8 +32,14 @@ def ls(remote_directory: str) -> List[Dict[str, str]]:
     remote_directory = _normalize_remote_path(remote_directory)
 
     url = config.api.data.list
-    token = retrieve_or_login()
-    headers = {"Authorization": f"Bearer {token}"}
+
+    token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", "")
+    if token != "":
+        auth_header = f"Latch-Execution-Token {token}"
+    else:
+        auth_header = f"Bearer {retrieve_or_login()}"
+
+    headers = {"Authorization": auth_header}
     data = {"directory": remote_directory, "ws_account_id": current_workspace()}
 
     response = tinyrequests.post(url, headers=headers, json=data)
