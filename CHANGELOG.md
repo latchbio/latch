@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.23.2 - 2023-06-14
+
+### Fixed
+
+- Template generation bug in empty wfs
+
 ## 2.23.1 - 2023-06-12
 
 ### Fixed

@@ -138,12 +138,14 @@ def _gen_template(pkg_root: Path):
         ),
     }
 
-    with open(pkg_root / "wf" / "__init__.py", "r+") as f:
-        lines = f.read()
-        f.seek(0)
-        for k, v in wf_metadata_params.items():
-            lines = lines.replace(k, v)
-        f.write(lines)
+    init_file = Path(pkg_root / "wf" / "__init__.py")
+    lines = init_file.read_text()
+    init_file.unlink()
+
+    for k, v in wf_metadata_params.items():
+        lines = lines.replace(k, v)
+
+    init_file.write_text(lines)
 
 
 def _gen_example_r(pkg_root: Path):
