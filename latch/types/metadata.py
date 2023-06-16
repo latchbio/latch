@@ -1,12 +1,14 @@
 import re
 from dataclasses import asdict, dataclass, field
 from enum import Enum
+from pathlib import Path
 from textwrap import indent
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import yaml
 
 from latch.types.directory import LatchDir
+from latch.types.file import LatchFile
 
 
 @dataclass
@@ -124,6 +126,8 @@ class Section(FlowBase):
             "paired_end": LatchParameter(
                 display_name="Paired-end reads",
                 description="FASTQ files",
+                batch_table_column=True,
+            ),
                 batch_table_column=True,
             ),
             "single_end": LatchParameter(
@@ -331,6 +335,18 @@ class LatchParameter:
 
 
 @dataclass
+class SnakemakeFileParameter(LatchParameter):
+    type: Optional[Union[LatchFile, LatchDir]] = None
+    """
+    The python type of the parameter.
+    """
+    path: Optional[Path] = None
+    """
+    The path where the file passed to this parameter will be copied.
+    """
+
+
+@dataclass
 class LatchMetadata:
     """Class for organizing workflow metadata
 
@@ -339,20 +355,6 @@ class LatchMetadata:
     ```python
     from latch.types import LatchMetadata, LatchAuthor, LatchRule, LatchAppearanceType
 
-    metadata = LatchMetadata(
-        parameters={
-            "read1": LatchParameter(
-                display_name="Read 1",
-                description="Paired-end read 1 file to be assembled.",
-                hidden=True,
-                section_title="Sample Reads",
-                placeholder="Select a file",
-                comment="This is a comment",
-                output=False,
-                appearance_type=LatchAppearanceType.paragraph,
-                rules=[
-                    LatchRule(
-                        regex="(.fasta|.fa|.faa|.fas)$",
                         message="Only .fasta, .fa, .fas, or .faa extensions are valid"
                     )
                 ],
