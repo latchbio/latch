@@ -77,7 +77,7 @@ class SnakemakeWorkflowExtractor(Workflow):
         return dag
 
 
-def extract_snakemake_workflow(snakefile: Path) -> SnakemakeWorkflow:
+def extract_snakemake_workflow(snakefile: Path, version: str) -> SnakemakeWorkflow:
     workflow = SnakemakeWorkflowExtractor(
         snakefile=snakefile,
     )
@@ -86,9 +86,7 @@ def extract_snakemake_workflow(snakefile: Path) -> SnakemakeWorkflow:
         overwrite_default_target=True,
     )
     dag = workflow.extract_dag()
-    wf = SnakemakeWorkflow(
-        dag,
-    )
+    wf = SnakemakeWorkflow(dag, version)
     wf.compile()
     return wf
 

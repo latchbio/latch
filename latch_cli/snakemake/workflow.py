@@ -288,7 +288,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         pkg_root = Path(".")
         version = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
 
-        wf = extract_snakemake_workflow(snakefile)
+        wf = extract_snakemake_workflow(snakefile, version)
         wf_name = wf.name
         generate_snakemake_entrypoint(wf, pkg_root, snakefile, {remote_output_url})
         """),
@@ -460,14 +460,12 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
     def __init__(
         self,
         dag: DAG,
+        version: str,
     ):
-        name = metadata._snakemake_metadata.display_name
-        docstring = Docstring(
-            f"{name}\n\nSample Description\n\n" + str(metadata._snakemake_metadata)
-        )
+        name = f"{metadata._snakemake_metadata.display_name}-{version}"
 
         native_interface, literal_map, return_files = snakemake_dag_to_interface(
-            dag, name, docstring
+            dag, name, None
         )
         self.literal_map = literal_map
         self.return_files = return_files
