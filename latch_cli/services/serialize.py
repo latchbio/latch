@@ -2,7 +2,7 @@ import os
 import textwrap
 from itertools import chain, filterfalse
 from pathlib import Path
-from typing import List, Set, Union, get_args
+from typing import List, Optional, Set, Union, get_args
 
 from flytekit import LaunchPlan
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
@@ -16,13 +16,18 @@ from snakemake.persistence import Persistence
 from snakemake.rules import Rule
 from snakemake.workflow import Workflow
 
+from latch.types.directory import LatchDir
 from latch_cli.centromere.ctx import _CentromereCtx
 from latch_cli.snakemake.serialize_utils import (
     EntityCache,
     get_serializable_launch_plan,
     get_serializable_workflow,
 )
-from latch_cli.snakemake.workflow import SnakemakeWorkflow, interface_to_parameters
+from latch_cli.snakemake.workflow import (
+    JITRegisterWorkflow,
+    SnakemakeWorkflow,
+    interface_to_parameters,
+)
 
 RegistrableEntity = Union[
     task_models.TaskSpec,
@@ -128,6 +133,7 @@ def serialize_snakemake(
 
 
 def serialize_jit_register_workflow(
+    jit_wf: JITRegisterWorkflow,
     pkg_root: Path,
     snakefile: Path,
     output_dir: Path,
@@ -135,9 +141,6 @@ def serialize_jit_register_workflow(
     dkr_repo: str,
 ):
     pkg_root = Path(pkg_root).resolve()
-    wf = extract_snakemake_workflow(snakefile)
-    jit_wf = wf.build_jit_register_wrapper()
-
     image_name_no_version, version = image_name.split(":")
     default_img = Image(
         name=image_name,
@@ -176,25 +179,31 @@ def snakefile_path_in_container(snakefile: Path, pkg_root: Path) -> str:
 
 
 def generate_snakemake_entrypoint(
-    wf: SnakemakeWorkflow, pkg_root: Path, snakefile: Path
+    wf: SnakemakeWorkflow,
+    pkg_root: Path,
+    snakefile: Path,
+    remote_output_url: Optional[str] = None,
 ):
     entrypoint_code_block = textwrap.dedent("""\
-           import subprocess
+           import os
            from pathlib import Path
+           import shutil
+           import subprocess
            from typing import NamedTuple
 
            from latch import small_task
-           from latch.types import LatchFile
+           from latch.types.file import LatchFile
 
-           def check_exists_and_ensure_parents(path: Path):
-               if path.exists():
-                   print(f"A file already exists at {path} and will be overwritten.")
-               path.parent.mkdir(parents=True, exist_ok=True)
-               return path
+           def check_exists_and_rename(old: Path, new: Path):
+               if new.exists():
+                   print(f"A file already exists at {new} and will be overwritten.")
+                   if new.is_dir():
+                       shutil.rmtree(new)
+               os.renames(old, new)
            """)
     for task in wf.snakemake_tasks:
         entrypoint_code_block += task.get_fn_code(
-            snakefile_path_in_container(snakefile, pkg_root)
+            snakefile_path_in_container(snakefile, pkg_root), remote_output_url
         )
 
     entrypoint = pkg_root.joinpath("latch_entrypoint.py")
@@ -203,7 +212,7 @@ def generate_snakemake_entrypoint(
 
 
 def generate_jit_register_code(
-    wf: SnakemakeWorkflow,
+    wf: JITRegisterWorkflow,
     pkg_root: Path,
     snakefile: Path,
     version: str,
@@ -220,6 +229,7 @@ def generate_jit_register_code(
            import time
            from functools import partial
            from pathlib import Path
+           import shutil
            from typing import List, NamedTuple, Optional, TypedDict
 
            import base64
@@ -230,6 +240,7 @@ def generate_jit_register_code(
            from flyteidl.core import literals_pb2 as _literals_pb2
            from flytekit.core import utils
            from flytekit.core.context_manager import FlyteContext
+           from flytekit.extras.persistence import LatchPersistence
            from latch_cli import tinyrequests
            from latch_cli.centromere.utils import _construct_dkr_client
            from latch_cli.config.latch import config
@@ -245,22 +256,25 @@ def generate_jit_register_code(
 
            from latch import small_task, workflow
            from latch.gql._execute import execute
-           from latch.types import LatchFile
+           from latch.types.directory import LatchDir
+           from latch.types.file import LatchFile
 
 
            print = partial(print, flush=True)
 
-           def check_exists_and_ensure_parents(path: Path):
-               if path.exists():
-                   print(f"A file already exists at {path} and will be overwritten.")
-               path.parent.mkdir(parents=True, exist_ok=True)
-               return path
+           def check_exists_and_rename(old: Path, new: Path):
+               if new.exists():
+                   print(f"A file already exists at {new} and will be overwritten.")
+                   if new.is_dir():
+                       shutil.rmtree(new)
+               os.renames(old, new)
            """)
     code_block += wf.get_fn_code(
         snakefile_path_in_container(snakefile, pkg_root),
         version,
         image_name,
         account_id,
+        wf.remote_output_url,
     )
 
     entrypoint = pkg_root.joinpath(".latch/jit_entrypoint.py")

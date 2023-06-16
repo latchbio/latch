@@ -164,8 +164,9 @@ def build_and_serialize(
 
     if ctx.workflow_type == WorkflowType.snakemake:
         wf = extract_snakemake_workflow(ctx.snakefile)
+        jit_wf = wf.build_jit_register_wrapper()
         generate_jit_register_code(
-            wf,
+            jit_wf,
             ctx.pkg_root,
             ctx.snakefile,
             ctx.version,
@@ -178,7 +179,7 @@ def build_and_serialize(
 
     if ctx.workflow_type == WorkflowType.snakemake:
         serialize_jit_register_workflow(
-            ctx.pkg_root, ctx.snakefile, tmp_dir, image_name, ctx.dkr_repo
+            jit_wf, ctx.pkg_root, ctx.snakefile, tmp_dir, image_name, ctx.dkr_repo
         )
     else:
         serialize_logs, container_id = serialize_pkg_in_container(
