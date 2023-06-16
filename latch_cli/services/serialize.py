@@ -77,7 +77,9 @@ class SnakemakeWorkflowExtractor(Workflow):
         return dag
 
 
-def extract_snakemake_workflow(snakefile: Path, version: str) -> SnakemakeWorkflow:
+def extract_snakemake_workflow(
+    snakefile: Path, version: Optional[str] = None
+) -> SnakemakeWorkflow:
     workflow = SnakemakeWorkflowExtractor(
         snakefile=snakefile,
     )

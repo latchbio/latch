@@ -282,7 +282,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         )
 
         if remote_output_url is not None:
-            remote_output_url = "'{remote_output_url}'"
+            remote_output_url = f"'{remote_output_url}'"
         code_block += textwrap.indent(
             textwrap.dedent(f"""
         pkg_root = Path(".")
@@ -460,9 +460,12 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
     def __init__(
         self,
         dag: DAG,
-        version: str,
+        version: Optional[str] = None,
     ):
-        name = f"{metadata._snakemake_metadata.display_name}-{version}"
+        if version is not None:
+            name = f"{metadata._snakemake_metadata.display_name}-{version}"
+        else:
+            name = metadata._snakemake_metadata.display_name
 
         native_interface, literal_map, return_files = snakemake_dag_to_interface(
             dag, name, None
@@ -666,7 +669,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         t = python_interface.outputs[out_parameter_name]
         output_binding = binding_from_python(
             out_parameter_name,
-            LatchFile,
+            bool,
             promise_to_bind,
             t,
         )
