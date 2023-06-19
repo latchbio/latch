@@ -655,7 +655,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 )
             )
         task_node = Node(
-            id=f"{wrapper_wf.name}_jit_register_node",
+            id="n0",
             metadata=task.construct_node_metadata(),
             bindings=sorted(task_bindings, key=lambda b: b.var),
             upstream_nodes=[],
