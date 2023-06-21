@@ -11,9 +11,12 @@ from typing import Iterator, List, Optional
 
 import docker
 import paramiko
+from fabric import Connection
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.tools import module_loader
+
+from latch_cli.constants import latch_constants
 
 
 @contextlib.contextmanager
@@ -165,11 +168,34 @@ def _construct_dkr_client(ssh_host: Optional[str] = None):
             ) from de
 
 
-def _construct_ssh_client(host_ip: str, username: str):
+def _construct_ssh_client(
+    host: str,
+    username: str,
+    *,
+    use_gateway: bool = False,
+) -> paramiko.SSHClient:
     ssh = paramiko.SSHClient()
+    sock: Optional[paramiko.Channel] = None
+
+    if use_gateway:
+        transport = _construct_ssh_client(
+            latch_constants.jump_host,
+            latch_constants.jump_user,
+        ).get_transport()
+
+        if transport is None:
+            raise ConnectionError("unable to connect to remote docker host")
+
+        sock = transport.open_channel(
+            kind="direct-tcpip",
+            dest_addr=(host, 22),
+            src_addr=("localhost", 22),
+        )
+
     ssh.load_system_host_keys()
     ssh.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy())
-    ssh.connect(host_ip, username=username)
+
+    ssh.connect(host, username=username, sock=sock)
     return ssh
 
 
@@ -177,12 +203,12 @@ class _TmpDir:
 
     """Represents a temporary directory that can be local or on a remote machine."""
 
-    def __init__(self, ssh_client=None, remote=False):
-        if remote and not ssh_client:
-            raise ValueError("Must provide an ssh client if remote is True.")
+    def __init__(self, ssh_conn: Optional[Connection] = None, remote=False):
+        if remote and not ssh_conn:
+            raise ValueError("Must provide an ssh connection if remote is True.")
 
         self.remote = remote
-        self.ssh_client = ssh_client
+        self.ssh_conn = ssh_conn
         self._tempdir = None
 
     def __enter__(self, *args):
@@ -195,18 +221,25 @@ class _TmpDir:
         if not self.remote:
             self._tempdir = tempfile.TemporaryDirectory()
             return Path(self._tempdir.name).resolve()
-        else:
-            td = "".join(
-                random.choices(
-                    string.ascii_uppercase + string.ascii_lowercase + string.digits, k=8
-                )
+
+        if self.ssh_conn is None:
+            raise ValueError("Must provide an ssh connection if remote is True.")
+
+        td = "".join(
+            random.choices(
+                string.ascii_uppercase + string.ascii_lowercase + string.digits, k=8
             )
-            self._tempdir = f"/tmp/{td}"
-            self.ssh_client.exec_command(f"mkdir {self._tempdir}")
-            return self._tempdir
+        )
+        self._tempdir = f"/tmp/{td}"
+        self.ssh_conn.run(f"mkdir {self._tempdir}")
+        return self._tempdir
 
     def cleanup(self, *args):
-        if not self.remote:
+        if (
+            not self.remote
+            and self._tempdir is not None
+            and not isinstance(self._tempdir, str)
+        ):
             self._tempdir.cleanup()
-        else:
-            self.ssh_client.exec_command(f"rm -rf {self._tempdir}")
+        elif self.ssh_conn is not None:
+            self.ssh_conn.run(f"rm -rf {self._tempdir}")

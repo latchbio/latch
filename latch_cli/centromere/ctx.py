@@ -1,11 +1,14 @@
 import re
 import subprocess
+import time
 from dataclasses import dataclass
 from pathlib import Path
+from textwrap import dedent
 from typing import Dict, Optional, Tuple
 
 import docker
 import paramiko
+from fabric import Config, Connection
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteEntities
 from flytekit.core.workflow import PythonFunctionWorkflow
@@ -35,6 +38,9 @@ class _Container:
     image_name: str
 
 
+ssh_config_expr = re.compile(r"^# >>> LATCH$.*^# LATCH <<<$", re.MULTILINE | re.DOTALL)
+
+
 class _CentromereCtx:
     """Manages state for interaction with centromere.
 
@@ -44,10 +50,10 @@ class _CentromereCtx:
     """
 
     dkr_repo: Optional[str] = None
-    dkr_client: docker.APIClient = None
-    ssh_client: paramiko.client.SSHClient = None
-    pkg_root: Path = None  # root
-    ssh_key_path: Path = None
+    dkr_client: Optional[docker.APIClient] = None
+    ssh_client: Optional[paramiko.SSHClient] = None
+    pkg_root: Optional[Path] = None  # root
+    ssh_key_path: Optional[Path] = None
     disable_auto_version: bool = False
     image_full = None
     token = None
@@ -63,6 +69,10 @@ class _CentromereCtx:
     latch_provision_url = config.api.centromere.provision
     latch_get_image_url = config.api.workflow.get_image
     latch_check_version_url = config.api.workflow.check_version
+
+    ssh_config_path: Optional[Path] = None
+    old_ssh_config: Optional[str] = None
+    ssh_conn: Optional[Connection] = None
 
     def __init__(
         self,
@@ -139,15 +149,21 @@ class _CentromereCtx:
                 self.ssh_key_path = Path(self.pkg_root) / latch_constants.pkg_ssh_key
                 self.public_key = generate_temporary_ssh_credentials(self.ssh_key_path)
 
-                public_ip, username = self.nucleus_provision_url()
+                internal_ip, username = self.provision_register_deployment()
+
+                self.configure_ssh_config(internal_ip)
 
                 self.dkr_client = _construct_dkr_client(
-                    ssh_host=f"ssh://{username}@{public_ip}"
+                    ssh_host=f"ssh://{username}@latch_register"
                 )
 
-                self.ssh_client = _construct_ssh_client(
-                    host_ip=public_ip,
-                    username=username,
+                self.ssh_conn = Connection(
+                    host=internal_ip,
+                    user=username,
+                    gateway=Connection(
+                        host=latch_constants.jump_host,
+                        user=latch_constants.jump_user,
+                    ),
                 )
             else:
                 self.dkr_client = _construct_dkr_client()
@@ -223,28 +239,88 @@ class _CentromereCtx:
         """
         return f"{self.dkr_repo}/{self.image}"
 
-    def nucleus_provision_url(self) -> Tuple[str, str]:
+    def provision_register_deployment(self) -> Tuple[str, str]:
         """Retrieve centromere IP + username."""
 
-        headers = {"Authorization": f"Bearer {self.token}"}
-
-        response = tinyrequests.post(
-            self.latch_provision_url,
-            headers=headers,
-            json={
-                "public_key": self.public_key,
-            },
+        resp = tinyrequests.post(
+            "https://centromere.latch.bio/register/start",
+            headers={"Authorization": f"Latch-SDK-Token {self.token}"},
+            json={"SSHKey": self.ssh_key_path.with_suffix(".pub").read_text()},
         )
 
-        resp = response.json()
-        try:
-            public_ip = resp["ip"]
-            username = resp["username"]
-        except KeyError as e:
+        if resp.status_code != 200:
+            raise ValueError(resp.json()["Error"])
+
+        ip = resp.json()["IP"]
+
+        retries = 0
+        while retries < 120:
+            resp = tinyrequests.post(
+                "https://centromere.latch.bio/register/ready",
+                headers={"Authorization": f"Latch-SDK-Token {self.token}"},
+            )
+
+            if resp.status_code != 200:
+                raise ValueError(resp.json()["Error"])
+
+            if resp.json()["Ready"]:
+                break
+
+            retries += 1
+            time.sleep(1)
+
+        if retries == 120 or ip == "":
             raise ValueError(
-                f"Malformed response from request for access token {resp}"
-            ) from e
-        return public_ip, username
+                "Unable to provision registration server due to load - please try again"
+                " later."
+            )
+
+        return ip, "root"
+
+    def downscale_register_deployment(self):
+        resp = tinyrequests.post(
+            "https://centromere.latch.bio/register/stop",
+            headers={"Authorization": f"Latch-SDK-Token {self.token}"},
+        )
+
+        if resp.status_code != 200:
+            raise ValueError("unable to downscale register deployment")
+
+    def configure_ssh_config(
+        self,
+        internal_ip: str,
+    ):
+        self.ssh_config_path = Path.home() / ".ssh" / "config"
+
+        self.ssh_config_path.parent.mkdir(exist_ok=True)
+        self.ssh_config_path.touch(exist_ok=True)
+
+        self.old_ssh_config = self.ssh_config_path.read_text()
+
+        jump_host_config = dedent(f"""
+            # >>> LATCH
+
+            Host latch_register
+                HostName {internal_ip}
+                ProxyJump {latch_constants.jump_user}@{latch_constants.jump_host}
+
+            # LATCH <<<
+            """).strip("\n")
+
+        match = ssh_config_expr.search(self.old_ssh_config)
+
+        if match:
+            ssh_config = ssh_config_expr.sub(jump_host_config, self.old_ssh_config)
+        else:
+            ssh_config = "\n".join([self.old_ssh_config, jump_host_config])
+
+        self.ssh_config_path.write_text(ssh_config)
+
+    def restore_ssh_config(self):
+        if self.old_ssh_config is None or self.ssh_config_path is None:
+            return
+
+        self.ssh_config_path.write_text(self.old_ssh_config)
 
     def nucleus_get_image(self, task_name: str, version: Optional[str] = None) -> str:
         """Retrieve fqn of the container for a task and optional version."""
@@ -297,14 +373,17 @@ class _CentromereCtx:
         return self
 
     def cleanup(self):
-        if self.ssh_key_path is None:
-            return
-        try:
-            cmd = ["ssh-add", "-d", self.ssh_key_path]
-            subprocess.run(cmd)
-        finally:
-            self.ssh_key_path.unlink(missing_ok=True)
-            self.ssh_key_path.with_suffix(".pub").unlink(missing_ok=True)
+        return
+        if self.ssh_key_path is not None:
+            try:
+                cmd = ["ssh-add", "-d", self.ssh_key_path]
+                subprocess.run(cmd)
+            finally:
+                self.ssh_key_path.unlink(missing_ok=True)
+                self.ssh_key_path.with_suffix(".pub").unlink(missing_ok=True)
+
+        self.restore_ssh_config()
+        self.downscale_register_deployment()
 
     def __exit__(self, type, value, traceback):
         self.cleanup()
