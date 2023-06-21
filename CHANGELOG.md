@@ -16,6 +16,18 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.23.5 - 2023-06-19
+
+### Fixed
+
+- Fix limits and imports
+
+## 2.23.3 - 2023-06-19
+
+### Added
+
+- Memory optimized task type
+
 ## 2.23.2 - 2023-06-14
 
 ### Fixed

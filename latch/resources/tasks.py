@@ -291,6 +291,48 @@ small_task = functools.partial(task, task_config=_get_small_pod())
 """
 
 
+def custom_memory_optimized_task(cpu: int, memory: int):
+    """Returns a custom task configuration requesting
+    the specified CPU/RAM allocations. This task
+    can utilize fewer cpu cores (62) than `custom_task`s (95)
+    but can use more RAM (up to 490 GiB) than `custom_task`s (up to 179 GiB).
+    This is ideal for processes which utilize a lot of memory per thread.
+
+    Args:
+        cpu: An integer number of cores to request, up to 63 cores
+        memory: An integer number of Gibibytes of RAM to request, up to 511 GiB
+    """
+    if cpu > 62:
+        raise ValueError(f"custom memory optimized task requires too many CPU cores: {cpu} (max 62)")
+    elif memory > 490:
+        raise ValueError(
+            f"custom memory optimized task requires too much RAM: {memory} GiB (max 490 GiB)"
+        )
+
+    primary_container = V1Container(name="primary")
+    resources = V1ResourceRequirements(
+        requests={"cpu": str(cpu), "memory": f"{memory}Gi"},
+        limits={"cpu": str(cpu), "memory": f"{memory}Gi"},
+    )
+    primary_container.resources = resources
+    task_config = Pod(
+        annotations={
+            "io.kubernetes.cri-o.userns-mode": (
+                "private:uidmapping=0:1048576:65536;gidmapping=0:1048576:65536"
+            )
+        },
+        pod_spec=V1PodSpec(
+            runtime_class_name="sysbox-runc",
+            containers=[primary_container],
+            tolerations=[
+                V1Toleration(effect="NoSchedule", key="ng", value="mem-512-spot")
+            ],
+        ),
+        primary_container_name="primary",
+    )
+    return functools.partial(task(task_config=task_config))
+
+
 def custom_task(cpu: int, memory: int):
     """Returns a custom task configuration requesting
     the specified CPU/RAM allocations
