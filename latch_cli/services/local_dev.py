@@ -159,7 +159,8 @@ def local_development(
         click.echo("Session cancelled.")
         return
 
-    key_path = pkg_root / ".latch" / "ssh_key"
+    key_path = pkg_root / latch_constants.pkg_ssh_key
+    jump_key_path = pkg_root / latch_constants.pkg_jump_key
     with TemporarySSHCredentials(key_path) as ssh:
         click.echo(
             "Starting local development session. This may take a few minutes for larger"
@@ -177,10 +178,20 @@ def local_development(
             },
         )
 
+        json_data = resp.json()
         if resp.status_code != 200:
-            raise ValueError(resp.json()["Error"])
+            raise ValueError(json_data["Error"])
 
-        ip = resp.json()["IP"]
+        ip = json_data["IP"]
+        jump_key = json_data["JumpKey"]
+        jump_key_path.write_text(jump_key)
+        jump_key_path.chmod(0o600)
+
+        subprocess.run(
+            ["ssh-add", str(jump_key_path)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
         try:
             retries = 0
@@ -239,6 +250,12 @@ def local_development(
                 "https://centromere.latch.bio/develop/stop",
                 headers={"Authorization": f"Latch-SDK-Token {retrieve_or_login()}"},
                 json={"ImageName": image},
+            )
+
+            subprocess.run(
+                ["ssh-add", "-d", jump_key_path],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
 
             if resp.status_code != 200:

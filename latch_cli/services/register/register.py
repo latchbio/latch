@@ -283,6 +283,7 @@ def register(
         click.secho("Initializing registration", bold=True)
         if remote:
             print("Connecting to remote server for docker build...")
+            ctx.ssh_conn.open()
 
         with contextlib.ExitStack() as stack:
             td = stack.enter_context(
@@ -301,7 +302,9 @@ def register(
             protos = _recursive_list(td)
             if remote:
                 local_td = stack.enter_context(tempfile.TemporaryDirectory())
-                scp = SCPClient(ctx.ssh_conn.transport, sanitize=lambda x: x)
+                ctx.connect_ssh()
+                ctx.ssh_conn.open()
+                scp = SCPClient(transport=ctx.ssh_conn.transport, sanitize=lambda x: x)
                 scp.get(f"{td}/*", local_path=local_td, recursive=True)
                 protos = _recursive_list(local_td)
             else:
@@ -323,9 +326,10 @@ def register(
 
                     if remote:
                         local_td = stack.enter_context(tempfile.TemporaryDirectory())
+                        ctx.connect_ssh()
+                        ctx.ssh_conn.open()
                         scp = SCPClient(
-                            ctx.ssh_conn.transport,
-                            sanitize=lambda x: x,
+                            transport=ctx.ssh_conn.transport, sanitize=lambda x: x
                         )
                         scp.get(f"{task_td}/*", local_path=local_td, recursive=True)
                         new_protos = _recursive_list(local_td)

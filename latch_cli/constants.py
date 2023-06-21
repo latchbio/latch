@@ -37,6 +37,7 @@ class LatchConstants:
 
     pkg_name: str = "latch"
     pkg_ssh_key: str = ".latch/ssh_key"
+    pkg_jump_key: str = ".latch/jump_key"
     pkg_config: str = ".latch/config"
 
     # todo(aidan): make this aware of the current working directory so that we do not remove useful context

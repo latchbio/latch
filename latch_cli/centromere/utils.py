@@ -168,37 +168,6 @@ def _construct_dkr_client(ssh_host: Optional[str] = None):
             ) from de
 
 
-def _construct_ssh_client(
-    host: str,
-    username: str,
-    *,
-    use_gateway: bool = False,
-) -> paramiko.SSHClient:
-    ssh = paramiko.SSHClient()
-    sock: Optional[paramiko.Channel] = None
-
-    if use_gateway:
-        transport = _construct_ssh_client(
-            latch_constants.jump_host,
-            latch_constants.jump_user,
-        ).get_transport()
-
-        if transport is None:
-            raise ConnectionError("unable to connect to remote docker host")
-
-        sock = transport.open_channel(
-            kind="direct-tcpip",
-            dest_addr=(host, 22),
-            src_addr=("localhost", 22),
-        )
-
-    ssh.load_system_host_keys()
-    ssh.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy())
-
-    ssh.connect(host, username=username, sock=sock)
-    return ssh
-
-
 class _TmpDir:
 
     """Represents a temporary directory that can be local or on a remote machine."""
