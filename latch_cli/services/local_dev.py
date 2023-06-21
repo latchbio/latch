@@ -9,8 +9,6 @@ from threading import Event
 from typing import Dict, Optional
 
 import click
-import websockets.client as websockets
-import websockets.exceptions
 
 from latch_cli.config.latch import config
 from latch_cli.constants import latch_constants
