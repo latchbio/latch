@@ -22,6 +22,7 @@ from latch_cli.services.register.utils import (
     upload_image,
 )
 from latch_cli.services.serialize import (
+    ensure_snakemake_metadata_exists,
     extract_snakemake_workflow,
     generate_jit_register_code,
     serialize_jit_register_workflow,
@@ -163,6 +164,7 @@ def build_and_serialize(
     """Builds an image, serializes the workflow within the image, and pushes the image."""
 
     if ctx.workflow_type == WorkflowType.snakemake:
+        ensure_snakemake_metadata_exists()
         wf = extract_snakemake_workflow(ctx.snakefile)
         jit_wf = wf.build_jit_register_wrapper()
         generate_jit_register_code(

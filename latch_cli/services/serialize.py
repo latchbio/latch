@@ -1,7 +1,8 @@
 import os
 import textwrap
-from itertools import chain, filterfalse
+from itertools import filterfalse
 from pathlib import Path
+from textwrap import dedent
 from typing import List, Optional, Set, Union, get_args
 
 from flytekit import LaunchPlan
@@ -16,8 +17,7 @@ from snakemake.persistence import Persistence
 from snakemake.rules import Rule
 from snakemake.workflow import Workflow
 
-from latch.types.directory import LatchDir
-from latch_cli.centromere.ctx import _CentromereCtx
+import latch.types.metadata as metadata
 from latch_cli.snakemake.serialize_utils import (
     EntityCache,
     get_serializable_launch_plan,
@@ -75,6 +75,38 @@ class SnakemakeWorkflowExtractor(Workflow):
         dag.check_dynamic()
 
         return dag
+
+
+def ensure_snakemake_metadata_exists():
+    if metadata._snakemake_metadata is None:
+        raise ValueError(dedent("""
+        
+        No `SnakemakeMetadata` object was detected in your Snakefile. This
+        object needs to be defined to register this workflow with Latch.
+
+        You can paste the following in the top of your Snakefile to get
+        started:
+
+        ```
+        from latch.types.metadata import SnakemakeMetadata, SnakemakeFileParameter
+        from latch.types.file import LatchFile
+        from latch.types.metadata import LatchAuthor, LatchMetadata
+
+        SnakemakeMetadata(
+            display_name="My Snakemake Workflow",
+            author=LatchAuthor(
+                    name="John Doe",
+            ),
+            parameters={
+                "foo" : SnakemakeFileParameter(
+                        display_name="Some Param",
+                        type=LatchFile,
+                        path=Path("foo.txt"),
+                ),
+        ```
+
+        Find more information at docs.latch.bio.
+        """))
 
 
 def extract_snakemake_workflow(
