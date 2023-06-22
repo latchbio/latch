@@ -102,8 +102,7 @@ run apt-get update --yes && \
     mkdir /root/.conda && \
     # docs for -b and -p flags: https://docs.anaconda.com/anaconda/install/silent-mode/#linux-macos
     bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \
-    rm -f Miniconda3-latest-Linux-x86_64.sh && \
-    conda init bash
+    rm -f Miniconda3-latest-Linux-x86_64.sh
 
 copy environment.yaml /opt/latch/environment.yaml
 run conda env create --file /opt/latch/environment.yaml --name workflow

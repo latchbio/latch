@@ -79,7 +79,7 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
             DockerCmdBlock(
                 comment="install R requirements",
                 commands=[
-                    dedent(r"""
+                    dedent("""
                         run apt-get update --yes && \
                             apt-get install --yes software-properties-common && \
                             add-apt-repository "deb http://cloud.r-project.org/bin/linux/debian buster-cran40/" && \
@@ -114,15 +114,14 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
             DockerCmdBlock(
                 comment="install miniconda",
                 commands=[
-                    dedent(r"""
+                    dedent("""
                         run apt-get update --yes && \
                             apt-get install --yes curl && \
                             curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
                             mkdir /root/.conda && \
                             # docs for -b and -p flags: https://docs.anaconda.com/anaconda/install/silent-mode/#linux-macos
                             bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \
-                            rm -f Miniconda3-latest-Linux-x86_64.sh && \
-                            conda init bash
+                            rm -f Miniconda3-latest-Linux-x86_64.sh
                         """).strip(),
                 ],
                 order=DockerCmdBlockOrder.precopy,
