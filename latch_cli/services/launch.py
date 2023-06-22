@@ -10,10 +10,10 @@ import requests
 from flyteidl.core.types_pb2 import LiteralType
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
+from latch_sdk_config.latch import config
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from latch_cli.config.latch import config
 from latch_cli.utils import current_workspace, retrieve_or_login
 
 

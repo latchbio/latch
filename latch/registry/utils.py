@@ -5,8 +5,9 @@ from typing import Dict, List, Optional, Type, TypeVar, Union, cast
 
 import gql
 from dateutil.parser import parse
+from latch_sdk_config.user import user_config
+from latch_sdk_gql.execute import execute
 
-from latch.gql._execute import execute
 from latch.registry.record import Record
 from latch.registry.types import InvalidValue, RegistryPythonValue
 from latch.registry.upstream_types.types import (
@@ -18,7 +19,6 @@ from latch.registry.upstream_types.types import (
 from latch.registry.upstream_types.values import DBValue
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
-from latch_cli.config.user import user_config
 
 # todo(maximsmol): hopefully, PyLance eventually narrows `TypedDict`` unions using `in`
 # then we can get rid of the casts

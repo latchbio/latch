@@ -4,8 +4,8 @@ from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
 import click
+from latch_sdk_config.user import user_config
 
-from latch_cli.config.user import user_config
 from latch_cli.services.cp.exceptions import PathResolutionError
 from latch_cli.services.cp.utils import get_auth_header
 
@@ -113,8 +113,6 @@ def append_scheme(path: str) -> str:
 #   latch://shared/a/b/c => latch://shared.xxx.account/a/b/c
 #   latch://any_other_domain/a/b/c => unchanged
 def append_domain(path: str) -> str:
-    from latch_cli.config.user import user_config
-
     workspace = user_config.workspace_id
 
     parsed = urlparse(path)

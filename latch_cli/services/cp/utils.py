@@ -1,7 +1,8 @@
 import os
 from typing import List
 
-from latch_cli.config.user import user_config
+from latch_sdk_config.user import user_config
+
 from latch_cli.services.cp.exceptions import AuthenticationError
 
 

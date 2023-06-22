@@ -1,5 +1,6 @@
+from latch_sdk_config.latch import config
+
 import latch_cli.tinyrequests as tinyrequests
-from latch_cli.config.latch import config
 from latch_cli.utils import _normalize_remote_path, current_workspace, retrieve_or_login
 
 

@@ -8,9 +8,9 @@ from pathlib import Path
 from typing import Dict, List, Set, TypedDict
 
 import click
+from latch_sdk_config.latch import config as latch_config
 
 from latch_cli import tinyrequests
-from latch_cli.config.latch import config as latch_config
 from latch_cli.constants import Units
 from latch_cli.services.cp.config import CPConfig, Progress
 from latch_cli.services.cp.ldata_utils import LDataNodeType, get_node_data

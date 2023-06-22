@@ -4,10 +4,10 @@ from typing import Iterator, List, Literal, Optional, TypedDict, Union, overload
 
 import gql
 import graphql.language as l
+from latch_sdk_gql.execute import execute
+from latch_sdk_gql.utils import _GqlJsonValue, _json_value, _name_node, _parse_selection
 from typing_extensions import TypeAlias
 
-from latch.gql._execute import execute
-from latch.gql._utils import _GqlJsonValue, _json_value, _name_node, _parse_selection
 from latch.registry.table import Table
 
 
@@ -48,8 +48,7 @@ class Project:
         Always makes a network request.
         """
         data = execute(
-            document=gql.gql(
-                """
+            document=gql.gql("""
                 query ProjectQuery($id: BigInt!) {
                     catalogProject(id: $id) {
                         id
@@ -67,8 +66,7 @@ class Project:
                         }
                     }
                 }
-                """
-            ),
+                """),
             variables={"id": self.id},
         )["catalogProject"]
         # todo(maximsmol): deal with nonexistent projects
@@ -225,13 +223,11 @@ class ProjectUpdate:
 
         display_names: _GqlJsonValue = [x.display_name for x in upserts]
 
-        res = _parse_selection(
-            """
+        res = _parse_selection("""
             catalogMultiCreateExperiments(input: {}) {
                 clientMutationId
             }
-            """
-        )
+            """)
         assert isinstance(res, l.FieldNode)
 
         args = l.ArgumentNode()
@@ -266,13 +262,11 @@ class ProjectUpdate:
 
         ids: _GqlJsonValue = [x.id for x in deletes]
 
-        res = _parse_selection(
-            """
+        res = _parse_selection("""
             catalogMultiDeleteExperiments(input: {}) {
                 clientMutationId
             }
-            """
-        )
+            """)
         assert isinstance(res, l.FieldNode)
 
         args = l.ArgumentNode()
@@ -324,13 +318,11 @@ class ProjectUpdate:
         sel_set = l.SelectionSetNode()
         sel_set.selections = tuple(mutations)
 
-        doc = l.parse(
-            """
+        doc = l.parse("""
             mutation ProjectUpdate {
                 placeholder
             }
-        """
-        )
+        """)
 
         assert len(doc.definitions) == 1
         mut = doc.definitions[0]

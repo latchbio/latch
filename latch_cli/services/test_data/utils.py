@@ -1,8 +1,9 @@
 import json
 from typing import Tuple
 
+from latch_sdk_config.latch import config
+
 import latch_cli.tinyrequests as tinyrequests
-from latch_cli.config.latch import config
 from latch_cli.utils import current_workspace, retrieve_or_login
 
 

@@ -11,6 +11,8 @@ from packaging.version import parse as parse_version
 import latch_cli.click_utils
 from latch_cli.click_utils import EnumChoice
 from latch_cli.exceptions.handler import CrashHandler
+from latch_cli.services.cp.autocomplete import complete as cp_complete
+from latch_cli.services.cp.autocomplete import remote_complete
 from latch_cli.services.cp.config import Progress
 from latch_cli.services.init.init import template_flag_to_option
 from latch_cli.utils import get_latest_package_version, get_local_package_version
@@ -207,8 +209,8 @@ def init(
 
 
 @main.command("cp")
-@click.argument("src")
-@click.argument("dest")
+@click.argument("src", shell_complete=cp_complete)
+@click.argument("dest", shell_complete=cp_complete)
 @click.option(
     "--progress",
     help="Type of progress information to show while copying",
@@ -246,8 +248,8 @@ def cp(
 
 
 @main.command("mv")
-@click.argument("src")
-@click.argument("dest")
+@click.argument("src", shell_complete=remote_complete)
+@click.argument("dest", shell_complete=remote_complete)
 def mv(src: str, dest: str):
     """Move remote files in LatchData."""
 
@@ -267,7 +269,7 @@ def mv(src: str, dest: str):
     is_flag=True,
     default=False,
 )
-@click.argument("remote_directories", nargs=-1)
+@click.argument("remote_directories", nargs=-1, shell_complete=remote_complete)
 def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]):
     """
     List the contents of a Latch Data directory

@@ -6,7 +6,6 @@ from pathlib import Path
 from textwrap import dedent
 from typing import List
 
-import click
 import yaml
 
 from latch_cli.constants import latch_constants
@@ -33,7 +32,10 @@ class DockerCmdBlock:
 
 def get_prologue(config: LatchWorkflowConfig) -> List[str]:
     return [
-        "# latch base image + dependencies for latch SDK --- removing these will break the workflow",
+        (
+            "# latch base image + dependencies for latch SDK --- removing these will"
+            " break the workflow"
+        ),
         f"from {config.base_image}",
         f"run pip install latch=={config.latch_version}",
         f"run mkdir /opt/latch",
@@ -42,7 +44,10 @@ def get_prologue(config: LatchWorkflowConfig) -> List[str]:
 
 def get_epilogue() -> List[str]:
     return [
-        "# latch internal tagging system + expected root directory --- changing these lines will break the workflow",
+        (
+            "# latch internal tagging system + expected root directory --- changing"
+            " these lines will break the workflow"
+        ),
         "arg tag",
         "env FLYTE_INTERNAL_IMAGE $tag",
         "workdir /root",
@@ -59,7 +64,10 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
                 comment="install system requirements",
                 commands=[
                     "copy system-requirements.txt /opt/latch/system-requirements.txt",
-                    "run apt-get update --yes && xargs apt-get install --yes </opt/latch/system-requirements.txt",
+                    (
+                        "run apt-get update --yes && xargs apt-get install --yes"
+                        " </opt/latch/system-requirements.txt"
+                    ),
                 ],
                 order=DockerCmdBlockOrder.precopy,
             )
@@ -71,14 +79,12 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
             DockerCmdBlock(
                 comment="install R requirements",
                 commands=[
-                    dedent(
-                        r"""
+                    dedent(r"""
                         run apt-get update --yes && \
                             apt-get install --yes software-properties-common && \
                             add-apt-repository "deb http://cloud.r-project.org/bin/linux/debian buster-cran40/" && \
                             DEBIAN_FRONTEND=noninteractive apt-get install --yes r-base r-base-dev libxml2-dev libcurl4-openssl-dev libssl-dev wget
-                        """
-                    ).strip(),
+                        """).strip(),
                     "copy environment.R /opt/latch/environment.R",
                     "run Rscript /opt/latch/environment.R",
                 ],
@@ -108,8 +114,7 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
             DockerCmdBlock(
                 comment="install miniconda",
                 commands=[
-                    dedent(
-                        r"""
+                    dedent(r"""
                         run apt-get update --yes && \
                             apt-get install --yes curl && \
                             curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
@@ -118,8 +123,7 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
                             bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \
                             rm -f Miniconda3-latest-Linux-x86_64.sh && \
                             conda init bash
-                        """
-                    ).strip(),
+                        """).strip(),
                 ],
                 order=DockerCmdBlockOrder.precopy,
             ),
@@ -127,8 +131,11 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
                 comment="build and configure conda environment",
                 commands=[
                     "copy environment.yaml /opt/latch/environment.yaml",
-                    f"run conda env create --file /opt/latch/environment.yaml --name {env_name}",
-                    f"env PATH=$CONDA_DIR/envs/{env_name}/bin:$PATH"
+                    (
+                        "run conda env create --file /opt/latch/environment.yaml"
+                        f" --name {env_name}"
+                    ),
+                    f"env PATH=$CONDA_DIR/envs/{env_name}/bin:$PATH",
                 ],
                 order=DockerCmdBlockOrder.precopy,
             ),
@@ -149,7 +156,9 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
         print("Adding python dependency installation phase")
         commands.append(
             DockerCmdBlock(
-                comment="add requirements from `requirements.txt` to python environment",
+                comment=(
+                    "add requirements from `requirements.txt` to python environment"
+                ),
                 commands=[
                     "copy requirements.txt /opt/latch/requirements.txt",
                     "run pip install --requirement /opt/latch/requirements.txt",
@@ -203,7 +212,8 @@ def generate_dockerfile(pkg_root: Path, outfile: Path) -> None:
             print("  - latch version:", config.latch_version)
     except FileNotFoundError as e:
         print(
-            "Could not find a .latch/config file in the supplied directory. Creating configuration"
+            "Could not find a .latch/config file in the supplied directory. Creating"
+            " configuration"
         )
         create_and_write_config(pkg_root)
         with (pkg_root / latch_constants.pkg_config).open("r") as f:

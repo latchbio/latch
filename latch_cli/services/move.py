@@ -1,8 +1,8 @@
 import click
 import gql
 from gql.transport.exceptions import TransportQueryError
+from latch_sdk_gql.execute import execute
 
-from latch.gql._execute import execute
 from latch_cli.services.cp.ldata_utils import LDataNodeType, get_node_data
 from latch_cli.services.cp.path_utils import (
     get_name_from_path,
