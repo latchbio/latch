@@ -102,7 +102,9 @@ def ensure_snakemake_metadata_exists():
                         display_name="Some Param",
                         type=LatchFile,
                         path=Path("foo.txt"),
-                ),
+                )
+            }
+        )
         ```
 
         Find more information at docs.latch.bio.
@@ -119,6 +121,7 @@ def extract_snakemake_workflow(
         snakefile,
         overwrite_default_target=True,
     )
+    ensure_snakemake_metadata_exists()
     dag = workflow.extract_dag()
     wf = SnakemakeWorkflow(dag, version)
     wf.compile()
