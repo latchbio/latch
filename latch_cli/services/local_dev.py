@@ -18,9 +18,9 @@ import asyncssh
 import boto3
 import websockets.client as websockets
 import websockets.exceptions
+from latch_sdk_config.latch import config
 from watchfiles import awatch
 
-from latch_cli.config.latch import config
 from latch_cli.constants import latch_constants
 from latch_cli.tinyrequests import post
 from latch_cli.utils import (
@@ -404,14 +404,10 @@ def local_development(pkg_root: Path):
             check=True,
         )
     except FileNotFoundError:
-        raise ValueError(
-            dedent(
-                """
+        raise ValueError(dedent("""
                 rsync is required for latch develop. Please install rsync and try again
                     linux: apt install rsync
                     mac: brew install rsync
-                """
-            )
-        )
+                """))
 
     asyncio.run(_run_local_dev_session(pkg_root))

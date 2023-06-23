@@ -11,10 +11,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, TypedDict
 
 import click
+from latch_sdk_config.latch import config as latch_config
 from typing_extensions import TypeAlias
 
 from latch_cli import tinyrequests
-from latch_cli.config.latch import config as latch_config
 from latch_cli.constants import latch_constants, units
 from latch_cli.services.cp.config import CPConfig, Progress
 from latch_cli.services.cp.ldata_utils import LDataNodeType, get_node_data
@@ -53,9 +53,13 @@ def upload(
     dest: str,
     config: CPConfig,
 ):
+    click.clear()
+
     src_path = Path(src)
     if not src_path.exists():
         raise ValueError(f"Could not find {src_path}.")
+
+    click.secho(f"Uploading {src_path.name}", fg="blue")
 
     node_data = get_node_data(dest, allow_resolve_to_parent=True)
     dest_data = node_data.data[dest]

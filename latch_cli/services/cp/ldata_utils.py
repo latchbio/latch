@@ -2,10 +2,16 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, List, TypedDict
 
-import graphql.language as l
+try:
+    from functools import cache
+except ImportError:
+    from functools import lru_cache as cache
 
-from latch.gql._execute import execute
-from latch.gql._utils import _name_node, _parse_selection, _var_def_node
+import gql
+import graphql.language as l
+from latch_sdk_gql.execute import execute
+from latch_sdk_gql.utils import _name_node, _parse_selection, _var_def_node
+
 from latch_cli.services.cp.path_utils import get_path_error, normalize_path
 
 
@@ -139,3 +145,148 @@ def get_node_data(
             raise get_path_error(remote_path, "not found", acc_id) from e
 
     return GetNodeDataResult(acc_id, ret)
+
+
+class Child(TypedDict):
+    name: str
+
+
+class ChildLdataTreeEdgesNode(TypedDict):
+    child: Child
+
+
+class ChildLdataTreeEdges(TypedDict):
+    nodes: List[ChildLdataTreeEdgesNode]
+
+
+class LdataResolvePathData(TypedDict):
+    childLdataTreeEdges: ChildLdataTreeEdges
+
+
+@cache
+def _get_immediate_children_of_node(path: str) -> List[str]:
+    lrpd: LdataResolvePathData = execute(
+        gql.gql("""
+            query MyQuery($argPath: String!) {
+                ldataResolvePathData(argPath: $argPath) {
+                    childLdataTreeEdges(
+                        filter: {child: {removed: {equalTo: false}}}
+                    ) {
+                        nodes {
+                            child {
+                                name
+                            }
+                        }
+                    }
+                }
+            }
+        """),
+        {"argPath": path},
+    )["ldataResolvePathData"]
+
+    res: List[str] = []
+    for node in lrpd["childLdataTreeEdges"]["nodes"]:
+        res.append(node["child"]["name"])
+
+    return res
+
+
+class Team(TypedDict):
+    accountId: str
+
+
+class TeamMembersByUserIdNode(TypedDict):
+    team: Team
+
+
+class TeamMembersByUserId(TypedDict):
+    nodes: List[TeamMembersByUserIdNode]
+
+
+class TeamInfosByOwnerId(TypedDict):
+    nodes: List[Team]
+
+
+class UserInfoByAccountId(TypedDict):
+    defaultAccount: str
+    teamMembersByUserId: TeamMembersByUserId
+    teamInfosByOwnerId: TeamInfosByOwnerId
+
+
+class Bucket(TypedDict):
+    bucketName: str
+
+
+class LdataS3MountAccessProvensByGeneratedUsing(TypedDict):
+    nodes: List[Bucket]
+
+
+class LdataS3MountConfiguratorRolesByAccountIdNode(TypedDict):
+    ldataS3MountAccessProvensByGeneratedUsing: LdataS3MountAccessProvensByGeneratedUsing
+
+
+class LdataS3MountConfiguratorRolesByAccountId(TypedDict):
+    nodes: List[LdataS3MountConfiguratorRolesByAccountIdNode]
+
+
+class AccountInfoCurrent(TypedDict):
+    userInfoByAccountId: UserInfoByAccountId
+    ldataS3MountConfiguratorRolesByAccountId: LdataS3MountConfiguratorRolesByAccountId
+
+
+@cache
+def _get_known_domains_for_account() -> List[str]:
+    aic: AccountInfoCurrent = execute(gql.gql("""
+        query DomainCompletionQuery {
+            accountInfoCurrent {
+                userInfoByAccountId {
+                    defaultAccount
+                    teamMembersByUserId(
+                        filter: { team: { account: { removed: { equalTo: false } } } }
+                    ) {
+                        nodes {
+                            team {
+                                accountId
+                            }
+                        }
+                    }
+                    teamInfosByOwnerId(filter: { account: { removed: { equalTo: false } } }) {
+                        nodes {
+                            accountId
+                        }
+                    }
+                }
+                ldataS3MountConfiguratorRolesByAccountId {
+                    nodes {
+                        ldataS3MountAccessProvensByGeneratedUsing {
+                            nodes {
+                                bucketName
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    """))["accountInfoCurrent"]
+
+    ui = aic["userInfoByAccountId"]
+
+    res: List[str] = [
+        f"{ui['defaultAccount']}.account",
+        f"shared.{ui['defaultAccount']}.account",
+    ]
+    for node in ui["teamMembersByUserId"]["nodes"]:
+        account_id = node["team"]["accountId"]
+        res.append(f"{account_id}.account")
+        res.append(f"shared.{account_id}.account")
+    for node in ui["teamInfosByOwnerId"]["nodes"]:
+        account_id = node["accountId"]
+        res.append(f"{account_id}.account")
+        res.append(f"shared.{account_id}.account")
+
+    s3_roles = aic["ldataS3MountConfiguratorRolesByAccountId"]
+    for node in s3_roles["nodes"]:
+        for sub_node in node["ldataS3MountAccessProvensByGeneratedUsing"]["nodes"]:
+            res.append(f"{sub_node['bucketName']}.mount")
+
+    return res

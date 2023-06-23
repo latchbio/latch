@@ -10,13 +10,13 @@ from typing import Iterator, List, Literal, Optional, TypedDict, Union, overload
 
 import gql
 import graphql.language as l
+from latch_sdk_config.user import user_config
+from latch_sdk_gql.execute import execute
+from latch_sdk_gql.utils import _GqlJsonValue, _json_value, _name_node, _parse_selection
 from typing_extensions import Self, TypeAlias
 
-from latch.gql._execute import execute
-from latch.gql._utils import _GqlJsonValue, _json_value, _name_node, _parse_selection
 from latch.registry.project import Project
 from latch.registry.table import Table
-from latch_cli.config.user import user_config
 
 
 class _CatalogExperiment(TypedDict):

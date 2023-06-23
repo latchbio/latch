@@ -1,8 +1,8 @@
 import click
 import gql
 from gql.transport.exceptions import TransportQueryError
+from latch_sdk_gql.execute import execute
 
-from latch.gql._execute import execute
 from latch_cli.services.cp.ldata_utils import LDataNodeType, get_node_data
 from latch_cli.services.cp.path_utils import get_name_from_path, get_path_error
 
@@ -12,6 +12,8 @@ def remote_copy(
     src: str,
     dest: str,
 ):
+    click.clear()
+
     node_data = get_node_data(src, dest, allow_resolve_to_parent=True)
 
     src_data = node_data.data[src]

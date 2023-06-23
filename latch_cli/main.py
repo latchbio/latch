@@ -11,6 +11,8 @@ from packaging.version import parse as parse_version
 import latch_cli.click_utils
 from latch_cli.click_utils import EnumChoice
 from latch_cli.exceptions.handler import CrashHandler
+from latch_cli.services.cp.autocomplete import complete as cp_complete
+from latch_cli.services.cp.autocomplete import remote_complete
 from latch_cli.services.cp.config import Progress
 from latch_cli.services.init.init import template_flag_to_option
 from latch_cli.utils import get_latest_package_version, get_local_package_version
@@ -207,8 +209,8 @@ def init(
 
 
 @main.command("cp")
-@click.argument("src")
-@click.argument("dest")
+@click.argument("src", shell_complete=cp_complete, nargs=-1)
+@click.argument("dest", shell_complete=cp_complete, nargs=1)
 @click.option(
     "--progress",
     help="Type of progress information to show while copying",
@@ -224,11 +226,20 @@ def init(
     default=False,
     show_default=True,
 )
+@click.option(
+    "--no-glob",
+    "-ng",
+    help="Don't expand globs in remote paths",
+    is_flag=True,
+    default=False,
+    show_default=True,
+)
 def cp(
-    src: str,
+    src: List[str],
     dest: str,
     progress: Progress,
     verbose: bool,
+    no_glob: bool,
 ):
     """Copy local files to LatchData and vice versa."""
 
@@ -242,12 +253,13 @@ def cp(
         dest,
         progress=progress,
         verbose=verbose,
+        expand_globs=not no_glob,
     )
 
 
 @main.command("mv")
-@click.argument("src")
-@click.argument("dest")
+@click.argument("src", shell_complete=remote_complete, nargs=-1)
+@click.argument("dest", shell_complete=remote_complete, nargs=1)
 def mv(src: str, dest: str):
     """Move remote files in LatchData."""
 
@@ -267,7 +279,7 @@ def mv(src: str, dest: str):
     is_flag=True,
     default=False,
 )
-@click.argument("remote_directories", nargs=-1)
+@click.argument("remote_directories", nargs=-1, shell_complete=remote_complete)
 def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]):
     """
     List the contents of a Latch Data directory
