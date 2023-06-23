@@ -45,6 +45,7 @@ class LatchConstants:
         r"(\.git|\.latch_report\.tar\.gz|traceback\.txt|metadata\.json)$"
     )
 
+    # todo(ayush): add a dns record so this isn't hot garbage
     jump_host = (
         "a379501a3e5e54a2c8d1cc4f7ed32630-1582965659.us-west-2.elb.amazonaws.com"
     )

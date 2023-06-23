@@ -72,7 +72,6 @@ class _CentromereCtx:
     ssh_key_path: Optional[Path] = None
     jump_key_path: Optional[Path] = None
     ssh_config_path: Optional[Path] = None
-    old_ssh_config: Optional[str] = None
 
     internal_ip: Optional[str] = None
     username: Optional[str] = None
@@ -256,14 +255,18 @@ class _CentromereCtx:
         self.jump_key_path.write_text(json_data["JumpKey"])
         self.jump_key_path.chmod(0o600)
 
-        subprocess.run(
-            ["ssh-add", str(self.jump_key_path)],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+        try:
+            subprocess.run(
+                ["ssh-add", str(self.jump_key_path)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            raise ValueError("Unable to add jump host key to SSH Agent") from e
 
-        retries = 0
-        while retries < 120:
+        poll_count = 0
+        while poll_count < 180:
             resp = tinyrequests.post(
                 "https://centromere.latch.bio/register/ready",
                 headers={"Authorization": f"Latch-SDK-Token {self.token}"},
@@ -275,10 +278,10 @@ class _CentromereCtx:
             if resp.json()["Ready"]:
                 break
 
-            retries += 1
+            poll_count += 1
             time.sleep(1)
 
-        if retries == 120 or ip == "":
+        if poll_count == 180:
             raise ValueError(
                 "Unable to provision registration server due to load - please try again"
                 " later."
@@ -299,13 +302,22 @@ class _CentromereCtx:
         self,
         internal_ip: str,
     ):
+        # todo(ayush): lock ssh_config while we use it to prevent funny races
         self.ssh_config_path = Path.home() / ".ssh" / "config"
 
-        self.ssh_config_path.parent.mkdir(exist_ok=True)
-        self.ssh_config_path.touch(exist_ok=True)
+        try:
+            ssh_config_content = self.ssh_config_path.read_text()
+        except FileNotFoundError:
+            self.ssh_config_path.parent.mkdir(exist_ok=True)
+            self.ssh_config_path.touch(exist_ok=True)
 
-        self.old_ssh_config = self.ssh_config_path.read_text()
+            self.ssh_config_path.parent.chmod(0o700)
+            self.ssh_config_path.chmod(0o600)
 
+            ssh_config_content = ""
+
+        # todo(ayush): use a random session key to parameterize the config and
+        # allow multiple workflow registrations at the same time
         jump_host_config = dedent(f"""
             # >>> LATCH
 
@@ -316,20 +328,26 @@ class _CentromereCtx:
             # LATCH <<<
             """).strip("\n")
 
-        match = ssh_config_expr.search(self.old_ssh_config)
+        match = ssh_config_expr.search(ssh_config_content)
 
         if match:
-            ssh_config = ssh_config_expr.sub(jump_host_config, self.old_ssh_config)
+            ssh_config = ssh_config_expr.sub(jump_host_config, ssh_config_content)
         else:
-            ssh_config = "\n".join([self.old_ssh_config, jump_host_config])
+            ssh_config = "\n".join([ssh_config_content, jump_host_config])
 
         self.ssh_config_path.write_text(ssh_config)
 
     def restore_ssh_config(self):
-        if self.old_ssh_config is None or self.ssh_config_path is None:
+        if self.ssh_config_path is None:
             return
 
-        self.ssh_config_path.write_text(self.old_ssh_config)
+        try:
+            ssh_config_content = self.ssh_config_path.read_text()
+        except FileNotFoundError:
+            return
+
+        new_content = ssh_config_expr.sub("", ssh_config_content)
+        self.ssh_config_path.write_text(new_content)
 
     def nucleus_get_image(self, task_name: str, version: Optional[str] = None) -> str:
         """Retrieve fqn of the container for a task and optional version."""

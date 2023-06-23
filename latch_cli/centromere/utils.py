@@ -195,14 +195,11 @@ class _TmpDir:
     """Represents a temporary directory that can be local or on a remote machine."""
 
     def __init__(self, ssh_client: Optional[paramiko.SSHClient] = None, remote=False):
-        if remote and not ssh_client:
+        if remote and ssh_client is None:
             raise ValueError("Must provide an ssh connection if remote is True.")
 
         self.remote = remote
-        if ssh_client is not None:
-            self.shell = ssh_client.invoke_shell()
-        else:
-            self.shell = None
+        self.ssh_client = ssh_client
         self._tempdir = None
 
     def __enter__(self, *args):
@@ -216,7 +213,7 @@ class _TmpDir:
             self._tempdir = tempfile.TemporaryDirectory()
             return Path(self._tempdir.name).resolve()
 
-        if self.shell is None:
+        if self.ssh_client is None:
             raise ValueError("Must provide an ssh connection if remote is True.")
 
         td = "".join(
@@ -225,7 +222,9 @@ class _TmpDir:
             )
         )
         self._tempdir = f"/tmp/{td}"
-        self.shell.send(f"mkdir {self._tempdir}".encode())
+        shell = self.ssh_client.invoke_shell()
+        shell.send(f"mkdir {self._tempdir}".encode())
+        shell.close()
         return self._tempdir
 
     def cleanup(self, *args):
@@ -235,5 +234,7 @@ class _TmpDir:
             and not isinstance(self._tempdir, str)
         ):
             self._tempdir.cleanup()
-        elif self.shell is not None:
-            self.shell.send(f"rm -rf {self._tempdir}".encode())
+        elif self.ssh_client is not None:
+            shell = self.ssh_client.invoke_shell()
+            shell.send(f"rm -rf {self._tempdir}".encode())
+            shell.close()

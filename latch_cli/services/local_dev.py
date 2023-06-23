@@ -22,7 +22,7 @@ from latch_cli.utils import (
     retrieve_or_login,
 )
 
-max_ready_retries = 300
+max_polls = 300
 
 
 class TaskSize(str, Enum):
@@ -92,6 +92,7 @@ def rsync(pkg_root: Path, ip: str, ssh_command: str, cancel_event: Event):
             stderr=subprocess.DEVNULL,
         )
 
+        # todo(ayush): use inotify or something instead of running on a fixed interval
         time.sleep(0.5)
 
 
@@ -187,15 +188,19 @@ def local_development(
         jump_key_path.write_text(jump_key)
         jump_key_path.chmod(0o600)
 
-        subprocess.run(
-            ["ssh-add", str(jump_key_path)],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+        try:
+            subprocess.run(
+                ["ssh-add", str(jump_key_path)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            raise ValueError("Unable to add jump host key to SSH Agent") from e
 
         try:
-            retries = 0
-            while retries < max_ready_retries:
+            poll_count = 0
+            while poll_count < max_polls:
                 resp = post(
                     "https://centromere.latch.bio/develop/ready",
                     headers={"Authorization": f"Latch-SDK-Token {retrieve_or_login()}"},
@@ -208,9 +213,9 @@ def local_development(
                     break
 
                 time.sleep(1)
-                retries += 1
+                poll_count += 1
 
-            if retries == max_ready_retries:
+            if poll_count == max_polls:
                 raise ValueError(
                     "Unable to provision instance due to server load - "
                     "please try again later."
@@ -252,11 +257,15 @@ def local_development(
                 json={"ImageName": image},
             )
 
-            subprocess.run(
-                ["ssh-add", "-d", jump_key_path],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-
             if resp.status_code != 200:
                 raise ValueError(resp.json()["Error"])
+
+            try:
+                subprocess.run(
+                    ["ssh-add", "-d", jump_key_path],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=True,
+                )
+            except subprocess.CalledProcessError as e:
+                raise ValueError("Unable to remove jump host key from SSH Agent")
