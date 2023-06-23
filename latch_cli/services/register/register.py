@@ -301,7 +301,9 @@ def register(
             protos = _recursive_list(td)
             if remote:
                 local_td = stack.enter_context(tempfile.TemporaryDirectory())
-                scp = SCPClient(ctx.ssh_client.get_transport(), sanitize=lambda x: x)
+                scp = SCPClient(
+                    transport=ctx.ssh_client.get_transport(), sanitize=lambda x: x
+                )
                 scp.get(f"{td}/*", local_path=local_td, recursive=True)
                 protos = _recursive_list(local_td)
             else:
@@ -324,7 +326,7 @@ def register(
                     if remote:
                         local_td = stack.enter_context(tempfile.TemporaryDirectory())
                         scp = SCPClient(
-                            ctx.ssh_client.get_transport(),
+                            transport=ctx.ssh_client.get_transport(),
                             sanitize=lambda x: x,
                         )
                         scp.get(f"{task_td}/*", local_path=local_td, recursive=True)

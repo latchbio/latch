@@ -2,6 +2,7 @@
 
 import textwrap
 from collections import OrderedDict
+from enum import Flag
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -15,6 +16,7 @@ from latch_cli.services.cp.autocomplete import complete as cp_complete
 from latch_cli.services.cp.autocomplete import remote_complete
 from latch_cli.services.cp.config import Progress
 from latch_cli.services.init.init import template_flag_to_option
+from latch_cli.services.local_dev import TaskSize
 from latch_cli.utils import get_latest_package_version, get_local_package_version
 from latch_cli.workflow_config import BaseImageOptions
 
@@ -124,7 +126,29 @@ def register(pkg_root: str, disable_auto_version: bool, remote: bool, yes: bool)
 
 @main.command("develop")
 @click.argument("pkg_root", nargs=1, type=click.Path(exists=True, path_type=Path))
-def local_development(pkg_root: Path):
+@click.option(
+    "--yes",
+    "-y",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Skip the confirmation dialog.",
+)
+@click.option(
+    "--image",
+    "-i",
+    type=str,
+    help="Image to use for develop session.",
+)
+@click.option(
+    "--size",
+    "-s",
+    type=EnumChoice(TaskSize, case_sensitive=False),
+    help="Instance size to use for develop session.",
+)
+def local_development(
+    pkg_root: Path, yes: bool, image: Optional[str], size: Optional[TaskSize]
+):
     """Develop workflows "locally"
 
     Visit docs.latch.bio to learn more.
@@ -135,7 +159,9 @@ def local_development(pkg_root: Path):
 
     from latch_cli.services.local_dev import local_development
 
-    local_development(pkg_root.resolve())
+    local_development(
+        pkg_root.resolve(), skip_confirm_dialog=yes, size=size, image=image
+    )
 
 
 @main.command("login")
