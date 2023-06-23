@@ -12,6 +12,8 @@ def remote_copy(
     src: str,
     dest: str,
 ):
+    click.clear()
+
     node_data = get_node_data(src, dest, allow_resolve_to_parent=True)
 
     src_data = node_data.data[src]

@@ -13,6 +13,10 @@ import click.shell_completion as sc
 import gql
 from latch_sdk_gql.execute import execute
 
+from latch_cli.services.cp.ldata_utils import (
+    _get_immediate_children_of_node,
+    _get_known_domains_for_account,
+)
 from latch_cli.services.cp.path_utils import urljoins
 
 completion_type = re.compile(
@@ -50,7 +54,7 @@ def remote_complete(
 
     if match is None:
         return []
-    elif match["domain"]:
+    elif match["domain"] is not None:
         return _complete_domain(incomplete)
     else:
         return _complete_remote_path(incomplete)
@@ -105,153 +109,8 @@ def _complete_domain(incomplete: str) -> List[sc.CompletionItem]:
     stub = match["stub"]
 
     res: List[sc.CompletionItem] = []
-    for d in _get_all_valid_domains_for_account():
+    for d in _get_known_domains_for_account():
         if d.startswith(stub):
             res.append(sc.CompletionItem(f"latch://{d}/"))
-
-    return res
-
-
-class Child(TypedDict):
-    name: str
-
-
-class ChildLdataTreeEdgesNode(TypedDict):
-    child: Child
-
-
-class ChildLdataTreeEdges(TypedDict):
-    nodes: List[ChildLdataTreeEdgesNode]
-
-
-class LdataResolvePathData(TypedDict):
-    childLdataTreeEdges: ChildLdataTreeEdges
-
-
-@cache
-def _get_immediate_children_of_node(path: str) -> List[str]:
-    lrpd: LdataResolvePathData = execute(
-        gql.gql("""
-            query MyQuery($argPath: String!) {
-                ldataResolvePathData(argPath: $argPath) {
-                    childLdataTreeEdges(
-                        filter: {child: {removed: {equalTo: false}}}
-                    ) {
-                        nodes {
-                            child {
-                                name
-                            }
-                        }
-                    }
-                }
-            }
-        """),
-        {"argPath": path},
-    )["ldataResolvePathData"]
-
-    res: List[str] = []
-    for node in lrpd["childLdataTreeEdges"]["nodes"]:
-        res.append(node["child"]["name"])
-
-    return res
-
-
-class Team(TypedDict):
-    accountId: str
-
-
-class TeamMembersByUserIdNode(TypedDict):
-    team: Team
-
-
-class TeamMembersByUserId(TypedDict):
-    nodes: List[TeamMembersByUserIdNode]
-
-
-class TeamInfosByOwnerId(TypedDict):
-    nodes: List[Team]
-
-
-class UserInfoByAccountId(TypedDict):
-    defaultAccount: str
-    teamMembersByUserId: TeamMembersByUserId
-    teamInfosByOwnerId: TeamInfosByOwnerId
-
-
-class Bucket(TypedDict):
-    bucketName: str
-
-
-class LdataS3MountAccessProvensByGeneratedUsing(TypedDict):
-    nodes: List[Bucket]
-
-
-class LdataS3MountConfiguratorRolesByAccountIdNode(TypedDict):
-    ldataS3MountAccessProvensByGeneratedUsing: LdataS3MountAccessProvensByGeneratedUsing
-
-
-class LdataS3MountConfiguratorRolesByAccountId(TypedDict):
-    nodes: List[LdataS3MountConfiguratorRolesByAccountIdNode]
-
-
-class AccountInfoCurrent(TypedDict):
-    userInfoByAccountId: UserInfoByAccountId
-    ldataS3MountConfiguratorRolesByAccountId: LdataS3MountConfiguratorRolesByAccountId
-
-
-@cache
-def _get_all_valid_domains_for_account() -> List[str]:
-    aic: AccountInfoCurrent = execute(gql.gql("""
-        query DomainCompletionQuery {
-            accountInfoCurrent {
-                userInfoByAccountId {
-                    defaultAccount
-                    teamMembersByUserId(
-                        filter: { team: { account: { removed: { equalTo: false } } } }
-                    ) {
-                        nodes {
-                            team {
-                                accountId
-                            }
-                        }
-                    }
-                    teamInfosByOwnerId(filter: { account: { removed: { equalTo: false } } }) {
-                        nodes {
-                            accountId
-                        }
-                    }
-                }
-                ldataS3MountConfiguratorRolesByAccountId {
-                    nodes {
-                        ldataS3MountAccessProvensByGeneratedUsing {
-                            nodes {
-                                bucketName
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    """))["accountInfoCurrent"]
-
-    ui = aic["userInfoByAccountId"]
-
-    res: List[str] = [
-        f"{ui['defaultAccount']}.account",
-        f"shared.{ui['defaultAccount']}.account",
-    ]
-    for node in ui["teamMembersByUserId"]["nodes"]:
-        account_id = node["team"]["accountId"]
-        res.append(f"{account_id}.account")
-        res.append(f"shared.{account_id}.account")
-    for node in ui["teamInfosByOwnerId"]["nodes"]:
-        account_id = node["accountId"]
-        res.append(f"{account_id}.account")
-        res.append(f"shared.{account_id}.account")
-
-    s3_roles = aic["ldataS3MountConfiguratorRolesByAccountId"]
-    for node in s3_roles["nodes"]:
-        for sub_node in node["ldataS3MountAccessProvensByGeneratedUsing"]["nodes"]:
-            res.append(f"{sub_node['bucketName']}.mount")
 
     return res

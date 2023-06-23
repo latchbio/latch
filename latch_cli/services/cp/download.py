@@ -47,10 +47,13 @@ def download(
     dest: Path,
     config: CPConfig,
 ):
+    click.clear()
+
     normalized = normalize_path(src)
     data = get_node_data(src)
 
     node_data = data.data[src]
+    click.secho(f"Downloading {node_data.name}", fg="blue")
 
     can_have_children = node_data.type in {
         LDataNodeType.account_root,

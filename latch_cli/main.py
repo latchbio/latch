@@ -209,8 +209,8 @@ def init(
 
 
 @main.command("cp")
-@click.argument("src", shell_complete=cp_complete)
-@click.argument("dest", shell_complete=cp_complete)
+@click.argument("src", shell_complete=cp_complete, nargs=-1)
+@click.argument("dest", shell_complete=cp_complete, nargs=1)
 @click.option(
     "--progress",
     help="Type of progress information to show while copying",
@@ -226,11 +226,20 @@ def init(
     default=False,
     show_default=True,
 )
+@click.option(
+    "--no-glob",
+    "-ng",
+    help="Don't expand globs in remote paths",
+    is_flag=True,
+    default=False,
+    show_default=True,
+)
 def cp(
-    src: str,
+    src: List[str],
     dest: str,
     progress: Progress,
     verbose: bool,
+    no_glob: bool,
 ):
     """Copy local files to LatchData and vice versa."""
 
@@ -244,12 +253,13 @@ def cp(
         dest,
         progress=progress,
         verbose=verbose,
+        expand_globs=not no_glob,
     )
 
 
 @main.command("mv")
-@click.argument("src", shell_complete=remote_complete)
-@click.argument("dest", shell_complete=remote_complete)
+@click.argument("src", shell_complete=remote_complete, nargs=-1)
+@click.argument("dest", shell_complete=remote_complete, nargs=1)
 def mv(src: str, dest: str):
     """Move remote files in LatchData."""
 

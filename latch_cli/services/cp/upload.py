@@ -53,9 +53,13 @@ def upload(
     dest: str,
     config: CPConfig,
 ):
+    click.clear()
+
     src_path = Path(src)
     if not src_path.exists():
         raise ValueError(f"Could not find {src_path}.")
+
+    click.secho(f"Uploading {src_path.name}", fg="blue")
 
     node_data = get_node_data(dest, allow_resolve_to_parent=True)
     dest_data = node_data.data[dest]

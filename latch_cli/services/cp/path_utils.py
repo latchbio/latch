@@ -131,6 +131,13 @@ def append_domain(path: str) -> str:
     return parsed._replace(netloc=dom).geturl()
 
 
+strip_domain_expr = re.compile(r"^(latch)?://[^/]*/")
+
+
+def strip_domain(path: str) -> str:
+    return strip_domain_expr.sub("", path, 1)
+
+
 def is_account_relative(path: str) -> bool:
     parsed = urlparse(path)
     dom = parsed.netloc
