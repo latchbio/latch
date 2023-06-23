@@ -203,6 +203,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         parameter_metadata = metadata._snakemake_metadata.parameters
         metadata._snakemake_metadata.parameters = parameter_metadata
         display_name = metadata._snakemake_metadata.display_name
+        name = metadata._snakemake_metadata.name
 
         docstring = Docstring(
             f"{display_name}\n\nSample Description\n\n"
@@ -222,7 +223,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         workflow_metadata = WorkflowMetadata(
             on_failure=WorkflowFailurePolicy.FAIL_IMMEDIATELY
         )
-        name = f"{display_name}_jit_register"
+        name = f"{name}_jit_register"
         workflow_metadata_defaults = WorkflowMetadataDefaults(False)
         super().__init__(
             name=name,
@@ -463,9 +464,9 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         version: Optional[str] = None,
     ):
         if version is not None:
-            name = f"{metadata._snakemake_metadata.display_name}-{version}"
+            name = f"{metadata._snakemake_metadata.name}-{version}"
         else:
-            name = metadata._snakemake_metadata.display_name
+            name = metadata._snakemake_metadata.name
 
         native_interface, literal_map, return_files = snakemake_dag_to_interface(
             dag, name, None
