@@ -16,6 +16,18 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.24.0 - 2023-06-23
+
+### Added
+
+- Glob support for latch cp
+- latch cp autocomplete
+- ability to choose task size in latch develop
+
+### Changed
+
+- Backend implementations of latch register and latch develop
+
 ## 2.23.5 - 2023-06-19
 
 ### Fixed
