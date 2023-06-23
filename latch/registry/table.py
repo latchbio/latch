@@ -21,10 +21,8 @@ from typing import (
 import gql
 import graphql.language as l
 import graphql.language.parser as lp
-from typing_extensions import TypeAlias
-
-from latch.gql._execute import execute
-from latch.gql._utils import (
+from latch_sdk_gql.execute import execute
+from latch_sdk_gql.utils import (
     _GqlJsonValue,
     _json_value,
     _name_node,
@@ -32,6 +30,8 @@ from latch.gql._utils import (
     _var_def_node,
     _var_node,
 )
+from typing_extensions import TypeAlias
+
 from latch.registry.record import NoSuchColumnError, Record
 from latch.registry.types import (
     Column,

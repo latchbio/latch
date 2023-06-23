@@ -13,8 +13,8 @@ from typing import (
 )
 
 import gql
+from latch_sdk_gql.execute import execute
 
-from latch.gql._execute import execute
 from latch.registry.upstream_types.types import DBType
 from latch.registry.upstream_types.values import DBValue
 

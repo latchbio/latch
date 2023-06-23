@@ -2,9 +2,10 @@
 
 
 from typing import Optional
+
 import click
-from latch_cli.config.user import user_config
-from latch_cli.config.latch import config
+from latch_sdk_config.latch import config
+from latch_sdk_config.user import user_config
 
 
 def login(connection: Optional[str] = None) -> str:
@@ -22,7 +23,10 @@ def login(connection: Optional[str] = None) -> str:
         https://datatracker.ietf.org/doc/html/rfc6749
     """
     if _browser_available() is False:
-        token: str = click.prompt(f"Go to `{config.console_routes.developer}` and copy your API Key here", type=str)
+        token: str = click.prompt(
+            f"Go to `{config.console_routes.developer}` and copy your API Key here",
+            type=str,
+        )
         token = token.strip()
         user_config.update_token(token)
 
@@ -71,7 +75,6 @@ def _auth0_jwt_for_access_jwt(token) -> str:
     Uses an Auth0 token to authenticate the user.
     """
     import latch_cli.tinyrequests as tinyrequests
-    from latch_cli.config.latch import config
 
     headers = {
         "Authorization": f"Bearer {token}",

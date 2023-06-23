@@ -12,6 +12,7 @@ import paramiko.util
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteEntities
 from flytekit.core.workflow import PythonFunctionWorkflow
+from latch_sdk_config.latch import config
 
 import latch_cli.tinyrequests as tinyrequests
 from latch_cli.centromere.utils import (
@@ -19,7 +20,6 @@ from latch_cli.centromere.utils import (
     _construct_ssh_client,
     _import_flyte_objects,
 )
-from latch_cli.config.latch import config
 from latch_cli.constants import latch_constants
 from latch_cli.docker_utils import generate_dockerfile
 from latch_cli.utils import (

@@ -7,9 +7,9 @@ from pathlib import Path
 from typing import Dict, List
 
 from apscheduler.schedulers.background import BackgroundScheduler
+from latch_sdk_config.latch import config
 
 import latch_cli.tui as tui
-from latch_cli.config.latch import config
 from latch_cli.tinyrequests import post
 from latch_cli.utils import account_id_from_token, current_workspace, retrieve_or_login
 

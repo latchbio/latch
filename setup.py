@@ -41,6 +41,8 @@ setup(
         "gql==3.4.0",
         "graphql-core==3.2.3",
         "requests-toolbelt==0.10.1",
+        "latch-sdk-gql==0.0.2",
+        "latch-sdk-config==0.0.1",
     ],
     classifiers=[
         "Programming Language :: Python :: 3.8",
