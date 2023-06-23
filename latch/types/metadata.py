@@ -437,9 +437,11 @@ class LatchMetadata:
 @dataclass
 class SnakemakeMetadata(LatchMetadata):
     output_dir: Optional[LatchDir] = None
+    name: Optional[str] = None
 
     def __post_init__(self):
         global _snakemake_metadata
+        self.name = self.display_name.lower().replace(" ", "_")
         _snakemake_metadata = self
 
 
