@@ -168,16 +168,41 @@ def _construct_dkr_client(ssh_host: Optional[str] = None):
             ) from de
 
 
+def _construct_ssh_client(internal_ip: str, username: str) -> paramiko.SSHClient:
+    gateway = paramiko.SSHClient()
+    gateway.load_system_host_keys()
+    gateway.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy)
+    gateway.connect(latch_constants.jump_host, username=latch_constants.jump_user)
+
+    transport = gateway.get_transport()
+    if transport is None:
+        raise ConnectionError("unable to create connection to jump host")
+    sock = transport.open_channel(
+        kind="direct-tcpip",
+        dest_addr=(internal_ip, 22),
+        src_addr=("", 0),
+    )
+
+    ssh = paramiko.SSHClient()
+    ssh.load_system_host_keys()
+    ssh.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy)
+    ssh.connect(internal_ip, username=username, sock=sock)
+    return ssh
+
+
 class _TmpDir:
 
     """Represents a temporary directory that can be local or on a remote machine."""
 
-    def __init__(self, ssh_conn: Optional[Connection] = None, remote=False):
-        if remote and not ssh_conn:
+    def __init__(self, ssh_client: Optional[paramiko.SSHClient] = None, remote=False):
+        if remote and not ssh_client:
             raise ValueError("Must provide an ssh connection if remote is True.")
 
         self.remote = remote
-        self.ssh_conn = ssh_conn
+        if ssh_client is not None:
+            self.shell = ssh_client.invoke_shell()
+        else:
+            self.shell = None
         self._tempdir = None
 
     def __enter__(self, *args):
@@ -191,7 +216,7 @@ class _TmpDir:
             self._tempdir = tempfile.TemporaryDirectory()
             return Path(self._tempdir.name).resolve()
 
-        if self.ssh_conn is None:
+        if self.shell is None:
             raise ValueError("Must provide an ssh connection if remote is True.")
 
         td = "".join(
@@ -200,7 +225,7 @@ class _TmpDir:
             )
         )
         self._tempdir = f"/tmp/{td}"
-        self.ssh_conn.run(f"mkdir {self._tempdir}")
+        self.shell.send(f"mkdir {self._tempdir}".encode())
         return self._tempdir
 
     def cleanup(self, *args):
@@ -210,5 +235,5 @@ class _TmpDir:
             and not isinstance(self._tempdir, str)
         ):
             self._tempdir.cleanup()
-        elif self.ssh_conn is not None:
-            self.ssh_conn.run(f"rm -rf {self._tempdir}")
+        elif self.shell is not None:
+            self.shell.send(f"rm -rf {self._tempdir}".encode())

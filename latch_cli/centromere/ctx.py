@@ -9,13 +9,16 @@ from typing import Dict, Optional, Tuple
 import docker
 import paramiko
 import paramiko.util
-from fabric import Config, Connection
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteEntities
 from flytekit.core.workflow import PythonFunctionWorkflow
 
 import latch_cli.tinyrequests as tinyrequests
-from latch_cli.centromere.utils import _construct_dkr_client, _import_flyte_objects
+from latch_cli.centromere.utils import (
+    _construct_dkr_client,
+    _construct_ssh_client,
+    _import_flyte_objects,
+)
 from latch_cli.config.latch import config
 from latch_cli.constants import latch_constants
 from latch_cli.docker_utils import generate_dockerfile
@@ -48,7 +51,7 @@ class _CentromereCtx:
 
     dkr_repo: Optional[str] = None
     dkr_client: Optional[docker.APIClient] = None
-    ssh_client: Optional[paramiko.SSHClient] = None
+    ssh_client: paramiko.SSHClient
     pkg_root: Optional[Path] = None  # root
     disable_auto_version: bool = False
     image_full = None
@@ -70,7 +73,6 @@ class _CentromereCtx:
     jump_key_path: Optional[Path] = None
     ssh_config_path: Optional[Path] = None
     old_ssh_config: Optional[str] = None
-    ssh_conn: Optional[Connection] = None
 
     internal_ip: Optional[str] = None
     username: Optional[str] = None
@@ -158,7 +160,10 @@ class _CentromereCtx:
                     ssh_host=f"ssh://{self.username}@latch_register"
                 )
 
-                self.connect_ssh()
+                self.ssh_client = _construct_ssh_client(
+                    self.internal_ip,
+                    self.username,
+                )
             else:
                 self.dkr_client = _construct_dkr_client()
         except Exception as e:
@@ -232,20 +237,6 @@ class _CentromereCtx:
 
         """
         return f"{self.dkr_repo}/{self.image}"
-
-    def connect_ssh(self):
-        if self.ssh_conn is not None:
-            self.ssh_conn.close()
-
-        self.ssh_conn = Connection(
-            host=self.internal_ip,
-            user=self.username,
-            port=22,
-            gateway=Connection(
-                host=latch_constants.jump_host,
-                user=latch_constants.jump_user,
-            ),
-        )
 
     def provision_register_deployment(self) -> Tuple[str, str]:
         """Retrieve centromere IP + username."""
@@ -391,9 +382,6 @@ class _CentromereCtx:
         return self
 
     def cleanup(self):
-        if self.ssh_conn is not None:
-            self.ssh_conn.close()
-
         if self.ssh_key_path is not None:
             try:
                 subprocess.run(
