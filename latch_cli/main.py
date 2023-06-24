@@ -43,10 +43,12 @@ def main():
     latest_ver = parse_version(get_latest_package_version())
     if local_ver < latest_ver:
         click.secho(
-            textwrap.dedent(f"""
+            textwrap.dedent(
+                f"""
                 WARN: Your local version of latch ({local_ver}) is out of date. This may result in unexpected behavior.
                 Please upgrade to the latest version ({latest_ver}) using `python3 -m pip install --upgrade latch`.
-                """).strip("\n"),
+                """
+            ).strip("\n"),
             fg="yellow",
         )
 
@@ -122,6 +124,26 @@ def register(pkg_root: str, disable_auto_version: bool, remote: bool, yes: bool)
         remote=remote,
         skip_confirmation=yes,
     )
+
+
+@main.command("serialize")
+@click.argument("pkg_root", type=click.Path(exists=True, file_okay=False))
+@click.argument("output_dir", type=click.Path(exists=True, file_okay=False))
+def serialize(pkg_root: str, output_dir: Path):
+    """Serializes workflow code into lyteidl protobuf.
+
+    Designed to be used internally by `latch register`. May behave strangely
+    if used directly.
+
+    Visit docs.latch.bio to learn more.
+    """
+
+    crash_handler.message = f"Unable to serialize workflow in {pkg_root}."
+    crash_handler.pkg_root = pkg_root
+
+    from latch_cli.services.serialize import serialize
+
+    serialize(pkg_root, output_dir)
 
 
 @main.command("develop")
@@ -445,10 +467,8 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
     if version is None:
         version = "latest"
     click.secho(
-        (
-            f"Successfully generated python param map named {wf_name}.params.py with"
-            f" version {version}\n Run `latch launch {wf_name}.params.py` to launch it."
-        ),
+        f"Successfully generated python param map named {wf_name}.params.py with"
+        f" version {version}\n Run `latch launch {wf_name}.params.py` to launch it.",
         fg="green",
     )
 

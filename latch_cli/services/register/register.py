@@ -20,7 +20,12 @@ from latch_cli.services.register.utils import (
     serialize_pkg_in_container,
     upload_image,
 )
-from latch_cli.utils import current_workspace
+from latch_cli.services.serialize import (
+    extract_snakemake_workflow,
+    generate_snakemake_entrypoint,
+    get_snakefile,
+)
+from latch_cli.utils import WorkflowType, current_workspace
 
 from ..workspace import _get_workspaces
 
@@ -155,6 +160,11 @@ def build_and_serialize(
     dockerfile: Optional[Path] = None,
 ):
     """Builds an image, serializes the workflow within the image, and pushes the image."""
+
+    if ctx.workflow_type == WorkflowType.SNAKEMAKE:
+        snakefile = get_snakefile(ctx.pkg_root)
+        _, wf = extract_snakemake_workflow(snakefile)
+        generate_snakemake_entrypoint(wf, ctx)
 
     image_build_logs = build_image(ctx, image_name, context_path, dockerfile)
     print_and_write_build_logs(image_build_logs, image_name, ctx.pkg_root)

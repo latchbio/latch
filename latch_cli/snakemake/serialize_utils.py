@@ -137,13 +137,13 @@ def get_serializable_node(
         raise Exception(f"Node {entity.id} has no flyte entity")
 
     upstream_sdk_nodes = [
-        get_serializable_node(n, settings)
+        get_serializable_node(n, settings, cache)
         for n in entity.upstream_nodes
         if n.id != common_constants.GLOBAL_INPUT_NODE_ID
     ]
 
     if isinstance(entity.flyte_entity, PythonTask):
-        task_spec = get_serializable_task(entity.flyte_entity, settings)
+        task_spec = get_serializable_task(entity.flyte_entity, settings, cache)
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
@@ -173,7 +173,7 @@ def get_serializable_workflow(
         return cache[entity]
 
     upstream_node_models = [
-        get_serializable_node(n, settings)
+        get_serializable_node(n, settings, cache)
         for n in entity.nodes
         if n.id != common_constants.GLOBAL_INPUT_NODE_ID
     ]

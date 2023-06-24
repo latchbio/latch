@@ -2,6 +2,7 @@ import os
 import textwrap
 from itertools import chain, filterfalse
 from pathlib import Path
+from typing import List, Union
 
 from flytekit import LaunchPlan
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
@@ -12,15 +13,34 @@ from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.tools.serialize_helpers import persist_registrable_entities
 from snakemake.common import ON_WINDOWS
 from snakemake.dag import DAG
+from snakemake.executors import RealExecutor
 from snakemake.persistence import Persistence
 from snakemake.rules import Rule
 from snakemake.workflow import Workflow
 
+from latch_cli.centromere.ctx import _CentromereCtx
 from latch_cli.snakemake.serialize_utils import (
     get_serializable_launch_plan,
     get_serializable_workflow,
 )
-from latch_cli.workflow import SnakemakeWorkflow, transform_inputs_to_parameters
+from latch_cli.snakemake.workflow import SnakemakeWorkflow, interface_to_parameters
+
+RegistrableEntity = Union[
+    task_models.TaskSpec,
+    launch_plan_models.LaunchPlan,
+    admin_workflow_models.WorkflowSpec,
+]
+
+
+def should_register_with_admin(entity) -> bool:
+    return isinstance(
+        entity,
+        (
+            task_models.TaskSpec,
+            launch_plan_models.LaunchPlan,
+            admin_workflow_models.WorkflowSpec,
+        ),
+    )
 
 
 class SnakemakeWorkflowExtractor(Workflow):
@@ -96,14 +116,8 @@ class SnakemakeWorkflowExtractor(Workflow):
         return dag
 
 
-def serialize(pkg_root: Path):
-    """Serializes workflow code into lyteidl protobuf.
+def extract_snakemake_workflow(snakefile: Path) -> (str, SnakemakeWorkflow):
 
-    Args:
-        pkg_root: The directory of project with workflow code to be serialized
-    """
-
-    snakefile = Path("Snakemake")
     workflow = SnakemakeWorkflowExtractor(
         snakefile=snakefile,
     )
@@ -119,47 +133,62 @@ def serialize(pkg_root: Path):
         dag,
     )
     wf.compile()
-
-    default_img = Image(
-        name=wf_name,
-        fqn=f"812206152185.dkr.ecr.us-west-2.amazonaws.com/{wf_name}",
-        tag="",
-    )
-    settings = SerializationSettings(
-        project="",
-        domain="",
-        version="",
-        env={},
-        image_config=ImageConfig(default_image=default_img, images=[default_img]),
-    )
-
-    registrable_entity_cache = {}
-
-    get_serializable_workflow(wf, settings, registrable_entity_cache)
-
-    parameter_map = transform_inputs_to_parameters(wf.python_interface)
-    lp = LaunchPlan(
-        name=wf.name,
-        workflow=wf,
-        parameters=parameter_map,
-        fixed_inputs=literals_models.LiteralMap(literals={}),
-    )
-    admin_lp = get_serializable_launch_plan(settings, lp, registrable_entity_cache)
-
-    new_api_model_values = list(registrable_entity_cache.values())
-    entities_to_be_serialized = [
-        x.to_flyte_idl()
-        for x in list(filter(should_register_with_admin, new_api_model_values))
-        + [admin_lp]
-    ]
-
-    persist_registrable_entities(entities_to_be_serialized, "/tmp")
-
-    entrypoint = Path("latch_entrypoint.py")
-    generate_snakemake_entrypoint(snakefile, entrypoint)
+    return wf_name, wf
 
 
-def generate_snakemake_entrypoint(snakefile: Path, entrypoint: Path):
+def get_snakefile(pkg_root: Path) -> Path:
+    return Path("Snakefile")
+
+
+def serialize(pkg_root: Path, output_dir: Path):
+    """Serializes workflow code into lyteidl protobuf.
+
+    Args:
+        pkg_root: The directory of project with workflow code to be serialized
+        output_dir: The directory where generated protobuf will go
+    """
+
+    pkg_root = Path(pkg_root).resolve()
+    snakefile = get_snakefile(pkg_root)
+    with _CentromereCtx(pkg_root, no_register=True) as ctx:
+
+        wf_name, wf = extract_snakemake_workflow(snakefile)
+
+        default_img = Image(
+            name=wf_name,
+            fqn=f"{ctx.dkr_repo}/{wf_name}",
+            tag=ctx.version,
+        )
+        settings = SerializationSettings(
+            image_config=ImageConfig(default_image=default_img, images=[default_img]),
+        )
+
+        registrable_entity_cache = {}
+
+        get_serializable_workflow(wf, settings, registrable_entity_cache)
+
+        parameter_map = interface_to_parameters(wf.python_interface)
+        lp = LaunchPlan(
+            name=wf.name,
+            workflow=wf,
+            parameters=parameter_map,
+            fixed_inputs=literals_models.LiteralMap(literals={}),
+        )
+        admin_lp = get_serializable_launch_plan(settings, lp, registrable_entity_cache)
+
+        registrable_entities = [
+            x.to_flyte_idl()
+            for x in list(
+                filter(
+                    should_register_with_admin, list(registrable_entity_cache.values())
+                )
+            )
+            + [admin_lp]
+        ]
+        persist_registrable_entities(registrable_entities, output_dir)
+
+
+def generate_snakemake_entrypoint(wf: SnakemakeWorkflow, ctx: _CentromereCtx):
 
     entrypoint_code_block = textwrap.dedent(
         """\
@@ -175,17 +204,23 @@ def generate_snakemake_entrypoint(snakefile: Path, entrypoint: Path):
                return path
            """
     )
+    entrypoint = ctx.pkg_root.joinpath(".latch/latch_entrypoint.py")
+    snakefile = get_snakefile(ctx.pkg_root)
+
+    # TODO - pull out what we need from RealExecutor
+    workflow = SnakemakeWorkflowExtractor(
+        snakefile=snakefile,
+    )
+    workflow.include(
+        snakefile,
+        overwrite_default_target=True,
+    )
+    dag = workflow.extract()
+    executor = RealExecutor(workflow, dag)
+    executor.cores = 8
+
+    for task in wf.snakemake_tasks:
+        entrypoint_code_block += task.get_fn_code(executor)
 
     with open(entrypoint, "w") as f:
         f.write(entrypoint_code_block)
-
-
-def should_register_with_admin(entity) -> bool:
-    return isinstance(
-        entity,
-        (
-            task_models.TaskSpec,
-            launch_plan_models.LaunchPlan,
-            admin_workflow_models.WorkflowSpec,
-        ),
-    )

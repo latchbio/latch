@@ -32,7 +32,6 @@ from flytekit.models import interface as interface_models
 from flytekit.models import literals as literals_models
 from flytekit.models import types as type_models
 from snakemake.dag import DAG
-from snakemake.executors import RealExecutor
 from snakemake.persistence import Persistence
 from snakemake.resources import DefaultResources, ResourceScopes, parse_resources
 from snakemake.rules import Rule
@@ -176,6 +175,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         self._input_parameters = None
         self._dag = dag
+        self.snakemake_tasks = []
 
         workflow_metadata = WorkflowMetadata(
             on_failure=WorkflowFailurePolicy.FAIL_IMMEDIATELY
@@ -198,21 +198,6 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
             bindings=[],
             upstream_nodes=[],
             flyte_entity=None,
-        )
-
-        entrypoint_code_block = textwrap.dedent(
-            """\
-               import subprocess
-               from pathlib import Path
-               from typing import NamedTuple
-
-               from latch import small_task
-               from latch.types import LatchFile
-
-               def ensure_parents_exist(path: Path):
-                   path.parent.mkdir(parents=True, exist_ok=True)
-                   return path
-               """
         )
 
         node_map = {}
@@ -261,7 +246,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     is_target=is_target,
                     interface=interface,
                 )
-                entrypoint_code_block += task.get_fn_code()
+                self.snakemake_tasks.append(task)
 
                 typed_interface = transform_interface_to_typed_interface(interface)
 
@@ -334,9 +319,6 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         self._nodes = list(node_map.values())
         self._output_bindings = bindings
 
-        with open("latch_entrypoint.py", "w") as f:
-            f.write(entrypoint_code_block)
-
     def execute(self, **kwargs):
         return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
 
@@ -374,7 +356,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             task_resolver=SnakemakeJobTaskResolver(),
         )
 
-    def get_fn_code(self, wf):
+    def get_fn_code(self, executor):
 
         code_block = ""
 
@@ -404,8 +386,6 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             if t == LatchFile:
                 code_block += f'\n\tPath({param}).resolve().rename(ensure_parents_exist(Path("{self._target_file_for_param[param]}")))'
 
-        executor = RealExecutor(wf, self._dag)
-        executor.cores = 8
         snakemake_cmd = ["snakemake", *executor.get_job_args(self.job).split(" ")]
         snakemake_cmd.remove("")
         formatted_snakemake_cmd = "\n\n\tsubprocess.run(["

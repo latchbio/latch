@@ -85,7 +85,14 @@ class _CentromereCtx:
         token: Optional[str] = None,
         disable_auto_version: bool = False,
         remote: bool = False,
+        no_register: bool = False,
     ):
+        """
+        Params:
+            no_register: If True, do not perform a version check or create
+                docker/ssh clients. Used when serializing file. Used when
+                serializing files.
+        """
         try:
             if token is None:
                 self.token = retrieve_or_login()
@@ -150,8 +157,11 @@ class _CentromereCtx:
                 hash = hash_directory(self.pkg_root)
                 self.version = self.version + "-" + hash[:6]
 
-            if self.nucleus_check_version(self.version, self.workflow_name) is True:
-                raise ValueError(f"Version {self.version} has already been registered.")
+            if not no_register:
+                if self.nucleus_check_version(self.version, self.workflow_name) is True:
+                    raise ValueError(
+                        f"Version {self.version} has already been registered."
+                    )
 
             default_dockerfile = get_default_dockerfile(
                 self.pkg_root, self.workflow_type
@@ -162,7 +172,8 @@ class _CentromereCtx:
                 pkg_dir=self.pkg_root,
             )
 
-            if remote is True:
+            if no_register is False and remote is True:
+                # todo(maximsmol): connect only AFTER confirming registration
                 self.ssh_key_path = Path(self.pkg_root) / latch_constants.pkg_ssh_key
                 self.jump_key_path = Path(self.pkg_root) / latch_constants.pkg_jump_key
                 self.public_key = generate_temporary_ssh_credentials(self.ssh_key_path)
