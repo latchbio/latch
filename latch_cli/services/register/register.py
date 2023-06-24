@@ -161,14 +161,14 @@ def build_and_serialize(
 ):
     """Builds an image, serializes the workflow within the image, and pushes the image."""
 
-    if ctx.workflow_type == WorkflowType.SNAKEMAKE:
+    if ctx.workflow_type == WorkflowType.snakemake:
         _, wf = extract_snakemake_workflow(ctx.snakefile)
         generate_snakemake_entrypoint(wf, ctx, ctx.snakefile)
 
     image_build_logs = build_image(ctx, image_name, context_path, dockerfile)
     print_and_write_build_logs(image_build_logs, image_name, ctx.pkg_root)
 
-    if ctx.workflow_type == WorkflowType.LATCHBIOSDK:
+    if ctx.workflow_type == WorkflowType.latchbiosdk:
         serialize_logs, container_id = serialize_pkg_in_container(
             ctx, image_name, tmp_dir
         )
@@ -313,7 +313,7 @@ def register(
                 dockerfile=ctx.default_container.dockerfile,
             )
             protos = _recursive_list(td)
-            if ctx.workflow_type == WorkflowType.LATCHBIOSDK and remote:
+            if ctx.workflow_type == WorkflowType.latchbiosdk and remote:
                 local_td = stack.enter_context(tempfile.TemporaryDirectory())
                 ssh = _construct_ssh_client(ctx.internal_ip, ctx.username)
                 scp = SCPClient(transport=ssh.get_transport(), sanitize=lambda x: x)

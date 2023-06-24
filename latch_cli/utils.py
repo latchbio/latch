@@ -293,5 +293,5 @@ class TemporarySSHCredentials:
 
 
 class WorkflowType(Enum):
-    LATCHBIOSDK = "latchbiosdk"
-    SNAKEMAKE = "snakemake"
+    latchbiosdk = "latchbiosdk"
+    snakemake = "snakemake"

@@ -43,7 +43,7 @@ def get_prologue(config: LatchWorkflowConfig) -> List[str]:
     ]
 
 
-def get_epilogue(wf_type: WorkflowType = WorkflowType.LATCHBIOSDK) -> List[str]:
+def get_epilogue(wf_type: WorkflowType = WorkflowType.latchbiosdk) -> List[str]:
     cmds = [
         (
             "# latch internal tagging system + expected root directory --- changing"
@@ -53,7 +53,7 @@ def get_epilogue(wf_type: WorkflowType = WorkflowType.LATCHBIOSDK) -> List[str]:
         "env FLYTE_INTERNAL_IMAGE $tag",
         "workdir /root",
     ]
-    if wf_type == WorkflowType.SNAKEMAKE:
+    if wf_type == WorkflowType.snakemake:
         cmds.append("copy .latch/latch_entrypoint.py /root/latch_entrypoint.py")
     return cmds
 
@@ -192,7 +192,7 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
 
 
 def generate_dockerfile(
-    pkg_root: Path, outfile: Path, wf_type: WorkflowType = WorkflowType.LATCHBIOSDK
+    pkg_root: Path, outfile: Path, wf_type: WorkflowType = WorkflowType.latchbiosdk
 ) -> None:
     """Generate a best effort Dockerfile from files in the workflow directory.
 
@@ -203,7 +203,7 @@ def generate_dockerfile(
 
     Example:
 
-        >>> generate_dockerfile(Path("test-workflow"), Path("test-workflow/Dockerfile"), WorkflowType.LATCHBIOSDK)
+        >>> generate_dockerfile(Path("test-workflow"), Path("test-workflow/Dockerfile"), WorkflowType.latchbiosdk)
             # The resulting file structure will look like
             #   test-workflow
             #   ├── Dockerfile

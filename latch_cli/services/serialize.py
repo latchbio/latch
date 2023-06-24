@@ -52,9 +52,13 @@ class SnakemakeWorkflowExtractor(Workflow):
             return map(self._rules.__getitem__, filter(self.is_rule, items))
 
         def files(items):
-            relpath = lambda f: (
-                f if os.path.isabs(f) or f.startswith("root://") else os.path.relpath(f)
-            )
+            def relpath(f):
+                return (
+                    f
+                    if os.path.isabs(f) or f.startswith("root://")
+                    else os.path.relpath(f)
+                )
+
             return map(relpath, filterfalse(self.is_rule, items))
 
         # if not targets and not target_jobs:

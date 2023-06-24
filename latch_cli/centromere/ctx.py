@@ -106,13 +106,13 @@ class _CentromereCtx:
             self.pkg_root = Path(pkg_root).resolve()
 
             if snakefile is None:
-                self.workflow_type = WorkflowType.LATCHBIOSDK
+                self.workflow_type = WorkflowType.latchbiosdk
             else:
-                self.workflow_type = WorkflowType.SNAKEMAKE
+                self.workflow_type = WorkflowType.snakemake
                 self.snakefile = snakefile
 
             self.container_map = {}
-            if self.workflow_type == WorkflowType.LATCHBIOSDK:
+            if self.workflow_type == WorkflowType.latchbiosdk:
                 _import_flyte_objects([self.pkg_root])
                 for entity in FlyteEntities.entities:
                     if isinstance(entity, PythonFunctionWorkflow):
