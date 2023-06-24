@@ -54,7 +54,7 @@ def get_epilogue(wf_type: WorkflowType = WorkflowType.LATCHBIOSDK) -> List[str]:
         "workdir /root",
     ]
     if wf_type == WorkflowType.SNAKEMAKE:
-        cmds.insert(-1, "copy .latch/latch_entrypoint.py /root/latch_entrypoint.py")
+        cmds.append("copy .latch/latch_entrypoint.py /root/latch_entrypoint.py")
     return cmds
 
 
@@ -203,7 +203,7 @@ def generate_dockerfile(
 
     Example:
 
-        >>> generate_dockerfile(Path("test-workflow"), Path("test-workflow/Dockerfile"), WorkflowType.snakemake)
+        >>> generate_dockerfile(Path("test-workflow"), Path("test-workflow/Dockerfile"), WorkflowType.LATCHBIOSDK)
             # The resulting file structure will look like
             #   test-workflow
             #   ├── Dockerfile
@@ -247,9 +247,8 @@ def generate_dockerfile(
 
 
 def get_default_dockerfile(pkg_root: Path, wf_type: WorkflowType):
-
-    default_dockerfile = pkg_root.joinpath("Dockerfile")
+    default_dockerfile = pkg_root / "Dockerfile"
     if not default_dockerfile.exists():
-        generate_dockerfile(pkg_root, pkg_root.joinpath(".latch/Dockerfile"), wf_type)
-        default_dockerfile = pkg_root.joinpath(".latch/Dockerfile")
+        generate_dockerfile(pkg_root, pkg_root / ".latch" / "Dockerfile"), wf_type)
+        default_dockerfile=pkg_root / ".latch" / "Dockerfile"
     return default_dockerfile

@@ -86,7 +86,7 @@ class _CentromereCtx:
         token: Optional[str] = None,
         disable_auto_version: bool = False,
         remote: bool = False,
-        snakefile: Path = None,
+        snakefile: Optional[Path] = None,
     ):
         try:
             if token is None:
@@ -111,7 +111,6 @@ class _CentromereCtx:
                 self.workflow_type = WorkflowType.SNAKEMAKE
                 self.snakefile = snakefile
 
-            # We do not support per task containers for snakemake rn
             self.container_map = {}
             if self.workflow_type == WorkflowType.LATCHBIOSDK:
                 _import_flyte_objects([self.pkg_root])
@@ -129,21 +128,20 @@ class _CentromereCtx:
                                 pkg_dir=entity.dockerfile_path.parent,
                             )
             else:
-                # TODO
+                # TODO (kenny) - support per container task and custom workflow
+                # name for snakemake
                 self.workflow_name = "snakemake workflow"
 
-            version_file = self.pkg_root.joinpath("version")
+            version_file = self.pkg_root / "version"
             if not version_file.exists():
-                self.version = "0.0.0"
-                with open(version_file, "w") as vf:
-                    vf.write(self.version)
+                self.version = "0.1.0"
+                version_file.write_text(self.version + "\n")
                 click.echo(
-                    "Created a version file with initial version 0.0.0 for this"
+                    "Created a version file with initial version 0.1.0 for this"
                     " workflow."
                 )
             else:
-                with open(version_file, "r") as vf:
-                    self.version = vf.read().strip()
+                self.version = version_file.read_text().strip()
 
             if not self.disable_auto_version:
                 hash = hash_directory(self.pkg_root)

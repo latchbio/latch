@@ -248,8 +248,6 @@ def register(
     """
 
     pkg_root = Path(pkg_root).resolve()
-    if snakefile:
-        snakefile = Path(snakefile).resolve()
 
     with _CentromereCtx(
         pkg_root,

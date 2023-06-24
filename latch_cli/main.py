@@ -110,16 +110,16 @@ def dockerfile(pkg_root: str):
 @click.option(
     "-s",
     "--snakefile",
-    type=click.Path(exists=True),
+    type=click.Path(exists=True, path_type=Path),
     default=None,
-    help="Full path to Snakefile to register.",
+    help="Path to a Snakefile to register.",
 )
 def register(
     pkg_root: str,
     disable_auto_version: bool,
     remote: bool,
     yes: bool,
-    snakefile: Optional[str],
+    snakefile: Optional[Path],
 ):
     """Register local workflow code to Latch.
 

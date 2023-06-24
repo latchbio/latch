@@ -1,9 +1,8 @@
 import importlib
 import typing
-from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type, TypeVar, Union
+from typing import Any, Dict, List, Optional, TypeAlias, TypeVar, Union
 
 import snakemake
 from flytekit.configuration import SerializationSettings
@@ -33,11 +32,12 @@ from snakemake.target_jobs import encode_target_jobs_cli_args
 
 from latch.types import LatchAuthor, LatchFile, LatchMetadata, LatchParameter
 
-SnakemakeInputVal = Union[snakemake.io._IOFile]
+SnakemakeInputVal: TypeAlias = snakemake.io._IOFile
 
 
 def variable_name_for_file(file: snakemake.io.AnnotatedString):
-    return file.replace("/", "_").replace(".", "_").replace("-", "_")
+
+    return file.replace("/", "_").replace(".", "__").replace("-", "____")
 
 
 def variable_name_for_value(
@@ -57,13 +57,13 @@ def snakemake_dag_to_interface(
     dag: DAG, docstring: Optional[Docstring] = None
 ) -> Interface:
 
-    outputs: Dict[str, Type] = {}
+    outputs: Dict[str, LatchFile] = {}
 
     for target in dag.targetjobs:
         for x in target.input:
             outputs[variable_name_for_value(x, target.input)] = LatchFile
 
-    inputs: Dict[str, Type] = {}
+    inputs: Dict[str, LatchFile] = {}
     for job in dag.jobs:
 
         dep_outputs = []
@@ -115,7 +115,7 @@ def transform_types_in_variable_map(
     variable_map: Dict[str, type],
     descriptions: Dict[str, str] = {},
 ) -> Dict[str, interface_models.Variable]:
-    res = OrderedDict()
+    res = {}
     if variable_map:
         for k, v in variable_map.items():
             res[k] = transform_type(v, descriptions.get(k, k))
@@ -133,7 +133,7 @@ def interface_to_parameters(
         inputs_vars = transform_types_in_variable_map(
             interface.inputs, interface.docstring.input_descriptions
         )
-    params = {}
+    params: Dict[str, interface_models.ParameterMap] = {}
     inputs_with_def = interface.inputs_with_defaults
     for k, v in inputs_vars.items():
         val, _default = inputs_with_def[k]
@@ -156,7 +156,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         dag: DAG,
     ):
 
-        parameter_metadata = {}
+        parameter_metadata: Dict[str, LatchParameter] = {}
         for job in dag.jobs:
             for x in job.input:
                 var = variable_name_for_value(x, job.input)
@@ -205,7 +205,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
             flyte_entity=None,
         )
 
-        node_map = {}
+        node_map: Dict[int, Node] = {}
 
         target_files = [x for job in self._dag.targetjobs for x in job.input]
 
@@ -220,7 +220,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 target_file_for_output_param: Dict[str, str] = {}
                 target_file_for_input_param: Dict[str, str] = {}
 
-                python_outputs: Dict[str, Type] = {}
+                python_outputs: Dict[str, LatchFile] = {}
                 for x in job.output:
                     if x in target_files:
                         is_target = True
@@ -244,7 +244,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                                 ),
                             )
 
-                python_inputs: Dict[str, Type] = {}
+                python_inputs: Dict[str, LatchFile] = {}
                 promise_map: Dict[str, str] = {}
                 for x in job.input:
                     param = variable_name_for_value(x, job.input)
@@ -349,8 +349,8 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
     def __init__(
         self,
         job: snakemake.jobs.Job,
-        inputs: Dict[str, Type],
-        outputs: Dict[str, Type],
+        inputs: Dict[str, LatchFile],
+        outputs: Dict[str, LatchFile],
         target_file_for_input_param: Dict[str, str],
         target_file_for_output_param: Dict[str, str],
         is_target: bool,
