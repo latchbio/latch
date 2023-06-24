@@ -2,8 +2,9 @@ import os
 import textwrap
 from itertools import chain, filterfalse
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
+import click
 from flytekit import LaunchPlan
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.models import launch_plan as launch_plan_models
@@ -124,7 +125,6 @@ def extract_snakemake_workflow(snakefile: Path) -> (str, SnakemakeWorkflow):
         snakefile,
         overwrite_default_target=True,
     )
-    # TODO - get default parameter and file values from workflow.globals
     dag = workflow.extract()
 
     wf_name = "snakemake_wf"
@@ -136,21 +136,15 @@ def extract_snakemake_workflow(snakefile: Path) -> (str, SnakemakeWorkflow):
     return wf_name, wf
 
 
-def get_snakefile(pkg_root: Path) -> Path:
-    return Path("Snakefile")
-
-
-def serialize(pkg_root: Path, output_dir: Path, image_name: str, dkr_repo: str):
-    """Serializes workflow code into lyteidl protobuf.
-
-    Args:
-        pkg_root: The directory of project with workflow code to be serialized
-        output_dir: The directory where generated protobuf will go
-    """
+def serialize_snakemake(
+    pkg_root: Path,
+    snakefile: Path,
+    output_dir: Path,
+    image_name: str,
+    dkr_repo: str,
+):
 
     pkg_root = Path(pkg_root).resolve()
-    snakefile = get_snakefile(pkg_root)
-
     _, wf = extract_snakemake_workflow(snakefile)
 
     image_name_no_version, version = image_name.split(":")

@@ -32,10 +32,11 @@ from snakemake.target_jobs import encode_target_jobs_cli_args
 
 from latch.types import LatchAuthor, LatchFile, LatchMetadata, LatchParameter
 
-T = TypeVar("T")
-
-
 SnakemakeInputVal = Union[snakemake.io._IOFile]
+
+
+def variable_name_for_file(file: snakemake.io.AnnotatedString):
+    return file.replace("/", "_").replace(".", "_").replace("-", "_")
 
 
 def variable_name_for_value(
@@ -43,14 +44,12 @@ def variable_name_for_value(
     params: Union[snakemake.io.InputFiles, snakemake.io.OutputFiles] = None,
 ) -> str:
 
-    # TODO cache
-
     if params:
         for name, v in params.items():
             if val == v:
                 return name
 
-    return val.file.replace("/", "_").replace(".", "_").replace("-", "_")
+    return variable_name_for_file(val.file)
 
 
 def snakemake_dag_to_interface(
@@ -60,11 +59,8 @@ def snakemake_dag_to_interface(
     outputs: Dict[str, Type] = {}
 
     for target in dag.targetjobs:
-        if type(target.input) == snakemake.io.InputFiles:
-            for x in target.input:
-                outputs[variable_name_for_value(x, target.input)] = LatchFile
-        else:
-            raise ValueError(f"Unsupported snakemake input type {type(target.input)}")
+        for x in target.input:
+            outputs[variable_name_for_value(x, target.input)] = LatchFile
 
     inputs: Dict[str, Type] = {}
     for job in dag.jobs:
@@ -165,6 +161,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 var = variable_name_for_value(x, job.input)
                 parameter_metadata[var] = LatchParameter(display_name=var)
 
+        # TODO - support for metadata + parameters in future releases
         latch_metadata = LatchMetadata(
             display_name=name,
             documentation="",
@@ -173,8 +170,6 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 email="",
                 github="",
             ),
-            repository="",
-            license="",
             parameters=parameter_metadata,
             tags=[],
         )
@@ -309,9 +304,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 for j in self._dag.targetjobs:
                     for depen, files in self._dag.dependencies[j].items():
                         for f in files:
-                            # TODO - better link than str representation of
-                            # target file
-                            if variable_name_for_value(f) == out:
+                            if variable_name_for_file(f) == out:
                                 return depen.jobid, variable_name_for_value(
                                     f, depen.output
                                 )
@@ -335,6 +328,9 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
     def execute(self, **kwargs):
         return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
+
+
+T = TypeVar("T")
 
 
 class SnakemakeJobTask(PythonAutoContainerTask[T]):
@@ -458,10 +454,6 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         return self._task_function
 
     def execute(self, **kwargs) -> Any:
-        """
-        This method will be invoked to execute the task. If you do decide to override this method you must also
-        handle dynamic tasks or you will no longer be able to use the task as a dynamic task generator.
-        """
         return exception_scopes.user_entry_point(self._task_function)(**kwargs)
 
 

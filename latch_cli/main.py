@@ -107,7 +107,20 @@ def dockerfile(pkg_root: str):
     type=bool,
     help="Skip the confirmation dialog.",
 )
-def register(pkg_root: str, disable_auto_version: bool, remote: bool, yes: bool):
+@click.option(
+    "-s",
+    "--snakefile",
+    type=click.Path(exists=True),
+    default=None,
+    help="Full path to Snakefile to register.",
+)
+def register(
+    pkg_root: str,
+    disable_auto_version: bool,
+    remote: bool,
+    yes: bool,
+    snakefile: Optional[str],
+):
     """Register local workflow code to Latch.
 
     Visit docs.latch.bio to learn more.
@@ -123,27 +136,8 @@ def register(pkg_root: str, disable_auto_version: bool, remote: bool, yes: bool)
         disable_auto_version=disable_auto_version,
         remote=remote,
         skip_confirmation=yes,
+        snakefile=snakefile,
     )
-
-
-@main.command("serialize")
-@click.argument("pkg_root", type=click.Path(exists=True, file_okay=False))
-@click.argument("output_dir", type=click.Path(exists=True, file_okay=False))
-def serialize(pkg_root: str, output_dir: Path):
-    """Serializes workflow code into lyteidl protobuf.
-
-    Designed to be used internally by `latch register`. May behave strangely
-    if used directly.
-
-    Visit docs.latch.bio to learn more.
-    """
-
-    crash_handler.message = f"Unable to serialize workflow in {pkg_root}."
-    crash_handler.pkg_root = pkg_root
-
-    from latch_cli.services.serialize import serialize
-
-    serialize(pkg_root, output_dir)
 
 
 @main.command("develop")

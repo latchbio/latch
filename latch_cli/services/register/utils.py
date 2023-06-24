@@ -1,5 +1,3 @@
-from latch_cli.services.serialize import serialize
-
 "Utilites for registration."
 
 import base64
@@ -11,6 +9,7 @@ import boto3
 import requests
 
 from latch_cli.centromere.ctx import _CentromereCtx
+from latch_cli.services.serialize import serialize_snakemake
 from latch_cli.utils import current_workspace
 
 

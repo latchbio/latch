@@ -20,7 +20,6 @@ from latch_cli.centromere.utils import (
     _construct_dkr_client,
     _construct_ssh_client,
     _import_flyte_objects,
-    is_snakemake_project,
 )
 from latch_cli.constants import latch_constants
 from latch_cli.docker_utils import get_default_dockerfile
@@ -66,6 +65,7 @@ class _CentromereCtx:
     container_map: Dict[str, _Container]
     workflow_name: Optional[str]
     workflow_type: WorkflowType
+    snakefile: Optional[Path]
 
     latch_register_api_url = config.api.workflow.register
     latch_image_api_url = config.api.workflow.upload_image
@@ -86,6 +86,7 @@ class _CentromereCtx:
         token: Optional[str] = None,
         disable_auto_version: bool = False,
         remote: bool = False,
+        snakefile: Path = None,
     ):
         try:
             if token is None:
@@ -104,11 +105,11 @@ class _CentromereCtx:
             self.disable_auto_version = disable_auto_version
             self.pkg_root = Path(pkg_root).resolve()
 
-            # TODO (kenny) better rules to auto detect workflow type
-            if is_snakemake_project(self.pkg_root):
-                self.workflow_type = WorkflowType.SNAKEMAKE
-            else:
+            if snakefile is None:
                 self.workflow_type = WorkflowType.LATCHBIOSDK
+            else:
+                self.workflow_type = WorkflowType.SNAKEMAKE
+                self.snakefile = snakefile
 
             # We do not support per task containers for snakemake rn
             self.container_map = {}

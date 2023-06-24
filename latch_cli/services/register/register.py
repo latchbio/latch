@@ -23,8 +23,7 @@ from latch_cli.services.register.utils import (
 from latch_cli.services.serialize import (
     extract_snakemake_workflow,
     generate_snakemake_entrypoint,
-    get_snakefile,
-    serialize,
+    serialize_snakemake,
 )
 from latch_cli.utils import WorkflowType, current_workspace
 
@@ -163,8 +162,7 @@ def build_and_serialize(
     """Builds an image, serializes the workflow within the image, and pushes the image."""
 
     if ctx.workflow_type == WorkflowType.SNAKEMAKE:
-        snakefile = get_snakefile(ctx.pkg_root)
-        _, wf = extract_snakemake_workflow(snakefile)
+        _, wf = extract_snakemake_workflow(ctx.snakefile)
         generate_snakemake_entrypoint(wf, ctx)
 
     image_build_logs = build_image(ctx, image_name, context_path, dockerfile)
@@ -181,7 +179,9 @@ def build_and_serialize(
                 f"Serialization exited with nonzero exit code: {exit_status['Error']}"
             )
     else:
-        serialize(ctx.pkg_root, tmp_dir, image_name, ctx.dkr_repo)
+        serialize_snakemake(
+            ctx.pkg_root, ctx.snakefile, tmp_dir, image_name, ctx.dkr_repo
+        )
 
     upload_image_logs = upload_image(ctx, image_name)
     print_upload_logs(upload_image_logs, image_name)
@@ -200,6 +200,7 @@ def register(
     disable_auto_version: bool = False,
     remote: bool = False,
     skip_confirmation: bool = False,
+    snakefile: Optional[str] = None,
 ):
     """Registers a workflow, defined as python code, with Latch.
 
@@ -247,10 +248,14 @@ def register(
     """
 
     pkg_root = Path(pkg_root).resolve()
+    if snakefile:
+        snakefile = Path(snakefile).resolve()
+
     with _CentromereCtx(
         pkg_root,
         disable_auto_version=disable_auto_version,
         remote=remote,
+        snakefile=snakefile,
     ) as ctx:
         assert ctx.workflow_name is not None, "Unable to determine workflow name"
         assert ctx.version is not None, "Unable to determine workflow version"
