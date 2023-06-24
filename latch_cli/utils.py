@@ -4,6 +4,7 @@ import hashlib
 import os
 import subprocess
 from datetime import datetime, timedelta
+from enum import Enum
 from pathlib import Path
 from typing import List
 
@@ -289,3 +290,8 @@ class TemporarySSHCredentials:
 
     def __exit__(self, type, value, traceback):
         self.cleanup()
+
+
+class WorkflowType(Enum):
+    latchbiosdk = "latchbiosdk"
+    snakemake = "snakemake"

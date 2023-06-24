@@ -9,6 +9,7 @@ from typing import List
 import yaml
 
 from latch_cli.constants import latch_constants
+from latch_cli.utils import WorkflowType
 from latch_cli.workflow_config import LatchWorkflowConfig, create_and_write_config
 
 
@@ -38,12 +39,12 @@ def get_prologue(config: LatchWorkflowConfig) -> List[str]:
         ),
         f"from {config.base_image}",
         f"run pip install latch=={config.latch_version}",
-        f"run mkdir /opt/latch",
+        "run mkdir /opt/latch",
     ]
 
 
-def get_epilogue() -> List[str]:
-    return [
+def get_epilogue(wf_type: WorkflowType = WorkflowType.latchbiosdk) -> List[str]:
+    cmds = [
         (
             "# latch internal tagging system + expected root directory --- changing"
             " these lines will break the workflow"
@@ -52,6 +53,9 @@ def get_epilogue() -> List[str]:
         "env FLYTE_INTERNAL_IMAGE $tag",
         "workdir /root",
     ]
+    if wf_type == WorkflowType.snakemake:
+        cmds.insert("copy .latch/latch_entrypoint.py /root/latch_entrypoint.py")
+    return cmds
 
 
 def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
@@ -187,16 +191,17 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
     return commands
 
 
-def generate_dockerfile(pkg_root: Path, outfile: Path) -> None:
+def generate_dockerfile(pkg_root: Path, outfile: Path, wf_type: WorkflowType) -> None:
     """Generate a best effort Dockerfile from files in the workflow directory.
 
     Args:
         pkg_root: A path to a workflow directory.
         outfile: The path to write the generated Dockerfile.
+        wf_type: The type of workflow (eg. snakemake) the Dockerfile is for
 
     Example:
 
-        >>> generate_dockerfile(Path("test-workflow"), Path("test-workflow/Dockerfile"))
+        >>> generate_dockerfile(Path("test-workflow"), Path("test-workflow/Dockerfile"), WorkflowType.snakemake)
             # The resulting file structure will look like
             #   test-workflow
             #   ├── Dockerfile

@@ -2,7 +2,6 @@ import re
 import subprocess
 import time
 from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
 from textwrap import dedent
 from typing import Dict, Optional, Tuple
@@ -18,6 +17,7 @@ from latch_sdk_config.latch import config
 
 import latch_cli.tinyrequests as tinyrequests
 from latch_cli.centromere.utils import (
+    WorkflowType,
     _construct_dkr_client,
     _construct_ssh_client,
     _import_flyte_objects,
@@ -31,11 +31,6 @@ from latch_cli.utils import (
     hash_directory,
     retrieve_or_login,
 )
-
-
-class WorkflowType(Enum):
-    latchbiosdk = "latchbiosdk"
-    snakemake = "snakemake"
 
 
 @dataclass
@@ -117,6 +112,27 @@ class _CentromereCtx:
             else:
                 self.workflow_type = WorkflowType.latchbiosdk
 
+            # We do not support per task containers for snakemake rn
+            self.container_map = {}
+            if self.workflow_type == WorkflowType.latchbiosdk:
+                _import_flyte_objects([self.pkg_root])
+                for entity in FlyteEntities.entities:
+                    if isinstance(entity, PythonFunctionWorkflow):
+                        self.workflow_name = entity.name
+                    if isinstance(entity, PythonTask):
+                        if (
+                            hasattr(entity, "dockerfile_path")
+                            and entity.dockerfile_path is not None
+                        ):
+                            self.container_map[entity.name] = _Container(
+                                dockerfile=entity.dockerfile_path,
+                                image_name=self.task_image_name(entity.name),
+                                pkg_dir=entity.dockerfile_path.parent,
+                            )
+            else:
+                # TODO
+                self.workflow_name = "snakemake workflow"
+
             version_file = self.pkg_root.joinpath("version")
             if not version_file.exists():
                 self.version = "0.0.0"
@@ -137,25 +153,9 @@ class _CentromereCtx:
             if self.nucleus_check_version(self.version, self.workflow_name) is True:
                 raise ValueError(f"Version {self.version} has already been registered.")
 
-            # We do not support per task containers for snakemake rn
-            self.container_map = {}
-            if self.workflow_type == WorkflowType.latchbiosdk:
-                _import_flyte_objects([self.pkg_root])
-                for entity in FlyteEntities.entities:
-                    if isinstance(entity, PythonFunctionWorkflow):
-                        self.workflow_name = entity.name
-                    if isinstance(entity, PythonTask):
-                        if (
-                            hasattr(entity, "dockerfile_path")
-                            and entity.dockerfile_path is not None
-                        ):
-                            self.container_map[entity.name] = _Container(
-                                dockerfile=entity.dockerfile_path,
-                                image_name=self.task_image_name(entity.name),
-                                pkg_dir=entity.dockerfile_path.parent,
-                            )
-
-            default_dockerfile = get_default_dockerfile(self.pkg_root)
+            default_dockerfile = get_default_dockerfile(
+                self.pkg_root, self.workflow_type
+            )
             self.default_container = _Container(
                 dockerfile=default_dockerfile,
                 image_name=self.image_tagged,

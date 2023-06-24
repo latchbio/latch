@@ -17,6 +17,7 @@ from flytekit.tools import module_loader
 
 from latch_cli.constants import latch_constants
 from latch_cli.docker_utils import generate_dockerfile
+from latch_cli.utils import WorkflowType
 
 
 @contextlib.contextmanager
@@ -190,7 +191,7 @@ def _construct_ssh_client(internal_ip: str, username: str) -> paramiko.SSHClient
     return ssh
 
 
-def get_default_dockerfile(pkg_root: Path):
+def get_default_dockerfile(pkg_root: Path, wf_type: WorkflowType):
 
     default_dockerfile = pkg_root.joinpath("Dockerfile")
     if not default_dockerfile.exists():

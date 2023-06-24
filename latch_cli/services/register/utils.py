@@ -1,3 +1,5 @@
+from latch_cli.utils import WorkflowType
+
 "Utilites for registration."
 
 import base64
@@ -48,7 +50,7 @@ def _docker_login(ctx: _CentromereCtx):
     )
 
 
-def _build_image(
+def build_image(
     ctx: _CentromereCtx,
     image_name: str,
     context_path: Path,
@@ -69,7 +71,7 @@ def _build_image(
     return build_logs
 
 
-def _upload_image(ctx: _CentromereCtx, image_name: str) -> List[str]:
+def upload_image(ctx: _CentromereCtx, image_name: str) -> List[str]:
     return ctx.dkr_client.push(
         repository=f"{ctx.dkr_repo}/{image_name}",
         stream=True,
@@ -77,10 +79,15 @@ def _upload_image(ctx: _CentromereCtx, image_name: str) -> List[str]:
     )
 
 
-def _serialize_pkg_in_container(
+def serialize_pkg_in_container(
     ctx: _CentromereCtx, image_name: str, serialize_dir: Path
 ) -> List[str]:
-    _serialize_cmd = ["make", "serialize"]
+    _serialize_cmd = ["make"]
+    if ctx.workflow_type == WorkflowType.latchbiosdk:
+        _serialize_cmd.append("serialize")
+    else:
+        _serialize_cmd.append("snakemake-serialize")
+
     container = ctx.dkr_client.create_container(
         f"{ctx.dkr_repo}/{image_name}",
         command=_serialize_cmd,
@@ -101,7 +108,7 @@ def _serialize_pkg_in_container(
     return [x.decode("utf-8") for x in logs], container_id
 
 
-def _register_serialized_pkg(ctx: _CentromereCtx, files: List[Path]) -> dict:
+def register_serialized_pkg(ctx: _CentromereCtx, files: List[Path]) -> dict:
     headers = {"Authorization": f"Bearer {ctx.token}"}
 
     serialize_files = {

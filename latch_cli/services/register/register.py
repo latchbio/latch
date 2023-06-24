@@ -15,10 +15,10 @@ from latch_cli.centromere.ctx import _CentromereCtx
 from latch_cli.centromere.utils import _construct_ssh_client, _TmpDir
 from latch_cli.services.register.constants import ANSI_REGEX, MAX_LINES
 from latch_cli.services.register.utils import (
-    _build_image,
-    _register_serialized_pkg,
-    _serialize_pkg_in_container,
-    _upload_image,
+    build_image,
+    register_serialized_pkg,
+    serialize_pkg_in_container,
+    upload_image,
 )
 from latch_cli.utils import current_workspace
 
@@ -52,7 +52,7 @@ def _print_window(curr_lines: List[str], line: str):
         return curr_lines
 
 
-def _print_and_save_build_logs(build_logs, image: str, pkg_root: Path):
+def print_and_write_build_logs(build_logs, image: str, pkg_root: Path):
     print(f"Building Docker image for {image}")
 
     logs_path = Path(pkg_root).joinpath(".logs").joinpath(image).resolve()
@@ -87,7 +87,7 @@ def _print_and_save_build_logs(build_logs, image: str, pkg_root: Path):
         _delete_lines(curr_lines)
 
 
-def _print_upload_logs(upload_image_logs, image):
+def print_upload_logs(upload_image_logs, image):
     print(f"Uploading Docker image for {image}")
     prog_map = {}
 
@@ -141,40 +141,34 @@ def _print_reg_resp(resp, image):
         print(resp.get("stdout"))
 
 
-def _print_serialize_logs(serialize_logs, image):
+def print_serialize_logs(serialize_logs, image):
     print(f"Serializing workflow in {image}:")
     for x in serialize_logs:
         print(x, end="")
 
 
-def _build_and_serialize(
+def build_and_serialize(
     ctx: _CentromereCtx,
     image_name: str,
     context_path: Path,
     tmp_dir: Path,
     dockerfile: Optional[Path] = None,
 ):
-    """Encapsulates build, serialize, push flow needed for each dockerfile
+    """Builds an image, serializes the workflow within the image, and pushes the image."""
 
-    - Build image
-    - Serialize workflow in image
-    - Save proto files to passed temporary directory
-    - Push image
-    """
+    image_build_logs = build_image(ctx, image_name, context_path, dockerfile)
+    print_and_write_build_logs(image_build_logs, image_name, ctx.pkg_root)
 
-    build_logs = _build_image(ctx, image_name, context_path, dockerfile)
-    _print_and_save_build_logs(build_logs, image_name, ctx.pkg_root)
-
-    serialize_logs, container_id = _serialize_pkg_in_container(ctx, image_name, tmp_dir)
-    _print_serialize_logs(serialize_logs, image_name)
+    serialize_logs, container_id = serialize_pkg_in_container(ctx, image_name, tmp_dir)
+    print_serialize_logs(serialize_logs, image_name)
     exit_status = ctx.dkr_client.wait(container_id)
     if exit_status["StatusCode"] != 0:
         raise ValueError(
             f"Serialization exited with nonzero exit code: {exit_status['Error']}"
         )
 
-    upload_image_logs = _upload_image(ctx, image_name)
-    _print_upload_logs(upload_image_logs, image_name)
+    upload_image_logs = upload_image(ctx, image_name)
+    print_upload_logs(upload_image_logs, image_name)
 
 
 def _recursive_list(directory: Path) -> List[Path]:
@@ -292,13 +286,14 @@ def register(
                     username=ctx.username,
                 )
             )
-            _build_and_serialize(
+            build_and_serialize(
                 ctx,
                 ctx.default_container.image_name,
                 ctx.default_container.pkg_dir,
                 td,
                 dockerfile=ctx.default_container.dockerfile,
             )
+            quit()
             protos = _recursive_list(td)
             if remote:
                 local_td = stack.enter_context(tempfile.TemporaryDirectory())
@@ -318,7 +313,7 @@ def register(
                     )
                 )
                 try:
-                    _build_and_serialize(
+                    build_and_serialize(
                         ctx,
                         container.image_name,
                         # always use root as build context
@@ -360,7 +355,7 @@ def register(
                         f"{container.dockerfile} given to {task_name} is invalid.",
                     ) from e
 
-            reg_resp = _register_serialized_pkg(ctx, protos)
+            reg_resp = register_serialized_pkg(ctx, protos)
             _print_reg_resp(reg_resp, ctx.default_container.image_name)
 
             click.secho(
