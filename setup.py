@@ -46,6 +46,7 @@ setup(
         "latch-sdk-gql==0.0.2",
         "latch-sdk-config==0.0.1",
     ],
+    extras_require={"snakemake": ["snakemake>=7.25.4"]},
     classifiers=[
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
