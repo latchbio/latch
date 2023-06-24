@@ -16,6 +16,16 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.24.2 - 2023-06-24
+
+### Added
+
+- Rename `--no-glob` option shorthand to `-G` for `latch cp`
+
+### Fixed
+
+- Bug in `latch register` where SSH connections were going stale
+
 ## 2.24.0 - 2023-06-23
 
 ### Added

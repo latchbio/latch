@@ -11,7 +11,6 @@ from typing import Iterator, List, Optional
 
 import docker
 import paramiko
-from fabric import Connection
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.tools import module_loader
@@ -194,12 +193,18 @@ class _TmpDir:
 
     """Represents a temporary directory that can be local or on a remote machine."""
 
-    def __init__(self, ssh_client: Optional[paramiko.SSHClient] = None, remote=False):
-        if remote and ssh_client is None:
+    def __init__(
+        self,
+        remote=False,
+        internal_ip: Optional[str] = None,
+        username: Optional[str] = None,
+    ):
+        if remote and (internal_ip is None or username is None):
             raise ValueError("Must provide an ssh connection if remote is True.")
 
         self.remote = remote
-        self.ssh_client = ssh_client
+        self.internal_ip = internal_ip
+        self.username = username
         self._tempdir = None
 
     def __enter__(self, *args):
@@ -213,7 +218,7 @@ class _TmpDir:
             self._tempdir = tempfile.TemporaryDirectory()
             return Path(self._tempdir.name).resolve()
 
-        if self.ssh_client is None:
+        if self.internal_ip is None or self.username is None:
             raise ValueError("Must provide an ssh connection if remote is True.")
 
         td = "".join(
@@ -221,10 +226,11 @@ class _TmpDir:
                 string.ascii_uppercase + string.ascii_lowercase + string.digits, k=8
             )
         )
+
         self._tempdir = f"/tmp/{td}"
-        shell = self.ssh_client.invoke_shell()
-        shell.send(f"mkdir {self._tempdir}".encode())
-        shell.close()
+
+        client = _construct_ssh_client(self.internal_ip, self.username)
+        client.exec_command(f"mkdir {self._tempdir}")
         return self._tempdir
 
     def cleanup(self, *args):
@@ -234,7 +240,6 @@ class _TmpDir:
             and not isinstance(self._tempdir, str)
         ):
             self._tempdir.cleanup()
-        elif self.ssh_client is not None:
-            shell = self.ssh_client.invoke_shell()
-            shell.send(f"rm -rf {self._tempdir}".encode())
-            shell.close()
+        elif self.internal_ip is None or self.username is None:
+            client = _construct_ssh_client(self.internal_ip, self.username)
+            client.exec_command(f"rm -rf {self._tempdir}")

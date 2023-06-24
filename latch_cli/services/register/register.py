@@ -12,7 +12,7 @@ import click
 from scp import SCPClient
 
 from latch_cli.centromere.ctx import _CentromereCtx
-from latch_cli.centromere.utils import _TmpDir
+from latch_cli.centromere.utils import _construct_ssh_client, _TmpDir
 from latch_cli.services.register.constants import ANSI_REGEX, MAX_LINES
 from latch_cli.services.register.utils import (
     _build_image,
@@ -287,8 +287,9 @@ def register(
         with contextlib.ExitStack() as stack:
             td = stack.enter_context(
                 _TmpDir(
-                    ssh_client=ctx.ssh_client,
                     remote=remote,
+                    internal_ip=ctx.internal_ip,
+                    username=ctx.username,
                 )
             )
             _build_and_serialize(
@@ -301,9 +302,8 @@ def register(
             protos = _recursive_list(td)
             if remote:
                 local_td = stack.enter_context(tempfile.TemporaryDirectory())
-                scp = SCPClient(
-                    transport=ctx.ssh_client.get_transport(), sanitize=lambda x: x
-                )
+                ssh = _construct_ssh_client(ctx.internal_ip, ctx.username)
+                scp = SCPClient(transport=ssh.get_transport(), sanitize=lambda x: x)
                 scp.get(f"{td}/*", local_path=local_td, recursive=True)
                 protos = _recursive_list(local_td)
             else:
@@ -311,7 +311,11 @@ def register(
 
             for task_name, container in ctx.container_map.items():
                 task_td = stack.enter_context(
-                    _TmpDir(ssh_client=ctx.ssh_client, remote=remote)
+                    _TmpDir(
+                        remote=remote,
+                        internal_ip=ctx.internal_ip,
+                        username=ctx.username,
+                    )
                 )
                 try:
                     _build_and_serialize(
@@ -325,8 +329,9 @@ def register(
 
                     if remote:
                         local_td = stack.enter_context(tempfile.TemporaryDirectory())
+                        ssh = _construct_ssh_client(ctx.internal_ip, ctx.username)
                         scp = SCPClient(
-                            transport=ctx.ssh_client.get_transport(),
+                            transport=ssh.get_transport(),
                             sanitize=lambda x: x,
                         )
                         scp.get(f"{task_td}/*", local_path=local_td, recursive=True)

@@ -254,7 +254,7 @@ def init(
 )
 @click.option(
     "--no-glob",
-    "-ng",
+    "-G",
     help="Don't expand globs in remote paths",
     is_flag=True,
     default=False,
