@@ -141,7 +141,6 @@ class LatchDirPathTransformer(FlyteDirToMultipartBlobTransformer):
         lv: Literal,
         expected_python_type: Union[Type[LatchDir], PathLike],
     ) -> FlyteDirectory:
-
         uri = lv.scalar.blob.uri
         if expected_python_type is PathLike:
             raise TypeError(

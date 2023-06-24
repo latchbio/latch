@@ -43,12 +43,10 @@ def main():
     latest_ver = parse_version(get_latest_package_version())
     if local_ver < latest_ver:
         click.secho(
-            textwrap.dedent(
-                f"""
+            textwrap.dedent(f"""
                 WARN: Your local version of latch ({local_ver}) is out of date. This may result in unexpected behavior.
                 Please upgrade to the latest version ({latest_ver}) using `python3 -m pip install --upgrade latch`.
-                """
-            ).strip("\n"),
+                """).strip("\n"),
             fg="yellow",
         )
 
@@ -461,8 +459,10 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
     if version is None:
         version = "latest"
     click.secho(
-        f"Successfully generated python param map named {wf_name}.params.py with"
-        f" version {version}\n Run `latch launch {wf_name}.params.py` to launch it.",
+        (
+            f"Successfully generated python param map named {wf_name}.params.py with"
+            f" version {version}\n Run `latch launch {wf_name}.params.py` to launch it."
+        ),
         fg="green",
     )
 

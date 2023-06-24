@@ -38,7 +38,6 @@ def get_serializable_launch_plan(
     entity: LaunchPlan,
     cache: EntityCache,
 ) -> launch_plan_models.LaunchPlan:
-
     wf_id = identifier_model.Identifier(
         resource_type=identifier_model.ResourceType.WORKFLOW,
         project=settings.project,
@@ -91,7 +90,6 @@ def get_serializable_task(
     settings: SerializationSettings,
     cache: EntityCache,
 ) -> task_models.TaskSpec:
-
     if entity in cache:
         return cache[entity]
 
@@ -129,7 +127,6 @@ def get_serializable_node(
     settings: SerializationSettings,
     cache: EntityCache,
 ) -> workflow_model.Node:
-
     if entity in cache:
         return cache[entity]
 
@@ -168,7 +165,6 @@ def get_serializable_workflow(
     settings: SerializationSettings,
     cache: EntityCache,
 ) -> admin_workflow_models.WorkflowSpec:
-
     if entity in cache:
         return cache[entity]
 

@@ -80,7 +80,6 @@ def upload_image(ctx: _CentromereCtx, image_name: str) -> List[str]:
 def serialize_pkg_in_container(
     ctx: _CentromereCtx, image_name: str, serialize_dir: Path
 ) -> List[str]:
-
     _serialize_cmd = ["make", "serialize"]
     container = ctx.dkr_client.create_container(
         f"{ctx.dkr_repo}/{image_name}",

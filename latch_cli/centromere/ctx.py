@@ -219,8 +219,10 @@ class _CentromereCtx:
         match = re.match("^[a-zA-Z0-9_][a-zA-Z0-9._-]{,127}$", self.version)
         if match is None:
             raise ValueError(
-                f"{self.version} is an invalid version for AWS "
-                "ECR. Please provide a version that accomodates the ",
+                (
+                    f"{self.version} is an invalid version for AWS "
+                    "ECR. Please provide a version that accomodates the "
+                ),
                 "tag restrictions listed here - ",
                 "https://docs.aws.amazon.com/AmazonECR/latest/userguide/ecr-using-tags.html",
             )

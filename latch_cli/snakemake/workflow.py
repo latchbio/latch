@@ -36,7 +36,6 @@ SnakemakeInputVal: TypeAlias = snakemake.io._IOFile
 
 
 def variable_name_for_file(file: snakemake.io.AnnotatedString):
-
     return file.replace("/", "_").replace(".", "__").replace("-", "____")
 
 
@@ -44,7 +43,6 @@ def variable_name_for_value(
     val: SnakemakeInputVal,
     params: Union[snakemake.io.InputFiles, snakemake.io.OutputFiles] = None,
 ) -> str:
-
     if params:
         for name, v in params.items():
             if val == v:
@@ -56,7 +54,6 @@ def variable_name_for_value(
 def snakemake_dag_to_interface(
     dag: DAG, docstring: Optional[Docstring] = None
 ) -> Interface:
-
     outputs: Dict[str, LatchFile] = {}
 
     for target in dag.targetjobs:
@@ -65,7 +62,6 @@ def snakemake_dag_to_interface(
 
     inputs: Dict[str, LatchFile] = {}
     for job in dag.jobs:
-
         dep_outputs = []
         for dep, dep_files in dag.dependencies[job].items():
             for o in dep.output:
@@ -87,7 +83,6 @@ def binding_data_from_python(
     t_value: typing.Any,
     t_value_type: Optional[type] = None,
 ) -> literals_models.BindingData:
-
     if isinstance(t_value, Promise):
         if not t_value.is_ready:
             return literals_models.BindingData(promise=t_value.ref)
@@ -155,7 +150,6 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         name: str,
         dag: DAG,
     ):
-
         parameter_metadata: Dict[str, LatchParameter] = {}
         for job in dag.jobs:
             for x in job.input:
@@ -194,7 +188,6 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         )
 
     def compile(self, **kwargs):
-
         self._input_parameters = interface_to_parameters(self.python_interface)
 
         GLOBAL_START_NODE = Node(
@@ -211,7 +204,6 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         for layer in self._dag.toposorted():
             for job in layer:
-
                 is_target = False
 
                 if job in self._dag.targetjobs:
@@ -269,7 +261,6 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 self.interface.inputs.keys()
                 bindings = []
                 for k in sorted(interface.inputs):
-
                     var = typed_interface.inputs[k]
                     if var.description in promise_map:
                         job_output_info = promise_map[var.description]
@@ -357,7 +348,6 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         interface: Interface,
         task_type="python-task",
     ):
-
         name = f"{job.name}_{job.jobid}"
 
         self.job = job
@@ -381,7 +371,6 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         )
 
     def get_fn_code(self, snakefile_path_in_container: str):
-
         code_block = ""
 
         fn_interface = f"\n\n@small_task\ndef {self.name}("
@@ -473,7 +462,6 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
 class SnakemakeJobTaskResolver(DefaultTaskResolver):
     @property
     def location(self) -> str:
-
         return "flytekit.core.python_auto_container.default_task_resolver"
 
     def loader_args(
@@ -482,7 +470,6 @@ class SnakemakeJobTaskResolver(DefaultTaskResolver):
         return ["task-module", "latch_entrypoint", "task-name", task.name]
 
     def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
-
         _, task_module, _, task_name, *_ = loader_args
 
         task_module = importlib.import_module(task_module)

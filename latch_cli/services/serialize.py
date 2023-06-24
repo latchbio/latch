@@ -52,10 +52,8 @@ class SnakemakeWorkflowExtractor(Workflow):
             return map(self._rules.__getitem__, filter(self.is_rule, items))
 
         def files(items):
-            relpath = (
-                lambda f: f
-                if os.path.isabs(f) or f.startswith("root://")
-                else os.path.relpath(f)
+            relpath = lambda f: (
+                f if os.path.isabs(f) or f.startswith("root://") else os.path.relpath(f)
             )
             return map(relpath, filterfalse(self.is_rule, items))
 
@@ -117,7 +115,6 @@ class SnakemakeWorkflowExtractor(Workflow):
 
 
 def extract_snakemake_workflow(snakefile: Path) -> (str, SnakemakeWorkflow):
-
     workflow = SnakemakeWorkflowExtractor(
         snakefile=snakefile,
     )
@@ -143,7 +140,6 @@ def serialize_snakemake(
     image_name: str,
     dkr_repo: str,
 ):
-
     pkg_root = Path(pkg_root).resolve()
     _, wf = extract_snakemake_workflow(snakefile)
 
@@ -183,9 +179,7 @@ def serialize_snakemake(
 def generate_snakemake_entrypoint(
     wf: SnakemakeWorkflow, ctx: _CentromereCtx, snakefile: Path
 ):
-
-    entrypoint_code_block = textwrap.dedent(
-        """\
+    entrypoint_code_block = textwrap.dedent("""\
            import subprocess
            from pathlib import Path
            from typing import NamedTuple
@@ -196,8 +190,7 @@ def generate_snakemake_entrypoint(
            def ensure_parents_exist(path: Path):
                path.parent.mkdir(parents=True, exist_ok=True)
                return path
-           """
-    )
+           """)
     for task in wf.snakemake_tasks:
         snakefile_path_in_container = str(snakefile.resolve())[
             len(str(ctx.pkg_root.resolve())) + 1 :
