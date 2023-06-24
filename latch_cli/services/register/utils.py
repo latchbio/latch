@@ -83,6 +83,7 @@ def serialize_pkg_in_container(
     ctx: _CentromereCtx, image_name: str, serialize_dir: Path
 ) -> List[str]:
     _serialize_cmd = ["make"]
+
     if ctx.workflow_type == WorkflowType.latchbiosdk:
         _serialize_cmd.append("serialize")
     else:
