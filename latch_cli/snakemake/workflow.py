@@ -1,13 +1,11 @@
 import importlib
-import textwrap
 import typing
 from collections import OrderedDict
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Type, TypeVar
+from typing import Any, Dict, List, Optional, Type, TypeVar, Union
 
 import snakemake
-from flytekit import LaunchPlan
-from flytekit.configuration import Image, ImageConfig, SerializationSettings
+from flytekit.configuration import SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.docstring import Docstring
@@ -18,9 +16,7 @@ from flytekit.core.python_auto_container import (
     DefaultTaskResolver,
     PythonAutoContainerTask,
 )
-from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.type_engine import TypeEngine
-from flytekit.core.utils import _dnsify
 from flytekit.core.workflow import (
     WorkflowBase,
     WorkflowFailurePolicy,
@@ -32,20 +28,29 @@ from flytekit.models import interface as interface_models
 from flytekit.models import literals as literals_models
 from flytekit.models import types as type_models
 from snakemake.dag import DAG
-from snakemake.persistence import Persistence
-from snakemake.resources import DefaultResources, ResourceScopes, parse_resources
-from snakemake.rules import Rule
 from snakemake.target_jobs import encode_target_jobs_cli_args
-from snakemake.workflow import Workflow
 
 from latch.types import LatchAuthor, LatchFile, LatchMetadata, LatchParameter
 
 T = TypeVar("T")
 
 
-def variable_name_for_target_file(name: str):
+SnakemakeInputVal = Union[snakemake.io._IOFile]
 
-    return name.replace("/", "_").replace(".", "_")
+
+def variable_name_for_value(
+    val: SnakemakeInputVal,
+    params: Union[snakemake.io.InputFiles, snakemake.io.OutputFiles] = None,
+) -> str:
+
+    # TODO cache
+
+    if params:
+        for name, v in params.items():
+            if val == v:
+                return name
+
+    return val.file.replace("/", "_").replace(".", "_").replace("-", "_")
 
 
 def snakemake_dag_to_interface(
@@ -57,7 +62,7 @@ def snakemake_dag_to_interface(
     for target in dag.targetjobs:
         if type(target.input) == snakemake.io.InputFiles:
             for x in target.input:
-                outputs[variable_name_for_target_file(x.file)] = LatchFile
+                outputs[variable_name_for_value(x, target.input)] = LatchFile
         else:
             raise ValueError(f"Unsupported snakemake input type {type(target.input)}")
 
@@ -71,7 +76,10 @@ def snakemake_dag_to_interface(
 
         for x in job.input:
             if x not in dep_outputs:
-                inputs[variable_name_for_target_file(x.file)] = (LatchFile, None)
+                inputs[variable_name_for_value(x, job.input)] = (
+                    LatchFile,
+                    None,
+                )
 
     return Interface(inputs, outputs, docstring=docstring)
 
@@ -153,7 +161,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         parameter_metadata = {}
         for job in dag.jobs:
             for x in job.input:
-                var = variable_name_for_target_file(x.file)
+                var = variable_name_for_value(x, job.input)
                 parameter_metadata[var] = LatchParameter(display_name=var)
 
         latch_metadata = LatchMetadata(
@@ -216,10 +224,10 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
                 python_outputs: Dict[str, Type] = {}
                 for x in job.output:
-                    if x.file in target_files:
+                    if x in target_files:
                         is_target = True
-                    param = variable_name_for_target_file(x.file)
-                    target_file_for_param[param] = x.file
+                    param = variable_name_for_value(x, job.output)
+                    target_file_for_param[param] = x
                     python_outputs[param] = LatchFile
 
                 dep_outputs = {}
@@ -231,8 +239,8 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 python_inputs: Dict[str, Type] = {}
                 promise_map: Dict[str, str] = {}
                 for x in job.input:
-                    param = variable_name_for_target_file(x.file)
-                    target_file_for_param[param] = x.file
+                    param = variable_name_for_value(x, job.input)
+                    target_file_for_param[param] = x
                     python_inputs[param] = LatchFile
                     if x in dep_outputs:
                         promise_map[param] = dep_outputs[x]
@@ -249,7 +257,6 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 self.snakemake_tasks.append(task)
 
                 typed_interface = transform_interface_to_typed_interface(interface)
-
                 self.interface.inputs.keys()
                 bindings = []
                 for k in sorted(interface.inputs):
@@ -299,8 +306,10 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 for j in self._dag.targetjobs:
                     for depen, files in self._dag.dependencies[j].items():
                         for f in files:
-                            if variable_name_for_target_file(f) == out:
-                                return depen.jobid, variable_name_for_target_file(f)
+                            if variable_name_for_value(f) == out:
+                                return depen.jobid, variable_name_for_value(
+                                    f, depen.output
+                                )
 
             upstream_id, upstream_var = find_upstream_node()
             promise_to_bind = Promise(
@@ -356,7 +365,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             task_resolver=SnakemakeJobTaskResolver(),
         )
 
-    def get_fn_code(self, executor):
+    def get_fn_code(self):
 
         code_block = ""
 
@@ -386,8 +395,26 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             if t == LatchFile:
                 code_block += f'\n\tPath({param}).resolve().rename(ensure_parents_exist(Path("{self._target_file_for_param[param]}")))'
 
-        snakemake_cmd = ["snakemake", *executor.get_job_args(self.job).split(" ")]
-        snakemake_cmd.remove("")
+        snakemake_cmd = ["snakemake"]
+        snakemake_cmd.extend(
+            ["--target-jobs", *encode_target_jobs_cli_args(self.job.get_target_spec())]
+        )
+        snakemake_cmd.extend(["--allowed-rules", *self.job.rules])
+        snakemake_cmd.extend(["--local-groupid", str(self.job.jobid)])
+        snakemake_cmd.extend(["--cores", "8"])
+
+        if not self.job.is_group():
+            snakemake_cmd.append("--force-use-threads")
+
+        excluded = {"_nodes", "_cores", "tmpdir"}
+        allowed_resources = list(
+            filter(lambda x: x[0] not in excluded, self.job.resources.items())
+        )
+        if len(allowed_resources) > 0:
+            snakemake_cmd.append("--resources")
+            for resource, value in allowed_resources:
+                snakemake_cmd.append(f"{resource}={value}")
+
         formatted_snakemake_cmd = "\n\n\tsubprocess.run(["
 
         for i, arg in enumerate(snakemake_cmd):

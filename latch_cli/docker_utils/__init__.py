@@ -53,7 +53,7 @@ def get_epilogue(wf_type: WorkflowType = WorkflowType.LATCHBIOSDK) -> List[str]:
         "env FLYTE_INTERNAL_IMAGE $tag",
         "workdir /root",
     ]
-    if wf_type == WorkflowType.snakemake:
+    if wf_type == WorkflowType.SNAKEMAKE:
         cmds.insert(-1, "copy .latch/latch_entrypoint.py /root/latch_entrypoint.py")
     return cmds
 

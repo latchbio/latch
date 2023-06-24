@@ -2,7 +2,7 @@ import os
 import textwrap
 from itertools import chain, filterfalse
 from pathlib import Path
-from typing import List, Union
+from typing import Union
 
 from flytekit import LaunchPlan
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
@@ -13,7 +13,6 @@ from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.tools.serialize_helpers import persist_registrable_entities
 from snakemake.common import ON_WINDOWS
 from snakemake.dag import DAG
-from snakemake.executors import RealExecutor
 from snakemake.persistence import Persistence
 from snakemake.rules import Rule
 from snakemake.workflow import Workflow
@@ -201,23 +200,9 @@ def generate_snakemake_entrypoint(wf: SnakemakeWorkflow, ctx: _CentromereCtx):
                return path
            """
     )
-    entrypoint = ctx.pkg_root.joinpath(".latch/latch_entrypoint.py")
-    snakefile = get_snakefile(ctx.pkg_root)
-
-    # TODO - pull out what we need from RealExecutor
-    workflow = SnakemakeWorkflowExtractor(
-        snakefile=snakefile,
-    )
-    workflow.include(
-        snakefile,
-        overwrite_default_target=True,
-    )
-    dag = workflow.extract()
-    executor = RealExecutor(workflow, dag)
-    executor.cores = 8
-
     for task in wf.snakemake_tasks:
-        entrypoint_code_block += task.get_fn_code(executor)
+        entrypoint_code_block += task.get_fn_code()
 
+    entrypoint = ctx.pkg_root.joinpath(".latch/latch_entrypoint.py")
     with open(entrypoint, "w") as f:
         f.write(entrypoint_code_block)
