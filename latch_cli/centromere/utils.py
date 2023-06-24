@@ -16,6 +16,7 @@ from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.tools import module_loader
 
 from latch_cli.constants import latch_constants
+from latch_cli.docker_utils import generate_dockerfile
 
 
 @contextlib.contextmanager
@@ -187,6 +188,15 @@ def _construct_ssh_client(internal_ip: str, username: str) -> paramiko.SSHClient
     ssh.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy)
     ssh.connect(internal_ip, username=username, sock=sock)
     return ssh
+
+
+def get_default_dockerfile(pkg_root: Path):
+
+    default_dockerfile = pkg_root.joinpath("Dockerfile")
+    if not default_dockerfile.exists():
+        generate_dockerfile(pkg_root, pkg_root.joinpath(".latch/Dockerfile"))
+        default_dockerfile = pkg_root.joinpath(".latch/Dockerfile")
+    return default_dockerfile
 
 
 class _TmpDir:

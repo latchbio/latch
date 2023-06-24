@@ -2,10 +2,12 @@ import re
 import subprocess
 import time
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from textwrap import dedent
 from typing import Dict, Optional, Tuple
 
+import click
 import docker
 import paramiko
 import paramiko.util
@@ -19,9 +21,9 @@ from latch_cli.centromere.utils import (
     _construct_dkr_client,
     _construct_ssh_client,
     _import_flyte_objects,
+    get_default_dockerfile,
 )
 from latch_cli.constants import latch_constants
-from latch_cli.docker_utils import generate_dockerfile
 from latch_cli.utils import (
     account_id_from_token,
     current_workspace,
@@ -29,6 +31,11 @@ from latch_cli.utils import (
     hash_directory,
     retrieve_or_login,
 )
+
+
+class WorkflowType(Enum):
+    latchbiosdk = "latchbiosdk"
+    snakemake = "snakemake"
 
 
 @dataclass
@@ -62,6 +69,7 @@ class _CentromereCtx:
     # Used to associate alternate containers with tasks
     container_map: Dict[str, _Container]
     workflow_name: Optional[str]
+    workflow_type: WorkflowType
 
     latch_register_api_url = config.api.workflow.register
     latch_image_api_url = config.api.workflow.upload_image
@@ -95,51 +103,58 @@ class _CentromereCtx:
             else:
                 self.account_id = ws
 
-            self.pkg_root = Path(pkg_root).resolve()
             self.dkr_repo = config.dkr_repo
             self.remote = remote
-            self.container_map = {}
-
-            default_dockerfile = self.pkg_root.joinpath("Dockerfile")
-            if not default_dockerfile.exists():
-                generate_dockerfile(
-                    self.pkg_root, self.pkg_root.joinpath(".latch/Dockerfile")
-                )
-                default_dockerfile = self.pkg_root.joinpath(".latch/Dockerfile")
-
-            _import_flyte_objects([self.pkg_root])
-
             self.disable_auto_version = disable_auto_version
-            try:
-                version_file = self.pkg_root.joinpath("version")
+            self.pkg_root = Path(pkg_root).resolve()
+
+            # TODO (kenny) better rules to auto detect workflow type
+            if (
+                self.pkg_root.joinpath("Snakefile").exists()
+                and not self.pkg_root.joinpath("wf").exists()
+            ):
+                self.workflow_type = WorkflowType.snakemake
+            else:
+                self.workflow_type = WorkflowType.latchbiosdk
+
+            version_file = self.pkg_root.joinpath("version")
+            if not version_file.exists():
+                self.version = "0.0.0"
+                with open(version_file, "w") as vf:
+                    vf.write(self.version)
+                click.echo(
+                    "Created a version file with initial version 0.0.0 for this"
+                    " workflow."
+                )
+            else:
                 with open(version_file, "r") as vf:
                     self.version = vf.read().strip()
-                if not self.disable_auto_version:
-                    hash = hash_directory(self.pkg_root)
-                    self.version = self.version + "-" + hash[:6]
-            except Exception as e:
-                raise ValueError(
-                    f"Unable to extract pkg version from {str(self.pkg_root)}"
-                ) from e
 
-            # Global FlyteEntities object holds all serializable objects after they are imported.
-            for entity in FlyteEntities.entities:
-                if isinstance(entity, PythonFunctionWorkflow):
-                    self.workflow_name = entity.name
-                if isinstance(entity, PythonTask):
-                    if (
-                        hasattr(entity, "dockerfile_path")
-                        and entity.dockerfile_path is not None
-                    ):
-                        self.container_map[entity.name] = _Container(
-                            dockerfile=entity.dockerfile_path,
-                            image_name=self.task_image_name(entity.name),
-                            pkg_dir=entity.dockerfile_path.parent,
-                        )
+            if not self.disable_auto_version:
+                hash = hash_directory(self.pkg_root)
+                self.version = self.version + "-" + hash[:6]
 
             if self.nucleus_check_version(self.version, self.workflow_name) is True:
                 raise ValueError(f"Version {self.version} has already been registered.")
 
+            # We do not support per task containers for snakemake rn
+            self.container_map = {}
+            if self.workflow_type == WorkflowType.latchbiosdk:
+                for entity in FlyteEntities.entities:
+                    if isinstance(entity, PythonFunctionWorkflow):
+                        self.workflow_name = entity.name
+                    if isinstance(entity, PythonTask):
+                        if (
+                            hasattr(entity, "dockerfile_path")
+                            and entity.dockerfile_path is not None
+                        ):
+                            self.container_map[entity.name] = _Container(
+                                dockerfile=entity.dockerfile_path,
+                                image_name=self.task_image_name(entity.name),
+                                pkg_dir=entity.dockerfile_path.parent,
+                            )
+
+            default_dockerfile = get_default_dockerfile(self.pkg_root)
             self.default_container = _Container(
                 dockerfile=default_dockerfile,
                 image_name=self.image_tagged,
@@ -205,10 +220,8 @@ class _CentromereCtx:
         match = re.match("^[a-zA-Z0-9_][a-zA-Z0-9._-]{,127}$", self.version)
         if match is None:
             raise ValueError(
-                (
-                    f"{self.version} is an invalid version for AWS "
-                    "ECR. Please provide a version that accomodates the "
-                ),
+                f"{self.version} is an invalid version for AWS "
+                "ECR. Please provide a version that accomodates the ",
                 "tag restrictions listed here - ",
                 "https://docs.aws.amazon.com/AmazonECR/latest/userguide/ecr-using-tags.html",
             )
