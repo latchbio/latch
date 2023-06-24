@@ -2,6 +2,7 @@
 
 import base64
 import contextlib
+import os
 from pathlib import Path
 from typing import List, Optional
 
@@ -9,6 +10,7 @@ import boto3
 import requests
 
 from latch_cli.centromere.ctx import _CentromereCtx
+from latch_cli.config.latch import config
 from latch_cli.utils import current_workspace
 
 
@@ -102,11 +104,25 @@ def serialize_pkg_in_container(
     return [x.decode("utf-8") for x in logs], container_id
 
 
-def register_serialized_pkg(ctx: _CentromereCtx, files: List[Path]) -> dict:
-    headers = {"Authorization": f"Bearer {ctx.token}"}
+def register_serialized_pkg(
+    files: List[Path],
+    token: Optional[str],
+    version: str,
+    latch_register_url: str = config.api.workflow.register,
+) -> dict:
+    if token is None:
+        token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", "")
+        if token != "":
+            headers = {"Authorization": f"Latch-Execution-Token {token}"}
+        else:
+            raise OSError(
+                "The environment variable FLYTE_INTERNAL_EXECUTION_ID does not exist"
+            )
+    else:
+        headers = {"Authorization": f"Bearer {token}"}
 
     serialize_files = {
-        "version": ctx.version.encode("utf-8"),
+        "version": version.encode("utf-8"),
         ".latch_ws": current_workspace().encode("utf-8"),
     }
     with contextlib.ExitStack() as stack:
@@ -115,7 +131,7 @@ def register_serialized_pkg(ctx: _CentromereCtx, files: List[Path]) -> dict:
             serialize_files[fh.name] = fh
 
         response = requests.post(
-            ctx.latch_register_api_url,
+            latch_register_url,
             headers=headers,
             files=serialize_files,
         )

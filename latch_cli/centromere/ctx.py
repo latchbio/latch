@@ -403,6 +403,7 @@ class _CentromereCtx:
         )
 
         resp = response.json()
+        print(resp)
         try:
             return resp["exists"]
         except KeyError as e:

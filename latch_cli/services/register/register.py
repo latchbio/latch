@@ -12,7 +12,8 @@ import click
 from scp import SCPClient
 
 from latch_cli.centromere.ctx import _CentromereCtx
-from latch_cli.centromere.utils import _construct_ssh_client, _TmpDir
+from latch_cli.centromere.utils import _TmpDir
+from latch_cli.config.user import user_config
 from latch_cli.services.register.constants import ANSI_REGEX, MAX_LINES
 from latch_cli.services.register.utils import (
     build_image,
@@ -22,8 +23,8 @@ from latch_cli.services.register.utils import (
 )
 from latch_cli.services.serialize import (
     extract_snakemake_workflow,
-    generate_snakemake_entrypoint,
-    serialize_snakemake,
+    generate_jit_register_code,
+    serialize_jit_register_workflow,
 )
 from latch_cli.utils import WorkflowType, current_workspace
 
@@ -162,13 +163,24 @@ def build_and_serialize(
     """Builds an image, serializes the workflow within the image, and pushes the image."""
 
     if ctx.workflow_type == WorkflowType.snakemake:
-        _, wf = extract_snakemake_workflow(ctx.snakefile)
-        generate_snakemake_entrypoint(wf, ctx, ctx.snakefile)
+        wf = extract_snakemake_workflow(ctx.snakefile)
+        generate_jit_register_code(
+            wf,
+            ctx.pkg_root,
+            ctx.snakefile,
+            ctx.version,
+            image_name,
+            user_config.workspace_id,
+        )
 
     image_build_logs = build_image(ctx, image_name, context_path, dockerfile)
     print_and_write_build_logs(image_build_logs, image_name, ctx.pkg_root)
 
-    if ctx.workflow_type == WorkflowType.latchbiosdk:
+    if ctx.workflow_type == WorkflowType.snakemake:
+        serialize_jit_register_workflow(
+            ctx.pkg_root, ctx.snakefile, tmp_dir, image_name, ctx.dkr_repo
+        )
+    else:
         serialize_logs, container_id = serialize_pkg_in_container(
             ctx, image_name, tmp_dir
         )
@@ -178,10 +190,6 @@ def build_and_serialize(
             raise ValueError(
                 f"Serialization exited with nonzero exit code: {exit_status['Error']}"
             )
-    else:
-        serialize_snakemake(
-            ctx.pkg_root, ctx.snakefile, tmp_dir, image_name, ctx.dkr_repo
-        )
 
     upload_image_logs = upload_image(ctx, image_name)
     print_upload_logs(upload_image_logs, image_name)
@@ -373,7 +381,7 @@ def register(
                         f"{container.dockerfile} given to {task_name} is invalid.",
                     ) from e
 
-            reg_resp = register_serialized_pkg(ctx, protos)
+            reg_resp = register_serialized_pkg(protos, ctx.token, ctx.version)
             _print_reg_resp(reg_resp, ctx.default_container.image_name)
 
             click.secho(

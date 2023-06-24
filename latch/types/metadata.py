@@ -6,6 +6,8 @@ from typing import Dict, List, Optional, Tuple
 
 import yaml
 
+from latch.types.directory import LatchDir
+
 
 @dataclass
 class LatchRule:
@@ -376,7 +378,7 @@ class LatchMetadata:
     """
 
     display_name: str
-    """The name of the workflow"""
+    """The display name of the workflow"""
     author: LatchAuthor
     """ A `LatchAuthor` object that describes the author of the workflow"""
     documentation: Optional[str] = None
@@ -428,3 +430,15 @@ class LatchMetadata:
         return (
             metadata_yaml + "Args:\n" + indent(parameter_yaml, "  ", lambda _: True)
         ).strip("\n ")
+
+
+@dataclass
+class SnakemakeMetadata(LatchMetadata):
+    output_dir: Optional[LatchDir] = None
+
+    def __post_init__(self):
+        global _snakemake_metadata
+        _snakemake_metadata = self
+
+
+_snakemake_metadata: Optional[SnakemakeMetadata] = None

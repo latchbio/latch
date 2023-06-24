@@ -72,7 +72,7 @@ class SnakemakeWorkflowExtractor(Workflow):
         return dag
 
 
-def extract_snakemake_workflow(snakefile: Path) -> (str, SnakemakeWorkflow):
+def extract_snakemake_workflow(snakefile: Path) -> SnakemakeWorkflow:
     workflow = SnakemakeWorkflowExtractor(
         snakefile=snakefile,
     )
@@ -82,13 +82,10 @@ def extract_snakemake_workflow(snakefile: Path) -> (str, SnakemakeWorkflow):
     )
     dag = workflow.extract_dag()
 
-    wf_name = "snakemake_wf"
     wf = SnakemakeWorkflow(
-        wf_name,
         dag,
     )
-    wf.compile()
-    return wf_name, wf
+    return wf
 
 
 def serialize_snakemake(
@@ -99,7 +96,8 @@ def serialize_snakemake(
     dkr_repo: str,
 ):
     pkg_root = Path(pkg_root).resolve()
-    _, wf = extract_snakemake_workflow(snakefile)
+    wf = extract_snakemake_workflow(snakefile)
+    wf.compile()
 
     image_name_no_version, version = image_name.split(":")
     default_img = Image(
@@ -134,8 +132,56 @@ def serialize_snakemake(
     persist_registrable_entities(registrable_entities, output_dir)
 
 
+def serialize_jit_register_workflow(
+    pkg_root: Path,
+    snakefile: Path,
+    output_dir: Path,
+    image_name: str,
+    dkr_repo: str,
+):
+    pkg_root = Path(pkg_root).resolve()
+    wf = extract_snakemake_workflow(snakefile)
+    jit_wf = wf.build_jit_register_wrapper()
+
+    image_name_no_version, version = image_name.split(":")
+    default_img = Image(
+        name=image_name,
+        fqn=f"{dkr_repo}/{image_name_no_version}",
+        tag=version,
+    )
+    settings = SerializationSettings(
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
+
+    registrable_entity_cache: EntityCache = {}
+
+    get_serializable_workflow(jit_wf, settings, registrable_entity_cache)
+
+    parameter_map = interface_to_parameters(jit_wf.python_interface)
+    lp = LaunchPlan(
+        name=jit_wf.name,
+        workflow=jit_wf,
+        parameters=parameter_map,
+        fixed_inputs=literals_models.LiteralMap(literals={}),
+    )
+    admin_lp = get_serializable_launch_plan(lp, settings, registrable_entity_cache)
+
+    registrable_entities = [
+        x.to_flyte_idl()
+        for x in list(
+            filter(should_register_with_admin, list(registrable_entity_cache.values()))
+        )
+        + [admin_lp]
+    ]
+    persist_registrable_entities(registrable_entities, output_dir)
+
+
+def snakefile_path_in_container(snakefile: Path, pkg_root: Path) -> str:
+    return str(snakefile.resolve())[len(str(pkg_root.resolve())) + 1 :]
+
+
 def generate_snakemake_entrypoint(
-    wf: SnakemakeWorkflow, ctx: _CentromereCtx, snakefile: Path
+    wf: SnakemakeWorkflow, pkg_root: Path, snakefile: Path
 ):
     entrypoint_code_block = textwrap.dedent("""\
            import subprocess
@@ -152,11 +198,71 @@ def generate_snakemake_entrypoint(
                return path
            """)
     for task in wf.snakemake_tasks:
-        snakefile_path_in_container = str(snakefile.resolve())[
-            len(str(ctx.pkg_root.resolve())) + 1 :
-        ]
-        entrypoint_code_block += task.get_fn_code(snakefile_path_in_container)
+        entrypoint_code_block += task.get_fn_code(
+            snakefile_path_in_container(snakefile, pkg_root)
+        )
 
-    entrypoint = ctx.pkg_root.joinpath(".latch/latch_entrypoint.py")
+    entrypoint = pkg_root.joinpath("latch_entrypoint.py")
     with open(entrypoint, "w") as f:
         f.write(entrypoint_code_block)
+
+
+def generate_jit_register_code(
+    wf: SnakemakeWorkflow,
+    pkg_root: Path,
+    snakefile: Path,
+    version: str,
+    image_name: str,
+    account_id: str,
+) -> Path:
+    code_block = textwrap.dedent("""\
+           import json
+           import os
+           import tempfile
+           import time
+           from functools import partial
+           from pathlib import Path
+           from typing import List, NamedTuple, Optional, TypedDict
+
+           import google.protobuf.json_format as gpjson
+           import gql
+           import requests
+           from flyteidl.core import literals_pb2 as _literals_pb2
+           from flytekit.core import utils
+           from flytekit.core.context_manager import FlyteContext
+
+           from latch import small_task, workflow
+           from latch.gql._execute import execute
+           from latch.types import LatchFile
+           from latch_cli.config.latch import config
+           from latch_cli.services.register.register import (
+               _print_reg_resp,
+               _recursive_list,
+               register_serialized_pkg,
+           )
+           from latch_cli.services.serialize import (
+               extract_snakemake_workflow,
+               generate_snakemake_entrypoint,
+               serialize_snakemake,
+           )
+
+
+           print = partial(print, flush=True)
+
+           def check_exists_and_ensure_parents(path: Path):
+               if path.exists():
+                   print(f"A file already exists at {path} and will be overwritten.")
+               path.parent.mkdir(parents=True, exist_ok=True)
+               return path
+           """)
+    code_block += wf.get_fn_code(
+        snakefile_path_in_container(snakefile, pkg_root),
+        version,
+        image_name,
+        account_id,
+    )
+
+    entrypoint = pkg_root.joinpath(".latch/jit_entrypoint.py")
+    with open(entrypoint, "w") as f:
+        f.write(code_block)
+    return entrypoint
