@@ -8,6 +8,7 @@ from typing import List
 
 import yaml
 
+from latch_cli.centromere.utils import is_snakemake_project
 from latch_cli.constants import latch_constants
 from latch_cli.utils import WorkflowType
 from latch_cli.workflow_config import LatchWorkflowConfig, create_and_write_config
@@ -191,7 +192,7 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
     return commands
 
 
-def generate_dockerfile(pkg_root: Path, outfile: Path, wf_type: WorkflowType) -> None:
+def generate_dockerfile(pkg_root: Path, outfile: Path) -> None:
     """Generate a best effort Dockerfile from files in the workflow directory.
 
     Args:
@@ -239,6 +240,18 @@ def generate_dockerfile(pkg_root: Path, outfile: Path, wf_type: WorkflowType) ->
             if block.order == DockerCmdBlockOrder.postcopy:
                 block.write_block(f)
 
-        f.write("\n".join(get_epilogue()) + "\n")
+        wf_type = WorkflowType.LATCHBIOSDK
+        if is_snakemake_project(pkg_root):
+            wf_type = WorkflowType.SNAKEMAKE
+        f.write("\n".join(get_epilogue(wf_type)) + "\n")
 
     print("Generated.")
+
+
+def get_default_dockerfile(pkg_root: Path, wf_type: WorkflowType):
+
+    default_dockerfile = pkg_root.joinpath("Dockerfile")
+    if not default_dockerfile.exists():
+        generate_dockerfile(pkg_root, pkg_root.joinpath(".latch/Dockerfile"), wf_type)
+        default_dockerfile = pkg_root.joinpath(".latch/Dockerfile")
+    return default_dockerfile

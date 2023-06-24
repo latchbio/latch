@@ -17,14 +17,15 @@ from latch_sdk_config.latch import config
 
 import latch_cli.tinyrequests as tinyrequests
 from latch_cli.centromere.utils import (
-    WorkflowType,
     _construct_dkr_client,
     _construct_ssh_client,
     _import_flyte_objects,
-    get_default_dockerfile,
+    is_snakemake_project,
 )
 from latch_cli.constants import latch_constants
+from latch_cli.docker_utils import get_default_dockerfile
 from latch_cli.utils import (
+    WorkflowType,
     account_id_from_token,
     current_workspace,
     generate_temporary_ssh_credentials,
@@ -104,10 +105,7 @@ class _CentromereCtx:
             self.pkg_root = Path(pkg_root).resolve()
 
             # TODO (kenny) better rules to auto detect workflow type
-            if (
-                self.pkg_root.joinpath("Snakefile").exists()
-                and not self.pkg_root.joinpath("wf").exists()
-            ):
+            if is_snakemake_project(self.pkg_root):
                 self.workflow_type = WorkflowType.SNAKEMAKE
             else:
                 self.workflow_type = WorkflowType.LATCHBIOSDK

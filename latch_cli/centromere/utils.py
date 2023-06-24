@@ -191,15 +191,6 @@ def _construct_ssh_client(internal_ip: str, username: str) -> paramiko.SSHClient
     return ssh
 
 
-def get_default_dockerfile(pkg_root: Path, wf_type: WorkflowType):
-
-    default_dockerfile = pkg_root.joinpath("Dockerfile")
-    if not default_dockerfile.exists():
-        generate_dockerfile(pkg_root, pkg_root.joinpath(".latch/Dockerfile"), wf_type)
-        default_dockerfile = pkg_root.joinpath(".latch/Dockerfile")
-    return default_dockerfile
-
-
 class _TmpDir:
 
     """Represents a temporary directory that can be local or on a remote machine."""
@@ -254,3 +245,9 @@ class _TmpDir:
         elif not (self.internal_ip is None or self.username is None):
             client = _construct_ssh_client(self.internal_ip, self.username)
             client.exec_command(f"rm -rf {self._tempdir}")
+
+
+def is_snakemake_project(pkg_root: Path) -> bool:
+    if pkg_root.joinpath("Snakefile").exists() and not pkg_root.joinpath("wf").exists():
+        return True
+    return False
