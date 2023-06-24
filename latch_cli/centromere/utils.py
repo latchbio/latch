@@ -240,6 +240,6 @@ class _TmpDir:
             and not isinstance(self._tempdir, str)
         ):
             self._tempdir.cleanup()
-        elif self.internal_ip is None or self.username is None:
+        elif not (self.internal_ip is None or self.username is None):
             client = _construct_ssh_client(self.internal_ip, self.username)
             client.exec_command(f"rm -rf {self._tempdir}")
