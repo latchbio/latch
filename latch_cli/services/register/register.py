@@ -24,6 +24,7 @@ from latch_cli.services.serialize import (
     extract_snakemake_workflow,
     generate_snakemake_entrypoint,
     get_snakefile,
+    serialize,
 )
 from latch_cli.utils import WorkflowType, current_workspace
 
@@ -166,16 +167,21 @@ def build_and_serialize(
         _, wf = extract_snakemake_workflow(snakefile)
         generate_snakemake_entrypoint(wf, ctx)
 
-    image_build_logs = build_image(ctx, image_name, context_path, dockerfile)
-    print_and_write_build_logs(image_build_logs, image_name, ctx.pkg_root)
+    # image_build_logs = build_image(ctx, image_name, context_path, dockerfile)
+    # print_and_write_build_logs(image_build_logs, image_name, ctx.pkg_root)
 
-    serialize_logs, container_id = serialize_pkg_in_container(ctx, image_name, tmp_dir)
-    print_serialize_logs(serialize_logs, image_name)
-    exit_status = ctx.dkr_client.wait(container_id)
-    if exit_status["StatusCode"] != 0:
-        raise ValueError(
-            f"Serialization exited with nonzero exit code: {exit_status['Error']}"
+    if ctx.workflow_type == WorkflowType.LATCHBIOSDK:
+        serialize_logs, container_id = serialize_pkg_in_container(
+            ctx, image_name, tmp_dir
         )
+        print_serialize_logs(serialize_logs, image_name)
+        exit_status = ctx.dkr_client.wait(container_id)
+        if exit_status["StatusCode"] != 0:
+            raise ValueError(
+                f"Serialization exited with nonzero exit code: {exit_status['Error']}"
+            )
+    else:
+        serialize(ctx.pkg_root, tmp_dir, ctx.dkr_repo, ctx.version)
 
     upload_image_logs = upload_image(ctx, image_name)
     print_upload_logs(upload_image_logs, image_name)
@@ -291,7 +297,7 @@ def register(
         with contextlib.ExitStack() as stack:
             td = stack.enter_context(
                 _TmpDir(
-                    remote=remote,
+                    remote=ctx.workflow_type == WorkflowType.LATCHBIOSDK and remote,
                     internal_ip=ctx.internal_ip,
                     username=ctx.username,
                 )
@@ -303,9 +309,8 @@ def register(
                 td,
                 dockerfile=ctx.default_container.dockerfile,
             )
-            quit()
             protos = _recursive_list(td)
-            if remote:
+            if ctx.workflow_type == WorkflowType.LATCHBIOSDK and remote:
                 local_td = stack.enter_context(tempfile.TemporaryDirectory())
                 ssh = _construct_ssh_client(ctx.internal_ip, ctx.username)
                 scp = SCPClient(transport=ssh.get_transport(), sanitize=lambda x: x)

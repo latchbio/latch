@@ -1,4 +1,4 @@
-from latch_cli.utils import WorkflowType
+from latch_cli.services.serialize import serialize
 
 "Utilites for registration."
 
@@ -82,17 +82,13 @@ def upload_image(ctx: _CentromereCtx, image_name: str) -> List[str]:
 def serialize_pkg_in_container(
     ctx: _CentromereCtx, image_name: str, serialize_dir: Path
 ) -> List[str]:
-    _serialize_cmd = ["make"]
 
-    if ctx.workflow_type == WorkflowType.LATCHBIOSDK:
-        _serialize_cmd.append("serialize")
-    else:
-        _serialize_cmd.append("snakemake-serialize")
-
+    _serialize_cmd = ["make", "serialize"]
     container = ctx.dkr_client.create_container(
         f"{ctx.dkr_repo}/{image_name}",
         command=_serialize_cmd,
         volumes=[str(serialize_dir)],
+        environment={"LATCH_DKR_REPO": ctx.dkr_repo, "LATCH_VERSION": ctx.version},
         host_config=ctx.dkr_client.create_host_config(
             binds={
                 str(serialize_dir): {

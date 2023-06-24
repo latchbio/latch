@@ -140,7 +140,7 @@ def get_snakefile(pkg_root: Path) -> Path:
     return Path("Snakefile")
 
 
-def serialize(pkg_root: Path, output_dir: Path):
+def serialize(pkg_root: Path, output_dir: Path, dkr_repo: str, version: str):
     """Serializes workflow code into lyteidl protobuf.
 
     Args:
@@ -150,42 +150,39 @@ def serialize(pkg_root: Path, output_dir: Path):
 
     pkg_root = Path(pkg_root).resolve()
     snakefile = get_snakefile(pkg_root)
-    with _CentromereCtx(pkg_root, no_register=True) as ctx:
 
-        wf_name, wf = extract_snakemake_workflow(snakefile)
+    wf_name, wf = extract_snakemake_workflow(snakefile)
 
-        default_img = Image(
-            name=wf_name,
-            fqn=f"{ctx.dkr_repo}/{wf_name}",
-            tag=ctx.version,
+    default_img = Image(
+        name=wf_name,
+        fqn=f"{dkr_repo}/{wf_name}",
+        tag=version,
+    )
+    settings = SerializationSettings(
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
+
+    registrable_entity_cache = {}
+
+    get_serializable_workflow(wf, settings, registrable_entity_cache)
+
+    parameter_map = interface_to_parameters(wf.python_interface)
+    lp = LaunchPlan(
+        name=wf.name,
+        workflow=wf,
+        parameters=parameter_map,
+        fixed_inputs=literals_models.LiteralMap(literals={}),
+    )
+    admin_lp = get_serializable_launch_plan(settings, lp, registrable_entity_cache)
+
+    registrable_entities = [
+        x.to_flyte_idl()
+        for x in list(
+            filter(should_register_with_admin, list(registrable_entity_cache.values()))
         )
-        settings = SerializationSettings(
-            image_config=ImageConfig(default_image=default_img, images=[default_img]),
-        )
-
-        registrable_entity_cache = {}
-
-        get_serializable_workflow(wf, settings, registrable_entity_cache)
-
-        parameter_map = interface_to_parameters(wf.python_interface)
-        lp = LaunchPlan(
-            name=wf.name,
-            workflow=wf,
-            parameters=parameter_map,
-            fixed_inputs=literals_models.LiteralMap(literals={}),
-        )
-        admin_lp = get_serializable_launch_plan(settings, lp, registrable_entity_cache)
-
-        registrable_entities = [
-            x.to_flyte_idl()
-            for x in list(
-                filter(
-                    should_register_with_admin, list(registrable_entity_cache.values())
-                )
-            )
-            + [admin_lp]
-        ]
-        persist_registrable_entities(registrable_entities, output_dir)
+        + [admin_lp]
+    ]
+    persist_registrable_entities(registrable_entities, output_dir)
 
 
 def generate_snakemake_entrypoint(wf: SnakemakeWorkflow, ctx: _CentromereCtx):

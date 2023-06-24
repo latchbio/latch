@@ -54,7 +54,7 @@ def get_epilogue(wf_type: WorkflowType = WorkflowType.LATCHBIOSDK) -> List[str]:
         "workdir /root",
     ]
     if wf_type == WorkflowType.snakemake:
-        cmds.insert("copy .latch/latch_entrypoint.py /root/latch_entrypoint.py")
+        cmds.insert(-1, "copy .latch/latch_entrypoint.py /root/latch_entrypoint.py")
     return cmds
 
 
@@ -221,7 +221,7 @@ def generate_dockerfile(pkg_root: Path, outfile: Path, wf_type: WorkflowType) ->
         )
         create_and_write_config(pkg_root)
         with (pkg_root / latch_constants.pkg_config).open("r") as f:
-            config: LatchWorkflowConfig = LatchWorkflowConfig(**json.load(f))
+            config = LatchWorkflowConfig(**json.load(f))
 
     with outfile.open("w") as f:
         f.write("\n".join(get_prologue(config)) + "\n\n")
