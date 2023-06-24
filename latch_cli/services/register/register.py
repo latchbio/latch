@@ -342,7 +342,6 @@ def register(
                     build_and_serialize(
                         ctx,
                         container.image_name,
-                        # always use root as build context
                         ctx.default_container.pkg_dir,
                         task_td,
                         dockerfile=container.dockerfile,

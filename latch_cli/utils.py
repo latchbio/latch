@@ -201,8 +201,7 @@ def generate_temporary_ssh_credentials(ssh_key_path: Path) -> str:
     except subprocess.CalledProcessError as e:
         raise ValueError(
             "There was an issue adding temporary SSH credentials to your SSH Agent."
-            " Please ensure that your SSH Agent is running, or (re)start it manually by"
-            " running\n\n    $ eval `ssh-agent -s`\n\n"
+            " Please ensure that your SSH Agent is running"
         ) from e
 
     # decode private key into public key
@@ -266,7 +265,7 @@ class TemporarySSHCredentials:
             and self._ssh_key_path.with_suffix(".pub").exists()
         ):
             subprocess.run(
-                ["ssh-add", "-d", self._ssh_key_path],
+                ["ssh-agent", "ssh-add", "-d", self._ssh_key_path],
                 check=True,
                 capture_output=True,
             )

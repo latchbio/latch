@@ -437,25 +437,12 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 f"{param}: {t.__name__}"
                 for param, t in self.python_interface.inputs.items()
             )
-            + ")"
+            + ") -> bool:"
         )
-
-        if len(self.python_interface.outputs) > 0:
-            fn_interface += (
-                f" -> NamedTuple('{self.name}_output', "
-                + ", ".join(
-                    f"{param}={t.__name__}"
-                    for param, t in self.python_interface.outputs.items()
-                )
-                + "):"
-            )
-        else:
-            fn_interface += ":"
-
         return fn_interface
 
     def get_fn_return_stmt(self):
-        return "\n\treturn LatchFile('latch_entrypoint.py')"
+        return "\n\treturn True"
 
     def get_fn_code(
         self, snakefile_path: str, version: str, image_name: str, account_id: str
@@ -488,13 +475,113 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         wf_name = wf.name
         generate_snakemake_entrypoint(wf, pkg_root, snakefile)
 
+        dockerfile = Path("Dockerfile-dynamic").resolve()
+        dockerfile.write_text(
+            textwrap.dedent(
+                f'''
+            from 812206152185.dkr.ecr.us-west-2.amazonaws.com/{image_name}
+
+            copy latch_entrypoint.py /root/latch_entrypoint.py
+            '''
+            )
+        )
+        new_image_name = f"{image_name}-{version}"
+
+        os.mkdir("/root/.ssh")
+        ssh_key_path = Path("/root/.ssh/id_rsa")
+        cmd = ["ssh-keygen", "-f", ssh_key_path, "-N", "", "-q"]
+        try:
+            subprocess.run(cmd, check=True)
+        except subprocess.CalledProcessError as e:
+            raise ValueError(
+                "There was a problem creating temporary SSH credentials. Please ensure"
+                " that `ssh-keygen` is installed and available in your PATH."
+            ) from e
+        os.chmod(ssh_key_path, 0o700)
+
+        token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", "")
+        headers = {
+            "Authorization": f"Latch-Execution-Token {token}",
+        }
+
+        ssh_public_key_path = Path("/root/.ssh/id_rsa.pub")
+        response = tinyrequests.post(
+            config.api.centromere.provision,
+            headers=headers,
+            json={
+                "public_key": ssh_public_key_path.read_text().strip(),
+            },
+        )
+
+        resp = response.json()
+        try:
+            public_ip = resp["ip"]
+            username = resp["username"]
+        except KeyError as e:
+            raise ValueError(
+                f"Malformed response from request for centromere login: {resp}"
+            ) from e
+
+
+        subprocess.run(["ssh", "-o", "StrictHostKeyChecking=no", f"{username}@{public_ip}", "uptime"])
+        dkr_client = _construct_dkr_client(ssh_host=f"ssh://{username}@{public_ip}")
+
+        data = {"pkg_name": new_image_name.split(":")[0], "ws_account_id": account_id}
+        response = requests.post(config.api.workflow.upload_image, headers=headers, json=data)
+
+        try:
+            response = response.json()
+            access_key = response["tmp_access_key"]
+            secret_key = response["tmp_secret_key"]
+            session_token = response["tmp_session_token"]
+        except KeyError as err:
+            raise ValueError(f"malformed response on image upload: {response}") from err
+
+        try:
+            client = boto3.session.Session(
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+                aws_session_token=session_token,
+                region_name="us-west-2",
+            ).client("ecr")
+            token = client.get_authorization_token()["authorizationData"][0][
+                "authorizationToken"
+            ]
+        except Exception as err:
+            raise ValueError(
+                f"unable to retreive an ecr login token for user {account_id}"
+            ) from err
+
+        user, password = base64.b64decode(token).decode("utf-8").split(":")
+        dkr_client.login(
+            username=user,
+            password=password,
+            registry=config.dkr_repo,
+        )
+
+        image_build_logs = dkr_client.build(
+            path=str(pkg_root),
+            dockerfile=str(dockerfile),
+            buildargs={"tag": f"{config.dkr_repo}/{new_image_name}"},
+            tag=f"{config.dkr_repo}/{new_image_name}",
+            decode=True,
+        )
+        print_and_write_build_logs(image_build_logs, new_image_name, pkg_root)
+
+        upload_image_logs = dkr_client.push(
+            repository=f"{config.dkr_repo}/{new_image_name}",
+            stream=True,
+            decode=True,
+        )
+        print_upload_logs(upload_image_logs, new_image_name)
+
         temp_dir = tempfile.TemporaryDirectory()
         with Path(temp_dir.name).resolve() as td:
-            serialize_snakemake(pkg_root, snakefile, td, image_name, config.dkr_repo)
+            serialize_snakemake(wf, td, new_image_name, config.dkr_repo)
 
             protos = _recursive_list(td)
             reg_resp = register_serialized_pkg(protos, None, version, account_id)
-            _print_reg_resp(reg_resp, image_name)
+            _print_reg_resp(reg_resp, new_image_name)
 
 
         class _WorkflowInfoNode(TypedDict):
@@ -532,18 +619,12 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         params = json.loads(gpjson.MessageToJson(input_proto))["literals"]
 
-        token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", "")
-        headers = {
-            "Authorization": f"Latch-Execution-Token {token}",
-        }
-
         _interface_request = {
             "workflow_id": wf_id,
             "params": params,
         }
-        url = "https://console.ligma.ai/api/create-execution"
 
-        response = requests.post(url, headers=headers, json=_interface_request)
+        response = requests.post(config.api.workflow.create_execution, headers=headers, json=_interface_request)
         print(response.json())
         """),
             "\t",

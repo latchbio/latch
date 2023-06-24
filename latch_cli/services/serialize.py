@@ -81,24 +81,19 @@ def extract_snakemake_workflow(snakefile: Path) -> SnakemakeWorkflow:
         overwrite_default_target=True,
     )
     dag = workflow.extract_dag()
-
     wf = SnakemakeWorkflow(
         dag,
     )
+    wf.compile()
     return wf
 
 
 def serialize_snakemake(
-    pkg_root: Path,
-    snakefile: Path,
+    wf: SnakemakeWorkflow,
     output_dir: Path,
     image_name: str,
     dkr_repo: str,
 ):
-    pkg_root = Path(pkg_root).resolve()
-    wf = extract_snakemake_workflow(snakefile)
-    wf.compile()
-
     image_name_no_version, version = image_name.split(":")
     default_img = Image(
         name=image_name,
@@ -216,36 +211,41 @@ def generate_jit_register_code(
     account_id: str,
 ) -> Path:
     code_block = textwrap.dedent("""\
+           import inspect
            import json
            import os
+           import subprocess
            import tempfile
+           import textwrap
            import time
            from functools import partial
            from pathlib import Path
            from typing import List, NamedTuple, Optional, TypedDict
-           import inspect
 
+           import base64
+           import boto3
            import google.protobuf.json_format as gpjson
            import gql
            import requests
            from flyteidl.core import literals_pb2 as _literals_pb2
            from flytekit.core import utils
            from flytekit.core.context_manager import FlyteContext
+           from latch_cli import tinyrequests
+           from latch_cli.centromere.utils import _construct_dkr_client
+           from latch_cli.config.latch import config
+           from latch_cli.services.register.register import (_print_reg_resp,
+                                                             _recursive_list,
+                                                             register_serialized_pkg,
+                                                             print_and_write_build_logs,
+                                                             print_upload_logs)
+           from latch_cli.services.serialize import (extract_snakemake_workflow,
+                                                     generate_snakemake_entrypoint,
+                                                     serialize_snakemake)
+           from latch_cli.utils import generate_temporary_ssh_credentials
 
            from latch import small_task, workflow
            from latch.gql._execute import execute
            from latch.types import LatchFile
-           from latch_cli.config.latch import config
-           from latch_cli.services.register.register import (
-               _print_reg_resp,
-               _recursive_list,
-               register_serialized_pkg,
-           )
-           from latch_cli.services.serialize import (
-               extract_snakemake_workflow,
-               generate_snakemake_entrypoint,
-               serialize_snakemake,
-           )
 
 
            print = partial(print, flush=True)
