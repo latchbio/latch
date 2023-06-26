@@ -324,6 +324,8 @@ class _CentromereCtx:
             Host latch_register
                 HostName {internal_ip}
                 ProxyJump {latch_constants.jump_user}@{latch_constants.jump_host}
+                ServerAliveInterval 30
+                ServerAliveCountMax 5
 
             # LATCH <<<
             """).strip("\n")
