@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.24.5 - 2023-06-26
+
+### Fixed
+
+- Bug in `latch develop` where rsync would continually flood stdout with requests to confirm host key authenticity
+
 ## 2.24.3 - 2023-06-24
 
 ### Added
