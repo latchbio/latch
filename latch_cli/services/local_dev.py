@@ -20,7 +20,7 @@ from latch_cli.utils import (
     retrieve_or_login,
 )
 
-max_polls = 300
+max_polls = 1800
 
 
 class TaskSize(str, Enum):

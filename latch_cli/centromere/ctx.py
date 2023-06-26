@@ -281,10 +281,9 @@ class _CentromereCtx:
             poll_count += 1
             time.sleep(1)
 
-        if poll_count == 180:
+        if poll_count == 1800:
             raise ValueError(
-                "Unable to provision registration server due to load - please try again"
-                " later."
+                "Unable to provision registration server. Contact support@latch.bio."
             )
 
         return ip, "root"

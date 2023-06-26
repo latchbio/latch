@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.24.7 - 2023-06-26
+
+### Fixed
+
+- `latch develop` and `latch register` provision timeout increased to 30 minutes
+
 ## 2.24.6 - 2023-06-26
 
 ### Fixed
