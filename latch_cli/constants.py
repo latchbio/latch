@@ -25,7 +25,7 @@ units = Units
 @dataclass(frozen=True)
 class LatchConstants:
     base_image: str = (
-        "812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:5303-main"
+        "812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:fe0b-main"
     )
 
     file_max_size: int = 4 * units.MiB

@@ -1,5 +1,5 @@
 # latch base image + dependencies for latch SDK --- removing these will break the workflow
-from 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:5303-main
+from 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:fe0b-main
 run pip install latch==2.22.5
 run mkdir /opt/latch
 
