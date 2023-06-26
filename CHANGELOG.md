@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.24.6 - 2023-06-26
+
+### Fixed
+
+- `latch develop` and `latch register` SSH connections timeout on inactivity
+
 ## 2.24.5 - 2023-06-26
 
 ### Fixed
