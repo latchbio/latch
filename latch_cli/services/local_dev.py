@@ -222,7 +222,7 @@ def local_development(
             ssh_command = [
                 "ssh",
                 "-o",
-                "UserKnownHostsFile=/dev/null",  # hack
+                "CheckHostIP=no",  # hack
                 "-o",
                 "StrictHostKeyChecking=no",
                 "-o",
