@@ -142,31 +142,34 @@ def upload(
                             start_upload_futs: List[
                                 Future[Optional[StartUploadReturnType]]
                             ] = []
+                            batch_futs: List[
+                                Future[Optional[StartUploadReturnType]]
+                            ] = []
 
                             start = time.monotonic()
                             for job in jobs:
-                                start_upload_futs.append(
-                                    executor.submit(
-                                        start_upload,
-                                        job.src,
-                                        job.dest,
-                                        url_generation_bar,
-                                    )
+                                fut = executor.submit(
+                                    start_upload,
+                                    job.src,
+                                    job.dest,
+                                    url_generation_bar,
                                 )
+                                start_upload_futs.append(fut)
+                                batch_futs.append(fut)
 
-                                if len(start_upload_futs) == start_upload_batch_size:
-                                    wait(start_upload_futs)
+                                if len(batch_futs) == start_upload_batch_size:
+                                    wait(batch_futs)
 
-                                    for fut in start_upload_futs:
+                                    for fut in batch_futs:
                                         res = fut.result()
                                         if res is not None:
                                             upload_info_by_src[res.src] = res
 
-                                    start_upload_futs = []
+                                    batch_futs = []
 
-                            wait(start_upload_futs)
+                            wait(batch_futs)
 
-                        for fut in start_upload_futs:
+                        for fut in batch_futs:
                             res = fut.result()
                             if res is not None:
                                 upload_info_by_src[res.src] = res

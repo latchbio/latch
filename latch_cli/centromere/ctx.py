@@ -290,6 +290,9 @@ class _CentromereCtx:
         return ip, "root"
 
     def downscale_register_deployment(self):
+        if not self.remote:
+            return
+
         resp = tinyrequests.post(
             "https://centromere.latch.bio/register/stop",
             headers={"Authorization": f"Latch-SDK-Token {self.token}"},
