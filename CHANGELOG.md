@@ -22,6 +22,7 @@ Types of changes
 
 - `latch register` provision timeout bug
 - catch `KeyboardInterrupt`s during register provisioning
+- updated `latch-base` image to fix docker-in-docker workflows which use the host machine's network interface
 
 ## 2.24.7 - 2023-06-26
 
