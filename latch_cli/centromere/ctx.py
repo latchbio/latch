@@ -160,8 +160,6 @@ class _CentromereCtx:
                     ssh_key_path=self.ssh_key_path,
                 )
 
-                # self.configure_ssh_config(self.internal_ip)
-
                 ssh_client = _construct_ssh_client(remote_conn_info)
                 self.ssh_client = ssh_client
 
@@ -302,47 +300,6 @@ class _CentromereCtx:
 
         if resp.status_code != 200:
             raise ValueError("unable to downscale register deployment")
-
-    def configure_ssh_config(
-        self,
-        internal_ip: str,
-    ):
-        # todo(ayush): lock ssh_config while we use it to prevent funny races
-        self.ssh_config_path = Path.home() / ".ssh" / "config"
-
-        try:
-            ssh_config_content = self.ssh_config_path.read_text()
-        except FileNotFoundError:
-            self.ssh_config_path.parent.mkdir(exist_ok=True)
-            self.ssh_config_path.touch(exist_ok=True)
-
-            self.ssh_config_path.parent.chmod(0o700)
-            self.ssh_config_path.chmod(0o600)
-
-            ssh_config_content = ""
-
-        # todo(ayush): use a random session key to parameterize the config and
-        # allow multiple workflow registrations at the same time
-        jump_host_config = dedent(f"""
-            # >>> LATCH
-
-            Host latch_register
-                HostName {internal_ip}
-                ProxyJump {latch_constants.jump_user}@{latch_constants.jump_host}
-                ServerAliveInterval 30
-                ServerAliveCountMax 5
-
-            # LATCH <<<
-            """).strip("\n")
-
-        match = ssh_config_expr.search(ssh_config_content)
-
-        if match:
-            ssh_config = ssh_config_expr.sub(jump_host_config, ssh_config_content)
-        else:
-            ssh_config = "\n".join([ssh_config_content, jump_host_config])
-
-        self.ssh_config_path.write_text(ssh_config)
 
     def nucleus_get_image(self, task_name: str, version: Optional[str] = None) -> str:
         """Retrieve fqn of the container for a task and optional version."""
