@@ -12,7 +12,7 @@ import click
 from scp import SCPClient
 
 from latch_cli.centromere.ctx import _CentromereCtx
-from latch_cli.centromere.utils import _construct_ssh_client, _TmpDir
+from latch_cli.centromere.utils import MaybeRemoteDir, _construct_ssh_client
 from latch_cli.services.register.constants import ANSI_REGEX, MAX_LINES
 from latch_cli.services.register.utils import (
     _build_image,
@@ -285,13 +285,7 @@ def register(
             print("Connecting to remote server for docker build...")
 
         with contextlib.ExitStack() as stack:
-            td = stack.enter_context(
-                _TmpDir(
-                    remote=remote,
-                    internal_ip=ctx.internal_ip,
-                    username=ctx.username,
-                )
-            )
+            td = stack.enter_context(MaybeRemoteDir(ctx.ssh_client))
             _build_and_serialize(
                 ctx,
                 ctx.default_container.image_name,
@@ -310,13 +304,7 @@ def register(
                 protos = _recursive_list(td)
 
             for task_name, container in ctx.container_map.items():
-                task_td = stack.enter_context(
-                    _TmpDir(
-                        remote=remote,
-                        internal_ip=ctx.internal_ip,
-                        username=ctx.username,
-                    )
-                )
+                task_td = stack.enter_context(MaybeRemoteDir(ctx.ssh_client))
                 try:
                     _build_and_serialize(
                         ctx,

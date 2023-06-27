@@ -1,5 +1,4 @@
 import re
-import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -9,6 +8,7 @@ from typing import Dict, Optional, Tuple
 import docker
 import paramiko
 import paramiko.util
+from docker.transport import SSHHTTPAdapter
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteEntities
 from flytekit.core.workflow import PythonFunctionWorkflow
@@ -16,6 +16,7 @@ from latch_sdk_config.latch import config
 
 import latch_cli.tinyrequests as tinyrequests
 from latch_cli.centromere.utils import (
+    RemoteConnInfo,
     _construct_dkr_client,
     _construct_ssh_client,
     _import_flyte_objects,
@@ -30,15 +31,14 @@ from latch_cli.utils import (
     retrieve_or_login,
 )
 
+ssh_config_expr = re.compile(r"^# >>> LATCH$.*^# LATCH <<<$", re.MULTILINE | re.DOTALL)
+
 
 @dataclass
 class _Container:
     dockerfile: Path
     pkg_dir: Path
     image_name: str
-
-
-ssh_config_expr = re.compile(r"^# >>> LATCH$.*^# LATCH <<<$", re.MULTILINE | re.DOTALL)
 
 
 class _CentromereCtx:
@@ -51,7 +51,7 @@ class _CentromereCtx:
 
     dkr_repo: Optional[str] = None
     dkr_client: Optional[docker.APIClient] = None
-    ssh_client: paramiko.SSHClient
+    ssh_client: Optional[paramiko.SSHClient] = None
     pkg_root: Optional[Path] = None  # root
     disable_auto_version: bool = False
     image_full = None
@@ -153,16 +153,29 @@ class _CentromereCtx:
 
                 self.internal_ip, self.username = self.provision_register_deployment()
 
-                self.configure_ssh_config(self.internal_ip)
-
-                self.dkr_client = _construct_dkr_client(
-                    ssh_host=f"ssh://{self.username}@latch_register"
+                remote_conn_info = RemoteConnInfo(
+                    ip=self.internal_ip,
+                    username=self.username,
+                    jump_key_path=self.jump_key_path,
+                    ssh_key_path=self.ssh_key_path,
                 )
 
-                self.ssh_client = _construct_ssh_client(
-                    self.internal_ip,
-                    self.username,
-                )
+                # self.configure_ssh_config(self.internal_ip)
+
+                ssh_client = _construct_ssh_client(remote_conn_info)
+                self.ssh_client = ssh_client
+
+                def _patched_connect(self):
+                    ...
+
+                def _patched_create_paramiko_client(self, base_url):
+                    self.ssh_client = ssh_client
+
+                SSHHTTPAdapter._create_paramiko_client = _patched_create_paramiko_client
+                SSHHTTPAdapter._connect = _patched_connect
+
+                self.dkr_client = _construct_dkr_client(ssh_host="ssh://fake")
+
             else:
                 self.dkr_client = _construct_dkr_client()
         except (Exception, KeyboardInterrupt) as e:
@@ -255,19 +268,8 @@ class _CentromereCtx:
         self.jump_key_path.write_text(json_data["JumpKey"])
         self.jump_key_path.chmod(0o600)
 
-        try:
-            subprocess.run(
-                ["ssh-add", str(self.jump_key_path)],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                check=True,
-            )
-        except subprocess.CalledProcessError as e:
-            raise ValueError("Unable to add jump host key to SSH Agent") from e
-
         poll_count = 0
-        max_polls = 1800
-        while poll_count < max_polls:
+        while poll_count < latch_constants.centromere_poll_timeout:
             resp = tinyrequests.post(
                 "https://centromere.latch.bio/register/ready",
                 headers={"Authorization": f"Latch-SDK-Token {self.token}"},
@@ -282,7 +284,7 @@ class _CentromereCtx:
             poll_count += 1
             time.sleep(1)
 
-        if poll_count == max_polls:
+        if poll_count == latch_constants.centromere_poll_timeout:
             raise ValueError(
                 "Unable to provision registration server. Contact support@latch.bio."
             )
@@ -342,18 +344,6 @@ class _CentromereCtx:
 
         self.ssh_config_path.write_text(ssh_config)
 
-    def restore_ssh_config(self):
-        if self.ssh_config_path is None:
-            return
-
-        try:
-            ssh_config_content = self.ssh_config_path.read_text()
-        except FileNotFoundError:
-            return
-
-        new_content = ssh_config_expr.sub("", ssh_config_content)
-        self.ssh_config_path.write_text(new_content)
-
     def nucleus_get_image(self, task_name: str, version: Optional[str] = None) -> str:
         """Retrieve fqn of the container for a task and optional version."""
 
@@ -406,26 +396,11 @@ class _CentromereCtx:
 
     def cleanup(self):
         if self.ssh_key_path is not None:
-            try:
-                subprocess.run(
-                    ["ssh-add", "-d", self.ssh_key_path],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-            finally:
-                self.ssh_key_path.unlink(missing_ok=True)
-                self.ssh_key_path.with_suffix(".pub").unlink(missing_ok=True)
+            self.ssh_key_path.unlink(missing_ok=True)
+            self.ssh_key_path.with_suffix(".pub").unlink(missing_ok=True)
         if self.jump_key_path is not None:
-            try:
-                subprocess.run(
-                    ["ssh-add", "-d", self.jump_key_path],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )
-            finally:
-                self.jump_key_path.unlink(missing_ok=True)
+            self.jump_key_path.unlink(missing_ok=True)
 
-        self.restore_ssh_config()
         self.downscale_register_deployment()
 
     def __exit__(self, type, value, traceback):
