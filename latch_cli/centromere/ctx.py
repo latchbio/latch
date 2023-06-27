@@ -266,7 +266,8 @@ class _CentromereCtx:
             raise ValueError("Unable to add jump host key to SSH Agent") from e
 
         poll_count = 0
-        while poll_count < 180:
+        max_polls = 1800
+        while poll_count < max_polls:
             resp = tinyrequests.post(
                 "https://centromere.latch.bio/register/ready",
                 headers={"Authorization": f"Latch-SDK-Token {self.token}"},
@@ -281,7 +282,7 @@ class _CentromereCtx:
             poll_count += 1
             time.sleep(1)
 
-        if poll_count == 1800:
+        if poll_count == max_polls:
             raise ValueError(
                 "Unable to provision registration server. Contact support@latch.bio."
             )
