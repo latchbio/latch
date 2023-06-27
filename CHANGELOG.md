@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.24.8 - 2023-06-27
+
+### Fixed
+
+- `latch register` provision timeout bug
+- catch `KeyboardInterrupt`s during register provisioning
+
 ## 2.24.7 - 2023-06-26
 
 ### Fixed
