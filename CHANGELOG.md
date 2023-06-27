@@ -16,6 +16,18 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.24.11 - 2023-06-27
+
+### Fixed
+
+- Internal bug in `latch register` which caused an API call to be made when not necessary, resulting in an irrelevant exception being thrown
+
+## 2.24.10 - 2023-06-27
+
+### Fixed
+
+- Bug in `latch cp` upload path where URLs would be generated but files would not be uploaded
+
 ## 2.24.9 - 2023-06-27
 
 ### Changed
