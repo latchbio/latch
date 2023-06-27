@@ -33,6 +33,9 @@ if TYPE_CHECKING:
     UploadInfoBySrcType: TypeAlias = DictProxy[Path, "StartUploadReturnType"]
 
 
+start_upload_batch_size = 100
+
+
 class EmptyUploadData(TypedDict):
     version_id: str
 
@@ -150,6 +153,16 @@ def upload(
                                         url_generation_bar,
                                     )
                                 )
+
+                                if len(start_upload_futs) == start_upload_batch_size:
+                                    wait(start_upload_futs)
+
+                                    for fut in start_upload_futs:
+                                        res = fut.result()
+                                        if res is not None:
+                                            upload_info_by_src[res.src] = res
+
+                                    start_upload_futs = []
 
                             wait(start_upload_futs)
 
@@ -273,7 +286,7 @@ def upload(
         f"""{click.style("Upload Complete", fg="green")}
 
 {click.style("Time Elapsed: ", fg="blue")}{human_readable_time(total_time)}
-{click.style("Files Downloaded: ", fg="blue")}{num_files} ({with_si_suffix(total_bytes)})"""
+{click.style("Files Uploaded: ", fg="blue")}{num_files} ({with_si_suffix(total_bytes)})"""
     )
 
 
