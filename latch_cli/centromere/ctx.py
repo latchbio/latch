@@ -165,7 +165,7 @@ class _CentromereCtx:
                 )
             else:
                 self.dkr_client = _construct_dkr_client()
-        except Exception as e:
+        except (Exception, KeyboardInterrupt) as e:
             self.cleanup()
             raise e
 
