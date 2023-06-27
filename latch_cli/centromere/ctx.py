@@ -31,8 +31,6 @@ from latch_cli.utils import (
     retrieve_or_login,
 )
 
-ssh_config_expr = re.compile(r"^# >>> LATCH$.*^# LATCH <<<$", re.MULTILINE | re.DOTALL)
-
 
 @dataclass
 class _Container:
