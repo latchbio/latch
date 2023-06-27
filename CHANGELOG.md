@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.24.9 - 2023-06-27
+
+### Changed
+
+- Added client side rate limiting to `latch cp` upload API calls so as to not throttle our backend.
+
 ## 2.24.8 - 2023-06-27
 
 ### Fixed
