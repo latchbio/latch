@@ -183,10 +183,15 @@ def _construct_ssh_client(
         gateway = paramiko.SSHClient()
         gateway.load_system_host_keys()
         gateway.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy)
+
+        gateway_pkey = paramiko.PKey.from_path(
+            path=str(remote_conn_info.jump_key_path.resolve())
+        )
+
         gateway.connect(
             latch_constants.jump_host,
             username=latch_constants.jump_user,
-            key_filename=str(remote_conn_info.jump_key_path.resolve()),
+            pkey=gateway_pkey,
         )
 
         gateway_transport = gateway.get_transport()
@@ -201,7 +206,7 @@ def _construct_ssh_client(
     else:
         sock = None
 
-    pkey = paramiko.PKey.from_path(path=str(remote_conn_info.ssh_key_path))
+    pkey = paramiko.PKey.from_path(path=str(remote_conn_info.ssh_key_path.resolve()))
 
     ssh = paramiko.SSHClient()
     ssh.load_system_host_keys()
