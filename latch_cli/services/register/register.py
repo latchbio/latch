@@ -190,6 +190,8 @@ def register(
     disable_auto_version: bool = False,
     remote: bool = False,
     skip_confirmation: bool = False,
+    *,
+    use_new_centromere: bool = False,
 ):
     """Registers a workflow, defined as python code, with Latch.
 
@@ -241,6 +243,7 @@ def register(
         pkg_root,
         disable_auto_version=disable_auto_version,
         remote=remote,
+        use_new_centromere=use_new_centromere,
     ) as ctx:
         assert ctx.workflow_name is not None, "Unable to determine workflow name"
         assert ctx.version is not None, "Unable to determine workflow version"
@@ -272,6 +275,9 @@ def register(
                 ]
             )
         )
+
+        if use_new_centromere:
+            click.secho("Using experimental registration server.", fg="yellow")
 
         if not skip_confirmation:
             if not click.confirm("Start registration?"):
