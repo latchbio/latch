@@ -233,7 +233,7 @@ class MaybeRemoteDir:
             self._tempdir = tempfile.TemporaryDirectory()
             return Path(self._tempdir.name).resolve()
 
-        td = build_random_dir_name()
+        td = build_random_string()
 
         self._tempdir = f"/tmp/{td}"
 
@@ -248,9 +248,9 @@ class MaybeRemoteDir:
             self._tempdir.cleanup()
 
 
-def build_random_dir_name() -> str:
+def build_random_string(k: int = 8) -> str:
     return "".join(
         random.choices(
-            string.ascii_uppercase + string.ascii_lowercase + string.digits, k=8
+            string.ascii_uppercase + string.ascii_lowercase + string.digits, k=k
         )
     )
