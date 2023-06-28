@@ -5,6 +5,7 @@ import random
 import string
 import sys
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
 from typing import Iterator, List, Optional
@@ -16,6 +17,14 @@ from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.tools import module_loader
 
 from latch_cli.constants import latch_constants
+
+
+@dataclass
+class RemoteConnInfo:
+    ip: str
+    username: str
+    jump_key_path: Path
+    ssh_key_path: Path
 
 
 @contextlib.contextmanager
@@ -146,7 +155,7 @@ def _construct_dkr_client(ssh_host: Optional[str] = None):
 
     if ssh_host is not None:
         try:
-            return docker.APIClient(ssh_host, use_ssh_client=True)
+            return docker.APIClient(ssh_host, version="1.41")
         except docker.errors.DockerException as de:
             raise OSError(
                 f"Unable to establish a connection to remote docker host {ssh_host}."
@@ -167,45 +176,51 @@ def _construct_dkr_client(ssh_host: Optional[str] = None):
             ) from de
 
 
-def _construct_ssh_client(internal_ip: str, username: str) -> paramiko.SSHClient:
+def _construct_ssh_client(remote_conn_info: RemoteConnInfo) -> paramiko.SSHClient:
     gateway = paramiko.SSHClient()
     gateway.load_system_host_keys()
     gateway.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy)
-    gateway.connect(latch_constants.jump_host, username=latch_constants.jump_user)
+    gateway.connect(
+        latch_constants.jump_host,
+        username=latch_constants.jump_user,
+        key_filename=str(remote_conn_info.jump_key_path.resolve()),
+    )
 
-    transport = gateway.get_transport()
-    if transport is None:
+    gateway_transport = gateway.get_transport()
+    if gateway_transport is None:
         raise ConnectionError("unable to create connection to jump host")
-    sock = transport.open_channel(
+    sock = gateway_transport.open_channel(
         kind="direct-tcpip",
-        dest_addr=(internal_ip, 22),
+        dest_addr=(remote_conn_info.ip, 22),
         src_addr=("", 0),
     )
 
     ssh = paramiko.SSHClient()
     ssh.load_system_host_keys()
     ssh.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy)
-    ssh.connect(internal_ip, username=username, sock=sock)
+    ssh.connect(
+        remote_conn_info.ip,
+        username=remote_conn_info.username,
+        sock=sock,
+        key_filename=str(remote_conn_info.ssh_key_path.resolve()),
+    )
+    transport = ssh.get_transport()
+    if transport is None:
+        raise ConnectionError(
+            "unable to create connection from jump host to centromere deployment"
+        )
+    # (kenny) Equivalent of OpenSSH configuration `ServerAliveInterval`
+    # No analogue for `ServerAliveCountMax` in paramiko I could find.
+    transport.set_keepalive(latch_constants.centromere_keepalive_interval)
     return ssh
 
 
-class _TmpDir:
+class MaybeRemoteDir:
 
-    """Represents a temporary directory that can be local or on a remote machine."""
+    """A temporary directory that exists locally or on a remote machine."""
 
-    def __init__(
-        self,
-        remote=False,
-        internal_ip: Optional[str] = None,
-        username: Optional[str] = None,
-    ):
-        if remote and (internal_ip is None or username is None):
-            raise ValueError("Must provide an ssh connection if remote is True.")
-
-        self.remote = remote
-        self.internal_ip = internal_ip
-        self.username = username
-        self._tempdir = None
+    def __init__(self, ssh_client: Optional[paramiko.SSHClient] = None):
+        self.ssh_client = ssh_client
 
     def __enter__(self, *args):
         return self.create(*args)
@@ -214,32 +229,28 @@ class _TmpDir:
         self.cleanup(*args)
 
     def create(self, *args):
-        if not self.remote:
+        if self.ssh_client is None:
             self._tempdir = tempfile.TemporaryDirectory()
             return Path(self._tempdir.name).resolve()
 
-        if self.internal_ip is None or self.username is None:
-            raise ValueError("Must provide an ssh connection if remote is True.")
-
-        td = "".join(
-            random.choices(
-                string.ascii_uppercase + string.ascii_lowercase + string.digits, k=8
-            )
-        )
+        td = build_random_string()
 
         self._tempdir = f"/tmp/{td}"
 
-        client = _construct_ssh_client(self.internal_ip, self.username)
-        client.exec_command(f"mkdir {self._tempdir}")
+        self.ssh_client.exec_command(f"mkdir {self._tempdir}")
         return self._tempdir
 
     def cleanup(self, *args):
-        if (
-            not self.remote
-            and self._tempdir is not None
-            and not isinstance(self._tempdir, str)
-        ):
+        if self.ssh_client is not None:
+            self.ssh_client.exec_command(f"rm -rf {self._tempdir}")
+            return
+        if self._tempdir is not None and not isinstance(self._tempdir, str):
             self._tempdir.cleanup()
-        elif not (self.internal_ip is None or self.username is None):
-            client = _construct_ssh_client(self.internal_ip, self.username)
-            client.exec_command(f"rm -rf {self._tempdir}")
+
+
+def build_random_string(k: int = 8) -> str:
+    return "".join(
+        random.choices(
+            string.ascii_uppercase + string.ascii_lowercase + string.digits, k=k
+        )
+    )
