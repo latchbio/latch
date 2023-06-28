@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.24.12 - 2023-06-27
+
+### Dependencies
+
+- Upgraded lytekit to version 0.14.13 to support uploading files up to 5 TiB from within a task
+
 ## 2.24.11 - 2023-06-27
 
 ### Fixed
