@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.25.0 - 2023-06-28
+
+### Changed
+
+- `latch register` experimental features (2.24.xx) are now gated behind an environment variable, and by default we use the old (pre 2.24) register backend.
+
 ## 2.24.12 - 2023-06-27
 
 ### Dependencies
