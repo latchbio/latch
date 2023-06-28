@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.25.1 - 2023-06-28
+
+### Dependencies
+
+- Upgraded `paramiko` dependency to `>=3.2.0` which fixes a `PKey` issue.
+
 ## 2.25.0 - 2023-06-28
 
 ### Changed
