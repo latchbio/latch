@@ -105,7 +105,17 @@ def dockerfile(pkg_root: str):
     type=bool,
     help="Skip the confirmation dialog.",
 )
-def register(pkg_root: str, disable_auto_version: bool, remote: bool, yes: bool):
+@click.option(
+    "-p",
+    "--preview",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Use experimental registration server.",
+)
+def register(
+    pkg_root: str, disable_auto_version: bool, remote: bool, yes: bool, preview: bool
+):
     """Register local workflow code to Latch.
 
     Visit docs.latch.bio to learn more.
@@ -121,6 +131,7 @@ def register(pkg_root: str, disable_auto_version: bool, remote: bool, yes: bool)
         disable_auto_version=disable_auto_version,
         remote=remote,
         skip_confirmation=yes,
+        use_new_centromere=preview,
     )
 
 
