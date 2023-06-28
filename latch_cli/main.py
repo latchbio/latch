@@ -112,7 +112,7 @@ def register(pkg_root: str, disable_auto_version: bool, remote: bool, yes: bool)
     Visit docs.latch.bio to learn more.
     """
 
-    preview = os.environ.get("LATCH_REGISTER_BETA") is not None
+    use_new_centromere = os.environ.get("LATCH_REGISTER_BETA") is not None
 
     crash_handler.message = "Unable to register workflow."
     crash_handler.pkg_root = pkg_root
@@ -124,7 +124,7 @@ def register(pkg_root: str, disable_auto_version: bool, remote: bool, yes: bool)
         disable_auto_version=disable_auto_version,
         remote=remote,
         skip_confirmation=yes,
-        use_new_centromere=preview,
+        use_new_centromere=use_new_centromere,
     )
 
 
