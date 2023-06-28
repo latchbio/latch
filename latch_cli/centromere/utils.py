@@ -176,24 +176,32 @@ def _construct_dkr_client(ssh_host: Optional[str] = None):
             ) from de
 
 
-def _construct_ssh_client(remote_conn_info: RemoteConnInfo) -> paramiko.SSHClient:
-    gateway = paramiko.SSHClient()
-    gateway.load_system_host_keys()
-    gateway.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy)
-    gateway.connect(
-        latch_constants.jump_host,
-        username=latch_constants.jump_user,
-        key_filename=str(remote_conn_info.jump_key_path.resolve()),
-    )
+def _construct_ssh_client(
+    remote_conn_info: RemoteConnInfo, *, use_gateway: bool = True
+) -> paramiko.SSHClient:
+    if use_gateway:
+        gateway = paramiko.SSHClient()
+        gateway.load_system_host_keys()
+        gateway.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy)
+        gateway.connect(
+            latch_constants.jump_host,
+            username=latch_constants.jump_user,
+            key_filename=str(remote_conn_info.jump_key_path.resolve()),
+        )
 
-    gateway_transport = gateway.get_transport()
-    if gateway_transport is None:
-        raise ConnectionError("unable to create connection to jump host")
-    sock = gateway_transport.open_channel(
-        kind="direct-tcpip",
-        dest_addr=(remote_conn_info.ip, 22),
-        src_addr=("", 0),
-    )
+        gateway_transport = gateway.get_transport()
+        if gateway_transport is None:
+            raise ConnectionError("unable to create connection to jump host")
+
+        sock = gateway_transport.open_channel(
+            kind="direct-tcpip",
+            dest_addr=(remote_conn_info.ip, 22),
+            src_addr=("", 0),
+        )
+    else:
+        sock = None
+
+    pkey = paramiko.PKey.from_path(path=str(remote_conn_info.ssh_key_path))
 
     ssh = paramiko.SSHClient()
     ssh.load_system_host_keys()
@@ -202,16 +210,19 @@ def _construct_ssh_client(remote_conn_info: RemoteConnInfo) -> paramiko.SSHClien
         remote_conn_info.ip,
         username=remote_conn_info.username,
         sock=sock,
-        key_filename=str(remote_conn_info.ssh_key_path.resolve()),
+        pkey=pkey,
     )
+
     transport = ssh.get_transport()
     if transport is None:
         raise ConnectionError(
             "unable to create connection from jump host to centromere deployment"
         )
+
     # (kenny) Equivalent of OpenSSH configuration `ServerAliveInterval`
     # No analogue for `ServerAliveCountMax` in paramiko I could find.
     transport.set_keepalive(latch_constants.centromere_keepalive_interval)
+
     return ssh
 
 

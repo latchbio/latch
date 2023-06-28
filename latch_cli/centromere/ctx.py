@@ -80,7 +80,11 @@ class _CentromereCtx:
         token: Optional[str] = None,
         disable_auto_version: bool = False,
         remote: bool = False,
+        *,
+        use_new_centromere: bool = False,
     ):
+        self.use_new_centromere = use_new_centromere
+
         try:
             if token is None:
                 self.token = retrieve_or_login()
@@ -149,7 +153,12 @@ class _CentromereCtx:
                 self.jump_key_path = Path(self.pkg_root) / latch_constants.pkg_jump_key
                 self.public_key = generate_temporary_ssh_credentials(self.ssh_key_path)
 
-                self.internal_ip, self.username = self.provision_register_deployment()
+                if use_new_centromere:
+                    self.internal_ip, self.username = (
+                        self.provision_register_deployment()
+                    )
+                else:
+                    self.internal_ip, self.username = self.get_old_centromere_info()
 
                 remote_conn_info = RemoteConnInfo(
                     ip=self.internal_ip,
@@ -158,7 +167,9 @@ class _CentromereCtx:
                     ssh_key_path=self.ssh_key_path,
                 )
 
-                ssh_client = _construct_ssh_client(remote_conn_info)
+                ssh_client = _construct_ssh_client(
+                    remote_conn_info, use_gateway=use_new_centromere
+                )
                 self.ssh_client = ssh_client
 
                 def _patched_connect(self):
@@ -246,6 +257,28 @@ class _CentromereCtx:
         """
         return f"{self.dkr_repo}/{self.image}"
 
+    def get_old_centromere_info(self) -> Tuple[str, str]:
+        headers = {"Authorization": f"Bearer {self.token}"}
+
+        response = tinyrequests.post(
+            self.latch_provision_url,
+            headers=headers,
+            json={
+                "public_key": self.public_key,
+            },
+        )
+
+        resp = response.json()
+        try:
+            public_ip = resp["ip"]
+            username = resp["username"]
+        except KeyError as e:
+            raise ValueError(
+                f"Malformed response from request for access token {resp}"
+            ) from e
+
+        return public_ip, username
+
     def provision_register_deployment(self) -> Tuple[str, str]:
         """Retrieve centromere IP + username."""
         print("Provisioning register instance. This may take a few minutes.")
@@ -288,7 +321,7 @@ class _CentromereCtx:
         return ip, "root"
 
     def downscale_register_deployment(self):
-        if not self.remote:
+        if not (self.remote and self.use_new_centromere):
             return
 
         resp = tinyrequests.post(
