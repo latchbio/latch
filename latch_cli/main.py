@@ -1,5 +1,6 @@
 """Entrypoints to service functions through a latch_cli."""
 
+import os
 import textwrap
 from collections import OrderedDict
 from enum import Flag
@@ -105,21 +106,13 @@ def dockerfile(pkg_root: str):
     type=bool,
     help="Skip the confirmation dialog.",
 )
-@click.option(
-    "-p",
-    "--preview",
-    is_flag=True,
-    default=False,
-    type=bool,
-    help="Use experimental registration server.",
-)
-def register(
-    pkg_root: str, disable_auto_version: bool, remote: bool, yes: bool, preview: bool
-):
+def register(pkg_root: str, disable_auto_version: bool, remote: bool, yes: bool):
     """Register local workflow code to Latch.
 
     Visit docs.latch.bio to learn more.
     """
+
+    preview = os.environ.get("LATCH_REGISTER_BETA") is not None
 
     crash_handler.message = "Unable to register workflow."
     crash_handler.pkg_root = pkg_root
