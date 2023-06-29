@@ -43,6 +43,11 @@ setup(
         "requests-toolbelt==0.10.1",
         "latch-sdk-gql==0.0.2",
         "latch-sdk-config==0.0.1",
+        # for old latch develop, to be removed
+        "aioconsole==0.6.1",
+        "asyncssh==2.13.2",
+        "websockets==11.0.3",
+        "watchfiles==0.19.0",
     ],
     classifiers=[
         "Programming Language :: Python :: 3.8",
@@ -50,3 +55,12 @@ setup(
         "Programming Language :: Python :: 3.10",
     ],
 )
+
+
+# import aioconsole
+# import asyncssh
+# import boto3
+# import websockets.client as websockets
+# import websockets.exceptions
+# from latch_sdk_config.latch import config
+# from watchfiles import awatch

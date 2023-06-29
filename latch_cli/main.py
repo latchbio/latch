@@ -17,7 +17,7 @@ from latch_cli.services.cp.autocomplete import complete as cp_complete
 from latch_cli.services.cp.autocomplete import remote_complete
 from latch_cli.services.cp.config import Progress
 from latch_cli.services.init.init import template_flag_to_option
-from latch_cli.services.local_dev import TaskSize
+from latch_cli.services.local_dev_new import TaskSize
 from latch_cli.utils import get_latest_package_version, get_local_package_version
 from latch_cli.workflow_config import BaseImageOptions
 
@@ -161,11 +161,16 @@ def local_development(
     crash_handler.message = "Error during local development session"
     crash_handler.pkg_root = str(pkg_root)
 
-    from latch_cli.services.local_dev import local_development
+    if os.environ.get("LATCH_DEVELOP_BETA") is not None:
+        from latch_cli.services.local_dev_new import local_development
 
-    local_development(
-        pkg_root.resolve(), skip_confirm_dialog=yes, size=size, image=image
-    )
+        local_development(
+            pkg_root.resolve(), skip_confirm_dialog=yes, size=size, image=image
+        )
+    else:
+        from latch_cli.services.local_dev import local_development
+
+        local_development(pkg_root.resolve())
 
 
 @main.command("login")
