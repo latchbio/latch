@@ -168,7 +168,7 @@ def local_development(
             pkg_root.resolve(), skip_confirm_dialog=yes, size=size, image=image
         )
     else:
-        from latch_cli.services.local_dev import local_development
+        from latch_cli.services.local_dev_old import local_development
 
         local_development(pkg_root.resolve())
 
