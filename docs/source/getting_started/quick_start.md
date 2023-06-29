@@ -4,8 +4,8 @@ Get up and running with your first workflow in Python.
 
 In this quickstart, you install the Latch SDK and register a workflow to sort and assemble COVID genomes. The workflow makes use of two computational tools, SAM tools and bowtie, which will allow us to reconstruct the COVID genome from its reads.
 
-## Initial setup
-Register for an account and log into the
+## Prerequisites
+* Register for an account and log into the
 [Latch Console](https://console.latch.bio)
 
 ---
@@ -39,8 +39,19 @@ python3 -m venv env
 source env/bin/activate
 ```
 
+### Using Conda
+Alternatively, you can use `conda` to create your environment:
+```bash
+conda create --name latch python==3.10
+```
+
 ## Step 2: Install Latch
-The Latch SDK is available as a Python package. Install it using pip:
+
+The Latch SDK is available as a Python package.
+
+Latch currently supports Python >=3.8, <3.11.
+
+Install it using pip:
 ```
 python3 -m pip install latch
 ```
@@ -50,6 +61,10 @@ Bootstrap a new workflow directory by running `latch init` from the command line
 ```
 latch init covid-wf
 ```
+
+The command opens a list of workflow templates that you can select from. for this tutorial, select **Subprocess Example**:
+
+![Workflow templates](../assets/workflow_templates.png)
 
 The command creates a folder in your current working directory called `covid-wf`.  Inside that folder, it will generate the initial project structure:
 ```
@@ -73,10 +88,23 @@ covid-wf
 ## Step 4: Register your first workflow
 To get a live version of your workflow on Latch, simply type:
 ```
-latch register --remote covid-wf
+latch register --remote --yes covid-wf
 ```
 
-Now, visit [Latch Console](https://console.latch.bio/workflows), and you will see a live, no-code interface of your assemble and sort workflow!
+When registering the workflow for the first time, you will be prompted to log into Latch via the browser.
+
+### Optional: Registering workflow on a machine without a browser
+If you are using a virtual machine without a browser, you will be prompted to enter an API key. To retrieve your key:
+
+* Navigate to your Personal Workspace.
+![personal workspace](../assets/personal_workspace.png)
+  
+* Visit the [Developer Settings](https://console.latch.bio/settings/developer) > Access Tokens
+![API key for Latch CLI](../assets/api_key.png)
+
+* Copy the API key, and paste to the terminal prompt
+
+Once registration completes, visit [Latch Console](https://console.latch.bio/workflows), and you will see a live, no-code interface of your assemble and sort workflow!
 
 ![Interface UI](../assets/interface.png)
 
