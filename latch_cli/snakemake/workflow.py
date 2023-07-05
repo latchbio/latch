@@ -3,7 +3,7 @@ import textwrap
 import typing
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Type, TypeAlias, TypeVar, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union
 from urllib.parse import urlparse
 
 import snakemake
@@ -33,11 +33,11 @@ from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralMap, Scalar
 from snakemake.dag import DAG
 from snakemake.target_jobs import encode_target_jobs_cli_args
+from typing_extensions import TypeAlias
 
 import latch.types.metadata as metadata
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
-from latch.types.metadata import LatchAuthor, LatchParameter
 
 SnakemakeInputVal: TypeAlias = snakemake.io._IOFile
 

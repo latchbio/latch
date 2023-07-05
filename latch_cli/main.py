@@ -3,7 +3,6 @@
 import os
 import textwrap
 from collections import OrderedDict
-from enum import Flag
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -22,8 +21,6 @@ from latch_cli.utils import get_latest_package_version, get_local_package_versio
 from latch_cli.workflow_config import BaseImageOptions
 
 latch_cli.click_utils.patch()
-
-from latch_cli.constants import latch_constants, units
 
 crash_handler = CrashHandler()
 
@@ -107,9 +104,8 @@ def dockerfile(pkg_root: str):
     help="Skip the confirmation dialog.",
 )
 @click.option(
-    "-s",
     "--snakefile",
-    type=click.Path(exists=True, path_type=Path),
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
     default=None,
     help="Path to a Snakefile to register.",
 )

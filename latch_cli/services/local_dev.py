@@ -158,8 +158,8 @@ def local_development(
         click.echo("Session cancelled.")
         return
 
-    key_path = pkg_root / latch_constants.pkg_ssh_key
-    jump_key_path = pkg_root / latch_constants.pkg_jump_key
+    key_path = pkg_root / ".latch/ssh_key"
+    jump_key_path = pkg_root / ".latch/jump_key"
     with TemporarySSHCredentials(key_path) as ssh:
         click.echo(
             "Starting local development session. This may take a few minutes for larger"

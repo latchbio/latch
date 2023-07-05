@@ -35,6 +35,7 @@ def current_workspace() -> str:
     if ws == "":
         ws = account_id_from_token(retrieve_or_login())
         user_config.update_workspace(ws, "Personal Workspace")
+
     return ws
 
 
@@ -119,7 +120,7 @@ def hash_directory(dir_path: Path) -> str:
     m.update(current_workspace().encode("utf-8"))
 
     ignore_file = dir_path / ".dockerignore"
-    exclude: List[str] = []
+    exclude: List[str] = ["/.latch"]
     try:
         for l in ignore_file.open("r"):
             l = l.strip()

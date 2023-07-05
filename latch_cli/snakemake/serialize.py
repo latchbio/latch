@@ -40,47 +40,10 @@ def should_register_with_admin(entity: RegistrableEntity) -> bool:
     return isinstance(entity, get_args(RegistrableEntity))
 
 
-class SnakemakeWorkflowExtractor(Workflow):
-    def __init__(self, snakefile: Path):
-        super().__init__(snakefile=snakefile)
-
-    def extract_dag(self):
-        targets: List[str] = (
-            [self.default_target] if self.default_target is not None else []
-        )
-        target_rules: Set[Rule] = set(
-            map(self._rules.__getitem__, filter(self.is_rule, targets))
-        )
-
-        target_files = set()
-        for f in filterfalse(self.is_rule, targets):
-            if os.path.isabs(f) or f.startswith("root://"):
-                target_files.add(f)
-            else:
-                target_files.add(os.path.relpath(f))
-
-        dag = DAG(
-            self,
-            self.rules,
-            targetfiles=target_files,
-            targetrules=target_rules,
-        )
-
-        self.persistence = Persistence(
-            dag=dag,
-        )
-
-        dag.init()
-        dag.update_checkpoint_dependencies()
-        dag.check_dynamic()
-
-        return dag
-
-
 def ensure_snakemake_metadata_exists():
     if metadata._snakemake_metadata is None:
         raise ValueError(dedent("""
-        
+
         No `SnakemakeMetadata` object was detected in your Snakefile. This
         object needs to be defined to register this workflow with Latch.
 
@@ -114,6 +77,42 @@ def ensure_snakemake_metadata_exists():
 def extract_snakemake_workflow(
     snakefile: Path, version: Optional[str] = None
 ) -> SnakemakeWorkflow:
+    class SnakemakeWorkflowExtractor(Workflow):
+        def __init__(self, snakefile: Path):
+            super().__init__(snakefile=snakefile)
+
+        def extract_dag(self):
+            targets: List[str] = (
+                [self.default_target] if self.default_target is not None else []
+            )
+            target_rules: Set[Rule] = set(
+                map(self._rules.__getitem__, filter(self.is_rule, targets))
+            )
+
+            target_files = set()
+            for f in filterfalse(self.is_rule, targets):
+                if os.path.isabs(f) or f.startswith("root://"):
+                    target_files.add(f)
+                else:
+                    target_files.add(os.path.relpath(f))
+
+            dag = DAG(
+                self,
+                self.rules,
+                targetfiles=target_files,
+                targetrules=target_rules,
+            )
+
+            self.persistence = Persistence(
+                dag=dag,
+            )
+
+            dag.init()
+            dag.update_checkpoint_dependencies()
+            dag.check_dynamic()
+
+            return dag
+
     workflow = SnakemakeWorkflowExtractor(
         snakefile=snakefile,
     )
@@ -169,13 +168,10 @@ def serialize_snakemake(
 
 def serialize_jit_register_workflow(
     jit_wf: JITRegisterWorkflow,
-    pkg_root: Path,
-    snakefile: Path,
-    output_dir: Path,
+    output_dir: str,
     image_name: str,
     dkr_repo: str,
 ):
-    pkg_root = Path(pkg_root).resolve()
     image_name_no_version, version = image_name.split(":")
     default_img = Image(
         name=image_name,

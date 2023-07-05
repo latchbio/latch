@@ -1,20 +1,22 @@
-"Utilites for registration."
-
 import base64
 import contextlib
+import io
 import os
+import typing
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 import boto3
 import requests
 
-from latch_cli.centromere.ctx import _CentromereCtx
-from latch_cli.config.latch import config
-from latch_cli.utils import current_workspace
+from ...centromere.ctx import _CentromereCtx
+from ...config.latch import config
+from ...utils import current_workspace
 
 
 def _docker_login(ctx: _CentromereCtx):
+    assert ctx.dkr_client is not None
+
     headers = {"Authorization": f"Bearer {ctx.token}"}
     data = {"pkg_name": ctx.image, "ws_account_id": current_workspace()}
     response = requests.post(ctx.latch_image_api_url, headers=headers, json=data)
@@ -56,13 +58,12 @@ def build_image(
     context_path: Path,
     dockerfile: Optional[Path] = None,
 ) -> List[str]:
-    _docker_login(ctx)
-    if dockerfile is not None:
-        dockerfile = str(dockerfile)
+    assert ctx.dkr_client is not None
 
+    _docker_login(ctx)
     build_logs = ctx.dkr_client.build(
         path=str(context_path),
-        dockerfile=dockerfile,
+        dockerfile=str(dockerfile) if dockerfile is not None else None,
         buildargs={"tag": f"{ctx.dkr_repo}/{image_name}"},
         tag=f"{ctx.dkr_repo}/{image_name}",
         decode=True,
@@ -72,6 +73,7 @@ def build_image(
 
 
 def upload_image(ctx: _CentromereCtx, image_name: str) -> List[str]:
+    assert ctx.dkr_client is not None
     return ctx.dkr_client.push(
         repository=f"{ctx.dkr_repo}/{image_name}",
         stream=True,
@@ -80,26 +82,28 @@ def upload_image(ctx: _CentromereCtx, image_name: str) -> List[str]:
 
 
 def serialize_pkg_in_container(
-    ctx: _CentromereCtx, image_name: str, serialize_dir: Path
-) -> List[str]:
+    ctx: _CentromereCtx, image_name: str, serialize_dir: str
+) -> Tuple[List[str], str]:
+    assert ctx.dkr_client is not None
+
     _serialize_cmd = ["make", "serialize"]
     container = ctx.dkr_client.create_container(
         f"{ctx.dkr_repo}/{image_name}",
         command=_serialize_cmd,
-        volumes=[str(serialize_dir)],
+        volumes=[serialize_dir],
         environment={"LATCH_DKR_REPO": ctx.dkr_repo, "LATCH_VERSION": ctx.version},
         host_config=ctx.dkr_client.create_host_config(
             binds={
-                str(serialize_dir): {
+                serialize_dir: {
                     "bind": "/tmp/output",
                     "mode": "rw",
                 },
             }
         ),
     )
-    container_id = container.get("Id")
+    container_id = typing.cast(str, container.get("Id"))
     ctx.dkr_client.start(container_id)
-    logs = ctx.dkr_client.logs(container_id, stream=True)
+    logs = typing.cast(Iterable[bytes], ctx.dkr_client.logs(container_id, stream=True))
 
     return [x.decode("utf-8") for x in logs], container_id
 
@@ -110,7 +114,7 @@ def register_serialized_pkg(
     version: str,
     workspace_id: str,
     latch_register_url: str = config.api.workflow.register,
-) -> dict:
+) -> object:
     if token is None:
         token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", "")
         if token != "":
@@ -122,13 +126,15 @@ def register_serialized_pkg(
     else:
         headers = {"Authorization": f"Bearer {token}"}
 
-    serialize_files = {
+    serialize_files: Dict[str, Union[bytes, io.BufferedReader]] = {
         "version": version.encode("utf-8"),
-        ".latch_ws": workspace_id,
+        ".latch_ws": workspace_id.encode("utf-8"),
     }
     with contextlib.ExitStack() as stack:
-        file_handlers = [stack.enter_context(open(file, "rb")) for file in files]
-        for fh in file_handlers:
+        for file in files:
+            fh = open(file, "rb")
+            stack.enter_context(fh)
+
             serialize_files[fh.name] = fh
 
         response = requests.post(
@@ -137,4 +143,4 @@ def register_serialized_pkg(
             files=serialize_files,
         )
 
-    return response.json()
+        return response.json()

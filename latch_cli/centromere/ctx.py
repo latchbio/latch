@@ -55,13 +55,9 @@ class _CentromereCtx:
     pkg_root: Optional[Path] = None  # root
     disable_auto_version: bool = False
     image_full = None
-    token = None
     version = None
     serialize_dir = None
     default_container: _Container
-    # Used to associate alternate containers with tasks
-    container_map: Dict[str, _Container]
-    workflow_name: Optional[str]
     workflow_type: WorkflowType
     snakefile: Optional[Path]
 
@@ -81,31 +77,22 @@ class _CentromereCtx:
     def __init__(
         self,
         pkg_root: Path,
-        token: Optional[str] = None,
+        *,
         disable_auto_version: bool = False,
         remote: bool = False,
         snakefile: Optional[Path] = None,
-        *,
         use_new_centromere: bool = False,
     ):
-        self.use_new_centromere = use_new_centromere
-
-        try:
-            if token is None:
-                self.token = retrieve_or_login()
-            else:
-                self.token = token
-
-            ws = current_workspace()
-            if ws == "" or ws is None:
-                self.account_id = account_id_from_token(self.token)
-            else:
-                self.account_id = ws
-
-            self.dkr_repo = config.dkr_repo
+        with self:
+            self.use_new_centromere = use_new_centromere
             self.remote = remote
             self.disable_auto_version = disable_auto_version
-            self.pkg_root = Path(pkg_root).resolve()
+
+            self.token = retrieve_or_login()
+            self.account_id = current_workspace()
+
+            self.dkr_repo = config.dkr_repo
+            self.pkg_root = pkg_root.resolve()
 
             if snakefile is None:
                 self.workflow_type = WorkflowType.latchbiosdk
@@ -113,12 +100,13 @@ class _CentromereCtx:
                 self.workflow_type = WorkflowType.snakemake
                 self.snakefile = snakefile
 
-            self.container_map = {}
+            self.container_map: Dict[str, _Container] = {}
             if self.workflow_type == WorkflowType.latchbiosdk:
                 _import_flyte_objects([self.pkg_root])
                 for entity in FlyteEntities.entities:
                     if isinstance(entity, PythonFunctionWorkflow):
                         self.workflow_name = entity.name
+
                     if isinstance(entity, PythonTask):
                         if (
                             hasattr(entity, "dockerfile_path")
@@ -130,41 +118,38 @@ class _CentromereCtx:
                                 pkg_dir=entity.dockerfile_path.parent,
                             )
             else:
-                # TODO (kenny) - support per container task and custom workflow
+                # todo(kenny): support per container task and custom workflow
                 # name for snakemake
                 self.workflow_name = "snakemake workflow"
 
             version_file = self.pkg_root / "version"
-            if not version_file.exists():
+            try:
+                self.version = version_file.read_text()
+            except FileNotFoundError:
                 self.version = "0.1.0"
-                version_file.write_text(self.version + "\n")
+                version_file.write_text(f"{self.version}\n")
                 click.echo(
-                    "Created a version file with initial version 0.1.0 for this"
-                    " workflow."
+                    f"Created a version file with initial version {self.version}."
                 )
-            else:
-                self.version = version_file.read_text().strip()
+            self.version = self.version.strip()
 
             if not self.disable_auto_version:
                 hash = hash_directory(self.pkg_root)
-                self.version = self.version + "-" + hash[:6]
+                self.version = f"{self.version}-{hash[:6]}"
 
-            if self.nucleus_check_version(self.version, self.workflow_name) is True:
+            if self.nucleus_check_version(self.version, self.workflow_name):
                 raise ValueError(f"Version {self.version} has already been registered.")
 
-            default_dockerfile = get_default_dockerfile(
-                self.pkg_root, self.workflow_type
-            )
             self.default_container = _Container(
-                dockerfile=default_dockerfile,
+                dockerfile=get_default_dockerfile(self.pkg_root, self.workflow_type),
                 image_name=self.image_tagged,
                 pkg_dir=self.pkg_root,
             )
 
-            if remote is True:
+            if remote:
                 # todo(maximsmol): connect only AFTER confirming registration
-                self.ssh_key_path = Path(self.pkg_root) / latch_constants.pkg_ssh_key
-                self.jump_key_path = Path(self.pkg_root) / latch_constants.pkg_jump_key
+                self.ssh_key_path = self.pkg_root / ".latch/ssh_key"
+                self.jump_key_path = self.pkg_root / ".latch/jump_key"
                 self.public_key = generate_temporary_ssh_credentials(self.ssh_key_path)
 
                 if use_new_centromere:
@@ -199,9 +184,6 @@ class _CentromereCtx:
 
             else:
                 self.dkr_client = _construct_dkr_client()
-        except (Exception, KeyboardInterrupt) as e:
-            self.cleanup()
-            raise e
 
     @property
     def image(self):
@@ -386,7 +368,6 @@ class _CentromereCtx:
         )
 
         resp = response.json()
-        print(resp)
         try:
             return resp["exists"]
         except KeyError as e:
@@ -401,6 +382,7 @@ class _CentromereCtx:
         if self.ssh_key_path is not None:
             self.ssh_key_path.unlink(missing_ok=True)
             self.ssh_key_path.with_suffix(".pub").unlink(missing_ok=True)
+
         if self.jump_key_path is not None:
             self.jump_key_path.unlink(missing_ok=True)
 
