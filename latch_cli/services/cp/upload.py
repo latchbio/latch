@@ -33,6 +33,9 @@ if TYPE_CHECKING:
     UploadInfoBySrcType: TypeAlias = DictProxy[Path, "StartUploadReturnType"]
 
 
+start_upload_batch_size = 100
+
+
 class EmptyUploadData(TypedDict):
     version_id: str
 
@@ -139,21 +142,34 @@ def upload(
                             start_upload_futs: List[
                                 Future[Optional[StartUploadReturnType]]
                             ] = []
+                            batch_futs: List[
+                                Future[Optional[StartUploadReturnType]]
+                            ] = []
 
                             start = time.monotonic()
                             for job in jobs:
-                                start_upload_futs.append(
-                                    executor.submit(
-                                        start_upload,
-                                        job.src,
-                                        job.dest,
-                                        url_generation_bar,
-                                    )
+                                fut = executor.submit(
+                                    start_upload,
+                                    job.src,
+                                    job.dest,
+                                    url_generation_bar,
                                 )
+                                start_upload_futs.append(fut)
+                                batch_futs.append(fut)
 
-                            wait(start_upload_futs)
+                                if len(batch_futs) == start_upload_batch_size:
+                                    wait(batch_futs)
 
-                        for fut in start_upload_futs:
+                                    for fut in batch_futs:
+                                        res = fut.result()
+                                        if res is not None:
+                                            upload_info_by_src[res.src] = res
+
+                                    batch_futs = []
+
+                            wait(batch_futs)
+
+                        for fut in batch_futs:
                             res = fut.result()
                             if res is not None:
                                 upload_info_by_src[res.src] = res
@@ -273,7 +289,7 @@ def upload(
         f"""{click.style("Upload Complete", fg="green")}
 
 {click.style("Time Elapsed: ", fg="blue")}{human_readable_time(total_time)}
-{click.style("Files Downloaded: ", fg="blue")}{num_files} ({with_si_suffix(total_bytes)})"""
+{click.style("Files Uploaded: ", fg="blue")}{num_files} ({with_si_suffix(total_bytes)})"""
     )
 
 

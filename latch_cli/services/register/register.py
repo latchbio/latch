@@ -12,8 +12,7 @@ import click
 from scp import SCPClient
 
 from latch_cli.centromere.ctx import _CentromereCtx
-from latch_cli.centromere.utils import _TmpDir
-from latch_cli.config.user import user_config
+from latch_cli.centromere.utils import MaybeRemoteDir, _construct_ssh_client
 from latch_cli.services.register.constants import ANSI_REGEX, MAX_LINES
 from latch_cli.services.register.utils import (
     build_image,
@@ -153,7 +152,7 @@ def print_serialize_logs(serialize_logs, image):
         print(x, end="")
 
 
-def build_and_serialize(
+def _build_and_serialize(
     ctx: _CentromereCtx,
     image_name: str,
     context_path: Path,
@@ -210,6 +209,8 @@ def register(
     remote: bool = False,
     skip_confirmation: bool = False,
     snakefile: Optional[str] = None,
+    *,
+    use_new_centromere: bool = False,
 ):
     """Registers a workflow, defined as python code, with Latch.
 
@@ -263,6 +264,7 @@ def register(
         disable_auto_version=disable_auto_version,
         remote=remote,
         snakefile=snakefile,
+        use_new_centromere=use_new_centromere,
     ) as ctx:
         assert ctx.workflow_name is not None, "Unable to determine workflow name"
         assert ctx.version is not None, "Unable to determine workflow version"
@@ -295,6 +297,9 @@ def register(
             )
         )
 
+        if use_new_centromere:
+            click.secho("Using experimental registration server.", fg="yellow")
+
         if not skip_confirmation:
             if not click.confirm("Start registration?"):
                 click.secho("Cancelled", bold=True)
@@ -307,14 +312,8 @@ def register(
             print("Connecting to remote server for docker build...")
 
         with contextlib.ExitStack() as stack:
-            td = stack.enter_context(
-                _TmpDir(
-                    remote=ctx.workflow_type == WorkflowType.LATCHBIOSDK and remote,
-                    internal_ip=ctx.internal_ip,
-                    username=ctx.username,
-                )
-            )
-            build_and_serialize(
+            td = stack.enter_context(MaybeRemoteDir(ctx.ssh_client))
+            _build_and_serialize(
                 ctx,
                 ctx.default_container.image_name,
                 ctx.default_container.pkg_dir,
@@ -324,21 +323,16 @@ def register(
             protos = _recursive_list(td)
             if ctx.workflow_type == WorkflowType.latchbiosdk and remote:
                 local_td = stack.enter_context(tempfile.TemporaryDirectory())
-                ssh = _construct_ssh_client(ctx.internal_ip, ctx.username)
-                scp = SCPClient(transport=ssh.get_transport(), sanitize=lambda x: x)
+                scp = SCPClient(
+                    transport=ctx.ssh_client.get_transport(), sanitize=lambda x: x
+                )
                 scp.get(f"{td}/*", local_path=local_td, recursive=True)
                 protos = _recursive_list(local_td)
             else:
                 protos = _recursive_list(td)
 
             for task_name, container in ctx.container_map.items():
-                task_td = stack.enter_context(
-                    _TmpDir(
-                        remote=remote,
-                        internal_ip=ctx.internal_ip,
-                        username=ctx.username,
-                    )
-                )
+                task_td = stack.enter_context(MaybeRemoteDir(ctx.ssh_client))
                 try:
                     build_and_serialize(
                         ctx,
@@ -350,9 +344,8 @@ def register(
 
                     if remote:
                         local_td = stack.enter_context(tempfile.TemporaryDirectory())
-                        ssh = _construct_ssh_client(ctx.internal_ip, ctx.username)
                         scp = SCPClient(
-                            transport=ssh.get_transport(),
+                            transport=ctx.ssh_client.get_transport(),
                             sanitize=lambda x: x,
                         )
                         scp.get(f"{task_td}/*", local_path=local_td, recursive=True)

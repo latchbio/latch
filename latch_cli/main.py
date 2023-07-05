@@ -1,5 +1,6 @@
 """Entrypoints to service functions through a latch_cli."""
 
+import os
 import textwrap
 from collections import OrderedDict
 from enum import Flag
@@ -124,6 +125,8 @@ def register(
     Visit docs.latch.bio to learn more.
     """
 
+    use_new_centromere = os.environ.get("LATCH_REGISTER_BETA") is not None
+
     crash_handler.message = "Unable to register workflow."
     crash_handler.pkg_root = pkg_root
 
@@ -135,6 +138,7 @@ def register(
         remote=remote,
         skip_confirmation=yes,
         snakefile=snakefile,
+        use_new_centromere=use_new_centromere,
     )
 
 

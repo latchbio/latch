@@ -9,8 +9,6 @@ from threading import Event
 from typing import Dict, Optional
 
 import click
-import websockets.client as websockets
-import websockets.exceptions
 from latch_sdk_config.latch import config
 
 from latch_cli.constants import latch_constants
@@ -22,7 +20,7 @@ from latch_cli.utils import (
     retrieve_or_login,
 )
 
-max_polls = 300
+max_polls = 1800
 
 
 class TaskSize(str, Enum):
@@ -224,7 +222,7 @@ def local_development(
             ssh_command = [
                 "ssh",
                 "-o",
-                "UserKnownHostsFile=/dev/null",  # hack
+                "CheckHostIP=no",  # hack
                 "-o",
                 "StrictHostKeyChecking=no",
                 "-o",
