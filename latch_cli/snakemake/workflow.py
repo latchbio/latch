@@ -289,7 +289,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         pkg_root = Path(".")
         version = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
 
-        wf = extract_snakemake_workflow(snakefile, version)
+        wf = extract_snakemake_workflow(pkg_root, snakefile, version)
         wf_name = wf.name
         generate_snakemake_entrypoint(wf, pkg_root, snakefile, {remote_output_url})
         """),

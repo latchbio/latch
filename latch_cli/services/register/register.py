@@ -162,7 +162,7 @@ def _build_and_serialize(
             generate_jit_register_code,
         )
 
-        wf = extract_snakemake_workflow(ctx.snakefile)
+        wf = extract_snakemake_workflow(ctx.pkg_root, ctx.snakefile)
         jit_wf = wf.build_jit_register_wrapper()
         generate_jit_register_code(
             jit_wf,

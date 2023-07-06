@@ -15,7 +15,7 @@ from flytekit.tools.serialize_helpers import persist_registrable_entities
 from snakemake.dag import DAG
 from snakemake.persistence import Persistence
 from snakemake.rules import Rule
-from snakemake.workflow import Workflow
+from snakemake.workflow import Workflow, WorkflowError
 
 import latch.types.metadata as metadata
 from latch_cli.snakemake.serialize_utils import (
@@ -75,7 +75,7 @@ def ensure_snakemake_metadata_exists():
 
 
 def extract_snakemake_workflow(
-    snakefile: Path, version: Optional[str] = None
+    pkg_root: Path, snakefile: Path, version: Optional[str] = None
 ) -> SnakemakeWorkflow:
     class SnakemakeWorkflowExtractor(Workflow):
         def __init__(self, snakefile: Path):
@@ -113,18 +113,30 @@ def extract_snakemake_workflow(
 
             return dag
 
-    workflow = SnakemakeWorkflowExtractor(
-        snakefile=snakefile,
-    )
-    workflow.include(
-        snakefile,
-        overwrite_default_target=True,
-    )
-    ensure_snakemake_metadata_exists()
-    dag = workflow.extract_dag()
-    wf = SnakemakeWorkflow(dag, version)
-    wf.compile()
-    return wf
+    old_cwd = os.getcwd()
+    snakefile = snakefile.resolve()
+    try:
+        os.chdir(pkg_root)
+
+        workflow = SnakemakeWorkflowExtractor(
+            snakefile=snakefile,
+        )
+        workflow.include(
+            snakefile,
+            overwrite_default_target=True,
+        )
+        ensure_snakemake_metadata_exists()
+        dag = workflow.extract_dag()
+        wf = SnakemakeWorkflow(dag, version)
+        wf.compile()
+        return wf
+    except WorkflowError as e:
+        # todo(maximsmol): handle specific errors
+        # WorkflowError: Failed to open source file /Users/maximsmol/projects/latchbio/latch/test/CGI_WGS_GATK_Pipeline/Snakefiles/CGI_WGS_GATK_Pipeline/Snakefiles/calc_frag_len.smk
+        # FileNotFoundError: [Errno 2] No such file or directory: '/Users/maximsmol/projects/latchbio/latch/test/CGI_WGS_GATK_Pipeline/Snakefiles/CGI_WGS_GATK_Pipeline/Snakefiles/calc_frag_len.smk'
+        raise RuntimeError("invalid Snakefile") from e
+    finally:
+        os.chdir(old_cwd)
 
 
 def serialize_snakemake(
