@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.25.2 - 2023-07-05
+
+### Fixed
+
+- Dockerfile generation uses `\` escaping: fixes bug in Conda and R template
+
 ## 2.25.1 - 2023-06-28
 
 ### Dependencies

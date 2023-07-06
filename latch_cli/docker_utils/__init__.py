@@ -80,9 +80,9 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
                 comment="install R requirements",
                 commands=[
                     dedent("""
-                        run apt-get update --yes && \
-                            apt-get install --yes software-properties-common && \
-                            add-apt-repository "deb http://cloud.r-project.org/bin/linux/debian buster-cran40/" && \
+                        run apt-get update --yes && \\
+                            apt-get install --yes software-properties-common && \\
+                            add-apt-repository "deb http://cloud.r-project.org/bin/linux/debian buster-cran40/" && \\
                             DEBIAN_FRONTEND=noninteractive apt-get install --yes r-base r-base-dev libxml2-dev libcurl4-openssl-dev libssl-dev wget
                         """).strip(),
                     "copy environment.R /opt/latch/environment.R",
@@ -115,12 +115,12 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
                 comment="install miniconda",
                 commands=[
                     dedent("""
-                        run apt-get update --yes && \
-                            apt-get install --yes curl && \
-                            curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
-                            mkdir /root/.conda && \
+                        run apt-get update --yes && \\
+                            apt-get install --yes curl && \\
+                            curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \\
+                            mkdir /root/.conda && \\
                             # docs for -b and -p flags: https://docs.anaconda.com/anaconda/install/silent-mode/#linux-macos
-                            bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \
+                            bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \\
                             rm -f Miniconda3-latest-Linux-x86_64.sh
                         """).strip(),
                 ],
