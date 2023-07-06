@@ -20,6 +20,7 @@ from latch_cli.services.cp.config import CPConfig, Progress
 from latch_cli.services.cp.ldata_utils import LDataNodeType, get_node_data
 from latch_cli.services.cp.path_utils import normalize_path, urljoins
 from latch_cli.services.cp.progress import ProgressBarManager, ProgressBars
+from latch_cli.services.cp.throttle import Throttle, ThrottleManager
 from latch_cli.services.cp.utils import (
     get_auth_header,
     get_max_workers,
@@ -28,7 +29,8 @@ from latch_cli.services.cp.utils import (
 from latch_cli.utils import with_si_suffix
 
 if TYPE_CHECKING:
-    QueueType: TypeAlias = Queue[Optional[Path]]
+    PathQueueType: TypeAlias = Queue[Optional[Path]]
+    LatencyQueueType: TypeAlias = Queue[Optional[float]]
     PartsBySrcType: TypeAlias = DictProxy[Path, ListProxy["CompletedPart"]]
     UploadInfoBySrcType: TypeAlias = DictProxy[Path, "StartUploadReturnType"]
 
@@ -56,13 +58,12 @@ def upload(
     dest: str,
     config: CPConfig,
 ):
-    click.clear()
-
     src_path = Path(src)
     if not src_path.exists():
         raise ValueError(f"Could not find {src_path}.")
 
-    click.secho(f"Uploading {src_path.name}", fg="blue")
+    if config.progress != Progress.none:
+        click.secho(f"Uploading {src_path.name}", fg="blue")
 
     node_data = get_node_data(dest, allow_resolve_to_parent=True)
     dest_data = node_data.data[dest]
@@ -130,51 +131,55 @@ def upload(
 
                         num_files = len(jobs)
 
-                        url_generation_bar: ProgressBars
-                        with closing(
-                            pbar_manager.ProgressBars(
-                                0,
-                                show_total_progress=(config.progress != Progress.none),
-                            )
-                        ) as url_generation_bar:
-                            url_generation_bar.set_total(num_files, "Generating URLs")
+                        with ThrottleManager() as throt_man:
+                            throttle: Throttle = throt_man.Throttle()
+                            latency_q: "LatencyQueueType" = state_manager.Queue()
 
-                            start_upload_futs: List[
-                                Future[Optional[StartUploadReturnType]]
-                            ] = []
-                            batch_futs: List[
-                                Future[Optional[StartUploadReturnType]]
-                            ] = []
-
-                            start = time.monotonic()
-                            for job in jobs:
-                                fut = executor.submit(
-                                    start_upload,
-                                    job.src,
-                                    job.dest,
-                                    url_generation_bar,
+                            url_generation_bar: ProgressBars
+                            with closing(
+                                pbar_manager.ProgressBars(
+                                    0,
+                                    show_total_progress=(
+                                        config.progress != Progress.none
+                                    ),
                                 )
-                                start_upload_futs.append(fut)
-                                batch_futs.append(fut)
+                            ) as url_generation_bar:
+                                url_generation_bar.set_total(
+                                    num_files, "Generating URLs"
+                                )
 
-                                if len(batch_futs) == start_upload_batch_size:
-                                    wait(batch_futs)
+                                start_upload_futs: List[
+                                    Future[Optional[StartUploadReturnType]]
+                                ] = []
 
-                                    for fut in batch_futs:
-                                        res = fut.result()
-                                        if res is not None:
-                                            upload_info_by_src[res.src] = res
+                                throttle_listener = executor.submit(
+                                    throttler, throttle, latency_q
+                                )
 
-                                    batch_futs = []
+                                start = time.monotonic()
+                                for job in jobs:
+                                    start_upload_futs.append(
+                                        executor.submit(
+                                            start_upload,
+                                            job.src,
+                                            job.dest,
+                                            url_generation_bar,
+                                            throttle,
+                                            latency_q,
+                                        )
+                                    )
 
-                            wait(batch_futs)
+                                wait(start_upload_futs)
 
-                        for fut in batch_futs:
-                            res = fut.result()
-                            if res is not None:
-                                upload_info_by_src[res.src] = res
+                                latency_q.put(None)
+                                wait([throttle_listener])
 
-                        queue: "QueueType" = state_manager.Queue()
+                            for fut in start_upload_futs:
+                                res = fut.result()
+                                if res is not None:
+                                    upload_info_by_src[res.src] = res
+
+                        queue: "PathQueueType" = state_manager.Queue()
                         listeners = [
                             end_upload_executor.submit(
                                 end_upload_listener,
@@ -232,7 +237,8 @@ def upload(
                             wait(chunk_futs)
 
                         queue.put(None)
-                        print("Finalizing uploads...")
+                        if config.progress != Progress.none:
+                            print("Finalizing uploads...")
                         wait(listeners)
                     else:
                         if dest_exists and dest_is_dir:
@@ -283,14 +289,14 @@ def upload(
 
     end = time.monotonic()
     total_time = end - start
-
-    click.clear()
-    click.echo(
-        f"""{click.style("Upload Complete", fg="green")}
+    if config.progress != Progress.none:
+        click.clear()
+        click.echo(
+            f"""{click.style("Upload Complete", fg="green")}
 
 {click.style("Time Elapsed: ", fg="blue")}{human_readable_time(total_time)}
 {click.style("Files Uploaded: ", fg="blue")}{num_files} ({with_si_suffix(total_bytes)})"""
-    )
+        )
 
 
 @dataclass(frozen=True)
@@ -307,6 +313,8 @@ def start_upload(
     src: Path,
     dest: str,
     progress_bars: Optional[ProgressBars] = None,
+    throttle: Optional[Throttle] = None,
+    latency_q: Optional["LatencyQueueType"] = None,
 ) -> Optional[StartUploadReturnType]:
     if not src.exists():
         raise ValueError(f"Could not find {src}: no such file or link")
@@ -341,6 +349,10 @@ def start_upload(
         math.ceil(file_size / latch_constants.maximum_upload_parts),
     )
 
+    if throttle is not None:
+        time.sleep(throttle.get_delay())
+
+    start = time.monotonic()
     res = tinyrequests.post(
         latch_config.api.data.start_upload,
         headers={"Authorization": get_auth_header()},
@@ -350,11 +362,15 @@ def start_upload(
             "part_count": part_count,
         },
     )
+    end = time.monotonic()
 
     json_data = res.json()
 
     if res.status_code != 200:
         raise ValueError(json_data["error"])
+
+    if latency_q is not None:
+        latency_q.put(end - start)
 
     if progress_bars is not None:
         progress_bars.update_total_progress(1)
@@ -383,7 +399,7 @@ def upload_file_chunk(
     part_size: int,
     progress_bars: ProgressBars,
     pbar_index: Optional[int],
-    queue: Optional["QueueType"] = None,
+    queue: Optional["PathQueueType"] = None,
     parts_by_source: Optional["PartsBySrcType"] = None,
 ) -> CompletedPart:
     with open(src, "rb") as f:
@@ -447,7 +463,7 @@ def end_upload(
 
 
 def end_upload_listener(
-    queue: "QueueType",
+    queue: "PathQueueType",
     parts_by_src: "PartsBySrcType",
     upload_info_by_src: "UploadInfoBySrcType",
 ):
@@ -464,3 +480,25 @@ def end_upload_listener(
             upload_info.upload_id,
             list(parts_by_src[src]),
         )
+
+
+def throttler(t: Throttle, q: "LatencyQueueType"):
+    ema = 0
+
+    # todo(ayush): these params were tuned via naive grid search uploading a
+    # test directory w/ ~19k files, ideally we should do something more rigorous
+    alpha = 0.6
+    beta = 1 / 60
+    threshold = 15  # seconds
+
+    while True:
+        latency = q.get()
+        if latency is None:
+            return
+
+        ema = (1 - alpha) * ema + alpha * latency
+
+        if ema > threshold:
+            t.set_delay(beta * ema)
+        else:
+            t.set_delay(0)
