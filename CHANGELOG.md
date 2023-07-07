@@ -16,6 +16,16 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.26.0 - 2023-07-07
+
+### Changed
+
+- Gated `latch develop` resource selection behind an environment variable due to its slow performance
+
+### Dependencies
+
+- Added back several dependencies to allow the old `latch develop` infrastructure to work properly.
+
 ## 2.25.2 - 2023-07-05
 
 ### Fixed
