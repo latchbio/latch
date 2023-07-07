@@ -246,7 +246,17 @@ def local_development(
                         stop_rsync,
                     )
 
-                    subprocess.run(ssh_command)
+                    res = subprocess.run(ssh_command, stderr=subprocess.PIPE)
+                    if "Too many authentication failures" in res.stderr.decode():
+                        click.secho(
+                            dedent("""
+                            Too many authentication failures. Try resetting your ssh-agent with
+
+                                $ ssh-add -D
+
+                            and trying again."""),
+                            fg="red",
+                        )
                     stop_rsync.set()
 
         finally:
