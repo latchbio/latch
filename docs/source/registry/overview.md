@@ -34,11 +34,9 @@ def registry_task(record_name: str, file: LatchFile) -> LatchFile:
     tbl = Table(id="1234")
     with tbl.update() as updater:
         updater.upsert_record(
-            record_name,
-            {
-                "File": file,
-                "Size": file_size,
-            },
+            name=record_name,
+            File=file,
+            Size=file_size
         )
 
     return file
