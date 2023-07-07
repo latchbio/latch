@@ -250,5 +250,5 @@ def get_default_dockerfile(pkg_root: Path, wf_type: WorkflowType):
     default_dockerfile = pkg_root / "Dockerfile"
     if not default_dockerfile.exists():
         default_dockerfile = pkg_root / ".latch" / "Dockerfile"
-        generate_dockerfile(default_dockerfile, wf_type)
+        generate_dockerfile(pkg_root, default_dockerfile)
     return default_dockerfile

@@ -1,4 +1,4 @@
-from typing import Dict, TypeAlias, Union
+from typing import Dict, Union
 
 from flytekit import LaunchPlan
 from flytekit.configuration import SerializationSettings
@@ -15,6 +15,7 @@ from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.core import identifier as identifier_model
 from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.workflow import TaskNodeOverrides
+from typing_extensions import TypeAlias
 
 FlyteLocalEntity: TypeAlias = Union[
     PythonTask,

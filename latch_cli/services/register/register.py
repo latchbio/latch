@@ -1,7 +1,4 @@
-"""Service to register workflows."""
-
 import contextlib
-import os
 import re
 import shutil
 import tempfile
@@ -11,22 +8,16 @@ from typing import List, Optional
 import click
 from scp import SCPClient
 
-from latch_cli.centromere.ctx import _CentromereCtx
-from latch_cli.centromere.utils import MaybeRemoteDir, _construct_ssh_client
-from latch_cli.services.register.constants import ANSI_REGEX, MAX_LINES
-from latch_cli.services.register.utils import (
+from ...centromere.ctx import _CentromereCtx
+from ...centromere.utils import MaybeRemoteDir
+from ...utils import WorkflowType, current_workspace
+from ..register.constants import ANSI_REGEX, MAX_LINES
+from ..register.utils import (
     build_image,
     register_serialized_pkg,
     serialize_pkg_in_container,
     upload_image,
 )
-from latch_cli.services.serialize import (
-    extract_snakemake_workflow,
-    generate_jit_register_code,
-    serialize_jit_register_workflow,
-)
-from latch_cli.utils import WorkflowType, current_workspace
-
 from ..workspace import _get_workspaces
 
 
@@ -60,7 +51,7 @@ def _print_window(curr_lines: List[str], line: str):
 def print_and_write_build_logs(build_logs, image: str, pkg_root: Path):
     print(f"Building Docker image for {image}")
 
-    logs_path = Path(pkg_root).joinpath(".logs").joinpath(image).resolve()
+    logs_path = (pkg_root / ".latch" / ".logs" / image).resolve()
     logs_path.mkdir(parents=True, exist_ok=True)
     with open(logs_path.joinpath("docker-build-logs.txt"), "w") as save_file:
         r = re.compile("^Step [0-9]+/[0-9]+ :")
@@ -156,13 +147,22 @@ def _build_and_serialize(
     ctx: _CentromereCtx,
     image_name: str,
     context_path: Path,
-    tmp_dir: Path,
+    tmp_dir: str,
     dockerfile: Optional[Path] = None,
 ):
-    """Builds an image, serializes the workflow within the image, and pushes the image."""
+    assert ctx.pkg_root is not None
 
+    jit_wf = None
     if ctx.workflow_type == WorkflowType.snakemake:
-        wf = extract_snakemake_workflow(ctx.snakefile)
+        assert ctx.snakefile is not None
+        assert ctx.version is not None
+
+        from ...snakemake.serialize import (
+            extract_snakemake_workflow,
+            generate_jit_register_code,
+        )
+
+        wf = extract_snakemake_workflow(ctx.pkg_root, ctx.snakefile)
         jit_wf = wf.build_jit_register_wrapper()
         generate_jit_register_code(
             jit_wf,
@@ -170,21 +170,26 @@ def _build_and_serialize(
             ctx.snakefile,
             ctx.version,
             image_name,
-            user_config.workspace_id,
+            current_workspace(),
         )
 
     image_build_logs = build_image(ctx, image_name, context_path, dockerfile)
     print_and_write_build_logs(image_build_logs, image_name, ctx.pkg_root)
 
     if ctx.workflow_type == WorkflowType.snakemake:
-        serialize_jit_register_workflow(
-            jit_wf, ctx.pkg_root, ctx.snakefile, tmp_dir, image_name, ctx.dkr_repo
-        )
+        assert jit_wf is not None
+        assert ctx.dkr_repo is not None
+
+        from ...snakemake.serialize import serialize_jit_register_workflow
+
+        serialize_jit_register_workflow(jit_wf, tmp_dir, image_name, ctx.dkr_repo)
     else:
         serialize_logs, container_id = serialize_pkg_in_container(
             ctx, image_name, tmp_dir
         )
         print_serialize_logs(serialize_logs, image_name)
+
+        assert ctx.dkr_client is not None
         exit_status = ctx.dkr_client.wait(container_id)
         if exit_status["StatusCode"] != 0:
             raise ValueError(
@@ -196,11 +201,18 @@ def _build_and_serialize(
 
 
 def _recursive_list(directory: Path) -> List[Path]:
-    files = []
-    for dirname, dirnames, fnames in os.walk(directory):
-        for filename in fnames + dirnames:
-            files.append(Path(dirname).resolve().joinpath(filename))
-    return files
+    res: List[Path] = []
+
+    stack: List[Path] = [directory]
+    while len(stack) > 0:
+        cur = stack.pop()
+        for x in cur.iterdir():
+            res.append(x)
+
+            if x.is_dir():
+                stack.append(x)
+
+    return res
 
 
 def register(
@@ -208,7 +220,7 @@ def register(
     disable_auto_version: bool = False,
     remote: bool = False,
     skip_confirmation: bool = False,
-    snakefile: Optional[str] = None,
+    snakefile: Optional[Path] = None,
     *,
     use_new_centromere: bool = False,
 ):
@@ -257,10 +269,14 @@ def register(
         https://docs.flyte.org/en/latest/concepts/registration.html
     """
 
-    pkg_root = Path(pkg_root).resolve()
+    if snakefile is not None:
+        try:
+            import snakemake
+        except ImportError as e:
+            raise RuntimeError("could not load snakemake: package not installed") from e
 
     with _CentromereCtx(
-        pkg_root,
+        Path(pkg_root),
         disable_auto_version=disable_auto_version,
         remote=remote,
         snakefile=snakefile,
@@ -308,11 +324,20 @@ def register(
             click.secho("Skipping confirmation because of --yes", bold=True)
 
         click.secho("Initializing registration", bold=True)
+        transport = None
+        scp = None
+
         if remote:
             print("Connecting to remote server for docker build...")
 
+            assert ctx.ssh_client is not None
+            transport = ctx.ssh_client.get_transport()
+
+            assert transport is not None
+            scp = SCPClient(transport=transport, sanitize=lambda x: x)
+
         with contextlib.ExitStack() as stack:
-            td = stack.enter_context(MaybeRemoteDir(ctx.ssh_client))
+            td: str = stack.enter_context(MaybeRemoteDir(ctx.ssh_client))
             _build_and_serialize(
                 ctx,
                 ctx.default_container.image_name,
@@ -320,21 +345,21 @@ def register(
                 td,
                 dockerfile=ctx.default_container.dockerfile,
             )
-            protos = _recursive_list(td)
-            if ctx.workflow_type == WorkflowType.latchbiosdk and remote:
-                local_td = stack.enter_context(tempfile.TemporaryDirectory())
-                scp = SCPClient(
-                    transport=ctx.ssh_client.get_transport(), sanitize=lambda x: x
-                )
-                scp.get(f"{td}/*", local_path=local_td, recursive=True)
-                protos = _recursive_list(local_td)
+
+            if remote:
+                local_td = Path(stack.enter_context(tempfile.TemporaryDirectory()))
+
+                assert scp is not None
+                scp.get(f"{td}/*", local_path=str(local_td), recursive=True)
             else:
-                protos = _recursive_list(td)
+                local_td = Path(td)
+
+            protos = _recursive_list(local_td)
 
             for task_name, container in ctx.container_map.items():
                 task_td = stack.enter_context(MaybeRemoteDir(ctx.ssh_client))
                 try:
-                    build_and_serialize(
+                    _build_and_serialize(
                         ctx,
                         container.image_name,
                         ctx.default_container.pkg_dir,
@@ -343,15 +368,21 @@ def register(
                     )
 
                     if remote:
-                        local_td = stack.enter_context(tempfile.TemporaryDirectory())
-                        scp = SCPClient(
-                            transport=ctx.ssh_client.get_transport(),
-                            sanitize=lambda x: x,
+                        local_task_td = Path(
+                            stack.enter_context(tempfile.TemporaryDirectory())
                         )
-                        scp.get(f"{task_td}/*", local_path=local_td, recursive=True)
+
+                        assert scp is not None
+                        scp.get(
+                            f"{task_td}/*", local_path=str(local_td), recursive=True
+                        )
+
                         new_protos = _recursive_list(local_td)
                     else:
-                        new_protos = _recursive_list(task_td)
+                        local_task_td = Path(task_td)
+
+                    new_protos = _recursive_list(local_task_td)
+
                     try:
                         split_task_name = task_name.split(".")
                         task_name = ".".join(
@@ -375,7 +406,7 @@ def register(
                     ) from e
 
             reg_resp = register_serialized_pkg(
-                protos, ctx.token, ctx.version, current_workspace().encode("utf-8")
+                protos, ctx.token, ctx.version, current_workspace()
             )
             _print_reg_resp(reg_resp, ctx.default_container.image_name)
 

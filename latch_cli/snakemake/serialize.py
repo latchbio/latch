@@ -15,7 +15,7 @@ from flytekit.tools.serialize_helpers import persist_registrable_entities
 from snakemake.dag import DAG
 from snakemake.persistence import Persistence
 from snakemake.rules import Rule
-from snakemake.workflow import Workflow
+from snakemake.workflow import Workflow, WorkflowError
 
 import latch.types.metadata as metadata
 from latch_cli.snakemake.serialize_utils import (
@@ -40,47 +40,10 @@ def should_register_with_admin(entity: RegistrableEntity) -> bool:
     return isinstance(entity, get_args(RegistrableEntity))
 
 
-class SnakemakeWorkflowExtractor(Workflow):
-    def __init__(self, snakefile: Path):
-        super().__init__(snakefile=snakefile)
-
-    def extract_dag(self):
-        targets: List[str] = (
-            [self.default_target] if self.default_target is not None else []
-        )
-        target_rules: Set[Rule] = set(
-            map(self._rules.__getitem__, filter(self.is_rule, targets))
-        )
-
-        target_files = set()
-        for f in filterfalse(self.is_rule, targets):
-            if os.path.isabs(f) or f.startswith("root://"):
-                target_files.add(f)
-            else:
-                target_files.add(os.path.relpath(f))
-
-        dag = DAG(
-            self,
-            self.rules,
-            targetfiles=target_files,
-            targetrules=target_rules,
-        )
-
-        self.persistence = Persistence(
-            dag=dag,
-        )
-
-        dag.init()
-        dag.update_checkpoint_dependencies()
-        dag.check_dynamic()
-
-        return dag
-
-
 def ensure_snakemake_metadata_exists():
     if metadata._snakemake_metadata is None:
         raise ValueError(dedent("""
-        
+
         No `SnakemakeMetadata` object was detected in your Snakefile. This
         object needs to be defined to register this workflow with Latch.
 
@@ -112,20 +75,68 @@ def ensure_snakemake_metadata_exists():
 
 
 def extract_snakemake_workflow(
-    snakefile: Path, version: Optional[str] = None
+    pkg_root: Path, snakefile: Path, version: Optional[str] = None
 ) -> SnakemakeWorkflow:
-    workflow = SnakemakeWorkflowExtractor(
-        snakefile=snakefile,
-    )
-    workflow.include(
-        snakefile,
-        overwrite_default_target=True,
-    )
-    ensure_snakemake_metadata_exists()
-    dag = workflow.extract_dag()
-    wf = SnakemakeWorkflow(dag, version)
-    wf.compile()
-    return wf
+    class SnakemakeWorkflowExtractor(Workflow):
+        def __init__(self, snakefile: Path):
+            super().__init__(snakefile=snakefile)
+
+        def extract_dag(self):
+            targets: List[str] = (
+                [self.default_target] if self.default_target is not None else []
+            )
+            target_rules: Set[Rule] = set(
+                map(self._rules.__getitem__, filter(self.is_rule, targets))
+            )
+
+            target_files = set()
+            for f in filterfalse(self.is_rule, targets):
+                if os.path.isabs(f) or f.startswith("root://"):
+                    target_files.add(f)
+                else:
+                    target_files.add(os.path.relpath(f))
+
+            dag = DAG(
+                self,
+                self.rules,
+                targetfiles=target_files,
+                targetrules=target_rules,
+            )
+
+            self.persistence = Persistence(
+                dag=dag,
+            )
+
+            dag.init()
+            dag.update_checkpoint_dependencies()
+            dag.check_dynamic()
+
+            return dag
+
+    old_cwd = os.getcwd()
+    snakefile = snakefile.resolve()
+    try:
+        os.chdir(pkg_root)
+
+        workflow = SnakemakeWorkflowExtractor(
+            snakefile=snakefile,
+        )
+        workflow.include(
+            snakefile,
+            overwrite_default_target=True,
+        )
+        ensure_snakemake_metadata_exists()
+        dag = workflow.extract_dag()
+        wf = SnakemakeWorkflow(dag, version)
+        wf.compile()
+        return wf
+    except WorkflowError as e:
+        # todo(maximsmol): handle specific errors
+        # WorkflowError: Failed to open source file /Users/maximsmol/projects/latchbio/latch/test/CGI_WGS_GATK_Pipeline/Snakefiles/CGI_WGS_GATK_Pipeline/Snakefiles/calc_frag_len.smk
+        # FileNotFoundError: [Errno 2] No such file or directory: '/Users/maximsmol/projects/latchbio/latch/test/CGI_WGS_GATK_Pipeline/Snakefiles/CGI_WGS_GATK_Pipeline/Snakefiles/calc_frag_len.smk'
+        raise RuntimeError("invalid Snakefile") from e
+    finally:
+        os.chdir(old_cwd)
 
 
 def serialize_snakemake(
@@ -169,13 +180,10 @@ def serialize_snakemake(
 
 def serialize_jit_register_workflow(
     jit_wf: JITRegisterWorkflow,
-    pkg_root: Path,
-    snakefile: Path,
-    output_dir: Path,
+    output_dir: str,
     image_name: str,
     dkr_repo: str,
 ):
-    pkg_root = Path(pkg_root).resolve()
     image_name_no_version, version = image_name.split(":")
     default_img = Image(
         name=image_name,

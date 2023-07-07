@@ -71,13 +71,12 @@ class CrashHandler:
                     tf.add(ntf.name, arcname="traceback.txt")
 
             if self.pkg_root is not None:
-                pkg_path = Path(self.pkg_root).resolve()
-
-                if (pkg_path / ".logs").exists():
-                    tf.add(pkg_path / ".logs", arcname="logs")
+                logs_path = Path(self.pkg_root) / ".latch" / ".logs"
+                if logs_path.exists():
+                    tf.add(logs_path, arcname="logs")
 
                 pkg_files: List[Path] = []
-                for dp, _, fnames in os.walk(pkg_path):
+                for dp, _, fnames in os.walk(logs_path):
                     for f in fnames:
                         p = (Path(dp) / f).resolve()
                         if (

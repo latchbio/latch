@@ -17,8 +17,6 @@ from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.tools import module_loader
 
 from latch_cli.constants import latch_constants
-from latch_cli.docker_utils import generate_dockerfile
-from latch_cli.utils import WorkflowType
 
 
 @dataclass
@@ -240,16 +238,16 @@ class MaybeRemoteDir:
     def __init__(self, ssh_client: Optional[paramiko.SSHClient] = None):
         self.ssh_client = ssh_client
 
-    def __enter__(self, *args):
-        return self.create(*args)
+    def __enter__(self):
+        return self.create()
 
-    def __exit__(self, *args):
-        self.cleanup(*args)
+    def __exit__(self, exc_type, exc_value, tb):
+        self.cleanup()
 
-    def create(self, *args):
+    def create(self):
         if self.ssh_client is None:
             self._tempdir = tempfile.TemporaryDirectory()
-            return Path(self._tempdir.name).resolve()
+            return str(Path(self._tempdir.name).resolve())
 
         td = build_random_string()
 
@@ -258,10 +256,11 @@ class MaybeRemoteDir:
         self.ssh_client.exec_command(f"mkdir {self._tempdir}")
         return self._tempdir
 
-    def cleanup(self, *args):
+    def cleanup(self):
         if self.ssh_client is not None:
             self.ssh_client.exec_command(f"rm -rf {self._tempdir}")
             return
+
         if self._tempdir is not None and not isinstance(self._tempdir, str):
             self._tempdir.cleanup()
 
