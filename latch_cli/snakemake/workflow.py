@@ -197,26 +197,22 @@ def interface_to_parameters(
 class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
     out_parameter_name = "success"
 
-    def __init__(
-        self,
-    ):
-        parameter_metadata = metadata._snakemake_metadata.parameters
-        metadata._snakemake_metadata.parameters = parameter_metadata
-        display_name = metadata._snakemake_metadata.display_name
-        name = metadata._snakemake_metadata.name
+    def __init__(self):
+        meta = metadata._snakemake_metadata
+        parameter_metadata = meta.parameters
+        display_name = meta.display_name
+        name = meta.name
 
-        docstring = Docstring(
-            f"{display_name}\n\nSample Description\n\n"
-            + str(metadata._snakemake_metadata)
-        )
+        docstring = Docstring(f"{display_name}\n\nSample Description\n\n" + str(meta))
         native_interface = Interface(
             {k: v.type for k, v in parameter_metadata.items()},
             {self.out_parameter_name: bool},
             docstring=docstring,
         )
+
         self.parameter_metadata = parameter_metadata
-        if metadata._snakemake_metadata.output_dir is not None:
-            self.remote_output_url = metadata._snakemake_metadata.output_dir.remote_path
+        if meta.output_dir is not None:
+            self.remote_output_url = meta.output_dir.remote_path
         else:
             self.remote_output_url = None
 
@@ -225,6 +221,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         )
         name = f"{name}_jit_register"
         workflow_metadata_defaults = WorkflowMetadataDefaults(False)
+
         super().__init__(
             name=name,
             workflow_metadata=workflow_metadata,
@@ -240,7 +237,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         fn_interface = f"\n\n@{decorator_name}\ndef {fn_name}("
         fn_interface += (
             ", ".join(
-                f"{param}: {t.__name__}"
+                f"{param}: {repr(__name__)}"
                 for param, t in self.python_interface.inputs.items()
             )
             + ") -> bool:"
@@ -287,7 +284,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         code_block += textwrap.indent(
             textwrap.dedent(f"""
         pkg_root = Path(".")
-        version = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
+        version = hashlib.sha1(os.environ["FLYTE_INTERNAL_EXECUTION_ID"].encode("utf-8")).hexdigest()
 
         wf = extract_snakemake_workflow(pkg_root, snakefile, version)
         wf_name = wf.name
@@ -457,16 +454,88 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         return code_block
 
 
+def build_jit_register_wrapper() -> JITRegisterWorkflow:
+    out_parameter_name = "success"
+    wrapper_wf = JITRegisterWorkflow()
+
+    python_interface = wrapper_wf.python_interface
+    wrapper_wf._input_parameters = interface_to_parameters(python_interface)
+
+    GLOBAL_START_NODE = Node(
+        id=_common_constants.GLOBAL_INPUT_NODE_ID,
+        metadata=None,
+        bindings=[],
+        upstream_nodes=[],
+        flyte_entity=None,
+    )
+
+    task_interface = Interface(
+        python_interface.inputs, python_interface.outputs, docstring=None
+    )
+    task = PythonAutoContainerTask[T](
+        name=f"{wrapper_wf.name}_task",
+        task_type="python-task",
+        interface=task_interface,
+        task_config=None,
+        task_resolver=JITRegisterWorkflowResolver(),
+    )
+
+    task_bindings: List[literals_models.Binding] = []
+    typed_interface = transform_interface_to_typed_interface(python_interface)
+    for k in python_interface.inputs:
+        var = typed_interface.inputs[k]
+        promise_to_bind = Promise(
+            var=k,
+            val=NodeOutput(node=GLOBAL_START_NODE, var=k),
+        )
+        task_bindings.append(
+            binding_from_python(
+                var_name=k,
+                expected_literal_type=var.type,
+                t_value=promise_to_bind,
+                t_value_type=python_interface.inputs[k],
+            )
+        )
+    task_node = Node(
+        id="n0",
+        metadata=task.construct_node_metadata(),
+        bindings=sorted(task_bindings, key=lambda b: b.var),
+        upstream_nodes=[],
+        flyte_entity=task,
+    )
+
+    promise_to_bind = Promise(
+        var=out_parameter_name,
+        val=NodeOutput(node=task_node, var=out_parameter_name),
+    )
+    t = python_interface.outputs[out_parameter_name]
+    output_binding = binding_from_python(
+        out_parameter_name,
+        bool,
+        promise_to_bind,
+        t,
+    )
+
+    wrapper_wf._nodes = [task_node]
+    wrapper_wf._output_bindings = [output_binding]
+    return wrapper_wf
+
+
 class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
     def __init__(
         self,
         dag: DAG,
         version: Optional[str] = None,
     ):
+        meta = metadata._snakemake_metadata
         if version is not None:
-            name = f"{metadata._snakemake_metadata.name}-{version}"
+            name = f"{meta.name}-{version}"
         else:
-            name = metadata._snakemake_metadata.name
+            name = meta.name
+
+        assert (
+            name is not None
+        )  # todo(maximsmol): this should really be fixed in the dataclass
 
         native_interface, literal_map, return_files = snakemake_dag_to_interface(
             dag, name, None
@@ -613,72 +682,6 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         self._nodes = list(node_map.values())
         self._output_bindings = bindings
 
-    def build_jit_register_wrapper(self) -> JITRegisterWorkflow:
-        out_parameter_name = "success"
-        wrapper_wf = JITRegisterWorkflow()
-
-        python_interface = wrapper_wf.python_interface
-        wrapper_wf._input_parameters = interface_to_parameters(python_interface)
-
-        GLOBAL_START_NODE = Node(
-            id=_common_constants.GLOBAL_INPUT_NODE_ID,
-            metadata=None,
-            bindings=[],
-            upstream_nodes=[],
-            flyte_entity=None,
-        )
-
-        task_interface = Interface(
-            python_interface.inputs, python_interface.outputs, docstring=None
-        )
-        task = PythonAutoContainerTask[T](
-            name=f"{wrapper_wf.name}_task",
-            task_type="python-task",
-            interface=task_interface,
-            task_config=None,
-            task_resolver=JITRegisterWorkflowResolver(),
-        )
-
-        task_bindings: List[literals_models.Binding] = []
-        typed_interface = transform_interface_to_typed_interface(python_interface)
-        for k in python_interface.inputs:
-            var = typed_interface.inputs[k]
-            promise_to_bind = Promise(
-                var=k,
-                val=NodeOutput(node=GLOBAL_START_NODE, var=k),
-            )
-            task_bindings.append(
-                binding_from_python(
-                    var_name=k,
-                    expected_literal_type=var.type,
-                    t_value=promise_to_bind,
-                    t_value_type=python_interface.inputs[k],
-                )
-            )
-        task_node = Node(
-            id="n0",
-            metadata=task.construct_node_metadata(),
-            bindings=sorted(task_bindings, key=lambda b: b.var),
-            upstream_nodes=[],
-            flyte_entity=task,
-        )
-
-        promise_to_bind = Promise(
-            var=out_parameter_name,
-            val=NodeOutput(node=task_node, var=out_parameter_name),
-        )
-        t = python_interface.outputs[out_parameter_name]
-        output_binding = binding_from_python(
-            out_parameter_name,
-            bool,
-            promise_to_bind,
-            t,
-        )
-
-        wrapper_wf._nodes = [task_node]
-        wrapper_wf._output_bindings = [output_binding]
-        return wrapper_wf
-
     def find_upstream_node_matching_output_var(self, out_var: str):
         for j in self._dag.targetjobs:
             for depen, files in self._dag.dependencies[j].items():
@@ -724,9 +727,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
     def get_fn_interface(self):
         fn_interface = f"\n\n@small_task\ndef {self.name}("
         fn_interface += (
-            ", ".join(
-                f"{param}: {t.__name__}" for param, t in self._python_inputs.items()
-            )
+            ", ".join(f"{param}: {repr(t)}" for param, t in self._python_inputs.items())
             + ")"
         )
 
@@ -734,7 +735,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             fn_interface += (
                 f" -> NamedTuple('{self.name}_output', "
                 + ", ".join(
-                    f"{param}={t.__name__}" for param, t in self._python_outputs.items()
+                    f"{param}={repr(t)}" for param, t in self._python_outputs.items()
                 )
                 + "):"
             )

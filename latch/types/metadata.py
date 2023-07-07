@@ -3,7 +3,7 @@ from dataclasses import asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
 from textwrap import indent
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, Generic, List, Optional, Tuple, Type, TypeVar, Union
 
 import yaml
 
@@ -334,12 +334,19 @@ class LatchParameter:
         return {"__metadata__": parameter_dict}
 
 
+T = TypeVar("T")
+
+
 @dataclass
-class SnakemakeFileParameter(LatchParameter):
-    type: Optional[Union[LatchFile, LatchDir]] = None
+class LatchTypedParameter(LatchParameter, Generic[T]):
+    type: Optional[T] = None
     """
     The python type of the parameter.
     """
+
+
+@dataclass
+class SnakemakeFileParameter(LatchTypedParameter[Union[LatchFile, LatchDir]]):
     path: Optional[Path] = None
     """
     The path where the file passed to this parameter will be copied.
@@ -427,6 +434,9 @@ class LatchMetadata:
                 str(parameter_meta), "  ", lambda _: True
             )
 
+        if len(self.parameters) == 0:
+            raise RuntimeError("no parameter metadata specified")
+
         metadata_yaml = yaml.safe_dump(self.dict, sort_keys=False)
         parameter_yaml = "".join(map(_parameter_str, self.parameters.items()))
         return (
@@ -434,15 +444,24 @@ class LatchMetadata:
         ).strip("\n ")
 
 
+_snakemake_metadata: "SnakemakeMetadata"
+
+
 @dataclass
 class SnakemakeMetadata(LatchMetadata):
     output_dir: Optional[LatchDir] = None
-    name: Optional[str] = None
 
     def __post_init__(self):
         global _snakemake_metadata
-        self.name = self.display_name.lower().replace(" ", "_")
         _snakemake_metadata = self
 
+    @property
+    def name(self):
+        name = self.display_name.lower()
+        start = name[0]
 
-_snakemake_metadata: Optional[SnakemakeMetadata] = None
+        res: List[str] = [start if start.isidentifier() else "_"]
+        for x in name[1:]:
+            res.append(x if f"_{x}".isidentifier() else "_")
+
+        return "".join(res)

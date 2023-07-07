@@ -3,7 +3,7 @@ import textwrap
 from itertools import filterfalse
 from pathlib import Path
 from textwrap import dedent
-from typing import List, Optional, Set, Union, get_args
+from typing import List, Optional, Set, TypeVar, Union, get_args
 
 from flytekit import LaunchPlan
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
@@ -28,6 +28,8 @@ from latch_cli.snakemake.workflow import (
     SnakemakeWorkflow,
     interface_to_parameters,
 )
+
+from ..services.register.utils import import_module_by_path
 
 RegistrableEntity = Union[
     task_models.TaskSpec,
@@ -74,44 +76,48 @@ def ensure_snakemake_metadata_exists():
         """))
 
 
-def extract_snakemake_workflow(
-    pkg_root: Path, snakefile: Path, version: Optional[str] = None
-) -> SnakemakeWorkflow:
-    class SnakemakeWorkflowExtractor(Workflow):
-        def __init__(self, snakefile: Path):
-            super().__init__(snakefile=snakefile)
+class SnakemakeWorkflowExtractor(Workflow):
+    def __init__(self, snakefile: Path):
+        super().__init__(snakefile=snakefile)
 
-        def extract_dag(self):
-            targets: List[str] = (
-                [self.default_target] if self.default_target is not None else []
-            )
-            target_rules: Set[Rule] = set(
-                map(self._rules.__getitem__, filter(self.is_rule, targets))
-            )
+    def extract_dag(self):
+        targets: List[str] = (
+            [self.default_target] if self.default_target is not None else []
+        )
+        target_rules: Set[Rule] = set(
+            map(self._rules.__getitem__, filter(self.is_rule, targets))
+        )
 
-            target_files = set()
-            for f in filterfalse(self.is_rule, targets):
-                if os.path.isabs(f) or f.startswith("root://"):
-                    target_files.add(f)
-                else:
-                    target_files.add(os.path.relpath(f))
+        target_files = set()
+        for f in filterfalse(self.is_rule, targets):
+            if os.path.isabs(f) or f.startswith("root://"):
+                target_files.add(f)
+            else:
+                target_files.add(os.path.relpath(f))
 
-            dag = DAG(
-                self,
-                self.rules,
-                targetfiles=target_files,
-                targetrules=target_rules,
-            )
+        dag = DAG(
+            self,
+            self.rules,
+            targetfiles=target_files,
+            targetrules=target_rules,
+        )
 
-            self.persistence = Persistence(
-                dag=dag,
-            )
+        self.persistence = Persistence(
+            dag=dag,
+        )
 
-            dag.init()
-            dag.update_checkpoint_dependencies()
-            dag.check_dynamic()
+        dag.init()
+        dag.update_checkpoint_dependencies()
+        dag.check_dynamic()
 
-            return dag
+        return dag
+
+
+def snakemake_workflow_extractor(
+    pkg_root: Path, snakefile: Path
+) -> SnakemakeWorkflowExtractor:
+    # todo(maximsmol): maybe switch to using a metadata file
+    # metadata_module = import_module_by_path(pkg_root / "metadata.py")
 
     old_cwd = os.getcwd()
     snakefile = snakefile.resolve()
@@ -125,7 +131,31 @@ def extract_snakemake_workflow(
             snakefile,
             overwrite_default_target=True,
         )
+
         ensure_snakemake_metadata_exists()
+
+        return workflow
+    except WorkflowError as e:
+        # todo(maximsmol): handle specific errors
+        # WorkflowError: Failed to open source file /Users/maximsmol/projects/latchbio/latch/test/CGI_WGS_GATK_Pipeline/Snakefiles/CGI_WGS_GATK_Pipeline/Snakefiles/calc_frag_len.smk
+        # FileNotFoundError: [Errno 2] No such file or directory: '/Users/maximsmol/projects/latchbio/latch/test/CGI_WGS_GATK_Pipeline/Snakefiles/CGI_WGS_GATK_Pipeline/Snakefiles/calc_frag_len.smk'
+        raise RuntimeError("invalid Snakefile") from e
+    finally:
+        os.chdir(old_cwd)
+
+
+def extract_snakemake_workflow(
+    pkg_root: Path, snakefile: Path, version: Optional[str] = None
+) -> SnakemakeWorkflow:
+    # todo(maximsmol): get rid of code duplication
+
+    old_cwd = os.getcwd()
+    snakefile = snakefile.resolve()
+    try:
+        os.chdir(pkg_root)
+
+        workflow = snakemake_workflow_extractor(pkg_root, snakefile)
+
         dag = workflow.extract_dag()
         wf = SnakemakeWorkflow(dag, version)
         wf.compile()
@@ -280,6 +310,7 @@ def generate_jit_register_code(
            import google.protobuf.json_format as gpjson
            import gql
            import requests
+           import hashlib
            from flyteidl.core import literals_pb2 as _literals_pb2
            from flytekit.core import utils
            from flytekit.core.context_manager import FlyteContext
@@ -320,7 +351,9 @@ def generate_jit_register_code(
         wf.remote_output_url,
     )
 
-    entrypoint = pkg_root.joinpath(".latch/jit_entrypoint.py")
-    with open(entrypoint, "w") as f:
-        f.write(code_block)
+    entrypoint = pkg_root / ".latch" / "jit_entrypoint.py"
+    entrypoint.parent.mkdir(parents=True, exist_ok=True)
+
+    entrypoint.write_text(code_block)
+
     return entrypoint

@@ -1,5 +1,6 @@
 import base64
 import contextlib
+import importlib.util as iu
 import io
 import os
 import typing
@@ -68,6 +69,7 @@ def build_image(
         tag=f"{ctx.dkr_repo}/{image_name}",
         decode=True,
     )
+    print(f"Built workflow image {ctx.dkr_repo}/{image_name}")
 
     return build_logs
 
@@ -144,3 +146,14 @@ def register_serialized_pkg(
         )
 
         return response.json()
+
+
+def import_module_by_path(x: Path):
+    spec = iu.spec_from_file_location("metadata", x)
+    assert spec is not None
+    assert spec.loader is not None
+
+    module = iu.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    return module

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import List, Optional
 
 import click
+from asyncssh import SSHAcceptor
 from scp import SCPClient
 
 from ...centromere.ctx import _CentromereCtx
@@ -14,6 +15,7 @@ from ...utils import WorkflowType, current_workspace
 from ..register.constants import ANSI_REGEX, MAX_LINES
 from ..register.utils import (
     build_image,
+    import_module_by_path,
     register_serialized_pkg,
     serialize_pkg_in_container,
     upload_image,
@@ -152,18 +154,25 @@ def _build_and_serialize(
 ):
     assert ctx.pkg_root is not None
 
-    jit_wf = None
     if ctx.workflow_type == WorkflowType.snakemake:
         assert ctx.snakefile is not None
         assert ctx.version is not None
+        assert ctx.dkr_repo is not None
 
         from ...snakemake.serialize import (
-            extract_snakemake_workflow,
             generate_jit_register_code,
+            serialize_jit_register_workflow,
+            snakemake_workflow_extractor,
         )
+        from ...snakemake.workflow import build_jit_register_wrapper
 
-        wf = extract_snakemake_workflow(ctx.pkg_root, ctx.snakefile)
-        jit_wf = wf.build_jit_register_wrapper()
+        # todo(maximsmol): maybe switch to using a metadata file
+        # metadata_module = import_module_by_path(context_path / "metadata.py")
+
+        ex = snakemake_workflow_extractor(ctx.pkg_root, ctx.snakefile)
+        # todo(maximsmol): use ex.config to populate default args
+
+        jit_wf = build_jit_register_wrapper()
         generate_jit_register_code(
             jit_wf,
             ctx.pkg_root,
@@ -173,28 +182,28 @@ def _build_and_serialize(
             current_workspace(),
         )
 
+        image_build_logs = build_image(ctx, image_name, context_path, dockerfile)
+        print_and_write_build_logs(image_build_logs, image_name, ctx.pkg_root)
+
+        serialize_jit_register_workflow(jit_wf, tmp_dir, image_name, ctx.dkr_repo)
+
+        upload_image_logs = upload_image(ctx, image_name)
+        print_upload_logs(upload_image_logs, image_name)
+
+        return
+
     image_build_logs = build_image(ctx, image_name, context_path, dockerfile)
     print_and_write_build_logs(image_build_logs, image_name, ctx.pkg_root)
 
-    if ctx.workflow_type == WorkflowType.snakemake:
-        assert jit_wf is not None
-        assert ctx.dkr_repo is not None
+    serialize_logs, container_id = serialize_pkg_in_container(ctx, image_name, tmp_dir)
+    print_serialize_logs(serialize_logs, image_name)
 
-        from ...snakemake.serialize import serialize_jit_register_workflow
-
-        serialize_jit_register_workflow(jit_wf, tmp_dir, image_name, ctx.dkr_repo)
-    else:
-        serialize_logs, container_id = serialize_pkg_in_container(
-            ctx, image_name, tmp_dir
+    assert ctx.dkr_client is not None
+    exit_status = ctx.dkr_client.wait(container_id)
+    if exit_status["StatusCode"] != 0:
+        raise ValueError(
+            f"Serialization exited with nonzero exit code: {exit_status['Error']}"
         )
-        print_serialize_logs(serialize_logs, image_name)
-
-        assert ctx.dkr_client is not None
-        exit_status = ctx.dkr_client.wait(container_id)
-        if exit_status["StatusCode"] != 0:
-            raise ValueError(
-                f"Serialization exited with nonzero exit code: {exit_status['Error']}"
-            )
 
     upload_image_logs = upload_image(ctx, image_name)
     print_upload_logs(upload_image_logs, image_name)
@@ -270,6 +279,10 @@ def register(
     """
 
     if snakefile is not None:
+        if remote:
+            print("Cannot use remote builds with Snakemake, switching to a local build")
+            remote = False
+
         try:
             import snakemake
         except ImportError as e:
