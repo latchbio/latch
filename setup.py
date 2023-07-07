@@ -13,7 +13,7 @@ if cur_ver < (3, 8) or cur_ver > (3, 10):
 
 setup(
     name="latch",
-    version="v2.25.2",
+    version="v2.26.0",
     author_email="kenny@latch.bio",
     description="The Latch SDK",
     packages=find_packages(),
@@ -43,6 +43,11 @@ setup(
         "requests-toolbelt==0.10.1",
         "latch-sdk-gql==0.0.2",
         "latch-sdk-config==0.0.1",
+        # for old latch develop, to be removed
+        "aioconsole==0.6.1",
+        "asyncssh==2.13.2",
+        "websockets==11.0.3",
+        "watchfiles==0.19.0",
     ],
     classifiers=[
         "Programming Language :: Python :: 3.8",

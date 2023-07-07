@@ -3,7 +3,6 @@
 import os
 import textwrap
 from collections import OrderedDict
-from enum import Flag
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -22,8 +21,6 @@ from latch_cli.utils import get_latest_package_version, get_local_package_versio
 from latch_cli.workflow_config import BaseImageOptions
 
 latch_cli.click_utils.patch()
-
-from latch_cli.constants import latch_constants, units
 
 crash_handler = CrashHandler()
 
@@ -161,11 +158,16 @@ def local_development(
     crash_handler.message = "Error during local development session"
     crash_handler.pkg_root = str(pkg_root)
 
-    from latch_cli.services.local_dev import local_development
+    if os.environ.get("LATCH_DEVELOP_BETA") is not None:
+        from latch_cli.services.local_dev import local_development
 
-    local_development(
-        pkg_root.resolve(), skip_confirm_dialog=yes, size=size, image=image
-    )
+        local_development(
+            pkg_root.resolve(), skip_confirm_dialog=yes, size=size, image=image
+        )
+    else:
+        from latch_cli.services.local_dev_old import local_development
+
+        local_development(pkg_root.resolve())
 
 
 @main.command("login")
