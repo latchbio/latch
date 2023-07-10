@@ -1,14 +1,19 @@
+import re
 from os import PathLike
 from typing import Optional, Type, Union
 
+import gql
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.models.literals import Literal
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
+from latch_sdk_gql.execute import execute
 from typing_extensions import Annotated
 
 from latch.types.utils import _is_valid_url
+
+is_absolute_node_path = re.compile(r"^latch://\d+.node$")
 
 
 class LatchFile(FlyteFile):
@@ -78,7 +83,27 @@ class LatchFile(FlyteFile):
                     # todo(kenny) is this necessary?
                     and ctx.inspect_objects_only is False
                 ):
-                    self.path = ctx.file_access.get_random_local_path(self._remote_path)
+                    local_path_hint = self._remote_path
+                    if is_absolute_node_path.match(self._remote_path) is not None:
+                        data = execute(
+                            gql.gql(
+                                """
+                            query nodeIdQ($argPath: String!) {
+                                ldataResolvePathData(
+                                    path: $argPath
+                                ) {
+                                    name
+                                }
+                            }
+                            """
+                            ),
+                            {"argPath": self._remote_path},
+                        )["ldataResolvePathData"]
+
+                        if data["name"] is not None:
+                            local_path_hint = data["name"]
+
+                    self.path = ctx.file_access.get_random_local_path(local_path_hint)
                     return ctx.file_access.get_data(
                         self._remote_path,
                         self.path,
