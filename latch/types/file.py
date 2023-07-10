@@ -13,7 +13,7 @@ from typing_extensions import Annotated
 
 from latch.types.utils import _is_valid_url
 
-is_absolute_node_path = re.compile(r"^latch://\d+.node$")
+is_absolute_node_path = re.compile(r"^(latch)?://\d+.node(/)?$")
 
 
 class LatchFile(FlyteFile):
@@ -100,7 +100,7 @@ class LatchFile(FlyteFile):
                             {"argPath": self._remote_path},
                         )["ldataResolvePathData"]
 
-                        if data["name"] is not None:
+                        if data is not None and data["name"] is not None:
                             local_path_hint = data["name"]
 
                     self.path = ctx.file_access.get_random_local_path(local_path_hint)
