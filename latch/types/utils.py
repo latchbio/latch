@@ -14,6 +14,6 @@ def _is_valid_url(raw_url: Union[str, Path]) -> bool:
         return False
     if parsed.scheme not in ("latch", "s3"):
         return False
-    if not parsed.path.startswith("/"):
+    if parsed.path != "" and not parsed.path.startswith("/"):
         return False
     return True
