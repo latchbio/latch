@@ -89,10 +89,8 @@ class LatchFile(FlyteFile):
                         data = execute(
                             gql.gql(
                                 """
-                            query nodeIdQ($argPath: String!) {
-                                ldataResolvePathData(
-                                    path: $argPath
-                                ) {
+                            query getName($argPath: String!) {
+                                ldataResolvePathData(argPath: $argPath) {
                                     name
                                 }
                             }
