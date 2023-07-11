@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.26.2 - 2023-07-11
+
+### Fixed
+
+- Fix unclosed file in `lytekit` upload code
+
 ## 2.26.1 - 2023-07-10
 
 ### Fixed
