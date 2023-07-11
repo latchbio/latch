@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.26.1 - 2023-07-10
+
+### Fixed
+
+- LatchFiles accessed through registry are downloaded to a file with the same name as the file on latch
+
 ## 2.26.0 - 2023-07-07
 
 ### Changed
