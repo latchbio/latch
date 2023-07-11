@@ -85,6 +85,7 @@ class LatchFile(FlyteFile):
                 ):
                     local_path_hint = self._remote_path
                     if is_absolute_node_path.match(self._remote_path) is not None:
+                        print("absolute node path")
                         data = execute(
                             gql.gql(
                                 """
@@ -100,10 +101,17 @@ class LatchFile(FlyteFile):
                             {"argPath": self._remote_path},
                         )["ldataResolvePathData"]
 
+                        print("data", data)
+
                         if data is not None and data["name"] is not None:
                             local_path_hint = data["name"]
+                    else:
+                        print("not absolute node path")
+
+                    print("local_path_hint", local_path_hint)
 
                     self.path = ctx.file_access.get_random_local_path(local_path_hint)
+                    print(self.path)
                     return ctx.file_access.get_data(
                         self._remote_path,
                         self.path,
