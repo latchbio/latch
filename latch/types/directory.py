@@ -151,6 +151,9 @@ class LatchDir(FlyteDirectory):
         for node in res["finalLinkTarget"]["childLdataTreeEdges"]["nodes"]:
             child = node["child"]
 
+            print(self.remote_path)
+            print(child["name"])
+
             path = urljoins(self.remote_path, child["name"])
             if child["type"] == "DIR":
                 ret.append(LatchDir(path))

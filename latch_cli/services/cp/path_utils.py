@@ -9,12 +9,6 @@ from latch_sdk_config.user import user_config
 from latch_cli.services.cp.exceptions import PathResolutionError
 from latch_cli.services.cp.utils import get_auth_header
 
-# todo(ayush): need a better way to check if "latch" has been appended to urllib
-if "latch" not in urllib.parse.uses_netloc:
-    urllib.parse.uses_netloc.append("latch")
-    urllib.parse.uses_relative.append("latch")
-
-
 latch_url_regex = re.compile(r"^(latch)?://")
 
 

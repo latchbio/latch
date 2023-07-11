@@ -3,6 +3,7 @@
 import hashlib
 import os
 import subprocess
+import urllib.parse
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List
@@ -13,6 +14,11 @@ from latch_sdk_config.user import user_config
 
 from latch_cli.constants import latch_constants
 from latch_cli.tinyrequests import get
+
+# todo(ayush): need a better way to check if "latch" has been appended to urllib
+if "latch" not in urllib.parse.uses_netloc:
+    urllib.parse.uses_netloc.append("latch")
+    urllib.parse.uses_relative.append("latch")
 
 
 def urljoins(*args: str, dir: bool = False) -> str:
