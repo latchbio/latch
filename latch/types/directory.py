@@ -144,9 +144,7 @@ class LatchDir(FlyteDirectory):
         )["ldataResolvePathData"]
 
         if res is None:
-            # todo(ayush): this only happens if there is no node at this path
-            # should we throw an error here instead?
-            return ret
+            raise ValueError(f"No directory found at path: {self}")
 
         for node in res["finalLinkTarget"]["childLdataTreeEdges"]["nodes"]:
             child = node["child"]
