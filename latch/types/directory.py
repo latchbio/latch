@@ -1,4 +1,5 @@
 from os import PathLike
+from pathlib import Path
 from typing import List, Optional, Type, TypedDict, Union, get_args, get_origin
 
 import gql
@@ -15,15 +16,12 @@ from typing_extensions import Annotated
 
 from latch.types.file import LatchFile
 from latch.types.utils import _is_valid_url
-
-
-class ChildInfo(TypedDict):
-    type: str
-    id: str
+from latch_cli.utils import urljoins
 
 
 class Child(TypedDict):
-    finalLinkTarget: ChildInfo
+    type: str
+    name: str
 
 
 class ChildLdataTreeEdge(TypedDict):
@@ -115,6 +113,17 @@ class LatchDir(FlyteDirectory):
             super().__init__(self.path, downloader, self._remote_directory)
 
     def iterdir(self) -> List[Union[LatchFile, "LatchDir"]]:
+        ret: List[Union[LatchFile, "LatchDir"]] = []
+
+        if self.remote_path is None:
+            for child in Path(self.path).iterdir():
+                if child.is_dir():
+                    ret.append(LatchDir(str(child)))
+                else:
+                    ret.append(LatchFile(str(child)))
+
+            return ret
+
         res: Optional[LdataResolvePathData] = execute(
             gql.gql("""
             query LDataChildren($argPath: String!) {
@@ -123,10 +132,8 @@ class LatchDir(FlyteDirectory):
                         childLdataTreeEdges(filter: { child: { removed: { equalTo: false } } }) {
                             nodes {
                                 child {
-                                    finalLinkTarget {
-                                        id
-                                        type
-                                    }
+                                    name
+                                    type
                                 }
                             }
                         }
@@ -139,13 +146,12 @@ class LatchDir(FlyteDirectory):
         if res is None:
             # todo(ayush): this only happens if there is no node at this path
             # should we throw an error here instead?
-            return []
+            return ret
 
-        ret: List[Union[LatchFile, "LatchDir"]] = []
         for node in res["finalLinkTarget"]["childLdataTreeEdges"]["nodes"]:
-            child = node["child"]["finalLinkTarget"]
+            child = node["child"]
 
-            path = f"latch://{child['id']}.node"
+            path = urljoins(self.remote_path, child["name"])
             if child["type"] == "DIR":
                 ret.append(LatchDir(path))
             else:

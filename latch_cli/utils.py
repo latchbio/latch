@@ -6,12 +6,47 @@ import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List
+from urllib.parse import urljoin
 
 import jwt
 from latch_sdk_config.user import user_config
 
 from latch_cli.constants import latch_constants
 from latch_cli.tinyrequests import get
+
+
+def urljoins(*args: str, dir: bool = False) -> str:
+    """Construct a URL by appending paths
+
+    Paths are always joined, with extra `/`s added if missing. Does not allow
+    overriding basenames as opposed to normal `urljoin`. Whether the final
+    path ends in a `/` is still significant and will be preserved in the output
+
+    >>> urljoin("latch:///directory/", "another_directory")
+    latch:///directory/another_directory
+    >>> # No slash means "another_directory" is treated as a filename
+    >>> urljoin(urljoin("latch:///directory/", "another_directory"), "file")
+    latch:///directory/file
+    >>> # Unintentionally overrode the filename
+    >>> urljoins("latch:///directory/", "another_directory", "file")
+    latch:///directory/another_directory/file
+    >>> # Joined paths as expected
+
+    Args:
+        args: Paths to join
+        dir: If true, ensure the output ends with a `/`
+    """
+
+    res = args[0]
+    for x in args[1:]:
+        if res[-1] != "/":
+            res = f"{res}/"
+        res = urljoin(res, x)
+
+    if dir and res[-1] != "/":
+        res = f"{res}/"
+
+    return res
 
 
 def retrieve_or_login() -> str:
