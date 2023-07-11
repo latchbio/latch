@@ -1,6 +1,7 @@
 from os import PathLike
-from typing import Optional, Type, Union, get_args, get_origin
+from typing import List, Optional, Type, TypedDict, Union, get_args, get_origin
 
+import gql
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
@@ -9,13 +10,36 @@ from flytekit.types.directory.types import (
     FlyteDirectory,
     FlyteDirToMultipartBlobTransformer,
 )
+from latch_sdk_gql.execute import execute
+from typing_extensions import Annotated
 
+from latch.types.file import LatchFile
 from latch.types.utils import _is_valid_url
 
-try:
-    from typing import Annotated
-except ImportError:
-    from typing_extensions import Annotated
+
+class ChildInfo(TypedDict):
+    type: str
+    id: str
+
+
+class Child(TypedDict):
+    finalLinkTarget: ChildInfo
+
+
+class ChildLdataTreeEdge(TypedDict):
+    child: Child
+
+
+class ChildLdataTreeEdges(TypedDict):
+    nodes: List[ChildLdataTreeEdge]
+
+
+class LDataResolvePathFinalLinkTarget(TypedDict):
+    childLdataTreeEdges: ChildLdataTreeEdges
+
+
+class LdataResolvePathData(TypedDict):
+    finalLinkTarget: LDataResolvePathFinalLinkTarget
 
 
 class LatchDir(FlyteDirectory):
@@ -89,6 +113,45 @@ class LatchDir(FlyteDirectory):
                     )
 
             super().__init__(self.path, downloader, self._remote_directory)
+
+    def iterdir(self) -> List[Union[LatchFile, "LatchDir"]]:
+        res: Optional[LdataResolvePathData] = execute(
+            gql.gql("""
+            query LDataChildren($argPath: String!) {
+                ldataResolvePathData(argPath: $argPath) {
+                    finalLinkTarget {
+                        childLdataTreeEdges(filter: { child: { removed: { equalTo: false } } }) {
+                            nodes {
+                                child {
+                                    finalLinkTarget {
+                                        id
+                                        type
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }"""),
+            {"argPath": self.remote_path},
+        )["ldataResolvePathData"]
+
+        if res is None:
+            # todo(ayush): this only happens if there is no node at this path
+            # should we throw an error here instead?
+            return []
+
+        ret: List[Union[LatchFile, "LatchDir"]] = []
+        for node in res["finalLinkTarget"]["childLdataTreeEdges"]["nodes"]:
+            child = node["child"]["finalLinkTarget"]
+
+            path = f"latch://{child['id']}.node"
+            if child["type"] == "DIR":
+                ret.append(LatchDir(path))
+            else:
+                ret.append(LatchFile(path))
+
+        return ret
 
     @property
     def local_path(self) -> str:
