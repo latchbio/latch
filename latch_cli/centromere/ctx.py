@@ -199,7 +199,7 @@ class _CentromereCtx:
         else:
             account_id = self.account_id
 
-        return f"{account_id}_{self.pkg_root.name}"
+        return f"{account_id}_{self.pkg_root.name.lower()}"
 
     @property
     def image_tagged(self):

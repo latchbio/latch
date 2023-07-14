@@ -1,10 +1,13 @@
 import base64
+import collections
 import contextlib
+import importlib.util as iu
 import io
 import os
 import typing
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, TypedDict, Union
 
 import boto3
 import requests
@@ -52,12 +55,18 @@ def _docker_login(ctx: _CentromereCtx):
     )
 
 
+class DockerBuildLogItem(TypedDict):
+    message: Optional[str]
+    error: Optional[str]
+    stream: Optional[str]
+
+
 def build_image(
     ctx: _CentromereCtx,
     image_name: str,
     context_path: Path,
     dockerfile: Optional[Path] = None,
-) -> List[str]:
+) -> Iterable[DockerBuildLogItem]:
     assert ctx.dkr_client is not None
 
     _docker_login(ctx)
@@ -144,3 +153,14 @@ def register_serialized_pkg(
         )
 
         return response.json()
+
+
+def import_module_by_path(x: Path):
+    spec = iu.spec_from_file_location("metadata", x)
+    assert spec is not None
+    assert spec.loader is not None
+
+    module = iu.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    return module

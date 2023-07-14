@@ -96,6 +96,16 @@ def dockerfile(pkg_root: str):
     help="Use a remote server to build workflow.",
 )
 @click.option(
+    "--progress-plain",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help=(
+        "No special Docker build log handling. Equivalent to `docker build"
+        " --progress=plain`."
+    ),
+)
+@click.option(
     "-y",
     "--yes",
     is_flag=True,
@@ -113,6 +123,7 @@ def register(
     pkg_root: str,
     disable_auto_version: bool,
     remote: bool,
+    progress_plain: bool,
     yes: bool,
     snakefile: Optional[Path],
 ):
@@ -134,6 +145,7 @@ def register(
         remote=remote,
         skip_confirmation=yes,
         snakefile=snakefile,
+        progress_plain=progress_plain,
         use_new_centromere=use_new_centromere,
     )
 

@@ -116,8 +116,18 @@ class CrashHandler:
             print(f"{self.message} - printing traceback:\n")
             _Traceback(type_, value, traceback).pretty_print()
             print(self.metadata)
-            if click.confirm("Generate a crash report?"):
-                print("Generating...")
-                self._write_state_to_tarball()
+
+            if os.environ.get("LATCH_NO_CRASH_REPORT") == "1":
+                click.echo(
+                    "Not generating crash report due to $LATCH_NO_CRASH_REPORT",
+                    bold=True,
+                )
+                return
+
+            if not click.confirm("Generate a crash report?"):
+                return
+
+            print("Generating...")
+            self._write_state_to_tarball()
 
         sys.excepthook = _excepthook
