@@ -267,31 +267,30 @@ def generate_snakemake_entrypoint(
     snakefile: Path,
     remote_output_url: Optional[str] = None,
 ):
-    entrypoint_code_block = textwrap.dedent("""\
-           import os
-           from pathlib import Path
-           import shutil
-           import subprocess
-           from typing import NamedTuple
+    entrypoint_code_block = textwrap.dedent(r"""
+        import os
+        from pathlib import Path
+        import shutil
+        import subprocess
+        from typing import NamedTuple
 
-           from latch import small_task
-           from latch.types.file import LatchFile
+        from latch import small_task
+        from latch.types.file import LatchFile
 
-           def check_exists_and_rename(old: Path, new: Path):
-               if new.exists():
-                   print(f"A file already exists at {new} and will be overwritten.")
-                   if new.is_dir():
-                       shutil.rmtree(new)
-               os.renames(old, new)
-           """)
+        def check_exists_and_rename(old: Path, new: Path):
+            if new.exists():
+                print(f"A file already exists at {new} and will be overwritten.")
+                if new.is_dir():
+                    shutil.rmtree(new)
+            os.renames(old, new)
+    """).strip()
     for task in wf.snakemake_tasks:
         entrypoint_code_block += task.get_fn_code(
             snakefile_path_in_container(snakefile, pkg_root), remote_output_url
         )
 
-    entrypoint = pkg_root.joinpath("latch_entrypoint.py")
-    with open(entrypoint, "w") as f:
-        f.write(entrypoint_code_block)
+    entrypoint = pkg_root / "latch_entrypoint.py"
+    entrypoint.write_text(entrypoint_code_block + "\n")
 
 
 def generate_jit_register_code(
@@ -303,56 +302,56 @@ def generate_jit_register_code(
     account_id: str,
 ) -> Path:
     code_block = textwrap.dedent(r"""
-            import json
-            import os
-            import subprocess
-            import tempfile
-            import textwrap
-            import time
-            import sys
-            from functools import partial
-            from pathlib import Path
-            import shutil
-            from typing import List, NamedTuple, Optional, TypedDict
+        import json
+        import os
+        import subprocess
+        import tempfile
+        import textwrap
+        import time
+        import sys
+        from functools import partial
+        from pathlib import Path
+        import shutil
+        from typing import List, NamedTuple, Optional, TypedDict
 
-            import base64
-            import boto3
-            import google.protobuf.json_format as gpjson
-            import gql
-            import requests
-            from flytekit.core import utils
-            from flytekit.extras.persistence import LatchPersistence
-            from latch_cli import tinyrequests
-            from latch_cli.centromere.utils import _construct_dkr_client
-            from latch_sdk_config.latch import config
-            from latch_cli.services.register.register import (
-                _print_reg_resp,
-                _recursive_list,
-                register_serialized_pkg,
-                print_and_write_build_logs,
-                print_upload_logs,
-            )
-            from latch_cli.snakemake.serialize import (
-                extract_snakemake_workflow,
-                generate_snakemake_entrypoint,
-                serialize_snakemake,
-            )
+        import base64
+        import boto3
+        import google.protobuf.json_format as gpjson
+        import gql
+        import requests
+        from flytekit.core import utils
+        from flytekit.extras.persistence import LatchPersistence
+        from latch_cli import tinyrequests
+        from latch_cli.centromere.utils import _construct_dkr_client
+        from latch_sdk_config.latch import config
+        from latch_cli.services.register.register import (
+            _print_reg_resp,
+            _recursive_list,
+            register_serialized_pkg,
+            print_and_write_build_logs,
+            print_upload_logs,
+        )
+        from latch_cli.snakemake.serialize import (
+            extract_snakemake_workflow,
+            generate_snakemake_entrypoint,
+            serialize_snakemake,
+        )
 
-            from latch import small_task
-            from latch_sdk_gql.execute import execute
-            from latch.types.directory import LatchDir
-            from latch.types.file import LatchFile
+        from latch import small_task
+        from latch_sdk_gql.execute import execute
+        from latch.types.directory import LatchDir
+        from latch.types.file import LatchFile
 
-            sys.stdout.reconfigure(line_buffering=True)
-            sys.stderr.reconfigure(line_buffering=True)
+        sys.stdout.reconfigure(line_buffering=True)
+        sys.stderr.reconfigure(line_buffering=True)
 
-            def check_exists_and_rename(old: Path, new: Path):
-                if new.exists():
-                    print(f"A file already exists at {new} and will be overwritten.")
-                    if new.is_dir():
-                        shutil.rmtree(new)
-                os.renames(old, new)
-           """).strip()
+        def check_exists_and_rename(old: Path, new: Path):
+            if new.exists():
+                print(f"A file already exists at {new} and will be overwritten.")
+                if new.is_dir():
+                    shutil.rmtree(new)
+            os.renames(old, new)
+    """).strip()
     code_block += wf.get_fn_code(
         snakefile_path_in_container(snakefile, pkg_root),
         version,

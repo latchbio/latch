@@ -248,7 +248,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         return fn_interface
 
     def get_fn_return_stmt(self):
-        return "\n\treturn True"
+        return "\n    return True"
 
     def get_fn_code(
         self,
@@ -265,192 +265,190 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         for param, t in self.python_interface.inputs.items():
             if t in (LatchFile, LatchDir):
                 code_block += (
-                    f"\n\tcheck_exists_and_rename(Path({param}).resolve(),"
+                    f"\n    check_exists_and_rename(Path({param}).resolve(),"
                     f' Path("{self.parameter_metadata[param].path}"))'
                 )
             else:
                 raise ValueError(f"Unsupported parameter type {t} for {param}")
 
         code_block += textwrap.indent(
-            textwrap.dedent(f"""
-
-        image_name = "{image_name}"
-        account_id = "{account_id}"
-        snakefile = Path("{snakefile_path}")
-
-        """),
+            textwrap.dedent(rf"""
+                            image_name = "{image_name}"
+                            account_id = "{account_id}"
+                            snakefile = Path("{snakefile_path}")
+                            """),
             "    ",
         )
 
         if remote_output_url is not None:
             remote_output_url = f"'{remote_output_url}'"
         code_block += textwrap.indent(
-            textwrap.dedent(f"""
-        pkg_root = Path(".")
-        version = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
+            textwrap.dedent(rf"""
+                            pkg_root = Path(".")
+                            version = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
 
-        wf = extract_snakemake_workflow(pkg_root, snakefile, version)
-        wf_name = wf.name
-        generate_snakemake_entrypoint(wf, pkg_root, snakefile, {remote_output_url})
-        """),
+                            wf = extract_snakemake_workflow(pkg_root, snakefile, version)
+                            wf_name = wf.name
+                            generate_snakemake_entrypoint(wf, pkg_root, snakefile, {remote_output_url})
+                            """),
             "    ",
         )
 
         code_block += textwrap.indent(
-            textwrap.dedent("""
-        dockerfile = Path("Dockerfile-dynamic").resolve()
-        dockerfile.write_text(
-            textwrap.dedent(
-                f'''
-            from 812206152185.dkr.ecr.us-west-2.amazonaws.com/{image_name}
+            textwrap.dedent(r"""
+                            dockerfile = Path("Dockerfile-dynamic").resolve()
+                            dockerfile.write_text(
+                            textwrap.dedent(
+                                    f'''
+                                    from 812206152185.dkr.ecr.us-west-2.amazonaws.com/{image_name}
 
-            copy latch_entrypoint.py /root/latch_entrypoint.py
-            '''
-            )
-        )
-        new_image_name = f"{image_name}-{version}"
+                                    copy latch_entrypoint.py /root/latch_entrypoint.py
+                                    '''
+                                )
+                            )
+                            new_image_name = f"{image_name}-{version}"
 
-        os.mkdir("/root/.ssh")
-        ssh_key_path = Path("/root/.ssh/id_rsa")
-        cmd = ["ssh-keygen", "-f", ssh_key_path, "-N", "", "-q"]
-        try:
-            subprocess.run(cmd, check=True)
-        except subprocess.CalledProcessError as e:
-            raise ValueError(
-                "There was a problem creating temporary SSH credentials. Please ensure"
-                " that `ssh-keygen` is installed and available in your PATH."
-            ) from e
-        os.chmod(ssh_key_path, 0o700)
+                            os.mkdir("/root/.ssh")
+                            ssh_key_path = Path("/root/.ssh/id_rsa")
+                            cmd = ["ssh-keygen", "-f", ssh_key_path, "-N", "", "-q"]
+                            try:
+                                subprocess.run(cmd, check=True)
+                            except subprocess.CalledProcessError as e:
+                                raise ValueError(
+                                    "There was a problem creating temporary SSH credentials. Please ensure"
+                                    " that `ssh-keygen` is installed and available in your PATH."
+                                ) from e
+                            os.chmod(ssh_key_path, 0o700)
 
-        token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", "")
-        headers = {
-            "Authorization": f"Latch-Execution-Token {token}",
-        }
+                            token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", "")
+                            headers = {
+                                "Authorization": f"Latch-Execution-Token {token}",
+                            }
 
-        ssh_public_key_path = Path("/root/.ssh/id_rsa.pub")
-        response = tinyrequests.post(
-            config.api.centromere.provision,
-            headers=headers,
-            json={
-                "public_key": ssh_public_key_path.read_text().strip(),
-            },
-        )
+                            ssh_public_key_path = Path("/root/.ssh/id_rsa.pub")
+                            response = tinyrequests.post(
+                                config.api.centromere.provision,
+                                headers=headers,
+                                json={
+                                    "public_key": ssh_public_key_path.read_text().strip(),
+                                },
+                            )
 
-        resp = response.json()
-        try:
-            public_ip = resp["ip"]
-            username = resp["username"]
-        except KeyError as e:
-            raise ValueError(
-                f"Malformed response from request for centromere login: {resp}"
-            ) from e
-
-
-        subprocess.run(["ssh", "-o", "StrictHostKeyChecking=no", f"{username}@{public_ip}", "uptime"])
-        dkr_client = _construct_dkr_client(ssh_host=f"ssh://{username}@{public_ip}")
-
-        data = {"pkg_name": new_image_name.split(":")[0], "ws_account_id": account_id}
-        response = requests.post(config.api.workflow.upload_image, headers=headers, json=data)
-
-        try:
-            response = response.json()
-            access_key = response["tmp_access_key"]
-            secret_key = response["tmp_secret_key"]
-            session_token = response["tmp_session_token"]
-        except KeyError as err:
-            raise ValueError(f"malformed response on image upload: {response}") from err
-
-        try:
-            client = boto3.session.Session(
-                aws_access_key_id=access_key,
-                aws_secret_access_key=secret_key,
-                aws_session_token=session_token,
-                region_name="us-west-2",
-            ).client("ecr")
-            token = client.get_authorization_token()["authorizationData"][0][
-                "authorizationToken"
-            ]
-        except Exception as err:
-            raise ValueError(
-                f"unable to retreive an ecr login token for user {account_id}"
-            ) from err
-
-        user, password = base64.b64decode(token).decode("utf-8").split(":")
-        dkr_client.login(
-            username=user,
-            password=password,
-            registry=config.dkr_repo,
-        )
-
-        image_build_logs = dkr_client.build(
-            path=str(pkg_root),
-            dockerfile=str(dockerfile),
-            buildargs={"tag": f"{config.dkr_repo}/{new_image_name}"},
-            tag=f"{config.dkr_repo}/{new_image_name}",
-            decode=True,
-        )
-        print_and_write_build_logs(image_build_logs, new_image_name, pkg_root)
-
-        upload_image_logs = dkr_client.push(
-            repository=f"{config.dkr_repo}/{new_image_name}",
-            stream=True,
-            decode=True,
-        )
-        print_upload_logs(upload_image_logs, new_image_name)
-
-        temp_dir = tempfile.TemporaryDirectory()
-        with Path(temp_dir.name).resolve() as td:
-            serialize_snakemake(wf, td, new_image_name, config.dkr_repo)
-
-            protos = _recursive_list(td)
-            reg_resp = register_serialized_pkg(protos, None, version, account_id)
-            _print_reg_resp(reg_resp, new_image_name)
+                            resp = response.json()
+                            try:
+                                public_ip = resp["ip"]
+                                username = resp["username"]
+                            except KeyError as e:
+                                raise ValueError(
+                                    f"Malformed response from request for centromere login: {resp}"
+                                ) from e
 
 
-        class _WorkflowInfoNode(TypedDict):
-            id: str
+                            subprocess.run(["ssh", "-o", "StrictHostKeyChecking=no", f"{username}@{public_ip}", "uptime"])
+                            dkr_client = _construct_dkr_client(ssh_host=f"ssh://{username}@{public_ip}")
+
+                            data = {"pkg_name": new_image_name.split(":")[0], "ws_account_id": account_id}
+                            response = requests.post(config.api.workflow.upload_image, headers=headers, json=data)
+
+                            try:
+                                response = response.json()
+                                access_key = response["tmp_access_key"]
+                                secret_key = response["tmp_secret_key"]
+                                session_token = response["tmp_session_token"]
+                            except KeyError as err:
+                                raise ValueError(f"malformed response on image upload: {response}") from err
+
+                            try:
+                                client = boto3.session.Session(
+                                    aws_access_key_id=access_key,
+                                    aws_secret_access_key=secret_key,
+                                    aws_session_token=session_token,
+                                    region_name="us-west-2",
+                                ).client("ecr")
+                                token = client.get_authorization_token()["authorizationData"][0][
+                                    "authorizationToken"
+                                ]
+                            except Exception as err:
+                                raise ValueError(
+                                    f"unable to retreive an ecr login token for user {account_id}"
+                                ) from err
+
+                            user, password = base64.b64decode(token).decode("utf-8").split(":")
+                            dkr_client.login(
+                                username=user,
+                                password=password,
+                                registry=config.dkr_repo,
+                            )
+
+                            image_build_logs = dkr_client.build(
+                                path=str(pkg_root),
+                                dockerfile=str(dockerfile),
+                                buildargs={"tag": f"{config.dkr_repo}/{new_image_name}"},
+                                tag=f"{config.dkr_repo}/{new_image_name}",
+                                decode=True,
+                            )
+                            print_and_write_build_logs(image_build_logs, new_image_name, pkg_root)
+
+                            upload_image_logs = dkr_client.push(
+                                repository=f"{config.dkr_repo}/{new_image_name}",
+                                stream=True,
+                                decode=True,
+                            )
+                            print_upload_logs(upload_image_logs, new_image_name)
+
+                            temp_dir = tempfile.TemporaryDirectory()
+                            with Path(temp_dir.name).resolve() as td:
+                                serialize_snakemake(wf, td, new_image_name, config.dkr_repo)
+
+                                protos = _recursive_list(td)
+                                reg_resp = register_serialized_pkg(protos, None, version, account_id)
+                                _print_reg_resp(reg_resp, new_image_name)
 
 
-        nodes: Optional[List[_WorkflowInfoNode]] = None
-        while not nodes:
-            time.sleep(1)
-            nodes = execute(
-                gql.gql('''
-                query workflowQuery($name: String, $ownerId: BigInt, $version: String) {
-                  workflowInfos(condition: { name: $name, ownerId: $ownerId, version: $version}) {
-                      nodes {
-                        id
-                    }
-                  }
-                }
-                '''),
-                {"name": wf_name, "version": version, "ownerId": account_id},
-            )["workflowInfos"]["nodes"]
+                            class _WorkflowInfoNode(TypedDict):
+                                id: str
 
-        if len(nodes) > 1:
-            raise ValueError(
-                "Invariant violated - more than one workflow identified for unique combination"
-                " of {wf_name}, {version}, {account_id}"
-            )
 
-        print(nodes)
+                            nodes: Optional[List[_WorkflowInfoNode]] = None
+                            while not nodes:
+                                time.sleep(1)
+                                nodes = execute(
+                                    gql.gql('''
+                                    query workflowQuery($name: String, $ownerId: BigInt, $version: String) {
+                                    workflowInfos(condition: { name: $name, ownerId: $ownerId, version: $version}) {
+                                        nodes {
+                                            id
+                                        }
+                                    }
+                                    }
+                                    '''),
+                                    {"name": wf_name, "version": version, "ownerId": account_id},
+                                )["workflowInfos"]["nodes"]
 
-        lp = LatchPersistence()
-        for file in wf.return_files:
-            print(f"Uploading {file.local_path} -> {file.remote_path}")
-            lp.upload(file.local_path, file.remote_path)
+                            if len(nodes) > 1:
+                                raise ValueError(
+                                    "Invariant violated - more than one workflow identified for unique combination"
+                                    " of {wf_name}, {version}, {account_id}"
+                                )
 
-        wf_id = nodes[0]["id"]
-        params = json.loads(gpjson.MessageToJson(wf.literal_map.to_flyte_idl()))["literals"]
+                            print(nodes)
 
-        _interface_request = {
-            "workflow_id": wf_id,
-            "params": params,
-        }
+                            lp = LatchPersistence()
+                            for file in wf.return_files:
+                                print(f"Uploading {file.local_path} -> {file.remote_path}")
+                                lp.upload(file.local_path, file.remote_path)
 
-        response = requests.post(config.api.workflow.create_execution, headers=headers, json=_interface_request)
-        print(response.json())
-        """),
+                            wf_id = nodes[0]["id"]
+                            params = json.loads(gpjson.MessageToJson(wf.literal_map.to_flyte_idl()))["literals"]
+
+                            _interface_request = {
+                                "workflow_id": wf_id,
+                                "params": params,
+                            }
+
+                            response = requests.post(config.api.workflow.create_execution, headers=headers, json=_interface_request)
+                            print(response.json())
+                            """),
             "    ",
         )
         code_block += self.get_fn_return_stmt()
@@ -745,7 +743,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         return fn_interface
 
     def get_fn_return_stmt(self, remote_output_url: Optional[str] = None):
-        return_stmt = "\n\treturn ("
+        return_stmt = "\n    return ("
         for i, x in enumerate(self._python_outputs):
             if self._is_target:
                 target_path = self._target_file_for_output_param[x]
@@ -773,7 +771,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         for param, t in self._python_inputs.items():
             if t == LatchFile:
                 code_block += (
-                    f"\n\tcheck_exists_and_rename(Path({param}).resolve(),"
+                    f"\n    check_exists_and_rename(Path({param}).resolve(),"
                     f' Path("{self._target_file_for_input_param[param]}"))'
                 )
 
@@ -804,7 +802,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             for resource, value in allowed_resources:
                 snakemake_cmd.append(f"{resource}={value}")
 
-        code_block += f"\n\n\tsubprocess.run({repr(snakemake_cmd)}, check=True)"
+        code_block += f"\n\n    subprocess.run({repr(snakemake_cmd)}, check=True)"
 
         code_block += self.get_fn_return_stmt(remote_output_url=remote_output_url)
         return code_block
