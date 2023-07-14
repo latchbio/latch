@@ -15,8 +15,9 @@ import latch.types.metadata as metadata
 from ...centromere.ctx import _CentromereCtx
 from ...centromere.utils import MaybeRemoteDir
 from ...utils import WorkflowType, current_workspace
-from ..register.constants import ANSI_REGEX, MAX_LINES
-from ..register.utils import (
+from ..workspace import _get_workspaces
+from .constants import ANSI_REGEX, MAX_LINES
+from .utils import (
     DockerBuildLogItem,
     build_image,
     import_module_by_path,
@@ -24,7 +25,6 @@ from ..register.utils import (
     serialize_pkg_in_container,
     upload_image,
 )
-from ..workspace import _get_workspaces
 
 
 def _delete_lines(num: int):
@@ -148,7 +148,7 @@ def print_upload_logs(upload_image_logs, image):
 
 
 def _print_reg_resp(resp, image):
-    click.secho("Registering workflow", bold=True)
+    click.secho(f"Registering workflow {image}", bold=True)
     version = image.split(":")[1]
 
     if not resp.get("success"):

@@ -59,7 +59,12 @@ def get_prologue(config: LatchWorkflowConfig) -> List[str]:
         "",
         "# Latch SDK",
         "# DO NOT REMOVE",
-        f"run pip install latch=={config.latch_version}",
+        # f"run pip install latch=={config.latch_version}",
+        "run apt-get update --yes && apt-get install --yes git",
+        (
+            "run pip install"
+            " 'git+https://github.com/latchbio/latch.git@maximsmol/snakekit-1'"
+        ),
         "run mkdir /opt/latch",
     ]
 
