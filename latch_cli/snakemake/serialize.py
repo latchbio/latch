@@ -31,6 +31,8 @@ from latch_cli.snakemake.workflow import (
     interface_to_parameters,
 )
 
+from ..services.register.utils import import_module_by_path
+
 RegistrableEntity = Union[
     task_models.TaskSpec,
     launch_plan_models.LaunchPlan,
@@ -44,37 +46,40 @@ def should_register_with_admin(entity: RegistrableEntity) -> bool:
 
 def ensure_snakemake_metadata_exists():
     if metadata._snakemake_metadata is None:
-        raise ValueError(dedent("""
+        click.secho(
+            dedent("""
+                    No `SnakemakeMetadata` object was detected in your Snakefile. This
+                    object needs to be defined to register this workflow with Latch.
 
-        No `SnakemakeMetadata` object was detected in your Snakefile. This
-        object needs to be defined to register this workflow with Latch.
+                    You can paste the following in the top of your Snakefile to get
+                    started:
 
-        You can paste the following in the top of your Snakefile to get
-        started:
+                    ```
+                    from pathlib import Path
+                    from latch.types.metadata import SnakemakeMetadata, SnakemakeFileParameter
+                    from latch.types.file import LatchFile
+                    from latch.types.metadata import LatchAuthor, LatchMetadata
 
-        ```
-        from pathlib import Path
-        from latch.types.metadata import SnakemakeMetadata, SnakemakeFileParameter
-        from latch.types.file import LatchFile
-        from latch.types.metadata import LatchAuthor, LatchMetadata
+                    SnakemakeMetadata(
+                        display_name="My Snakemake Workflow",
+                        author=LatchAuthor(
+                                name="John Doe",
+                        ),
+                        parameters={
+                            "foo" : SnakemakeFileParameter(
+                                    display_name="Some Param",
+                                    type=LatchFile,
+                                    path=Path("foo.txt"),
+                            )
+                        }
+                    )
+                    ```
 
-        SnakemakeMetadata(
-            display_name="My Snakemake Workflow",
-            author=LatchAuthor(
-                    name="John Doe",
-            ),
-            parameters={
-                "foo" : SnakemakeFileParameter(
-                        display_name="Some Param",
-                        type=LatchFile,
-                        path=Path("foo.txt"),
-                )
-            }
+                    Find more information at docs.latch.bio.
+                    """),
+            bold=True,
+            fg="red",
         )
-        ```
-
-        Find more information at docs.latch.bio.
-        """))
 
 
 class SnakemakeWorkflowExtractor(Workflow):
@@ -141,6 +146,10 @@ def snakemake_workflow_extractor(
     pkg_root: Path, snakefile: Path, version: Optional[str] = None
 ) -> SnakemakeWorkflowExtractor:
     snakefile = snakefile.resolve()
+
+    meta = pkg_root / "latch_metadata.py"
+    if meta.exists():
+        import_module_by_path(meta)
 
     extractor = SnakemakeWorkflowExtractor(
         pkg_root=pkg_root,

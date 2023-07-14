@@ -279,7 +279,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         snakefile = Path("{snakefile_path}")
 
         """),
-            "\t",
+            "    ",
         )
 
         if remote_output_url is not None:
@@ -293,7 +293,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         wf_name = wf.name
         generate_snakemake_entrypoint(wf, pkg_root, snakefile, {remote_output_url})
         """),
-            "\t",
+            "    ",
         )
 
         code_block += textwrap.indent(
@@ -451,7 +451,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         response = requests.post(config.api.workflow.create_execution, headers=headers, json=_interface_request)
         print(response.json())
         """),
-            "\t",
+            "    ",
         )
         code_block += self.get_fn_return_stmt()
         return code_block
