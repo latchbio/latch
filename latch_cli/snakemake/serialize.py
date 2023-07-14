@@ -16,6 +16,7 @@ from snakemake.dag import DAG
 from snakemake.persistence import Persistence
 from snakemake.rules import Rule
 from snakemake.workflow import Workflow, WorkflowError
+from typing_extensions import Self
 
 import latch.types.metadata as metadata
 from latch_cli.snakemake.serialize_utils import (
@@ -51,6 +52,7 @@ def ensure_snakemake_metadata_exists():
         started:
 
         ```
+        from pathlib import Path
         from latch.types.metadata import SnakemakeMetadata, SnakemakeFileParameter
         from latch.types.file import LatchFile
         from latch.types.metadata import LatchAuthor, LatchMetadata
@@ -74,69 +76,95 @@ def ensure_snakemake_metadata_exists():
         """))
 
 
-def extract_snakemake_workflow(
-    pkg_root: Path, snakefile: Path, version: Optional[str] = None
-) -> SnakemakeWorkflow:
-    class SnakemakeWorkflowExtractor(Workflow):
-        def __init__(self, snakefile: Path):
-            super().__init__(snakefile=snakefile)
+class SnakemakeWorkflowExtractor(Workflow):
+    def __init__(self, pkg_root: Path, snakefile: Path):
+        super().__init__(snakefile=snakefile)
 
-        def extract_dag(self):
-            targets: List[str] = (
-                [self.default_target] if self.default_target is not None else []
-            )
-            target_rules: Set[Rule] = set(
-                map(self._rules.__getitem__, filter(self.is_rule, targets))
-            )
+        self.pkg_root = pkg_root
+        self._old_cwd = ""
 
-            target_files = set()
-            for f in filterfalse(self.is_rule, targets):
-                if os.path.isabs(f) or f.startswith("root://"):
-                    target_files.add(f)
-                else:
-                    target_files.add(os.path.relpath(f))
-
-            dag = DAG(
-                self,
-                self.rules,
-                targetfiles=target_files,
-                targetrules=target_rules,
-            )
-
-            self.persistence = Persistence(
-                dag=dag,
-            )
-
-            dag.init()
-            dag.update_checkpoint_dependencies()
-            dag.check_dynamic()
-
-            return dag
-
-    old_cwd = os.getcwd()
-    snakefile = snakefile.resolve()
-    try:
-        os.chdir(pkg_root)
-
-        workflow = SnakemakeWorkflowExtractor(
-            snakefile=snakefile,
+    def extract_dag(self):
+        targets: List[str] = (
+            [self.default_target] if self.default_target is not None else []
         )
-        workflow.include(
+        target_rules: Set[Rule] = set(
+            map(self._rules.__getitem__, filter(self.is_rule, targets))
+        )
+
+        target_files = set()
+        for f in filterfalse(self.is_rule, targets):
+            if os.path.isabs(f) or f.startswith("root://"):
+                target_files.add(f)
+            else:
+                target_files.add(os.path.relpath(f))
+
+        dag = DAG(
+            self,
+            self.rules,
+            targetfiles=target_files,
+            targetrules=target_rules,
+        )
+
+        self.persistence = Persistence(
+            dag=dag,
+        )
+
+        dag.init()
+        dag.update_checkpoint_dependencies()
+        dag.check_dynamic()
+
+        return dag
+
+    def __enter__(self) -> Self:
+        self._old_cwd = os.getcwd()
+        os.chdir(self.pkg_root)
+
+        return self
+
+    def __exit__(self, typ, value, traceback):
+        os.chdir(self._old_cwd)
+
+        if typ is None:
+            return False
+
+        if not isinstance(value, WorkflowError):
+            return False
+
+        # todo(maximsmol): handle specific errors
+        # WorkflowError: Failed to open source file /Users/maximsmol/projects/latchbio/latch/test/CGI_WGS_GATK_Pipeline/Snakefiles/CGI_WGS_GATK_Pipeline/Snakefiles/calc_frag_len.smk
+        # FileNotFoundError: [Errno 2] No such file or directory: '/Users/maximsmol/projects/latchbio/latch/test/CGI_WGS_GATK_Pipeline/Snakefiles/CGI_WGS_GATK_Pipeline/Snakefiles/calc_frag_len.smk'
+        raise RuntimeError("invalid Snakefile") from value
+
+
+def snakemake_workflow_extractor(
+    pkg_root: Path, snakefile: Path, version: Optional[str] = None
+) -> SnakemakeWorkflowExtractor:
+    snakefile = snakefile.resolve()
+
+    extractor = SnakemakeWorkflowExtractor(
+        pkg_root=pkg_root,
+        snakefile=snakefile,
+    )
+    with extractor:
+        extractor.include(
             snakefile,
             overwrite_default_target=True,
         )
         ensure_snakemake_metadata_exists()
-        dag = workflow.extract_dag()
+
+    return extractor
+
+
+def extract_snakemake_workflow(
+    pkg_root: Path, snakefile: Path, version: Optional[str] = None
+) -> SnakemakeWorkflow:
+    extractor = snakemake_workflow_extractor(pkg_root, snakefile, version)
+    with extractor:
+        dag = extractor.extract_dag()
         wf = SnakemakeWorkflow(dag, version)
         wf.compile()
-        return wf
-    except WorkflowError as e:
-        # todo(maximsmol): handle specific errors
-        # WorkflowError: Failed to open source file /Users/maximsmol/projects/latchbio/latch/test/CGI_WGS_GATK_Pipeline/Snakefiles/CGI_WGS_GATK_Pipeline/Snakefiles/calc_frag_len.smk
-        # FileNotFoundError: [Errno 2] No such file or directory: '/Users/maximsmol/projects/latchbio/latch/test/CGI_WGS_GATK_Pipeline/Snakefiles/CGI_WGS_GATK_Pipeline/Snakefiles/calc_frag_len.smk'
-        raise RuntimeError("invalid Snakefile") from e
-    finally:
-        os.chdir(old_cwd)
+
+    return wf
 
 
 def serialize_snakemake(

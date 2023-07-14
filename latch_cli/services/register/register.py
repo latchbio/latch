@@ -158,12 +158,13 @@ def _build_and_serialize(
         assert ctx.version is not None
 
         from ...snakemake.serialize import (
-            extract_snakemake_workflow,
             generate_jit_register_code,
+            snakemake_workflow_extractor,
         )
+        from ...snakemake.workflow import build_jit_register_wrapper
 
-        wf = extract_snakemake_workflow(ctx.pkg_root, ctx.snakefile)
-        jit_wf = wf.build_jit_register_wrapper()
+        wf = snakemake_workflow_extractor(ctx.pkg_root, ctx.snakefile)
+        jit_wf = build_jit_register_wrapper()
         generate_jit_register_code(
             jit_wf,
             ctx.pkg_root,

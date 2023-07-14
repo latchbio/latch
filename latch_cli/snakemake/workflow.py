@@ -613,72 +613,6 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         self._nodes = list(node_map.values())
         self._output_bindings = bindings
 
-    def build_jit_register_wrapper(self) -> JITRegisterWorkflow:
-        out_parameter_name = "success"
-        wrapper_wf = JITRegisterWorkflow()
-
-        python_interface = wrapper_wf.python_interface
-        wrapper_wf._input_parameters = interface_to_parameters(python_interface)
-
-        GLOBAL_START_NODE = Node(
-            id=_common_constants.GLOBAL_INPUT_NODE_ID,
-            metadata=None,
-            bindings=[],
-            upstream_nodes=[],
-            flyte_entity=None,
-        )
-
-        task_interface = Interface(
-            python_interface.inputs, python_interface.outputs, docstring=None
-        )
-        task = PythonAutoContainerTask[T](
-            name=f"{wrapper_wf.name}_task",
-            task_type="python-task",
-            interface=task_interface,
-            task_config=None,
-            task_resolver=JITRegisterWorkflowResolver(),
-        )
-
-        task_bindings: List[literals_models.Binding] = []
-        typed_interface = transform_interface_to_typed_interface(python_interface)
-        for k in python_interface.inputs:
-            var = typed_interface.inputs[k]
-            promise_to_bind = Promise(
-                var=k,
-                val=NodeOutput(node=GLOBAL_START_NODE, var=k),
-            )
-            task_bindings.append(
-                binding_from_python(
-                    var_name=k,
-                    expected_literal_type=var.type,
-                    t_value=promise_to_bind,
-                    t_value_type=python_interface.inputs[k],
-                )
-            )
-        task_node = Node(
-            id="n0",
-            metadata=task.construct_node_metadata(),
-            bindings=sorted(task_bindings, key=lambda b: b.var),
-            upstream_nodes=[],
-            flyte_entity=task,
-        )
-
-        promise_to_bind = Promise(
-            var=out_parameter_name,
-            val=NodeOutput(node=task_node, var=out_parameter_name),
-        )
-        t = python_interface.outputs[out_parameter_name]
-        output_binding = binding_from_python(
-            out_parameter_name,
-            bool,
-            promise_to_bind,
-            t,
-        )
-
-        wrapper_wf._nodes = [task_node]
-        wrapper_wf._output_bindings = [output_binding]
-        return wrapper_wf
-
     def find_upstream_node_matching_output_var(self, out_var: str):
         for j in self._dag.targetjobs:
             for depen, files in self._dag.dependencies[j].items():
@@ -688,6 +622,73 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
     def execute(self, **kwargs):
         return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
+
+
+def build_jit_register_wrapper() -> JITRegisterWorkflow:
+    out_parameter_name = "success"
+    wrapper_wf = JITRegisterWorkflow()
+
+    python_interface = wrapper_wf.python_interface
+    wrapper_wf._input_parameters = interface_to_parameters(python_interface)
+
+    GLOBAL_START_NODE = Node(
+        id=_common_constants.GLOBAL_INPUT_NODE_ID,
+        metadata=None,
+        bindings=[],
+        upstream_nodes=[],
+        flyte_entity=None,
+    )
+
+    task_interface = Interface(
+        python_interface.inputs, python_interface.outputs, docstring=None
+    )
+    task = PythonAutoContainerTask[T](
+        name=f"{wrapper_wf.name}_task",
+        task_type="python-task",
+        interface=task_interface,
+        task_config=None,
+        task_resolver=JITRegisterWorkflowResolver(),
+    )
+
+    task_bindings: List[literals_models.Binding] = []
+    typed_interface = transform_interface_to_typed_interface(python_interface)
+    for k in python_interface.inputs:
+        var = typed_interface.inputs[k]
+        promise_to_bind = Promise(
+            var=k,
+            val=NodeOutput(node=GLOBAL_START_NODE, var=k),
+        )
+        task_bindings.append(
+            binding_from_python(
+                var_name=k,
+                expected_literal_type=var.type,
+                t_value=promise_to_bind,
+                t_value_type=python_interface.inputs[k],
+            )
+        )
+    task_node = Node(
+        id="n0",
+        metadata=task.construct_node_metadata(),
+        bindings=sorted(task_bindings, key=lambda b: b.var),
+        upstream_nodes=[],
+        flyte_entity=task,
+    )
+
+    promise_to_bind = Promise(
+        var=out_parameter_name,
+        val=NodeOutput(node=task_node, var=out_parameter_name),
+    )
+    t = python_interface.outputs[out_parameter_name]
+    output_binding = binding_from_python(
+        out_parameter_name,
+        bool,
+        promise_to_bind,
+        t,
+    )
+
+    wrapper_wf._nodes = [task_node]
+    wrapper_wf._output_bindings = [output_binding]
+    return wrapper_wf
 
 
 class SnakemakeJobTask(PythonAutoContainerTask[T]):
