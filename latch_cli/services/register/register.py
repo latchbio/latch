@@ -32,7 +32,6 @@ def _delete_lines(num: int):
     new line just below the first line to be deleted"""
     for i in range(num):
         print("\x1b[1F\x1b[0G\x1b[2K", end="")
-    return []
 
 
 def _print_window(cur_lines: List[str], line: str):
@@ -99,7 +98,8 @@ def print_and_write_build_logs(
                             line = line[: curr_terminal_width - 3] + "..."
 
                         if docker_build_step_pat.match(line):
-                            cur_lines = _delete_lines(len(cur_lines))
+                            _delete_lines(len(cur_lines))
+                            cur_lines = []
                             click.secho(line, fg="blue")
                         else:
                             cur_lines = _print_window(cur_lines, line)
@@ -332,6 +332,14 @@ def register(
     """
 
     if snakefile is not None:
+        if remote:
+            click.secho(
+                "Cannot use remote builds with Snakemake, switching to a local build\n",
+                fg="yellow",
+                bold=True,
+            )
+            remote = False
+
         try:
             import snakemake
         except ImportError as e:

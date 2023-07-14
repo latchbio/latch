@@ -119,6 +119,7 @@ def with_si_suffix(num, suffix="B", styled=False):
 def hash_directory(dir_path: Path) -> str:
     # todo(maximsmol): store per-file hashes to show which files triggered a version change
     click.secho("Calculating workflow version based on file content hash", bold=True)
+    click.secho("  Disable with --disable-auto-version/-d", italic=True, dim=True)
 
     m = hashlib.new("sha256")
     m.update(current_workspace().encode("utf-8"))

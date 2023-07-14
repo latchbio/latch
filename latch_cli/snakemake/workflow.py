@@ -848,7 +848,7 @@ class JITRegisterWorkflowResolver(DefaultTaskResolver):
     def loader_args(
         self, settings: SerializationSettings, task: PythonAutoContainerTask[T]
     ) -> List[str]:
-        return ["task-module", "jit_entrypoint", "task-name", task.name]
+        return ["task-module", "snakemake_jit_entrypoint", "task-name", task.name]
 
     def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
         _, task_module, _, task_name, *_ = loader_args
