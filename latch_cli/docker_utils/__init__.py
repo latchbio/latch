@@ -59,12 +59,7 @@ def get_prologue(config: LatchWorkflowConfig) -> List[str]:
         "",
         "# Latch SDK",
         "# DO NOT REMOVE",
-        # f"run pip install latch=={config.latch_version}",
-        "run apt-get update --yes && apt-get install --yes git",
-        (
-            "run pip install"
-            " 'git+https://github.com/latchbio/latch.git@maximsmol/snakekit-1'"
-        ),
+        f"run pip install latch=={config.latch_version}",
         "run mkdir /opt/latch",
     ]
 
@@ -358,6 +353,16 @@ def generate_dockerfile(
                 continue
 
             block.write_block(f)
+
+        f.write("run apt-get update --yes && apt-get install --yes git\n")
+        f.write(
+            "run pip install"
+            " 'git+https://github.com/latchbio/latch.git@maximsmol/snakekit-1'\n"
+        )
+        f.write(
+            "run echo 1 && pip install"
+            " 'git+https://github.com/latchbio/latch.git@maximsmol/snakekit-1'\n"
+        )
 
         f.write("# Copy workflow data (use .dockerignore to skip files)\n")
         f.write("copy . /root/\n\n")

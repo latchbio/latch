@@ -300,6 +300,7 @@ def generate_jit_register_code(
             import tempfile
             import textwrap
             import time
+            import sys
             from functools import partial
             from pathlib import Path
             import shutil
@@ -315,22 +316,26 @@ def generate_jit_register_code(
             from latch_cli import tinyrequests
             from latch_cli.centromere.utils import _construct_dkr_client
             from latch_sdk_config.latch import config
-            from latch_cli.services.register.register import (_print_reg_resp,
-                                                                _recursive_list,
-                                                                register_serialized_pkg,
-                                                                print_and_write_build_logs,
-                                                                print_upload_logs)
-            from latch_cli.services.serialize import (extract_snakemake_workflow,
-                                                        generate_snakemake_entrypoint,
-                                                        serialize_snakemake)
+            from latch_cli.services.register.register import (
+                _print_reg_resp,
+                _recursive_list,
+                register_serialized_pkg,
+                print_and_write_build_logs,
+                print_upload_logs,
+            )
+            from latch_cli.snakemake.serialize import (
+                extract_snakemake_workflow,
+                generate_snakemake_entrypoint,
+                serialize_snakemake,
+            )
 
             from latch import small_task
             from latch_sdk_gql.execute import execute
             from latch.types.directory import LatchDir
             from latch.types.file import LatchFile
 
-
-            print = partial(print, flush=True)
+            sys.stdout.reconfigure(line_buffering=True)
+            sys.stderr.reconfigure(line_buffering=True)
 
             def check_exists_and_rename(old: Path, new: Path):
                 if new.exists():

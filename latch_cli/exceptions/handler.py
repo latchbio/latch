@@ -26,7 +26,7 @@ class _Metadata:
     platform: str = platform.platform()
 
     def print(self):
-        click.secho("Crash info:", bold=True)
+        click.secho("Crash info:", fg="red", bold=True)
         click.echo(
             " ".join(
                 [
