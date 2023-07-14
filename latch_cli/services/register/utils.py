@@ -11,9 +11,9 @@ from typing import Dict, List, Optional, Tuple, TypedDict, Union
 
 import boto3
 import requests
+from latch_sdk_config.latch import config
 
 from ...centromere.ctx import _CentromereCtx
-from ...config.latch import config
 from ...utils import current_workspace
 
 
