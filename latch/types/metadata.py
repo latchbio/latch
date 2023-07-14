@@ -440,8 +440,17 @@ class SnakemakeMetadata(LatchMetadata):
     name: Optional[str] = None
 
     def __post_init__(self):
+        if self.name is None:
+            name = self.display_name.lower()
+            start = name[0]
+
+            res: List[str] = [start if start.isidentifier() else "_"]
+            for x in name[1:]:
+                res.append(x if f"_{x}".isidentifier() else "_")
+
+            self.name = "".join(res)
+
         global _snakemake_metadata
-        self.name = self.display_name.lower().replace(" ", "_")
         _snakemake_metadata = self
 
 
