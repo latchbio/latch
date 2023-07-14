@@ -85,7 +85,8 @@ def print_and_write_build_logs(
             error = x.get("error")
             if error is not None:
                 save_file.write(f"{error}\n")
-                raise OSError(f"Error when building image ~ {error}")
+                click.secho(f"Error when building image:\n{error}", fg="red", bold=True)
+                sys.exit(1)
 
             if lines is not None:
                 save_file.write(f"{lines}\n")
@@ -343,6 +344,8 @@ def register(
         snakefile=snakefile,
         use_new_centromere=use_new_centromere,
     ) as ctx:
+        click.echo("")
+
         assert ctx.workflow_name is not None, "Unable to determine workflow name"
         assert ctx.version is not None, "Unable to determine workflow version"
 

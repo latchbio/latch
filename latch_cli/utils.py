@@ -8,6 +8,7 @@ from enum import Enum
 from pathlib import Path
 from typing import List
 
+import click
 import jwt
 from latch_sdk_config.user import user_config
 
@@ -116,23 +117,29 @@ def with_si_suffix(num, suffix="B", styled=False):
 
 
 def hash_directory(dir_path: Path) -> str:
+    # todo(maximsmol): store per-file hashes to show which files triggered a version change
+    click.secho("Calculating workflow version based on file content hash", bold=True)
+
     m = hashlib.new("sha256")
     m.update(current_workspace().encode("utf-8"))
 
     ignore_file = dir_path / ".dockerignore"
     exclude: List[str] = ["/.latch"]
     try:
-        for l in ignore_file.open("r"):
-            l = l.strip()
+        with ignore_file.open("r") as f:
+            click.echo("Using .dockerignore")
 
-            if l == "":
-                continue
-            if l[0] == "#":
-                continue
+            for l in f:
+                l = l.strip()
 
-            exclude.append(l)
+                if l == "":
+                    continue
+                if l[0] == "#":
+                    continue
+
+                exclude.append(l)
     except FileNotFoundError:
-        print("No .dockerignore file found --- including all files")
+        ...
 
     from docker.utils import exclude_paths
 
@@ -140,23 +147,26 @@ def hash_directory(dir_path: Path) -> str:
     paths.sort()
 
     for item in paths:
-        # for repeatability guarantees
         p = Path(dir_path / item)
         if p.is_dir():
-            m.update(str(p).encode("utf-8"))
+            m.update(p.name.encode("utf-8"))
             continue
 
-        m.update(str(p).encode("utf-8"))
+        m.update(p.name.encode("utf-8"))
+
         file_size = p.stat().st_size
-        if file_size < latch_constants.file_max_size:
-            m.update(p.read_bytes())
-        else:
-            print(
-                "\x1b[38;5;226m"
-                f"WARNING: {p.relative_to(dir_path.resolve())} is too large "
-                f"({with_si_suffix(file_size)}) to checksum, skipping."
-                "\x1b[0m"
+        if file_size > latch_constants.file_max_size:
+            click.secho(
+                (
+                    f"{p.relative_to(dir_path.resolve())} is too large"
+                    f" ({with_si_suffix(file_size)}) to checksum. Ignoring contents"
+                ),
+                fg="yellow",
+                bold=True,
             )
+            continue
+
+        m.update(p.read_bytes())
 
     return m.hexdigest()
 

@@ -2,7 +2,6 @@ import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from textwrap import dedent
 from typing import Dict, Optional, Tuple
 
 import click
@@ -136,6 +135,7 @@ class _CentromereCtx:
             if not self.disable_auto_version:
                 hash = hash_directory(self.pkg_root)
                 self.version = f"{self.version}-{hash[:6]}"
+                click.echo(f"  {self.version}\n")
 
             if self.nucleus_check_version(self.version, self.workflow_name):
                 raise ValueError(f"Version {self.version} has already been registered.")

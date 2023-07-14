@@ -291,7 +291,6 @@ def generate_jit_register_code(
     account_id: str,
 ) -> Path:
     code_block = textwrap.dedent("""\
-           import inspect
            import json
            import os
            import subprocess
@@ -308,9 +307,7 @@ def generate_jit_register_code(
            import google.protobuf.json_format as gpjson
            import gql
            import requests
-           from flyteidl.core import literals_pb2 as _literals_pb2
            from flytekit.core import utils
-           from flytekit.core.context_manager import FlyteContext
            from flytekit.extras.persistence import LatchPersistence
            from latch_cli import tinyrequests
            from latch_cli.centromere.utils import _construct_dkr_client
@@ -323,9 +320,8 @@ def generate_jit_register_code(
            from latch_cli.services.serialize import (extract_snakemake_workflow,
                                                      generate_snakemake_entrypoint,
                                                      serialize_snakemake)
-           from latch_cli.utils import generate_temporary_ssh_credentials
 
-           from latch import small_task, workflow
+           from latch import small_task
            from latch.gql._execute import execute
            from latch.types.directory import LatchDir
            from latch.types.file import LatchFile
@@ -348,7 +344,7 @@ def generate_jit_register_code(
         wf.remote_output_url,
     )
 
-    entrypoint = pkg_root.joinpath(".latch/jit_entrypoint.py")
-    with open(entrypoint, "w") as f:
-        f.write(code_block)
+    entrypoint = pkg_root / ".latch" / "snakemake_jit_entrypoint.py"
+    entrypoint.write_text(code_block)
+
     return entrypoint

@@ -6,7 +6,6 @@ import tarfile
 import tempfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from textwrap import dedent
 from traceback import print_exc
 from types import TracebackType
 from typing import List, Optional, Type
@@ -26,13 +25,33 @@ class _Metadata:
     py_version: str = sys.version
     platform: str = platform.platform()
 
-    def __str__(self):
-        return dedent(f"""
-            Latch Version: {self.latch_version}
-            Python Version: {self.py_version}
-            Platform: {self.platform}
-            OS: {self.os_name}, {self.os_version}
-        """)
+    def print(self):
+        click.secho("Crash info:", bold=True)
+        click.echo(
+            " ".join(
+                [
+                    click.style("Latch SDK version:", fg="red"),
+                    self.latch_version,
+                ]
+            )
+        )
+        click.echo(
+            " ".join(
+                [
+                    click.style("Python version:", fg="red"),
+                    self.py_version.replace("\n", ";"),
+                ]
+            )
+        )
+        click.echo(" ".join([click.style("Platform:", fg="red"), self.platform]))
+        click.echo(
+            " ".join(
+                [
+                    click.style("OS:", fg="red"),
+                    f"{self.os_name}; {self.os_version}",
+                ]
+            )
+        )
 
 
 class CrashHandler:
@@ -113,12 +132,13 @@ class CrashHandler:
             value: BaseException,
             traceback: Optional[TracebackType],
         ) -> None:
-            print(f"{self.message} - printing traceback:\n")
+            click.secho(f"\n{self.message}:\n", fg="red", bold=True)
             _Traceback(type_, value, traceback).pretty_print()
-            print(self.metadata)
+
+            self.metadata.print()
 
             if os.environ.get("LATCH_NO_CRASH_REPORT") == "1":
-                click.echo(
+                click.secho(
                     "Not generating crash report due to $LATCH_NO_CRASH_REPORT",
                     bold=True,
                 )
