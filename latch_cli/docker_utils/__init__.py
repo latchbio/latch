@@ -58,8 +58,8 @@ def get_prologue(config: LatchWorkflowConfig) -> List[str]:
         "arg DEBIAN_FRONTEND=noninteractive",
         "",
         "# Latch SDK",
-        f"# DO NOT REMOVE",
-        "run pip install latch=={config.latch_version}",
+        "# DO NOT REMOVE",
+        f"run pip install latch=={config.latch_version}",
         "run mkdir /opt/latch",
     ]
 
