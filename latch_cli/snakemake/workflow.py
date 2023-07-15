@@ -801,38 +801,42 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         )
 
     def get_fn_interface(self):
+        res = ""
+
         params_str = ",\n".join(
             reindent(
                 rf"""
                 {param}: {t.__name__}
                 """,
                 1,
-            )
+            ).rstrip()
             for param, t in self._python_inputs.items()
         )
 
         outputs_str = "None:"
         if len(self._python_outputs.items()) > 0:
-            outputs_list_str = ",\n".join(
+            output_fields = "\n".join(
                 reindent(
                     rf"""
-                    {param}={t.__name__}
+                    {param}: {t.__name__}
                     """,
                     1,
                 ).rstrip()
                 for param, t in self._python_outputs.items()
             )
-            outputs_str = reindent(
+
+            res += reindent(
                 rf"""
-                NamedTuple(
-                    "{self.name}_output",
-                __outputs__
-                ):
+                @dataclass
+                class Res{self.name}:
+                __output_fields__
+
                 """,
                 0,
-            ).replace("__outputs__", outputs_list_str)
+            ).replace("__output_fields__", output_fields)
+            outputs_str = f"Res{self.name}:"
 
-        return (
+        res += (
             reindent(
                 rf"""
                 @small_task
@@ -845,22 +849,23 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             .replace("__params__", params_str)
             .replace("__outputs__", outputs_str)
         )
+        return res
 
     def get_fn_return_stmt(self, remote_output_url: Optional[str] = None):
         results: list[str] = []
-        for out in self._python_outputs:
+        for out_name in self._python_outputs:
             if not self._is_target:
                 results.append(
                     reindent(
                         rf"""
-                        LatchFile("{self._target_file_for_output_param[out]}")
+                        {out_name}=LatchFile("{self._target_file_for_output_param[out_name]}")
                         """,
                         1,
                     ).rstrip()
                 )
                 continue
 
-            target_path = self._target_file_for_output_param[out]
+            target_path = self._target_file_for_output_param[out_name]
             if remote_output_url is None:
                 remote_path = Path("/Snakemake Outputs") / target_path
             else:
@@ -869,7 +874,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             results.append(
                 reindent(
                     rf"""
-                    LatchFile("{target_path}", "latch://{remote_path}")
+                    {out_name}=LatchFile("{target_path}", "latch://{remote_path}")
                     """,
                     1,
                 ).rstrip()
@@ -879,7 +884,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
 
         return reindent(
             rf"""
-            return (
+            return Res{self.name}(
             __return_str__
             )
             """,
@@ -946,7 +951,9 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
 
         code_block += reindent(
             rf"""
+
             subprocess.run({repr(snakemake_cmd)}, check=True)
+
             """,
             1,
         )

@@ -272,9 +272,13 @@ def generate_snakemake_entrypoint(
         import subprocess
         from typing import NamedTuple
         import stat
+        from dataclasses import dataclass
 
         from latch import small_task
         from latch.types.file import LatchFile
+
+        sys.stdout.reconfigure(line_buffering=True)
+        sys.stderr.reconfigure(line_buffering=True)
 
         def check_exists_and_rename(old: Path, new: Path):
             if new.exists():
