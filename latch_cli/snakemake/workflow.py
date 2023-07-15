@@ -126,8 +126,14 @@ def snakemake_dag_to_interface(
                     )
                 )
 
+    meta = metadata.LatchMetadata(
+        display_name=wf_name,
+        author=metadata.LatchAuthor(name="Latch Snakemake JIT"),
+        parameters={k: metadata.LatchParameter(display_name=k) for k in inputs.keys()},
+    )
+
     return (
-        Interface(inputs, outputs, docstring=docstring),
+        Interface(inputs, outputs, docstring=Docstring(str(meta))),
         LiteralMap(literals=literals),
         return_files,
     )
@@ -422,9 +428,9 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                                 reg_resp = register_serialized_pkg(protos, None, version, account_id)
                                 _print_reg_resp(reg_resp, new_image_name)
 
-                            wf_spec_remote = f"latch:///.snakemake_latch/workflows/{{image_name}}-{{version}}/spec.json"
+                            wf_spec_remote = f"latch:///.snakemake_latch/workflows/{image_name}-{version}/spec.json"
                             lp.upload("wf_spec.json", wf_spec_remote)
-                            print(f"wf_spec.json -> {{wf_spec_remote}}")
+                            print(f"wf_spec.json -> {wf_spec_remote}")
 
 
                             class _WorkflowInfoNode(TypedDict):

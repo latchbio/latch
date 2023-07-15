@@ -360,7 +360,7 @@ def generate_dockerfile(
             " 'git+https://github.com/latchbio/latch.git@maximsmol/snakekit-1'\n"
         )
         f.write(
-            "run echo 8 && pip uninstall --yes latch && pip install"
+            "run echo 9 && pip uninstall --yes latch && pip install"
             " 'git+https://github.com/latchbio/latch.git@maximsmol/snakekit-1'\n"
         )
 

@@ -18,7 +18,6 @@ from .constants import ANSI_REGEX, MAX_LINES
 from .utils import (
     DockerBuildLogItem,
     build_image,
-    import_module_by_path,
     register_serialized_pkg,
     serialize_pkg_in_container,
     upload_image,
