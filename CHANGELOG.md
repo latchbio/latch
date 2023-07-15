@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.27.0 - 2023-07-15
+
+### Added
+
+- Added `.iterdir()` method to `LatchDir` to iterate through subdirectories
+
 ## 2.26.2 - 2023-07-11
 
 ### Fixed
