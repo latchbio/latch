@@ -296,7 +296,10 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         code_block += textwrap.indent(
             textwrap.dedent(rf"""
                             pkg_root = Path(".")
-                            version = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
+
+                            exec_id_hash = hashlib.sha1()
+                            exec_id_hash.update(os.environ["FLYTE_INTERNAL_EXECUTION_ID"].encode("utf-8"))
+                            version = exec_id_hash.hexdigest()[:16]
 
                             wf = extract_snakemake_workflow(pkg_root, snakefile, version)
                             wf_name = wf.name

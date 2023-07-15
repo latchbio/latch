@@ -32,6 +32,7 @@ from latch_cli.utils import (
     retrieve_or_login,
 )
 
+from ..services.register.utils import import_module_by_path
 from ..utils import identifier_suffix_from_str
 
 
@@ -83,7 +84,6 @@ class _CentromereCtx:
         remote: bool = False,
         snakefile: Optional[Path] = None,
         use_new_centromere: bool = False,
-        custom_workflow_name: Optional[str] = None,
     ):
         with self:
             self.use_new_centromere = use_new_centromere
@@ -104,8 +104,6 @@ class _CentromereCtx:
 
             self.container_map: Dict[str, _Container] = {}
             if self.workflow_type == WorkflowType.latchbiosdk:
-                assert custom_workflow_name is None
-
                 _import_flyte_objects([self.pkg_root])
                 for entity in FlyteEntities.entities:
                     if isinstance(entity, PythonFunctionWorkflow):
@@ -122,10 +120,25 @@ class _CentromereCtx:
                                 pkg_dir=entity.dockerfile_path.parent,
                             )
             else:
+                assert snakefile is not None
+
+                import latch.types.metadata as metadata
+
+                from ..snakemake.serialize import snakemake_workflow_extractor
+
+                meta = pkg_root / "latch_metadata.py"
+                if meta.exists():
+                    click.echo(f"Using metadata file {click.style(meta, italic=True)}")
+                    import_module_by_path(meta)
+                else:
+                    snakemake_workflow_extractor(pkg_root, snakefile)
+
+                assert metadata._snakemake_metadata is not None
+                assert metadata._snakemake_metadata.name is not None
+
                 # todo(kenny): support per container task and custom workflow
                 # name for snakemake
-                assert custom_workflow_name is not None
-                self.workflow_name = custom_workflow_name
+                self.workflow_name = metadata._snakemake_metadata.name
 
             version_file = self.pkg_root / "version"
             try:
@@ -229,10 +242,8 @@ class _CentromereCtx:
         match = re.match("^[a-zA-Z0-9_][a-zA-Z0-9._-]{,127}$", self.version)
         if match is None:
             raise ValueError(
-                (
-                    f"{self.version} is an invalid version for AWS "
-                    "ECR. Please provide a version that accomodates the "
-                ),
+                f"{self.version} is an invalid version for AWS "
+                "ECR. Please provide a version that accomodates the ",
                 "tag restrictions listed here - ",
                 "https://docs.aws.amazon.com/AmazonECR/latest/userguide/ecr-using-tags.html",
             )

@@ -7,14 +7,18 @@ import os
 import typing
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, TypedDict, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, TypedDict, Union
 
 import boto3
 import requests
 from latch_sdk_config.latch import config
 
-from ...centromere.ctx import _CentromereCtx
 from ...utils import current_workspace
+
+if TYPE_CHECKING:
+    from ...centromere.ctx import _CentromereCtx
+else:
+    _CentromereCtx = ""
 
 
 def _docker_login(ctx: _CentromereCtx):

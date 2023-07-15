@@ -171,10 +171,8 @@ def _print_reg_resp(resp, image):
         sys.exit(1)
     elif not "Successfully registered file" in resp["stdout"]:
         click.secho(
-            (
-                f"\nVersion ({version}) already exists."
-                " Make sure that you've saved any changes you made."
-            ),
+            f"\nVersion ({version}) already exists."
+            " Make sure that you've saved any changes you made.",
             fg="red",
             bold=True,
         )
@@ -218,7 +216,6 @@ def _build_and_serialize(
             current_workspace(),
         )
 
-    click.echo()
     image_build_logs = build_image(ctx, image_name, context_path, dockerfile)
     print_and_write_build_logs(
         image_build_logs, image_name, ctx.pkg_root, progress_plain=progress_plain
@@ -319,9 +316,6 @@ def register(
         https://docs.flyte.org/en/latest/concepts/registration.html
     """
 
-    pkg_root_p = Path(pkg_root)
-    custom_workflow_name = None
-
     if snakefile is not None:
         if remote:
             click.secho(
@@ -336,28 +330,12 @@ def register(
         except ImportError as e:
             raise RuntimeError("could not load snakemake: package not installed") from e
 
-        import latch.types.metadata as metadata
-
-        from ...snakemake.serialize import snakemake_workflow_extractor
-
-        meta = pkg_root_p / "latch_metadata.py"
-        if meta.exists():
-            click.echo(f"Using metadata file {click.style(meta, italic=True)}")
-            import_module_by_path(meta)
-        else:
-            snakemake_workflow_extractor(pkg_root_p, snakefile)
-
-        assert metadata._snakemake_metadata is not None
-        assert metadata._snakemake_metadata.name is not None
-        custom_workflow_name = metadata._snakemake_metadata.name
-
     with _CentromereCtx(
-        pkg_root_p,
+        Path(pkg_root),
         disable_auto_version=disable_auto_version,
         remote=remote,
         snakefile=snakefile,
         use_new_centromere=use_new_centromere,
-        custom_workflow_name=custom_workflow_name,
     ) as ctx:
         click.echo("")
 
