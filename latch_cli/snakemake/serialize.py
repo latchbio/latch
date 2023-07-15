@@ -13,6 +13,7 @@ from flytekit.models import literals as literals_models
 from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.tools.serialize_helpers import persist_registrable_entities
+from google.protobuf.json_format import MessageToJson
 from snakemake.dag import DAG
 from snakemake.persistence import Persistence
 from snakemake.rules import Rule
@@ -191,7 +192,8 @@ def serialize_snakemake(
 
     registrable_entity_cache: EntityCache = {}
 
-    get_serializable_workflow(wf, settings, registrable_entity_cache)
+    wf_spec = get_serializable_workflow(wf, settings, registrable_entity_cache)
+    Path("wf_spec.json").write_text(MessageToJson(wf_spec.to_flyte_idl()))
 
     parameter_map = interface_to_parameters(wf.python_interface)
     lp = LaunchPlan(
@@ -268,9 +270,7 @@ def generate_snakemake_entrypoint(
         from pathlib import Path
         import shutil
         import subprocess
-        import hashlib
         from typing import NamedTuple
-        from urllib.parse import urljoin
 
         from latch import small_task
         from latch.types.file import LatchFile
@@ -311,6 +311,8 @@ def generate_jit_register_code(
         from pathlib import Path
         import shutil
         from typing import List, NamedTuple, Optional, TypedDict
+        import hashlib
+        from urllib.parse import urljoin
 
         import base64
         import boto3

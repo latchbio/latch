@@ -305,7 +305,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                             wf_name = wf.name
                             generate_snakemake_entrypoint(wf, pkg_root, snakefile, {remote_output_url})
 
-                            entrypoint_remote = f"latch:///.snakemake_latch/workflow_entrypoints/{{image_name}}-{{version}}.py"
+                            entrypoint_remote = f"latch:///.snakemake_latch/workflows/{{image_name}}-{{version}}/entrypoint.py"
                             lp.upload("latch_entrypoint.py", entrypoint_remote)
                             print(f"latch_entrypoint.py -> {{entrypoint_remote}}")
                             """),
@@ -421,6 +421,10 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                                 protos = _recursive_list(td)
                                 reg_resp = register_serialized_pkg(protos, None, version, account_id)
                                 _print_reg_resp(reg_resp, new_image_name)
+
+                            wf_spec_remote = f"latch:///.snakemake_latch/workflows/{{image_name}}-{{version}}/spec.json"
+                            lp.upload("wf_spec.json", wf_spec_remote)
+                            print(f"wf_spec.json -> {{wf_spec_remote}}")
 
 
                             class _WorkflowInfoNode(TypedDict):
