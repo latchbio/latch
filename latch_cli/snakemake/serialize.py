@@ -301,10 +301,12 @@ def generate_snakemake_entrypoint(
             return f"{si_unit(s.st_size):>7}B {x.name}"
 
     """).lstrip()
-    for task in wf.snakemake_tasks:
-        entrypoint_code_block += task.get_fn_code(
+    entrypoint_code_block += "\n\n".join(
+        task.get_fn_code(
             snakefile_path_in_container(snakefile, pkg_root), remote_output_url
         )
+        for task in wf.snakemake_tasks
+    )
 
     entrypoint = pkg_root / "latch_entrypoint.py"
     entrypoint.write_text(entrypoint_code_block + "\n")

@@ -280,7 +280,12 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         ).replace("__params__", params_str)
 
     def get_fn_return_stmt(self):
-        return "\n    return True"
+        return reindent(
+            rf"""
+            return True
+            """,
+            1,
+        )
 
     def get_fn_code(
         self,
@@ -808,7 +813,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
 
         outputs_str = "None:"
         if len(self._python_outputs.items()) > 0:
-            outputs_str = ",\n".join(
+            outputs_list_str = ",\n".join(
                 reindent(
                     rf"""
                     {param}={t.__name__}
@@ -821,20 +826,20 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                 rf"""
                 NamedTuple(
                     "{self.name}_output",
-                    {outputs_str}
+                __outputs__
                 ):
                 """,
                 0,
-            )
+            ).replace("__outputs__", outputs_list_str)
 
         return (
             reindent(
                 rf"""
-            @small_task
-            def {self.name}(
-            __params__
-            ) -> __outputs__
-            """,
+                @small_task
+                def {self.name}(
+                __params__
+                ) -> __outputs__
+                """,
                 0,
             )
             .replace("__params__", params_str)
@@ -842,24 +847,44 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         )
 
     def get_fn_return_stmt(self, remote_output_url: Optional[str] = None):
-        return_stmt = "\n    return ("
-        for i, x in enumerate(self._python_outputs):
-            if self._is_target:
-                target_path = self._target_file_for_output_param[x]
-                if remote_output_url is None:
-                    remote_path = Path("/Snakemake Outputs") / target_path
-                else:
-                    remote_path = Path(urlparse(remote_output_url).path) / target_path
+        results: list[str] = []
+        for out in self._python_outputs:
+            if not self._is_target:
+                results.append(
+                    reindent(
+                        rf"""
+                        LatchFile("{self._target_file_for_output_param[out]}")
+                        """,
+                        1,
+                    ).rstrip()
+                )
+                continue
 
-                return_stmt += f"LatchFile('{target_path}', 'latch://{remote_path}')"
+            target_path = self._target_file_for_output_param[out]
+            if remote_output_url is None:
+                remote_path = Path("/Snakemake Outputs") / target_path
             else:
-                return_stmt += f"LatchFile('{self._target_file_for_output_param[x]}')"
-            if i == len(self._python_outputs) - 1:
-                return_stmt += ")"
-            else:
-                return_stmt += ", "
+                remote_path = Path(urlparse(remote_output_url).path) / target_path
 
-        return return_stmt
+            results.append(
+                reindent(
+                    rf"""
+                    LatchFile("{target_path}", "latch://{remote_path}")
+                    """,
+                    1,
+                ).rstrip()
+            )
+
+        return_str = ",\n".join(results)
+
+        return reindent(
+            rf"""
+            return (
+            __return_str__
+            )
+            """,
+            1,
+        ).replace("__return_str__", return_str)
 
     def get_fn_code(
         self, snakefile_path_in_container: str, remote_output_url: Optional[str] = None
@@ -876,6 +901,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                     print(f"Downloading {{{param}.remote_path}}")
                     {param}_p = Path({param}).resolve()
                     print(f"  {{file_name_and_size({param}_p)}}")
+
                     """,
                     1,
                 )
@@ -918,7 +944,12 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             for resource, value in allowed_resources:
                 snakemake_cmd.append(f"{resource}={value}")
 
-        code_block += f"\n\n    subprocess.run({repr(snakemake_cmd)}, check=True)"
+        code_block += reindent(
+            rf"""
+            subprocess.run({repr(snakemake_cmd)}, check=True)
+            """,
+            1,
+        )
 
         code_block += self.get_fn_return_stmt(remote_output_url=remote_output_url)
         return code_block
