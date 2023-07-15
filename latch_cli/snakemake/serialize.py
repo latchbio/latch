@@ -281,6 +281,24 @@ def generate_snakemake_entrypoint(
                 if new.is_dir():
                     shutil.rmtree(new)
             os.renames(old, new)
+
+
+        def si_unit(num, base: float = 1000.0):
+            for unit in (" ", "k", "M", "G", "T", "P", "E", "Z"):
+                if abs(num) < base:
+                    return f"{num:3.1f}{unit}"
+                num /= base
+            return f"{num:.1f}Y"
+
+
+        def file_name_and_size(x: Path):
+            s = x.stat()
+
+            if stat.S_ISDIR(s.st_mode):
+                return f"{'D':>8} {x.name}/"
+
+            return f"{si_unit(s.st_size):>7}B {x.name}"
+
     """).strip()
     for task in wf.snakemake_tasks:
         entrypoint_code_block += task.get_fn_code(
