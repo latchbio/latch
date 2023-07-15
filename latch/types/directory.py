@@ -1,6 +1,8 @@
 from os import PathLike
-from typing import Optional, Type, Union, get_args, get_origin
+from pathlib import Path
+from typing import List, Optional, Type, TypedDict, Union, get_args, get_origin
 
+import gql
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
@@ -9,13 +11,33 @@ from flytekit.types.directory.types import (
     FlyteDirectory,
     FlyteDirToMultipartBlobTransformer,
 )
+from latch_sdk_gql.execute import execute
+from typing_extensions import Annotated
 
+from latch.types.file import LatchFile
 from latch.types.utils import _is_valid_url
+from latch_cli.utils import urljoins
 
-try:
-    from typing import Annotated
-except ImportError:
-    from typing_extensions import Annotated
+
+class Child(TypedDict):
+    type: str
+    name: str
+
+
+class ChildLdataTreeEdge(TypedDict):
+    child: Child
+
+
+class ChildLdataTreeEdges(TypedDict):
+    nodes: List[ChildLdataTreeEdge]
+
+
+class LDataResolvePathFinalLinkTarget(TypedDict):
+    childLdataTreeEdges: ChildLdataTreeEdges
+
+
+class LdataResolvePathData(TypedDict):
+    finalLinkTarget: LDataResolvePathFinalLinkTarget
 
 
 class LatchDir(FlyteDirectory):
@@ -89,6 +111,51 @@ class LatchDir(FlyteDirectory):
                     )
 
             super().__init__(self.path, downloader, self._remote_directory)
+
+    def iterdir(self) -> List[Union[LatchFile, "LatchDir"]]:
+        ret: List[Union[LatchFile, "LatchDir"]] = []
+
+        if self.remote_path is None:
+            for child in Path(self.path).iterdir():
+                if child.is_dir():
+                    ret.append(LatchDir(str(child)))
+                else:
+                    ret.append(LatchFile(str(child)))
+
+            return ret
+
+        res: Optional[LdataResolvePathData] = execute(
+            gql.gql("""
+            query LDataChildren($argPath: String!) {
+                ldataResolvePathData(argPath: $argPath) {
+                    finalLinkTarget {
+                        childLdataTreeEdges(filter: { child: { removed: { equalTo: false } } }) {
+                            nodes {
+                                child {
+                                    name
+                                    type
+                                }
+                            }
+                        }
+                    }
+                }
+            }"""),
+            {"argPath": self.remote_path},
+        )["ldataResolvePathData"]
+
+        if res is None:
+            raise ValueError(f"No directory found at path: {self}")
+
+        for node in res["finalLinkTarget"]["childLdataTreeEdges"]["nodes"]:
+            child = node["child"]
+
+            path = urljoins(self.remote_path, child["name"])
+            if child["type"] == "DIR":
+                ret.append(LatchDir(path))
+            else:
+                ret.append(LatchFile(path))
+
+        return ret
 
     @property
     def local_path(self) -> str:

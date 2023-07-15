@@ -73,6 +73,7 @@ class LatchFile(FlyteFile):
         if kwargs.get("downloader") is not None:
             super().__init__(self.path, kwargs["downloader"], self._remote_path)
         else:
+
             def downloader():
                 ctx = FlyteContextManager.current_context()
                 if (
@@ -85,15 +86,13 @@ class LatchFile(FlyteFile):
                     local_path_hint = self._remote_path
                     if is_absolute_node_path.match(self._remote_path) is not None:
                         data = execute(
-                            gql.gql(
-                                """
+                            gql.gql("""
                             query getName($argPath: String!) {
                                 ldataResolvePathData(argPath: $argPath) {
                                     name
                                 }
                             }
-                            """
-                            ),
+                            """),
                             {"argPath": self._remote_path},
                         )["ldataResolvePathData"]
 
@@ -159,7 +158,7 @@ class LatchFilePathTransformer(FlyteFilePathTransformer):
         ctx: FlyteContext,
         lv: Literal,
         expected_python_type: Union[Type[LatchFile], PathLike],
-    ) -> FlyteFile:
+    ) -> LatchFile:
         uri = lv.scalar.blob.uri
         if expected_python_type is PathLike:
             raise TypeError(
