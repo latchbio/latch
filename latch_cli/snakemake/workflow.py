@@ -258,15 +258,26 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
     ):
         if fn_name is None:
             fn_name = self.name
-        fn_interface = f"\n\n@{decorator_name}\ndef {fn_name}("
-        fn_interface += (
-            ", ".join(
-                f"{param}: {t.__name__}"
-                for param, t in self.python_interface.inputs.items()
-            )
-            + ") -> bool:"
+
+        params_str = ",\n".join(
+            reindent(
+                rf"""
+                {param}: {t.__name__}
+                """,
+                1,
+            ).rstrip()
+            for param, t in self.python_interface.inputs.items()
         )
-        return fn_interface
+
+        return reindent(
+            rf"""
+            @{decorator_name}
+            def {fn_name}(
+            __params__
+            ) -> bool:
+            """,
+            0,
+        ).replace("__params__", params_str)
 
     def get_fn_return_stmt(self):
         return "\n    return True"
@@ -280,14 +291,44 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         remote_output_url: Optional[str],
     ):
         task_name = f"{self.name}_task"
+
         code_block = ""
         code_block += self.get_fn_interface(fn_name=task_name)
 
         for param, t in self.python_interface.inputs.items():
             if t in (LatchFile, LatchDir):
-                code_block += (
-                    f"\n    check_exists_and_rename(Path({param}).resolve(),"
-                    f' Path("{self.parameter_metadata[param].path}"))'
+                code_block += reindent(
+                    rf"""
+                    {param}_dst_p = Path("{self.parameter_metadata[param].path}")
+
+                    print(f"Downloading {{{param}.remote_path}}")
+                    {param}_p = Path({param}).resolve()
+                    print(f"  {{file_name_and_size({param}_p)}}")
+
+                    """,
+                    1,
+                )
+
+                if t is LatchDir:
+                    code_block += reindent(
+                        rf"""
+                        for x in {param}_p.iterdir():
+                            print(f"    {{file_name_and_size(x)}}")
+
+                        """,
+                        1,
+                    )
+
+                code_block += reindent(
+                    rf"""
+                    print(f"Moving {param} to {{{param}_dst_p}}")
+                    check_exists_and_rename(
+                        {param}_p,
+                        {param}_dst_p
+                    )
+
+                    """,
+                    1,
                 )
             else:
                 raise ValueError(f"Unsupported parameter type {t} for {param}")
@@ -755,26 +796,50 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         )
 
     def get_fn_interface(self):
-        fn_interface = f"\n\n@small_task\ndef {self.name}("
-        fn_interface += (
-            ", ".join(
-                f"{param}: {t.__name__}" for param, t in self._python_inputs.items()
+        params_str = ",\n".join(
+            reindent(
+                rf"""
+                {param}: {t.__name__}
+                """,
+                1,
             )
-            + ")"
+            for param, t in self._python_inputs.items()
         )
 
+        outputs_str = "None:"
         if len(self._python_outputs.items()) > 0:
-            fn_interface += (
-                f" -> NamedTuple('{self.name}_output', "
-                + ", ".join(
-                    f"{param}={t.__name__}" for param, t in self._python_outputs.items()
-                )
-                + "):"
+            outputs_str = ",\n".join(
+                reindent(
+                    rf"""
+                    {param}={t.__name__}
+                    """,
+                    1,
+                ).rstrip()
+                for param, t in self._python_outputs.items()
             )
-        else:
-            fn_interface += ":"
+            outputs_str = reindent(
+                rf"""
+                NamedTuple(
+                    "{self.name}_output",
+                    {outputs_str}
+                ):
+                """,
+                0,
+            )
 
-        return fn_interface
+        return (
+            reindent(
+                rf"""
+            @small_task
+            def {self.name}(
+            __params__
+            ) -> __outputs__
+            """,
+                0,
+            )
+            .replace("__params__", params_str)
+            .replace("__outputs__", outputs_str)
+        )
 
     def get_fn_return_stmt(self, remote_output_url: Optional[str] = None):
         return_stmt = "\n    return ("
@@ -806,7 +871,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             if t == LatchFile:
                 code_block += reindent(
                     rf"""
-                    {param}_dst_p = Path({self._target_file_for_input_param[param]})
+                    {param}_dst_p = Path("{self._target_file_for_input_param[param]}")
 
                     print(f"Downloading {{{param}.remote_path}}")
                     {param}_p = Path({param}).resolve()

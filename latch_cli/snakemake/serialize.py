@@ -271,6 +271,7 @@ def generate_snakemake_entrypoint(
         import shutil
         import subprocess
         from typing import NamedTuple
+        import stat
 
         from latch import small_task
         from latch.types.file import LatchFile
@@ -299,7 +300,7 @@ def generate_snakemake_entrypoint(
 
             return f"{si_unit(s.st_size):>7}B {x.name}"
 
-    """).strip()
+    """).lstrip()
     for task in wf.snakemake_tasks:
         entrypoint_code_block += task.get_fn_code(
             snakefile_path_in_container(snakefile, pkg_root), remote_output_url
@@ -332,8 +333,10 @@ def generate_jit_register_code(
         import hashlib
         from urllib.parse import urljoin
 
+        import stat
         import base64
         import boto3
+        import boto3.session
         import google.protobuf.json_format as gpjson
         import gql
         import requests
@@ -369,7 +372,23 @@ def generate_jit_register_code(
                 if new.is_dir():
                     shutil.rmtree(new)
             os.renames(old, new)
-    """).strip()
+
+        def si_unit(num, base: float = 1000.0):
+            for unit in (" ", "k", "M", "G", "T", "P", "E", "Z"):
+                if abs(num) < base:
+                    return f"{num:3.1f}{unit}"
+                num /= base
+            return f"{num:.1f}Y"
+
+        def file_name_and_size(x: Path):
+            s = x.stat()
+
+            if stat.S_ISDIR(s.st_mode):
+                return f"{'D':>8} {x.name}/"
+
+            return f"{si_unit(s.st_size):>7}B {x.name}"
+
+    """).lstrip()
     code_block += wf.get_fn_code(
         snakefile_path_in_container(snakefile, pkg_root),
         version,
