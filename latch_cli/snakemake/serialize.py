@@ -273,6 +273,7 @@ def generate_snakemake_entrypoint(
         from typing import NamedTuple
         import stat
         from dataclasses import dataclass
+        import sys
 
         from latch import small_task
         from latch.types.file import LatchFile
