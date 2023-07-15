@@ -16,6 +16,7 @@ from typing_extensions import Annotated
 
 from latch.types.file import LatchFile
 from latch.types.utils import _is_valid_url
+from latch_cli.services.cp.path_utils import normalize_path
 from latch_cli.utils import urljoins
 
 
@@ -83,7 +84,7 @@ class LatchDir(FlyteDirectory):
 
         # Cast PathLike objects so that LatchDir has consistent JSON
         # representation.
-        self.path = str(path)
+        self.path = normalize_path(str(path))
 
         if _is_valid_url(self.path) and remote_path is None:
             self._remote_directory = self.path
