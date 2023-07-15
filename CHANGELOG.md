@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.27.1 - 2023-07-15
+
+### Fixed
+
+- fixed bug where `LatchFile`/`LatchDir`s wouldn't respect the workspace selected using `latch workspace`.
+
 ## 2.27.0 - 2023-07-15
 
 ### Added
