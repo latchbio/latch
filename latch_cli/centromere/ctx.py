@@ -32,6 +32,8 @@ from latch_cli.utils import (
     retrieve_or_login,
 )
 
+from ..utils import identifier_suffix_from_str
+
 
 @dataclass
 class _Container:
@@ -81,6 +83,7 @@ class _CentromereCtx:
         remote: bool = False,
         snakefile: Optional[Path] = None,
         use_new_centromere: bool = False,
+        custom_workflow_name: Optional[str] = None,
     ):
         with self:
             self.use_new_centromere = use_new_centromere
@@ -101,6 +104,8 @@ class _CentromereCtx:
 
             self.container_map: Dict[str, _Container] = {}
             if self.workflow_type == WorkflowType.latchbiosdk:
+                assert custom_workflow_name is None
+
                 _import_flyte_objects([self.pkg_root])
                 for entity in FlyteEntities.entities:
                     if isinstance(entity, PythonFunctionWorkflow):
@@ -119,7 +124,8 @@ class _CentromereCtx:
             else:
                 # todo(kenny): support per container task and custom workflow
                 # name for snakemake
-                self.workflow_name = "snakemake workflow"
+                assert custom_workflow_name is not None
+                self.workflow_name = custom_workflow_name
 
             version_file = self.pkg_root / "version"
             try:
@@ -199,7 +205,9 @@ class _CentromereCtx:
         else:
             account_id = self.account_id
 
-        return f"{account_id}_{self.pkg_root.name.lower()}"
+        wf_name = identifier_suffix_from_str(self.workflow_name)
+
+        return f"{account_id}_{wf_name}"
 
     @property
     def image_tagged(self):

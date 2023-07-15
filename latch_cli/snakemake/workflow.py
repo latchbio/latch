@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union
 from urllib.parse import urlparse
 
 import snakemake
+import snakemake.io
 from flytekit.configuration import SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
@@ -39,6 +40,8 @@ import latch.types.metadata as metadata
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
 
+from ..utils import identifier_suffix_from_str
+
 SnakemakeInputVal: TypeAlias = snakemake.io._IOFile
 
 
@@ -56,7 +59,10 @@ def task_fn_placeholder():
 
 
 def variable_name_for_file(file: snakemake.io.AnnotatedString):
-    return file.replace("/", "_").replace(".", "__").replace("-", "____")
+    if file[0] == "/":
+        return f"a_{identifier_suffix_from_str(file)}"
+
+    return f"r_{identifier_suffix_from_str(file)}"
 
 
 def variable_name_for_value(

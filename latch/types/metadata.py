@@ -9,6 +9,7 @@ import yaml
 
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
+from latch_cli.utils import identifier_from_str, identifier_suffix_from_str
 
 
 @dataclass
@@ -441,14 +442,9 @@ class SnakemakeMetadata(LatchMetadata):
 
     def __post_init__(self):
         if self.name is None:
-            name = self.display_name.lower()
-            start = name[0]
-
-            res: List[str] = [start if start.isidentifier() else "_"]
-            for x in name[1:]:
-                res.append(x if f"_{x}".isidentifier() else "_")
-
-            self.name = "".join(res)
+            self.name = (
+                f"snakemake_{identifier_suffix_from_str(self.display_name.lower())}"
+            )
 
         global _snakemake_metadata
         _snakemake_metadata = self

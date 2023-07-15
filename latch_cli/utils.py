@@ -306,3 +306,14 @@ class TemporarySSHCredentials:
 class WorkflowType(Enum):
     latchbiosdk = "latchbiosdk"
     snakemake = "snakemake"
+
+
+def identifier_suffix_from_str(x: str) -> str:
+    res = ""
+    for c in x:
+        res += c if f"_{c}".isidentifier() else "_"
+    return res
+
+
+def identifier_from_str(x: str) -> str:
+    return (x[0] if x[0].isidentifier() else "_") + identifier_suffix_from_str(x[1:])

@@ -19,19 +19,13 @@ from snakemake.rules import Rule
 from snakemake.workflow import Workflow, WorkflowError
 from typing_extensions import Self
 
-import latch.types.metadata as metadata
-from latch_cli.snakemake.serialize_utils import (
+from ..services.register.utils import import_module_by_path
+from .serialize_utils import (
     EntityCache,
     get_serializable_launch_plan,
     get_serializable_workflow,
 )
-from latch_cli.snakemake.workflow import (
-    JITRegisterWorkflow,
-    SnakemakeWorkflow,
-    interface_to_parameters,
-)
-
-from ..services.register.utils import import_module_by_path
+from .workflow import JITRegisterWorkflow, SnakemakeWorkflow, interface_to_parameters
 
 RegistrableEntity = Union[
     task_models.TaskSpec,
@@ -45,6 +39,8 @@ def should_register_with_admin(entity: RegistrableEntity) -> bool:
 
 
 def ensure_snakemake_metadata_exists():
+    import latch.types.metadata as metadata
+
     if metadata._snakemake_metadata is None:
         click.secho(
             dedent("""
