@@ -20,7 +20,7 @@ Types of changes
 
 ### Fixed
 
-- fixed bug where `LatchFile`/`LatchDir`s wouldn't respect the workspace selected using `latch workspace`.
+- fixed bug where `LatchFile`s/`LatchDir`s wouldn't respect the workspace selected using `latch workspace`.
 
 ## 2.27.0 - 2023-07-15
 

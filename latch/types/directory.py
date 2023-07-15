@@ -11,7 +11,6 @@ from flytekit.types.directory.types import (
     FlyteDirectory,
     FlyteDirToMultipartBlobTransformer,
 )
-from latch_sdk_config.user import user_config
 from latch_sdk_gql.execute import execute
 from typing_extensions import Annotated
 
