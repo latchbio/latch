@@ -206,6 +206,8 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
     def __init__(
         self,
     ):
+        assert metadata._snakemake_metadata is not None
+
         parameter_metadata = metadata._snakemake_metadata.parameters
         metadata._snakemake_metadata.parameters = parameter_metadata
         display_name = metadata._snakemake_metadata.display_name
@@ -282,12 +284,15 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                             image_name = "{image_name}"
                             account_id = "{account_id}"
                             snakefile = Path("{snakefile_path}")
+
+                            lp = LatchPersistence()
                             """),
             "    ",
         )
 
         if remote_output_url is not None:
             remote_output_url = f"'{remote_output_url}'"
+
         code_block += textwrap.indent(
             textwrap.dedent(rf"""
                             pkg_root = Path(".")
@@ -296,6 +301,8 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                             wf = extract_snakemake_workflow(pkg_root, snakefile, version)
                             wf_name = wf.name
                             generate_snakemake_entrypoint(wf, pkg_root, snakefile, {remote_output_url})
+
+                            lp.upload("latch_entrypoint.py", f"latch:///.snakemake_latch/workflow_entrypoints/{{image_name}}-{{version}}.py")
                             """),
             "    ",
         )
@@ -439,7 +446,6 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
                             print(nodes)
 
-                            lp = LatchPersistence()
                             for file in wf.return_files:
                                 print(f"Uploading {file.local_path} -> {file.remote_path}")
                                 lp.upload(file.local_path, file.remote_path)
@@ -452,7 +458,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                                 "params": params,
                             }
 
-                            response = requests.post(config.api.workflow.create_execution, headers=headers, json=_interface_request)
+                            response = requests.post("/api/create-execution", headers=headers, json=_interface_request)
                             print(response.json())
                             """),
             "    ",
