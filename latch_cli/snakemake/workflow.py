@@ -305,7 +305,9 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                             wf_name = wf.name
                             generate_snakemake_entrypoint(wf, pkg_root, snakefile, {remote_output_url})
 
-                            lp.upload("latch_entrypoint.py", f"latch:///.snakemake_latch/workflow_entrypoints/{{image_name}}-{{version}}.py")
+                            entrypoint_remote = f"latch:///.snakemake_latch/workflow_entrypoints/{{image_name}}-{{version}}.py"
+                            lp.upload("latch_entrypoint.py", entrypoint_remote)
+                            print(f"latch_entrypoint.py -> {{entrypoint_remote}}")
                             """),
             "    ",
         )
@@ -461,7 +463,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                                 "params": params,
                             }
 
-                            response = requests.post("/api/create-execution", headers=headers, json=_interface_request)
+                            response = requests.post(urljoin(config.nucleus_url, "/api/create-execution"), headers=headers, json=_interface_request)
                             print(response.json())
                             """),
             "    ",

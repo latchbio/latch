@@ -270,6 +270,7 @@ def generate_snakemake_entrypoint(
         import subprocess
         import hashlib
         from typing import NamedTuple
+        from urllib.parse import urljoin
 
         from latch import small_task
         from latch.types.file import LatchFile
