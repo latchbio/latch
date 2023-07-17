@@ -1,6 +1,7 @@
 import re
 from os import PathLike
 from typing import Optional, Type, Union
+from urllib.parse import urlparse
 
 import gql
 from flytekit.core.annotation import FlyteAnnotation
@@ -64,7 +65,13 @@ class LatchFile(FlyteFile):
 
         # Cast PathLike objects so that LatchFile has consistent JSON
         # representation.
-        self.path = normalize_path(str(path))
+        parsed = urlparse(str(path))
+        if parsed.scheme == "file":
+            self.path = parsed.path
+        elif parsed.scheme == "latch":
+            self.path = normalize_path(str(path))
+        else:
+            self.path = str(path)
 
         if _is_valid_url(self.path) and remote_path is None:
             self._remote_path = str(path)

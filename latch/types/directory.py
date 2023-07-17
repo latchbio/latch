@@ -1,6 +1,7 @@
 from os import PathLike
 from pathlib import Path
 from typing import List, Optional, Type, TypedDict, Union, get_args, get_origin
+from urllib.parse import urlparse
 
 import gql
 from flytekit.core.annotation import FlyteAnnotation
@@ -84,7 +85,13 @@ class LatchDir(FlyteDirectory):
 
         # Cast PathLike objects so that LatchDir has consistent JSON
         # representation.
-        self.path = normalize_path(str(path))
+        parsed = urlparse(str(path))
+        if parsed.scheme == "file":
+            self.path = parsed.path
+        elif parsed.scheme == "latch":
+            self.path = normalize_path(str(path))
+        else:
+            self.path = str(path)
 
         if _is_valid_url(self.path) and remote_path is None:
             self._remote_directory = self.path
