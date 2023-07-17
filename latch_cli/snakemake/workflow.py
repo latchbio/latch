@@ -1,4 +1,5 @@
 import importlib
+import json
 import textwrap
 import typing
 from dataclasses import dataclass
@@ -923,13 +924,13 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                 )
 
         snakemake_cmd = [
-            "snakemake",
+            "python",
+            "-m",
+            "latch_cli.snakemake.single_task_snakemake",
             "-s",
             snakefile_path_in_container,
             "--target-jobs",
             *encode_target_jobs_cli_args(self.job.get_target_spec()),
-            "--allowed-rules",
-            *self.job.rules,
             "--allowed-rules",
             *self.job.rules,
             "--local-groupid",
@@ -952,7 +953,14 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         code_block += reindent(
             rf"""
 
-            subprocess.run({repr(snakemake_cmd)}, check=True)
+            subprocess.run(
+                {repr(snakemake_cmd)},
+                check=True,
+                env={{
+                    "LATCH_SNAKEMAKE_RULES": "{json.dumps([job.rulename for job in self.job.get_target_spec()])}",
+                    "LATCH_SNAKEMAKE_TARGET_OUTPUT": {repr(next(iter(self._target_file_for_output_param.values())))}
+                }}
+            )
 
             """,
             1,

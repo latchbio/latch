@@ -79,6 +79,7 @@ def ensure_snakemake_metadata_exists():
         )
 
 
+# todo(maximsmol): this needs to run in a subprocess because it pollutes globals
 class SnakemakeWorkflowExtractor(Workflow):
     def __init__(self, pkg_root: Path, snakefile: Path):
         super().__init__(snakefile=snakefile)
@@ -364,6 +365,7 @@ def generate_jit_register_code(
             generate_snakemake_entrypoint,
             serialize_snakemake,
         )
+        import latch_cli.snakemake
 
         from latch import small_task
         from latch_sdk_gql.execute import execute
