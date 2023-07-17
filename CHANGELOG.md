@@ -20,7 +20,7 @@ Types of changes
 
 ### Fixed
 
-- fixed bug where `LatchFile`s/`LatchDir`s would try to feed `file://` URIs into `open()`, which was causing errors.
+- fixed bug where `LatchFile`s/`LatchDir`s would provide `file://` URIs instead of Unix paths, which was causing errors in, e.g., calls to `open()`.
 
 ## 2.27.1 - 2023-07-15
 
