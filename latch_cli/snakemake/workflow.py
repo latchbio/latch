@@ -957,7 +957,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                 {repr(snakemake_cmd)},
                 check=True,
                 env={{
-                    "LATCH_SNAKEMAKE_RULES": "{json.dumps([job.rulename for job in self.job.get_target_spec()])}",
+                    "LATCH_SNAKEMAKE_RULES": {repr(json.dumps([job.rulename for job in self.job.get_target_spec()]))},
                     "LATCH_SNAKEMAKE_TARGET_OUTPUT": {repr(next(iter(self._target_file_for_output_param.values())))}
                 }}
             )
