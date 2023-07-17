@@ -863,7 +863,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                     rf"""
                     print(f"  {out_name}={{file_name_and_size(Path("{target_path}"))}}")
                     """,
-                    1,
+                    0,
                 )
             )
 
