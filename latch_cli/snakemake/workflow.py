@@ -215,7 +215,7 @@ def interface_to_parameters(
 
 
 class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
-    out_parameter_name = "success"
+    out_parameter_name = "o0"  # must be "o0"
 
     def __init__(
         self,
