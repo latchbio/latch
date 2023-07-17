@@ -1,4 +1,5 @@
 import os
+import sys
 import textwrap
 from itertools import filterfalse
 from pathlib import Path
@@ -273,7 +274,6 @@ def generate_snakemake_entrypoint(
         import subprocess
         from typing import NamedTuple
         import stat
-        from dataclasses import dataclass
         import sys
 
         from latch import small_task

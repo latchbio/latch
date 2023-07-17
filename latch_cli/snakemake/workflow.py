@@ -665,7 +665,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                         upstream_nodes.append(node_map[x.jobid])
 
                 node = Node(
-                    id=str(job.jobid),
+                    id=f"n{job.jobid}",
                     metadata=task.construct_node_metadata(),
                     bindings=sorted(bindings, key=lambda b: b.var),
                     upstream_nodes=upstream_nodes,
@@ -704,8 +704,8 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
 
 def build_jit_register_wrapper() -> JITRegisterWorkflow:
-    out_parameter_name = "success"
     wrapper_wf = JITRegisterWorkflow()
+    out_parameter_name = wrapper_wf.out_parameter_name
 
     python_interface = wrapper_wf.python_interface
     wrapper_wf._input_parameters = interface_to_parameters(python_interface)
@@ -717,7 +717,6 @@ def build_jit_register_wrapper() -> JITRegisterWorkflow:
         upstream_nodes=[],
         flyte_entity=None,
     )
-
     task_interface = Interface(
         python_interface.inputs, python_interface.outputs, docstring=None
     )
@@ -828,8 +827,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
 
             res += reindent(
                 rf"""
-                @dataclass
-                class Res{self.name}:
+                class Res{self.name}(NamedTuple):
                 __output_fields__
 
                 """,
