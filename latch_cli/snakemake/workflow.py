@@ -936,6 +936,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             str(self.job.jobid),
             "--cores",
             str(self.job.threads),
+            "--print-compilation",
         ]
         if not self.job.is_group():
             snakemake_args.append("--force-use-threads")

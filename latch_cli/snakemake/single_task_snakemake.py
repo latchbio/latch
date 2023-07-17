@@ -27,7 +27,7 @@ def rule_start(self, aux=""):
         prefix = dedent(f"""
             @workflow.rule(name='latch_entrypoint', lineno=1, snakefile='workflow/Snakefile')
             @workflow.input(
-                {target_rule_output}
+                {repr(target_rule_output)}
             )
             @workflow.norun()
             @workflow.run
