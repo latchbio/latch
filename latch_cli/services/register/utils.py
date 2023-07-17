@@ -4,6 +4,7 @@ import contextlib
 import importlib.util as iu
 import io
 import os
+import sys
 import typing
 from collections.abc import Iterable
 from pathlib import Path
@@ -21,6 +22,7 @@ else:
     _CentromereCtx = ""
 
 
+# todo(maximsmol): only login if the credentials are expired
 def _docker_login(ctx: _CentromereCtx):
     assert ctx.dkr_client is not None
 
@@ -51,12 +53,16 @@ def _docker_login(ctx: _CentromereCtx):
             f"unable to retreive an ecr login token for user {ctx.account_id}"
         ) from err
 
+    auth = ctx.dkr_client._auth_configs
+    store_name = auth.get_credential_store(ctx.dkr_repo)
+    store = auth._get_store_instance(store_name)
+    store.erase(ctx.dkr_repo)
+
     user, password = base64.b64decode(token).decode("utf-8").split(":")
-    ctx.dkr_client.login(
-        username=user,
-        password=password,
-        registry=ctx.dkr_repo,
+    res = ctx.dkr_client.login(
+        username=user, password=password, registry=ctx.dkr_repo, reauth=True
     )
+    assert res["Status"] == "Login Succeeded"
 
 
 class DockerBuildLogItem(TypedDict):
