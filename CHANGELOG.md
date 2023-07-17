@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.27.3 - 2023-07-17
+
+### Fixed
+
+- fixed bug where `LatchFile`s/`LatchDir`s would try to feed `file://` URIs into `open()`, which was causing errors.
+
 ## 2.27.1 - 2023-07-15
 
 ### Fixed
