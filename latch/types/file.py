@@ -11,7 +11,7 @@ from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
 from latch_sdk_gql.execute import execute
 from typing_extensions import Annotated
 
-from latch.types.utils import _is_valid_url
+from latch.types.utils import _is_valid_url, strip_file_scheme
 from latch_cli.services.cp.path_utils import normalize_path
 
 is_absolute_node_path = re.compile(r"^(latch)?://\d+.node(/)?$")
@@ -64,7 +64,7 @@ class LatchFile(FlyteFile):
 
         # Cast PathLike objects so that LatchFile has consistent JSON
         # representation.
-        self.path = normalize_path(str(path))
+        self.path = strip_file_scheme(normalize_path(str(path)))
 
         if _is_valid_url(self.path) and remote_path is None:
             self._remote_path = str(path)
