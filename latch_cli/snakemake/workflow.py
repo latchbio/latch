@@ -923,8 +923,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                     1,
                 )
 
-        snakemake_cmd = [
-            "python",
+        snakemake_args = [
             "-m",
             "latch_cli.snakemake.single_task_snakemake",
             "-s",
@@ -939,22 +938,22 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             str(self.job.threads),
         ]
         if not self.job.is_group():
-            snakemake_cmd.append("--force-use-threads")
+            snakemake_args.append("--force-use-threads")
 
         excluded = {"_nodes", "_cores", "tmpdir"}
         allowed_resources = list(
             filter(lambda x: x[0] not in excluded, self.job.resources.items())
         )
         if len(allowed_resources) > 0:
-            snakemake_cmd.append("--resources")
+            snakemake_args.append("--resources")
             for resource, value in allowed_resources:
-                snakemake_cmd.append(f"{resource}={value}")
+                snakemake_args.append(f"{resource}={value}")
 
         code_block += reindent(
             rf"""
 
             subprocess.run(
-                {repr(snakemake_cmd)},
+                [sys.executable,{','.join(repr(x) for x in snakemake_args)}],
                 check=True,
                 env={{
                     "LATCH_SNAKEMAKE_RULES": {repr(json.dumps([job.rulename for job in self.job.get_target_spec()]))},

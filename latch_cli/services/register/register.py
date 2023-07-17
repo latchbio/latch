@@ -28,7 +28,7 @@ def _delete_lines(num: int):
     """Deletes the previous len(lines) lines, assuming cursor is on a
     new line just below the first line to be deleted"""
     for i in range(num):
-        print("\x1b[1F\x1b[0G\x1b[2K", end="")
+        click.echo("\x1b[1F\x1b[0G\x1b[2K", nl=False)
 
 
 def _print_window(cur_lines: List[str], line: str):
@@ -42,10 +42,10 @@ def _print_window(cur_lines: List[str], line: str):
         new_lines.append(line)
         _delete_lines(len(cur_lines))
         for s in new_lines:
-            print("\x1b[38;5;245m" + s + "\x1b[0m")
+            click.echo("\x1b[38;5;245m" + s + "\x1b[0m")
         return new_lines
     else:
-        print("\x1b[38;5;245m" + line + "\x1b[0m")
+        click.echo("\x1b[38;5;245m" + line + "\x1b[0m")
         cur_lines.append(line)
         return cur_lines
 
@@ -113,7 +113,7 @@ def print_upload_logs(upload_image_logs, image):
 
     def _pp_prog_map(prog_map, prev_lines):
         if prev_lines > 0:
-            print("\x1b[2K\x1b[1E" * prev_lines + f"\x1b[{prev_lines}F", end="")
+            click.echo("\x1b[2K\x1b[1E" * prev_lines + f"\x1b[{prev_lines}F", nl=False)
         prog_chunk = ""
         i = 0
         for id, prog in prog_map.items():
@@ -123,7 +123,7 @@ def print_upload_logs(upload_image_logs, image):
             i += 1
         if prog_chunk == "":
             return 0
-        print(prog_chunk, end=f"\x1b[{i}A")
+        click.echo(prog_chunk + f"\x1b[{i}A", nl=False)
         return i
 
     prev_lines = 0
@@ -181,9 +181,9 @@ def _print_reg_resp(resp, image):
 
 
 def print_serialize_logs(serialize_logs, image):
-    print(f"Serializing workflow in {image}:")
+    click.echo(f"Serializing workflow in {image}:")
     for x in serialize_logs:
-        print(x, end="")
+        click.echo(x, nl=False)
 
 
 def _build_and_serialize(
