@@ -861,7 +861,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             print_outs.append(
                 reindent(
                     rf"""
-                    print(f"  {out_name}={{file_name_and_size(Path("{target_path}"))}}")
+                    print(f'  {out_name}={{file_name_and_size(Path("{target_path}"))}}')
                     """,
                     0,
                 )
