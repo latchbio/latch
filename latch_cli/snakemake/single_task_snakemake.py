@@ -6,6 +6,7 @@ import snakemake
 from snakemake.parser import (
     Input,
     Output,
+    Params,
     Rule,
     StopAutomaton,
     is_comment,
@@ -68,6 +69,7 @@ def skip_block(self, token, force_block_end=False):
 
 Input.block = skip_block
 Output.block = skip_block
+Params.block = skip_block
 
 # Run snakemake
 snakemake.main()

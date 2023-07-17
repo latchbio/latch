@@ -853,20 +853,31 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         return res
 
     def get_fn_return_stmt(self, remote_output_url: Optional[str] = None):
+        print_outs: list[str] = []
         results: list[str] = []
         for out_name in self._python_outputs:
+            target_path = self._target_file_for_output_param[out_name]
+
+            print_outs.append(
+                reindent(
+                    rf"""
+                    print(f"  {out_name}={{file_name_and_size(Path("{target_path}"))}}")
+                    """,
+                    1,
+                )
+            )
+
             if not self._is_target:
                 results.append(
                     reindent(
                         rf"""
-                        {out_name}=LatchFile("{self._target_file_for_output_param[out_name]}")
+                        {out_name}=LatchFile("{target_path}")
                         """,
                         1,
                     ).rstrip()
                 )
                 continue
 
-            target_path = self._target_file_for_output_param[out_name]
             if remote_output_url is None:
                 remote_path = Path("/Snakemake Outputs") / target_path
             else:
@@ -881,16 +892,24 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                 ).rstrip()
             )
 
+        print_out_str = "\n".join(print_outs)
         return_str = ",\n".join(results)
 
-        return reindent(
-            rf"""
+        return (
+            reindent(
+                rf"""
+            print("Uploading results:")
+            __print_out__
+
             return Res{self.name}(
             __return_str__
             )
             """,
-            1,
-        ).replace("__return_str__", return_str)
+                1,
+            )
+            .replace("__print_out__", print_out_str)
+            .replace("__return_str__", return_str)
+        )
 
     def get_fn_code(
         self, snakefile_path_in_container: str, remote_output_url: Optional[str] = None
@@ -936,7 +955,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             str(self.job.jobid),
             "--cores",
             str(self.job.threads),
-            "--print-compilation",
+            # "--print-compilation",
         ]
         if not self.job.is_group():
             snakemake_args.append("--force-use-threads")
@@ -953,6 +972,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         code_block += reindent(
             rf"""
 
+            print("\n\n\nRunning snakemake task\n\n\n")
             subprocess.run(
                 [sys.executable,{','.join(repr(x) for x in snakemake_args)}],
                 check=True,
@@ -962,6 +982,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                     "LATCH_SNAKEMAKE_TARGET_OUTPUT": {repr(next(iter(self._target_file_for_output_param.values())))}
                 }}
             )
+            print("\n\n\nDone\n\n\n")
 
             """,
             1,
