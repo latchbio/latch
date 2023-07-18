@@ -352,9 +352,6 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             1,
         )
 
-        if remote_output_url is not None:
-            remote_output_url = f"'{remote_output_url}'"
-
         code_block += reindent(
             rf"""
             pkg_root = Path(".")
@@ -365,9 +362,9 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
             wf = extract_snakemake_workflow(pkg_root, snakefile, version)
             wf_name = wf.name
-            generate_snakemake_entrypoint(wf, pkg_root, snakefile, {remote_output_url})
+            generate_snakemake_entrypoint(wf, pkg_root, snakefile, {repr(remote_output_url)})
 
-            entrypoint_remote = f"latch:///.snakemake_latch/workflows/{{image_name}}-{{version}}/entrypoint.py"
+            entrypoint_remote = f"latch:///.snakemake_latch/workflows/{{image_name}}/entrypoint.py"
             lp.upload("latch_entrypoint.py", entrypoint_remote)
             print(f"latch_entrypoint.py -> {{entrypoint_remote}}")
             """,
@@ -484,7 +481,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 reg_resp = register_serialized_pkg(protos, None, version, account_id)
                 _print_reg_resp(reg_resp, new_image_name)
 
-            wf_spec_remote = f"latch:///.snakemake_latch/workflows/{image_name}-{version}/spec.json"
+            wf_spec_remote = f"latch:///.snakemake_latch/workflows/{image_name}/spec.json"
             lp.upload("wf_spec.json", wf_spec_remote)
             print(f"wf_spec.json -> {wf_spec_remote}")
 
@@ -985,6 +982,11 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             "outputs": self.job.output,
         }
 
+        if remote_output_url is None:
+            remote_path = Path("/Snakemake Outputs")
+        else:
+            remote_path = Path(urlparse(remote_output_url).path)
+
         code_block += reindent(
             rf"""
             lp = LatchPersistence()
@@ -1005,15 +1007,31 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             lp.upload(compiled, "latch:///.snakemake_latch/{self.name}_compiled.py")
 
             print("\n\n\nRunning snakemake task\n\n\n")
-            subprocess.run(
-                [sys.executable,{','.join(repr(x) for x in snakemake_args)}],
-                check=True,
-                env={{
-                    **os.environ,
-                    "LATCH_SNAKEMAKE_DATA": {repr(json.dumps(snakemake_data))}
-                }}
-            )
-            print("\n\n\nDone\n\n\n")
+            try:
+                subprocess.run(
+                    [sys.executable,{','.join(repr(x) for x in snakemake_args)}],
+                    check=True,
+                    env={{
+                        **os.environ,
+                        "LATCH_SNAKEMAKE_DATA": {repr(json.dumps(snakemake_data))}
+                    }}
+                )
+                print("\n\n\nDone\n\n\n")
+            except Exception as e:
+                print("\n\n\nFailed\n\n\n")
+                raise e
+            finally:
+                print("Uploading logs")
+                for x in {repr([x.file for x in self.job.log])}:
+                    local = Path(x)
+                    print(f"  {{file_name_and_size(local)}}")
+                    lp.upload(local, f"latch://{remote_path}/{{local}}")
+
+                print("\nUploading benchmarks")
+                for x in {repr([x.file for x in self.job.benchmark])}:
+                    local = Path(x)
+                    print(f"  {{file_name_and_size(local)}}")
+                    lp.upload(local, f"latch://{remote_path}/{{local}}")
 
             """,
             1,
