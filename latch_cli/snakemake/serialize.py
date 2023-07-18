@@ -275,7 +275,9 @@ def generate_snakemake_entrypoint(
         from typing import NamedTuple
         import stat
         import sys
+
         from flytekit.extras.persistence import LatchPersistence
+        import traceback
 
         from latch import small_task
         from latch.types.file import LatchFile

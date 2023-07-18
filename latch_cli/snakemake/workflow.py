@@ -972,16 +972,19 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             lp = LatchPersistence()
             compiled = Path("compiled.py")
             with compiled.open("w") as f:
-                subprocess.run(
-                    [sys.executable,{','.join(repr(x) for x in [*snakemake_args, "--print-compilation"])}],
-                    check=True,
-                    env={{
-                        **os.environ,
-                        "LATCH_SNAKEMAKE_RULES": {repr(json.dumps([job.rulename for job in self.job.get_target_spec()]))},
-                        "LATCH_SNAKEMAKE_TARGET_OUTPUT": {repr(next(iter(self._target_file_for_output_param.values())))}
-                    }},
-                    stdout=f
-                )
+                try:
+                    subprocess.run(
+                        [sys.executable,{','.join(repr(x) for x in [*snakemake_args, "--print-compilation"])}],
+                        check=True,
+                        env={{
+                            **os.environ,
+                            "LATCH_SNAKEMAKE_RULES": {repr(json.dumps([job.rulename for job in self.job.get_target_spec()]))},
+                            "LATCH_SNAKEMAKE_TARGET_OUTPUT": {repr(next(iter(self._target_file_for_output_param.values())))}
+                        }},
+                        stdout=f
+                    )
+                except Exception:
+                    traceback.print_exc()
             lp.upload(compiled, "latch:///.snakemake_latch/{self.name}_compiled.py")
 
             print("\n\n\nRunning snakemake task\n\n\n")
