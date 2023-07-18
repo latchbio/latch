@@ -283,6 +283,7 @@ def generate_snakemake_entrypoint(
         import traceback
 
         from latch import small_task
+        from latch.types.directory import LatchDir
         from latch.types.file import LatchFile
 
         sys.stdout.reconfigure(line_buffering=True)
