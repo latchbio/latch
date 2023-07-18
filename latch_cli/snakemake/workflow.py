@@ -837,7 +837,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         res += (
             reindent(
                 rf"""
-                @small_task
+                @small_task(cache=True)
                 def {self.name}(
                 __params__
                 ) -> __outputs__
@@ -987,10 +987,8 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         else:
             remote_path = Path(urlparse(remote_output_url).path)
 
-        log_files = [x.file for x in self.job.log] if self.job.log is not None else []
-        benchmark_files = (
-            [x for x in self.job.benchmark] if self.job.benchmark is not None else []
-        )
+        log_files = [self.job.log] if self.job.log is not None else []
+        benchmark_files = [self.job.benchmark] if self.job.benchmark is not None else []
 
         code_block += reindent(
             rf"""
@@ -1029,14 +1027,18 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                 print("Uploading logs")
                 for x in {repr(log_files)}:
                     local = Path(x)
-                    print(f"  {{file_name_and_size(local)}}")
-                    lp.upload(local, f"latch://{remote_path}/{{local}}")
+                    remote = f"latch://{remote_path}/{{local}}"
+                    print(f"  {{file_name_and_size(local)}} -> {{remote}}")
+                    lp.upload(local, remote)
+                    print("    Done")
 
                 print("\nUploading benchmarks")
                 for x in {repr(benchmark_files)}:
                     local = Path(x)
-                    print(f"  {{file_name_and_size(local)}}")
-                    lp.upload(local, f"latch://{remote_path}/{{local}}")
+                    remote = f"latch://{remote_path}/{{local}}"
+                    print(f"  {{file_name_and_size(local)}} -> {{remote}}")
+                    lp.upload(local, remote)
+                    print("    Done")
 
             """,
             1,

@@ -93,11 +93,14 @@ class SnakemakeWorkflowExtractor(Workflow):
             [self.default_target] if self.default_target is not None else []
         )
         target_rules: Set[Rule] = set(
-            map(self._rules.__getitem__, filter(self.is_rule, targets))
+            self._rules[x] for x in targets if self.is_rule(x)
         )
 
-        target_files = set()
-        for f in filterfalse(self.is_rule, targets):
+        target_files: set[str] = set()
+        for f in targets:
+            if self.is_rule(f):
+                continue
+
             if os.path.isabs(f) or f.startswith("root://"):
                 target_files.add(f)
             else:
