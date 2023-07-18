@@ -985,7 +985,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                 x for x in job.rule.params if x not in named_params
             ]
 
-            snakemake_data[job.rule.name] = {
+            snakemake_data["rules"][job.rule.name] = {
                 "inputs": job.rule.input,
                 "outputs": job.rule.output,
                 "nameless_params": nameless_params,
