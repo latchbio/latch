@@ -72,14 +72,14 @@ def rule_start(self, aux=""):
         prefix = dedent(f"""
             @workflow.rule(name='latch_entrypoint', lineno=1, snakefile='workflow/Snakefile')
             @workflow.input(
-            {outputs_str}
+            __outputs__
             )
             @workflow.norun()
             @workflow.run
             def __rule_latch_entrypoint(input, output, params, wildcards, threads, resources, log, version, rule, conda_env, container_img, singularity_args, use_singularity, env_modules, bench_record, jobid, is_shell, bench_iteration, cleanup_scripts, shadow_dir, edit_notebook, conda_base_path, basedir, runtime_sourcecache_path, __is_snakemake_rule_func=True):
                 pass
 
-            """)
+            """).replace("__outputs__", outputs_str)
 
     yield prefix + next(_real_rule_start(self, aux))
 
