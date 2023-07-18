@@ -61,7 +61,12 @@ def skip_block(self, token, force_block_end=False):
         if is_comment(token):
             yield token.string, token
         else:
-            if self.lasttoken == "\n" and self.rulename not in target_rules:
+            if (
+                self.lasttoken == "\n"
+                or
+                # old snakemake sometime does not put a newline after the decorate parenthesis
+                (self.line == 0 and self.lasttoken[-1] == "(")
+            ) and self.rulename not in target_rules:
                 yield "#", token
 
             yield from self.block_content(token)
