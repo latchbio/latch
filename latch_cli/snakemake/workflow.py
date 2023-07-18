@@ -99,9 +99,17 @@ def snakemake_dag_to_interface(
 ) -> (Interface, LiteralMap, List[RemoteFile]):
     outputs: Dict[str, LatchFile] = {}
     for target in dag.targetjobs:
-        for x in target.input:
-            param = variable_name_for_value(x, target.input)
-            outputs[param] = LatchFile
+        for desired in target.input:
+            param = variable_name_for_value(desired, target.input)
+
+            jobs: list[snakemake.jobs.Job] = dag.file2jobs(desired)
+            producer_out: snakemake.io._IOFile = next(
+                x for x in jobs[0].output if x == x
+            )
+            if producer_out.is_directory:
+                outputs[param] = LatchDir
+            else:
+                outputs[param] = LatchFile
 
     literals: Dict[str, Literal] = {}
     inputs: Dict[str, Tuple[LatchFile, None]] = {}
@@ -133,7 +141,7 @@ def snakemake_dag_to_interface(
                                 )
                             ),
                             uri=remote_url,
-                        )
+                        ),
                     )
                 )
 
@@ -805,8 +813,8 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
     def __init__(
         self,
         job: snakemake.jobs.Job,
-        inputs: Dict[str, Union[LatchFile, LatchDir]],
-        outputs: Dict[str, Union[LatchFile, LatchDir]],
+        inputs: Dict[str, Union[Type[LatchFile], Type[LatchDir]]],
+        outputs: Dict[str, Union[Type[LatchFile], Type[LatchDir]]],
         target_file_for_input_param: Dict[str, str],
         target_file_for_output_param: Dict[str, str],
         is_target: bool,
@@ -885,7 +893,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
     def get_fn_return_stmt(self, remote_output_url: Optional[str] = None):
         print_outs: list[str] = []
         results: list[str] = []
-        for out_name in self._python_outputs:
+        for out_name, out_type in self._python_outputs.items():
             target_path = self._target_file_for_output_param[out_name]
 
             print_outs.append(
@@ -901,7 +909,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                 results.append(
                     reindent(
                         rf"""
-                        {out_name}=LatchFile("{target_path}")
+                        {out_name}={out_type.__name__}("{target_path}")
                         """,
                         2,
                     ).rstrip()
@@ -916,7 +924,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             results.append(
                 reindent(
                     rf"""
-                    {out_name}=LatchFile("{target_path}", "latch://{remote_path}")
+                    {out_name}={out_type.__name__}("{target_path}", "latch://{remote_path}")
                     """,
                     2,
                 ).rstrip()
