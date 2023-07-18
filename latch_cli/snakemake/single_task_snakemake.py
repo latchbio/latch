@@ -91,7 +91,7 @@ Rule.start = rule_start
 
 def render_annotated_str(x) -> str:
     if not isinstance(x, dict):
-        return x
+        return repr(x)
 
     value = x["value"]
     flags = dict(x["flags"])
