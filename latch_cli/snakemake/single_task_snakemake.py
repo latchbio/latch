@@ -1,6 +1,8 @@
 import json
 import os
+import sys
 import traceback
+from itertools import chain
 from textwrap import dedent
 
 import snakemake
@@ -17,9 +19,44 @@ from snakemake.parser import (
     is_newline,
 )
 
+sys.stdout.reconfigure(line_buffering=True)
+sys.stderr.reconfigure(line_buffering=True)
+
+
+def eprint(x: str) -> None:
+    print(x, file=sys.stderr)
+
+
 data = json.loads(os.environ["LATCH_SNAKEMAKE_DATA"])
 rules = data["rules"]
 outputs = data["outputs"]
+
+eprint("\n>>><<<\n")
+eprint("Using LATCH_SNAKEMAKE_DATA:")
+for rule in rules:
+    rule_data = rules[rule]
+    eprint(f"  {rule}:")
+
+    eprint("    Inputs:")
+    for x in rule_data["inputs"]:
+        eprint(f"      {repr(x)}")
+
+    eprint("    Outputs:")
+    for x in rule_data["outputs"]:
+        eprint(f"      {repr(x)}")
+
+    eprint("    Nameless Params:")
+    for k, v in rule_data["nameless_params"].items():
+        eprint(f"      {k}={repr(v)}")
+
+    eprint("    Params:")
+    for k, v in rule_data["params"].items():
+        eprint(f"      {k}={repr(v)}")
+
+eprint("\nExpected outputs:")
+for x in outputs:
+    eprint(repr(x))
+eprint("\n>>><<<\n")
 
 # Add a custom entrypoint rule
 _real_rule_start = Rule.start
@@ -55,8 +92,13 @@ def emit_overrides(self, token):
     elif isinstance(self, Output):
         xs = (repr(x) for x in cur_data["outputs"])
     elif isinstance(self, Params):
+        nameless_params = cur_data["nameless_params"]
+        n_params_gen = (f"{repr(x)}" for x in nameless_params)
+
         params = cur_data["params"]
-        xs = (f"{k}={repr(v)}" for k, v in params.items())
+        params_gen = (f"{k}={repr(v)}" for k, v in params.items())
+
+        xs = chain(n_params_gen, params_gen)
     else:
         raise ValueError(f"tried to emit overrides for unknown state: {type(self)}")
 

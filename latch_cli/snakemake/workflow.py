@@ -972,16 +972,25 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             jobs = self.job.jobs
 
         snakemake_data = {
-            "rules": {
-                job.rule.name: {
-                    "inputs": job.rule.input,
-                    "outputs": job.rule.output,
-                    "params": {k: v for k, v in job.rule.params.items()},
-                }
-                for job in jobs
-            },
+            "rules": {},
             "outputs": self.job.output,
         }
+
+        for job in jobs:
+            params: dict[str, str] = dict(job.rule.params.items())
+            named_params: set[str] = set(params.values())
+
+            # not all params in snakemake have associated keys
+            nameless_params: list[str] = [
+                x for x in job.rule.params if x not in named_params
+            ]
+
+            snakemake_data[job.rule.name] = {
+                "inputs": job.rule.input,
+                "outputs": job.rule.output,
+                "nameless_params": nameless_params,
+                "params": params,
+            }
 
         if remote_output_url is None:
             remote_path = Path("/Snakemake Outputs")
@@ -1037,10 +1046,13 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                     print("\nUploading benchmark:")
 
                     local = Path(benchmark_file)
-                    remote = f"latch://{remote_path}/{{str(local).removeprefix('/')}}"
-                    print(f"  {{file_name_and_size(local)}} -> {{remote}}")
-                    lp.upload(local, remote)
-                    print("    Done")
+                    if local.exists():
+                        remote = f"latch://{remote_path}/{{str(local).removeprefix('/')}}"
+                        print(f"  {{file_name_and_size(local)}} -> {{remote}}")
+                        lp.upload(local, remote)
+                        print("    Done")
+                    else:
+                        print("  Does not exist")
 
             """,
             1,
