@@ -1,9 +1,12 @@
 import json
 import os
+import sys
+import traceback
 from textwrap import dedent
 
 import snakemake
 from snakemake.parser import (
+    INDENT,
     Input,
     Output,
     Params,
@@ -45,6 +48,31 @@ def rule_start(self, aux=""):
 Rule.start = rule_start
 
 
+def emit_overrides(self, token):
+    cur_data = rules[self.rulename]
+
+    if isinstance(self, Input):
+        xs = (repr(x) for x in cur_data["inputs"])
+    elif isinstance(self, Output):
+        xs = (repr(x) for x in cur_data["outputs"])
+    elif isinstance(self, Params):
+        params = cur_data["params"]
+        xs = (f"{k}={repr(v)}" for k, v in params.items())
+    else:
+        raise ValueError(f"tried to emit overrides for unknown state: {type(self)}")
+
+    for x in xs:
+        yield x, token
+        yield ",", token
+        yield "\n", token
+
+        # we'll need to re-indent the commented-out originals too
+        yield INDENT * self.base_indent, token
+
+
+emitted_overrides_per_type: dict[str, set[str]] = {}
+
+
 # Skip @workflow.input and @workflow.output for non-target tasks
 def skip_block(self, token, force_block_end=False):
     if self.lasttoken == "\n" and is_comment(token):
@@ -63,31 +91,27 @@ def skip_block(self, token, force_block_end=False):
         if is_comment(token):
             yield token.string, token
         else:
-            if (
-                self.lasttoken == "\n"
-                or
+            try:
+                at_newline = self.lasttoken == "\n"
+
                 # old snakemake sometime does not put a newline after the decorate parenthesis
-                (self.line == 0 and self.lasttoken[-1] == "(")
-            ):
-                if self.rulename in rules:
-                    cur_data = rules[self.rulename]
-                    if isinstance(self, Params):
-                        xs = cur_data["params"]
+                at_start = self.line == 0 and self.lasttoken[-1] == "("
 
-                        for k, v in xs.items():
-                            yield f"{k}={repr(v)}", token
+                if at_newline or at_start:
+                    emitted_overrides = emitted_overrides_per_type.setdefault(
+                        type(self).__name__, set()
+                    )
 
-                    else:
-                        xs = []
-                        if isinstance(self, Input):
-                            xs = cur_data["inputs"]
-                        if isinstance(self, Output):
-                            xs = cur_data["outputs"]
+                    if (
+                        self.rulename in rules
+                        and self.rulename not in emitted_overrides
+                    ):
+                        yield from emit_overrides(self, token)
+                        emitted_overrides.add(self.rulename)
 
-                        for x in xs:
-                            yield repr(x), token
-
-                yield "#", token
+                    yield "#", token
+            except:
+                traceback.print_exc()
 
             yield from self.block_content(token)
 
