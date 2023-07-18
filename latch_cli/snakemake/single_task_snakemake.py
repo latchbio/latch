@@ -46,8 +46,8 @@ for rule in rules:
         eprint(f"      {repr(x)}")
 
     eprint("    Nameless Params:")
-    for k, v in rule_data["nameless_params"].items():
-        eprint(f"      {k}={repr(v)}")
+    for x in rule_data["nameless_params"]:
+        eprint(f"      {repr(x)}")
 
     eprint("    Params:")
     for k, v in rule_data["params"].items():
