@@ -36,7 +36,7 @@ setup(
         "scp>=0.14.0",
         "boto3>=1.26.0",
         "tqdm>=4.63.0",
-        "lytekit==0.14.13",
+        "lytekit==0.14.15",
         "lytekitplugins-pods==0.4.0",
         "typing-extensions==4.5.0",
         "apscheduler==3.9.1",
