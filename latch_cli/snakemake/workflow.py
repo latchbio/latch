@@ -62,6 +62,7 @@ def reindent(x: str, level: int) -> str:
 class JobOutputInfo:
     jobid: str
     output_param_name: str
+    type_: Union[LatchFile, LatchDir]
 
 
 def task_fn_placeholder():
@@ -578,12 +579,13 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
             flyte_entity=None,
         )
 
-        node_map: Dict[int, Node] = {}
+        node_map: Dict[str, Node] = {}
 
         target_files = [x for job in self._dag.targetjobs for x in job.input]
 
         for layer in self._dag.toposorted():
             for job in layer:
+                assert isinstance(job, snakemake.jobs.Job)
                 is_target = False
 
                 if job in self._dag.targetjobs:
@@ -606,25 +608,33 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     else:
                         python_outputs[param] = LatchFile
 
-                dep_outputs = {}
+                dep_outputs: dict[SnakemakeInputVal, JobOutputInfo] = {}
                 for dep, dep_files in self._dag.dependencies[job].items():
                     for o in dep.output:
                         if o in dep_files:
+                            assert isinstance(o, SnakemakeInputVal)
+
                             dep_outputs[o] = JobOutputInfo(
                                 jobid=dep.jobid,
                                 output_param_name=variable_name_for_value(
                                     o, dep.output
                                 ),
+                                type_=LatchDir if o.is_directory else LatchFile,
                             )
 
-                python_inputs: Dict[str, LatchFile] = {}
-                promise_map: Dict[str, str] = {}
+                python_inputs: Dict[str, Union[LatchFile, LatchDir]] = {}
+                promise_map: Dict[str, JobOutputInfo] = {}
                 for x in job.input:
                     param = variable_name_for_value(x, job.input)
                     target_file_for_input_param[param] = x
+
+                    dep_out = dep_outputs.get(x)
+
                     python_inputs[param] = LatchFile
-                    if x in dep_outputs:
-                        promise_map[param] = dep_outputs[x]
+
+                    if dep_out is not None:
+                        python_inputs[param] = dep_out.type_
+                        promise_map[param] = dep_out
 
                 interface = Interface(python_inputs, python_outputs, docstring=None)
                 task = SnakemakeJobTask(
@@ -639,6 +649,8 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 self.snakemake_tasks.append(task)
 
                 typed_interface = transform_interface_to_typed_interface(interface)
+                assert typed_interface is not None
+
                 bindings: List[literals_models.Binding] = []
                 for k in interface.inputs:
                     var = typed_interface.inputs[k]
@@ -793,7 +805,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
     def __init__(
         self,
         job: snakemake.jobs.Job,
-        inputs: Dict[str, LatchFile],
+        inputs: Dict[str, Union[LatchFile, LatchDir]],
         outputs: Dict[str, Union[LatchFile, LatchDir]],
         target_file_for_input_param: Dict[str, str],
         target_file_for_output_param: Dict[str, str],
