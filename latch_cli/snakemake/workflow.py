@@ -1027,7 +1027,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                 print("Uploading logs:")
                 for x in {repr(log_files)}:
                     local = Path(x)
-                    remote = f"latch://{remote_path}/{{str(local).remove_prefix('/')}}"
+                    remote = f"latch://{remote_path}/{{str(local).removeprefix('/')}}"
                     print(f"  {{file_name_and_size(local)}} -> {{remote}}")
                     lp.upload(local, remote)
                     print("    Done")
@@ -1037,7 +1037,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                     print("\nUploading benchmark:")
 
                     local = Path(benchmark_file)
-                    remote = f"latch://{remote_path}/{{str(local).remove_prefix('/')}}"
+                    remote = f"latch://{remote_path}/{{str(local).removeprefix('/')}}"
                     print(f"  {{file_name_and_size(local)}} -> {{remote}}")
                     lp.upload(local, remote)
                     print("    Done")
