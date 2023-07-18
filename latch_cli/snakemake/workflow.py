@@ -989,9 +989,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
 
         log_files = [x.file for x in self.job.log] if self.job.log is not None else []
         benchmark_files = (
-            [x.file for x in self.job.benchmark]
-            if self.job.benchmark is not None
-            else []
+            [x for x in self.job.benchmark] if self.job.benchmark is not None else []
         )
 
         code_block += reindent(
