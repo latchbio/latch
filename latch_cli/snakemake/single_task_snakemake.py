@@ -31,6 +31,16 @@ data = json.loads(os.environ["LATCH_SNAKEMAKE_DATA"])
 rules = data["rules"]
 outputs = data["outputs"]
 
+
+def eprint_named_list(xs):
+    eprint("      Positional:")
+    for x in xs["positional"]:
+        eprint(f"      {repr(x)}")
+    eprint("      Keyword:")
+    for k, v in xs["keyword"].items():
+        eprint(f"      {k}={repr(v)}")
+
+
 eprint("\n>>><<<\n")
 eprint("Using LATCH_SNAKEMAKE_DATA:")
 for rule in rules:
@@ -38,20 +48,13 @@ for rule in rules:
     eprint(f"  {rule}:")
 
     eprint("    Inputs:")
-    for x in rule_data["inputs"]:
-        eprint(f"      {repr(x)}")
+    eprint_named_list(rule_data["inputs"])
 
     eprint("    Outputs:")
-    for x in rule_data["outputs"]:
-        eprint(f"      {repr(x)}")
-
-    eprint("    Nameless Params:")
-    for x in rule_data["nameless_params"]:
-        eprint(f"      {repr(x)}")
+    eprint_named_list(rule_data["outputs"])
 
     eprint("    Params:")
-    for k, v in rule_data["params"].items():
-        eprint(f"      {k}={repr(v)}")
+    eprint_named_list(rule_data["params"])
 
 eprint("\nExpected outputs:")
 for x in outputs:
@@ -88,21 +91,19 @@ def emit_overrides(self, token):
     cur_data = rules[self.rulename]
 
     if isinstance(self, Input):
-        xs = (repr(x) for x in cur_data["inputs"])
+        xs = cur_data["inputs"]
     elif isinstance(self, Output):
-        xs = (repr(x) for x in cur_data["outputs"])
+        xs = cur_data["outputs"]
     elif isinstance(self, Params):
-        nameless_params = cur_data["nameless_params"]
-        n_params_gen = (f"{repr(x)}" for x in nameless_params)
-
-        params = cur_data["params"]
-        params_gen = (f"{k}={repr(v)}" for k, v in params.items())
-
-        xs = chain(n_params_gen, params_gen)
+        xs = cur_data["params"]
     else:
         raise ValueError(f"tried to emit overrides for unknown state: {type(self)}")
 
-    for x in xs:
+    positional_data = (repr(x) for x in xs["positional"])
+    keyword_data = (f"{k}={repr(v)}" for k, v in xs["keyword"].items())
+    data = chain(positional_data, keyword_data)
+
+    for x in data:
         yield x, token
         yield ",", token
         yield "\n", token

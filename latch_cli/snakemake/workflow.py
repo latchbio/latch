@@ -769,6 +769,13 @@ def build_jit_register_wrapper() -> JITRegisterWorkflow:
     return wrapper_wf
 
 
+def handle_named_list(xs: snakemake.io.Namedlist):
+    named: dict[str, str] = dict(xs.items())
+    named_values = set(named.values())
+    unnamed = [x for x in xs if x not in named_values]
+    return {"positional": named, "keyword": unnamed}
+
+
 class SnakemakeJobTask(PythonAutoContainerTask[T]):
     def __init__(
         self,
@@ -977,19 +984,12 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         }
 
         for job in jobs:
-            params: dict[str, str] = dict(job.rule.params.items())
-            named_params: set[str] = set(params.values())
-
-            # not all params in snakemake have associated keys
-            nameless_params: list[str] = [
-                x for x in job.rule.params if x not in named_params
-            ]
+            rule = job.rule
 
             snakemake_data["rules"][job.rule.name] = {
-                "inputs": job.rule.input,
-                "outputs": job.rule.output,
-                "nameless_params": nameless_params,
-                "params": params,
+                "inputs": handle_named_list(job.rule.input),
+                "outputs": handle_named_list(job.rule.output),
+                "params": handle_named_list(job.rule.params),
             }
 
         if remote_output_url is None:
