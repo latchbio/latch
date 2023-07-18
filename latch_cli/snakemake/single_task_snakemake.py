@@ -4,8 +4,10 @@ import sys
 import traceback
 from itertools import chain
 from textwrap import dedent
+from typing import Union
 
 import snakemake
+from snakemake.io import AnnotatedString
 from snakemake.parser import (
     INDENT,
     Input,
@@ -87,6 +89,24 @@ def rule_start(self, aux=""):
 Rule.start = rule_start
 
 
+def render_annotated_str(x) -> str:
+    if not isinstance(x, dict):
+        return x
+
+    value = x["value"]
+    flags = dict(x["flags"])
+
+    res = repr(value)
+    if flags.get("directory", False):
+        res = f"directory({res})"
+        del flags["directory"]
+
+    if len(flags) != 0:
+        raise RuntimeError(f"found unsupported flags: {repr(flags)}")
+
+    return res
+
+
 def emit_overrides(self, token):
     cur_data = rules[self.rulename]
 
@@ -99,8 +119,8 @@ def emit_overrides(self, token):
     else:
         raise ValueError(f"tried to emit overrides for unknown state: {type(self)}")
 
-    positional_data = (repr(x) for x in xs["positional"])
-    keyword_data = (f"{k}={repr(v)}" for k, v in xs["keyword"].items())
+    positional_data = (render_annotated_str(x) for x in xs["positional"])
+    keyword_data = (f"{k}={render_annotated_str(v)}" for k, v in xs["keyword"].items())
     data = chain(positional_data, keyword_data)
 
     for x in data:

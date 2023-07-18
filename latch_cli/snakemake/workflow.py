@@ -592,13 +592,19 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 target_file_for_output_param: Dict[str, str] = {}
                 target_file_for_input_param: Dict[str, str] = {}
 
-                python_outputs: Dict[str, LatchFile] = {}
+                python_outputs: Dict[str, Union[LatchFile, LatchDir]] = {}
                 for x in job.output:
+                    assert isinstance(x, SnakemakeInputVal)
+
                     if x in target_files:
                         is_target = True
                     param = variable_name_for_value(x, job.output)
                     target_file_for_output_param[param] = x
-                    python_outputs[param] = LatchFile
+
+                    if x.is_directory:
+                        python_outputs[param] = LatchDir
+                    else:
+                        python_outputs[param] = LatchFile
 
                 dep_outputs = {}
                 for dep, dep_files in self._dag.dependencies[job].items():
@@ -769,10 +775,17 @@ def build_jit_register_wrapper() -> JITRegisterWorkflow:
     return wrapper_wf
 
 
-def handle_named_list(xs: snakemake.io.Namedlist):
-    named: dict[str, str] = dict(xs.items())
+def annotated_str_to_json(x: Union[str, snakemake.io.AnnotatedString]):
+    if not isinstance(x, snakemake.io.AnnotatedString):
+        return x
+
+    return {"value": str(x), "flags": dict(x.flags.items())}
+
+
+def named_list_to_json(xs: snakemake.io.Namedlist):
+    named: dict[str, object] = {k: annotated_str_to_json(v) for k, v in xs.items()}
     named_values = set(named.values())
-    unnamed = [x for x in xs if x not in named_values]
+    unnamed = [annotated_str_to_json(x) for x in xs if x not in named_values]
     return {"positional": unnamed, "keyword": named}
 
 
@@ -781,7 +794,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         self,
         job: snakemake.jobs.Job,
         inputs: Dict[str, LatchFile],
-        outputs: Dict[str, LatchFile],
+        outputs: Dict[str, Union[LatchFile, LatchDir]],
         target_file_for_input_param: Dict[str, str],
         target_file_for_output_param: Dict[str, str],
         is_target: bool,
@@ -987,9 +1000,9 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             rule = job.rule
 
             snakemake_data["rules"][job.rule.name] = {
-                "inputs": handle_named_list(job.rule.input),
-                "outputs": handle_named_list(job.rule.output),
-                "params": handle_named_list(job.rule.params),
+                "inputs": named_list_to_json(job.rule.input),
+                "outputs": named_list_to_json(job.rule.output),
+                "params": named_list_to_json(job.rule.params),
             }
 
         if remote_output_url is None:
