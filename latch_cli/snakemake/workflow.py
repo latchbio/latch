@@ -1024,20 +1024,20 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                 print("\n\n\nFailed\n\n\n")
                 raise e
             finally:
-                print("Uploading logs")
+                print("Uploading logs:")
                 for x in {repr(log_files)}:
                     local = Path(x)
-                    remote = f"latch://{remote_path}/{{local}}"
+                    remote = f"latch://{remote_path}/{{local.remove_prefix('/')}}"
                     print(f"  {{file_name_and_size(local)}} -> {{remote}}")
                     lp.upload(local, remote)
                     print("    Done")
 
                 benchmark_file = {repr(self.job.benchmark)}
                 if benchmark_file is not None:
-                    print("\nUploading benchmark")
+                    print("\nUploading benchmark:")
 
                     local = Path(benchmark_file)
-                    remote = f"latch://{remote_path}/{{local}}"
+                    remote = f"latch://{remote_path}/{{local.remove_prefix('/')}}"
                     print(f"  {{file_name_and_size(local)}} -> {{remote}}")
                     lp.upload(local, remote)
                     print("    Done")
