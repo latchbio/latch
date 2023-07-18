@@ -973,7 +973,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             compiled = Path("compiled.py")
             with compiled.open("w") as f:
                 subprocess.run(
-                    [sys.executable,{','.join(repr(x) for x in [snakemake_args, "--print-compilation"])}],
+                    [sys.executable,{','.join(repr(x) for x in [*snakemake_args, "--print-compilation"])}],
                     check=True,
                     env={{
                         **os.environ,
