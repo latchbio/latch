@@ -868,7 +868,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                     rf"""
                     print(f'  {out_name}={{file_name_and_size(Path("{target_path}"))}}')
                     """,
-                    0,
+                    1,
                 )
             )
 
@@ -878,7 +878,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                         rf"""
                         {out_name}=LatchFile("{target_path}")
                         """,
-                        1,
+                        2,
                     ).rstrip()
                 )
                 continue
@@ -893,7 +893,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                     rf"""
                     {out_name}=LatchFile("{target_path}", "latch://{remote_path}")
                     """,
-                    1,
+                    2,
                 ).rstrip()
             )
 
@@ -903,14 +903,14 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         return (
             reindent(
                 rf"""
-            print("Uploading results:")
-            __print_out__
+                    print("Uploading results:")
+                __print_out__
 
-            return Res{self.name}(
-            __return_str__
-            )
+                    return Res{self.name}(
+                __return_str__
+                    )
             """,
-                1,
+                0,
             )
             .replace("__print_out__", print_out_str)
             .replace("__return_str__", return_str)
