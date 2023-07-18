@@ -16,7 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.27.3 - 2023-07-17
+## 2.27.3 - 2023-07-18
+
+### Dependencies
+
+- pinned `lytekit` to `v0.14.15` to bring in `marshmallow-enum` as a dependency.
+
+## 2.27.2 - 2023-07-17
 
 ### Fixed
 
