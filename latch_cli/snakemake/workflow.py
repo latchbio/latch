@@ -976,8 +976,8 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         snakemake_data = {
             "rules": {
                 job.rule.name: {
-                    "inputs": job.rule.inputs,
-                    "outputs": job.rule.outputs,
+                    "inputs": job.rule.input,
+                    "outputs": job.rule.output,
                     "params": {k: v for k, v in job.rule.params.items()},
                 }
                 for job in jobs
