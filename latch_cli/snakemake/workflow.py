@@ -344,6 +344,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         code_block += reindent(
             rf"""
             image_name = "{image_name}"
+            image_base_name = image_name.split(":")[0]
             account_id = "{account_id}"
             snakefile = Path("{snakefile_path}")
 
@@ -364,7 +365,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             wf_name = wf.name
             generate_snakemake_entrypoint(wf, pkg_root, snakefile, {repr(remote_output_url)})
 
-            entrypoint_remote = f"latch:///.snakemake_latch/workflows/{{image_name}}/entrypoint.py"
+            entrypoint_remote = f"latch:///.snakemake_latch/workflows/{{image_base_name}}/entrypoint.py"
             lp.upload("latch_entrypoint.py", entrypoint_remote)
             print(f"latch_entrypoint.py -> {{entrypoint_remote}}")
             """,
@@ -481,7 +482,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 reg_resp = register_serialized_pkg(protos, None, version, account_id)
                 _print_reg_resp(reg_resp, new_image_name)
 
-            wf_spec_remote = f"latch:///.snakemake_latch/workflows/{image_name}/spec.json"
+            wf_spec_remote = f"latch:///.snakemake_latch/workflows/{image_base_name}/spec.json"
             lp.upload("wf_spec.json", wf_spec_remote)
             print(f"wf_spec.json -> {wf_spec_remote}")
 
@@ -987,8 +988,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         else:
             remote_path = Path(urlparse(remote_output_url).path)
 
-        log_files = [self.job.log] if self.job.log is not None else []
-        benchmark_files = [self.job.benchmark] if self.job.benchmark is not None else []
+        log_files = self.job.log if self.job.log is not None else []
 
         code_block += reindent(
             rf"""
@@ -1032,9 +1032,11 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                     lp.upload(local, remote)
                     print("    Done")
 
-                print("\nUploading benchmarks")
-                for x in {repr(benchmark_files)}:
-                    local = Path(x)
+                benchmark_file = {repr(self.job.benchmark)}
+                if benchmark_file is not None:
+                    print("\nUploading benchmark")
+
+                    local = Path(benchmark_file)
                     remote = f"latch://{remote_path}/{{local}}"
                     print(f"  {{file_name_and_size(local)}} -> {{remote}}")
                     lp.upload(local, remote)
