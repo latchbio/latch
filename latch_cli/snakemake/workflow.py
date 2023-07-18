@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 
 import snakemake
 import snakemake.io
+import snakemake.jobs
 from flytekit.configuration import SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
@@ -34,6 +35,7 @@ from flytekit.models import types as type_models
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralMap, Scalar
 from snakemake.dag import DAG
+from snakemake.jobs import GroupJob
 from snakemake.target_jobs import encode_target_jobs_cli_args
 from typing_extensions import TypeAlias
 
@@ -967,6 +969,22 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             for resource, value in allowed_resources:
                 snakemake_args.append(f"{resource}={value}")
 
+        jobs = [self.job]
+        if isinstance(self.job, GroupJob):
+            jobs = self.job.jobs
+
+        snakemake_data = {
+            "rules": {
+                job.rule.name: {
+                    "inputs": job.rule.inputs,
+                    "outputs": job.rule.outputs,
+                    "params": {k: v for k, v in job.rule.params.items()},
+                }
+                for job in jobs
+            },
+            "outputs": self.job.output,
+        }
+
         code_block += reindent(
             rf"""
             lp = LatchPersistence()
@@ -978,8 +996,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                         check=True,
                         env={{
                             **os.environ,
-                            "LATCH_SNAKEMAKE_RULES": {repr(json.dumps([job.rulename for job in self.job.get_target_spec()]))},
-                            "LATCH_SNAKEMAKE_TARGET_OUTPUT": {repr(next(iter(self._target_file_for_output_param.values())))}
+                            "LATCH_SNAKEMAKE_DATA": {repr(json.dumps(snakemake_data))}
                         }},
                         stdout=f
                     )
@@ -993,8 +1010,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                 check=True,
                 env={{
                     **os.environ,
-                    "LATCH_SNAKEMAKE_RULES": {repr(json.dumps([job.rulename for job in self.job.get_target_spec()]))},
-                    "LATCH_SNAKEMAKE_TARGET_OUTPUT": {repr(next(iter(self._target_file_for_output_param.values())))}
+                    "LATCH_SNAKEMAKE_DATA": {repr(json.dumps(snakemake_data))}
                 }}
             )
             print("\n\n\nDone\n\n\n")

@@ -15,8 +15,9 @@ from snakemake.parser import (
     is_newline,
 )
 
-target_rules = set(json.loads(os.environ["LATCH_SNAKEMAKE_RULES"]))
-target_rule_output = os.environ["LATCH_SNAKEMAKE_TARGET_OUTPUT"]
+data = json.loads(os.environ["LATCH_SNAKEMAKE_DATA"])
+rules = data["rules"]
+outputs = data["outputs"]
 
 # Add a custom entrypoint rule
 _real_rule_start = Rule.start
@@ -24,11 +25,12 @@ _real_rule_start = Rule.start
 
 def rule_start(self, aux=""):
     prefix = ""
-    if self.rulename in target_rules:
+    if self.rulename in rules:
+        outputs_str = ",\n".join(f"    {repr(x)}" for x in outputs)
         prefix = dedent(f"""
             @workflow.rule(name='latch_entrypoint', lineno=1, snakefile='workflow/Snakefile')
             @workflow.input(
-                {repr(target_rule_output)}
+            {outputs_str}
             )
             @workflow.norun()
             @workflow.run
@@ -66,7 +68,25 @@ def skip_block(self, token, force_block_end=False):
                 or
                 # old snakemake sometime does not put a newline after the decorate parenthesis
                 (self.line == 0 and self.lasttoken[-1] == "(")
-            ) and self.rulename not in target_rules:
+            ):
+                if self.rulename in rules:
+                    cur_data = rules[self.rulename]
+                    if isinstance(self, Params):
+                        xs = cur_data["params"]
+
+                        for k, v in xs.items():
+                            yield f"{k}={repr(v)}", token
+
+                    else:
+                        xs = []
+                        if isinstance(self, Input):
+                            xs = cur_data["inputs"]
+                        if isinstance(self, Output):
+                            xs = cur_data["outputs"]
+
+                        for x in xs:
+                            yield repr(x), token
+
                 yield "#", token
 
             yield from self.block_content(token)
