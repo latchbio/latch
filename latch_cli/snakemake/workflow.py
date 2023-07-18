@@ -773,7 +773,7 @@ def handle_named_list(xs: snakemake.io.Namedlist):
     named: dict[str, str] = dict(xs.items())
     named_values = set(named.values())
     unnamed = [x for x in xs if x not in named_values]
-    return {"positional": named, "keyword": unnamed}
+    return {"positional": unnamed, "keyword": named}
 
 
 class SnakemakeJobTask(PythonAutoContainerTask[T]):
