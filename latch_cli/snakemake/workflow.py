@@ -795,8 +795,10 @@ def build_jit_register_wrapper() -> JITRegisterWorkflow:
     return wrapper_wf
 
 
-def annotated_str_to_json(x: Union[str, snakemake.io.AnnotatedString]):
-    if not isinstance(x, snakemake.io.AnnotatedString):
+def annotated_str_to_json(
+    x: Union[str, snakemake.io._IOFile, snakemake.io.AnnotatedString]
+):
+    if not isinstance(x, (snakemake.io.AnnotatedString, snakemake.io._IOFile)):
         return x
 
     return {"value": str(x), "flags": dict(x.flags.items())}
