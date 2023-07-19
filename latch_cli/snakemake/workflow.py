@@ -37,7 +37,7 @@ from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralMap, Sc
 from snakemake.dag import DAG
 from snakemake.jobs import GroupJob
 from snakemake.target_jobs import encode_target_jobs_cli_args
-from typing_extensions import TypeAlias
+from typing_extensions import TypeAlias, TypedDict
 
 import latch.types.metadata as metadata
 from latch.types.directory import LatchDir
@@ -795,18 +795,31 @@ def build_jit_register_wrapper() -> JITRegisterWorkflow:
     return wrapper_wf
 
 
+class AnnotatedStrJson(TypedDict):
+    value: str
+    flags: dict[str, bool]
+
+
 def annotated_str_to_json(
     x: Union[str, snakemake.io._IOFile, snakemake.io.AnnotatedString]
-):
+) -> Union[str, AnnotatedStrJson]:
     if not isinstance(x, (snakemake.io.AnnotatedString, snakemake.io._IOFile)):
         return x
 
     return {"value": str(x), "flags": dict(x.flags.items())}
 
 
-def named_list_to_json(xs: snakemake.io.Namedlist):
-    named: dict[str, object] = {k: annotated_str_to_json(v) for k, v in xs.items()}
-    named_values = set(named.values())
+class NamedListJson(TypedDict):
+    positional: list[Union[str, AnnotatedStrJson]]
+    keyword: dict[str, Union[str, AnnotatedStrJson]]
+
+
+def named_list_to_json(xs: snakemake.io.Namedlist) -> NamedListJson:
+    named: dict[str, Union[str, AnnotatedStrJson]] = {
+        k: annotated_str_to_json(v) for k, v in xs.items()
+    }
+    named_values = set(x if isinstance(x, str) else x["value"] for x in named.values())
+
     unnamed = [annotated_str_to_json(x) for x in xs if x not in named_values]
     return {"positional": unnamed, "keyword": named}
 
