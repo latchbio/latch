@@ -378,7 +378,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             wf_name = wf.name
             generate_snakemake_entrypoint(wf, pkg_root, snakefile, {repr(remote_output_url)})
 
-            entrypoint_remote = f"latch:///.snakemake_latch/workflows/{{image_base_name}}/entrypoint.py"
+            entrypoint_remote = f"latch:///.snakemake_latch/workflows/{{wf_name}}/entrypoint.py"
             lp.upload("latch_entrypoint.py", entrypoint_remote)
             print(f"latch_entrypoint.py -> {{entrypoint_remote}}")
             """,
@@ -555,10 +555,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         dag: DAG,
         version: Optional[str] = None,
     ):
-        if version is not None:
-            name = f"{metadata._snakemake_metadata.name}-{version}"
-        else:
-            name = metadata._snakemake_metadata.name
+        name = metadata._snakemake_metadata.name
 
         native_interface, literal_map, return_files = snakemake_dag_to_interface(
             dag, name, None
@@ -1105,7 +1102,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                     )
                 except Exception:
                     traceback.print_exc()
-            lp.upload(compiled, "latch:///.snakemake_latch/{self.wf.name}/{self.name}_compiled.py")
+            lp.upload(compiled, "latch:///.snakemake_latch/workflows/{self.wf.name}/{self.name}_compiled.py")
 
             print("\n\n\nRunning snakemake task\n\n\n")
             try:
@@ -1127,6 +1124,10 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                     local = Path(x)
                     remote = f"latch://{remote_path}/{{str(local).removeprefix('/')}}"
                     print(f"  {{file_name_and_size(local)}} -> {{remote}}")
+                    if not local.exists():
+                        print("  Does not exist")
+                        continue
+
                     lp.upload(local, remote)
                     print("    Done")
 
