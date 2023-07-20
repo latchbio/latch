@@ -1,7 +1,5 @@
 import os
-import sys
 import textwrap
-from itertools import filterfalse
 from pathlib import Path
 from textwrap import dedent
 from typing import List, Optional, Set, Union, get_args
@@ -40,6 +38,30 @@ def should_register_with_admin(entity: RegistrableEntity) -> bool:
     return isinstance(entity, get_args(RegistrableEntity))
 
 
+snakemake_metadata_example = """
+```
+from pathlib import Path
+from latch.types.metadata import SnakemakeMetadata, SnakemakeFileParameter
+from latch.types.file import LatchFile
+from latch.types.metadata import LatchAuthor, LatchMetadata
+
+SnakemakeMetadata(
+    display_name="My Snakemake Workflow",
+    author=LatchAuthor(
+            name="John Doe",
+    ),
+    parameters={
+        "foo" : SnakemakeFileParameter(
+                display_name="Some Param",
+                type=LatchFile,
+                path=Path("foo.txt"),
+        )
+    }
+)
+```
+"""
+
+
 def ensure_snakemake_metadata_exists():
     import latch.types.metadata as metadata
 
@@ -52,29 +74,10 @@ def ensure_snakemake_metadata_exists():
                     You can paste the following in the top of your Snakefile to get
                     started:
 
-                    ```
-                    from pathlib import Path
-                    from latch.types.metadata import SnakemakeMetadata, SnakemakeFileParameter
-                    from latch.types.file import LatchFile
-                    from latch.types.metadata import LatchAuthor, LatchMetadata
-
-                    SnakemakeMetadata(
-                        display_name="My Snakemake Workflow",
-                        author=LatchAuthor(
-                                name="John Doe",
-                        ),
-                        parameters={
-                            "foo" : SnakemakeFileParameter(
-                                    display_name="Some Param",
-                                    type=LatchFile,
-                                    path=Path("foo.txt"),
-                            )
-                        }
-                    )
-                    ```
+                    __example__
 
                     Find more information at docs.latch.bio.
-                    """),
+                    """).replace("__example__", snakemake_metadata_example),
             bold=True,
             fg="red",
         )

@@ -1,5 +1,7 @@
 import re
+import sys
 import time
+import traceback
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional, Tuple
@@ -124,14 +126,43 @@ class _CentromereCtx:
 
                 import latch.types.metadata as metadata
 
-                from ..snakemake.serialize import snakemake_workflow_extractor
+                from ..snakemake.serialize import (
+                    snakemake_metadata_example,
+                    snakemake_workflow_extractor,
+                )
 
                 meta = pkg_root / "latch_metadata.py"
                 if meta.exists():
                     click.echo(f"Using metadata file {click.style(meta, italic=True)}")
                     import_module_by_path(meta)
                 else:
-                    snakemake_workflow_extractor(pkg_root, snakefile)
+                    click.echo("Trying to extract metadata from the Snakefile")
+                    try:
+                        snakemake_workflow_extractor(pkg_root, snakefile)
+                    except (ImportError, FileNotFoundError):
+                        traceback.print_exc()
+                        click.secho(
+                            "\n\n\n"
+                            + "The above error occured when reading "
+                            + "the Snakefile to extract workflow metadata.",
+                            bold=True,
+                            fg="red",
+                        )
+                        click.secho(
+                            "\nIt is possible to avoid including the Snakefile prior to"
+                            " registration by providing a `latch_metadata.py` file in"
+                            " the workflow root.\nThis way it is not necessary to"
+                            " install dependencies or ensure that Snakemake inputs"
+                            " locally.",
+                            fg="red",
+                        )
+                        click.secho("\nExample ", fg="red", nl=False)
+                        click.secho(f"`{meta}`", bold=True, fg="red", nl=False)
+                        click.secho(
+                            f" file:{snakemake_metadata_example}",
+                            fg="red",
+                        )
+                        sys.exit(1)
 
                 assert metadata._snakemake_metadata is not None
                 assert metadata._snakemake_metadata.name is not None
