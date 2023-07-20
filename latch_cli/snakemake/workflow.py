@@ -835,6 +835,8 @@ def named_list_to_json(xs: snakemake.io.Namedlist) -> NamedListJson:
             vs = [vs]
 
         for v in vs:
+            if not isinstance(v, str):
+                v = v["value"]
             named_values.add(v)
 
     unnamed: list[IONamedListItem] = []
@@ -843,7 +845,7 @@ def named_list_to_json(xs: snakemake.io.Namedlist) -> NamedListJson:
             vs = [vs]
 
         for v in vs:
-            unnamed.append(v)
+            unnamed.append(annotated_str_to_json(v))
 
     return {"positional": unnamed, "keyword": named}
 
