@@ -800,27 +800,51 @@ class AnnotatedStrJson(TypedDict):
     flags: dict[str, bool]
 
 
+MaybeAnnotatedStrJson: TypeAlias = Union[str, AnnotatedStrJson]
+
+
 def annotated_str_to_json(
     x: Union[str, snakemake.io._IOFile, snakemake.io.AnnotatedString]
-) -> Union[str, AnnotatedStrJson]:
+) -> MaybeAnnotatedStrJson:
     if not isinstance(x, (snakemake.io.AnnotatedString, snakemake.io._IOFile)):
         return x
 
     return {"value": str(x), "flags": dict(x.flags.items())}
 
 
+IONamedListItem = Union[MaybeAnnotatedStrJson, list[MaybeAnnotatedStrJson]]
+
+
 class NamedListJson(TypedDict):
-    positional: list[Union[str, AnnotatedStrJson]]
-    keyword: dict[str, Union[str, AnnotatedStrJson]]
+    positional: list[IONamedListItem]
+    keyword: dict[str, IONamedListItem]
 
 
 def named_list_to_json(xs: snakemake.io.Namedlist) -> NamedListJson:
-    named: dict[str, Union[str, AnnotatedStrJson]] = {
-        k: annotated_str_to_json(v) for k, v in xs.items()
-    }
-    named_values = set(x if isinstance(x, str) else x["value"] for x in named.values())
+    named: dict[str, IONamedListItem] = {}
+    for k, vs in xs.items():
+        if not isinstance(vs, list):
+            named[k] = annotated_str_to_json(vs)
+            continue
 
-    unnamed = [annotated_str_to_json(x) for x in xs if x not in named_values]
+        named[k] = [annotated_str_to_json(v) for v in vs]
+
+    named_values = set()
+    for vs in named.values():
+        if not isinstance(vs, list):
+            vs = [vs]
+
+        for v in vs:
+            named_values.add(v)
+
+    unnamed: list[IONamedListItem] = []
+    for vs in xs:
+        if not isinstance(vs, list):
+            vs = [vs]
+
+        for v in vs:
+            unnamed.append(v)
+
     return {"positional": unnamed, "keyword": named}
 
 

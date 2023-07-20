@@ -38,6 +38,7 @@ def eprint_named_list(xs):
     eprint("      Positional:")
     for x in xs["positional"]:
         eprint(f"      {repr(x)}")
+
     eprint("      Keyword:")
     for k, v in xs["keyword"].items():
         eprint(f"      {k}={repr(v)}")
