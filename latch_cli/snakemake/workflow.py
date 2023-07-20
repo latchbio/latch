@@ -152,7 +152,11 @@ def snakemake_dag_to_interface(
     )
 
     return (
-        Interface(inputs, outputs, docstring=Docstring(str(meta))),
+        Interface(
+            inputs,
+            outputs,
+            docstring=Docstring(f"{wf_name}\n\nSample Description\n\n" + str(meta)),
+        ),
         LiteralMap(literals=literals),
         return_files,
     )
@@ -646,6 +650,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
                 interface = Interface(python_inputs, python_outputs, docstring=None)
                 task = SnakemakeJobTask(
+                    wf=self,
                     job=job,
                     inputs=python_inputs,
                     outputs=python_outputs,
@@ -845,7 +850,15 @@ def named_list_to_json(xs: snakemake.io.Namedlist) -> NamedListJson:
             vs = [vs]
 
         for v in vs:
-            unnamed.append(annotated_str_to_json(v))
+            obj = annotated_str_to_json(v)
+
+            rendered = obj
+            if not isinstance(rendered, str):
+                rendered = rendered["value"]
+            if rendered in named_values:
+                continue
+
+            unnamed.append(obj)
 
     return {"positional": unnamed, "keyword": named}
 
@@ -853,6 +866,7 @@ def named_list_to_json(xs: snakemake.io.Namedlist) -> NamedListJson:
 class SnakemakeJobTask(PythonAutoContainerTask[T]):
     def __init__(
         self,
+        wf: SnakemakeWorkflow,
         job: snakemake.jobs.Job,
         inputs: Dict[str, Union[Type[LatchFile], Type[LatchDir]]],
         outputs: Dict[str, Union[Type[LatchFile], Type[LatchDir]]],
@@ -864,6 +878,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
     ):
         name = f"{job.name}_{job.jobid}"
 
+        self.wf = wf
         self.job = job
         self._is_target = is_target
         self._python_inputs = inputs
@@ -1090,7 +1105,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                     )
                 except Exception:
                     traceback.print_exc()
-            lp.upload(compiled, "latch:///.snakemake_latch/{self.name}_compiled.py")
+            lp.upload(compiled, "latch:///.snakemake_latch/{self.wf.name}/{self.name}_compiled.py")
 
             print("\n\n\nRunning snakemake task\n\n\n")
             try:
