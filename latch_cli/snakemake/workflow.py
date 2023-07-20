@@ -128,7 +128,9 @@ def snakemake_dag_to_interface(
                     LatchFile,
                     None,
                 )
-                remote_path = Path("/.snakemake_latch") / wf_name / x
+                remote_path = (
+                    Path("/.snakemake_latch") / "workflows" / wf_name / "inputs" / x
+                )
                 remote_url = f"latch://{remote_path}"
                 return_files.append(RemoteFile(local_path=x, remote_path=remote_url))
                 literals[param] = Literal(
@@ -495,7 +497,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 reg_resp = register_serialized_pkg(protos, None, version, account_id)
                 _print_reg_resp(reg_resp, new_image_name)
 
-            wf_spec_remote = f"latch:///.snakemake_latch/workflows/{image_base_name}/spec.json"
+            wf_spec_remote = f"latch:///.snakemake_latch/workflows/{wf_name}/spec.json"
             lp.upload("wf_spec.json", wf_spec_remote)
             print(f"wf_spec.json -> {wf_spec_remote}")
 
@@ -1105,7 +1107,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                     print("  Failed")
                 except Exception:
                     traceback.print_exc()
-            lp.upload(compiled, "latch:///.snakemake_latch/workflows/{self.wf.name}/{self.name}_compiled.py")
+            lp.upload(compiled, "latch:///.snakemake_latch/workflows/{self.wf.name}/compiled_tasks/{self.name}.py")
 
             print("\n\n\nRunning snakemake task\n\n\n")
             try:
