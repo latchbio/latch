@@ -970,7 +970,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                 continue
 
             if remote_output_url is None:
-                remote_path = Path("/Snakemake Outputs") / target_path
+                remote_path = Path("/Snakemake Outputs") / self.wf.name / target_path
             else:
                 remote_path = Path(urlparse(remote_output_url).path) / target_path
 
@@ -1014,7 +1014,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                     rf"""
                     {param}_dst_p = Path("{self._target_file_for_input_param[param]}")
 
-                    print(f"Downloading {{{param}.remote_path}}")
+                    print(f"Downloading {param}: {{{param}.remote_path}}")
                     {param}_p = Path({param}).resolve()
                     print(f"  {{file_name_and_size({param}_p)}}")
 
@@ -1079,7 +1079,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             }
 
         if remote_output_url is None:
-            remote_path = Path("/Snakemake Outputs")
+            remote_path = Path("/Snakemake Outputs") / self.wf.name
         else:
             remote_path = Path(urlparse(remote_output_url).path)
 
@@ -1150,17 +1150,24 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                         else:
                             print("  Does not exist")
 
-                    print("Recursive directory listing:")
-                    stack = [(Path("."), 0)]
-                    while len(stack) > 0:
-                        cur, indent = stack.pop()
-                        print("  " * indent + file_name_and_size(cur))
-
-                        if cur.is_dir():
-                            for x in cur.iterdir():
-                                stack.append((x, indent + 1))
-
             except CalledProcessError:
+                ignored_paths = {{".cache"}}
+                ignored_names = {{".git", ".latch", "__pycache__"}}
+
+                print("Recursive directory listing:")
+                stack = [(Path("."), 0)]
+                while len(stack) > 0:
+                    cur, indent = stack.pop()
+                    print("  " * indent + str(cur))
+
+                    if cur.is_dir():
+                        if cur.name in ignored_names or str(cur) in ignored_paths:
+                            print("  " * indent + "  ...")
+                            continue
+
+                        for x in cur.iterdir():
+                            stack.append((x, indent + 1))
+
                 sys.exit(1)
 
             """,
