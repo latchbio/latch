@@ -322,7 +322,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     rf"""
                     {param}_dst_p = Path("{self.parameter_metadata[param].path}")
 
-                    print(f"Downloading {{{param}.remote_path}}")
+                    print(f"Downloading {param}: {{{param}.remote_path}}")
                     {param}_p = Path({param}).resolve()
                     print(f"  {{file_name_and_size({param}_p)}}")
 
@@ -1141,12 +1141,25 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
 
                         local = Path(benchmark_file)
                         if local.exists():
+                            print(local.read_text())
+
                             remote = f"latch://{remote_path}/{{str(local).removeprefix('/')}}"
                             print(f"  {{file_name_and_size(local)}} -> {{remote}}")
                             lp.upload(local, remote)
                             print("    Done")
                         else:
                             print("  Does not exist")
+
+                    print("Recursive directory listing:")
+                    stack = [(Path("."), 0)]
+                    while len(stack) > 0:
+                        cur, indent = stack.pop()
+                        print("  " * indent + file_name_and_size(cur))
+
+                        if cur.is_dir():
+                            for x in cur.iterdir():
+                                stack.append((x, indent + 1))
+
             except CalledProcessError:
                 sys.exit(1)
 
