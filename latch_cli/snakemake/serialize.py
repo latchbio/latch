@@ -278,6 +278,7 @@ def generate_snakemake_entrypoint(
         from pathlib import Path
         import shutil
         import subprocess
+        from subprocess import CalledProcessError
         from typing import NamedTuple
         import stat
         import sys

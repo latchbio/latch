@@ -1089,6 +1089,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             rf"""
             lp = LatchPersistence()
             compiled = Path("compiled.py")
+            print("Saving compiled Snakemake script")
             with compiled.open("w") as f:
                 try:
                     subprocess.run(
@@ -1100,49 +1101,54 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                         }},
                         stdout=f
                     )
+                except CalledProcessError:
+                    print("  Failed")
                 except Exception:
                     traceback.print_exc()
             lp.upload(compiled, "latch:///.snakemake_latch/workflows/{self.wf.name}/{self.name}_compiled.py")
 
             print("\n\n\nRunning snakemake task\n\n\n")
             try:
-                subprocess.run(
-                    [sys.executable,{','.join(repr(x) for x in snakemake_args)}],
-                    check=True,
-                    env={{
-                        **os.environ,
-                        "LATCH_SNAKEMAKE_DATA": {repr(json.dumps(snakemake_data))}
-                    }}
-                )
-                print("\n\n\nDone\n\n\n")
-            except Exception as e:
-                print("\n\n\nFailed\n\n\n")
-                raise e
-            finally:
-                print("Uploading logs:")
-                for x in {repr(log_files)}:
-                    local = Path(x)
-                    remote = f"latch://{remote_path}/{{str(local).removeprefix('/')}}"
-                    print(f"  {{file_name_and_size(local)}} -> {{remote}}")
-                    if not local.exists():
-                        print("  Does not exist")
-                        continue
-
-                    lp.upload(local, remote)
-                    print("    Done")
-
-                benchmark_file = {repr(self.job.benchmark)}
-                if benchmark_file is not None:
-                    print("\nUploading benchmark:")
-
-                    local = Path(benchmark_file)
-                    if local.exists():
+                try:
+                    subprocess.run(
+                        [sys.executable,{','.join(repr(x) for x in snakemake_args)}],
+                        check=True,
+                        env={{
+                            **os.environ,
+                            "LATCH_SNAKEMAKE_DATA": {repr(json.dumps(snakemake_data))}
+                        }}
+                    )
+                    print("\n\n\nDone\n\n\n")
+                except Exception as e:
+                    print("\n\n\nFailed\n\n\n")
+                    raise e
+                finally:
+                    print("Uploading logs:")
+                    for x in {repr(log_files)}:
+                        local = Path(x)
                         remote = f"latch://{remote_path}/{{str(local).removeprefix('/')}}"
                         print(f"  {{file_name_and_size(local)}} -> {{remote}}")
+                        if not local.exists():
+                            print("  Does not exist")
+                            continue
+
                         lp.upload(local, remote)
                         print("    Done")
-                    else:
-                        print("  Does not exist")
+
+                    benchmark_file = {repr(self.job.benchmark)}
+                    if benchmark_file is not None:
+                        print("\nUploading benchmark:")
+
+                        local = Path(benchmark_file)
+                        if local.exists():
+                            remote = f"latch://{remote_path}/{{str(local).removeprefix('/')}}"
+                            print(f"  {{file_name_and_size(local)}} -> {{remote}}")
+                            lp.upload(local, remote)
+                            print("    Done")
+                        else:
+                            print("  Does not exist")
+            except CalledProcessError:
+                sys.exit(1)
 
             """,
             1,
