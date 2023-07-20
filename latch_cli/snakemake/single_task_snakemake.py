@@ -108,6 +108,14 @@ def render_annotated_str(x) -> str:
     return res
 
 
+def render_annotated_str_list(xs) -> str:
+    if not isinstance(xs, list):
+        return render_annotated_str(xs)
+
+    els = ", ".join(render_annotated_str(x) for x in xs)
+    return f"[{els}]"
+
+
 def emit_overrides(self, token):
     cur_data = rules[self.rulename]
 
@@ -120,8 +128,10 @@ def emit_overrides(self, token):
     else:
         raise ValueError(f"tried to emit overrides for unknown state: {type(self)}")
 
-    positional_data = (render_annotated_str(x) for x in xs["positional"])
-    keyword_data = (f"{k}={render_annotated_str(v)}" for k, v in xs["keyword"].items())
+    positional_data = (render_annotated_str_list(x) for x in xs["positional"])
+    keyword_data = (
+        f"{k}={render_annotated_str_list(v)}" for k, v in xs["keyword"].items()
+    )
     data = chain(positional_data, keyword_data)
 
     for x in data:
