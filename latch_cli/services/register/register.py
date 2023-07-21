@@ -3,11 +3,14 @@ import re
 import shutil
 import sys
 import tempfile
+import time
 from collections.abc import Iterable
 from pathlib import Path
 from typing import List, Optional
 
 import click
+import gql
+import latch_sdk_gql.execute as l_gql
 from scp import SCPClient
 
 from ...centromere.ctx import _CentromereCtx
@@ -487,7 +490,59 @@ def register(
             )
             _print_reg_resp(reg_resp, ctx.default_container.image_name)
 
-            click.secho(
-                "Successfully registered workflow. View @ console.latch.bio.",
-                fg="green",
-            )
+            click.secho("Successfully registered workflow.", fg="green", bold=True)
+
+            wf_infos = []
+            retries = 0
+
+            wf_name = ctx.workflow_name
+            if snakefile is not None:
+                # todo(maximsmol): this is quite awful
+                wf_name = f"{wf_name}_jit_register"
+
+            while len(wf_infos) == 0:
+                wf_infos = l_gql.execute(
+                    gql.gql("""
+                    query workflowQuery($name: String, $ownerId: BigInt, $version: String) {
+                        workflowInfos(condition: { name: $name, ownerId: $ownerId, version: $version}) {
+                            nodes {
+                                id
+                            }
+                        }
+                    }
+                    """),
+                    {
+                        "name": wf_name,
+                        "version": ctx.version,
+                        "ownerId": current_workspace(),
+                    },
+                )["workflowInfos"]["nodes"]
+                time.sleep(1)
+
+                if retries >= 5:
+                    click.secho(
+                        "Failed to query workflow ID in 5 seconds.", fg="red", bold=True
+                    )
+                    click.secho(
+                        "This could be due to high demand or a bug in the platform.",
+                        fg="red",
+                    )
+                    click.secho(
+                        "If the workflow is not visible in latch console, contact"
+                        " support.",
+                        fg="red",
+                    )
+                    break
+
+                retries += 1
+
+            if len(wf_infos) > 0:
+                if len(wf_infos) > 1:
+                    click.secho(
+                        f"Worfklow {ctx.workflow_name}:{ctx.version} is not unique. The"
+                        " link below might be wrong.",
+                        fg="yellow",
+                    )
+
+                wf_id = wf_infos[0]["id"]
+                click.secho(f"https://console.latch.bio/workflows/{wf_id}", fg="green")
