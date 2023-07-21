@@ -166,7 +166,7 @@ def hash_directory(dir_path: Path) -> str:
     m.update(current_workspace().encode("utf-8"))
 
     ignore_file = dir_path / ".dockerignore"
-    exclude: List[str] = ["/.latch"]
+    exclude: List[str] = ["/.latch", ".git"]
     try:
         with ignore_file.open("r") as f:
             click.echo("Using .dockerignore")

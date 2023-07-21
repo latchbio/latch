@@ -330,7 +330,8 @@ def register(
         try:
             import snakemake
         except ImportError as e:
-            raise RuntimeError("could not load snakemake: package not installed") from e
+            click.secho("\n`snakemake` package is not installed.", fg="red", bold=True)
+            sys.exit(1)
 
     with _CentromereCtx(
         Path(pkg_root),
