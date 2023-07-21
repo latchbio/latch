@@ -21,6 +21,7 @@ from typing import (
 import gql
 import graphql.language as l
 import graphql.language.parser as lp
+import pandas as pd
 from latch_sdk_gql.execute import execute
 from latch_sdk_gql.utils import (
     _GqlJsonValue,
@@ -264,6 +265,42 @@ class Table:
 
         if len(page) > 0:
             yield page
+
+    @overload
+    def get_dataframe(
+        self, *, load_if_missing: Literal[True] = True
+    ) -> Optional[pd.DataFrame]:
+        ...
+
+    @overload
+    def get_dataframe(self, *, load_if_missing: bool) -> Optional[pd.DataFrame]:
+        ...
+
+    def get_dataframe(self, *, load_if_missing: bool = True) -> Optional[pd.DataFrame]:
+        """Get a pandas DataFrame of all records in this table.
+
+        Returns:
+            DataFrame reperesenting all records in this table.
+        """
+
+        records = []
+        for page in self.list_records():
+            for record_id, record in page.items():
+                full_record = record.get_values(load_if_missing=load_if_missing)
+                if full_record is not None:
+                    full_record["Sample_Name"] = record.get_name(
+                        load_if_missing=load_if_missing
+                    )
+                    records.append(full_record)
+
+        if len(records) == 0:
+            cols = self.get_columns(load_if_missing=load_if_missing)
+            if cols is None:
+                return None
+
+            return pd.DataFrame(columns=list(cols.keys()))
+
+        return pd.DataFrame(records)
 
     @contextmanager
     def update(self, *, reload_on_commit: bool = True) -> Iterator["TableUpdate"]:

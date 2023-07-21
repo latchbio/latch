@@ -1,4 +1,3 @@
-import re
 from os import PathLike
 from typing import Optional, Type, Union
 from urllib.parse import urlparse
@@ -12,10 +11,8 @@ from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
 from latch_sdk_gql.execute import execute
 from typing_extensions import Annotated
 
-from latch.types.utils import _is_valid_url
+from latch.types.utils import _is_valid_url, format_path, is_absolute_node_path
 from latch_cli.services.cp.path_utils import normalize_path
-
-is_absolute_node_path = re.compile(r"^(latch)?://\d+.node(/)?$")
 
 
 class LatchFile(FlyteFile):
@@ -133,13 +130,17 @@ class LatchFile(FlyteFile):
 
     def __repr__(self):
         if self.remote_path is None:
-            return f'LatchFile("{self.local_path}")'
-        return f'LatchFile("{self.path}", remote_path="{self.remote_path}")'
+            formatted_path = format_path(self.local_path)
+            return f'LatchFile("{formatted_path}")'
+
+        formatted_path = format_path(self.remote_path)
+        return f'LatchFile("{self.path}", remote_path="{formatted_path}")'
 
     def __str__(self):
         if self.remote_path is None:
             return "LatchFile()"
-        return f'LatchFile("{self.remote_path}")'
+        formatted_path = format_path(self.remote_path)
+        return f'LatchFile("{formatted_path}")'
 
 
 LatchOutputFile = Annotated[
