@@ -2,7 +2,7 @@ import re
 from typing import List
 
 from latch_cli.services.cp.ldata_utils import _get_immediate_children_of_node
-from latch_cli.services.cp.path_utils import urljoins
+from latch_cli.utils import urljoins
 
 
 def expand_pattern(remote_path: str) -> List[str]:

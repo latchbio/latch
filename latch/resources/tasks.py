@@ -303,10 +303,13 @@ def custom_memory_optimized_task(cpu: int, memory: int):
         memory: An integer number of Gibibytes of RAM to request, up to 511 GiB
     """
     if cpu > 62:
-        raise ValueError(f"custom memory optimized task requires too many CPU cores: {cpu} (max 62)")
+        raise ValueError(
+            f"custom memory optimized task requires too many CPU cores: {cpu} (max 62)"
+        )
     elif memory > 490:
         raise ValueError(
-            f"custom memory optimized task requires too much RAM: {memory} GiB (max 490 GiB)"
+            f"custom memory optimized task requires too much RAM: {memory} GiB (max 490"
+            " GiB)"
         )
 
     primary_container = V1Container(name="primary")

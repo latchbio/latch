@@ -183,11 +183,16 @@ def local_development(
     crash_handler.message = "Error during local development session"
     crash_handler.pkg_root = str(pkg_root)
 
-    from latch_cli.services.local_dev import local_development
+    if os.environ.get("LATCH_DEVELOP_BETA") is not None:
+        from latch_cli.services.local_dev import local_development
 
-    local_development(
-        pkg_root.resolve(), skip_confirm_dialog=yes, size=size, image=image
-    )
+        local_development(
+            pkg_root.resolve(), skip_confirm_dialog=yes, size=size, image=image
+        )
+    else:
+        from latch_cli.services.local_dev_old import local_development
+
+        local_development(pkg_root.resolve())
 
 
 @main.command("login")

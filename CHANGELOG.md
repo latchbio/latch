@@ -16,6 +16,58 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.27.3 - 2023-07-18
+
+### Dependencies
+
+- pinned `lytekit` to `v0.14.15` to bring in `marshmallow-enum` as a dependency.
+
+## 2.27.2 - 2023-07-17
+
+### Fixed
+
+- fixed bug where `LatchFile`s/`LatchDir`s would provide `file://` URIs instead of Unix paths, which was causing errors in, e.g., calls to `open()`.
+
+## 2.27.1 - 2023-07-15
+
+### Fixed
+
+- fixed bug where `LatchFile`s/`LatchDir`s wouldn't respect the workspace selected using `latch workspace`.
+
+## 2.27.0 - 2023-07-15
+
+### Added
+
+- Added `.iterdir()` method to `LatchDir` to iterate through subdirectories
+
+## 2.26.2 - 2023-07-11
+
+### Fixed
+
+- Fix unclosed file in `lytekit` upload code
+
+## 2.26.1 - 2023-07-10
+
+### Fixed
+
+- LatchFiles accessed through registry are downloaded to a file with the same name as the file on latch
+
+## 2.26.0 - 2023-07-07
+
+### Changed
+
+- Gated `latch develop` resource selection behind an environment variable due to its slow performance
+
+### Dependencies
+
+- Added back several dependencies to allow the old `latch develop` infrastructure to work properly.
+
+## 2.25.2 - 2023-07-05
+
+### Fixed
+
+- Dockerfile generation uses `\` escaping: fixes bug in Conda and R template
+
 ## 2.25.1 - 2023-06-28
 
 ### Dependencies
