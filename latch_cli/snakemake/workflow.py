@@ -1142,7 +1142,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
 
                             tail.wait()
                             # 130 is SIGINT
-                            if tail.returncode != 130 && tail.returncode != 0:
+                            if tail.returncode != 130 and tail.returncode != 0:
                                 print(f"\n\n\n[!] Log file tail died with code {{tail.returncode}}")
 
                     print("\n\n\nDone\n\n\n")
