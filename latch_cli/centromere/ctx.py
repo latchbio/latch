@@ -297,7 +297,6 @@ class _CentromereCtx:
         self.jump_key_path.write_text(json_data["JumpKey"])
         self.jump_key_path.chmod(0o600)
 
-        print(hostname)
         self.centromere_hostname = hostname
 
         return hostname, "root"
