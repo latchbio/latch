@@ -293,32 +293,14 @@ class _CentromereCtx:
         if resp.status_code != 200:
             raise ValueError(json_data["Error"])
 
-        ip = json_data["IP"]
+        hostname = json_data["InternalHost"]
         self.jump_key_path.write_text(json_data["JumpKey"])
         self.jump_key_path.chmod(0o600)
 
-        poll_count = 0
-        while poll_count < latch_constants.centromere_poll_timeout:
-            resp = tinyrequests.post(
-                "https://centromere.latch.bio/register/ready",
-                headers={"Authorization": f"Latch-SDK-Token {self.token}"},
-            )
+        print(hostname)
+        self.centromere_hostname = hostname
 
-            if resp.status_code != 200:
-                raise ValueError(resp.json()["Error"])
-
-            if resp.json()["Ready"]:
-                break
-
-            poll_count += 1
-            time.sleep(1)
-
-        if poll_count == latch_constants.centromere_poll_timeout:
-            raise ValueError(
-                "Unable to provision registration server. Contact support@latch.bio."
-            )
-
-        return ip, "root"
+        return hostname, "root"
 
     def downscale_register_deployment(self):
         if not (self.remote and self.use_new_centromere):
@@ -327,6 +309,7 @@ class _CentromereCtx:
         resp = tinyrequests.post(
             "https://centromere.latch.bio/register/stop",
             headers={"Authorization": f"Latch-SDK-Token {self.token}"},
+            json={"InternalHostName": self.centromere_hostname},
         )
 
         if resp.status_code != 200:
