@@ -1109,24 +1109,45 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                     traceback.print_exc()
             lp.upload(compiled, "latch:///.snakemake_latch/workflows/{self.wf.name}/compiled_tasks/{self.name}.py")
 
-            print("\n\n\nRunning snakemake task\n\n\n")
+            print("\n\n\nRunning snakemake task\n")
             try:
+                log_files = {repr(log_files)}
                 try:
-                    subprocess.run(
-                        [sys.executable,{','.join(repr(x) for x in snakemake_args)}],
-                        check=True,
-                        env={{
-                            **os.environ,
-                            "LATCH_SNAKEMAKE_DATA": {repr(json.dumps(snakemake_data))}
-                        }}
-                    )
+                    tail = None
+                    if len(log_files) == 1:
+                        log = Path(log_files[0])
+                        print(f"Tailing the only log file: {{log}}")
+                        tail = subprocess.Popen(["tail", "--follow", log])
+
+                    print("\n\n\n")
+                    try:
+                        subprocess.run(
+                            [sys.executable,{','.join(repr(x) for x in snakemake_args)}],
+                            check=True,
+                            env={{
+                                **os.environ,
+                                "LATCH_SNAKEMAKE_DATA": {repr(json.dumps(snakemake_data))}
+                            }}
+                        )
+                    finally:
+                        if tail is not None:
+                            tail.send_signal(SIGINT)
+                            try:
+                                tail.wait(1)
+                            except subprocess.TimeoutExpired:
+                                tail.kill()
+
+                            tail.wait()
+                            if tail.returncode != 0:
+                                print(f"\n\n\n[!] Log file tail died with code {{tail.returncode}}")
+
                     print("\n\n\nDone\n\n\n")
                 except Exception as e:
-                    print("\n\n\nFailed\n\n\n")
+                    print("\n\n\n[!] Failed\n\n\n")
                     raise e
                 finally:
                     print("Uploading logs:")
-                    for x in {repr(log_files)}:
+                    for x in log_files:
                         local = Path(x)
                         remote = f"latch://{remote_path}/{{str(local).removeprefix('/')}}"
                         print(f"  {{file_name_and_size(local)}} -> {{remote}}")
@@ -1160,7 +1181,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                 stack = [(Path("."), 0)]
                 while len(stack) > 0:
                     cur, indent = stack.pop()
-                    print("  " * indent + str(cur))
+                    print("  " * indent + cur.name)
 
                     if cur.is_dir():
                         if cur.name in ignored_names or str(cur) in ignored_paths:
