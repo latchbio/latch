@@ -158,10 +158,8 @@ def hash_directory(dir_path: Path) -> str:
         file_size = p.stat().st_size
         if file_size > latch_constants.file_max_size:
             click.secho(
-                (
-                    f"{p.relative_to(dir_path.resolve())} is too large"
-                    f" ({with_si_suffix(file_size)}) to checksum. Ignoring contents"
-                ),
+                f"{p.relative_to(dir_path.resolve())} is too large"
+                f" ({with_si_suffix(file_size)}) to checksum. Ignoring contents",
                 fg="yellow",
                 bold=True,
             )
