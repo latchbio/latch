@@ -25,7 +25,6 @@ setup(
         ]
     },
     install_requires=[
-        "asyncssh==2.12.0",
         "kubernetes>=24.2.0",
         "pyjwt>=0.2.0",
         "requests>=2.28.1",
