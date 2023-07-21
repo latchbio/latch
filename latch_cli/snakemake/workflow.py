@@ -1131,7 +1131,8 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                         )
                     finally:
                         if tail is not None:
-                            tail.send_signal(SIGINT)
+                            import signal
+                            tail.send_signal(signal.SIGINT)
                             try:
                                 tail.wait(1)
                             except subprocess.TimeoutExpired:
