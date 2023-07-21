@@ -55,8 +55,9 @@ def _docker_login(ctx: _CentromereCtx):
 
     auth = ctx.dkr_client._auth_configs
     store_name = auth.get_credential_store(ctx.dkr_repo)
-    store = auth._get_store_instance(store_name)
-    store.erase(ctx.dkr_repo)
+    if store_name is not None:
+        store = auth._get_store_instance(store_name)
+        store.erase(ctx.dkr_repo)
 
     user, password = base64.b64decode(token).decode("utf-8").split(":")
     res = ctx.dkr_client.login(

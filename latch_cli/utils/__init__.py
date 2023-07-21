@@ -2,6 +2,7 @@
 
 import hashlib
 import os
+import stat
 import subprocess
 import urllib.parse
 from datetime import datetime, timedelta
@@ -190,13 +191,24 @@ def hash_directory(dir_path: Path) -> str:
 
     for item in paths:
         p = Path(dir_path / item)
-        if p.is_dir():
+
+        p_stat = p.stat()
+        if stat.S_ISDIR(p_stat.st_mode):
             m.update(p.name.encode("utf-8"))
             continue
 
         m.update(p.name.encode("utf-8"))
 
-        file_size = p.stat().st_size
+        file_size = p_stat.st_size
+        if not stat.S_ISREG(p_stat.st_mode):
+            click.secho(
+                f"{p.relative_to(dir_path.resolve())} is not a regular file. Ignoring"
+                " contents",
+                fg="yellow",
+                bold=True,
+            )
+            continue
+
         if file_size > latch_constants.file_max_size:
             click.secho(
                 f"{p.relative_to(dir_path.resolve())} is too large"
