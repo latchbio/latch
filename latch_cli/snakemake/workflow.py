@@ -1116,6 +1116,8 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                     tail = None
                     if len(log_files) == 1:
                         log = Path(log_files[0])
+                        log.touch()
+
                         print(f"Tailing the only log file: {{log}}")
                         tail = subprocess.Popen(["tail", "--follow", log])
 
@@ -1139,7 +1141,8 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                                 tail.kill()
 
                             tail.wait()
-                            if tail.returncode != 0:
+                            # 130 is SIGINT
+                            if tail.returncode != 130 && tail.returncode != 0:
                                 print(f"\n\n\n[!] Log file tail died with code {{tail.returncode}}")
 
                     print("\n\n\nDone\n\n\n")
