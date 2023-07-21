@@ -1,8 +1,6 @@
 import re
-import time
 from dataclasses import dataclass
 from pathlib import Path
-from textwrap import dedent
 from typing import Dict, Optional, Tuple
 
 import docker
@@ -225,12 +223,10 @@ class _CentromereCtx:
         match = re.match("^[a-zA-Z0-9_][a-zA-Z0-9._-]{,127}$", self.version)
         if match is None:
             raise ValueError(
-                (
-                    f"{self.version} is an invalid version for AWS "
-                    "ECR. Please provide a version that accomodates the "
-                ),
-                "tag restrictions listed here - ",
-                "https://docs.aws.amazon.com/AmazonECR/latest/userguide/ecr-using-tags.html",
+                f"{self.version} is an invalid version for AWS "
+                "ECR. Please provide a version that accomodates the "
+                "tag restrictions listed here - "
+                "https://docs.aws.amazon.com/AmazonECR/latest/userguide/ecr-using-tags.html"
             )
 
         if self.image is None or self.version is None:
