@@ -2,6 +2,7 @@ import importlib
 import json
 import textwrap
 import typing
+from collections.abc import Generator, Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union
@@ -35,8 +36,7 @@ from flytekit.models import types as type_models
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralMap, Scalar
 from snakemake.dag import DAG
-from snakemake.jobs import GroupJob
-from snakemake.target_jobs import encode_target_jobs_cli_args
+from snakemake.jobs import GroupJob, Job
 from typing_extensions import TypeAlias, TypedDict
 
 import latch.types.metadata as metadata
@@ -46,6 +46,17 @@ from latch.types.file import LatchFile
 from ..utils import identifier_suffix_from_str
 
 SnakemakeInputVal: TypeAlias = snakemake.io._IOFile
+
+
+# old snakemake did not have encode_target_jobs_cli_args
+def jobs_cli_args(
+    jobs: Iterable[Job],
+) -> Generator[str, None, None]:
+    for x in jobs:
+        wildcards = ",".join(
+            f"{key}={value}" for key, value in x.wildcards_dict.items()
+        )
+        yield f"{x.rule.name}:{wildcards}"
 
 
 T = TypeVar("T")
@@ -1035,13 +1046,17 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                     1,
                 )
 
+        jobs = [self.job]
+        if isinstance(self.job, GroupJob):
+            jobs = self.job.jobs
+
         snakemake_args = [
             "-m",
             "latch_cli.snakemake.single_task_snakemake",
             "-s",
             snakefile_path_in_container,
             "--target-jobs",
-            *encode_target_jobs_cli_args(self.job.get_target_spec()),
+            *jobs_cli_args(jobs),
             "--allowed-rules",
             *self.job.rules,
             "--local-groupid",
@@ -1061,10 +1076,6 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             snakemake_args.append("--resources")
             for resource, value in allowed_resources:
                 snakemake_args.append(f"{resource}={value}")
-
-        jobs = [self.job]
-        if isinstance(self.job, GroupJob):
-            jobs = self.job.jobs
 
         snakemake_data = {
             "rules": {},
