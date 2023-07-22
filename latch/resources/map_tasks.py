@@ -1,8 +1,8 @@
 """
-A map task lets you run a pod task or a regular task over a 
-list of inputs within a single workflow node. This means you 
-can run thousands of instances of the task without creating 
-a node for every instance, providing valuable performance 
+A map task lets you run a pod task or a regular task over a
+list of inputs within a single workflow node. This means you
+can run thousands of instances of the task without creating
+a node for every instance, providing valuable performance
 gains!
 
 Some use cases of map tasks include:
@@ -40,4 +40,19 @@ Intended Use: ::
         return coalesced
 """
 
-from flytekit.core.map_task import map_task
+from typing import Callable, List
+
+from flytekit.core.map_task import map_task as flyte_map_task
+from typing_extensions import TypeVar
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+
+def map_task(
+    f: Callable[[T], S],
+    concurrency: int = 0,
+    min_success_rate: float = 1,
+    **kwargs,
+) -> Callable[[List[T]], S]:
+    return flyte_map_task(f, concurrency, min_success_rate, **kwargs)

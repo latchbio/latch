@@ -24,9 +24,16 @@ exported decorators.
     https://docs.flyte.org/en/latest/
 """
 
+import datetime
 import functools
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, ParamSpec, TypeVar, Union
 
-from flytekit import task
+from flytekit import task as flyte_task
+from flytekit.core.base_task import TaskResolverMixin
+from flytekit.core.python_function_task import PythonFunctionTask
+from flytekit.core.resources import Resources
+from flytekit.models.security import Secret
 from flytekitplugins.pod import Pod
 from kubernetes.client.models import (
     V1Container,
@@ -34,6 +41,53 @@ from kubernetes.client.models import (
     V1ResourceRequirements,
     V1Toleration,
 )
+
+P = ParamSpec("P")
+T = TypeVar("T")
+
+
+def task(
+    _task_function: Callable[P, T],
+    task_config: Optional[Any] = None,
+    cache: bool = False,
+    cache_serialize: bool = False,
+    cache_version: str = "",
+    retries: int = 0,
+    interruptible: Optional[bool] = None,
+    deprecated: str = "",
+    timeout: Union[datetime.timedelta, int] = 0,
+    container_image: Optional[str] = None,
+    environment: Optional[Dict[str, str]] = None,
+    requests: Optional[Resources] = None,
+    limits: Optional[Resources] = None,
+    secret_requests: Optional[List[Secret]] = None,
+    execution_mode: Optional[
+        PythonFunctionTask.ExecutionBehavior
+    ] = PythonFunctionTask.ExecutionBehavior.DEFAULT,
+    dockerfile: Optional[Path] = None,
+    task_resolver: Optional[TaskResolverMixin] = None,
+    disable_deck: bool = False,
+) -> Callable[P, T]:
+    return flyte_task(
+        _task_function=_task_function,
+        task_config=task_config,
+        cache=cache,
+        cache_serialize=cache_serialize,
+        cache_version=cache_version,
+        retries=retries,
+        interruptible=interruptible,
+        deprecated=deprecated,
+        timeout=timeout,
+        container_image=container_image,
+        environment=environment,
+        requests=requests,
+        limits=limits,
+        secret_requests=secret_requests,
+        execution_mode=execution_mode,
+        dockerfile=dockerfile,
+        task_resolver=task_resolver,
+        disable_deck=disable_deck,
+    )
 
 
 def _get_large_gpu_pod() -> Pod:
