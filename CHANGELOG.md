@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.27.4 - 2023-07-18
+
+### Changed
+
+- changed beta register implementation
+
 ## 2.27.3 - 2023-07-18
 
 ### Dependencies
