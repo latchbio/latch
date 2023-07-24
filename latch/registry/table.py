@@ -266,37 +266,25 @@ class Table:
         if len(page) > 0:
             yield page
 
-    @overload
-    def get_dataframe(
-        self, *, load_if_missing: Literal[True] = True
-    ) -> Optional[pd.DataFrame]:
-        ...
-
-    @overload
-    def get_dataframe(self, *, load_if_missing: bool) -> Optional[pd.DataFrame]:
-        ...
-
-    def get_dataframe(self, *, load_if_missing: bool = True) -> Optional[pd.DataFrame]:
+    def get_dataframe(self) -> pd.DataFrame:
         """Get a pandas DataFrame of all records in this table.
 
         Returns:
-            DataFrame reperesenting all records in this table.
+            DataFrame representing all records in this table.
         """
 
         records = []
         for page in self.list_records():
-            for record_id, record in page.items():
-                full_record = record.get_values(load_if_missing=load_if_missing)
+            for record in page.values():
+                full_record = record.get_values()
                 if full_record is not None:
-                    full_record["Sample_Name"] = record.get_name(
-                        load_if_missing=load_if_missing
-                    )
+                    full_record["Name"] = record.get_name()
                     records.append(full_record)
 
         if len(records) == 0:
-            cols = self.get_columns(load_if_missing=load_if_missing)
+            cols = self.get_columns()
             if cols is None:
-                return None
+                return pd.DataFrame()
 
             return pd.DataFrame(columns=list(cols.keys()))
 

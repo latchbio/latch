@@ -25,11 +25,10 @@ def _is_valid_url(raw_url: Union[str, Path]) -> bool:
 
 is_absolute_node_path = re.compile(r"^(latch)?://(?P<node_id>\d+).node(/)?$")
 
-
 def format_path(path: str) -> str:
     match = is_absolute_node_path.match(path)
 
-    if not match:
+    if match is None:
         return path
 
     node_id = match.group("node_id")

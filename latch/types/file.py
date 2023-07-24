@@ -130,17 +130,13 @@ class LatchFile(FlyteFile):
 
     def __repr__(self):
         if self.remote_path is None:
-            formatted_path = format_path(self.local_path)
-            return f'LatchFile("{formatted_path}")'
-
-        formatted_path = format_path(self.remote_path)
-        return f'LatchFile("{self.path}", remote_path="{formatted_path}")'
+            return f'LatchFile("{format_path(self.local_path)}")'
+        return f'LatchFile("{self.path}", remote_path="{format_path(self.remote_path)}")'
 
     def __str__(self):
         if self.remote_path is None:
             return "LatchFile()"
-        formatted_path = format_path(self.remote_path)
-        return f'LatchFile("{formatted_path}")'
+        return f'LatchFile("{format_path(self.remote_path)}")'
 
 
 LatchOutputFile = Annotated[
