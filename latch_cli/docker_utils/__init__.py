@@ -361,12 +361,12 @@ def generate_dockerfile(
         f.write("run apt-get update --yes && apt-get install --yes git\n")
         f.write(
             "run pip install"
-            " 'git+https://github.com/latchbio/latch.git@maximsmol/snakekit-1'\n"
+            " 'git+https://github.com/latchbio/latch.git@kenny/snakekit'\n"
         )
         f.write("run pip uninstall --yes latch\n")
         f.write(
             "run echo 72 && pip install"
-            " 'git+https://github.com/latchbio/latch.git@maximsmol/snakekit-1'\n"
+            " 'git+https://github.com/latchbio/latch.git@kenny/snakekit'\n"
         )
 
         f.write("# Copy workflow data (use .dockerignore to skip files)\n")
