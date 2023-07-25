@@ -25,6 +25,7 @@ exported decorators.
 """
 
 import functools
+from warnings import warn
 
 from flytekit import task
 from flytekitplugins.pod import Pod
@@ -322,6 +323,10 @@ def custom_memory_optimized_task(cpu: int, memory: int):
         cpu: An integer number of cores to request, up to 63 cores
         memory: An integer number of Gibibytes of RAM to request, up to 511 GiB
     """
+    warn(
+        "`custom_memory_optimized_task` is deprecated and will be removed in a future"
+        " release: use `custom_task` instead"
+    )
     if cpu > 62:
         raise ValueError(
             f"custom memory optimized task requires too many CPU cores: {cpu} (max 62)"
