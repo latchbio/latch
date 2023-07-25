@@ -34,6 +34,7 @@ from kubernetes.client.models import (
     V1ResourceRequirements,
     V1Toleration,
 )
+from typing import Optional
 
 
 def _get_large_gpu_pod() -> Pod:
@@ -41,8 +42,8 @@ def _get_large_gpu_pod() -> Pod:
 
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
-        requests={"cpu": "31", "memory": "120Gi", "nvidia.com/gpu": "1"},
-        limits={"cpu": "64", "memory": "256Gi", "nvidia.com/gpu": "1"},
+        requests={"cpu": "31", "memory": "120Gi", "nvidia.com/gpu": "1", "ephemeral-storage": "500Gi"},
+        limits={"cpu": "64", "memory": "256Gi", "nvidia.com/gpu": "1", "ephemeral-storage": "500Gi"},
     )
     primary_container.resources = resources
 
@@ -291,7 +292,7 @@ small_task = functools.partial(task, task_config=_get_small_pod())
 """
 
 
-def custom_memory_optimized_task(cpu: int, memory: int):
+def custom_memory_optimized_task(cpu: int, memory: int, storage: int = 500):
     """Returns a custom task configuration requesting
     the specified CPU/RAM allocations. This task
     can utilize fewer cpu cores (62) than `custom_task`s (95)
@@ -311,11 +312,16 @@ def custom_memory_optimized_task(cpu: int, memory: int):
             f"custom memory optimized task requires too much RAM: {memory} GiB (max 490"
             " GiB)"
         )
+    elif storage > 4949:
+        raise ValueError(
+            f"custom memory optimized task requires too much storage: {storage} GiB (max 4949"
+            " GiB)"
+        )
 
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
-        requests={"cpu": str(cpu), "memory": f"{memory}Gi"},
-        limits={"cpu": str(cpu), "memory": f"{memory}Gi"},
+        requests={"cpu": str(cpu), "memory": f"{memory}Gi", "ephemeral-storage": f"{storage}Gi"},
+        limits={"cpu": str(cpu), "memory": f"{memory}Gi", "ephemeral-storage": f"{storage}Gi"},
     )
     primary_container.resources = resources
     task_config = Pod(
@@ -336,21 +342,22 @@ def custom_memory_optimized_task(cpu: int, memory: int):
     return functools.partial(task(task_config=task_config))
 
 
-def custom_task(cpu: int, memory: int):
+def custom_task(cpu: int, memory: int, storage: int = 500):
     """Returns a custom task configuration requesting
     the specified CPU/RAM allocations
 
     Args:
         cpu: An integer number of cores to request, up to 95 cores
         memory: An integer number of Gibibytes of RAM to request, up to 179 GiB
+        storage: An integer number of Gibibytes of storage to request, up to 4949 GiB
     """
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
-        requests={"cpu": str(cpu), "memory": f"{memory}Gi"},
-        limits={"cpu": str(cpu), "memory": f"{memory}Gi"},
+        requests={"cpu": str(cpu), "memory": f"{memory}Gi", "ephemeral-storage": f"{storage}Gi"},
+        limits={"cpu": str(cpu), "memory": f"{memory}Gi", "ephemeral-storage": f"{storage}Gi"},
     )
     primary_container.resources = resources
-    if cpu < 32 and memory < 128:
+    if cpu < 32 and memory < 128 and storage < 1950:
         task_config = Pod(
             annotations={
                 "io.kubernetes.cri-o.userns-mode": (
@@ -366,7 +373,7 @@ def custom_task(cpu: int, memory: int):
             ),
             primary_container_name="primary",
         )
-    elif cpu < 96 and memory < 180:
+    elif cpu < 96 and memory < 180 and storage < 4950:
         task_config = Pod(
             annotations={
                 "io.kubernetes.cri-o.userns-mode": (
@@ -389,10 +396,14 @@ def custom_task(cpu: int, memory: int):
             raise ValueError(
                 f"custom task requires too much RAM: {memory} GiB (max 179 GiB)"
             )
+        elif storage >= 4950:
+            raise ValueError(
+                f"custom task requires too much storage: {storage} GiB (max 4949 GiB)"
+            )
         else:
             raise ValueError(
-                f"custom task resource limit is too high: {cpu} (max 95) or"
-                f" {memory} GiB (max 179 GiB)"
+                f"custom task resource limit is too high: {cpu} (max 95) cpu cores,"
+                f" {memory} GiB (max 179 GiB) memory, or {storage} GiB storage (max 4949 GiB)"
             )
 
     return functools.partial(task(task_config=task_config))
