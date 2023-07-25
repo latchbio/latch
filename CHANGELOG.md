@@ -20,7 +20,7 @@ Types of changes
 
 ### Added
 
-- tasks explicitly request ephemeral storage
+- Tasks explicitly request ephemeral storage
 - `custom_task` and `custom_memory_optimized_task` allow selecting storage size
 
 
