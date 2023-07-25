@@ -25,6 +25,7 @@ exported decorators.
 """
 
 import functools
+from warnings import warn
 
 from flytekit import task
 from flytekitplugins.pod import Pod
@@ -41,8 +42,18 @@ def _get_large_gpu_pod() -> Pod:
 
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
-        requests={"cpu": "31", "memory": "120Gi", "nvidia.com/gpu": "1"},
-        limits={"cpu": "64", "memory": "256Gi", "nvidia.com/gpu": "1"},
+        requests={
+            "cpu": "31",
+            "memory": "120Gi",
+            "nvidia.com/gpu": "1",
+            "ephemeral-storage": "1500Gi",
+        },
+        limits={
+            "cpu": "64",
+            "memory": "256Gi",
+            "nvidia.com/gpu": "1",
+            "ephemeral-storage": "2000Gi",
+        },
     )
     primary_container.resources = resources
 
@@ -60,8 +71,18 @@ def _get_small_gpu_pod() -> Pod:
 
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
-        requests={"cpu": "7", "memory": "30Gi", "nvidia.com/gpu": "1"},
-        limits={"cpu": "8", "memory": "32Gi", "nvidia.com/gpu": "1"},
+        requests={
+            "cpu": "7",
+            "memory": "30Gi",
+            "nvidia.com/gpu": "1",
+            "ephemeral-storage": "1500Gi",
+        },
+        limits={
+            "cpu": "8",
+            "memory": "32Gi",
+            "nvidia.com/gpu": "1",
+            "ephemeral-storage": "2000Gi",
+        },
     )
     primary_container.resources = resources
 
@@ -81,8 +102,8 @@ def _get_large_pod() -> Pod:
 
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
-        requests={"cpu": "90", "memory": "170Gi"},
-        limits={"cpu": "96", "memory": "192Gi"},
+        requests={"cpu": "90", "memory": "170Gi", "ephemeral-storage": "4500Gi"},
+        limits={"cpu": "96", "memory": "192Gi", "ephemeral-storage": "5000Gi"},
     )
     primary_container.resources = resources
 
@@ -104,12 +125,13 @@ def _get_large_pod() -> Pod:
 
 
 def _get_medium_pod() -> Pod:
-    """[ "m5.8xlarge", "m5ad.8xlarge", "m5d.8xlarge", "m5n.8xlarge", "m5dn.8xlarge", "m5a.8xlarge" ]"""
+    """[ "m5.8xlarge", "m5ad.8xlarge", "m5d.8xlarge", "m5n.8xlarge", "m5dn.8xlarge", "m5a.8xlarge" ]
+    """
 
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
-        requests={"cpu": "28", "memory": "100Gi"},
-        limits={"cpu": "32", "memory": "128Gi"},
+        requests={"cpu": "28", "memory": "100Gi", "ephemeral-storage": "1500Gi"},
+        limits={"cpu": "32", "memory": "128Gi", "ephemeral-storage": "2000Gi"},
     )
     primary_container.resources = resources
 
@@ -135,8 +157,8 @@ def _get_small_pod() -> Pod:
 
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
-        requests={"cpu": "2", "memory": "4Gi"},
-        limits={"cpu": "4", "memory": "8Gi"},
+        requests={"cpu": "2", "memory": "4Gi", "ephemeral-storage": "100Gi"},
+        limits={"cpu": "4", "memory": "8Gi", "ephemeral-storage": "500Gi"},
     )
     primary_container.resources = resources
 
@@ -297,11 +319,16 @@ def custom_memory_optimized_task(cpu: int, memory: int):
     can utilize fewer cpu cores (62) than `custom_task`s (95)
     but can use more RAM (up to 490 GiB) than `custom_task`s (up to 179 GiB).
     This is ideal for processes which utilize a lot of memory per thread.
-
     Args:
         cpu: An integer number of cores to request, up to 63 cores
         memory: An integer number of Gibibytes of RAM to request, up to 511 GiB
     """
+    warn(
+        "`custom_memory_optimized_task` is deprecated and will be removed in a future"
+        " release: use `custom_task` instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     if cpu > 62:
         raise ValueError(
             f"custom memory optimized task requires too many CPU cores: {cpu} (max 62)"
@@ -336,21 +363,30 @@ def custom_memory_optimized_task(cpu: int, memory: int):
     return functools.partial(task(task_config=task_config))
 
 
-def custom_task(cpu: int, memory: int):
+def custom_task(cpu: int, memory: int, *, storage_gib: int = 500):
     """Returns a custom task configuration requesting
     the specified CPU/RAM allocations
 
     Args:
         cpu: An integer number of cores to request, up to 95 cores
-        memory: An integer number of Gibibytes of RAM to request, up to 179 GiB
+        memory: An integer number of Gibibytes of RAM to request, up to 490 GiB
+        storage: An integer number of Gibibytes of storage to request, up to 4949 GiB
     """
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
-        requests={"cpu": str(cpu), "memory": f"{memory}Gi"},
-        limits={"cpu": str(cpu), "memory": f"{memory}Gi"},
+        requests={
+            "cpu": str(cpu),
+            "memory": f"{memory}Gi",
+            "ephemeral-storage": f"{storage_gib}Gi",
+        },
+        limits={
+            "cpu": str(cpu),
+            "memory": f"{memory}Gi",
+            "ephemeral-storage": f"{storage_gib}Gi",
+        },
     )
     primary_container.resources = resources
-    if cpu < 32 and memory < 128:
+    if cpu <= 31 and memory <= 127 and storage_gib <= 1949:
         task_config = Pod(
             annotations={
                 "io.kubernetes.cri-o.userns-mode": (
@@ -366,7 +402,7 @@ def custom_task(cpu: int, memory: int):
             ),
             primary_container_name="primary",
         )
-    elif cpu < 96 and memory < 180:
+    elif cpu <= 95 and memory <= 179 and storage_gib <= 4949:
         task_config = Pod(
             annotations={
                 "io.kubernetes.cri-o.userns-mode": (
@@ -382,17 +418,49 @@ def custom_task(cpu: int, memory: int):
             ),
             primary_container_name="primary",
         )
+    elif cpu <= 62 and memory <= 490 and storage_gib <= 4949:
+        task_config = Pod(
+            annotations={
+                "io.kubernetes.cri-o.userns-mode": (
+                    "private:uidmapping=0:1048576:65536;gidmapping=0:1048576:65536"
+                )
+            },
+            pod_spec=V1PodSpec(
+                runtime_class_name="sysbox-runc",
+                containers=[primary_container],
+                tolerations=[
+                    V1Toleration(effect="NoSchedule", key="ng", value="mem-512-spot")
+                ],
+            ),
+            primary_container_name="primary",
+        )
     else:
-        if cpu >= 96:
-            raise ValueError(f"custom task requires too many CPU cores: {cpu} (max 95)")
-        elif memory >= 180:
+        if memory > 490:
             raise ValueError(
-                f"custom task requires too much RAM: {memory} GiB (max 179 GiB)"
+                f"custom task requires too much RAM: {memory} GiB (max 490 GiB)"
+            )
+        elif storage_gib > 4949:
+            raise ValueError(
+                f"custom task requires too much storage: {storage_gib} GiB (max 4949"
+                " GiB)"
+            )
+        elif cpu > 95:
+            raise ValueError(f"custom task requires too many CPU cores: {cpu} (max 95)")
+        elif memory > 179 and cpu > 62:
+            raise ValueError(
+                f"could not resolve cpu for high memory machine: requested {cpu} cores"
+                " (max 62)"
+            )
+        elif cpu > 62 and memory > 179:
+            raise ValueError(
+                f"could not resolve memory for high cpu machine: requested {memory} GiB"
+                " (max 179 GiB)"
             )
         else:
             raise ValueError(
-                f"custom task resource limit is too high: {cpu} (max 95) or"
-                f" {memory} GiB (max 179 GiB)"
+                f"custom task resource limit is too high: {cpu} (max 95) cpu cores,"
+                f" {memory} GiB (max 179 GiB) memory, or {storage_gib} GiB storage (max"
+                " 4949 GiB)"
             )
 
     return functools.partial(task(task_config=task_config))

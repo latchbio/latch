@@ -13,7 +13,7 @@ if cur_ver < (3, 8) or cur_ver > (3, 10):
 
 setup(
     name="latch",
-    version="v2.27.4",
+    version="v2.28.0",
     author_email="kenny@latch.bio",
     description="The Latch SDK",
     packages=find_packages(),
