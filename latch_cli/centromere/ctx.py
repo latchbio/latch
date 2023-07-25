@@ -45,6 +45,9 @@ class _Container:
     image_name: str
 
 
+docker_image_name_illegal_pat = re.compile(r"[^a-z0-9]+")
+
+
 class _CentromereCtx:
     """Manages state for interaction with centromere.
 
@@ -249,7 +252,8 @@ class _CentromereCtx:
         else:
             account_id = self.account_id
 
-        wf_name = identifier_suffix_from_str(self.workflow_name)
+        wf_name = identifier_suffix_from_str(self.workflow_name).lower()
+        wf_name = docker_image_name_illegal_pat.sub("_", wf_name)
 
         return f"{account_id}_{wf_name}"
 
