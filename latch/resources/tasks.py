@@ -290,7 +290,7 @@ small_task = functools.partial(task, task_config=_get_small_pod())
 """
 
 
-def custom_memory_optimized_task(cpu: int, memory: int, storage: int = 500):
+def custom_memory_optimized_task(cpu: int, memory: int, *, storage: int = 500):
     """Returns a custom task configuration requesting
     the specified CPU/RAM allocations. This task
     can utilize fewer cpu cores (62) than `custom_task`s (95)
@@ -341,7 +341,7 @@ def custom_memory_optimized_task(cpu: int, memory: int, storage: int = 500):
     return functools.partial(task(task_config=task_config))
 
 
-def custom_task(cpu: int, memory: int, storage: int = 500):
+def custom_task(cpu: int, memory: int, *, storage: int = 500):
     """Returns a custom task configuration requesting
     the specified CPU/RAM allocations
 
