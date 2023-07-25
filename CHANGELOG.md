@@ -16,6 +16,14 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.28.0 - 2023-07-25
+
+### Added
+
+- tasks explicitly request ephemeral storage
+- `custom_task` and `custom_memory_optimized_task` allow selecing storage size
+
+
 ## 2.27.4 - 2023-07-18
 
 ### Changed
