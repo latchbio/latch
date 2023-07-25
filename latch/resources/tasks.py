@@ -326,6 +326,7 @@ def custom_memory_optimized_task(cpu: int, memory: int):
     warn(
         "`custom_memory_optimized_task` is deprecated and will be removed in a future"
         " release: use `custom_task` instead",
+        DeprecationWarning,
         stacklevel=2,
     )
     if cpu > 62:
