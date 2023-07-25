@@ -34,16 +34,14 @@ from kubernetes.client.models import (
     V1ResourceRequirements,
     V1Toleration,
 )
-from typing import Optional
-
 
 def _get_large_gpu_pod() -> Pod:
     """g5.8xlarge,g5.16xlarge on-demand"""
 
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
-        requests={"cpu": "31", "memory": "120Gi", "nvidia.com/gpu": "1", "ephemeral-storage": "500Gi"},
-        limits={"cpu": "64", "memory": "256Gi", "nvidia.com/gpu": "1", "ephemeral-storage": "500Gi"},
+        requests={"cpu": "31", "memory": "120Gi", "nvidia.com/gpu": "1", "ephemeral-storage": "1500Gi"},
+        limits={"cpu": "64", "memory": "256Gi", "nvidia.com/gpu": "1", "ephemeral-storage": "2000Gi"},
     )
     primary_container.resources = resources
 
@@ -61,8 +59,8 @@ def _get_small_gpu_pod() -> Pod:
 
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
-        requests={"cpu": "7", "memory": "30Gi", "nvidia.com/gpu": "1"},
-        limits={"cpu": "8", "memory": "32Gi", "nvidia.com/gpu": "1"},
+        requests={"cpu": "7", "memory": "30Gi", "nvidia.com/gpu": "1", "ephemeral-storage": "1500Gi"},
+        limits={"cpu": "8", "memory": "32Gi", "nvidia.com/gpu": "1", "ephemeral-storage": "2000Gi"},
     )
     primary_container.resources = resources
 
@@ -82,8 +80,8 @@ def _get_large_pod() -> Pod:
 
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
-        requests={"cpu": "90", "memory": "170Gi"},
-        limits={"cpu": "96", "memory": "192Gi"},
+        requests={"cpu": "90", "memory": "170Gi", "ephemeral-storage": "4500Gi"},
+        limits={"cpu": "96", "memory": "192Gi", "ephemeral-storage": "5000Gi"},
     )
     primary_container.resources = resources
 
@@ -109,8 +107,8 @@ def _get_medium_pod() -> Pod:
 
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
-        requests={"cpu": "28", "memory": "100Gi"},
-        limits={"cpu": "32", "memory": "128Gi"},
+        requests={"cpu": "28", "memory": "100Gi", "ephemeral-storage": "1500Gi"},
+        limits={"cpu": "32", "memory": "128Gi", "ephemeral-storage": "2000Gi"},
     )
     primary_container.resources = resources
 
@@ -136,8 +134,8 @@ def _get_small_pod() -> Pod:
 
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
-        requests={"cpu": "2", "memory": "4Gi"},
-        limits={"cpu": "4", "memory": "8Gi"},
+        requests={"cpu": "2", "memory": "4Gi", "ephemeral-storage": "100Gi"},
+        limits={"cpu": "4", "memory": "8Gi", "ephemeral-storage": "500Gi"},
     )
     primary_container.resources = resources
 
@@ -302,6 +300,7 @@ def custom_memory_optimized_task(cpu: int, memory: int, storage: int = 500):
     Args:
         cpu: An integer number of cores to request, up to 63 cores
         memory: An integer number of Gibibytes of RAM to request, up to 511 GiB
+        storage: An integer number of Gibibytes of storage to request, up to 4949 GiB
     """
     if cpu > 62:
         raise ValueError(
@@ -390,13 +389,13 @@ def custom_task(cpu: int, memory: int, storage: int = 500):
             primary_container_name="primary",
         )
     else:
-        if cpu >= 96:
+        if cpu > 95:
             raise ValueError(f"custom task requires too many CPU cores: {cpu} (max 95)")
-        elif memory >= 180:
+        elif memory > 179:
             raise ValueError(
                 f"custom task requires too much RAM: {memory} GiB (max 179 GiB)"
             )
-        elif storage >= 4950:
+        elif storage > 4949:
             raise ValueError(
                 f"custom task requires too much storage: {storage} GiB (max 4949 GiB)"
             )
