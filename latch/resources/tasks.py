@@ -356,7 +356,7 @@ def custom_task(cpu: int, memory: int, storage: int = 500):
         limits={"cpu": str(cpu), "memory": f"{memory}Gi", "ephemeral-storage": f"{storage}Gi"},
     )
     primary_container.resources = resources
-    if cpu < 32 and memory < 128 and storage < 1950:
+    if cpu <= 31 and memory <= 127 and storage <= 1949:
         task_config = Pod(
             annotations={
                 "io.kubernetes.cri-o.userns-mode": (
@@ -372,7 +372,7 @@ def custom_task(cpu: int, memory: int, storage: int = 500):
             ),
             primary_container_name="primary",
         )
-    elif cpu < 96 and memory < 180 and storage < 4950:
+    elif cpu <= 95 and memory <= 179 and storage <= 4949:
         task_config = Pod(
             annotations={
                 "io.kubernetes.cri-o.userns-mode": (
