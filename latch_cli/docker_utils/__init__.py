@@ -166,21 +166,21 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
             ),
         ]
 
-    conda_env = pkg_root / "environment.yml"
-    if not conda_env.exists():
-        conda_env = conda_env.with_suffix(".yaml")
+    conda_env_p = pkg_root / "environment.yml"
+    if not conda_env_p.exists():
+        conda_env_p = conda_env_p.with_suffix(".yaml")
 
-    if conda_env.exists():
+    if conda_env_p.exists():
         click.echo(
             " ".join(
                 [
-                    click.style(f"{conda_env.name}:", bold=True),
+                    click.style(f"{conda_env_p.name}:", bold=True),
                     "Conda dependencies installation phase",
                 ]
             )
         )
 
-        with conda_env.open("rb") as f:
+        with conda_env_p.open("rb") as f:
             conda_env = yaml.safe_load(f)
 
         if "name" in conda_env:
@@ -218,7 +218,7 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
             DockerCmdBlock(
                 comment="Build conda environment",
                 commands=[
-                    f"copy {conda_env.name} /opt/latch/environment.yaml",
+                    f"copy {conda_env_p.name} /opt/latch/environment.yaml",
                     dedent(rf"""
                             run mamba env create \
                                 --file /opt/latch/environment.yaml \
