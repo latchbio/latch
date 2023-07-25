@@ -13,7 +13,7 @@ if cur_ver < (3, 8) or cur_ver > (3, 10):
 
 setup(
     name="latch",
-    version="v2.25.1",
+    version="v2.27.3",
     author_email="kenny@latch.bio",
     description="The Latch SDK",
     packages=find_packages(),
@@ -25,8 +25,6 @@ setup(
         ]
     },
     install_requires=[
-        "asyncssh==2.12.0",
-        "aioconsole==0.5.1",
         "kubernetes>=24.2.0",
         "pyjwt>=0.2.0",
         "requests>=2.28.1",
@@ -36,7 +34,7 @@ setup(
         "scp>=0.14.0",
         "boto3>=1.26.0",
         "tqdm>=4.63.0",
-        "lytekit==0.14.13",
+        "lytekit==0.14.15",
         "lytekitplugins-pods==0.4.0",
         "typing-extensions==4.5.0",
         "apscheduler==3.9.1",
@@ -45,6 +43,11 @@ setup(
         "requests-toolbelt==0.10.1",
         "latch-sdk-gql==0.0.2",
         "latch-sdk-config==0.0.1",
+        # for old latch develop, to be removed
+        "aioconsole==0.6.1",
+        "asyncssh==2.13.2",
+        "websockets==11.0.3",
+        "watchfiles==0.19.0",
     ],
     extras_require={"snakemake": ["snakemake>=7.25.4"]},
     classifiers=[

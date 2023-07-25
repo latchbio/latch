@@ -96,6 +96,16 @@ def dockerfile(pkg_root: str):
     help="Use a remote server to build workflow.",
 )
 @click.option(
+    "--progress-plain",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help=(
+        "No special Docker build log handling. Equivalent to `docker build"
+        " --progress=plain`."
+    ),
+)
+@click.option(
     "-y",
     "--yes",
     is_flag=True,
@@ -113,6 +123,7 @@ def register(
     pkg_root: str,
     disable_auto_version: bool,
     remote: bool,
+    progress_plain: bool,
     yes: bool,
     snakefile: Optional[Path],
 ):
@@ -134,6 +145,7 @@ def register(
         remote=remote,
         skip_confirmation=yes,
         snakefile=snakefile,
+        progress_plain=progress_plain,
         use_new_centromere=use_new_centromere,
     )
 
@@ -171,11 +183,16 @@ def local_development(
     crash_handler.message = "Error during local development session"
     crash_handler.pkg_root = str(pkg_root)
 
-    from latch_cli.services.local_dev import local_development
+    if os.environ.get("LATCH_DEVELOP_BETA") is not None:
+        from latch_cli.services.local_dev import local_development
 
-    local_development(
-        pkg_root.resolve(), skip_confirm_dialog=yes, size=size, image=image
-    )
+        local_development(
+            pkg_root.resolve(), skip_confirm_dialog=yes, size=size, image=image
+        )
+    else:
+        from latch_cli.services.local_dev_old import local_development
+
+        local_development(pkg_root.resolve())
 
 
 @main.command("login")
@@ -459,10 +476,8 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
     if version is None:
         version = "latest"
     click.secho(
-        (
-            f"Successfully generated python param map named {wf_name}.params.py with"
-            f" version {version}\n Run `latch launch {wf_name}.params.py` to launch it."
-        ),
+        f"Successfully generated python param map named {wf_name}.params.py with"
+        f" version {version}\n Run `latch launch {wf_name}.params.py` to launch it.",
         fg="green",
     )
 

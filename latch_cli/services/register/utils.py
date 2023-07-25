@@ -1,19 +1,28 @@
 import base64
+import collections
 import contextlib
+import importlib.util as iu
 import io
 import os
+import sys
 import typing
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, TypedDict, Union
 
 import boto3
 import requests
+from latch_sdk_config.latch import config
 
-from ...centromere.ctx import _CentromereCtx
-from ...config.latch import config
 from ...utils import current_workspace
 
+if TYPE_CHECKING:
+    from ...centromere.ctx import _CentromereCtx
+else:
+    _CentromereCtx = ""
 
+
+# todo(maximsmol): only login if the credentials are expired
 def _docker_login(ctx: _CentromereCtx):
     assert ctx.dkr_client is not None
 
@@ -44,12 +53,23 @@ def _docker_login(ctx: _CentromereCtx):
             f"unable to retreive an ecr login token for user {ctx.account_id}"
         ) from err
 
+    auth = ctx.dkr_client._auth_configs
+    store_name = auth.get_credential_store(ctx.dkr_repo)
+    if store_name is not None:
+        store = auth._get_store_instance(store_name)
+        store.erase(ctx.dkr_repo)
+
     user, password = base64.b64decode(token).decode("utf-8").split(":")
-    ctx.dkr_client.login(
-        username=user,
-        password=password,
-        registry=ctx.dkr_repo,
+    res = ctx.dkr_client.login(
+        username=user, password=password, registry=ctx.dkr_repo, reauth=True
     )
+    assert res["Status"] == "Login Succeeded"
+
+
+class DockerBuildLogItem(TypedDict):
+    message: Optional[str]
+    error: Optional[str]
+    stream: Optional[str]
 
 
 def build_image(
@@ -57,7 +77,7 @@ def build_image(
     image_name: str,
     context_path: Path,
     dockerfile: Optional[Path] = None,
-) -> List[str]:
+) -> Iterable[DockerBuildLogItem]:
     assert ctx.dkr_client is not None
 
     _docker_login(ctx)
@@ -144,3 +164,14 @@ def register_serialized_pkg(
         )
 
         return response.json()
+
+
+def import_module_by_path(x: Path):
+    spec = iu.spec_from_file_location("metadata", x)
+    assert spec is not None
+    assert spec.loader is not None
+
+    module = iu.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    return module

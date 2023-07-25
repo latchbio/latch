@@ -1,8 +1,9 @@
 import re
+import sys
 import time
+import traceback
 from dataclasses import dataclass
 from pathlib import Path
-from textwrap import dedent
 from typing import Dict, Optional, Tuple
 
 import click
@@ -33,12 +34,18 @@ from latch_cli.utils import (
     retrieve_or_login,
 )
 
+from ..services.register.utils import import_module_by_path
+from ..utils import identifier_suffix_from_str
+
 
 @dataclass
 class _Container:
     dockerfile: Path
     pkg_dir: Path
     image_name: str
+
+
+docker_image_name_illegal_pat = re.compile(r"[^a-z0-9]+")
 
 
 class _CentromereCtx:
@@ -118,9 +125,54 @@ class _CentromereCtx:
                                 pkg_dir=entity.dockerfile_path.parent,
                             )
             else:
+                assert snakefile is not None
+
+                import latch.types.metadata as metadata
+
+                from ..snakemake.serialize import (
+                    snakemake_metadata_example,
+                    snakemake_workflow_extractor,
+                )
+
+                meta = pkg_root / "latch_metadata.py"
+                if meta.exists():
+                    click.echo(f"Using metadata file {click.style(meta, italic=True)}")
+                    import_module_by_path(meta)
+                else:
+                    click.echo("Trying to extract metadata from the Snakefile")
+                    try:
+                        snakemake_workflow_extractor(pkg_root, snakefile)
+                    except (ImportError, FileNotFoundError):
+                        traceback.print_exc()
+                        click.secho(
+                            "\n\n\n"
+                            + "The above error occured when reading "
+                            + "the Snakefile to extract workflow metadata.",
+                            bold=True,
+                            fg="red",
+                        )
+                        click.secho(
+                            "\nIt is possible to avoid including the Snakefile prior to"
+                            " registration by providing a `latch_metadata.py` file in"
+                            " the workflow root.\nThis way it is not necessary to"
+                            " install dependencies or ensure that Snakemake inputs"
+                            " locally.",
+                            fg="red",
+                        )
+                        click.secho("\nExample ", fg="red", nl=False)
+                        click.secho(f"`{meta}`", bold=True, fg="red", nl=False)
+                        click.secho(
+                            f" file:{snakemake_metadata_example}",
+                            fg="red",
+                        )
+                        sys.exit(1)
+
+                assert metadata._snakemake_metadata is not None
+                assert metadata._snakemake_metadata.name is not None
+
                 # todo(kenny): support per container task and custom workflow
                 # name for snakemake
-                self.workflow_name = "snakemake workflow"
+                self.workflow_name = metadata._snakemake_metadata.name
 
             version_file = self.pkg_root / "version"
             try:
@@ -136,6 +188,7 @@ class _CentromereCtx:
             if not self.disable_auto_version:
                 hash = hash_directory(self.pkg_root)
                 self.version = f"{self.version}-{hash[:6]}"
+                click.echo(f"  {self.version}\n")
 
             if self.nucleus_check_version(self.version, self.workflow_name):
                 raise ValueError(f"Version {self.version} has already been registered.")
@@ -199,7 +252,10 @@ class _CentromereCtx:
         else:
             account_id = self.account_id
 
-        return f"{account_id}_{self.pkg_root.name}"
+        wf_name = identifier_suffix_from_str(self.workflow_name).lower()
+        wf_name = docker_image_name_illegal_pat.sub("_", wf_name)
+
+        return f"{account_id}_{wf_name}"
 
     @property
     def image_tagged(self):
@@ -221,10 +277,8 @@ class _CentromereCtx:
         match = re.match("^[a-zA-Z0-9_][a-zA-Z0-9._-]{,127}$", self.version)
         if match is None:
             raise ValueError(
-                (
-                    f"{self.version} is an invalid version for AWS "
-                    "ECR. Please provide a version that accomodates the "
-                ),
+                f"{self.version} is an invalid version for AWS "
+                "ECR. Please provide a version that accomodates the ",
                 "tag restrictions listed here - ",
                 "https://docs.aws.amazon.com/AmazonECR/latest/userguide/ecr-using-tags.html",
             )
