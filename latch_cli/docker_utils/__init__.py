@@ -230,15 +230,27 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
             ),
         ]
 
-    # from https://peps.python.org/pep-0518/ and https://peps.python.org/pep-0621/
-    for f in [(pkg_root / "setup.py"), (pkg_root / "pyproject.toml")]:
-        if not f.exists():
-            continue
+    has_setup_py = (pkg_root / "setup.py").exists()
 
+    has_buildable_pyproject = False
+    try:
+        with (pkg_root / "pyproject.toml").open("r") as f:
+            for line in f:
+                if not line.startswith("[build-syste]"):
+                    continue
+
+                has_buildable_pyproject = True
+                break
+    except FileNotFoundError:
+        ...
+
+    # from https://peps.python.org/pep-0518/ and https://peps.python.org/pep-0621/
+    if has_setup_py or has_buildable_pyproject:
+        cause = "setup.py" if has_setup_py else "pyproject.toml"
         click.echo(
             " ".join(
                 [
-                    click.style(f"{f.name}:", bold=True),
+                    click.style(f"{cause}:", bold=True),
                     "Python package installation phase",
                 ]
             )
