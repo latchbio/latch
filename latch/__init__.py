@@ -19,6 +19,7 @@ from latch.resources.map_tasks import map_task
 from latch.resources.reference_workflow import workflow_reference
 from latch.resources.tasks import (
     custom_task,
+    custom_memory_optimized_task,
     large_gpu_task,
     large_task,
     medium_task,
