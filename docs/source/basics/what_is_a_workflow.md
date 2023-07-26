@@ -153,7 +153,7 @@ reference or boilerplate.
 **Note**: you are required to use our base image for the time being.
 
 ```Dockerfile
-FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:9a7d-main
+FROM 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:fe0b-main
 
 # Its easy to build binaries from source that you can later reference as
 # subprocesses within your workflow.

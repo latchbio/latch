@@ -18,19 +18,22 @@ from latch_cli import tinyrequests
 from latch_cli.constants import latch_constants, units
 from latch_cli.services.cp.config import CPConfig, Progress
 from latch_cli.services.cp.ldata_utils import LDataNodeType, get_node_data
-from latch_cli.services.cp.path_utils import normalize_path, urljoins
+from latch_cli.services.cp.path_utils import normalize_path
 from latch_cli.services.cp.progress import ProgressBarManager, ProgressBars
 from latch_cli.services.cp.utils import (
     get_auth_header,
     get_max_workers,
     human_readable_time,
 )
-from latch_cli.utils import with_si_suffix
+from latch_cli.utils import urljoins, with_si_suffix
 
 if TYPE_CHECKING:
     QueueType: TypeAlias = Queue[Optional[Path]]
     PartsBySrcType: TypeAlias = DictProxy[Path, ListProxy["CompletedPart"]]
     UploadInfoBySrcType: TypeAlias = DictProxy[Path, "StartUploadReturnType"]
+
+
+start_upload_batch_size = 100
 
 
 class EmptyUploadData(TypedDict):
@@ -139,21 +142,34 @@ def upload(
                             start_upload_futs: List[
                                 Future[Optional[StartUploadReturnType]]
                             ] = []
+                            batch_futs: List[
+                                Future[Optional[StartUploadReturnType]]
+                            ] = []
 
                             start = time.monotonic()
                             for job in jobs:
-                                start_upload_futs.append(
-                                    executor.submit(
-                                        start_upload,
-                                        job.src,
-                                        job.dest,
-                                        url_generation_bar,
-                                    )
+                                fut = executor.submit(
+                                    start_upload,
+                                    job.src,
+                                    job.dest,
+                                    url_generation_bar,
                                 )
+                                start_upload_futs.append(fut)
+                                batch_futs.append(fut)
 
-                            wait(start_upload_futs)
+                                if len(batch_futs) == start_upload_batch_size:
+                                    wait(batch_futs)
 
-                        for fut in start_upload_futs:
+                                    for fut in batch_futs:
+                                        res = fut.result()
+                                        if res is not None:
+                                            upload_info_by_src[res.src] = res
+
+                                    batch_futs = []
+
+                            wait(batch_futs)
+
+                        for fut in batch_futs:
                             res = fut.result()
                             if res is not None:
                                 upload_info_by_src[res.src] = res
@@ -273,7 +289,7 @@ def upload(
         f"""{click.style("Upload Complete", fg="green")}
 
 {click.style("Time Elapsed: ", fg="blue")}{human_readable_time(total_time)}
-{click.style("Files Downloaded: ", fg="blue")}{num_files} ({with_si_suffix(total_bytes)})"""
+{click.style("Files Uploaded: ", fg="blue")}{num_files} ({with_si_suffix(total_bytes)})"""
     )
 
 

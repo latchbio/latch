@@ -16,7 +16,7 @@ from latch_cli.services.cp.ldata_utils import (
     _get_immediate_children_of_node,
     _get_known_domains_for_account,
 )
-from latch_cli.services.cp.path_utils import urljoins
+from latch_cli.utils import urljoins
 
 completion_type = re.compile(
     r"""

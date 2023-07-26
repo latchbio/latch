@@ -20,7 +20,7 @@ from latch_cli.utils import (
     retrieve_or_login,
 )
 
-max_polls = 300
+max_polls = 1800
 
 
 class TaskSize(str, Enum):
@@ -183,6 +183,7 @@ def local_development(
 
         ip = json_data["IP"]
         jump_key = json_data["JumpKey"]
+
         jump_key_path.write_text(jump_key)
         jump_key_path.chmod(0o600)
 
@@ -222,7 +223,7 @@ def local_development(
             ssh_command = [
                 "ssh",
                 "-o",
-                "UserKnownHostsFile=/dev/null",  # hack
+                "CheckHostIP=no",  # hack
                 "-o",
                 "StrictHostKeyChecking=no",
                 "-o",
@@ -245,7 +246,17 @@ def local_development(
                         stop_rsync,
                     )
 
-                    subprocess.run(ssh_command)
+                    res = subprocess.run(ssh_command, stderr=subprocess.PIPE)
+                    if "Too many authentication failures" in res.stderr.decode():
+                        click.secho(
+                            dedent("""
+                            Too many authentication failures. Try resetting your ssh-agent with
+
+                                $ ssh-add -D
+
+                            and trying again."""),
+                            fg="red",
+                        )
                     stop_rsync.set()
 
         finally:
@@ -267,3 +278,5 @@ def local_development(
                 )
             except subprocess.CalledProcessError as e:
                 raise ValueError("Unable to remove jump host key from SSH Agent")
+
+            jump_key_path.unlink(missing_ok=True)

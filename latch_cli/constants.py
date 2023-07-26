@@ -25,7 +25,7 @@ units = Units
 @dataclass(frozen=True)
 class LatchConstants:
     base_image: str = (
-        "812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:5303-main"
+        "812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:fe0b-main"
     )
 
     file_max_size: int = 4 * units.MiB
@@ -45,11 +45,12 @@ class LatchConstants:
         r"(\.git|\.latch_report\.tar\.gz|traceback\.txt|metadata\.json)$"
     )
 
-    # todo(ayush): add a dns record so this isn't hot garbage
-    jump_host = (
-        "a379501a3e5e54a2c8d1cc4f7ed32630-1582965659.us-west-2.elb.amazonaws.com"
-    )
-    jump_user = "jumpuser"
+    jump_host: str = "jump.centromere.latch.bio"
+    jump_user: str = "jumpuser"
+
+    # seconds
+    centromere_poll_timeout: int = 18000
+    centromere_keepalive_interval: int = 30
 
 
 latch_constants = LatchConstants()

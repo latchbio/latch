@@ -16,6 +16,138 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.28.0 - 2023-07-25
+
+### Added
+
+- Tasks explicitly request ephemeral storage
+- `custom_task` and `custom_memory_optimized_task` allow selecting storage size
+- `custom_memory_optimized_task` functionality merged into `custom_task`
+
+### Deprecated
+
+- `custom_memory_optimized_task`
+
+## 2.27.4 - 2023-07-18
+
+### Changed
+
+- changed beta register implementation
+
+## 2.27.3 - 2023-07-18
+
+### Dependencies
+
+- pinned `lytekit` to `v0.14.15` to bring in `marshmallow-enum` as a dependency.
+
+## 2.27.2 - 2023-07-17
+
+### Fixed
+
+- fixed bug where `LatchFile`s/`LatchDir`s would provide `file://` URIs instead of Unix paths, which was causing errors in, e.g., calls to `open()`.
+
+## 2.27.1 - 2023-07-15
+
+### Fixed
+
+- fixed bug where `LatchFile`s/`LatchDir`s wouldn't respect the workspace selected using `latch workspace`.
+
+## 2.27.0 - 2023-07-15
+
+### Added
+
+- Added `.iterdir()` method to `LatchDir` to iterate through subdirectories
+
+## 2.26.2 - 2023-07-11
+
+### Fixed
+
+- Fix unclosed file in `lytekit` upload code
+
+## 2.26.1 - 2023-07-10
+
+### Fixed
+
+- LatchFiles accessed through registry are downloaded to a file with the same name as the file on latch
+
+## 2.26.0 - 2023-07-07
+
+### Changed
+
+- Gated `latch develop` resource selection behind an environment variable due to its slow performance
+
+### Dependencies
+
+- Added back several dependencies to allow the old `latch develop` infrastructure to work properly.
+
+## 2.25.2 - 2023-07-05
+
+### Fixed
+
+- Dockerfile generation uses `\` escaping: fixes bug in Conda and R template
+
+## 2.25.1 - 2023-06-28
+
+### Dependencies
+
+- Upgraded `paramiko` dependency to `>=3.2.0` which fixes a `PKey` issue.
+
+## 2.25.0 - 2023-06-28
+
+### Changed
+
+- `latch register` experimental features (2.24.xx) are now gated behind an environment variable, and by default we use the old (pre 2.24) register backend.
+
+## 2.24.12 - 2023-06-27
+
+### Dependencies
+
+- Upgraded lytekit to version 0.14.13 to support uploading files up to 5 TiB from within a task
+
+## 2.24.11 - 2023-06-27
+
+### Fixed
+
+- Internal bug in `latch register` which caused an API call to be made when not necessary, resulting in an irrelevant exception being thrown
+
+## 2.24.10 - 2023-06-27
+
+### Fixed
+
+- Bug in `latch cp` upload path where URLs would be generated but files would not be uploaded
+
+## 2.24.9 - 2023-06-27
+
+### Changed
+
+- Added client side rate limiting to `latch cp` upload API calls so as to not throttle our backend.
+
+## 2.24.8 - 2023-06-27
+
+### Fixed
+
+- `latch register` provision timeout bug
+- catch `KeyboardInterrupt`s during register provisioning
+- updated `latch-base` image to fix docker-in-docker workflows which use the host machine's network interface
+
+## 2.24.7 - 2023-06-26
+
+### Fixed
+
+- `latch develop` and `latch register` provision timeout increased to 30 minutes
+
+## 2.24.6 - 2023-06-26
+
+### Fixed
+
+- `latch develop` and `latch register` SSH connections timeout on inactivity
+
+## 2.24.5 - 2023-06-26
+
+### Fixed
+
+- Bug in `latch develop` where rsync would continually flood stdout with requests to confirm host key authenticity
+
 ## 2.24.3 - 2023-06-24
 
 ### Added

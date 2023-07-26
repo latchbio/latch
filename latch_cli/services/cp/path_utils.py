@@ -9,51 +9,11 @@ from latch_sdk_config.user import user_config
 from latch_cli.services.cp.exceptions import PathResolutionError
 from latch_cli.services.cp.utils import get_auth_header
 
-# todo(ayush): need a better way to check if "latch" has been appended to urllib
-if "latch" not in urllib.parse.uses_netloc:
-    urllib.parse.uses_netloc.append("latch")
-    urllib.parse.uses_relative.append("latch")
-
-
 latch_url_regex = re.compile(r"^(latch)?://")
 
 
 def is_remote_path(path: str) -> bool:
     return latch_url_regex.match(path) is not None
-
-
-def urljoins(*args: str, dir: bool = False) -> str:
-    """Construct a URL by appending paths
-
-    Paths are always joined, with extra `/`s added if missing. Does not allow
-    overriding basenames as opposed to normal `urljoin`. Whether the final
-    path ends in a `/` is still significant and will be preserved in the output
-
-    >>> urljoin("latch:///directory/", "another_directory")
-    latch:///directory/another_directory
-    >>> # No slash means "another_directory" is treated as a filename
-    >>> urljoin(urljoin("latch:///directory/", "another_directory"), "file")
-    latch:///directory/file
-    >>> # Unintentionally overrode the filename
-    >>> urljoins("latch:///directory/", "another_directory", "file")
-    latch:///directory/another_directory/file
-    >>> # Joined paths as expected
-
-    Args:
-        args: Paths to join
-        dir: If true, ensure the output ends with a `/`
-    """
-
-    res = args[0]
-    for x in args[1:]:
-        if res[-1] != "/":
-            res = f"{res}/"
-        res = urljoin(res, x)
-
-    if dir and res[-1] != "/":
-        res = f"{res}/"
-
-    return res
 
 
 scheme = re.compile(
