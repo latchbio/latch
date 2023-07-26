@@ -1,5 +1,4 @@
 import base64
-import collections
 import contextlib
 import importlib.util as iu
 import io
@@ -11,6 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, TypedDict, Union
 
 import boto3
+import docker
 import requests
 from latch_sdk_config.latch import config
 
@@ -57,7 +57,12 @@ def _docker_login(ctx: _CentromereCtx):
     store_name = auth.get_credential_store(ctx.dkr_repo)
     if store_name is not None:
         store = auth._get_store_instance(store_name)
-        store.erase(ctx.dkr_repo)
+        try:
+            store.erase(ctx.dkr_repo)
+        # To handle: "Credentials store docker-credential-osxkeychain exited
+        # with "The specified item could not be found in the keychain.""
+        except docker.credentials.errors.StoreError:
+            pass
 
     user, password = base64.b64decode(token).decode("utf-8").split(":")
     res = ctx.dkr_client.login(
