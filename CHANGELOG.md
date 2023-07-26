@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.29.0 - 2023-07-26
+
+### Added
+
+- `stop-pod` command to the CLI. Allows the user to stop a pod in which the CLI resides or to stop a pod using its id.
+
 ## 2.28.0 - 2023-07-25
 
 ### Added
