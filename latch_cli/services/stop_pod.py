@@ -16,7 +16,7 @@ def stop_pod(pod_id: int) -> None:
     )
 
     if res.status_code == 200:
-        click.secho(f"Pod with id `{pod_id}` Stopped.", fg="green")
+        click.secho(f"Pod with ID `{pod_id}` stopped.", fg="green")
         return
 
     if res.status_code == 403 or res.status_code == 404:
