@@ -313,7 +313,9 @@ def mv(src: str, dest: str):
     is_flag=True,
     default=False,
 )
-@click.argument("remote_directories", nargs=-1, shell_complete=remote_complete)
+# todo(maximsmol): enable once ls uses gql and supports new paths
+# @click.argument("remote_directories", nargs=-1, shell_complete=remote_complete)
+@click.argument("remote_directories", nargs=-1)
 def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]):
     """
     List the contents of a Latch Data directory
