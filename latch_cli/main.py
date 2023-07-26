@@ -609,32 +609,26 @@ def stop_pod(pod_id: Optional[int] = None):
     """Stops a pod given a pod_id or the pod from which the command is run"""
     crash_handler.message = "Unable to stop pod"
 
-    if pod_id is None:
-        try:
-            with open("/root/.latch/id") as f:
-                pod_id = int(f.read().strip("\n"))
-        except FileNotFoundError:
-            click.secho(
-                "Unable to find pod id in `/root/.latch/id` -- pass as command line"
-                " argument",
-                fg="red",
-            )
-            return
-        except ValueError:
-            click.secho(
-                "Unable to parse pod id in `/root/.latch/id` -- pass as command line"
-                " argument",
-                fg="red",
-            )
-            return
-        except Exception:
-            click.secho(
-                "Unable to read `/root/.latch/id` -- pass as command line argument",
-                fg="red",
-            )
-            return
-
     from latch_cli.services.stop_pod import stop_pod
+
+    if pod_id is None:
+        id_path = Path("/root/.latch/id")
+
+        try:
+            pod_id = int(id_path.read_text().strip("\n"))
+        except Exception as e:
+            if isinstance(e, FileNotFoundError):
+                err_str = f"Pod ID not found at {id_path}"
+            elif isinstance(e, ValueError):
+                err_str = f"Could not parse Pod ID at {id_path}"
+            else:
+                err_str = f"Error reading Pod ID from {id_path}"
+
+            click.secho(
+                f"{err_str} -- please provide a Pod ID as a command line argument.",
+                fg="red",
+            )
+            return
 
     stop_pod(pod_id)
 
