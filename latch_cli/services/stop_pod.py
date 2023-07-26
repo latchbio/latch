@@ -9,7 +9,6 @@ from .cp.utils import get_auth_header
 
 def stop_pod(pod_id: int) -> None:
     """Stops a pod given a pod_id"""
-    print(urljoin(NUCLEUS_URL, "/pods/stop"))
     res = tinyrequests.post(
         urljoin(NUCLEUS_URL, "/pods/stop"),
         headers={"Authorization": get_auth_header()},
@@ -17,23 +16,19 @@ def stop_pod(pod_id: int) -> None:
     )
 
     if res.status_code == 200:
-        click.secho(f"Pod `{pod_id}` Stopped.", fg="green")
+        click.secho(f"Pod with id `{pod_id}` Stopped.", fg="green")
         return
 
-    if res.status_code == 403:
-        click.secho(f"Permission denied for pod `{pod_id}`.", fg="red")
-        return
-
-    if res.status_code == 404:
-        click.secho(f"Pod `{pod_id}` does not exist.", fg="red")
+    if res.status_code == 403 or res.status_code == 404:
+        click.secho("Pod does not exist or permission denied.", fg="red")
         return
 
     if res.status_code == 500:
         click.secho(
             f"Internal error while stopping pod `{pod_id}`. Please try again and"
-            " contact `support@latch.bio` if persists.",
+            " contact `support@latch.bio` if the issue persists.",
             fg="red",
         )
         return
 
-    raise ValueError(f"failed to stop pod `{pod_id}` with code {res.status_code}")
+    raise ValueError(f"failed to stop pod with id `{pod_id}` with code. Server responded with `{res.status_code}` status code.")
