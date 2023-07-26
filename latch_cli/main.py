@@ -41,10 +41,12 @@ def main():
     latest_ver = parse_version(get_latest_package_version())
     if local_ver < latest_ver:
         click.secho(
-            textwrap.dedent(f"""
+            textwrap.dedent(
+                f"""
                 WARN: Your local version of latch ({local_ver}) is out of date. This may result in unexpected behavior.
                 Please upgrade to the latest version ({latest_ver}) using `python3 -m pip install --upgrade latch`.
-                """).strip("\n"),
+                """
+            ).strip("\n"),
             fg="yellow",
         )
 
@@ -451,10 +453,8 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
     if version is None:
         version = "latest"
     click.secho(
-        (
-            f"Successfully generated python param map named {wf_name}.params.py with"
-            f" version {version}\n Run `latch launch {wf_name}.params.py` to launch it."
-        ),
+        f"Successfully generated python param map named {wf_name}.params.py with"
+        f" version {version}\n Run `latch launch {wf_name}.params.py` to launch it.",
         fg="green",
     )
 
@@ -580,7 +580,8 @@ def preview(pkg_root: Path):
 
 @main.command("workspace")
 def workspace():
-    """Spawns an interactive terminal prompt allowing users to choose what workspace they want to work in."""
+    """Spawns an interactive terminal prompt allowing users to choose what workspace they want to work in.
+    """
 
     crash_handler.message = "Unable to fetch workspaces"
     crash_handler.pkg_root = str(Path.cwd())
@@ -592,13 +593,50 @@ def workspace():
 
 @main.command("get-executions")
 def get_executions():
-    """Spawns an interactive terminal UI that shows all executions in a given workspace"""
+    """Spawns an interactive terminal UI that shows all executions in a given workspace
+    """
 
     crash_handler.message = "Unable to fetch executions"
 
     from latch_cli.services.get_executions import get_executions
 
     get_executions()
+
+
+@main.command("stop-pod")
+@click.argument("pod_id", nargs=1, type=int, required=False)
+def stop_pod(pod_id: Optional[int] = None):
+    """Stops a pod given a pod_id or the pod from which the command is run"""
+    crash_handler.message = "Unable to stop pod"
+
+    if pod_id is None:
+        try:
+            with open("/root/.latch/id") as f:
+                pod_id = int(f.read().strip("\n"))
+        except FileNotFoundError:
+            click.secho(
+                "Unable to find pod id in `/root/.latch/id` -- pass as command line"
+                " argument",
+                fg="red",
+            )
+            return
+        except ValueError:
+            click.secho(
+                "Unable to parse pod id in `/root/.latch/id` -- pass as command line"
+                " argument",
+                fg="red",
+            )
+            return
+        except Exception:
+            click.secho(
+                "Unable to read `/root/.latch/id` -- pass as command line argument",
+                fg="red",
+            )
+            return
+
+    from latch_cli.services.stop_pod import stop_pod
+
+    stop_pod(pod_id)
 
 
 # Test data subcommands.
