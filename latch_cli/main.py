@@ -32,7 +32,18 @@ crash_handler = CrashHandler()
     },
 )
 @click.version_option(package_name="latch")
-def main():
+@click.option(
+    "--traceback/--no-traceback",
+    "-t/-T",
+    default=False,
+    help="Whether to print a stack trace on command failure.",
+)
+@click.option(
+    "--crash-report/--no-crash-report",
+    "-c/-C",
+    help="Whether to generate a crash report on command failure.",
+)
+def main(traceback: bool, crash_report: Optional[bool] = None):
     """
     Collection of command line tools for using the Latch SDK and
     interacting with the Latch platform.
@@ -48,7 +59,7 @@ def main():
             fg="yellow",
         )
 
-    crash_handler.init()
+    crash_handler.init(traceback, crash_report)
 
 
 @main.command("dockerfile")

@@ -12,7 +12,7 @@ import click
 from scp import SCPClient
 
 from latch_cli.centromere.ctx import _CentromereCtx
-from latch_cli.centromere.utils import MaybeRemoteDir, _construct_ssh_client
+from latch_cli.centromere.utils import MaybeRemoteDir
 from latch_cli.services.register.constants import ANSI_REGEX, MAX_LINES
 from latch_cli.services.register.utils import (
     _build_image,
@@ -169,9 +169,10 @@ def _build_and_serialize(
     _print_serialize_logs(serialize_logs, image_name)
     exit_status = ctx.dkr_client.wait(container_id)
     if exit_status["StatusCode"] != 0:
-        raise ValueError(
-            f"Serialization exited with nonzero exit code: {exit_status['Error']}"
-        )
+        err = f"Serialization exited with nonzero exit code"
+        if "Error" in exit_status:
+            err += f": {exit_status['Error']}"
+        raise ValueError(err)
 
     upload_image_logs = _upload_image(ctx, image_name)
     _print_upload_logs(upload_image_logs, image_name)
@@ -187,10 +188,10 @@ def _recursive_list(directory: Path) -> List[Path]:
 
 def register(
     pkg_root: str,
+    *,
     disable_auto_version: bool = False,
     remote: bool = False,
     skip_confirmation: bool = False,
-    *,
     use_new_centromere: bool = False,
 ):
     """Registers a workflow, defined as python code, with Latch.

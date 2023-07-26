@@ -54,6 +54,7 @@ def _build_image(
     context_path: Path,
     dockerfile: Optional[Path] = None,
 ) -> List[str]:
+    print(image_name)
     _docker_login(ctx)
     if dockerfile is not None:
         dockerfile = str(dockerfile)

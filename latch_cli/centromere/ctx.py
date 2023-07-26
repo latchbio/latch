@@ -69,7 +69,7 @@ class _CentromereCtx:
     jump_key_path: Optional[Path] = None
     ssh_config_path: Optional[Path] = None
 
-    internal_ip: Optional[str] = None
+    centromere_hostname: Optional[str] = None
     username: Optional[str] = None
 
     def __init__(
@@ -152,14 +152,16 @@ class _CentromereCtx:
                 self.public_key = generate_temporary_ssh_credentials(self.ssh_key_path)
 
                 if use_new_centromere:
-                    self.internal_ip, self.username = (
+                    self.centromere_hostname, self.username = (
                         self.provision_register_deployment()
                     )
                 else:
-                    self.internal_ip, self.username = self.get_old_centromere_info()
+                    self.centromere_hostname, self.username = (
+                        self.get_old_centromere_info()
+                    )
 
                 remote_conn_info = RemoteConnInfo(
-                    ip=self.internal_ip,
+                    ip=self.centromere_hostname,
                     username=self.username,
                     jump_key_path=self.jump_key_path,
                     ssh_key_path=self.ssh_key_path,
@@ -293,12 +295,14 @@ class _CentromereCtx:
         self.jump_key_path.write_text(json_data["JumpKey"])
         self.jump_key_path.chmod(0o600)
 
-        self.centromere_hostname = hostname
-
         return hostname, "root"
 
     def downscale_register_deployment(self):
-        if not (self.remote and self.use_new_centromere):
+        if not (
+            self.remote
+            and self.use_new_centromere
+            and self.centromere_hostname is not None
+        ):
             return
 
         resp = tinyrequests.post(

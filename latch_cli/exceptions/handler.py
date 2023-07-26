@@ -99,7 +99,7 @@ class CrashHandler:
 
         print(f"Crash report written to {tarball_path}")
 
-    def init(self):
+    def init(self, print_stack_trace: bool, gen_crash_report: bool):
         """Custom error handling.
 
         When an exception is thrown:
@@ -114,11 +114,16 @@ class CrashHandler:
             value: BaseException,
             traceback: Optional[TracebackType],
         ) -> None:
-            print(f"{self.message} - printing traceback:\n")
-            _Traceback(type_, value, traceback).pretty_print()
-            print(self.metadata)
-            if click.confirm("Generate a crash report?"):
-                print("Generating...")
+            print(self.message)
+
+            if print_stack_trace:
+                print("Printing traceback:\n")
+                _Traceback(type_, value, traceback).pretty_print()
+                print(self.metadata)
+
+            if gen_crash_report:
+                print("Generating crash report...")
                 self._write_state_to_tarball()
 
-        sys.excepthook = _excepthook
+        if print_stack_trace or gen_crash_report:
+            sys.excepthook = _excepthook
