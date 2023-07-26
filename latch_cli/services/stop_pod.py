@@ -30,5 +30,3 @@ def stop_pod(pod_id: int) -> None:
             fg="red",
         )
         return
-
-    raise ValueError(f"failed to stop pod with id `{pod_id}` with code. Server responded with `{res.status_code}` status code.")

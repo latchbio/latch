@@ -618,11 +618,11 @@ def stop_pod(pod_id: Optional[int] = None):
             pod_id = int(id_path.read_text().strip("\n"))
         except Exception as e:
             if isinstance(e, FileNotFoundError):
-                err_str = f"Pod ID not found at {id_path}"
+                err_str = f"Pod ID not found at `{id_path}`"
             elif isinstance(e, ValueError):
-                err_str = f"Could not parse Pod ID at {id_path}"
+                err_str = f"Could not parse Pod ID at `{id_path}`"
             else:
-                err_str = f"Error reading Pod ID from {id_path}"
+                err_str = f"Error reading Pod ID from `{id_path}`"
 
             click.secho(
                 f"{err_str} -- please provide a Pod ID as a command line argument.",
