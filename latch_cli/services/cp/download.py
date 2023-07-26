@@ -47,8 +47,6 @@ def download(
     dest: Path,
     config: CPConfig,
 ):
-    click.clear()
-
     normalized = normalize_path(src)
     data = get_node_data(src)
 
@@ -190,7 +188,6 @@ def download(
 
     total_time = end - start
 
-    click.clear()
     click.echo(
         f"""{click.style("Download Complete", fg="green")}
 
