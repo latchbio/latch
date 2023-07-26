@@ -25,7 +25,7 @@ def stop_pod(pod_id: int) -> None:
 
     if res.status_code == 500:
         click.secho(
-            f"Internal error while stopping pod `{pod_id}`. Please try again and"
+            f"Internal error while stopping Pod `{pod_id}`. Please try again."
             " contact `support@latch.bio` if the issue persists.",
             fg="red",
         )
