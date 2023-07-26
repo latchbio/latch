@@ -23,7 +23,7 @@ def stop_pod(pod_id: int) -> None:
         click.secho("Pod does not exist or permission denied.", fg="red")
         return
 
-    if res.status_code == 500:
+    if res.status_code != 200:
         click.secho(
             f"Internal error while stopping Pod `{pod_id}`. Please try again."
             " contact `support@latch.bio` if the issue persists.",
