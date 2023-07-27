@@ -107,13 +107,13 @@ Specifying compute and storage requirements is as easy as using a Python decorat
 ```python
 from latch import small_task
 
-@small_task # 2 cpus, 4 gigs of memory, 0 gpus
+@small_task # 2 cpus, 4 gigs of memory, 500 GiB of storage, 0 gpus
 def my_task(
     ...
 ):
     ...
 
-@large_gpu_task #31 cpus, 120 gigs of memory, 1 gpu
+@large_gpu_task #31 cpus, 120 gigs of memory, 2000 GiB of storage, 1 gpu
 def inference(
     ...
 ):
@@ -126,7 +126,7 @@ To arbitrarily specify resource requirements, use:
 ```python
 from latch import custom_task
 
-@custom_task(cpu, memory)
+@custom_task(cpu, memory, storage_gib = storage_gib)
 def my_task(
     ...
 ):
