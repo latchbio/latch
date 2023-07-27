@@ -5,10 +5,10 @@ from setuptools import find_packages, setup
 cur_ver = sys.version_info[:2]
 ver_str = ".".join(map(str, cur_ver))
 
-if cur_ver < (3, 8) or cur_ver > (3, 10):
+if cur_ver < (3, 8) or cur_ver > (3, 11):
     raise RuntimeError(
         f"Python {ver_str} is unsupported. Please use a Python version between 3.8 and"
-        " 3.10, inclusive."
+        " 3.11, inclusive."
     )
 
 setup(
@@ -18,7 +18,7 @@ setup(
     description="The Latch SDK",
     packages=find_packages(),
     include_package_data=True,
-    python_requires=">=3.8,<3.11",
+    python_requires=">=3.8,<3.12",
     entry_points={
         "console_scripts": [
             "latch=latch_cli.main:main",
@@ -41,8 +41,8 @@ setup(
         "gql==3.4.0",
         "graphql-core==3.2.3",
         "requests-toolbelt==0.10.1",
-        "latch-sdk-gql==0.0.2",
-        "latch-sdk-config==0.0.1",
+        "latch-sdk-gql==0.0.6",
+        "latch-sdk-config==0.0.4",
         # for old latch develop, to be removed
         "aioconsole==0.6.1",
         "asyncssh==2.13.2",
@@ -53,5 +53,6 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
     ],
 )
