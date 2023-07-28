@@ -26,6 +26,8 @@ Types of changes
 
 - pinned `lytekit` to `v0.15.2` to remove numpy + pandas + pyarrow dependencies
 - pinned `lytekitplugins-pods` to `v0.6.1` to remove dependency on numpy
+- pinned `latch-sdk-gql` to `0.0.6` which supports 3.11
+- pinned `latch-sdk-config` to `0.0.4` which supports 3.11
 
 ## 2.29.0 - 2023-07-26
 
