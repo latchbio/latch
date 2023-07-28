@@ -16,6 +16,19 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.30.0 - 2023-07-27
+
+### Added
+
+- Support for python 3.11
+
+### Dependencies
+
+- pinned `lytekit` to `v0.15.2` to remove numpy + pandas + pyarrow dependencies
+- pinned `lytekitplugins-pods` to `v0.6.1` to remove dependency on numpy
+- pinned `latch-sdk-gql` to `0.0.6` which supports 3.11
+- pinned `latch-sdk-config` to `0.0.4` which supports 3.11
+
 ## 2.29.0 - 2023-07-26
 
 ### Added
