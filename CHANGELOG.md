@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.31.0 - 2023-07-28
+
+### Changed
+
+- `latch stop-pod` renamed to `latch pods stop`
+
 ## 2.30.0 - 2023-07-27
 
 ### Added

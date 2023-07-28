@@ -604,8 +604,12 @@ def get_executions():
 
     get_executions()
 
+@main.group()
+def pods():
+    """Manage pods"""
+    pass
 
-@main.command("stop-pod")
+@pods.command("stop")
 @click.argument("pod_id", nargs=1, type=int, required=False)
 def stop_pod(pod_id: Optional[int] = None):
     """Stops a pod given a pod_id or the pod from which the command is run"""
