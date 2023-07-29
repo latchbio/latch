@@ -1083,12 +1083,10 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         }
 
         for job in jobs:
-            rule = job.rule
-
             snakemake_data["rules"][job.rule.name] = {
-                "inputs": named_list_to_json(job.rule.input),
-                "outputs": named_list_to_json(job.rule.output),
-                "params": named_list_to_json(job.rule.params),
+                "inputs": named_list_to_json(job.input),
+                "outputs": named_list_to_json(job.output),
+                "params": named_list_to_json(job.params),
             }
 
         if remote_output_url is None:
