@@ -546,7 +546,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 lp.upload(file.local_path, file.remote_path)
 
             wf_id = nodes[0]["id"]
-            params = json.loads(gpjson.MessageToJson(wf.literal_map.to_flyte_idl()))["literals"]
+            params = gpjson.MessageToDict(wf.literal_map.to_flyte_idl()).get("literals", {})
 
             _interface_request = {
                 "workflow_id": wf_id,
