@@ -62,10 +62,10 @@ for rule in rules:
     eprint_named_list(rule_data["params"])
 
     eprint("    Benchmark:")
-    eprint_named_list(rule_data["benchmark"])
+    eprint(f"      {rule_data['benchmark']}")
 
     eprint("    Log:")
-    eprint_named_list(rule_data["log"])
+    eprint(f"      {rule_data['log']}")
 
 eprint("\nExpected outputs:")
 for x in outputs:
