@@ -10,7 +10,9 @@ import snakemake
 from snakemake.io import AnnotatedString
 from snakemake.parser import (
     INDENT,
+    Benchmark,
     Input,
+    Log,
     Output,
     Params,
     Rule,
@@ -58,6 +60,12 @@ for rule in rules:
 
     eprint("    Params:")
     eprint_named_list(rule_data["params"])
+
+    eprint("    Benchmark:")
+    eprint_named_list(rule_data["benchmark"])
+
+    eprint("    Log:")
+    eprint_named_list(rule_data["log"])
 
 eprint("\nExpected outputs:")
 for x in outputs:
@@ -125,6 +133,10 @@ def emit_overrides(self, token):
         xs = cur_data["outputs"]
     elif isinstance(self, Params):
         xs = cur_data["params"]
+    elif isinstance(self, Benchmark):
+        xs = {"positional": cur_data["benchmark"]}
+    elif isinstance(self, Log):
+        xs = {"positional": cur_data["log"]}
     else:
         raise ValueError(f"tried to emit overrides for unknown state: {type(self)}")
 
@@ -192,6 +204,8 @@ def skip_block(self, token, force_block_end=False):
 Input.block = skip_block
 Output.block = skip_block
 Params.block = skip_block
+Benchmark.block = skip_block
+Log.block = skip_block
 
 # Run snakemake
 snakemake.main()

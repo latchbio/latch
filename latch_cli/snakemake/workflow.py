@@ -1087,6 +1087,8 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                 "inputs": named_list_to_json(job.input),
                 "outputs": named_list_to_json(job.output),
                 "params": named_list_to_json(job.params),
+                "benchmark": job.benchmark,
+                "log": job.log,
             }
 
         if remote_output_url is None:
