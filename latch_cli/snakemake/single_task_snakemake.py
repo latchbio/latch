@@ -126,6 +126,7 @@ def render_annotated_str_list(xs) -> str:
 
 def emit_overrides(self, token):
     cur_data = rules[self.rulename]
+    eprint(f"\nOverriding {self.rulename} {self.__class__.__name__}")
 
     if isinstance(self, Input):
         xs = cur_data["inputs"]
@@ -147,6 +148,8 @@ def emit_overrides(self, token):
     data = chain(positional_data, keyword_data)
 
     for x in data:
+        eprint(f"  {x}")
+
         yield x, token
         yield ",", token
         yield "\n", token
