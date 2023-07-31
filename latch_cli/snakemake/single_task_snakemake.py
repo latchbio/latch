@@ -161,8 +161,7 @@ def emit_overrides(self, token):
 emitted_overrides_per_type: dict[str, set[str]] = {}
 
 
-# Skip @workflow.input and @workflow.output for non-target tasks
-def skip_block(self, token, force_block_end=False):
+def replace_block(self, token, force_block_end=False):
     if self.lasttoken == "\n" and is_comment(token):
         # ignore lines containing only comments
         self.line -= 1
@@ -190,11 +189,17 @@ def skip_block(self, token, force_block_end=False):
                         type(self).__name__, set()
                     )
 
-                    if (
-                        self.rulename in rules
-                        and self.rulename not in emitted_overrides
-                    ):
-                        yield from emit_overrides(self, token)
+                    if self.rulename not in emitted_overrides:
+                        if self.rulename in rules:
+                            yield from emit_overrides(self, token)
+                        elif isinstance(self, Benchmark):
+                            # benchmark can't have no arguments
+                            # todo(maximsmol): do this by disabling the decorator entirely
+                            yield repr(""), token
+                            yield ",", token
+                            yield "\n", token
+                            yield INDENT * self.base_indent, token
+
                         emitted_overrides.add(self.rulename)
 
                     yield "#", token
@@ -204,11 +209,11 @@ def skip_block(self, token, force_block_end=False):
             yield from self.block_content(token)
 
 
-Input.block = skip_block
-Output.block = skip_block
-Params.block = skip_block
-Benchmark.block = skip_block
-Log.block = skip_block
+Input.block = replace_block
+Output.block = replace_block
+Params.block = replace_block
+Benchmark.block = replace_block
+Log.block = replace_block
 
 # Run snakemake
 snakemake.main()
