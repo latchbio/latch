@@ -228,7 +228,7 @@ class SkippingRule(Rule):
             return super().block_content(token)
 
         for t in super().block_content(token):
-            yield t.replace("\n", "\n# ")
+            yield t[0].replace("\n", "\n# "), t[1]
 
 
 Python.subautomata["rule"] = SkippingRule
