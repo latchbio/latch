@@ -134,9 +134,9 @@ def emit_overrides(self, token):
     elif isinstance(self, Params):
         xs = cur_data["params"]
     elif isinstance(self, Benchmark):
-        xs = {"positional": cur_data["benchmark"], "keyword": {}}
+        xs = {"positional": [cur_data["benchmark"]], "keyword": {}}
     elif isinstance(self, Log):
-        xs = {"positional": cur_data["log"], "keyword": {}}
+        xs = {"positional": [cur_data["log"]], "keyword": {}}
     else:
         raise ValueError(f"tried to emit overrides for unknown state: {type(self)}")
 
