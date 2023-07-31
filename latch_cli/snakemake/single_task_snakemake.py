@@ -15,6 +15,7 @@ from snakemake.parser import (
     Log,
     Output,
     Params,
+    Python,
     Rule,
     StopAutomaton,
     is_comment,
@@ -189,17 +190,11 @@ def replace_block(self, token, force_block_end=False):
                         type(self).__name__, set()
                     )
 
-                    if self.rulename not in emitted_overrides:
-                        if self.rulename in rules:
-                            yield from emit_overrides(self, token)
-                        elif isinstance(self, Benchmark):
-                            # benchmark can't have no arguments
-                            # todo(maximsmol): do this by disabling the decorator entirely
-                            yield repr(""), token
-                            yield ",", token
-                            yield "\n", token
-                            yield INDENT * self.base_indent, token
-
+                    if (
+                        self.rulename in rules
+                        and self.rulename not in emitted_overrides
+                    ):
+                        yield from emit_overrides(self, token)
                         emitted_overrides.add(self.rulename)
 
                     yield "#", token
@@ -214,6 +209,31 @@ Output.block = replace_block
 Params.block = replace_block
 Benchmark.block = replace_block
 Log.block = replace_block
+
+
+class SkippingRule(Rule):
+    def start(self, aux=""):
+        if self.rulename not in rules:
+            yield "#"
+        return super().start(aux)
+
+    def end(self):
+        if self.rulename not in rules:
+            yield "#"
+
+        return super().end()
+
+    def block_content(self, token):
+        if self.rulename in rules:
+            return super().block_content(token)
+
+        for t in super().block_content(token):
+            yield t
+            if is_newline(t):
+                yield "#"
+
+
+Python.subautomata["rule"] = SkippingRule
 
 # Run snakemake
 snakemake.main()
