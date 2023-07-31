@@ -4,10 +4,8 @@ import sys
 import traceback
 from itertools import chain
 from textwrap import dedent
-from typing import Union
 
 import snakemake
-from snakemake.io import AnnotatedString
 from snakemake.parser import (
     INDENT,
     Benchmark,
