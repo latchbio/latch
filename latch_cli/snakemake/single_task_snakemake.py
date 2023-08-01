@@ -215,11 +215,19 @@ Log.block = replace_block
 
 class SkippingRule(Rule):
     def start(self, aux=""):
+        if self.rulename in rules:
+            yield from super().start(aux)
+            return
+
         yield "#"
         for t in super().start(aux):
             yield t.replace("\n", "\n# ")
 
     def end(self):
+        if self.rulename in rules:
+            yield from super().end()
+            return
+
         yield "#"
         for t in super().end():
             yield t.replace("\n", "\n# ")
@@ -233,7 +241,13 @@ class SkippingRule(Rule):
             yield t[0].replace("\n", "\n# "), t[1]
 
 
+class SkippingCheckpoint(SkippingRule):
+    def start(self):
+        yield from super().start(aux=", checkpoint=True")
+
+
 Python.subautomata["rule"] = SkippingRule
+Python.subautomata["checkpoint"] = SkippingCheckpoint
 
 
 class ReplacingShell(Shell):
