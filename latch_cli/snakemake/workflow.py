@@ -1055,6 +1055,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             "latch_cli.snakemake.single_task_snakemake",
             "-s",
             snakefile_path_in_container,
+            "--use-conda",
             "--target-jobs",
             *jobs_cli_args(jobs),
             "--allowed-rules",
