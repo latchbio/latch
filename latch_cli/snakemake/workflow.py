@@ -1046,7 +1046,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                     1,
                 )
 
-        jobs = [self.job]
+        jobs: List[Job] = [self.job]
         if isinstance(self.job, GroupJob):
             jobs = self.job.jobs
 
@@ -1085,10 +1085,11 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         for job in jobs:
             snakemake_data["rules"][job.rule.name] = {
                 "inputs": named_list_to_json(job.input),
-                "outputs": named_list_to_json(job.rule.output),
+                "outputs": named_list_to_json(job.output),
                 "params": named_list_to_json(job.params),
                 "benchmark": job.benchmark,
                 "log": job.log,
+                "shellcmd": job.shellcmd,
             }
 
         if remote_output_url is None:
