@@ -215,19 +215,19 @@ Log.block = replace_block
 
 class SkippingRule(Rule):
     def start(self, aux=""):
-        if self.rulename not in rules:
-            yield "#"
-        return super().start(aux)
+        yield "#"
+        for t in super().start(aux):
+            yield t.replace("\n", "\n# ")
 
     def end(self):
-        if self.rulename not in rules:
-            yield "#"
-
-        return super().end()
+        yield "#"
+        for t in super().end():
+            yield t.replace("\n", "\n# ")
 
     def block_content(self, token):
         if self.rulename in rules:
-            return super().block_content(token)
+            yield from super().block_content(token)
+            return
 
         for t in super().block_content(token):
             yield t[0].replace("\n", "\n# "), t[1]
