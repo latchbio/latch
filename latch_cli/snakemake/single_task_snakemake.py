@@ -238,8 +238,8 @@ Python.subautomata["rule"] = SkippingRule
 
 class ReplacingShell(Shell):
     def __init__(self, snakefile, rulename, base_indent=0, dedent=0, root=True):
-        if self.rulename in rules:
-            self.overwrite_cmd = rules[self.rulename]["shellcmd"]
+        if rulename in rules:
+            self.overwrite_cmd = rules[rulename]["shellcmd"]
 
         super().__init__(snakefile, rulename, base_indent, dedent, root)
 
