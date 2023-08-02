@@ -1192,8 +1192,8 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                         else:
                             print("  Does not exist")
 
-            except CalledProcessError:
-                ignored_paths = {{".cache"}}
+            finally:
+                ignored_paths = {{".cache", ".snakemake/conda/"}}
                 ignored_names = {{".git", ".latch", "__pycache__"}}
 
                 print("Recursive directory listing:")
@@ -1209,8 +1209,6 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
 
                         for x in cur.iterdir():
                             stack.append((x, indent + 1))
-
-                sys.exit(1)
 
             """,
             1,
