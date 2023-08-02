@@ -1022,29 +1022,31 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         code_block += self.get_fn_interface()
 
         for param, t in self._python_inputs.items():
-            if t == LatchFile:
-                code_block += reindent(
-                    rf"""
-                    {param}_dst_p = Path("{self._target_file_for_input_param[param]}")
+            if not issubclass(t, (LatchFile, LatchDir)):
+                continue
 
-                    print(f"Downloading {param}: {{{param}.remote_path}}")
-                    {param}_p = Path({param}).resolve()
-                    print(f"  {{file_name_and_size({param}_p)}}")
+            code_block += reindent(
+                rf"""
+                {param}_dst_p = Path("{self._target_file_for_input_param[param]}")
 
-                    """,
-                    1,
+                print(f"Downloading {param}: {{{param}.remote_path}}")
+                {param}_p = Path({param}).resolve()
+                print(f"  {{file_name_and_size({param}_p)}}")
+
+                """,
+                1,
+            )
+
+            code_block += reindent(
+                rf"""
+                print(f"Moving {param} to {{{param}_dst_p}}")
+                check_exists_and_rename(
+                    {param}_p,
+                    {param}_dst_p
                 )
-
-                code_block += reindent(
-                    rf"""
-                    print(f"Moving {param} to {{{param}_dst_p}}")
-                    check_exists_and_rename(
-                        {param}_p,
-                        {param}_dst_p
-                    )
-                    """,
-                    1,
-                )
+                """,
+                1,
+            )
 
         jobs: List[Job] = [self.job]
         if isinstance(self.job, GroupJob):
