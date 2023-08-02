@@ -21,7 +21,6 @@ from typing import (
 import gql
 import graphql.language as l
 import graphql.language.parser as lp
-import pandas as pd
 from latch_sdk_gql.execute import execute
 from latch_sdk_gql.utils import (
     _GqlJsonValue,
@@ -266,12 +265,20 @@ class Table:
         if len(page) > 0:
             yield page
 
-    def get_dataframe(self) -> pd.DataFrame:
+    def get_dataframe(self):
         """Get a pandas DataFrame of all records in this table.
 
         Returns:
             DataFrame representing all records in this table.
         """
+
+        try:
+            import pandas as pd
+        except ImportError:
+            raise ImportError(
+                "pandas needs to be installed to use get_dataframe. Install it with"
+                " `pip install pandas` or `pip install latch[pandas]`."
+            )
 
         records = []
         for page in self.list_records():
@@ -617,10 +624,8 @@ class TableUpdate:
                     raise InvalidColumnTypeError(
                         key,
                         type,
-                        (
-                            f"Enum value for {repr(f.name)} ({repr(f.value)}) is not a"
-                            " string"
-                        ),
+                        f"Enum value for {repr(f.name)} ({repr(f.value)}) is not a"
+                        " string",
                     )
 
                 members.append(f.value)

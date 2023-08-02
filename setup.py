@@ -49,6 +49,9 @@ setup(
         "websockets==11.0.3",
         "watchfiles==0.19.0",
     ],
+    extras_require={
+        "pandas": ["pandas==2.0.3"],
+    },
     classifiers=[
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
