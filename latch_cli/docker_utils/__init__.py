@@ -312,7 +312,7 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
 
 
 def generate_dockerfile(
-    pkg_root: Path, outfile: Path, wf_type: WorkflowType = WorkflowType.latchbiosdk
+    pkg_root: Path, outfile: Path, *, wf_type: WorkflowType = WorkflowType.latchbiosdk
 ) -> None:
     """Generate a best effort Dockerfile from files in the workflow directory.
 
@@ -323,7 +323,7 @@ def generate_dockerfile(
 
     Example:
 
-        >>> generate_dockerfile(Path("test-workflow"), Path("test-workflow/Dockerfile"), WorkflowType.latchbiosdk)
+        >>> generate_dockerfile(Path("test-workflow"), Path("test-workflow/Dockerfile"))
             # The resulting file structure will look like
             #   test-workflow
             #   ├── Dockerfile
@@ -370,17 +370,6 @@ def generate_dockerfile(
 
             block.write_block(f)
 
-        f.write("run apt-get update --yes && apt-get install --yes git\n")
-        f.write(
-            "run pip install"
-            " 'git+https://github.com/latchbio/latch.git@kenny/snakekit'\n"
-        )
-        f.write("run pip uninstall --yes latch\n")
-        f.write(
-            "run echo 95 && pip install"
-            " 'git+https://github.com/latchbio/latch.git@kenny/snakekit'\n"
-        )
-
         f.write("# Copy workflow data (use .dockerignore to skip files)\n")
         f.write("copy . /root/\n\n")
 
@@ -393,11 +382,11 @@ def generate_dockerfile(
         f.write("\n".join(get_epilogue(wf_type)) + "\n")
 
 
-def get_default_dockerfile(pkg_root: Path, wf_type: WorkflowType):
+def get_default_dockerfile(pkg_root: Path, *, wf_type: WorkflowType):
     default_dockerfile = pkg_root / "Dockerfile"
 
     if not default_dockerfile.exists():
         default_dockerfile = pkg_root / ".latch" / "Dockerfile"
-        generate_dockerfile(pkg_root, default_dockerfile, wf_type)
+        generate_dockerfile(pkg_root, default_dockerfile, wf_type=wf_type)
 
     return default_dockerfile

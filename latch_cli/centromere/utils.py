@@ -232,7 +232,6 @@ def _construct_ssh_client(
 
 
 class MaybeRemoteDir:
-
     """A temporary directory that exists locally or on a remote machine."""
 
     def __init__(self, ssh_client: Optional[paramiko.SSHClient] = None):
@@ -271,9 +270,3 @@ def build_random_string(k: int = 8) -> str:
             string.ascii_uppercase + string.ascii_lowercase + string.digits, k=k
         )
     )
-
-
-def is_snakemake_project(pkg_root: Path) -> bool:
-    if pkg_root.joinpath("Snakefile").exists() and not pkg_root.joinpath("wf").exists():
-        return True
-    return False

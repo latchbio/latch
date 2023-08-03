@@ -88,11 +88,11 @@ class _CentromereCtx:
         snakefile: Optional[Path] = None,
         use_new_centromere: bool = False,
     ):
-        with self:
-            self.use_new_centromere = use_new_centromere
-            self.remote = remote
-            self.disable_auto_version = disable_auto_version
+        self.use_new_centromere = use_new_centromere
+        self.remote = remote
+        self.disable_auto_version = disable_auto_version
 
+        try:
             self.token = retrieve_or_login()
             self.account_id = current_workspace()
 
@@ -192,7 +192,9 @@ class _CentromereCtx:
                 raise ValueError(f"Version {self.version} has already been registered.")
 
             self.default_container = _Container(
-                dockerfile=get_default_dockerfile(self.pkg_root, self.workflow_type),
+                dockerfile=get_default_dockerfile(
+                    self.pkg_root, wf_type=self.workflow_type
+                ),
                 image_name=self.image_tagged,
                 pkg_dir=self.pkg_root,
             )
@@ -235,6 +237,9 @@ class _CentromereCtx:
 
             else:
                 self.dkr_client = _construct_dkr_client()
+        except (Exception, KeyboardInterrupt) as e:
+            self.cleanup()
+            raise e
 
     @property
     def image(self):
