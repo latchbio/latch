@@ -49,7 +49,7 @@ setup(
         "websockets==11.0.3",
         "watchfiles==0.19.0",
     ],
-    extras_require={"snakemake": ["snakemake>=7.25.4"]},
+    extras_require={"snakemake": ["snakemake>=7.18.0"]},
     classifiers=[
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",

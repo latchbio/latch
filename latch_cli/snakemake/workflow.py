@@ -107,13 +107,13 @@ class RemoteFile:
 
 def snakemake_dag_to_interface(
     dag: DAG, wf_name: str, docstring: Optional[Docstring] = None
-) -> (Interface, LiteralMap, List[RemoteFile]):
+) -> Tuple[Interface, LiteralMap, List[RemoteFile]]:
     outputs: Dict[str, LatchFile] = {}
     for target in dag.targetjobs:
         for desired in target.input:
             param = variable_name_for_value(desired, target.input)
 
-            jobs: list[snakemake.jobs.Job] = dag.file2jobs(desired)
+            jobs: List[snakemake.jobs.Job] = dag.file2jobs(desired)
             producer_out: snakemake.io._IOFile = next(
                 x for x in jobs[0].output if x == x
             )
@@ -227,7 +227,7 @@ def interface_to_parameters(
         inputs_vars = transform_types_in_variable_map(
             interface.inputs, interface.docstring.input_descriptions
         )
-    params: Dict[str, interface_models.ParameterMap] = {}
+    params: Dict[str, interface_models.Parameter] = {}
     for k, v in inputs_vars.items():
         val, default = interface.inputs_with_defaults[k]
         required = default is None
@@ -331,9 +331,12 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         for param, t in self.python_interface.inputs.items():
             if t in (LatchFile, LatchDir):
+                param_meta = self.parameter_metadata[param]
+                assert isinstance(param_meta, metadata.SnakemakeFileParameter)
+
                 code_block += reindent(
                     rf"""
-                    {param}_dst_p = Path("{self.parameter_metadata[param].path}")
+                    {param}_dst_p = Path("{param_meta.path}")
 
                     print(f"Downloading {param}: {{{param}.remote_path}}")
                     {param}_p = Path({param}).resolve()
@@ -568,7 +571,10 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         dag: DAG,
         version: Optional[str] = None,
     ):
+        assert metadata._snakemake_metadata is not None
         name = metadata._snakemake_metadata.name
+
+        assert name is not None
 
         native_interface, literal_map, return_files = snakemake_dag_to_interface(
             dag, name, None
@@ -630,7 +636,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     else:
                         python_outputs[param] = LatchFile
 
-                dep_outputs: dict[SnakemakeInputVal, JobOutputInfo] = {}
+                dep_outputs: Dict[SnakemakeInputVal, JobOutputInfo] = {}
                 for dep, dep_files in self._dag.dependencies[job].items():
                     for o in dep.output:
                         if o in dep_files:
@@ -740,6 +746,8 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     if variable_name_for_file(f) == out_var:
                         return depen.jobid, variable_name_for_value(f, depen.output)
 
+        raise RuntimeError(f"could not find upstream node for output: {out_var}")
+
     def execute(self, **kwargs):
         return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
 
@@ -769,8 +777,10 @@ def build_jit_register_wrapper() -> JITRegisterWorkflow:
         task_resolver=JITRegisterWorkflowResolver(),
     )
 
-    task_bindings: List[literals_models.Binding] = []
     typed_interface = transform_interface_to_typed_interface(python_interface)
+    assert typed_interface is not None
+
+    task_bindings: List[literals_models.Binding] = []
     for k in python_interface.inputs:
         var = typed_interface.inputs[k]
         promise_to_bind = Promise(
@@ -812,7 +822,7 @@ def build_jit_register_wrapper() -> JITRegisterWorkflow:
 
 class AnnotatedStrJson(TypedDict):
     value: str
-    flags: dict[str, bool]
+    flags: Dict[str, bool]
 
 
 MaybeAnnotatedStrJson: TypeAlias = Union[str, AnnotatedStrJson]
@@ -827,16 +837,16 @@ def annotated_str_to_json(
     return {"value": str(x), "flags": dict(x.flags.items())}
 
 
-IONamedListItem = Union[MaybeAnnotatedStrJson, list[MaybeAnnotatedStrJson]]
+IONamedListItem = Union[MaybeAnnotatedStrJson, List[MaybeAnnotatedStrJson]]
 
 
 class NamedListJson(TypedDict):
-    positional: list[IONamedListItem]
-    keyword: dict[str, IONamedListItem]
+    positional: List[IONamedListItem]
+    keyword: Dict[str, IONamedListItem]
 
 
 def named_list_to_json(xs: snakemake.io.Namedlist) -> NamedListJson:
-    named: dict[str, IONamedListItem] = {}
+    named: Dict[str, IONamedListItem] = {}
     for k, vs in xs.items():
         if not isinstance(vs, list):
             named[k] = annotated_str_to_json(vs)
@@ -854,7 +864,7 @@ def named_list_to_json(xs: snakemake.io.Namedlist) -> NamedListJson:
                 v = v["value"]
             named_values.add(v)
 
-    unnamed: list[IONamedListItem] = []
+    unnamed: List[IONamedListItem] = []
     for vs in xs:
         if not isinstance(vs, list):
             vs = [vs]
@@ -957,8 +967,8 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         return res
 
     def get_fn_return_stmt(self, remote_output_url: Optional[str] = None):
-        print_outs: list[str] = []
-        results: list[str] = []
+        print_outs: List[str] = []
+        results: List[str] = []
         for out_name, out_type in self._python_outputs.items():
             target_path = self._target_file_for_output_param[out_name]
 

@@ -4,6 +4,7 @@ import sys
 import traceback
 from itertools import chain
 from textwrap import dedent
+from typing import Dict, Set
 
 import snakemake
 from snakemake.parser import (
@@ -161,7 +162,7 @@ def emit_overrides(self, token):
         yield INDENT * self.base_indent, token
 
 
-emitted_overrides_per_type: dict[str, set[str]] = {}
+emitted_overrides_per_type: Dict[str, Set[str]] = {}
 
 
 def replace_block(self, token, force_block_end=False):

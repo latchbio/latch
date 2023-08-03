@@ -99,7 +99,7 @@ class SnakemakeWorkflowExtractor(Workflow):
             self._rules[x] for x in targets if self.is_rule(x)
         )
 
-        target_files: set[str] = set()
+        target_files: Set[str] = set()
         for f in targets:
             if self.is_rule(f):
                 continue
