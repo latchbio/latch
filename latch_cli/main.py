@@ -1,6 +1,7 @@
 """Entrypoints to service functions through a latch_cli."""
 
 import os
+import sys
 import textwrap
 from collections import OrderedDict
 from pathlib import Path
@@ -96,13 +97,13 @@ def dockerfile(pkg_root: str):
     help="Use a remote server to build workflow.",
 )
 @click.option(
-    "--progress-plain",
-    is_flag=True,
-    default=False,
-    type=bool,
+    "--docker-progress",
+    type=click.Choice(["plain", "tty", "auto"], case_sensitive=False),
+    default="auto",
     help=(
-        "No special Docker build log handling. Equivalent to `docker build"
-        " --progress=plain`."
+        "`tty` shows only the last N lines of the build log. `plain` does no special"
+        " handling. `auto` chooses `tty` when stdout is a terminal and `plain`"
+        " otherwise. Equivalent to Docker's `--progress` flag."
     ),
 )
 @click.option(
@@ -123,7 +124,7 @@ def register(
     pkg_root: str,
     disable_auto_version: bool,
     remote: bool,
-    progress_plain: bool,
+    docker_progress: str,
     yes: bool,
     snakefile: Optional[Path],
 ):
@@ -145,7 +146,8 @@ def register(
         remote=remote,
         skip_confirmation=yes,
         snakefile=snakefile,
-        progress_plain=progress_plain,
+        progress_plain=(docker_progress == "auto" and sys.stdout.isatty())
+        or docker_progress == "plain",
         use_new_centromere=use_new_centromere,
     )
 

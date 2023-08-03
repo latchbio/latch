@@ -328,7 +328,7 @@ class TemporarySSHCredentials:
             and self._ssh_key_path.with_suffix(".pub").exists()
         ):
             subprocess.run(
-                ["ssh-agent", "ssh-add", "-d", self._ssh_key_path],
+                ["ssh-add", "-d", self._ssh_key_path],
                 check=True,
                 capture_output=True,
             )

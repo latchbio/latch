@@ -3,7 +3,7 @@ from dataclasses import asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
 from textwrap import indent
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Type, Union
 
 import yaml
 
@@ -336,7 +336,7 @@ class LatchParameter:
 
 @dataclass
 class SnakemakeFileParameter(LatchParameter):
-    type: Optional[Union[LatchFile, LatchDir]] = None
+    type: Optional[Union[Type[LatchFile], Type[LatchDir]]] = None
     """
     The python type of the parameter.
     """
