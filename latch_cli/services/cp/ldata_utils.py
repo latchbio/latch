@@ -10,7 +10,7 @@ except ImportError:
 import gql
 import graphql.language as l
 from latch_sdk_gql.execute import execute
-from latch_sdk_gql.utils import _name_node, _parse_selection, _var_def_node
+from latch_sdk_gql.utils import _name_node, _parse_selection
 
 from latch_cli.services.cp.path_utils import get_path_error, normalize_path
 
@@ -271,22 +271,24 @@ def _get_known_domains_for_account() -> List[str]:
 
     ui = aic["userInfoByAccountId"]
 
-    res: List[str] = [
-        f"{ui['defaultAccount']}.account",
-        f"shared.{ui['defaultAccount']}.account",
-    ]
-    for node in ui["teamMembersByUserId"]["nodes"]:
-        account_id = node["team"]["accountId"]
-        res.append(f"{account_id}.account")
-        res.append(f"shared.{account_id}.account")
-    for node in ui["teamInfosByOwnerId"]["nodes"]:
-        account_id = node["accountId"]
-        res.append(f"{account_id}.account")
-        res.append(f"shared.{account_id}.account")
+    res: List[str] = [""]  # "" is for latch:///
 
-    s3_roles = aic["ldataS3MountConfiguratorRolesByAccountId"]
-    for node in s3_roles["nodes"]:
-        for sub_node in node["ldataS3MountAccessProvensByGeneratedUsing"]["nodes"]:
-            res.append(f"{sub_node['bucketName']}.mount")
+    accs: List[int] = [int(ui["defaultAccount"])]
+    accs.extend(
+        int(tm["team"]["accountId"]) for tm in ui["teamMembersByUserId"]["nodes"]
+    )
+    accs.extend(int(ti["accountId"]) for ti in ui["teamInfosByOwnerId"]["nodes"])
+    accs.sort()
+    for x in accs:
+        res.append(f"{x}.account")
+        res.append(f"shared.{x}.account")
+
+    buckets = [
+        map["bucketName"]
+        for role in aic["ldataS3MountConfiguratorRolesByAccountId"]["nodes"]
+        for map in role["ldataS3MountAccessProvensByGeneratedUsing"]["nodes"]
+    ]
+    buckets.sort()
+    res.extend(f"{x}.mount" for x in buckets)
 
     return res

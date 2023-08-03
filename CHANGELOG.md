@@ -16,6 +16,49 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.31.0 - 2023-07-28
+
+### Changed
+
+- `latch stop-pod` renamed to `latch pods stop`
+
+## 2.30.0 - 2023-07-27
+
+### Added
+
+- Support for python 3.11
+
+### Dependencies
+
+- pinned `lytekit` to `v0.15.2` to remove numpy + pandas + pyarrow dependencies
+- pinned `lytekitplugins-pods` to `v0.6.1` to remove dependency on numpy
+- pinned `latch-sdk-gql` to `0.0.6` which supports 3.11
+- pinned `latch-sdk-config` to `0.0.4` which supports 3.11
+
+## 2.29.0 - 2023-07-26
+
+### Added
+
+- `stop-pod` command to the CLI. Allows the user to stop a pod in which the CLI resides or to stop a pod using its id.
+
+## 2.28.0 - 2023-07-25
+
+### Added
+
+- Tasks explicitly request ephemeral storage
+- `custom_task` and `custom_memory_optimized_task` allow selecting storage size
+- `custom_memory_optimized_task` functionality merged into `custom_task`
+
+### Deprecated
+
+- `custom_memory_optimized_task`
+
+## 2.27.4 - 2023-07-18
+
+### Changed
+
+- changed beta register implementation
+
 ## 2.27.3 - 2023-07-18
 
 ### Dependencies

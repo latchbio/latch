@@ -336,7 +336,9 @@ def mv(src: str, dest: str):
     is_flag=True,
     default=False,
 )
-@click.argument("remote_directories", nargs=-1, shell_complete=remote_complete)
+# todo(maximsmol): enable once ls uses gql and supports new paths
+# @click.argument("remote_directories", nargs=-1, shell_complete=remote_complete)
+@click.argument("remote_directories", nargs=-1)
 def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]):
     """
     List the contents of a Latch Data directory
@@ -622,6 +624,42 @@ def get_executions():
     from latch_cli.services.get_executions import get_executions
 
     get_executions()
+
+
+@main.group()
+def pods():
+    """Manage pods"""
+    pass
+
+
+@pods.command("stop")
+@click.argument("pod_id", nargs=1, type=int, required=False)
+def stop_pod(pod_id: Optional[int] = None):
+    """Stops a pod given a pod_id or the pod from which the command is run"""
+    crash_handler.message = "Unable to stop pod"
+
+    from latch_cli.services.stop_pod import stop_pod
+
+    if pod_id is None:
+        id_path = Path("/root/.latch/id")
+
+        try:
+            pod_id = int(id_path.read_text().strip("\n"))
+        except Exception as e:
+            if isinstance(e, FileNotFoundError):
+                err_str = f"Pod ID not found at `{id_path}`"
+            elif isinstance(e, ValueError):
+                err_str = f"Could not parse Pod ID at `{id_path}`"
+            else:
+                err_str = f"Error reading Pod ID from `{id_path}`"
+
+            click.secho(
+                f"{err_str} -- please provide a Pod ID as a command line argument.",
+                fg="red",
+            )
+            return
+
+    stop_pod(pod_id)
 
 
 # Test data subcommands.

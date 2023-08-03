@@ -1,6 +1,5 @@
 import re
 import sys
-import time
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
@@ -23,7 +22,6 @@ from latch_cli.centromere.utils import (
     _construct_ssh_client,
     _import_flyte_objects,
 )
-from latch_cli.constants import latch_constants
 from latch_cli.docker_utils import get_default_dockerfile
 from latch_cli.utils import (
     WorkflowType,
@@ -278,9 +276,9 @@ class _CentromereCtx:
         if match is None:
             raise ValueError(
                 f"{self.version} is an invalid version for AWS "
-                "ECR. Please provide a version that accomodates the ",
-                "tag restrictions listed here - ",
-                "https://docs.aws.amazon.com/AmazonECR/latest/userguide/ecr-using-tags.html",
+                "ECR. Please provide a version that accomodates the "
+                "tag restrictions listed here - "
+                "https://docs.aws.amazon.com/AmazonECR/latest/userguide/ecr-using-tags.html"
             )
 
         if self.image is None or self.version is None:
@@ -331,7 +329,10 @@ class _CentromereCtx:
 
     def provision_register_deployment(self) -> Tuple[str, str]:
         """Retrieve centromere IP + username."""
-        print("Provisioning register instance. This may take a few minutes.")
+        click.echo("Provisioning register instance. This may take a few minutes.")
+
+        assert self.ssh_key_path is not None
+        assert self.jump_key_path is not None
 
         resp = tinyrequests.post(
             "https://centromere.latch.bio/register/start",
@@ -343,32 +344,13 @@ class _CentromereCtx:
         if resp.status_code != 200:
             raise ValueError(json_data["Error"])
 
-        ip = json_data["IP"]
+        hostname = json_data["InternalHost"]
         self.jump_key_path.write_text(json_data["JumpKey"])
         self.jump_key_path.chmod(0o600)
 
-        poll_count = 0
-        while poll_count < latch_constants.centromere_poll_timeout:
-            resp = tinyrequests.post(
-                "https://centromere.latch.bio/register/ready",
-                headers={"Authorization": f"Latch-SDK-Token {self.token}"},
-            )
+        self.centromere_hostname = hostname
 
-            if resp.status_code != 200:
-                raise ValueError(resp.json()["Error"])
-
-            if resp.json()["Ready"]:
-                break
-
-            poll_count += 1
-            time.sleep(1)
-
-        if poll_count == latch_constants.centromere_poll_timeout:
-            raise ValueError(
-                "Unable to provision registration server. Contact support@latch.bio."
-            )
-
-        return ip, "root"
+        return hostname, "root"
 
     def downscale_register_deployment(self):
         if not (self.remote and self.use_new_centromere):
@@ -377,6 +359,7 @@ class _CentromereCtx:
         resp = tinyrequests.post(
             "https://centromere.latch.bio/register/stop",
             headers={"Authorization": f"Latch-SDK-Token {self.token}"},
+            json={"InternalHostName": self.centromere_hostname},
         )
 
         if resp.status_code != 200:
