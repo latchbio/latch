@@ -960,7 +960,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         res += (
             reindent(
                 rf"""
-                @custom_task({cores}, {mem})(cache=True)
+                @custom_task(cpu={cores}, memory={mem})(cache=True)
                 def {self.name}(
                 __params__
                 ) -> __outputs__

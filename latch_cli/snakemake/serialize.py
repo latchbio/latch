@@ -286,7 +286,7 @@ def generate_snakemake_entrypoint(
         from flytekit.extras.persistence import LatchPersistence
         import traceback
 
-        from latch import small_task
+        from latch.resources.tasks import custom_task
         from latch.types.directory import LatchDir
         from latch.types.file import LatchFile
 
