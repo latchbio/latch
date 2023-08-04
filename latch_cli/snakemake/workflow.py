@@ -951,10 +951,16 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             ).replace("__output_fields__", output_fields)
             outputs_str = f"Res{self.name}:"
 
+        limits = self.job.resources
+        cores = limits.get("cpus", 4)
+
+        # convert MB to GiB
+        mem = limits.get("mem_mb", 8589) * 1000 * 1000 // 1024 // 1024 // 1024
+
         res += (
             reindent(
                 rf"""
-                @small_task(cache=True)
+                @custom_task({cores}, {mem})(cache=True)
                 def {self.name}(
                 __params__
                 ) -> __outputs__
@@ -1203,7 +1209,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
                             print("  Does not exist")
 
             finally:
-                ignored_paths = {{".cache", ".snakemake/conda/"}}
+                ignored_paths = {{".cache", ".snakemake/conda"}}
                 ignored_names = {{".git", ".latch", "__pycache__"}}
 
                 print("Recursive directory listing:")

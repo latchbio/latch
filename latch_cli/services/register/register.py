@@ -340,8 +340,6 @@ def register(
         snakefile=snakefile,
         use_new_centromere=use_new_centromere,
     ) as ctx:
-        click.echo("")
-
         assert ctx.workflow_name is not None, "Unable to determine workflow name"
         assert ctx.version is not None, "Unable to determine workflow version"
 
@@ -389,9 +387,9 @@ def register(
                 click.secho("Cancelled", bold=True)
                 return
         else:
-            click.secho("Skipping confirmation because of --yes\n", bold=True)
+            click.secho("Skipping confirmation because of --yes", bold=True)
 
-        click.secho("Initializing registration", bold=True)
+        click.secho("\nInitializing registration", bold=True)
         transport = None
         scp = None
 
@@ -403,11 +401,10 @@ def register(
                 ]
             )
         )
-
-        print()
+        click.echo()
 
         if remote:
-            print("Connecting to remote server for docker build...")
+            click.secho("Connecting to remote server for docker build\n", bold=True)
 
             assert ctx.ssh_client is not None
             transport = ctx.ssh_client.get_transport()

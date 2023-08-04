@@ -146,7 +146,7 @@ def register(
         remote=remote,
         skip_confirmation=yes,
         snakefile=snakefile,
-        progress_plain=(docker_progress == "auto" and sys.stdout.isatty())
+        progress_plain=(docker_progress == "auto" and not sys.stdout.isatty())
         or docker_progress == "plain",
         use_new_centromere=use_new_centromere,
     )

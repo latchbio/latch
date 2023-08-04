@@ -170,7 +170,7 @@ def hash_directory(dir_path: Path) -> str:
     exclude: List[str] = ["/.latch", ".git"]
     try:
         with ignore_file.open("r") as f:
-            click.echo("Using .dockerignore")
+            click.secho("  Using .dockerignore", italic=True)
 
             for l in f:
                 l = l.strip()
