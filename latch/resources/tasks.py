@@ -47,7 +47,7 @@ P = ParamSpec("P")
 T = TypeVar("T")
 
 
-def task_with_config(task_config: Pod):
+def _task_with_config(task_config: Pod):
     @overload
     def task(
         _task_function: Callable[P, T],
@@ -278,7 +278,7 @@ def _get_small_pod() -> Pod:
     )
 
 
-large_gpu_task = task_with_config(_get_large_gpu_pod())
+large_gpu_task = _task_with_config(_get_large_gpu_pod())
 """This task will get scheduled on a large GPU-enabled node.
 
 This node is not necessarily dedicated to the task, but the node itself will be
@@ -306,7 +306,7 @@ on-demand.
 """
 
 
-small_gpu_task = task_with_config(_get_small_gpu_pod())
+small_gpu_task = _task_with_config(_get_small_gpu_pod())
 """This task will get scheduled on a small GPU-enabled node.
 
 This node will be dedicated to the task. No other tasks will be allowed to run
@@ -334,7 +334,7 @@ on it.
 """
 
 
-large_task = task_with_config(_get_large_pod())
+large_task = _task_with_config(_get_large_pod())
 """This task will get scheduled on a large node.
 
 This node will be dedicated to the task. No other tasks will be allowed to run
@@ -362,7 +362,7 @@ on it.
 """
 
 
-medium_task = task_with_config(_get_medium_pod())
+medium_task = _task_with_config(_get_medium_pod())
 """This task will get scheduled on a medium node.
 
 This node will be dedicated to the task. No other tasks will be allowed to run
@@ -390,7 +390,7 @@ on it.
 """
 
 
-small_task = task_with_config(_get_small_pod())
+small_task = _task_with_config(_get_small_pod())
 """This task will get scheduled on a small node.
 
 .. list-table:: Title
@@ -426,10 +426,8 @@ def custom_memory_optimized_task(cpu: int, memory: int):
         memory: An integer number of Gibibytes of RAM to request, up to 511 GiB
     """
     warn(
-        (
-            "`custom_memory_optimized_task` is deprecated and will be removed in a"
-            " future release: use `custom_task` instead"
-        ),
+        "`custom_memory_optimized_task` is deprecated and will be removed in a"
+        " future release: use `custom_task` instead",
         DeprecationWarning,
         stacklevel=2,
     )
@@ -464,7 +462,7 @@ def custom_memory_optimized_task(cpu: int, memory: int):
         ),
         primary_container_name="primary",
     )
-    return task_with_config(task_config)
+    return _task_with_config(task_config)
 
 
 def custom_task(cpu: int, memory: int, *, storage_gib: int = 500):
@@ -567,4 +565,4 @@ def custom_task(cpu: int, memory: int, *, storage_gib: int = 500):
                 " 4949 GiB)"
             )
 
-    return task_with_config(task_config)
+    return _task_with_config(task_config)

@@ -1,9 +1,10 @@
 import inspect
 from dataclasses import is_dataclass
 from textwrap import dedent
-from typing import Callable, ParamSpec, TypeVar, Union, get_args, get_origin, overload
+from typing import Callable, TypeVar, Union, get_args, get_origin, overload
 
 from flytekit import workflow as _workflow
+from typing_extensions import ParamSpec
 
 from latch.types.metadata import LatchMetadata
 
