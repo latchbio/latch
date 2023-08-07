@@ -21,6 +21,7 @@ from flytekit.core.promise import NodeOutput, Promise
 from flytekit.core.python_auto_container import (
     DefaultTaskResolver,
     PythonAutoContainerTask,
+    Resources,
 )
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import (
@@ -43,6 +44,7 @@ import latch.types.metadata as metadata
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
 
+from ...latch.resources.tasks import custom_task
 from ..utils import identifier_suffix_from_str
 
 SnakemakeInputVal: TypeAlias = snakemake.io._IOFile
@@ -908,11 +910,19 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
 
         self._task_function = task_fn_placeholder
 
+        limits = self.job.resources
+        cores = limits.get("cpus", 4)
+
+        # convert MB to GiB
+        mem = limits.get("mem_mb", 8589) * 1000 * 1000 // 1024 // 1024 // 1024
+
+        task_config = custom_task(cpu=cores, memory=mem).keywords["task_config"]
+
         super().__init__(
             task_type=task_type,
             name=name,
             interface=interface,
-            task_config=None,
+            task_config=task_config,
             task_resolver=SnakemakeJobTaskResolver(),
         )
 
@@ -951,16 +961,10 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             ).replace("__output_fields__", output_fields)
             outputs_str = f"Res{self.name}:"
 
-        limits = self.job.resources
-        cores = limits.get("cpus", 4)
-
-        # convert MB to GiB
-        mem = limits.get("mem_mb", 8589) * 1000 * 1000 // 1024 // 1024 // 1024
-
         res += (
             reindent(
                 rf"""
-                task = custom_task(cpu={cores}, memory={mem})
+                task = custom_task(cpu=-1, memory=-1) # these limits are a lie and are ignored when generating the task spec
                 @task(cache=True)
                 def {self.name}(
                 __params__
