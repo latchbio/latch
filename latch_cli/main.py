@@ -459,6 +459,7 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
     )
 
 
+# todo(ayush): rewrite with gql
 @main.command("get-wf")
 @click.option(
     "--name",
@@ -502,68 +503,6 @@ def open_remote_file(remote_file: str):
 
     open_file(remote_file)
     click.secho(f"Successfully opened {remote_file}.", fg="green")
-
-
-@main.command("rm")
-@click.argument("remote_path", nargs=1, type=str)
-def rm(remote_path: str):
-    """Deletes a remote entity."""
-    crash_handler.message = f"Unable to delete {remote_path}"
-    crash_handler.pkg_root = str(Path.cwd())
-
-    from latch_cli.services.deprecated.rm import rm
-
-    click.secho(
-        f"Warning: `latch rm` is deprecated and will be removed soon.", fg="yellow"
-    )
-    rm(remote_path)
-    click.secho(f"Successfully deleted {remote_path}.", fg="green")
-
-
-@main.command("mkdir")
-@click.argument("remote_directory", nargs=1, type=str)
-def mkdir(remote_directory: str):
-    """Creates a new remote directory."""
-    crash_handler.message = f"Unable to create directory {remote_directory}"
-    crash_handler.pkg_root = str(Path.cwd())
-
-    from latch_cli.services.deprecated.mkdir import mkdir
-
-    click.secho(
-        f"Warning: `latch mkdir` is deprecated and will be removed soon.",
-        fg="yellow",
-    )
-    mkdir(remote_directory)
-    click.secho(f"Successfully created directory {remote_directory}.", fg="green")
-
-
-@main.command("touch")
-@click.argument("remote_file", nargs=1, type=str)
-def touch(remote_file: str):
-    """Creates an empty text file."""
-    crash_handler.message = f"Unable to create {remote_file}"
-    crash_handler.pkg_root = str(Path.cwd())
-
-    from latch_cli.services.deprecated.touch import touch
-
-    click.secho(
-        f"Warning: `latch touch` is deprecated and will be removed soon.",
-        fg="yellow",
-    )
-    touch(remote_file)
-    click.secho(f"Successfully touched {remote_file}.", fg="green")
-
-
-@main.command("exec")
-@click.argument("task_name", nargs=1, type=str)
-def execute(task_name: str):
-    """Drops the user into an interactive shell from within a task."""
-    crash_handler.message = f"Unable to exec into {task_name}"
-    crash_handler.pkg_root = str(Path.cwd())
-
-    from latch_cli.services.execute import execute
-
-    execute(task_name)
 
 
 @main.command("preview")
