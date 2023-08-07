@@ -125,8 +125,7 @@ def _get_large_pod() -> Pod:
 
 
 def _get_medium_pod() -> Pod:
-    """[ "m5.8xlarge", "m5ad.8xlarge", "m5d.8xlarge", "m5n.8xlarge", "m5dn.8xlarge", "m5a.8xlarge" ]
-    """
+    """[ "m5.8xlarge", "m5ad.8xlarge", "m5d.8xlarge", "m5n.8xlarge", "m5dn.8xlarge", "m5a.8xlarge" ]"""
 
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(

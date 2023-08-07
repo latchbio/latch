@@ -232,7 +232,6 @@ def _construct_ssh_client(
 
 
 class MaybeRemoteDir:
-
     """A temporary directory that exists locally or on a remote machine."""
 
     def __init__(self, ssh_client: Optional[paramiko.SSHClient] = None):
