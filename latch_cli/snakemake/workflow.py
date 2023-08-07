@@ -516,7 +516,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             wf_spec_remote = f"latch:///.snakemake_latch/workflows/{wf_name}/spec"
             spec_dir = Path("spec")
             for x_dir in spec_dir.iterdir():
-                if not x.is_dir():
+                if not x_dir.is_dir():
                     dst = f"{wf_spec_remote}/{x_dir.name}"
                     print(f"{x_dir} -> {dst}")
                     lp.upload(str(x_dir), dst)
