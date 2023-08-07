@@ -41,10 +41,10 @@ from snakemake.jobs import GroupJob, Job
 from typing_extensions import TypeAlias, TypedDict
 
 import latch.types.metadata as metadata
+from latch.resources.tasks import custom_task
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
 
-from ...latch.resources.tasks import custom_task
 from ..utils import identifier_suffix_from_str
 
 SnakemakeInputVal: TypeAlias = snakemake.io._IOFile
