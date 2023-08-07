@@ -410,55 +410,6 @@ def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]
             )
 
 
-@main.command("launch")
-@click.argument("params_file", nargs=1, type=click.Path(exists=True))
-@click.option(
-    "--version",
-    default=None,
-    help="The version of the workflow to launch. Defaults to latest.",
-)
-def launch(params_file: Path, version: Union[str, None] = None):
-    """Launch a workflow using a python parameter map."""
-
-    crash_handler.message = f"Unable to launch workflow"
-    crash_handler.pkg_root = str(Path.cwd())
-
-    from latch_cli.services.launch import launch
-
-    wf_name = launch(params_file, version)
-    if version is None:
-        version = "latest"
-
-    click.secho(
-        f"Successfully launched workflow named {wf_name} with version {version}.",
-        fg="green",
-    )
-
-
-@main.command("get-params")
-@click.argument("wf_name", nargs=1)
-@click.option(
-    "--version",
-    default=None,
-    help="The version of the workflow. Defaults to latest.",
-)
-def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
-    """Generate a python parameter map for a workflow."""
-    crash_handler.message = "Unable to generate param map for workflow"
-    crash_handler.pkg_root = str(Path.cwd())
-
-    from latch_cli.services.get_params import get_params
-
-    get_params(wf_name, version)
-    if version is None:
-        version = "latest"
-    click.secho(
-        f"Successfully generated python param map named {wf_name}.params.py with"
-        f" version {version}\n Run `latch launch {wf_name}.params.py` to launch it.",
-        fg="green",
-    )
-
-
 # todo(ayush): rewrite with gql
 @main.command("get-wf")
 @click.option(
