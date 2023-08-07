@@ -242,6 +242,7 @@ def serialize_snakemake(
             )
             sys.exit(-1)
 
+        cur.parent.mkdir(parents=True, exist_ok=True)
         cur.write_text(MessageToJson(entity))
 
     persist_registrable_entities(registrable_entities, str(output_dir))
