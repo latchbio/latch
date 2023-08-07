@@ -514,8 +514,12 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 _print_reg_resp(reg_resp, new_image_name)
 
             wf_spec_remote = f"latch:///.snakemake_latch/workflows/{wf_name}/spec/"
-            lp.upload_directory("spec", wf_spec_remote)
-            print(f"spec -> {wf_spec_remote}")
+            spec_dir = Path("spec")
+            for x_dir in spec_dir.iterdir():
+                for x in x_dir.iterdir():
+                    dst = f"{wf_spec_remote}/{x_dir.name}/{x.name}"
+                    lp.upload(str(x), dst)
+                    print(f"{x} -> {dst}")
 
             class _WorkflowInfoNode(TypedDict):
                 id: str
