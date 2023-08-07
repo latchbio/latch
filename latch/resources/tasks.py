@@ -25,9 +25,8 @@ exported decorators.
 """
 
 import datetime
-import functools
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, ParamSpec, TypeVar, Union
+from typing import Callable, Dict, List, Literal, Optional, TypeVar, Union, overload
 from warnings import warn
 
 from flytekit import task as flyte_task
@@ -42,53 +41,103 @@ from kubernetes.client.models import (
     V1ResourceRequirements,
     V1Toleration,
 )
+from typing_extensions import ParamSpec
 
 P = ParamSpec("P")
 T = TypeVar("T")
 
 
-def task(
-    _task_function: Callable[P, T],
-    task_config: Optional[Any] = None,
-    cache: bool = False,
-    cache_serialize: bool = False,
-    cache_version: str = "",
-    retries: int = 0,
-    interruptible: Optional[bool] = None,
-    deprecated: str = "",
-    timeout: Union[datetime.timedelta, int] = 0,
-    container_image: Optional[str] = None,
-    environment: Optional[Dict[str, str]] = None,
-    requests: Optional[Resources] = None,
-    limits: Optional[Resources] = None,
-    secret_requests: Optional[List[Secret]] = None,
-    execution_mode: Optional[
-        PythonFunctionTask.ExecutionBehavior
-    ] = PythonFunctionTask.ExecutionBehavior.DEFAULT,
-    dockerfile: Optional[Path] = None,
-    task_resolver: Optional[TaskResolverMixin] = None,
-    disable_deck: bool = False,
-) -> Callable[P, T]:
-    return flyte_task(
-        _task_function=_task_function,
-        task_config=task_config,
-        cache=cache,
-        cache_serialize=cache_serialize,
-        cache_version=cache_version,
-        retries=retries,
-        interruptible=interruptible,
-        deprecated=deprecated,
-        timeout=timeout,
-        container_image=container_image,
-        environment=environment,
-        requests=requests,
-        limits=limits,
-        secret_requests=secret_requests,
-        execution_mode=execution_mode,
-        dockerfile=dockerfile,
-        task_resolver=task_resolver,
-        disable_deck=disable_deck,
-    )
+def task_with_config(task_config: Pod):
+    @overload
+    def task(
+        _task_function: Callable[P, T],
+        *,
+        cache: bool = False,
+        cache_serialize: bool = False,
+        cache_version: str = "",
+        retries: int = 0,
+        interruptible: Optional[bool] = None,
+        deprecated: str = "",
+        timeout: Union[datetime.timedelta, int] = 0,
+        container_image: Optional[str] = None,
+        environment: Optional[Dict[str, str]] = None,
+        requests: Optional[Resources] = None,
+        limits: Optional[Resources] = None,
+        secret_requests: Optional[List[Secret]] = None,
+        execution_mode: Optional[
+            PythonFunctionTask.ExecutionBehavior
+        ] = PythonFunctionTask.ExecutionBehavior.DEFAULT,
+        dockerfile: Optional[Path] = None,
+        task_resolver: Optional[TaskResolverMixin] = None,
+    ) -> Callable[P, T]:
+        ...
+
+    @overload
+    def task(
+        _task_function: Literal[None] = None,
+        *,
+        cache: bool = False,
+        cache_serialize: bool = False,
+        cache_version: str = "",
+        retries: int = 0,
+        interruptible: Optional[bool] = None,
+        deprecated: str = "",
+        timeout: Union[datetime.timedelta, int] = 0,
+        container_image: Optional[str] = None,
+        environment: Optional[Dict[str, str]] = None,
+        requests: Optional[Resources] = None,
+        limits: Optional[Resources] = None,
+        secret_requests: Optional[List[Secret]] = None,
+        execution_mode: Optional[
+            PythonFunctionTask.ExecutionBehavior
+        ] = PythonFunctionTask.ExecutionBehavior.DEFAULT,
+        dockerfile: Optional[Path] = None,
+        task_resolver: Optional[TaskResolverMixin] = None,
+    ) -> Callable[[Callable[P, T]], Callable[P, T]]:
+        ...
+
+    def task(
+        _task_function: Optional[Callable[P, T]] = None,
+        *,
+        cache: bool = False,
+        cache_serialize: bool = False,
+        cache_version: str = "",
+        retries: int = 0,
+        interruptible: Optional[bool] = None,
+        deprecated: str = "",
+        timeout: Union[datetime.timedelta, int] = 0,
+        container_image: Optional[str] = None,
+        environment: Optional[Dict[str, str]] = None,
+        requests: Optional[Resources] = None,
+        limits: Optional[Resources] = None,
+        secret_requests: Optional[List[Secret]] = None,
+        execution_mode: Optional[
+            PythonFunctionTask.ExecutionBehavior
+        ] = PythonFunctionTask.ExecutionBehavior.DEFAULT,
+        dockerfile: Optional[Path] = None,
+        task_resolver: Optional[TaskResolverMixin] = None,
+    ) -> Union[Callable[[Callable[P, T]], Callable[P, T]], Callable[P, T]]:
+        return flyte_task(
+            _task_function=_task_function,
+            task_config=task_config,
+            cache=cache,
+            cache_serialize=cache_serialize,
+            cache_version=cache_version,
+            retries=retries,
+            interruptible=interruptible,
+            deprecated=deprecated,
+            timeout=timeout,
+            container_image=container_image,
+            environment=environment,
+            requests=requests,
+            limits=limits,
+            secret_requests=secret_requests,
+            execution_mode=execution_mode,
+            dockerfile=dockerfile,
+            task_resolver=task_resolver,
+        )
+
+    return task
 
 
 def _get_large_gpu_pod() -> Pod:
@@ -229,7 +278,7 @@ def _get_small_pod() -> Pod:
     )
 
 
-large_gpu_task = functools.partial(task, task_config=_get_large_gpu_pod())
+large_gpu_task = task_with_config(_get_large_gpu_pod())
 """This task will get scheduled on a large GPU-enabled node.
 
 This node is not necessarily dedicated to the task, but the node itself will be
@@ -257,7 +306,7 @@ on-demand.
 """
 
 
-small_gpu_task = functools.partial(task, task_config=_get_small_gpu_pod())
+small_gpu_task = task_with_config(_get_small_gpu_pod())
 """This task will get scheduled on a small GPU-enabled node.
 
 This node will be dedicated to the task. No other tasks will be allowed to run
@@ -285,7 +334,7 @@ on it.
 """
 
 
-large_task = functools.partial(task, task_config=_get_large_pod())
+large_task = task_with_config(_get_large_pod())
 """This task will get scheduled on a large node.
 
 This node will be dedicated to the task. No other tasks will be allowed to run
@@ -313,7 +362,7 @@ on it.
 """
 
 
-medium_task = functools.partial(task, task_config=_get_medium_pod())
+medium_task = task_with_config(_get_medium_pod())
 """This task will get scheduled on a medium node.
 
 This node will be dedicated to the task. No other tasks will be allowed to run
@@ -341,7 +390,7 @@ on it.
 """
 
 
-small_task = functools.partial(task, task_config=_get_small_pod())
+small_task = task_with_config(_get_small_pod())
 """This task will get scheduled on a small node.
 
 .. list-table:: Title
@@ -415,7 +464,7 @@ def custom_memory_optimized_task(cpu: int, memory: int):
         ),
         primary_container_name="primary",
     )
-    return functools.partial(task, task_config=task_config)
+    return task_with_config(task_config)
 
 
 def custom_task(cpu: int, memory: int, *, storage_gib: int = 500):
@@ -518,4 +567,4 @@ def custom_task(cpu: int, memory: int, *, storage_gib: int = 500):
                 " 4949 GiB)"
             )
 
-    return functools.partial(task, task_config=task_config)
+    return task_with_config(task_config)
