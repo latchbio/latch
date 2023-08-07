@@ -513,10 +513,9 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 reg_resp = register_serialized_pkg(protos, None, version, account_id)
                 _print_reg_resp(reg_resp, new_image_name)
 
-            wf_spec_remote = f"latch:///.snakemake_latch/workflows/{wf_name}/spec.json"
-            lp.upload("wf_spec.json", wf_spec_remote)
-            print(f"wf_spec.json -> {wf_spec_remote}")
-
+            wf_spec_remote = f"latch:///.snakemake_latch/workflows/{wf_name}/spec/"
+            lp.upload_directory("spec", wf_spec_remote)
+            print(f"spec -> {wf_spec_remote}")
 
             class _WorkflowInfoNode(TypedDict):
                 id: str

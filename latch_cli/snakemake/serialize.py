@@ -1,10 +1,14 @@
 import os
+import sys
 import textwrap
 from pathlib import Path
 from textwrap import dedent
 from typing import List, Optional, Set, Union, get_args
 
 import click
+from flyteidl.admin.launch_plan_pb2 import LaunchPlan as _idl_admin_LaunchPlan
+from flyteidl.admin.task_pb2 import TaskSpec as _idl_admin_TaskSpec
+from flyteidl.admin.workflow_pb2 import WorkflowSpec as _idl_admin_WorkflowSpec
 from flytekit import LaunchPlan
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.models import launch_plan as launch_plan_models
@@ -200,8 +204,11 @@ def serialize_snakemake(
 
     registrable_entity_cache: EntityCache = {}
 
+    spec_dir = Path("spec")
+    spec_dir.mkdir(parents=True, exist_ok=True)
+
     wf_spec = get_serializable_workflow(wf, settings, registrable_entity_cache)
-    Path("wf_spec.json").write_text(MessageToJson(wf_spec.to_flyte_idl()))
+    (spec_dir / "wf.json").write_text(MessageToJson(wf_spec.to_flyte_idl()))
 
     parameter_map = interface_to_parameters(wf.python_interface)
     lp = LaunchPlan(
@@ -219,7 +226,25 @@ def serialize_snakemake(
         )
         + [admin_lp]
     ]
-    persist_registrable_entities(registrable_entities, output_dir)
+    for idx, entity in enumerate(registrable_entities):
+        cur = spec_dir
+
+        if isinstance(entity, _idl_admin_TaskSpec):
+            cur = cur / "tasks" / f"{entity.template.id.name}_{idx}.json"
+        elif isinstance(entity, _idl_admin_WorkflowSpec):
+            cur = cur / "wfs" / f"{entity.template.id.name}_{idx}.json"
+        elif isinstance(entity, _idl_admin_LaunchPlan):
+            cur = cur / "lps" / f"{entity.id.name}_{idx}.json"
+        else:
+            click.secho(
+                f"Entity is incorrect formatted {entity} - type {type(entity)}",
+                fg="red",
+            )
+            sys.exit(-1)
+
+        cur.write_text(MessageToJson(entity))
+
+    persist_registrable_entities(registrable_entities, str(output_dir))
 
 
 def serialize_jit_register_workflow(
