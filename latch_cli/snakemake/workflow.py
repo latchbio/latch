@@ -21,7 +21,6 @@ from flytekit.core.promise import NodeOutput, Promise
 from flytekit.core.python_auto_container import (
     DefaultTaskResolver,
     PythonAutoContainerTask,
-    Resources,
 )
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import (
@@ -33,9 +32,11 @@ from flytekit.core.workflow import (
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.models import interface as interface_models
 from flytekit.models import literals as literals_models
+from flytekit.models import task as _task_model
 from flytekit.models import types as type_models
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralMap, Scalar
+from flytekitplugins.pod.task import PodFunctionTask
 from snakemake.dag import DAG
 from snakemake.jobs import GroupJob, Job
 from typing_extensions import TypeAlias, TypedDict
@@ -927,15 +928,19 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
         # convert MB to GiB
         mem = limits.get("mem_mb", 8589) * 1000 * 1000 // 1024 // 1024 // 1024
 
-        task_config = custom_task(cpu=cores, memory=mem).keywords["task_config"]
-
         super().__init__(
             task_type=task_type,
             name=name,
             interface=interface,
-            task_config=task_config,
+            task_config=custom_task(cpu=cores, memory=mem).keywords["task_config"],
             task_resolver=SnakemakeJobTaskResolver(),
         )
+
+    def get_k8s_pod(
+        self, settings: SerializationSettings
+    ) -> Optional[_task_model.K8sPod]:
+        # todo(maximsmol): this is very awful
+        return PodFunctionTask.get_k8s_pod(self, settings)
 
     def get_fn_interface(self):
         res = ""
