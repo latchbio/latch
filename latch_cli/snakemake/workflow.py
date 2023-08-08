@@ -1002,6 +1002,9 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             ),
         )
 
+    def get_container(self, settings: SerializationSettings) -> _task_models.Container:
+        return None
+
     def get_fn_interface(self):
         res = ""
 
