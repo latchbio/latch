@@ -936,6 +936,8 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             task_resolver=SnakemakeJobTaskResolver(),
         )
 
+    _serialize_pod_spec = PodFunctionTask._serialize_pod_spec
+
     def get_k8s_pod(
         self, settings: SerializationSettings
     ) -> Optional[_task_model.K8sPod]:
