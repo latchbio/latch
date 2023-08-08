@@ -32,11 +32,13 @@ from flytekit.core.workflow import (
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.models import interface as interface_models
 from flytekit.models import literals as literals_models
-from flytekit.models import task as _task_model
+from flytekit.models import task as _task_models
 from flytekit.models import types as type_models
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralMap, Scalar
-from flytekitplugins.pod.task import PodFunctionTask
+from flytekitplugins.pod.task import Pod, _sanitize_resource_name
+from kubernetes.client import ApiClient
+from kubernetes.client.models import V1Container, V1EnvVar, V1ResourceRequirements
 from snakemake.dag import DAG
 from snakemake.jobs import GroupJob, Job
 from typing_extensions import TypeAlias, TypedDict
@@ -897,7 +899,7 @@ def named_list_to_json(xs: snakemake.io.Namedlist) -> NamedListJson:
     return {"positional": unnamed, "keyword": named}
 
 
-class SnakemakeJobTask(PythonAutoContainerTask[T]):
+class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
     def __init__(
         self,
         wf: SnakemakeWorkflow,
@@ -936,13 +938,69 @@ class SnakemakeJobTask(PythonAutoContainerTask[T]):
             task_resolver=SnakemakeJobTaskResolver(),
         )
 
-    _serialize_pod_spec = PodFunctionTask._serialize_pod_spec
+    # todo(maximsmol): this is very awful
+    def _serialize_pod_spec(self, settings: SerializationSettings) -> Dict[str, Any]:
+        containers = self.task_config.pod_spec.containers
+        primary_exists = False
+        for container in containers:
+            if container.name == self.task_config.primary_container_name:
+                primary_exists = True
+                break
+        if not primary_exists:
+            # insert a placeholder primary container if it is not defined in the pod spec.
+            containers.append(V1Container(name=self.task_config.primary_container_name))
 
-    def get_k8s_pod(
-        self, settings: SerializationSettings
-    ) -> Optional[_task_model.K8sPod]:
-        # todo(maximsmol): this is very awful
-        return PodFunctionTask.get_k8s_pod(self, settings)
+        final_containers = []
+        for container in containers:
+            # In the case of the primary container, we overwrite specific container attributes with the default values
+            # used in the regular Python task.
+            if container.name == self.task_config.primary_container_name:
+                sdk_default_container = super().get_container(settings)
+
+                container.image = sdk_default_container.image
+                # Spawn entrypoint as child process so it can receive signals
+                container.command = [
+                    "/bin/bash",
+                    "-c",
+                    (
+                        "exec 3>&1 4>&2 && ("
+                        f" {' '.join(sdk_default_container.args)} 1>&3 2>&4 )"
+                    ),
+                ]
+                container.args = []
+
+                limits, requests = {}, {}
+                for resource in sdk_default_container.resources.limits:
+                    limits[_sanitize_resource_name(resource)] = resource.value
+                for resource in sdk_default_container.resources.requests:
+                    requests[_sanitize_resource_name(resource)] = resource.value
+
+                resource_requirements = V1ResourceRequirements(
+                    limits=limits, requests=requests
+                )
+                if len(limits) > 0 or len(requests) > 0:
+                    # Important! Only copy over resource requirements if they are non-empty.
+                    container.resources = resource_requirements
+
+                container.env = [
+                    V1EnvVar(name=key, value=val)
+                    for key, val in sdk_default_container.env.items()
+                ]
+
+            final_containers.append(container)
+
+        self.task_config._pod_spec.containers = final_containers
+
+        return ApiClient().sanitize_for_serialization(self.task_config.pod_spec)
+
+    def get_k8s_pod(self, settings: SerializationSettings) -> _task_models.K8sPod:
+        return _task_models.K8sPod(
+            pod_spec=self._serialize_pod_spec(settings),
+            metadata=_task_models.K8sObjectMetadata(
+                labels=self.task_config.labels,
+                annotations=self.task_config.annotations,
+            ),
+        )
 
     def get_fn_interface(self):
         res = ""
