@@ -36,7 +36,11 @@ from flytekit.models import task as _task_models
 from flytekit.models import types as type_models
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralMap, Scalar
-from flytekitplugins.pod.task import Pod, _sanitize_resource_name
+from flytekitplugins.pod.task import (
+    _PRIMARY_CONTAINER_NAME_FIELD,
+    Pod,
+    _sanitize_resource_name,
+)
 from kubernetes.client import ApiClient
 from kubernetes.client.models import V1Container, V1EnvVar, V1ResourceRequirements
 from snakemake.dag import DAG
@@ -1004,6 +1008,9 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
 
     def get_container(self, settings: SerializationSettings) -> _task_models.Container:
         return None
+
+    def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
+        return {_PRIMARY_CONTAINER_NAME_FIELD: self.task_config.primary_container_name}
 
     def get_fn_interface(self):
         res = ""
