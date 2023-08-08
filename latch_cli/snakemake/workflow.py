@@ -910,7 +910,6 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
         target_file_for_output_param: Dict[str, str],
         is_target: bool,
         interface: Interface,
-        task_type="python-task",
     ):
         name = f"{job.name}_{job.jobid}"
 
@@ -931,7 +930,8 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
         mem = limits.get("mem_mb", 8589) * 1000 * 1000 // 1024 // 1024 // 1024
 
         super().__init__(
-            task_type=task_type,
+            task_type="sidecar",
+            task_type_version=2,
             name=name,
             interface=interface,
             task_config=custom_task(cpu=cores, memory=mem).keywords["task_config"],
