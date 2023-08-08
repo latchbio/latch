@@ -20,12 +20,8 @@ from latch_cli.services.cp.config import CPConfig, Progress
 from latch_cli.services.cp.ldata_utils import LDataNodeType, get_node_data
 from latch_cli.services.cp.path_utils import normalize_path
 from latch_cli.services.cp.progress import ProgressBarManager, ProgressBars
-from latch_cli.services.cp.utils import (
-    get_auth_header,
-    get_max_workers,
-    human_readable_time,
-)
-from latch_cli.utils import urljoins, with_si_suffix
+from latch_cli.services.cp.utils import get_max_workers, human_readable_time
+from latch_cli.utils import get_auth_header, urljoins, with_si_suffix
 
 if TYPE_CHECKING:
     QueueType: TypeAlias = Queue[Optional[Path]]

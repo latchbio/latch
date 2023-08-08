@@ -4,6 +4,7 @@ import os
 import textwrap
 from collections import OrderedDict
 from pathlib import Path
+from textwrap import dedent
 from typing import List, Optional, Union
 
 import click
@@ -17,7 +18,12 @@ from latch_cli.services.cp.autocomplete import remote_complete
 from latch_cli.services.cp.config import Progress
 from latch_cli.services.init.init import template_flag_to_option
 from latch_cli.services.local_dev import TaskSize
-from latch_cli.utils import get_latest_package_version, get_local_package_version
+from latch_cli.utils import (
+    AuthenticationError,
+    get_auth_header,
+    get_latest_package_version,
+    get_local_package_version,
+)
 from latch_cli.workflow_config import BaseImageOptions
 
 latch_cli.click_utils.patch()
@@ -37,6 +43,20 @@ def main():
     Collection of command line tools for using the Latch SDK and
     interacting with the Latch platform.
     """
+    try:
+        get_auth_header()
+    except AuthenticationError:
+        click.secho(
+            dedent("""
+            Unable to authenticate with Latch.
+
+            If you are on a machine with a browser, run `latch login`.
+            If not, navigate to `https://console.latch.bio/settings/developer` on a different machine, select `Access Tokens`, and copy your `API Key` to `~/.latch/token` on this machine.
+            """),
+            fg="red",
+        )
+        raise click.exceptions.Exit()
+
     local_ver = parse_version(get_local_package_version())
     latest_ver = parse_version(get_latest_package_version())
     if local_ver < latest_ver:

@@ -55,6 +55,24 @@ def urljoins(*args: str, dir: bool = False) -> str:
     return res
 
 
+class AuthenticationError(RuntimeError):
+    ...
+
+
+def get_auth_header() -> str:
+    sdk_token = user_config.token
+    execution_token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
+
+    if sdk_token is not None and sdk_token != "":
+        header = f"Latch-SDK-Token {sdk_token}"
+    elif execution_token is not None:
+        header = f"Latch-Execution-Token {execution_token}"
+    else:
+        raise AuthenticationError("Unable to find authentication credentials.")
+
+    return header
+
+
 def retrieve_or_login() -> str:
     """Returns a valid JWT to access Latch, prompting a login flow if needed.
 
