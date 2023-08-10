@@ -42,28 +42,27 @@ def should_register_with_admin(entity: RegistrableEntity) -> bool:
     return isinstance(entity, get_args(RegistrableEntity))
 
 
-snakemake_metadata_example = """
-```
-from pathlib import Path
-from latch.types.metadata import SnakemakeMetadata, SnakemakeFileParameter
-from latch.types.file import LatchFile
-from latch.types.metadata import LatchAuthor, LatchMetadata
+def get_snakemake_metadata_example(name: str) -> str:
+    return dedent(f"""
+        from pathlib import Path
+        from latch.types.metadata import SnakemakeMetadata, SnakemakeFileParameter
+        from latch.types.file import LatchFile
+        from latch.types.metadata import LatchAuthor, LatchMetadata
 
-SnakemakeMetadata(
-    display_name="My Snakemake Workflow",
-    author=LatchAuthor(
-            name="John Doe",
-    ),
-    parameters={
-        "foo" : SnakemakeFileParameter(
-                display_name="Some Param",
-                type=LatchFile,
-                path=Path("foo.txt"),
+        SnakemakeMetadata(
+            display_name={repr(name)},
+            author=LatchAuthor(
+                name="Anonymous",
+            ),
+            parameters={{
+                "foo": SnakemakeFileParameter(
+                    display_name="Some Param",
+                    type=LatchFile,
+                    path=Path("foo.txt"),
+                )
+            }},
         )
-    }
-)
-```
-"""
+        """).lstrip()
 
 
 def ensure_snakemake_metadata_exists():

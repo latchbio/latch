@@ -128,7 +128,7 @@ class _CentromereCtx:
                 import latch.types.metadata as metadata
 
                 from ..snakemake.serialize import (
-                    snakemake_metadata_example,
+                    get_snakemake_metadata_example,
                     snakemake_workflow_extractor,
                 )
 
@@ -158,11 +158,53 @@ class _CentromereCtx:
                             fg="red",
                         )
                         click.secho("\nExample ", fg="red", nl=False)
+
+                        snakemake_metadata_example = get_snakemake_metadata_example(
+                            pkg_root.name
+                        )
                         click.secho(f"`{meta}`", bold=True, fg="red", nl=False)
                         click.secho(
-                            f" file:{snakemake_metadata_example}",
+                            f" file:\n```\n{snakemake_metadata_example}```",
                             fg="red",
                         )
+                        if click.confirm(
+                            click.style(
+                                "Generate example metadata file now?",
+                                bold=True,
+                                fg="red",
+                            ),
+                            default=True,
+                        ):
+                            meta.write_text(snakemake_metadata_example)
+
+                            import platform
+
+                            system = platform.system()
+                            if system in {
+                                "Windows",
+                                "Linux",
+                                "Darwin",
+                            } and click.confirm(
+                                click.style(
+                                    "Open the generated file?", bold=True, fg="red"
+                                ),
+                                default=True,
+                            ):
+                                import subprocess
+
+                                if system == "Linux":
+                                    res = subprocess.run(["xdg-open", meta]).returncode
+                                elif system == "Darwin":
+                                    res = subprocess.run(["open", meta]).returncode
+                                elif system == "Windows":
+                                    import os
+
+                                    res = os.system(str(meta.resolve()))
+                                else:
+                                    res = None
+
+                                if res is not None and res != 0:
+                                    click.secho("Failed to open file", fg="red")
                         sys.exit(1)
 
                 assert metadata._snakemake_metadata is not None
