@@ -214,6 +214,8 @@ class SkippingRule(Rule):
         for t in super().block_content(token):
             yield t[0].replace("\n", "\n# "), t[1]
 
+        yield "\n"
+
 
 class SkippingCheckpoint(SkippingRule):
     def start(self):
