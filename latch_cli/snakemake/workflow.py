@@ -1240,6 +1240,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
                     tail = None
                     if len(log_files) == 1:
                         log = Path(log_files[0])
+                        log.parent.mkdir(parents=True, exist_ok=True)
                         log.touch()
 
                         print(f"Tailing the only log file: {{log}}")
