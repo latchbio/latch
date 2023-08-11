@@ -255,26 +255,26 @@ def dag__init__(
     _dag__init__(
         self,
         workflow,
-        rules=None,
-        dryrun=False,
-        targetfiles=None,
-        targetrules=None,
-        target_jobs_def=None,
-        forceall=False,
-        forcerules=None,
-        forcefiles=None,
-        priorityfiles=None,
-        priorityrules=None,
-        untilfiles=None,
-        untilrules=None,
-        omitfiles=None,
-        omitrules=None,
-        ignore_ambiguity=False,
-        force_incomplete=False,
-        ignore_incomplete=False,
-        notemp=False,
-        keep_remote_local=False,
-        batch=None,
+        rules,
+        dryrun,
+        targetfiles,
+        targetrules,
+        target_jobs_def,
+        forceall,
+        forcerules,
+        forcefiles,
+        priorityfiles,
+        priorityrules,
+        untilfiles,
+        untilrules,
+        omitfiles,
+        omitrules,
+        ignore_ambiguity,
+        force_incomplete,
+        ignore_incomplete,
+        notemp,
+        keep_remote_local,
+        batch,
     )
 
 
@@ -296,5 +296,25 @@ def dag_init(self: DAG, progress=False):
 
 DAG.init = dag_init
 
+_dag_cleanup = DAG.cleanup
+
+
+def dag_cleanup(self: DAG):
+    print("\n\n\n >>> DAG CLEANUP BEFORE \n\n\n")
+    for j in self.jobs:
+        print(j.rule)
+        print(j.wildcards)
+        print()
+    print("\n\n\n <<< DAG CLEANUP BEFORE \n\n\n")
+    _dag_cleanup(self)
+    print("\n\n\n >>> DAG CLEANUP AFTER \n\n\n")
+    for j in self.jobs:
+        print(j.rule)
+        print(j.wildcards)
+        print()
+    print("\n\n\n <<< DAG CLEANUP AFTER \n\n\n")
+
+
+DAG.cleanup = dag_cleanup
 # Run snakemake
 snakemake.main()
