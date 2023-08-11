@@ -165,53 +165,25 @@ def emit_overrides(self, token):
 emitted_overrides_per_type: Dict[str, Set[str]] = {}
 
 
-def replace_block(self, token, force_block_end=False):
-    if self.lasttoken == "\n" and is_comment(token):
-        # ignore lines containing only comments
-        self.line -= 1
-    if force_block_end or self.is_block_end(token):
-        yield from self.decorate_end(token)
-        yield "\n", token
-        raise StopAutomaton(token)
+def skipping_block_content(self, token):
+    if self.rulename not in rules:
+        return
 
-    if is_newline(token):
-        self.line += 1
-        yield token.string, token
+    emitted_overrides = emitted_overrides_per_type.setdefault(
+        type(self).__name__, set()
+    )
+    if self.rulename not in emitted_overrides:
+        return
 
-    elif not (is_indent(token) or is_dedent(token)):
-        if is_comment(token):
-            yield token.string, token
-        else:
-            try:
-                at_newline = self.lasttoken == "\n"
-
-                # old snakemake sometime does not put a newline after the decorate parenthesis
-                at_start = self.line == 0 and self.lasttoken[-1] == "("
-
-                if at_newline or at_start:
-                    emitted_overrides = emitted_overrides_per_type.setdefault(
-                        type(self).__name__, set()
-                    )
-
-                    if (
-                        self.rulename in rules
-                        and self.rulename not in emitted_overrides
-                    ):
-                        yield from emit_overrides(self, token)
-                        emitted_overrides.add(self.rulename)
-
-                    yield "#", token
-            except:
-                traceback.print_exc()
-
-            yield from self.block_content(token)
+    yield from emit_overrides(self, token)
+    emitted_overrides.add(self.rulename)
 
 
-Input.block = replace_block
-Output.block = replace_block
-Params.block = replace_block
-Benchmark.block = replace_block
-Log.block = replace_block
+Input.block_content = skipping_block_content
+Output.block_content = skipping_block_content
+Params.block_content = skipping_block_content
+Benchmark.block_content = skipping_block_content
+Log.block_content = skipping_block_content
 
 
 class SkippingRule(Rule):
@@ -220,7 +192,6 @@ class SkippingRule(Rule):
             yield from super().start(aux)
             return
 
-        yield "#"
         for t in super().start(aux):
             yield t.replace("\n", "\n# ")
 
@@ -229,7 +200,6 @@ class SkippingRule(Rule):
             yield from super().end()
             return
 
-        yield "#"
         for t in super().end():
             yield t.replace("\n", "\n# ")
 
