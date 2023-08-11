@@ -226,11 +226,13 @@ _dag_init = DAG.init
 
 def dag_init(self: DAG, progress=False):
     res = _dag_init(self, progress)
+    print("\n\n\n >>> DAG INIT \n\n\n")
     print(self.jobs)
+    print("\n\n\n <<< DAG INIT \n\n\n")
     return res
 
 
-DAG.init = _dag_init
+DAG.init = dag_init
 
 # Run snakemake
 snakemake.main()
