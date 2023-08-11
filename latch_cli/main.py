@@ -73,7 +73,7 @@ def dockerfile(pkg_root: str):
         return
     generate_dockerfile(source, dest)
 
-    click.secho(f"\nSuccessfully generated dockerfile `{dest}`", fg="green")
+    click.secho(f"Successfully generated dockerfile `{dest}`", fg="green")
 
 
 @main.command("register")

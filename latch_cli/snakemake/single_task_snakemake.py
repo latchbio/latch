@@ -1,7 +1,6 @@
 import json
 import os
 import sys
-import traceback
 from itertools import chain
 from textwrap import dedent
 from typing import Dict, Set
@@ -17,11 +16,6 @@ from snakemake.parser import (
     Python,
     Rule,
     Shell,
-    StopAutomaton,
-    is_comment,
-    is_dedent,
-    is_indent,
-    is_newline,
 )
 
 sys.stdout.reconfigure(line_buffering=True)
