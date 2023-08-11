@@ -192,6 +192,7 @@ class SkippingRule(Rule):
             yield from super().start(aux)
             return
 
+        yield "#"
         for t in super().start(aux):
             yield t.replace("\n", "\n# ")
 
@@ -202,6 +203,8 @@ class SkippingRule(Rule):
 
         for t in super().end():
             yield t.replace("\n", "\n# ")
+
+        yield "\n"
 
     def block_content(self, token):
         if self.rulename in rules:
