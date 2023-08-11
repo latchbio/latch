@@ -1159,12 +1159,14 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
         if isinstance(self.job, GroupJob):
             jobs = self.job.jobs
 
+        need_conda = any(x.conda_env is not None for x in jobs)
+
         snakemake_args = [
             "-m",
             "latch_cli.snakemake.single_task_snakemake",
             "-s",
             snakefile_path_in_container,
-            "--use-conda",
+            *(["--use-conda"] if need_conda else []),
             "--target-jobs",
             *jobs_cli_args(jobs),
             "--allowed-rules",
