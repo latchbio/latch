@@ -1,6 +1,7 @@
 import os
 import sys
 import textwrap
+import traceback
 from pathlib import Path
 from textwrap import dedent
 from typing import List, Optional, Set, Union, get_args
@@ -55,10 +56,10 @@ def get_snakemake_metadata_example(name: str) -> str:
                 name="Anonymous",
             ),
             parameters={{
-                "foo": SnakemakeFileParameter(
-                    display_name="Some Param",
+                "example": SnakemakeFileParameter(
+                    display_name="Example Parameter",
                     type=LatchFile,
-                    path=Path("foo.txt"),
+                    path=Path("example.txt"),
                 )
             }},
         )
@@ -135,7 +136,7 @@ class SnakemakeWorkflowExtractor(Workflow):
 
         return self
 
-    def __exit__(self, typ, value, traceback):
+    def __exit__(self, typ, value, tb):
         os.chdir(self._old_cwd)
 
         if typ is None:
@@ -143,6 +144,18 @@ class SnakemakeWorkflowExtractor(Workflow):
 
         if not isinstance(value, WorkflowError):
             return False
+
+        msg = str(value)
+        if (
+            "Workflow defines configfile config.yaml but it is not present or"
+            " accessible"
+            in msg
+        ):
+            # todo(maximsmol): print the expected config path
+            traceback.print_exception(typ, value, tb)
+            click.secho("\n\n\nHint: ", fg="red", bold=True, nl=False, err=True)
+            click.secho("Snakemake could not find a config file", fg="red", err=True)
+            sys.exit(1)
 
         # todo(maximsmol): handle specific errors
         # WorkflowError: Failed to open source file /Users/maximsmol/projects/latchbio/latch/test/CGI_WGS_GATK_Pipeline/Snakefiles/CGI_WGS_GATK_Pipeline/Snakefiles/calc_frag_len.smk
