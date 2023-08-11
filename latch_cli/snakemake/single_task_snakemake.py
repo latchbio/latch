@@ -18,6 +18,7 @@ from snakemake.parser import (
     Rule,
     Shell,
 )
+from snakemake.rules import Rule as RRule
 
 sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)
@@ -316,5 +317,13 @@ def dag_cleanup(self: DAG):
 
 
 DAG.cleanup = dag_cleanup
+
+
+def get_wildcards(self, requested_output, wildcards_dict=None):
+    return wildcards_dict
+
+
+RRule.get_wildcards = get_wildcards
+
 # Run snakemake
 snakemake.main()
