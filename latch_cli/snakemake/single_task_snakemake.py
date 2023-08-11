@@ -221,6 +221,65 @@ class ReplacingShell(Shell):
 
 SkippingRule.subautomata["shell"] = ReplacingShell
 
+_dag__init__ = DAG.__init__
+
+
+def dag__init__(
+    self,
+    workflow,
+    rules=None,
+    dryrun=False,
+    targetfiles=None,
+    targetrules=None,
+    target_jobs_def=None,
+    forceall=False,
+    forcerules=None,
+    forcefiles=None,
+    priorityfiles=None,
+    priorityrules=None,
+    untilfiles=None,
+    untilrules=None,
+    omitfiles=None,
+    omitrules=None,
+    ignore_ambiguity=False,
+    force_incomplete=False,
+    ignore_incomplete=False,
+    notemp=False,
+    keep_remote_local=False,
+    batch=None,
+):
+    print("\n\n\n >>> DAG __INIT__ \n\n\n")
+    print(target_jobs_def)
+    print("\n\n\n <<< DAG __INIT__ \n\n\n")
+
+    _dag__init__(
+        self,
+        workflow,
+        rules=None,
+        dryrun=False,
+        targetfiles=None,
+        targetrules=None,
+        target_jobs_def=None,
+        forceall=False,
+        forcerules=None,
+        forcefiles=None,
+        priorityfiles=None,
+        priorityrules=None,
+        untilfiles=None,
+        untilrules=None,
+        omitfiles=None,
+        omitrules=None,
+        ignore_ambiguity=False,
+        force_incomplete=False,
+        ignore_incomplete=False,
+        notemp=False,
+        keep_remote_local=False,
+        batch=None,
+    )
+
+
+DAG.__init__ = dag__init__
+
 _dag_init = DAG.init
 
 
