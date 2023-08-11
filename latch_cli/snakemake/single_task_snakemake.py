@@ -6,6 +6,7 @@ from textwrap import dedent
 from typing import Dict, Set
 
 import snakemake
+from snakemake.dag import DAG
 from snakemake.parser import (
     INDENT,
     Benchmark,
@@ -219,6 +220,17 @@ class ReplacingShell(Shell):
 
 
 SkippingRule.subautomata["shell"] = ReplacingShell
+
+_dag_init = DAG.init
+
+
+def dag_init(self: DAG, progress=False):
+    res = _dag_init(self, progress)
+    print(self.jobs)
+    return res
+
+
+DAG.init = _dag_init
 
 # Run snakemake
 snakemake.main()

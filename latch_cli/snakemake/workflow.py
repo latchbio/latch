@@ -1197,7 +1197,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
         for job in jobs:
             snakemake_data["rules"][job.rule.name] = {
                 "inputs": named_list_to_json(job.input),
-                "outputs": named_list_to_json(job.rule.output),
+                "outputs": named_list_to_json(job.output),
                 "params": named_list_to_json(job.params),
                 "benchmark": job.benchmark,
                 "log": job.log,
