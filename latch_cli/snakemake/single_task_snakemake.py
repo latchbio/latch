@@ -172,7 +172,7 @@ def skipping_block_content(self, token):
     emitted_overrides = emitted_overrides_per_type.setdefault(
         type(self).__name__, set()
     )
-    if self.rulename not in emitted_overrides:
+    if self.rulename in emitted_overrides:
         return
 
     yield from emit_overrides(self, token)
@@ -188,33 +188,22 @@ Log.block_content = skipping_block_content
 
 class SkippingRule(Rule):
     def start(self, aux=""):
-        if self.rulename in rules:
-            yield from super().start(aux)
+        if self.rulename not in rules:
             return
 
-        yield "#"
-        for t in super().start(aux):
-            yield t.replace("\n", "\n# ")
+        yield from super().start(aux)
 
     def end(self):
-        if self.rulename in rules:
-            yield from super().end()
+        if self.rulename not in rules:
             return
 
-        for t in super().end():
-            yield t.replace("\n", "\n# ")
-
-        yield "\n"
+        yield from super().end()
 
     def block_content(self, token):
-        if self.rulename in rules:
-            yield from super().block_content(token)
+        if self.rulename not in rules:
             return
 
-        for t in super().block_content(token):
-            yield t[0].replace("\n", "\n# "), t[1]
-
-        yield "\n"
+        yield from super().block_content(token)
 
 
 class SkippingCheckpoint(SkippingRule):
