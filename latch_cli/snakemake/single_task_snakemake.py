@@ -6,7 +6,6 @@ from textwrap import dedent
 from typing import Dict, Set
 
 import snakemake
-from snakemake.dag import DAG
 from snakemake.parser import (
     INDENT,
     Benchmark,
@@ -221,102 +220,6 @@ class ReplacingShell(Shell):
 
 
 SkippingRule.subautomata["shell"] = ReplacingShell
-
-_dag__init__ = DAG.__init__
-
-
-def dag__init__(
-    self,
-    workflow,
-    rules=None,
-    dryrun=False,
-    targetfiles=None,
-    targetrules=None,
-    target_jobs_def=None,
-    forceall=False,
-    forcerules=None,
-    forcefiles=None,
-    priorityfiles=None,
-    priorityrules=None,
-    untilfiles=None,
-    untilrules=None,
-    omitfiles=None,
-    omitrules=None,
-    ignore_ambiguity=False,
-    force_incomplete=False,
-    ignore_incomplete=False,
-    notemp=False,
-    keep_remote_local=False,
-    batch=None,
-):
-    print("\n\n\n >>> DAG __INIT__ \n\n\n")
-    print(target_jobs_def)
-    print("\n\n\n <<< DAG __INIT__ \n\n\n")
-
-    _dag__init__(
-        self,
-        workflow,
-        rules,
-        dryrun,
-        targetfiles,
-        targetrules,
-        target_jobs_def,
-        forceall,
-        forcerules,
-        forcefiles,
-        priorityfiles,
-        priorityrules,
-        untilfiles,
-        untilrules,
-        omitfiles,
-        omitrules,
-        ignore_ambiguity,
-        force_incomplete,
-        ignore_incomplete,
-        notemp,
-        keep_remote_local,
-        batch,
-    )
-
-
-DAG.__init__ = dag__init__
-
-_dag_init = DAG.init
-
-
-def dag_init(self: DAG, progress=False):
-    res = _dag_init(self, progress)
-    print("\n\n\n >>> DAG INIT \n\n\n")
-    for j in self.jobs:
-        print(j.rule)
-        print(j.wildcards)
-        print()
-    print("\n\n\n <<< DAG INIT \n\n\n")
-    return res
-
-
-DAG.init = dag_init
-
-_dag_cleanup = DAG.cleanup
-
-
-def dag_cleanup(self: DAG):
-    print("\n\n\n >>> DAG CLEANUP BEFORE \n\n\n")
-    for j in self.jobs:
-        print(j.rule)
-        print(j.wildcards)
-        print()
-    print("\n\n\n <<< DAG CLEANUP BEFORE \n\n\n")
-    _dag_cleanup(self)
-    print("\n\n\n >>> DAG CLEANUP AFTER \n\n\n")
-    for j in self.jobs:
-        print(j.rule)
-        print(j.wildcards)
-        print()
-    print("\n\n\n <<< DAG CLEANUP AFTER \n\n\n")
-
-
-DAG.cleanup = dag_cleanup
 
 
 def get_wildcards(self, requested_output, wildcards_dict=None):
