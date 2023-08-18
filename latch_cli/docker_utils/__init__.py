@@ -373,17 +373,6 @@ def generate_dockerfile(
 
             block.write_block(f)
 
-        f.write("run apt-get update --yes && apt-get install --yes git\n")
-        f.write(
-            "run pip install"
-            " 'git+https://github.com/latchbio/latch.git@kenny/snakekit'\n"
-        )
-        f.write("run pip uninstall --yes latch\n")
-        f.write(
-            "run echo 128 && pip install"
-            " 'git+https://github.com/latchbio/latch.git@kenny/snakekit'\n"
-        )
-
         f.write("# Copy workflow data (use .dockerignore to skip files)\n")
         f.write("copy . /root/\n\n")
 
