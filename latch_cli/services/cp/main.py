@@ -1,8 +1,5 @@
-from glob import glob
 from pathlib import Path
 from typing import List
-
-import click
 
 from latch_cli.services.cp.config import CPConfig, Progress
 from latch_cli.services.cp.download import download
