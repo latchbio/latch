@@ -35,7 +35,7 @@ setup(
         "boto3>=1.26.0",
         "tqdm>=4.63.0",
         "lytekit==0.15.3",
-        "lytekitplugins-pods==0.6.1",
+        "lytekitplugins-pods==0.6.2",
         "typing-extensions==4.7.1",
         "apscheduler==3.9.1",
         "gql==3.4.0",
