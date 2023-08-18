@@ -359,7 +359,7 @@ def custom_memory_optimized_task(cpu: int, memory: int):
         ),
         primary_container_name="primary",
     )
-    return functools.partial(task(task_config=task_config))
+    return functools.partial(task, task_config=task_config)
 
 
 def custom_task(cpu: int, memory: int, *, storage_gib: int = 500):
@@ -462,4 +462,4 @@ def custom_task(cpu: int, memory: int, *, storage_gib: int = 500):
                 " 4949 GiB)"
             )
 
-    return functools.partial(task(task_config=task_config))
+    return functools.partial(task, task_config=task_config)
