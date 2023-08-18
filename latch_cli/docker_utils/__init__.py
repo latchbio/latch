@@ -134,17 +134,18 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
                 comment="Install rig the R installation manager",
                 commands=[
                     dedent(r"""
-                            curl \
-                                --location \
-                                --fail \
-                                --remote-name \
-                                https://github.com/r-lib/rig/releases/download/latest/rig-linux-latest.tar.gz && \
-                            tar \
-                                --extract \
-                                --gunzip \
-                                --file rig-linux-latest.tar.gz \
-                                --directory /usr/local/ && \
-                            rm rig-linux-latest.tar.gz
+                            run \
+                                curl \
+                                    --location \
+                                    --fail \
+                                    --remote-name \
+                                    https://github.com/r-lib/rig/releases/download/latest/rig-linux-latest.tar.gz && \
+                                tar \
+                                    --extract \
+                                    --gunzip \
+                                    --file rig-linux-latest.tar.gz \
+                                    --directory /usr/local/ && \
+                                rm rig-linux-latest.tar.gz
                             """).strip(),
                 ],
                 order=DockerCmdBlockOrder.precopy,
@@ -379,7 +380,7 @@ def generate_dockerfile(
         )
         f.write("run pip uninstall --yes latch\n")
         f.write(
-            "run echo 126 && pip install"
+            "run echo 128 && pip install"
             " 'git+https://github.com/latchbio/latch.git@kenny/snakekit'\n"
         )
 
