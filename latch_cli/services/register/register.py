@@ -4,9 +4,8 @@ import shutil
 import sys
 import tempfile
 import time
-from collections.abc import Iterable
 from pathlib import Path
-from typing import List, Optional
+from typing import Iterable, List, Optional
 
 import click
 import gql

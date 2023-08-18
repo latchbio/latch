@@ -231,7 +231,13 @@ class _CentromereCtx:
                 click.echo(f"  {self.version}\n")
 
             if self.nucleus_check_version(self.version, self.workflow_name):
-                raise ValueError(f"Version {self.version} has already been registered.")
+                click.secho(
+                    f"\nVersion ({self.version}) already exists."
+                    " Make sure that you've saved any changes you made.",
+                    fg="red",
+                    bold=True,
+                )
+                sys.exit(1)
 
             self.default_container = _Container(
                 dockerfile=get_default_dockerfile(

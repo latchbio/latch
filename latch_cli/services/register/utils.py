@@ -5,9 +5,17 @@ import io
 import os
 import sys
 import typing
-from collections.abc import Iterable
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, TypedDict, Union
+from typing import (
+    TYPE_CHECKING,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    TypedDict,
+    Union,
+)
 
 import boto3
 import docker

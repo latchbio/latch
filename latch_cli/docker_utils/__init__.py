@@ -363,6 +363,8 @@ def generate_dockerfile(
         f.write("\n".join(get_prologue(config)) + "\n\n")
 
         commands = infer_commands(pkg_root)
+        if len(commands) > 0:
+            click.echo()
 
         for block in commands:
             if block.order != DockerCmdBlockOrder.precopy:
@@ -377,7 +379,7 @@ def generate_dockerfile(
         )
         f.write("run pip uninstall --yes latch\n")
         f.write(
-            "run echo 106 && pip install"
+            "run echo 126 && pip install"
             " 'git+https://github.com/latchbio/latch.git@kenny/snakekit'\n"
         )
 
