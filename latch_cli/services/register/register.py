@@ -183,7 +183,7 @@ def _print_reg_resp(resp, image):
 
 
 def print_serialize_logs(serialize_logs, image):
-    click.echo(f"Serializing workflow in {image}:")
+    click.secho(f"\nSerializing workflow", bold=True)
     for x in serialize_logs:
         click.echo(x, nl=False)
 
@@ -238,9 +238,8 @@ def _build_and_serialize(
         assert ctx.dkr_client is not None
         exit_status = ctx.dkr_client.wait(container_id)
         if exit_status["StatusCode"] != 0:
-            raise ValueError(
-                f"Serialization exited with nonzero exit code: {exit_status['Error']}"
-            )
+            click.secho("\nWorkflow failed to serialize", fg="red", bold=True)
+            sys.exit(1)
 
     click.echo()
     upload_image_logs = upload_image(ctx, image_name)
