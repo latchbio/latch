@@ -457,55 +457,7 @@ def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]
             )
 
 
-@main.command("launch")
-@click.argument("params_file", nargs=1, type=click.Path(exists=True))
-@click.option(
-    "--version",
-    default=None,
-    help="The version of the workflow to launch. Defaults to latest.",
-)
-def launch(params_file: Path, version: Union[str, None] = None):
-    """Launch a workflow using a python parameter map."""
-
-    crash_handler.message = f"Unable to launch workflow"
-    crash_handler.pkg_root = str(Path.cwd())
-
-    from latch_cli.services.launch import launch
-
-    wf_name = launch(params_file, version)
-    if version is None:
-        version = "latest"
-
-    click.secho(
-        f"Successfully launched workflow named {wf_name} with version {version}.",
-        fg="green",
-    )
-
-
-@main.command("get-params")
-@click.argument("wf_name", nargs=1)
-@click.option(
-    "--version",
-    default=None,
-    help="The version of the workflow. Defaults to latest.",
-)
-def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
-    """Generate a python parameter map for a workflow."""
-    crash_handler.message = "Unable to generate param map for workflow"
-    crash_handler.pkg_root = str(Path.cwd())
-
-    from latch_cli.services.get_params import get_params
-
-    get_params(wf_name, version)
-    if version is None:
-        version = "latest"
-    click.secho(
-        f"Successfully generated python param map named {wf_name}.params.py with"
-        f" version {version}\n Run `latch launch {wf_name}.params.py` to launch it.",
-        fg="green",
-    )
-
-
+# todo(ayush): rewrite with gql
 @main.command("get-wf")
 @click.option(
     "--name",
@@ -549,68 +501,6 @@ def open_remote_file(remote_file: str):
 
     open_file(remote_file)
     click.secho(f"Successfully opened {remote_file}.", fg="green")
-
-
-@main.command("rm")
-@click.argument("remote_path", nargs=1, type=str)
-def rm(remote_path: str):
-    """Deletes a remote entity."""
-    crash_handler.message = f"Unable to delete {remote_path}"
-    crash_handler.pkg_root = str(Path.cwd())
-
-    from latch_cli.services.deprecated.rm import rm
-
-    click.secho(
-        f"Warning: `latch rm` is deprecated and will be removed soon.", fg="yellow"
-    )
-    rm(remote_path)
-    click.secho(f"Successfully deleted {remote_path}.", fg="green")
-
-
-@main.command("mkdir")
-@click.argument("remote_directory", nargs=1, type=str)
-def mkdir(remote_directory: str):
-    """Creates a new remote directory."""
-    crash_handler.message = f"Unable to create directory {remote_directory}"
-    crash_handler.pkg_root = str(Path.cwd())
-
-    from latch_cli.services.deprecated.mkdir import mkdir
-
-    click.secho(
-        f"Warning: `latch mkdir` is deprecated and will be removed soon.",
-        fg="yellow",
-    )
-    mkdir(remote_directory)
-    click.secho(f"Successfully created directory {remote_directory}.", fg="green")
-
-
-@main.command("touch")
-@click.argument("remote_file", nargs=1, type=str)
-def touch(remote_file: str):
-    """Creates an empty text file."""
-    crash_handler.message = f"Unable to create {remote_file}"
-    crash_handler.pkg_root = str(Path.cwd())
-
-    from latch_cli.services.deprecated.touch import touch
-
-    click.secho(
-        f"Warning: `latch touch` is deprecated and will be removed soon.",
-        fg="yellow",
-    )
-    touch(remote_file)
-    click.secho(f"Successfully touched {remote_file}.", fg="green")
-
-
-@main.command("exec")
-@click.argument("task_name", nargs=1, type=str)
-def execute(task_name: str):
-    """Drops the user into an interactive shell from within a task."""
-    crash_handler.message = f"Unable to exec into {task_name}"
-    crash_handler.pkg_root = str(Path.cwd())
-
-    from latch_cli.services.execute import execute
-
-    execute(task_name)
 
 
 @main.command("preview")
