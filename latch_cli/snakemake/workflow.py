@@ -880,7 +880,7 @@ def named_list_to_json(xs: snakemake.io.Namedlist) -> NamedListJson:
             vs = [vs]
 
         for v in vs:
-            if not isinstance(v, str):
+            if isinstance(v, dict):
                 v = v["value"]
             named_values.add(v)
 
@@ -893,7 +893,7 @@ def named_list_to_json(xs: snakemake.io.Namedlist) -> NamedListJson:
             obj = annotated_str_to_json(v)
 
             rendered = obj
-            if not isinstance(rendered, str):
+            if isinstance(rendered, dict):
                 rendered = rendered["value"]
             if rendered in named_values:
                 continue
