@@ -1,4 +1,3 @@
-import os
 import time
 from concurrent.futures import ProcessPoolExecutor
 from contextlib import closing
@@ -20,12 +19,8 @@ from latch_cli.services.cp.progress import (
     ProgressBars,
     get_free_index,
 )
-from latch_cli.services.cp.utils import (
-    get_auth_header,
-    get_max_workers,
-    human_readable_time,
-)
-from latch_cli.utils import with_si_suffix
+from latch_cli.services.cp.utils import get_max_workers, human_readable_time
+from latch_cli.utils import get_auth_header, with_si_suffix
 
 
 class GetSignedUrlData(TypedDict):
@@ -47,8 +42,6 @@ def download(
     dest: Path,
     config: CPConfig,
 ):
-    click.clear()
-
     normalized = normalize_path(src)
     data = get_node_data(src)
 
@@ -190,7 +183,6 @@ def download(
 
     total_time = end - start
 
-    click.clear()
     click.echo(
         f"""{click.style("Download Complete", fg="green")}
 

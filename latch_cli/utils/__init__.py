@@ -2,16 +2,78 @@
 
 import hashlib
 import os
+import stat
 import subprocess
+import urllib.parse
 from datetime import datetime, timedelta
+from enum import Enum
 from pathlib import Path
 from typing import List
+from urllib.parse import urljoin
 
+import click
 import jwt
 from latch_sdk_config.user import user_config
 
 from latch_cli.constants import latch_constants
 from latch_cli.tinyrequests import get
+
+# todo(ayush): need a better way to check if "latch" has been appended to urllib
+if "latch" not in urllib.parse.uses_netloc:
+    urllib.parse.uses_netloc.append("latch")
+    urllib.parse.uses_relative.append("latch")
+
+
+def urljoins(*args: str, dir: bool = False) -> str:
+    """Construct a URL by appending paths
+
+    Paths are always joined, with extra `/`s added if missing. Does not allow
+    overriding basenames as opposed to normal `urljoin`. Whether the final
+    path ends in a `/` is still significant and will be preserved in the output
+
+    >>> urljoin("latch:///directory/", "another_directory")
+    latch:///directory/another_directory
+    >>> # No slash means "another_directory" is treated as a filename
+    >>> urljoin(urljoin("latch:///directory/", "another_directory"), "file")
+    latch:///directory/file
+    >>> # Unintentionally overrode the filename
+    >>> urljoins("latch:///directory/", "another_directory", "file")
+    latch:///directory/another_directory/file
+    >>> # Joined paths as expected
+
+    Args:
+        args: Paths to join
+        dir: If true, ensure the output ends with a `/`
+    """
+
+    res = args[0]
+    for x in args[1:]:
+        if res[-1] != "/":
+            res = f"{res}/"
+        res = urljoin(res, x)
+
+    if dir and res[-1] != "/":
+        res = f"{res}/"
+
+    return res
+
+
+class AuthenticationError(RuntimeError):
+    ...
+
+
+def get_auth_header() -> str:
+    sdk_token = user_config.token
+    execution_token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
+
+    if sdk_token is not None and sdk_token != "":
+        header = f"Latch-SDK-Token {sdk_token}"
+    elif execution_token is not None:
+        header = f"Latch-Execution-Token {execution_token}"
+    else:
+        raise AuthenticationError("Unable to find authentication credentials.")
+
+    return header
 
 
 def retrieve_or_login() -> str:
@@ -34,6 +96,7 @@ def current_workspace() -> str:
     if ws == "":
         ws = account_id_from_token(retrieve_or_login())
         user_config.update_workspace(ws, "Personal Workspace")
+
     return ws
 
 
@@ -114,23 +177,30 @@ def with_si_suffix(num, suffix="B", styled=False):
 
 
 def hash_directory(dir_path: Path) -> str:
+    # todo(maximsmol): store per-file hashes to show which files triggered a version change
+    click.secho("Calculating workflow version based on file content hash", bold=True)
+    click.secho("  Disable with --disable-auto-version/-d", italic=True, dim=True)
+
     m = hashlib.new("sha256")
     m.update(current_workspace().encode("utf-8"))
 
     ignore_file = dir_path / ".dockerignore"
-    exclude: List[str] = []
+    exclude: List[str] = ["/.latch", ".git"]
     try:
-        for l in ignore_file.open("r"):
-            l = l.strip()
+        with ignore_file.open("r") as f:
+            click.secho("  Using .dockerignore", italic=True)
 
-            if l == "":
-                continue
-            if l[0] == "#":
-                continue
+            for l in f:
+                l = l.strip()
 
-            exclude.append(l)
+                if l == "":
+                    continue
+                if l[0] == "#":
+                    continue
+
+                exclude.append(l)
     except FileNotFoundError:
-        print("No .dockerignore file found --- including all files")
+        ...
 
     from docker.utils import exclude_paths
 
@@ -138,23 +208,35 @@ def hash_directory(dir_path: Path) -> str:
     paths.sort()
 
     for item in paths:
-        # for repeatability guarantees
         p = Path(dir_path / item)
-        if p.is_dir():
-            m.update(str(p).encode("utf-8"))
+
+        p_stat = p.stat()
+        if stat.S_ISDIR(p_stat.st_mode):
+            m.update(p.name.encode("utf-8"))
             continue
 
-        m.update(str(p).encode("utf-8"))
-        file_size = p.stat().st_size
-        if file_size < latch_constants.file_max_size:
-            m.update(p.read_bytes())
-        else:
-            print(
-                "\x1b[38;5;226m"
-                f"WARNING: {p.relative_to(dir_path.resolve())} is too large "
-                f"({with_si_suffix(file_size)}) to checksum, skipping."
-                "\x1b[0m"
+        m.update(p.name.encode("utf-8"))
+
+        file_size = p_stat.st_size
+        if not stat.S_ISREG(p_stat.st_mode):
+            click.secho(
+                f"{p.relative_to(dir_path.resolve())} is not a regular file. Ignoring"
+                " contents",
+                fg="yellow",
+                bold=True,
             )
+            continue
+
+        if file_size > latch_constants.file_max_size:
+            click.secho(
+                f"{p.relative_to(dir_path.resolve())} is too large"
+                f" ({with_si_suffix(file_size)}) to checksum. Ignoring contents",
+                fg="yellow",
+                bold=True,
+            )
+            continue
+
+        m.update(p.read_bytes())
 
     return m.hexdigest()
 
@@ -200,8 +282,7 @@ def generate_temporary_ssh_credentials(ssh_key_path: Path) -> str:
     except subprocess.CalledProcessError as e:
         raise ValueError(
             "There was an issue adding temporary SSH credentials to your SSH Agent."
-            " Please ensure that your SSH Agent is running, or (re)start it manually by"
-            " running\n\n    $ eval `ssh-agent -s`\n\n"
+            " Please ensure that your SSH Agent is running"
         ) from e
 
     # decode private key into public key
@@ -289,3 +370,19 @@ class TemporarySSHCredentials:
 
     def __exit__(self, type, value, traceback):
         self.cleanup()
+
+
+class WorkflowType(Enum):
+    latchbiosdk = "latchbiosdk"
+    snakemake = "snakemake"
+
+
+def identifier_suffix_from_str(x: str) -> str:
+    res = ""
+    for c in x:
+        res += c if f"_{c}".isidentifier() else "_"
+    return res
+
+
+def identifier_from_str(x: str) -> str:
+    return (x[0] if x[0].isidentifier() else "_") + identifier_suffix_from_str(x[1:])

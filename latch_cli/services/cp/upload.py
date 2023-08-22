@@ -18,15 +18,11 @@ from latch_cli import tinyrequests
 from latch_cli.constants import latch_constants, units
 from latch_cli.services.cp.config import CPConfig, Progress
 from latch_cli.services.cp.ldata_utils import LDataNodeType, get_node_data
-from latch_cli.services.cp.path_utils import normalize_path, urljoins
+from latch_cli.services.cp.path_utils import normalize_path
 from latch_cli.services.cp.progress import ProgressBarManager, ProgressBars
 from latch_cli.services.cp.throttle import Throttle, ThrottleManager
-from latch_cli.services.cp.utils import (
-    get_auth_header,
-    get_max_workers,
-    human_readable_time,
-)
-from latch_cli.utils import with_si_suffix
+from latch_cli.services.cp.utils import get_max_workers, human_readable_time
+from latch_cli.utils import get_auth_header, urljoins, with_si_suffix
 
 if TYPE_CHECKING:
     PathQueueType: TypeAlias = Queue[Optional[Path]]

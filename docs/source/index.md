@@ -6,11 +6,11 @@ The Latch SDK is an open-source toolchain to define serverless bioinformatics wo
 
 Bioinformatics workflows developed with the SDK automatically receive:
 
-* Instant no-code interfaces for accessibility and publication
-* First class static typing
-* Containerization and versioning of every registered change
-* Reliable and scalable managed cloud infrastructure
-* Single line definition of arbitrary resource requirements (eg. CPU, GPU) for serverless execution
+- Instant no-code interfaces for accessibility and publication
+- First class static typing
+- Containerization and versioning of every registered change
+- Reliable and scalable managed cloud infrastructure
+- Single line definition of arbitrary resource requirements (eg. CPU, GPU) for serverless execution
 
 ![SDK Overview](./assets/sdk-intro.png)
 
@@ -32,7 +32,7 @@ Latch SDK containerizes and versions workflow code in the background each time a
 
 ## What the Latch SDK is not
 
-* **A self-hosted solution**: Currently, you cannot write your workflow using Latch SDK and host it in your own AWS instance or an HPC. The infrastructure serving bioinformatics pipelines is fully managed by Latch. This allows us to rapidly iterate to bring on high quality features, give cost and performance guarantees, and ensure that security is offered out-of-the-box.
+- **A self-hosted solution**: Currently, you cannot write your workflow using Latch SDK and host it in your own AWS instance or an HPC. The infrastructure serving bioinformatics pipelines is fully managed by Latch. This allows us to rapidly iterate to bring on high quality features, give cost and performance guarantees, and ensure that security is offered out-of-the-box.
 
 ## Examples
 
@@ -44,13 +44,13 @@ Visit [Examples](../examples/workflows_examples.md) to see real-world bioinforma
 
 To get started with Latch SDK, view the following resources:
 
-* **[Quickstart](./getting_started/quick_start.md)** is the fastest way to get started with the Latch SDK.
-* **[Concepts](./basics/what_is_a_workflow.md)** describes all important Latch SDK concepts.
-* **[Examples](./examples/workflows_examples.md)** show full examples of using Latch SDK for various bioinformatics pipelines.
-* **[Troubleshooting](./troubleshooting/troubleshooting)** provides a guide to debug common errors.
-* **[Reference](./api/modules.rst)** contains detailed API and design documents.
-* **[Subcommands](./subcommands.md)** contains details about the Latch command line toolchain to register workflows and upload data to Latch.
-* Join the <a href="https://forms.gle/sCjr8tdjzx5HjVW27" target="_blank">SDK open-source community</a> on Slack!
+- **[Quickstart](./getting_started/quick_start.md)** is the fastest way to get started with the Latch SDK.
+- **[Concepts](./basics/what_is_a_workflow.md)** describes all important Latch SDK concepts.
+- **[Examples](./examples/workflows_examples.md)** show full examples of using Latch SDK for various bioinformatics pipelines.
+- **[Troubleshooting](./troubleshooting/troubleshooting)** provides a guide to debug common errors.
+- **[Reference](./api/modules.rst)** contains detailed API and design documents.
+- **[Subcommands](./subcommands.md)** contains details about the Latch command line toolchain to register workflows and upload data to Latch.
+- Join the <a href="https://forms.gle/sCjr8tdjzx5HjVW27" target="_blank">SDK open-source community</a> on Slack!
 
 ---
 
@@ -142,6 +142,13 @@ tutorials/registry_import
 
 cli/cp
 cli/mv
+```
+
+```{toctree}
+:hidden:
+:maxdepth: 2
+:caption: Manual
+manual/snakemake.md
 ```
 
 ```{toctree}

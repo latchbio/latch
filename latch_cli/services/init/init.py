@@ -9,7 +9,7 @@ from typing import Callable, Optional
 import click
 
 from latch_cli.docker_utils import generate_dockerfile
-from latch_cli.tui import select_tui
+from latch_cli.menus import select_tui
 from latch_cli.workflow_config import BaseImageOptions, create_and_write_config
 
 

@@ -1,0 +1,255 @@
+# [Alpha Preview] Snakemake Integration
+
+## Technical preview. Currently not ready for production use
+
+Latch support for Snakemake is in active development. Some workflows already work but a lot of common use cases need minor work. New documentation is also in development.
+
+This preview was created to integrate miscelanneous improvements that accumulated over the course of developing the integration and to prevent the codebase from further diverging from the main branch.
+
+## Getting Started
+
+Register using the Latch CLI. Example: `latch register workflow_folder/ --snakefile workflow_folder/src/Snakefile`
+
+Modify the Snakefile to make it compatible with cloud execution:
+
+- Add basic workflow metadata: name and author
+- Find input files and specify them as workflow parameters
+  - If necessary, include a `config.yaml` file in the workflow image that matches the parameter specification
+- Add missing runtime dependencies (conda, pip, system packages)
+- Add missing rule inputs that are implicitly fulfiled when executing locally. Index files for biological data are commonly expected to always be alongside their matching data.
+- Make sure shared code does not rely on input files. This is any code that is not under a rule and so gets executed by every task
+- Add `resources` directives if tasks run out of memory or disk space
+- Optimize data transfer by merging tasks that have 1-to-1 dependencies
+
+## Overview
+
+Snakemake support is currently based on JIT (Just-In-Time) registraton. This means that the workflow produced by `latch register` will only register a second workflow, which will run the actual pipeline tasks.
+
+### JIT Workflow
+
+The first ("JIT") workflow does the following:
+
+1. Download all input files
+2. Import the Snakefile, calculate the dependency graph, determine which jobs need to be run
+3. Generate a Latch SDK workflow Python script for the second ("runtime") workflow and register it
+4. Run the runtime workflow using the same inputs
+
+Debugging:
+
+- The generated runtime workflow entrypoint is uploaded to `latch:///.snakemake_latch/workflows/snakemake_arcadia__prehgt__workflow/entrypoint.py`
+- Internal workflow specifications are uploaded to `latch:///.snakemake_latch/workflows/snakemake_arcadia__prehgt__workflow/spec`
+
+### Runtime Workflow
+
+The runtime workflow contains a task per each Snakemake job. This means that there will be a separate task per each wildcard instatiation of each rule. This can lead to workflows with hundreds of tasks. Note that the execution graph can be filtered by task status.
+
+Each task runs a modified Snakemake executable using a script from the Latch SDK which monkey-patches the appropriate parts of the Snakemake package. This executable is different in two ways:
+
+1. Rules that are not part of the task's target are entirely ignored
+2. The target rule has all of its properties (currently inputs, outputs, benchmark, log, shellcode) replaced with the job-specific strings. This is the same as the value of these directives with all wildcards expanded and lazy values evaluated
+
+Debugging:
+
+- The Snakemake-compiled tasks are uploaded to `latch:///.snakemake_latch/workflows/snakemake_arcadia__prehgt__workflow/compiled_tasks`
+
+#### Example
+
+Snakefile rules:
+
+```Snakemake
+rule all:
+  input:
+    os.path.join(WORKDIR, "qc", "fastqc", "read1_fastqc.html"),
+    os.path.join(WORKDIR, "qc", "fastqc", "read2_fastqc.html")
+
+rule fastqc:
+  input: os.path.join(WORKDIR, "fastq", "{sample}.fastq")
+  output: os.path.join(WORKDIR, "qc", "fastqc", "{sample}_fastqc.html")
+  shellcmd: "fastqc {input} -o {output}"
+```
+
+Produced jobs:
+
+1. Rule: `fastqc` Wildcards: `sample=read1`
+1. Rule: `fastqc` Wildcards: `sample=read2`
+
+Resulting single-job executable for job 1:
+
+```py
+# @workflow.rule(name='all', lineno=1, snakefile='/root/Snakefile')
+# @workflow.input( # os.path.join(WORKDIR, "qc", "fastqc", "read1_fastqc.html"),
+#     # os.path.join(WORKDIR, "qc", "fastqc", "read2_fastqc.html"),
+# )
+# @workflow.norun()
+# @workflow.run
+# def __rule_all(input, output, ...):
+#     pass
+
+@workflow.rule(name='fastqc', lineno=6, snakefile='/root/Snakefile')
+@workflow.input("work/fastq/read1.fastq" # os.path.join(WORKDIR, "fastq", "{sample}.fastq")
+)
+@workflow.shellcmd("fastqc work/fastq/read1.fastq -o work/qc/fastqc/read1_fastqc.html")
+@workflow.run
+def __rule_fastqc(input, output, ...):
+    shell("fastqc {input} -o {output}", ...)
+```
+
+Note:
+
+- The "all" rule is entirely commented out
+- The "fastqc" rule has no wildcards in its decorators
+
+### Limitations
+
+1. The workflow will execute the first rule defined in the Snakefile (matching standard Snakemake behavior). There is no way to change the default rule other than by moving the desired rule up in the file
+1. The workflow will output files that are not used by downstream tasks. This means that intermediate files cannot be included in the output. The only way to exclude an output is to write a rule that lists it as an input
+1. Input files and directories are downloaded fully, even if they are not used to generate the dependency graph. This commonly leads to issues with large directories being downloaded just to list the files contained within, delaying the JIT workflow by a large amount of time and requiring a large amount of disk space
+1. Only the JIT workflow downloads input files. Rules only download their individual inputs, which can be a subset of the input files. If the Snakefile tries to read input files outside of rules it will usually fail at runtime
+1. Large files that move between tasks will need to be uploaded by the outputting task and downloaded by each consuming task. This can take a large amount of time. Frequently it's possible to merge the producer and the consumer into one task to improve performance
+1. Environment dependencies (Conda packages, Python packages, other software) must be well-specified. Missing dependencies will lead to JIT-time or runtime crashes
+1. Config files are not supported and must be hard-coded into the workflow Docker image
+1. `conda` directives will frequently fail with timeouts/SSL errors because Conda does not react well to dozens of tasks trying to install conda environments over a short timespan. It is recommended that all conda environments are included in the Docker image
+1. The JIT workflow hard-codes the latch paths for rule inputs, outputs and other files. If these files are missing when the runtime workflow task runs, it will fail
+
+## Metadata
+
+Workflow metadata is read from the Snakefile. For this purpose, `SnakemakeMetadata` should be instantiated at the beginning of the file outside of any rules.
+
+### Dependency Issues
+
+Some Snakefiles import third-party dependencies at the beginning. This will cause the metadata extraction to fail if the dependencies are not installed. There are two ways of dealing with this problem:
+
+1. Install the missing dependencies on the registering computer (the computer running the `latch` command)
+2. Use a `latch_metadata.py` file
+
+If registration fails before metadata can be pulled, the CLI will generate an example `latch_metadata.py` file.
+
+### Input Parameters
+
+Since there is no explicit entrypoint (`@workflow`) function in a Snakemake workflow, parameters are instead specified in the metadata file.
+
+Currently only `LatchFile` and `LatchDir` parameters are supported. Both directory and file inputs are specified using `SnakemakeFileParameter` and setting the `type` field as appropriate.
+
+Parameters must include a `path` field which specifies where the data will be downloaded to. This usually matches some file location expected by a Snakemake rule. Frequently, instead of simple paths, a rule with use a `configfile` to dynamically find input paths. In this case the only requiremtn is that the path matches the config file included in the workflow Docker image.
+
+Example:
+
+```py
+parameters = {
+  "example": SnakemakeFileParameter(
+    display_name="Example Parameter",
+    type=LatchFile,
+    path=Path("example.txt"),
+  )
+}
+```
+
+## Troubleshooting
+
+| Problem                                                                                                                                                  | Common Solution                                                                                                                                                                      |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `The above error occured when reading the Snakefile to extract workflow metadata.`                                                                       | Snakefile has errors outside of any rules. Frequently caused by missing dependencies (look for `ModuleNotFoundError`). Either install dependencies or add a `latch_metadata.py` file |
+| `snakemake.exceptions.WorkflowError: Workflow defines configfile config.yaml but it is not present or accessible (full checked path: /root/config.yaml)` | Include a `config.yaml` in the workflow Docker image. Currently, config files cannot be generated from workflow parameters.                                                          |
+| `Command '['/usr/local/bin/python', '-m', 'latch_cli.snakemake.single_task_snakemake', ...]' returned non-zero exit status 1.`                           | The runtime single-job task failed. Look at logs to find the error. It will be marked with the string `[!] Failed`.                                                                  |
+| Runtime workflow task fails with `FileNotFoundError in file /root/workflow/Snakefile` but the file is specified in workflow parameters                   | Wrap the code that reads the file in a function. **See section "Input Files Referenced Outside of Rules"**                                                                           |
+| MultiQC `No analysis results found. Cleaning up..`                                                                                                       | FastQC outputs two files: the raw data and the HTML report. Include the raw `.zip` outputs of FastQC in the MultiQC rule inputs.                                                     |
+
+## Known Issues
+
+- Task caching does not work, tasks always re-run when a new version of the workflow is run even if nothing specific has changed
+- It is not possible to configure the amount of available ephemeral storage
+- Remote registration is not supported
+- Snakemake tasks are serialized using a faulty custom implementation which does not support things like caching. Should use actual generated python code instead
+- JIT workflow image should run snakemake extraction as a smoketest before being registered as a workflow
+- Workflows with no parameters break the workflow params page on console UI
+- Cannot set parameter defaults
+- Parameter keys are unusued but are required in the metadata
+- Log file tailing does not work
+
+## Future Work
+
+- Warn when the Snakefile reads files not on the docker image outside of any rules
+- FUSE
+- File/directory APIs
+
+## Troubleshooting: Input Files Referenced Outside of Rules
+
+Only the JIT workflow downloads every input file. Tasks at runtime will only download files their target rules explicitly depend on. This means that Snakefile code that is not under a rule will usually fail if it tries to read input files.
+
+**Example:**
+
+```python
+# ERROR: this reads a directory, regardless of which rule is executing!
+samples = Path("inputs").glob("*.fastq")
+
+rule all:
+  input:
+    expand("fastqc/{sample}.html", sample=samples)
+
+rule fastqc:
+  input:
+    "inputs/{sample}.fastq"
+  output:
+    "fastqc/{sample}.html"
+  shellcmd:
+    fastqc {input} -o {output}
+```
+
+Since the `Path("inputs").glob(...)` call is not under any rule, _it runs in all tasks._ Because the `fastqc` rule does not specify `input_dir` as an `input`, it will not be downloaded and the code will throw an error.
+
+### Solution
+
+Only access files when necessary (i.e. when computing dependencies as in the example, or in a rule body) by placing problematic code within rule definitions. Either directly inline the variable or write a function to use in place of the variable.
+
+**Example:**
+
+```python
+rule all_inline:
+  input:
+    # This code will only run in the JIT step
+    expand("fastqc/{sample}.html", sample=Path("inputs").glob("*.fastq"))
+
+def get_samples():
+  # This code will only run if the function is called
+  samples = Path("inputs").glob("*.fastq")
+  return samples
+
+rule all_function:
+  input:
+    expand("fastqc/{sample}.html", sample=get_samples())
+```
+
+This works because the JIT step replaces `input`, `output`, `params`, and other declarations with static strings for the runtime workflow so any function calls within them will be replaced with pre-computed strings and the Snakefile will not attempt to read the files again.
+
+**Same example at runtime:**
+
+```python
+rule all_inline:
+  input:
+    "fastqc/example.html"
+
+def get_samples():
+  # Note: this function is no longer called anywhere in the file
+  samples = Path("inputs").glob("*.fastq")
+  return samples
+
+rule all_function:
+  input:
+    "fastqc/example.html"
+```
+
+**Example using multiple return values:**
+
+```python
+def get_samples_data():
+  samples = Path("inputs").glob("*.fastq")
+  return {
+    "samples": samples,
+    "names": [x.name for x in samples]
+  }
+
+rule all:
+  input:
+    expand("fastqc/{sample}.html", sample=get_samples_data()["samples"]),
+    expand("reports/{name}.txt", name=get_samples_data()["names"]),
+```

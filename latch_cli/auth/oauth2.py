@@ -87,7 +87,6 @@ class OAuth2:
 
         class _CallbackHandler(http.server.BaseHTTPRequestHandler):
             def do_GET(self):
-
                 parsed_url = urllib.parse.urlsplit(self.path)
                 if parsed_url.path != "/callback":
                     return
@@ -122,9 +121,7 @@ class OAuth2:
                     <p>Your Latch SDK has been authenticated.</p>
                   </body>
                 </html>
-                """.encode(
-                    "utf-8"
-                )
+                """.encode("utf-8")
                 self.wfile.write(auth_response_html)
 
             def log_request(self, format, *args):

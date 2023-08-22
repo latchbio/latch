@@ -6,43 +6,43 @@ except ImportError:
 import os
 import re
 from pathlib import Path
-from typing import List, TypedDict
+from typing import List
 
 import click
 import click.shell_completion as sc
-import gql
-from latch_sdk_gql.execute import execute
 
 from latch_cli.services.cp.ldata_utils import (
     _get_immediate_children_of_node,
     _get_known_domains_for_account,
 )
-from latch_cli.services.cp.path_utils import urljoins
 
 completion_type = re.compile(
     r"""
-    ^(latch)? ://(
-        (?P<domain>[^/]*)
-        | (?P<remote_path>[^/]*/.*)
-    )$
+    ^
+    (latch)?
+    :/?/?
+    (?P<domain>[^/]*)
+    (?P<path>/.*)?
+    $
     """,
     re.VERBOSE,
 )
 
 
 def complete(
-    ctx: click.Context,
-    param: click.Argument,
-    incomplete: str,
+    ctx: click.Context, param: click.Argument, incomplete: str, allow_local: bool = True
 ) -> List[sc.CompletionItem]:
     match = completion_type.match(incomplete)
 
     if match is None:
+        if not allow_local:
+            return []
+
         return _complete_local_path(incomplete)
-    elif match["domain"] is not None:
-        return _complete_domain(incomplete)
+    elif match["path"] is None or len(match["path"]) == 0:
+        return _complete_domain(match)
     else:
-        return _complete_remote_path(incomplete)
+        return _complete_remote_path(match)
 
 
 def remote_complete(
@@ -50,18 +50,14 @@ def remote_complete(
     param: click.Argument,
     incomplete: str,
 ):
-    match = completion_type.match(incomplete)
-
-    if match is None:
-        return []
-    elif match["domain"] is not None:
-        return _complete_domain(incomplete)
-    else:
-        return _complete_remote_path(incomplete)
+    return complete(ctx, param, incomplete, allow_local=False)
 
 
 @cache
 def _complete_local_path(incomplete: str) -> List[sc.CompletionItem]:
+    # todo(maximsmol): bash needs this, zsh probably needs the real thing
+    # return [sc.CompletionItem("", type="file")]
+
     if incomplete == "":
         parent = Path.cwd()
         stub = ""
@@ -82,35 +78,43 @@ def _complete_local_path(incomplete: str) -> List[sc.CompletionItem]:
     return res
 
 
-# `incomplete` assumed to be of the form '(latch)?://[DOMAIN]/.*'
 @cache
-def _complete_remote_path(incomplete: str) -> List[sc.CompletionItem]:
-    parent, stub = tuple(incomplete.rsplit("/", 1))
-    children = _get_immediate_children_of_node(parent)
+def _complete_remote_path(match: re.Match[str]) -> List[sc.CompletionItem]:
+    domain = match["domain"]
+    path = match["path"][1:]
+
+    parent = f"://{domain}"
+    if match[0].startswith("latch"):
+        parent = f"latch{parent}"
+
+    parent_path = parent
+    if not parent_path.startswith("latch"):
+        parent_path = f"latch{parent_path}"
+
+    children = _get_immediate_children_of_node(parent_path)
 
     res: List[sc.CompletionItem] = []
     for child in children:
-        if child.startswith(stub):
-            res.append(sc.CompletionItem(urljoins(parent, child)))
+        if not child.startswith(path):
+            continue
+
+        res.append(sc.CompletionItem(f"{parent}/{child}"))
 
     return res
 
 
-domain = re.compile(r"^(latch)?://(?P<stub>[^/]*)$")
-
-
-# `incomplete` assumed to be of the form '(latch)?://[^/]*'
 @cache
-def _complete_domain(incomplete: str) -> List[sc.CompletionItem]:
-    match = domain.match(incomplete)
-    if match is None:
-        return []
-
-    stub = match["stub"]
+def _complete_domain(match: re.Match[str]) -> List[sc.CompletionItem]:
+    stub = match["domain"]
 
     res: List[sc.CompletionItem] = []
     for d in _get_known_domains_for_account():
-        if d.startswith(stub):
-            res.append(sc.CompletionItem(f"latch://{d}/"))
+        x = f"://{d}/"
+        if not d.startswith(stub):
+            continue
+
+        if match[0].startswith("latch"):
+            x = f"latch{x}"
+        res.append(sc.CompletionItem(x))
 
     return res
