@@ -5,6 +5,7 @@ import time
 from concurrent.futures import Future, ProcessPoolExecutor, wait
 from contextlib import closing
 from dataclasses import dataclass
+from json import JSONDecodeError
 from multiprocessing import Queue
 from multiprocessing.managers import DictProxy, ListProxy, SyncManager
 from pathlib import Path
@@ -305,6 +306,9 @@ class StartUploadReturnType:
     dest: str
 
 
+MAX_RETRIES = 5
+
+
 def start_upload(
     src: Path,
     dest: str,
@@ -345,40 +349,48 @@ def start_upload(
         math.ceil(file_size / latch_constants.maximum_upload_parts),
     )
 
-    if throttle is not None:
-        time.sleep(throttle.get_delay())
+    retries = 0
+    while retries < MAX_RETRIES:
+        if throttle is not None:
+            time.sleep(throttle.get_delay())
 
-    start = time.monotonic()
-    res = tinyrequests.post(
-        latch_config.api.data.start_upload,
-        headers={"Authorization": get_auth_header()},
-        json={
-            "path": dest,
-            "content_type": content_type,
-            "part_count": part_count,
-        },
-    )
-    end = time.monotonic()
+        start = time.monotonic()
+        res = tinyrequests.post(
+            latch_config.api.data.start_upload,
+            headers={"Authorization": get_auth_header()},
+            json={
+                "path": dest,
+                "content_type": content_type,
+                "part_count": part_count,
+            },
+        )
+        end = time.monotonic()
 
-    json_data = res.json()
+        if latency_q is not None:
+            latency_q.put(end - start)
 
-    if res.status_code != 200:
-        raise ValueError(json_data["error"])
+        try:
+            json_data = res.json()
+        except JSONDecodeError:
+            retries += 1
+            continue
 
-    if latency_q is not None:
-        latency_q.put(end - start)
+        if res.status_code != 200:
+            raise ValueError(json_data["error"])
 
-    if progress_bars is not None:
-        progress_bars.update_total_progress(1)
+        if progress_bars is not None:
+            progress_bars.update_total_progress(1)
 
-    if "version_id" in json_data["data"]:
-        return  # file is empty, so no need to upload any content
+        if "version_id" in json_data["data"]:
+            return  # file is empty, so no need to upload any content
 
-    data: StartUploadData = json_data["data"]
+        data: StartUploadData = json_data["data"]
 
-    return StartUploadReturnType(
-        **data, part_count=part_count, part_size=part_size, src=src, dest=dest
-    )
+        return StartUploadReturnType(
+            **data, part_count=part_count, part_size=part_size, src=src, dest=dest
+        )
+
+    raise ValueError(f"Unable to generate upload URL for {src}")
 
 
 @dataclass(frozen=True)
