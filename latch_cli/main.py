@@ -1,6 +1,7 @@
 """Entrypoints to service functions through a latch_cli."""
 
 import os
+import sys
 from collections import OrderedDict
 from pathlib import Path
 from textwrap import dedent
@@ -115,6 +116,16 @@ def dockerfile(pkg_root: str):
     help="Use a remote server to build workflow.",
 )
 @click.option(
+    "--docker-progress",
+    type=click.Choice(["plain", "tty", "auto"], case_sensitive=False),
+    default="auto",
+    help=(
+        "`tty` shows only the last N lines of the build log. `plain` does no special"
+        " handling. `auto` chooses `tty` when stdout is a terminal and `plain`"
+        " otherwise. Equivalent to Docker's `--progress` flag."
+    ),
+)
+@click.option(
     "-y",
     "--yes",
     is_flag=True,
@@ -122,7 +133,20 @@ def dockerfile(pkg_root: str):
     type=bool,
     help="Skip the confirmation dialog.",
 )
-def register(pkg_root: str, disable_auto_version: bool, remote: bool, yes: bool):
+@click.option(
+    "--snakefile",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Path to a Snakefile to register.",
+)
+def register(
+    pkg_root: str,
+    disable_auto_version: bool,
+    remote: bool,
+    docker_progress: str,
+    yes: bool,
+    snakefile: Optional[Path],
+):
     """Register local workflow code to Latch.
 
     Visit docs.latch.bio to learn more.
@@ -140,6 +164,9 @@ def register(pkg_root: str, disable_auto_version: bool, remote: bool, yes: bool)
         disable_auto_version=disable_auto_version,
         remote=remote,
         skip_confirmation=yes,
+        snakefile=snakefile,
+        progress_plain=(docker_progress == "auto" and not sys.stdout.isatty())
+        or docker_progress == "plain",
         use_new_centromere=use_new_centromere,
     )
 

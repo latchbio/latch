@@ -34,8 +34,8 @@ setup(
         "scp>=0.14.0",
         "boto3>=1.26.0",
         "tqdm>=4.63.0",
-        "lytekit==0.15.2",
-        "lytekitplugins-pods==0.6.1",
+        "lytekit==0.15.3",
+        "lytekitplugins-pods==0.6.2",
         "typing-extensions==4.7.1",
         "apscheduler==3.9.1",
         "gql==3.4.0",
@@ -49,6 +49,7 @@ setup(
         "websockets==11.0.3",
         "watchfiles==0.19.0",
     ],
+    extras_require={"snakemake": ["snakemake>=7.18.0"]},
     classifiers=[
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",

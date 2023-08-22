@@ -12,8 +12,8 @@ import click
 from latch_sdk_config.latch import config
 
 from latch_cli.constants import latch_constants
+from latch_cli.menus import select_tui
 from latch_cli.tinyrequests import post
-from latch_cli.tui import select_tui
 from latch_cli.utils import (
     TemporarySSHCredentials,
     current_workspace,
@@ -158,8 +158,8 @@ def local_development(
         click.echo("Session cancelled.")
         return
 
-    key_path = pkg_root / latch_constants.pkg_ssh_key
-    jump_key_path = pkg_root / latch_constants.pkg_jump_key
+    key_path = pkg_root / ".latch/ssh_key"
+    jump_key_path = pkg_root / ".latch/jump_key"
     with TemporarySSHCredentials(key_path) as ssh:
         click.echo(
             "Starting local development session. This may take a few minutes for larger"
