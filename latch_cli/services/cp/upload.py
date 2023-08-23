@@ -164,28 +164,12 @@ def upload(
                         )
 
                     for fut in as_completed(start_upload_futs):
-                        e = fut.exception()
-                        if e is not None:
-                            print(e)
-                            raise e
-
                         res = fut.result()
                         if res is not None:
                             upload_info_by_src[res.src] = res
 
                     latency_q.put(None)
                     wait([throttle_listener])
-
-                queue: "PathQueueType" = man.Queue()
-                listeners = [
-                    exec.submit(
-                        end_upload_listener,
-                        queue=queue,
-                        parts_by_src=parts_by_src,
-                        upload_info_by_src=upload_info_by_src,
-                        exec=exec,
-                    )
-                ]
 
                 chunk_upload_bars: ProgressBars
                 with closing(
@@ -224,18 +208,16 @@ def upload(
                                     part_size=res.part_size,
                                     progress_bars=chunk_upload_bars,
                                     pbar_index=pbar_index,
-                                    queue=queue,
                                     parts_by_source=parts_by_src,
+                                    upload_id=res.upload_id,
+                                    dest=res.dest,
                                 )
                             )
 
                     wait(chunk_futs)
 
-                queue.put(None)
                 if config.progress != Progress.none:
                     print("\x1b[0GFinalizing uploads...")
-
-                wait(listeners)
             else:
                 if dest_exists and dest_is_dir:
                     normalized = urljoins(normalized, src_path.name)
@@ -409,8 +391,9 @@ def upload_file_chunk(
     part_size: int,
     progress_bars: ProgressBars,
     pbar_index: Optional[int],
-    queue: Optional["PathQueueType"] = None,
     parts_by_source: Optional["PartsBySrcType"] = None,
+    upload_id: Optional[str] = None,
+    dest: Optional[str] = None,
 ) -> CompletedPart:
     time.sleep(0.1 * random.random())
 
@@ -439,8 +422,12 @@ def upload_file_chunk(
         progress_bars.update_total_progress(1)
         progress_bars.write(f"Copied {src}")
 
-        if queue is not None:
-            queue.put(src)
+        if dest is not None and parts_by_source is not None and upload_id is not None:
+            end_upload(
+                dest=dest,
+                upload_id=upload_id,
+                parts=list(parts_by_source[src]),
+            )
 
     return ret
 
@@ -472,27 +459,6 @@ def end_upload(
 
     if progress_bars is not None:
         progress_bars.update_total_progress(1)
-
-
-def end_upload_listener(
-    queue: "PathQueueType",
-    parts_by_src: "PartsBySrcType",
-    upload_info_by_src: "UploadInfoBySrcType",
-    exec: ProcessPoolExecutor,
-):
-    while True:
-        src = queue.get()
-        if src is None:
-            return
-
-        upload_info = upload_info_by_src[src]
-
-        exec.submit(
-            end_upload,
-            dest=upload_info.dest,
-            upload_id=upload_info.upload_id,
-            parts=list(parts_by_src[src]),
-        )
 
 
 def throttler(t: Throttle, q: "LatencyQueueType"):
