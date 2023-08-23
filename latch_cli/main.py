@@ -2,7 +2,6 @@
 
 import os
 import sys
-import textwrap
 from collections import OrderedDict
 from pathlib import Path
 from textwrap import dedent
@@ -62,7 +61,7 @@ def main():
     latest_ver = parse_version(get_latest_package_version())
     if local_ver < latest_ver:
         click.secho(
-            textwrap.dedent(f"""
+            dedent(f"""
                 WARN: Your local version of latch ({local_ver}) is out of date. This may result in unexpected behavior.
                 Please upgrade to the latest version ({latest_ver}) using `python3 -m pip install --upgrade latch`.
                 """).strip("\n"),
