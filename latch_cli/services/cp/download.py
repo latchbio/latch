@@ -13,12 +13,9 @@ from latch_cli import tinyrequests
 from latch_cli.constants import Units
 from latch_cli.services.cp.config import CPConfig, Progress
 from latch_cli.services.cp.ldata_utils import LDataNodeType, get_node_data
+from latch_cli.services.cp.manager import CPStateManager
 from latch_cli.services.cp.path_utils import normalize_path
-from latch_cli.services.cp.progress import (
-    ProgressBarManager,
-    ProgressBars,
-    get_free_index,
-)
+from latch_cli.services.cp.progress import ProgressBars, get_free_index
 from latch_cli.services.cp.utils import get_max_workers, human_readable_time
 from latch_cli.utils import get_auth_header, with_si_suffix
 
@@ -128,7 +125,7 @@ def download(
             num_bars = min(get_max_workers(), num_files)
             show_total_progress = True
 
-        with ProgressBarManager() as manager:
+        with CPStateManager() as manager:
             progress_bars: ProgressBars
             with closing(
                 manager.ProgressBars(
@@ -165,7 +162,7 @@ def download(
         else:
             num_bars = 1
 
-        with ProgressBarManager() as manager:
+        with CPStateManager() as manager:
             progress_bars: ProgressBars
             with closing(
                 manager.ProgressBars(

@@ -1,4 +1,5 @@
 from multiprocessing.managers import BaseManager
+from typing import Type
 
 from attr import dataclass
 
@@ -12,10 +13,3 @@ class Throttle:
 
     def set_delay(self, d: float):
         self.delay = d
-
-
-class ThrottleManager(BaseManager):
-    ...
-
-
-ThrottleManager.register("Throttle", Throttle)
