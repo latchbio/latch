@@ -17,12 +17,11 @@ import aioconsole
 import asyncssh
 import boto3
 import click
-import websockets.client as websockets
+import websockets.client as client
 import websockets.exceptions
 from latch_sdk_config.latch import config
 from watchfiles import awatch
 
-from latch_cli.constants import latch_constants
 from latch_cli.tinyrequests import post
 from latch_cli.utils import (
     TemporarySSHCredentials,
@@ -124,7 +123,7 @@ class _MessageType(Enum):
 
 
 async def _get_messages(
-    ws: websockets.WebSocketClientProtocol,
+    ws: client.WebSocketClientProtocol,
     show_output: bool,
 ):
     async for message in ws:
@@ -140,7 +139,7 @@ async def _get_messages(
 
 
 async def _send_message(
-    ws: websockets.WebSocketClientProtocol,
+    ws: client.WebSocketClientProtocol,
     message: Union[str, bytes],
     typ: Optional[_MessageType] = None,
 ):
@@ -156,7 +155,7 @@ async def _send_message(
 
 
 async def _send_resize_message(
-    ws: websockets.WebSocketClientProtocol,
+    ws: client.WebSocketClientProtocol,
     term_width: int,
     term_height: int,
 ):
@@ -173,7 +172,7 @@ async def _send_resize_message(
 
 
 async def _shell_session(
-    ws: websockets.WebSocketClientProtocol,
+    ws: client.WebSocketClientProtocol,
 ):
     old_settings_stdin = termios.tcgetattr(sys.stdin.fileno())
     tty.setraw(sys.stdin)
@@ -238,9 +237,10 @@ async def _shell_session(
                 return
 
             message = obj.get("Body")
-            if isinstance(message, str):
-                message = message.encode("utf-8")
-            writer.write(message)
+            if message is not None:
+                if isinstance(message, str):
+                    message = message.encode("utf-8")
+                writer.write(message)
             await writer.drain()
             await asyncio.sleep(0)
 
@@ -259,7 +259,7 @@ async def _run_local_dev_session(pkg_root: Path):
     # doing anything
     _get_latest_image(pkg_root)
 
-    key_path = pkg_root / latch_constants.pkg_ssh_key
+    key_path = pkg_root / ".latch" / "ssh_key"
 
     with TemporarySSHCredentials(key_path) as ssh:
         headers = {"Authorization": f"Bearer {retrieve_or_login()}"}
@@ -290,7 +290,6 @@ async def _run_local_dev_session(pkg_root: Path):
         try:
             cent_data = cent_resp.json()
             centromere_ip = cent_data["ip"]
-            centromere_username = cent_data["username"]
         except KeyError as e:
             raise ValueError(f"Malformed response from provision endpoint: missing {e}")
 
@@ -328,7 +327,7 @@ async def _run_local_dev_session(pkg_root: Path):
 
         # todo(aidan): edit known hosts file with centromere ip and address to allow strict host checking
         try:
-            async for ws in websockets.connect(
+            async for ws in client.connect(
                 f"ws://{centromere_ip}:{port}/ws",
                 close_timeout=0,
                 extra_headers=headers,
