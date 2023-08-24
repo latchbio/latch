@@ -16,6 +16,16 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.32.0 - 2023-08-23
+
+### Changed
+
+* `latch cp` can now handle directories with up to `50k` objects
+
+### Fixed
+
+* Various vestigial bugs in `latch develop` that blocked certain users
+
 ## 2.31.1 - 2023-08-08
 
 ### Changed
@@ -240,7 +250,7 @@ Types of changes
 
 ### Dependencies
 
-* Removed `awscli`,   `uvloop`, and `prompt-toolkit` as they were unused.
+* Removed `awscli`,     `uvloop`, and `prompt-toolkit` as they were unused.
 
 ## 2.22.4 - 2023-06-08
 
@@ -613,8 +623,8 @@ Types of changes
 
 ### Deprecated
 
-* The commands `latch rm`,   `latch mkdir`, and `latch touch`.
-* The operators `left_join`,   `right_join`,   `inner_join`,   `outer_join`, 
+* The commands `latch rm`,     `latch mkdir`, and `latch touch`.
+* The operators `left_join`,     `right_join`,     `inner_join`,     `outer_join`, 
 `group_tuple` , `latch_filter` , and `combine`
 
 ### Removed
