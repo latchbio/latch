@@ -1,7 +1,4 @@
-from multiprocessing.managers import BaseManager
-from typing import Type
-
-from attr import dataclass
+from dataclasses import dataclass
 
 
 @dataclass

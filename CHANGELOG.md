@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.32.1 - 2023-08-24
+
+### Fixed
+
+* Corrected `dataclass` import and removed `multiprocessing` logging from `latch cp`.
+
 ## 2.32.0 - 2023-08-23
 
 ### Changed
@@ -250,7 +256,7 @@ Types of changes
 
 ### Dependencies
 
-* Removed `awscli`,     `uvloop`, and `prompt-toolkit` as they were unused.
+* Removed `awscli`,      `uvloop`, and `prompt-toolkit` as they were unused.
 
 ## 2.22.4 - 2023-06-08
 
@@ -623,8 +629,8 @@ Types of changes
 
 ### Deprecated
 
-* The commands `latch rm`,     `latch mkdir`, and `latch touch`.
-* The operators `left_join`,     `right_join`,     `inner_join`,     `outer_join`, 
+* The commands `latch rm`,      `latch mkdir`, and `latch touch`.
+* The operators `left_join`,      `right_join`,      `inner_join`,      `outer_join`, 
 `group_tuple` , `latch_filter` , and `combine`
 
 ### Removed

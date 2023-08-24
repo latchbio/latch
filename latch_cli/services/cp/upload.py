@@ -1,9 +1,5 @@
-import datetime
-import json
-import logging
 import math
 import mimetypes
-import multiprocessing
 import os
 import random
 import time
@@ -36,12 +32,6 @@ if TYPE_CHECKING:
     LatencyQueueType: TypeAlias = "Queue[Optional[float]]"
     PartsBySrcType: TypeAlias = DictProxy[Path, ListProxy["CompletedPart"]]
     UploadInfoBySrcType: TypeAlias = DictProxy[Path, "StartUploadReturnType"]
-
-logging.basicConfig()
-multiprocessing.get_logger().setLevel(logging.DEBUG)
-
-
-start_upload_batch_size = 100
 
 
 class EmptyUploadData(TypedDict):
