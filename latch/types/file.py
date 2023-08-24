@@ -1,6 +1,7 @@
 import re
 from os import PathLike
 from typing import Optional, Type, Union
+from urllib.parse import urlparse
 
 import gql
 from flytekit.core.annotation import FlyteAnnotation
@@ -12,6 +13,7 @@ from latch_sdk_gql.execute import execute
 from typing_extensions import Annotated
 
 from latch.types.utils import _is_valid_url
+from latch_cli.services.cp.path_utils import normalize_path
 
 is_absolute_node_path = re.compile(r"^(latch)?://\d+.node(/)?$")
 
@@ -63,7 +65,13 @@ class LatchFile(FlyteFile):
 
         # Cast PathLike objects so that LatchFile has consistent JSON
         # representation.
-        self.path = str(path)
+        parsed = urlparse(str(path))
+        if parsed.scheme == "file":
+            self.path = parsed.path
+        elif parsed.scheme == "latch":
+            self.path = normalize_path(str(path))
+        else:
+            self.path = str(path)
 
         if _is_valid_url(self.path) and remote_path is None:
             self._remote_path = str(path)
@@ -73,6 +81,7 @@ class LatchFile(FlyteFile):
         if kwargs.get("downloader") is not None:
             super().__init__(self.path, kwargs["downloader"], self._remote_path)
         else:
+
             def downloader():
                 ctx = FlyteContextManager.current_context()
                 if (
@@ -85,15 +94,13 @@ class LatchFile(FlyteFile):
                     local_path_hint = self._remote_path
                     if is_absolute_node_path.match(self._remote_path) is not None:
                         data = execute(
-                            gql.gql(
-                                """
+                            gql.gql("""
                             query getName($argPath: String!) {
                                 ldataResolvePathData(argPath: $argPath) {
                                     name
                                 }
                             }
-                            """
-                            ),
+                            """),
                             {"argPath": self._remote_path},
                         )["ldataResolvePathData"]
 
@@ -159,7 +166,7 @@ class LatchFilePathTransformer(FlyteFilePathTransformer):
         ctx: FlyteContext,
         lv: Literal,
         expected_python_type: Union[Type[LatchFile], PathLike],
-    ) -> FlyteFile:
+    ) -> LatchFile:
         uri = lv.scalar.blob.uri
         if expected_python_type is PathLike:
             raise TypeError(

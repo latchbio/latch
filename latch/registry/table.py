@@ -592,10 +592,8 @@ class TableUpdate:
                     raise InvalidColumnTypeError(
                         key,
                         type,
-                        (
-                            f"Enum value for {repr(f.name)} ({repr(f.value)}) is not a"
-                            " string"
-                        ),
+                        f"Enum value for {repr(f.name)} ({repr(f.value)}) is not a"
+                        " string",
                     )
 
                 members.append(f.value)

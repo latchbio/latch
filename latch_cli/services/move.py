@@ -91,10 +91,8 @@ def move(
         elif msg.startswith("Refusing to move already moved node"):
             raise get_path_error(
                 src,
-                (
-                    "copy in progress. Please wait until the node has finished copying"
-                    " before moving."
-                ),
+                "copy in progress. Please wait until the node has finished copying"
+                " before moving.",
                 acc_id,
             ) from e
         elif msg == "Conflicting object in destination":

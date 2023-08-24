@@ -1,6 +1,5 @@
 from contextlib import contextmanager
 from multiprocessing import BoundedSemaphore
-from multiprocessing.managers import BaseManager
 from typing import Dict, List, Optional
 
 import tqdm
@@ -126,13 +125,6 @@ class ProgressBars:
 
         for bar in self.task_bars:
             bar.close()
-
-
-class ProgressBarManager(BaseManager):
-    ...
-
-
-ProgressBarManager.register("ProgressBars", ProgressBars)
 
 
 @contextmanager

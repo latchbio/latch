@@ -4,7 +4,6 @@ from latch_cli.auth.utils import _base64url_encode
 
 
 class CSRFState:
-
     """Context manager to hold state preventing CSRF attacks.
 
     Outlined in detail `here`_, this object holds a state string as a

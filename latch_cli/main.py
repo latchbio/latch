@@ -1,9 +1,10 @@
 """Entrypoints to service functions through a latch_cli."""
 
 import os
-import textwrap
+import sys
 from collections import OrderedDict
 from pathlib import Path
+from textwrap import dedent
 from typing import List, Optional, Union
 
 import click
@@ -17,7 +18,12 @@ from latch_cli.services.cp.autocomplete import remote_complete
 from latch_cli.services.cp.config import Progress
 from latch_cli.services.init.init import template_flag_to_option
 from latch_cli.services.local_dev import TaskSize
-from latch_cli.utils import get_latest_package_version, get_local_package_version
+from latch_cli.utils import (
+    AuthenticationError,
+    get_auth_header,
+    get_latest_package_version,
+    get_local_package_version,
+)
 from latch_cli.workflow_config import BaseImageOptions
 
 latch_cli.click_utils.patch()
@@ -37,11 +43,25 @@ def main():
     Collection of command line tools for using the Latch SDK and
     interacting with the Latch platform.
     """
+    try:
+        get_auth_header()
+    except AuthenticationError:
+        click.secho(
+            dedent("""
+            Unable to authenticate with Latch.
+
+            If you are on a machine with a browser, run `latch login`.
+            If not, navigate to `https://console.latch.bio/settings/developer` on a different machine, select `Access Tokens`, and copy your `API Key` to `~/.latch/token` on this machine.
+            """),
+            fg="red",
+        )
+        raise click.exceptions.Exit()
+
     local_ver = parse_version(get_local_package_version())
     latest_ver = parse_version(get_latest_package_version())
     if local_ver < latest_ver:
         click.secho(
-            textwrap.dedent(f"""
+            dedent(f"""
                 WARN: Your local version of latch ({local_ver}) is out of date. This may result in unexpected behavior.
                 Please upgrade to the latest version ({latest_ver}) using `python3 -m pip install --upgrade latch`.
                 """).strip("\n"),
@@ -96,6 +116,16 @@ def dockerfile(pkg_root: str):
     help="Use a remote server to build workflow.",
 )
 @click.option(
+    "--docker-progress",
+    type=click.Choice(["plain", "tty", "auto"], case_sensitive=False),
+    default="auto",
+    help=(
+        "`tty` shows only the last N lines of the build log. `plain` does no special"
+        " handling. `auto` chooses `tty` when stdout is a terminal and `plain`"
+        " otherwise. Equivalent to Docker's `--progress` flag."
+    ),
+)
+@click.option(
     "-y",
     "--yes",
     is_flag=True,
@@ -103,7 +133,20 @@ def dockerfile(pkg_root: str):
     type=bool,
     help="Skip the confirmation dialog.",
 )
-def register(pkg_root: str, disable_auto_version: bool, remote: bool, yes: bool):
+@click.option(
+    "--snakefile",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Path to a Snakefile to register.",
+)
+def register(
+    pkg_root: str,
+    disable_auto_version: bool,
+    remote: bool,
+    docker_progress: str,
+    yes: bool,
+    snakefile: Optional[Path],
+):
     """Register local workflow code to Latch.
 
     Visit docs.latch.bio to learn more.
@@ -121,6 +164,9 @@ def register(pkg_root: str, disable_auto_version: bool, remote: bool, yes: bool)
         disable_auto_version=disable_auto_version,
         remote=remote,
         skip_confirmation=yes,
+        snakefile=snakefile,
+        progress_plain=(docker_progress == "auto" and not sys.stdout.isatty())
+        or docker_progress == "plain",
         use_new_centromere=use_new_centromere,
     )
 
@@ -311,7 +357,9 @@ def mv(src: str, dest: str):
     is_flag=True,
     default=False,
 )
-@click.argument("remote_directories", nargs=-1, shell_complete=remote_complete)
+# todo(maximsmol): enable once ls uses gql and supports new paths
+# @click.argument("remote_directories", nargs=-1, shell_complete=remote_complete)
+@click.argument("remote_directories", nargs=-1)
 def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]):
     """
     List the contents of a Latch Data directory
@@ -451,10 +499,8 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
     if version is None:
         version = "latest"
     click.secho(
-        (
-            f"Successfully generated python param map named {wf_name}.params.py with"
-            f" version {version}\n Run `latch launch {wf_name}.params.py` to launch it."
-        ),
+        f"Successfully generated python param map named {wf_name}.params.py with"
+        f" version {version}\n Run `latch launch {wf_name}.params.py` to launch it.",
         fg="green",
     )
 
@@ -599,6 +645,42 @@ def get_executions():
     from latch_cli.services.get_executions import get_executions
 
     get_executions()
+
+
+@main.group()
+def pods():
+    """Manage pods"""
+    pass
+
+
+@pods.command("stop")
+@click.argument("pod_id", nargs=1, type=int, required=False)
+def stop_pod(pod_id: Optional[int] = None):
+    """Stops a pod given a pod_id or the pod from which the command is run"""
+    crash_handler.message = "Unable to stop pod"
+
+    from latch_cli.services.stop_pod import stop_pod
+
+    if pod_id is None:
+        id_path = Path("/root/.latch/id")
+
+        try:
+            pod_id = int(id_path.read_text().strip("\n"))
+        except Exception as e:
+            if isinstance(e, FileNotFoundError):
+                err_str = f"Pod ID not found at `{id_path}`"
+            elif isinstance(e, ValueError):
+                err_str = f"Could not parse Pod ID at `{id_path}`"
+            else:
+                err_str = f"Error reading Pod ID from `{id_path}`"
+
+            click.secho(
+                f"{err_str} -- please provide a Pod ID as a command line argument.",
+                fg="red",
+            )
+            return
+
+    stop_pod(pod_id)
 
 
 # Test data subcommands.

@@ -17,12 +17,11 @@ import aioconsole
 import asyncssh
 import boto3
 import click
-import websockets.client as websockets
+import websockets.client as client
 import websockets.exceptions
 from latch_sdk_config.latch import config
 from watchfiles import awatch
 
-from latch_cli.constants import latch_constants
 from latch_cli.tinyrequests import post
 from latch_cli.utils import (
     TemporarySSHCredentials,
@@ -124,7 +123,7 @@ class _MessageType(Enum):
 
 
 async def _get_messages(
-    ws: websockets.WebSocketClientProtocol,
+    ws: client.WebSocketClientProtocol,
     show_output: bool,
 ):
     async for message in ws:
@@ -140,7 +139,7 @@ async def _get_messages(
 
 
 async def _send_message(
-    ws: websockets.WebSocketClientProtocol,
+    ws: client.WebSocketClientProtocol,
     message: Union[str, bytes],
     typ: Optional[_MessageType] = None,
 ):
@@ -156,7 +155,7 @@ async def _send_message(
 
 
 async def _send_resize_message(
-    ws: websockets.WebSocketClientProtocol,
+    ws: client.WebSocketClientProtocol,
     term_width: int,
     term_height: int,
 ):
@@ -173,7 +172,7 @@ async def _send_resize_message(
 
 
 async def _shell_session(
-    ws: websockets.WebSocketClientProtocol,
+    ws: client.WebSocketClientProtocol,
 ):
     old_settings_stdin = termios.tcgetattr(sys.stdin.fileno())
     tty.setraw(sys.stdin)
@@ -238,9 +237,10 @@ async def _shell_session(
                 return
 
             message = obj.get("Body")
-            if isinstance(message, str):
-                message = message.encode("utf-8")
-            writer.write(message)
+            if message is not None:
+                if isinstance(message, str):
+                    message = message.encode("utf-8")
+                writer.write(message)
             await writer.drain()
             await asyncio.sleep(0)
 
@@ -259,7 +259,7 @@ async def _run_local_dev_session(pkg_root: Path):
     # doing anything
     _get_latest_image(pkg_root)
 
-    key_path = pkg_root / latch_constants.pkg_ssh_key
+    key_path = pkg_root / ".latch" / "ssh_key"
 
     with TemporarySSHCredentials(key_path) as ssh:
         headers = {"Authorization": f"Bearer {retrieve_or_login()}"}
@@ -290,7 +290,6 @@ async def _run_local_dev_session(pkg_root: Path):
         try:
             cent_data = cent_resp.json()
             centromere_ip = cent_data["ip"]
-            centromere_username = cent_data["username"]
         except KeyError as e:
             raise ValueError(f"Malformed response from provision endpoint: missing {e}")
 
@@ -328,54 +327,51 @@ async def _run_local_dev_session(pkg_root: Path):
 
         # todo(aidan): edit known hosts file with centromere ip and address to allow strict host checking
         try:
-            async with asyncssh.connect(
-                centromere_ip, username=centromere_username, known_hosts=None
+            async for ws in client.connect(
+                f"ws://{centromere_ip}:{port}/ws",
+                close_timeout=0,
+                extra_headers=headers,
             ):
-                async for ws in websockets.connect(
-                    f"ws://{centromere_ip}:{port}/ws",
-                    close_timeout=0,
-                    extra_headers=headers,
-                ):
+                try:
+                    await aioconsole.aprint(
+                        "Successfully connected to remote instance."
+                    )
                     try:
-                        await aioconsole.aprint(
-                            "Successfully connected to remote instance."
-                        )
-                        try:
-                            await aioconsole.aprint("Setting up local sync...")
-                            watch_task = asyncio.create_task(
-                                _watch_and_rsync(
-                                    pkg_root, centromere_ip, ssh_port, key_path
-                                )
+                        await aioconsole.aprint("Setting up local sync...")
+                        watch_task = asyncio.create_task(
+                            _watch_and_rsync(
+                                pkg_root, centromere_ip, ssh_port, key_path
                             )
-                            await aioconsole.aprint("Done.")
-
-                            image_name_tagged = _get_latest_image(pkg_root)
-                            await _send_message(ws, docker_access_token)
-                            await _send_message(ws, image_name_tagged)
-                            await aioconsole.aprint(f"Pulling {image_name_tagged}... ")
-
-                            await _get_messages(ws, show_output=False)
-                            await aioconsole.aprint("Image successfully pulled.\n")
-
-                            await _get_messages(ws, show_output=True)
-
-                            await _shell_session(ws)
-                            rsync_stop_event.set()
-                            await watch_task
-
-                        except websockets.exceptions.ConnectionClosed:
-                            continue
-                    except Exception as e:
-                        await aioconsole.aprint(traceback.format_exc())
-                    finally:
-                        await aioconsole.aprint("Exiting local development session")
-                        await ws.close()
-                        close_resp = post(
-                            config.api.centromere.stop_local_dev,
-                            headers={"Authorization": f"Bearer {retrieve_or_login()}"},
                         )
-                        close_resp.raise_for_status()
-                        return
+                        await aioconsole.aprint("Done.")
+
+                        image_name_tagged = _get_latest_image(pkg_root)
+                        await _send_message(ws, docker_access_token)
+                        await _send_message(ws, image_name_tagged)
+                        await aioconsole.aprint(f"Pulling {image_name_tagged}... ")
+
+                        await _get_messages(ws, show_output=False)
+                        await aioconsole.aprint("Image successfully pulled.\n")
+
+                        await _get_messages(ws, show_output=True)
+
+                        await _shell_session(ws)
+                        rsync_stop_event.set()
+                        await watch_task
+
+                    except websockets.exceptions.ConnectionClosed:
+                        continue
+                except Exception as e:
+                    await aioconsole.aprint(traceback.format_exc())
+                finally:
+                    await aioconsole.aprint("Exiting local development session")
+                    await ws.close()
+                    close_resp = post(
+                        config.api.centromere.stop_local_dev,
+                        headers={"Authorization": f"Bearer {retrieve_or_login()}"},
+                    )
+                    close_resp.raise_for_status()
+                    return
         except asyncssh.ProtocolError as e:
             if "Too many authentication failures" in str(e):
                 click.secho(
