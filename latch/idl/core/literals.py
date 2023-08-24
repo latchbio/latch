@@ -305,7 +305,7 @@ class Literal:
     """
     A hash representing this literal.
     This is used for caching purposes. For more details refer to RFC 1893
-    (https://github.com/flyteorg/flyte/blob/master/rfc/system/1893-caching-of-offloaded-objects.md)
+    (https://github.com/flyteorg/flyte/blob/516dd3926957af83c1c3ba6c12817477486be5c5/rfc/system/1893-caching-of-offloaded-objects.md)
     """
 
     def to_idl(self) -> pb.Literal:
