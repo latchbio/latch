@@ -334,7 +334,7 @@ def start_upload(
         retries = 0
         while retries < MAX_RETRIES:
             if throttle is not None:
-                time.sleep(throttle.get_delay())
+                time.sleep(throttle.get_delay() * math.exp(retries * 1 / 2))
 
             start = time.monotonic()
             res = tinyrequests.post(
@@ -358,7 +358,8 @@ def start_upload(
                 continue
 
             if res.status_code != 200:
-                raise ValueError(json_data["error"])
+                retries += 1
+                continue
 
             if progress_bars is not None:
                 progress_bars.update_total_progress(1)
