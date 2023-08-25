@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
-from textwrap import dedent, shorten
+from textwrap import TextWrapper, dedent, shorten
 from typing import List, Optional, TypedDict
 
 import click
@@ -58,16 +58,16 @@ def ls(path: str, *, group_directories_first: bool = False):
 
     Args:
         path: A valid remote path
+        group_directories_first: Option to display directories/links before
+            objects
 
     This function will list all of the entites under the remote directory
     specified in the path `path`. Will error if the path is invalid
     or the directory doesn't exist.
 
     Examples:
-
         >>> ls("")
             # Lists all entities in the user's root directory
-
         >>> ls("latch:///dir1/dir2/dir_name")
             # Lists all entities inside dir1/dir2/dir_name
     """
@@ -164,7 +164,7 @@ def ls(path: str, *, group_directories_first: bool = False):
         rows.sort(key=lambda row: 1 if row.type == LDataNodeType.obj else 0)
 
     headers = [
-        click.style(f"{'Size': >6}", underline=True),
+        "  " + click.style(f"Size", underline=True),
         click.style(f"Date Modified", underline=True),
         click.style(f"Name", underline=True),
     ]
@@ -184,7 +184,10 @@ def ls(path: str, *, group_directories_first: bool = False):
                 size_str = with_si_suffix(row.size, suffix="")
                 size_str = click.style(f"{size_str: >6}", fg="bright_green")
 
-        name_str = shorten(row.name, 50)
+        name_str = row.name
+        if len(name_str) > 50:
+            name_str = f"{name_str[:47]}..."
+
         if row.type != LDataNodeType.obj:
             color = "bright_blue"
             if row.type == LDataNodeType.link:

@@ -2,7 +2,6 @@
 
 import os
 import sys
-from collections import OrderedDict
 from pathlib import Path
 from textwrap import dedent
 from typing import List, Optional, Tuple, Union
@@ -45,7 +44,7 @@ def main():
     """
     try:
         get_auth_header()
-    except AuthenticationError:
+    except AuthenticationError as e:
         click.secho(
             dedent("""
             Unable to authenticate with Latch.
@@ -55,7 +54,7 @@ def main():
             """).strip("\n"),
             fg="red",
         )
-        raise click.exceptions.Exit()
+        raise click.exceptions.Exit() from e
 
     local_ver = parse_version(get_local_package_version())
     latest_ver = parse_version(get_latest_package_version())
@@ -370,7 +369,7 @@ def ls(paths: Tuple[str], group_directories_first: bool):
 
     # If the user doesn't provide any arguments, default to root
     if len(paths) == 0:
-        paths = ("",)
+        paths = ("/",)
 
     for path in paths:
         if len(paths) > 1:
@@ -380,6 +379,9 @@ def ls(paths: Tuple[str], group_directories_first: bool):
             path,
             group_directories_first=group_directories_first,
         )
+
+        if len(paths) > 1:
+            click.echo("")
 
 
 @main.command("launch")
@@ -502,7 +504,7 @@ def mkdir(remote_directory: str):
     from latch_cli.services.deprecated.mkdir import mkdir
 
     click.secho(
-        f"Warning: `latch mkdir` is deprecated and will be removed soon.",
+        "Warning: `latch mkdir` is deprecated and will be removed soon.",
         fg="yellow",
     )
     mkdir(remote_directory)
@@ -519,7 +521,7 @@ def touch(remote_file: str):
     from latch_cli.services.deprecated.touch import touch
 
     click.secho(
-        f"Warning: `latch touch` is deprecated and will be removed soon.",
+        "Warning: `latch touch` is deprecated and will be removed soon.",
         fg="yellow",
     )
     touch(remote_file)
