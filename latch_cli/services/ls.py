@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
-from textwrap import TextWrapper, dedent, shorten
+from textwrap import dedent
 from typing import List, Optional, TypedDict
 
 import click
@@ -12,41 +12,41 @@ from latch_sdk_gql.execute import execute
 from latch_cli.click_utils import bold
 from latch_cli.services.cp.ldata_utils import LDataNodeType
 from latch_cli.utils import with_si_suffix
-from latch_cli.utils.path import is_remote_path, normalize_path
+from latch_cli.utils.path import normalize_path
 
 
-class LdataObjectMeta(TypedDict):
+class _LdataObjectMeta(TypedDict):
     modifyTime: Optional[str]
     contentSize: Optional[int]
 
 
-class Child(TypedDict):
+class _Child(TypedDict):
     name: str
-    ldataObjectMeta: Optional[LdataObjectMeta]
+    ldataObjectMeta: Optional[_LdataObjectMeta]
     type: str
 
 
-class Node(TypedDict):
-    child: Child
+class _Node(TypedDict):
+    child: _Child
 
 
-class ChildLdataTreeEdges(TypedDict):
-    nodes: List[Node]
+class _ChildLdataTreeEdges(TypedDict):
+    nodes: List[_Node]
 
 
-class FinalLinkTarget(TypedDict):
-    childLdataTreeEdges: ChildLdataTreeEdges
+class _FinalLinkTarget(TypedDict):
+    childLdataTreeEdges: _ChildLdataTreeEdges
 
 
-class LdataResolvePathData(TypedDict):
+class _LdataResolvePathData(TypedDict):
     name: str
     type: str
-    ldataObjectMeta: Optional[LdataObjectMeta]
-    finalLinkTarget: FinalLinkTarget
+    ldataObjectMeta: Optional[_LdataObjectMeta]
+    finalLinkTarget: _FinalLinkTarget
 
 
 @dataclass(frozen=True)
-class Row:
+class _Row:
     name: str
     type: LDataNodeType
     size: Optional[int]
@@ -114,7 +114,7 @@ def ls(path: str, *, group_directories_first: bool = False):
         {"argPath": normalized_path},
     )
 
-    res: Optional[LdataResolvePathData] = query["ldataResolvePathData"]
+    res: Optional[_LdataResolvePathData] = query["ldataResolvePathData"]
     acc_id: str = query["accountInfoCurrent"]["id"]
 
     if res is None:
@@ -138,7 +138,7 @@ def ls(path: str, *, group_directories_first: bool = False):
         # ls object should just display the object's info
         nodes.append({"child": res})
 
-    rows: List[Row] = []
+    rows: List[_Row] = []
     for node in nodes:
         child = node["child"]
 
@@ -151,7 +151,7 @@ def ls(path: str, *, group_directories_first: bool = False):
                 modify_time = datetime.fromisoformat(meta["modifyTime"])
 
         rows.append(
-            Row(
+            _Row(
                 name=child["name"],
                 type=LDataNodeType(child["type"].lower()),
                 size=size,
@@ -164,9 +164,9 @@ def ls(path: str, *, group_directories_first: bool = False):
         rows.sort(key=lambda row: 1 if row.type == LDataNodeType.obj else 0)
 
     headers = [
-        "  " + click.style(f"Size", underline=True),
-        click.style(f"Date Modified", underline=True),
-        click.style(f"Name", underline=True),
+        "  " + click.style("Size", underline=True),
+        click.style("Date Modified", underline=True),
+        click.style("Name", underline=True),
     ]
 
     click.echo(" ".join(headers))
@@ -196,7 +196,3 @@ def ls(path: str, *, group_directories_first: bool = False):
             name_str = click.style(f"{name_str}/", bold=True, fg=color)
 
         click.echo(f"{size_str} {mt_str} {name_str}")
-
-
-if __name__ == "__main__":
-    ls("/", group_directories_first=False)
