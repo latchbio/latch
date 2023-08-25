@@ -1,10 +1,6 @@
-try:
-    from functools import cache
-except ImportError:
-    from functools import lru_cache as cache
-
 import os
 import re
+from functools import lru_cache
 from pathlib import Path
 from typing import List
 
@@ -16,13 +12,17 @@ from latch_cli.services.cp.ldata_utils import (
     _get_known_domains_for_account,
 )
 
+cache = lru_cache(maxsize=None)
 completion_type = re.compile(
     r"""
     ^
     (latch)?
     :/?/?
     (?P<domain>[^/]*)
-    (?P<path>/.*)?
+    (
+        (?P<parent>(/[^/]*)*)?
+        (?P<path>/[^/]*)
+    )?
     $
     """,
     re.VERBOSE,
@@ -30,7 +30,10 @@ completion_type = re.compile(
 
 
 def complete(
-    ctx: click.Context, param: click.Argument, incomplete: str, allow_local: bool = True
+    ctx: click.Context,
+    param: click.Argument,
+    incomplete: str,
+    allow_local: bool = True,
 ) -> List[sc.CompletionItem]:
     match = completion_type.match(incomplete)
 
@@ -81,9 +84,10 @@ def _complete_local_path(incomplete: str) -> List[sc.CompletionItem]:
 @cache
 def _complete_remote_path(match: re.Match[str]) -> List[sc.CompletionItem]:
     domain = match["domain"]
+    parent = match["parent"]
     path = match["path"][1:]
 
-    parent = f"://{domain}"
+    parent = f"://{domain}{parent}"
     if match[0].startswith("latch"):
         parent = f"latch{parent}"
 

@@ -13,7 +13,7 @@ from latch_sdk_gql.execute import execute
 from typing_extensions import Annotated
 
 from latch.types.utils import _is_valid_url
-from latch_cli.services.cp.path_utils import normalize_path
+from latch_cli.utils.path import normalize_path
 
 is_absolute_node_path = re.compile(r"^(latch)?://\d+.node(/)?$")
 

@@ -12,7 +12,7 @@ import graphql.language as l
 from latch_sdk_gql.execute import execute
 from latch_sdk_gql.utils import _name_node, _parse_selection
 
-from latch_cli.services.cp.path_utils import get_path_error, normalize_path
+from latch_cli.utils.path import get_path_error, normalize_path
 
 
 class LDataNodeType(str, Enum):
