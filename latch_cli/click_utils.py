@@ -102,6 +102,10 @@ def patch():
     click.UsageError.show = colored_usage_error_show
 
 
+def bold(s: str) -> str:
+    return f"{AnsiCodes.bold}{s}{AnsiCodes.reset}"
+
+
 class AnsiCodes:
     bold = "\x1b[1m"
     reset = "\x1b[22m"

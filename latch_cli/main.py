@@ -5,7 +5,7 @@ import sys
 from collections import OrderedDict
 from pathlib import Path
 from textwrap import dedent
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 
 import click
 from packaging.version import parse as parse_version
@@ -52,7 +52,7 @@ def main():
 
             If you are on a machine with a browser, run `latch login`.
             If not, navigate to `https://console.latch.bio/settings/developer` on a different machine, select `Access Tokens`, and copy your `API Key` to `~/.latch/token` on this machine.
-            """),
+            """).strip("\n"),
             fg="red",
         )
         raise click.exceptions.Exit()
@@ -357,103 +357,29 @@ def mv(src: str, dest: str):
     is_flag=True,
     default=False,
 )
-# todo(maximsmol): enable once ls uses gql and supports new paths
-# @click.argument("remote_directories", nargs=-1, shell_complete=remote_complete)
-@click.argument("remote_directories", nargs=-1)
-def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]):
+@click.argument("paths", nargs=-1, shell_complete=remote_complete)
+def ls(paths: Tuple[str], group_directories_first: bool):
     """
     List the contents of a Latch Data directory
     """
 
-    crash_handler.message = f"Unable to display contents of {remote_directories}"
+    crash_handler.message = f"Unable to display contents of {paths}"
     crash_handler.pkg_root = str(Path.cwd())
 
-    from datetime import datetime
-
     from latch_cli.services.ls import ls
-    from latch_cli.utils import with_si_suffix
 
     # If the user doesn't provide any arguments, default to root
-    if not remote_directories:
-        remote_directories = ["latch:///"]
+    if len(paths) == 0:
+        paths = ("",)
 
-    for remote_directory in remote_directories:
-        if len(remote_directories) > 1:
-            click.echo(f"{remote_directory}:")
+    for path in paths:
+        if len(paths) > 1:
+            click.echo(f"{path}:")
 
-        output = ls(remote_directory)
-
-        output.sort(key=lambda row: row["name"])
-        if group_directories_first:
-            output.sort(key=lambda row: row["type"])
-
-        formatted = []
-        for row in output:
-            vals = {
-                "contentSize": (
-                    click.style(
-                        with_si_suffix(int(row["contentSize"]), suffix="", styled=True),
-                        fg="bright_green",
-                    )
-                    if row["contentSize"] != "-" and row["type"] != "dir"
-                    else click.style("-", dim=True)
-                ),
-                "modifyTime": (
-                    click.style(
-                        datetime.fromisoformat(row["modifyTime"]).strftime(
-                            "%d %b %H:%M"
-                        ),
-                        fg="blue",
-                    )
-                    if row["modifyTime"] != "-" and row["type"] != "dir"
-                    else click.style("-", dim=True)
-                ),
-                "name": (
-                    row["name"] if len(row["name"]) <= 50 else f"{row['name'][:47]}..."
-                ),
-            }
-
-            if row["type"] == "dir":
-                vals["name"] = (
-                    click.style(row["name"], fg="bright_blue", bold=True) + "/"
-                )
-
-            formatted.append(vals)
-
-        columns = OrderedDict(
-            contentSize="Size", modifyTime="Date Modified", name="Name"
+        ls(
+            path,
+            group_directories_first=group_directories_first,
         )
-
-        column_width = {key: len(title) for key, title in columns.items()}
-        for row in formatted:
-            for key in columns:
-                column_width[key] = max(column_width[key], len(click.unstyle(row[key])))
-
-        def pad_styled(x: str, l: int, align_right=False):
-            cur = len(click.unstyle(x))
-
-            pad = " " * (l - cur)
-            if align_right:
-                return pad + x
-            return x + pad
-
-        click.echo(
-            " ".join(
-                pad_styled(
-                    click.style(title, underline=True),
-                    column_width[key],
-                    key == "contentSize",
-                )
-                for key, title in columns.items()
-            )
-        )
-        for row in formatted:
-            click.echo(
-                " ".join(
-                    pad_styled(row[k], column_width[k], k == "contentSize")
-                    for k in columns
-                )
-            )
 
 
 @main.command("launch")
