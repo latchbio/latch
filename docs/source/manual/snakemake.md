@@ -1,29 +1,130 @@
-# [Alpha Preview] Snakemake Integration
+# [Alpha Pre-release] Snakemake Integration
 
-## Technical preview. Currently not ready for production use
+## Pre-release Disclaimer - Currently not ready for production use
 
-Latch support for Snakemake is in active development. Some workflows already work but a lot of common use cases need minor work. New documentation is also in development.
+Latch support for Snakemake is in active development. Some workflows already work but a lot of common use cases need minor work. This documentation is also in active development.
 
-This preview was created to integrate miscelanneous improvements that accumulated over the course of developing the integration and to prevent the codebase from further diverging from the main branch.
+This pre-release was created to integrate miscellaneous improvements that accumulated over the course of developing the integration and to prevent the codebase from further diverging from the main branch.
 
 ## Getting Started
 
-Register using the Latch CLI. Example: `latch register workflow_folder/ --snakefile workflow_folder/src/Snakefile`
+Latch's snakemake integration allows developers to build graphical interfaces to expose their workflows to wet lab teams. It also provides managed cloud infrastructure for execution of the workflow's jobs.
 
-Modify the Snakefile to make it compatible with cloud execution:
+A primary design goal for integration is to allow developers to register existing projects with minimal added boilerplate and modifications to code. Here we outline exactly what these changes are and why they are needed.
 
-- Add basic workflow metadata: name and author
-- Find input files and specify them as workflow parameters
-  - If necessary, include a `config.yaml` file in the workflow image that matches the parameter specification
-- Add missing runtime dependencies (conda, pip, system packages)
+Recall a snakemake project consists of a `Snakefile`, which describes workflow
+rules in an ["extension"](https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html) of Python, and associated python code imported and called by these rules. To make this project compatible with Latch, we need to do the following:
+
+1. Identify and construct explicit parameters for each file dependency in `latch_metadata.py`
+2. Build a container with all runtime dependencies
+3. Ensure your `Snakefile` is compatible with cloud execution
+
+### Step 1: Construct a `latch_metadata.py` file
+
+The snakemake framework was designed to allow developers to both define and execute their workflows. This often means that the workflow parameters are sometimes ill-defined and scattered throughout the project as configuration values, static values in the `Snakefile` or command line flags.
+
+To construct a graphical interface from a snakemake workflow, the file parameters need to be explicitly identified and defined so that they can be presented to scientist to be filled out through a web application. The `latch_metadata.py` file holds these parameter definitions, along with any styling or cosmetic modifications the developer wishes to make to each parameter.
+
+*Currently, only file and directory parameters are supported*.
+
+To identify the file "dependencies" that should be pulled out as parameters, it
+can be useful to start with the `config.yaml` file that is used to configure
+many Snakemake projects. Thinking about the minimum set of files needed to run
+a successful workflow on fresh machine can also help identify these parameters.
+
+Below is an example of how to create the `latch_metadata.py` file based on the `config.yaml` file:
+
+Example of `config.yaml` file:
+
+```yaml
+# config.yaml
+r1_fastq: "tests/r1.fq.gz"
+r2_fastq: "tests/r2.fq.gz"
+path: "tests/hs38DH"
+```
+
+Example of `latch_metadata.py` file:
+
+```python
+# latch_metadata.py
+
+from pathlib import Path
+
+from latch.types.directory import LatchDir
+from latch.types.file import LatchFile
+from latch.types.metadata import LatchAuthor, SnakemakeFileParameter, SnakemakeMetadata
+
+SnakemakeMetadata(
+    display_name="fgbio Best Practise FASTQ -> Consensus Pipeline",
+    author=LatchAuthor(
+        name="Fulcrum Genomics",
+    ),
+    parameters={
+        "r1_fastq": SnakemakeFileParameter(
+            display_name="Read 1 FastQ",
+            type=LatchFile,
+            path=Path("tests/r1.fq.gz"),
+        ),
+        "r2_fastq": SnakemakeFileParameter(
+            display_name="Read 2 FastQ",
+            type=LatchFile,
+            path=Path("tests/r2.fq.gz"),
+        ),
+        "genome": SnakemakeFileParameter(
+            display_name="Reference Genome",
+            type=LatchDir,
+            path=Path("tests/hs38DH"),
+        ),
+    },
+)
+```
+
+### Step 2: Define all dependencies in a container
+When executing Snakemake jobs on Latch, the jobs run within an environment specified by a `Dockerfile`. It is important to ensure that all required dependencies, whether they are third-party binaries, python libraries, or shell scripts, are correctly installed and configured within this `Dockerfile` so the job has access to them.
+
+**Key Dependencies to Consider**:
+* Python Packages:
+  * Specify these in a `requirements.txt` or `environment.yaml` file.
+* Conda Packages:
+  * List these in an `environment.yaml` file.
+* Bioinformatics Tools:
+  * Often includes third-party binaries. They will need to be manually added to the Dockerfile.
+* Snakemake wrappers and containers:
+  * Note that while many Snakefile rules use singularity or docker containers, Latch doesn't currently support these wrapper or containerized environments. Therefore, all installation codes for these must be manually added into the Dockerfile.
+
+**Generating a Customizable Dockerfile:**
+
+To generate a `Dockerfile` that can be modified, use the following command:
+
+`latch dockerfile <workflow_folder>`
+
+The above command searches for the `environment.yaml` and `requirements.txt` files within your project directory. Based on these, it generates Dockerfile instructions to install the specified Conda and Python dependencies.
+
+Once the Dockerfile is generated, you can manually append it with third-party Linux installations or source codes related to Snakemake wrappers or containers.
+
+When you register your snakemake project with Latch, a container is automatically built from the generated Dockerfile.
+
+### Step 3: Ensure your `Snakefile` is compatible with cloud execution
+
+When snakemake workflows are executed on Latch, each generated job is run in a separate container on a potentially isolated machine. This means your `Snakefile` might need to be modified to address problems that arise from this type of execution that were not present when executing locally:
+
 - Add missing rule inputs that are implicitly fulfiled when executing locally. Index files for biological data are commonly expected to always be alongside their matching data.
 - Make sure shared code does not rely on input files. This is any code that is not under a rule and so gets executed by every task
 - Add `resources` directives if tasks run out of memory or disk space
 - Optimize data transfer by merging tasks that have 1-to-1 dependencies
 
-## Overview
+### Step 4: Register your project
 
-Snakemake support is currently based on JIT (Just-In-Time) registraton. This means that the workflow produced by `latch register` will only register a second workflow, which will run the actual pipeline tasks.
+When the above steps have been taken, it is safe to register your project with the Latch CLI. 
+
+Example: `latch register <workflow_folder>/ --snakefile <workflow_folder>/Snakefile`
+
+This command will build a container and construct a graphical interface from your `latch_metdata.py` file. When this process has completed, a link to view your workflow on the Latch console will be printed to `stdout`.
+
+---
+## Lifecycle of a Snakemake Execution on Latch
+
+Snakemake support is currently based on JIT (Just-In-Time) registraton. This means that the workflow produced by `latch register` will only register a second workflow, which will run the actual pipeline tasks. This is because the actual structure of the workflow cannot be specified until parameter values are provided.
 
 ### JIT Workflow
 
@@ -36,8 +137,8 @@ The first ("JIT") workflow does the following:
 
 Debugging:
 
-- The generated runtime workflow entrypoint is uploaded to `latch:///.snakemake_latch/workflows/snakemake_arcadia__prehgt__workflow/entrypoint.py`
-- Internal workflow specifications are uploaded to `latch:///.snakemake_latch/workflows/snakemake_arcadia__prehgt__workflow/spec`
+- The generated runtime workflow entrypoint is uploaded to `latch:///.snakemake_latch/workflows/<workflow_name>/entrypoint.py`
+- Internal workflow specifications are uploaded to `latch:///.snakemake_latch/workflows/<workflow_name>/spec`
 
 ### Runtime Workflow
 
@@ -50,7 +151,7 @@ Each task runs a modified Snakemake executable using a script from the Latch SDK
 
 Debugging:
 
-- The Snakemake-compiled tasks are uploaded to `latch:///.snakemake_latch/workflows/snakemake_arcadia__prehgt__workflow/compiled_tasks`
+- The Snakemake-compiled tasks are uploaded to `latch:///.snakemake_latch/workflows/<workflow_name>/compiled_tasks`
 
 #### Example
 
@@ -152,25 +253,8 @@ parameters = {
 | `snakemake.exceptions.WorkflowError: Workflow defines configfile config.yaml but it is not present or accessible (full checked path: /root/config.yaml)` | Include a `config.yaml` in the workflow Docker image. Currently, config files cannot be generated from workflow parameters.                                                          |
 | `Command '['/usr/local/bin/python', '-m', 'latch_cli.snakemake.single_task_snakemake', ...]' returned non-zero exit status 1.`                           | The runtime single-job task failed. Look at logs to find the error. It will be marked with the string `[!] Failed`.                                                                  |
 | Runtime workflow task fails with `FileNotFoundError in file /root/workflow/Snakefile` but the file is specified in workflow parameters                   | Wrap the code that reads the file in a function. **See section "Input Files Referenced Outside of Rules"**                                                                           |
-| MultiQC `No analysis results found. Cleaning up..`                                                                                                       | FastQC outputs two files: the raw data and the HTML report. Include the raw `.zip` outputs of FastQC in the MultiQC rule inputs.                                                     |
+| MultiQC `No analysis results found. Cleaning up..`                                                                                                       | FastQC outputs two files for every FastQ file: the raw `.zip` data and the HTML report. Include the raw `.zip` outputs of FastQC in the MultiQC rule inputs. **See section "Input Files Not Explicitly Defined in Rules"** "    
 
-## Known Issues
-
-- Task caching does not work, tasks always re-run when a new version of the workflow is run even if nothing specific has changed
-- It is not possible to configure the amount of available ephemeral storage
-- Remote registration is not supported
-- Snakemake tasks are serialized using a faulty custom implementation which does not support things like caching. Should use actual generated python code instead
-- JIT workflow image should run snakemake extraction as a smoketest before being registered as a workflow
-- Workflows with no parameters break the workflow params page on console UI
-- Cannot set parameter defaults
-- Parameter keys are unusued but are required in the metadata
-- Log file tailing does not work
-
-## Future Work
-
-- Warn when the Snakefile reads files not on the docker image outside of any rules
-- FUSE
-- File/directory APIs
 
 ## Troubleshooting: Input Files Referenced Outside of Rules
 
@@ -253,3 +337,100 @@ rule all:
     expand("fastqc/{sample}.html", sample=get_samples_data()["samples"]),
     expand("reports/{name}.txt", name=get_samples_data()["names"]),
 ```
+
+## Troubleshooting: Input Files Not Explicitly Defined in Rules
+When running the snakemake workflow locally, not all input files must be explicitly defined in every rule because all files are generated on one computer. However, tasks on Latch only download files specified by their target rules. Thus, unspecified input files will cause the Snakefile rule to fail due to missing input files.
+
+**Example**
+```python
+# ERROR: the .zip file produced by the the fastqc rule is not found in the multiqc rule!
+
+WORKDIR = "/root/"
+
+rule fastqc:
+  input: join(WORKDIR, 'fastq', 'raw', "{sample}.fastq")
+  output:
+      html = join(WORKDIR, "QC", "fastqc", 'raw', "Sample_{sample}")
+  params:
+      join(WORKDIR, "QC","fastqc", 'raw', "Sample_{sample}")
+  run:
+      if not os.path.exists(join(WORKDIR, str(params))):
+          os.makedirs(join(WORKDIR, str(params)))
+      shell("fastqc -o {params} --noextract -k 5 -t 8 -f fastq {input} 2>{log}")
+
+rule multiqc:
+    input: 
+      aligned_sequences = join(WORKDIR, "plasmid_wells_aligned_sequences.csv")
+    output: directory(join(WORKDIR, "QC", "multiqc_report", 'raw'))
+    params:
+        join(WORKDIR, "QC", "fastqc", 'raw')
+    benchmark:
+        join(BENCHMARKDIR, "multiqc.txt")
+    log:
+        join(LOGDIR, "multiqc.log")
+    shell:
+        "multiqc {params} -o {output} --force"
+```
+
+### Solution
+For programs that produce multiple types of input files (e.g. `.zip` and `.html` in the case of FastQC), explicitly specify these files in the outputs of the previous rule and in the inputs of the subsequent rule. 
+
+**Example**
+```python
+def get_samples():
+  samples = Path("/root").glob("*fastqc.zip")
+  return samples
+
+WORKDIR = "/root/"
+rule fastqc:
+  input: join(WORKDIR, 'fastq', 'raw', "{sample}.fastq")
+  output:
+      html = join(WORKDIR, "QC", "fastqc", 'raw', "Sample_{sample}", "_{sample}_fastqc.html")
+      # Specify zip as the output for every sample from fastqc
+      zip = join(WORKDIR, "QC", "fastqc", 'raw', "Sample_{sample}", "_{sample}_fastqc.zip")
+  params:
+      join(WORKDIR, "QC","fastqc", 'raw', "Sample_{sample}")
+  run:
+      if not os.path.exists(join(WORKDIR, str(params))):
+          os.makedirs(join(WORKDIR, str(params)))
+      shell("fastqc -o {params} --noextract -k 5 -t 8 -f fastq {input} 2>{log}")
+
+rule multiqc:
+    input: 
+      aligned_sequences = join(WORKDIR, "plasmid_wells_aligned_sequences.csv")
+      # Specify zip as the input for every sample from fastqc
+      zip = expand(
+            join(WORKDIR, "QC", "fastqc", 'raw', "Sample_{sample}", "_{sample}_fastqc.zip"), sample=get_samples()
+        )
+    output: directory(join(WORKDIR, "QC", "multiqc_report", 'raw'))
+    params:
+        join(WORKDIR, "QC", "fastqc", 'raw')
+    benchmark:
+        join(BENCHMARKDIR, "multiqc.txt")
+    log:
+        join(LOGDIR, "multiqc.log")
+    shell:
+       # Explicitly pass the input into the script instead of the Snakefile rule `params`
+       # Before: "multiqc {params} -o {output} --force"
+       # After
+       "multiqc {input.zip} -o {output} --force"
+```
+
+## Snakemake Roadmap
+### Known Issues
+
+- Task caching does not work, tasks always re-run when a new version of the workflow is run even if nothing specific has changed
+- It is not possible to configure the amount of available ephemeral storage
+- Remote registration is not supported
+- Snakemake tasks are serialized using a faulty custom implementation which does not support things like caching. Should use actual generated python code instead
+- JIT workflow image should run snakemake extraction as a smoketest before being registered as a workflow
+- Workflows with no parameters break the workflow params page on console UI
+- Cannot set parameter defaults
+- Parameter keys are unusued but are required in the metadata
+- Log file tailing does not work
+
+### Future Work
+
+- Warn when the Snakefile reads files not on the docker image outside of any rules
+- FUSE
+- File/directory APIs
