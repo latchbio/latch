@@ -8,11 +8,12 @@ This pre-release was created to integrate miscellaneous improvements that accumu
 
 ## Getting Started
 
-Latch's snakemake integration allows developers to build graphical interfaces to expose their workflows to wet lab teams and managed cloud execution of snakemake jobs.
+Latch's snakemake integration allows developers to build graphical interfaces to expose their workflows to wet lab teams. It also provides managed cloud infrastructure for execution of the workflow's jobs.
 
 A primary design goal for integration is to allow developers to register existing projects with minimal added boilerplate and modifications to code. Here we outline exactly what these changes are and why they are needed.
 
-Recall a snakemake project consists of a `Snakefile`, which describes workflow rules using an ["extension"](https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html) of Python, and associated python code imported and called by these rules in the `Snakefile`.To make this project compatible with Latch, we need to do the following:
+Recall a snakemake project consists of a `Snakefile`, which describes workflow
+rules in an ["extension"](https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html) of Python, and associated python code imported and called by these rules. To make this project compatible with Latch, we need to do the following:
 
 1. Identify and construct explicit parameters for each file dependency in `latch_metadata.py`
 2. Build a container with all runtime dependencies
@@ -22,9 +23,14 @@ Recall a snakemake project consists of a `Snakefile`, which describes workflow r
 
 The snakemake framework was designed to allow developers to both define and execute their workflows. This often means that the workflow parameters are sometimes ill-defined and scattered throughout the project as configuration values, static values in the `Snakefile` or command line flags.
 
-To construct a graphical interface from a snakemake workflow, the parameters need to be explicitly identified and defined so that they can be presented to scientist to be filled out through a web application. The `latch_metadata.py` file holds these parameter definitions, along with any styling or cosmetic modifications the developer wishes to make to each parameter.
+To construct a graphical interface from a snakemake workflow, the file parameters need to be explicitly identified and defined so that they can be presented to scientist to be filled out through a web application. The `latch_metadata.py` file holds these parameter definitions, along with any styling or cosmetic modifications the developer wishes to make to each parameter.
 
-It's worth noting that many Snakemake workflows come with a `config.yaml` file that enumerates input files and other parameters.
+*Currently, only file and directory parameters are supported*.
+
+To identify the file "dependencies" that should be pulled out as parameters, it
+can be useful to start with the `config.yaml` file that is used to configure
+many Snakemake projects. Thinking about the minimum set of files needed to run
+a successful workflow on fresh machine can also help identify these parameters.
 
 Below is an example of how to create the `latch_metadata.py` file based on the `config.yaml` file:
 
@@ -74,7 +80,7 @@ SnakemakeMetadata(
 ```
 
 ### Step 2: Define all dependencies in a container
-When executing snakemake jobs on Latch, the jobs run within an environment specified by a `Dockerfile`. It is important to ensure that all required dependencies, whether they are third-party binaries, python libraries, or shell scripts, are correctly installed and configured within this `Dockerfile` so the job has access to them.
+When executing Snakemake jobs on Latch, the jobs run within an environment specified by a `Dockerfile`. It is important to ensure that all required dependencies, whether they are third-party binaries, python libraries, or shell scripts, are correctly installed and configured within this `Dockerfile` so the job has access to them.
 
 **Key Dependencies to Consider**:
 * Python Packages:
@@ -83,7 +89,7 @@ When executing snakemake jobs on Latch, the jobs run within an environment speci
   * List these in an `environment.yaml` file.
 * Bioinformatics Tools:
   * Often includes third-party binaries. They will need to be manually added to the Dockerfile.
-* Snakemake Wrappers and Containers:
+* Snakemake wrappers and containers:
   * Note that while many Snakefile rules use singularity or docker containers, Latch doesn't currently support these wrapper or containerized environments. Therefore, all installation codes for these must be manually added into the Dockerfile.
 
 **Generating a Customizable Dockerfile:**
