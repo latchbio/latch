@@ -6,6 +6,7 @@ from textwrap import dedent
 from typing import List, Optional, TypedDict
 
 import click
+import dateutil.parser as dp
 import gql
 from latch_sdk_gql.execute import execute
 
@@ -148,7 +149,7 @@ def ls(path: str, *, group_directories_first: bool = False):
             if meta["contentSize"] is not None:
                 size = int(meta["contentSize"])
             if meta["modifyTime"] is not None:
-                modify_time = datetime.fromisoformat(meta["modifyTime"])
+                modify_time = dp.isoparse(meta["modifyTime"])
 
         rows.append(
             _Row(

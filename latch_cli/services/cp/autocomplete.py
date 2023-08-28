@@ -82,7 +82,7 @@ def _complete_local_path(incomplete: str) -> List[sc.CompletionItem]:
 
 
 @cache
-def _complete_remote_path(match: re.Match[str]) -> List[sc.CompletionItem]:
+def _complete_remote_path(match: re.Match) -> List[sc.CompletionItem]:
     domain = match["domain"]
     parent = match["parent"]
     path = match["path"][1:]
@@ -108,7 +108,7 @@ def _complete_remote_path(match: re.Match[str]) -> List[sc.CompletionItem]:
 
 
 @cache
-def _complete_domain(match: re.Match[str]) -> List[sc.CompletionItem]:
+def _complete_domain(match: re.Match) -> List[sc.CompletionItem]:
     stub = match["domain"]
 
     res: List[sc.CompletionItem] = []
