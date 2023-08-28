@@ -278,7 +278,7 @@ Types of changes
 
 ### Dependencies
 
-* Removed `awscli`,           `uvloop`, and `prompt-toolkit` as they were unused.
+* Removed `awscli`,                     `uvloop`, and `prompt-toolkit` as they were unused.
 
 ## 2.22.4 - 2023-06-08
 
@@ -651,9 +651,18 @@ Types of changes
 
 ### Deprecated
 
-* The commands `latch rm`,           `latch mkdir`, and `latch touch`.
-* The operators `left_join`,           `right_join`,           `inner_join`,           `outer_join`, 
-`group_tuple` , `latch_filter` , and `combine`
+* The commands
+  + `latch rm`, 
+  + `latch mkdir`, and
+  + `latch touch`.
+* The operators
+  + `left_join`, 
+  + `right_join`, 
+  + `inner_join`, 
+  + `outer_join`, 
+  + `group_tuple`, 
+  + `latch_filter`, and
+  + `combine`.
 
 ### Removed
 
