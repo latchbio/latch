@@ -16,6 +16,21 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.32.4 - 2023-08-28
+
+### Fixed
+
+* Fixed a bug in `latch ls` where `datetime.isoformat` was called on strings with timestamps (which is not supported on python < 3.11)
+
+## 2.32.3 - 2023-08-26
+
+### Fixed
+
+* Snakemake issues
+  + bounded snakemake versions to prevent compatibility issues that arise in later versions
+  + small bugs in list json encoder
+  + mishandled http issues.
+
 ## 2.32.2 - 2023-08-25
 
 ### Fixed
@@ -263,7 +278,7 @@ Types of changes
 
 ### Dependencies
 
-* Removed `awscli`,       `uvloop`, and `prompt-toolkit` as they were unused.
+* Removed `awscli`,           `uvloop`, and `prompt-toolkit` as they were unused.
 
 ## 2.22.4 - 2023-06-08
 
@@ -636,8 +651,8 @@ Types of changes
 
 ### Deprecated
 
-* The commands `latch rm`,       `latch mkdir`, and `latch touch`.
-* The operators `left_join`,       `right_join`,       `inner_join`,       `outer_join`, 
+* The commands `latch rm`,           `latch mkdir`, and `latch touch`.
+* The operators `left_join`,           `right_join`,           `inner_join`,           `outer_join`, 
 `group_tuple` , `latch_filter` , and `combine`
 
 ### Removed
