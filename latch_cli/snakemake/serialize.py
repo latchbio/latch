@@ -48,7 +48,7 @@ def get_snakemake_metadata_example(name: str) -> str:
         from pathlib import Path
         from latch.types.metadata import SnakemakeMetadata, SnakemakeFileParameter
         from latch.types.file import LatchFile
-        from latch.types.metadata import LatchAuthor, LatchMetadata
+        from latch.types.metadata import LatchAuthor
 
         SnakemakeMetadata(
             display_name={repr(name)},
@@ -72,16 +72,18 @@ def ensure_snakemake_metadata_exists():
     if metadata._snakemake_metadata is None:
         click.secho(
             dedent("""
-                    No `SnakemakeMetadata` object was detected in your Snakefile. This
+                    No `SnakemakeMetadata` object was detected in your project. This
                     object needs to be defined to register this workflow with Latch.
 
-                    You can paste the following in the top of your Snakefile to get
-                    started:
+                    Create a file named `latch_metadata.py` with the following
+                    code to get started:
 
                     __example__
 
                     Find more information at docs.latch.bio.
-                    """).replace("__example__", snakemake_metadata_example),
+                    """).replace(
+                "__example__", get_snakemake_metadata_example("example_name")
+            ),
             bold=True,
             fg="red",
         )
