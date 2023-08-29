@@ -15,6 +15,7 @@ from snakemake.parser import (
     Params,
     Python,
     Rule,
+    Ruleorder,
     Shell,
 )
 from snakemake.rules import Rule as RRule
@@ -183,6 +184,8 @@ Output.block_content = skipping_block_content
 Params.block_content = skipping_block_content
 Benchmark.block_content = skipping_block_content
 Log.block_content = skipping_block_content
+# TODO (kenny) - enforce rule order instead of ignoring it
+Ruleorder.block_content = skipping_block_content
 
 
 class SkippingRule(Rule):
