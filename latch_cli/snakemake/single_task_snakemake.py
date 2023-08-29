@@ -166,7 +166,7 @@ emitted_overrides_per_type: Dict[str, Set[str]] = {}
 
 
 def skipping_block_content(self, token):
-    if type(self) == Ruleorder or self.rulename not in rules:
+    if self.rulename not in rules:
         return
 
     emitted_overrides = emitted_overrides_per_type.setdefault(
@@ -184,8 +184,8 @@ Output.block_content = skipping_block_content
 Params.block_content = skipping_block_content
 Benchmark.block_content = skipping_block_content
 Log.block_content = skipping_block_content
-# TODO (kenny) - enforce rule order instead of ignoring it
-Ruleorder.block_content = skipping_block_content
+# todo(kenny): enforce rule order instead of ignoring it
+Ruleorder.block_content = lambda self, token: None
 
 
 class SkippingRule(Rule):
