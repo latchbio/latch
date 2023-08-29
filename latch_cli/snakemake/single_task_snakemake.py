@@ -109,6 +109,10 @@ def render_annotated_str(x) -> str:
         res = f"directory({res})"
         del flags["directory"]
 
+    # TODO (kenny) ~ handle temporary values
+    if "temp" in flags:
+        del flags["temp"]
+
     if len(flags) != 0:
         raise RuntimeError(f"found unsupported flags: {repr(flags)}")
 
