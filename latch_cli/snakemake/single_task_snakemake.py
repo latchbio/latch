@@ -166,7 +166,7 @@ emitted_overrides_per_type: Dict[str, Set[str]] = {}
 
 
 def skipping_block_content(self, token):
-    if self.rulename not in rules:
+    if type(self) in (Ruleorder) or self.rulename not in rules:
         return
 
     emitted_overrides = emitted_overrides_per_type.setdefault(
