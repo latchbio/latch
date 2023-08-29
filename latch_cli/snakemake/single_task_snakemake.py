@@ -15,6 +15,7 @@ from snakemake.parser import (
     Params,
     Python,
     Rule,
+    Ruleorder,
     Shell,
 )
 from snakemake.rules import Rule as RRule
@@ -109,6 +110,10 @@ def render_annotated_str(x) -> str:
         res = f"directory({res})"
         del flags["directory"]
 
+    # TODO (kenny) ~ handle temporary values
+    if "temp" in flags:
+        del flags["temp"]
+
     if len(flags) != 0:
         raise RuntimeError(f"found unsupported flags: {repr(flags)}")
 
@@ -179,6 +184,8 @@ Output.block_content = skipping_block_content
 Params.block_content = skipping_block_content
 Benchmark.block_content = skipping_block_content
 Log.block_content = skipping_block_content
+# todo(kenny): enforce rule order instead of ignoring it
+Ruleorder.block_content = lambda self, token: None
 
 
 class SkippingRule(Rule):

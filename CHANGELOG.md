@@ -16,6 +16,14 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.32.5 - 2023-08-28
+
+### Fixed
+
+* Snakemake:
+    * Ignore global ruleorder directive
+    * Ignore temporary condition on output values
+
 ## 2.32.4 - 2023-08-28
 
 ### Fixed
