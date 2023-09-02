@@ -49,4 +49,4 @@ def cp(
                 f" `latch://`)",
                 fg="red",
             )
-            raise click.exceptions.Exit()
+            raise click.exceptions.Exit(1)

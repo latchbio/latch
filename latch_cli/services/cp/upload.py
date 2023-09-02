@@ -57,7 +57,7 @@ def upload(
     src_path = Path(src)
     if not src_path.exists():
         click.secho(f"Could not find {src_path}: no such file or directory.", fg="red")
-        raise click.exceptions.Exit()
+        raise click.exceptions.Exit(1)
 
     if config.progress != Progress.none:
         click.secho(f"Uploading {src_path.name}", fg="blue")
@@ -77,10 +77,10 @@ def upload(
     if not dest_is_dir:
         if not dest_exists:  # path is latch:///a/b/file_1/file_2
             click.secho(f"No such file or directory: {dest}", fg="red")
-            raise click.exceptions.Exit()
+            raise click.exceptions.Exit(1)
         if src_path.is_dir():
             click.secho(f"{normalized} is not a directory.", fg="red")
-            raise click.exceptions.Exit()
+            raise click.exceptions.Exit(1)
 
     if config.progress == Progress.none:
         num_bars = 0

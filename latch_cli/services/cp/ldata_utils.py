@@ -145,7 +145,7 @@ def get_node_data(
             )
         except (TypeError, ValueError) as e:
             click.echo(get_path_error(remote_path, "not found", acc_id))
-            raise click.exceptions.Exit() from e
+            raise click.exceptions.Exit(1) from e
 
     return GetNodeDataResult(acc_id, ret)
 

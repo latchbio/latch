@@ -54,7 +54,7 @@ def main():
             """).strip("\n"),
             fg="red",
         )
-        raise click.exceptions.Exit() from e
+        raise click.exceptions.Exit(1) from e
 
     local_ver = parse_version(get_local_package_version())
     latest_ver = parse_version(get_latest_package_version())
