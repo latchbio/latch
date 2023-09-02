@@ -56,7 +56,8 @@ def upload(
 ):
     src_path = Path(src)
     if not src_path.exists():
-        raise ValueError(f"Could not find {src_path}.")
+        click.secho(f"Could not find {src_path}: no such file or directory.", fg="red")
+        raise click.exceptions.Exit()
 
     if config.progress != Progress.none:
         click.secho(f"Uploading {src_path.name}", fg="blue")
@@ -75,9 +76,11 @@ def upload(
 
     if not dest_is_dir:
         if not dest_exists:  # path is latch:///a/b/file_1/file_2
-            raise ValueError(f"No such file or directory: {dest}")
+            click.secho(f"No such file or directory: {dest}", fg="red")
+            raise click.exceptions.Exit()
         if src_path.is_dir():
-            raise ValueError(f"{normalized} is not a directory.")
+            click.secho(f"{normalized} is not a directory.", fg="red")
+            raise click.exceptions.Exit()
 
     if config.progress == Progress.none:
         num_bars = 0
@@ -287,85 +290,92 @@ def start_upload(
     throttle: Optional[Throttle] = None,
     latency_q: Optional["LatencyQueueType"] = None,
 ) -> Optional[StartUploadReturnType]:
-    try:
-        if not src.exists():
-            raise ValueError(f"Could not find {src}: no such file or link")
-
-        if src.is_symlink():
-            src = src.resolve()
-
-        content_type, _ = mimetypes.guess_type(src)
-        if content_type is None:
-            with open(src, "rb") as f:
-                sample = f.read(units.KiB)
-
-            try:
-                sample.decode()
-                content_type = "text/plain"
-            except UnicodeDecodeError:
-                content_type = "application/octet-stream"
-
-        file_size = src.stat().st_size
-        if file_size > latch_constants.maximum_upload_size:
-            raise ValueError(
-                f"File is {with_si_suffix(file_size)} which exceeds the maximum upload"
-                " size (5TiB)"
-            )
-
-        part_count = min(
-            latch_constants.maximum_upload_parts,
-            math.ceil(file_size / latch_constants.file_chunk_size),
-        )
-        part_size = max(
-            latch_constants.file_chunk_size,
-            math.ceil(file_size / latch_constants.maximum_upload_parts),
+    if not src.exists():
+        raise click.exceptions.Exit(
+            click.style(f"Could not find {src}: no such file or link", fg="red")
         )
 
-        retries = 0
-        while retries < MAX_RETRIES:
-            if throttle is not None:
-                time.sleep(throttle.get_delay() * math.exp(retries * 1 / 2))
+    if src.is_symlink():
+        src = src.resolve()
 
-            start = time.monotonic()
-            res = tinyrequests.post(
-                latch_config.api.data.start_upload,
-                headers={"Authorization": get_auth_header()},
-                json={
-                    "path": dest,
-                    "content_type": content_type,
-                    "part_count": part_count,
-                },
+    content_type, _ = mimetypes.guess_type(src)
+    if content_type is None:
+        with open(src, "rb") as f:
+            sample = f.read(units.KiB)
+
+        try:
+            sample.decode()
+            content_type = "text/plain"
+        except UnicodeDecodeError:
+            content_type = "application/octet-stream"
+
+    file_size = src.stat().st_size
+    if file_size > latch_constants.maximum_upload_size:
+        raise click.exceptions.Exit(
+            click.style(
+                f"File is {with_si_suffix(file_size)} which exceeds the maximum"
+                " upload size (5TiB)",
+                fg="red",
             )
-            end = time.monotonic()
+        )
 
-            if latency_q is not None:
-                latency_q.put(end - start)
+    part_count = min(
+        latch_constants.maximum_upload_parts,
+        math.ceil(file_size / latch_constants.file_chunk_size),
+    )
+    part_size = max(
+        latch_constants.file_chunk_size,
+        math.ceil(file_size / latch_constants.maximum_upload_parts),
+    )
 
-            try:
-                json_data = res.json()
-            except JSONDecodeError:
-                retries += 1
-                continue
+    retries = 0
+    while retries < MAX_RETRIES:
+        if throttle is not None:
+            time.sleep(throttle.get_delay() * math.exp(retries * 1 / 2))
 
-            if res.status_code != 200:
-                retries += 1
-                continue
+        start = time.monotonic()
+        res = tinyrequests.post(
+            latch_config.api.data.start_upload,
+            headers={"Authorization": get_auth_header()},
+            json={
+                "path": dest,
+                "content_type": content_type,
+                "part_count": part_count,
+            },
+        )
+        end = time.monotonic()
 
-            if progress_bars is not None:
-                progress_bars.update_total_progress(1)
+        if latency_q is not None:
+            latency_q.put(end - start)
 
-            if "version_id" in json_data["data"]:
-                return  # file is empty, so no need to upload any content
+        try:
+            json_data = res.json()
+        except JSONDecodeError:
+            retries += 1
+            continue
 
-            data: StartUploadData = json_data["data"]
+        if res.status_code != 200:
+            retries += 1
+            continue
 
-            return StartUploadReturnType(
-                **data, part_count=part_count, part_size=part_size, src=src, dest=dest
-            )
+        if progress_bars is not None:
+            progress_bars.update_total_progress(1)
 
-        raise ValueError(f"Unable to generate upload URL for {src}")
-    except Exception as e:
-        raise e.__class__(f"{src}", *e.args)
+        if "version_id" in json_data["data"]:
+            return  # file is empty, so no need to upload any content
+
+        data: StartUploadData = json_data["data"]
+
+        return StartUploadReturnType(
+            **data, part_count=part_count, part_size=part_size, src=src, dest=dest
+        )
+
+    raise click.exceptions.Exit(
+        click.style(
+            f"Unable to generate upload URL for {src}",
+            fg="red",
+        )
+    )
 
 
 @dataclass(frozen=True)
@@ -394,7 +404,9 @@ def upload_file_chunk(
 
     res = tinyrequests.put(url, data=data)
     if res.status_code != 200:
-        raise RuntimeError(f"Failed to upload part {part_index} of {src}")
+        raise click.exceptions.Exit(
+            click.style(f"Failed to upload part {part_index} of {src}", fg="red")
+        )
 
     ret = CompletedPart(
         src=src,
@@ -446,7 +458,11 @@ def end_upload(
     )
 
     if res.status_code != 200:
-        raise RuntimeError(f"Unable to complete file upload: {res.json()['error']}")
+        raise click.exceptions.Exit(
+            click.style(
+                f"Unable to complete file upload: {res.json()['error']}", fg="red"
+            )
+        )
 
     if progress_bars is not None:
         progress_bars.update_total_progress(1)

@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, List, TypedDict
 
+import click
+
 try:
     from functools import cache
 except ImportError:
@@ -142,7 +144,8 @@ def get_node_data(
                 is_parent=is_parent,
             )
         except (TypeError, ValueError) as e:
-            raise get_path_error(remote_path, "not found", acc_id) from e
+            click.echo(get_path_error(remote_path, "not found", acc_id))
+            raise click.exceptions.Exit() from e
 
     return GetNodeDataResult(acc_id, ret)
 

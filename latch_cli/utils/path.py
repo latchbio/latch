@@ -132,7 +132,7 @@ auth = re.compile(
 )
 
 
-def get_path_error(path: str, message: str, acc_id: str) -> PathResolutionError:
+def get_path_error(path: str, message: str, acc_id: str) -> str:
     with_scheme = append_scheme(path)
     normalized = normalize_path(path)
 
@@ -166,9 +166,8 @@ def get_path_error(path: str, message: str, acc_id: str) -> PathResolutionError:
         ws_str = f"{ws_str} ({ws_name})"
     ws_str += "\n"
 
-    return PathResolutionError(
-        click.style(
-            f"""
+    return click.style(
+        f"""
 {click.style(f'{path}: ', bold=True, reset=False)}{click.style(message, bold=False, reset=False)}
 {resolve_str if account_relative else ""}{ws_str if account_relative else ""}
 {auth_str}
@@ -178,8 +177,7 @@ def get_path_error(path: str, message: str, acc_id: str) -> PathResolutionError:
 {"3. The correct workspace is selected" if account_relative else ""}
 
 For privacy reasons, non-viewable objects and non-existent objects are indistinguishable""",
-            fg="red",
-        )
+        fg="red",
     )
 
 

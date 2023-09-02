@@ -1,6 +1,8 @@
 from pathlib import Path
 from typing import List
 
+import click
+
 from latch_cli.services.cp.config import CPConfig, Progress
 from latch_cli.services.cp.download import download
 from latch_cli.services.cp.glob import expand_pattern
@@ -41,8 +43,10 @@ def cp(
             else:
                 remote_copy(src, dest)
         else:
-            raise ValueError(
+            click.secho(
                 f"`latch cp` cannot be used for purely local file copying. Please make"
                 f" sure one or both of your paths is a remote path (beginning with"
-                f" `latch://`)"
+                f" `latch://`)",
+                fg="red",
             )
+            raise click.exceptions.Exit()
