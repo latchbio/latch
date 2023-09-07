@@ -22,6 +22,7 @@ from latch_cli.centromere.utils import (
     _construct_ssh_client,
     _import_flyte_objects,
 )
+from latch_cli.constants import docker_image_name_illegal_pat
 from latch_cli.docker_utils import get_default_dockerfile
 from latch_cli.utils import (
     WorkflowType,
@@ -41,9 +42,6 @@ class _Container:
     dockerfile: Path
     pkg_dir: Path
     image_name: str
-
-
-docker_image_name_illegal_pat = re.compile(r"[^a-z0-9]+")
 
 
 class _CentromereCtx:
