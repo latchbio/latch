@@ -1,7 +1,7 @@
 from multiprocessing.managers import SyncManager
 from typing import Type
 
-from .progress import ProgressBars
+from ...utils.progress import ProgressBars
 from .throttle import Throttle
 
 

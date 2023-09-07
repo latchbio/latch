@@ -1,6 +1,11 @@
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
-from typing import Dict, List, TypedDict
+from typing import Dict, List, Optional, TypedDict
+
+import dateutil.parser as dp
+
+from latch_cli.utils import urljoins
 
 try:
     from functools import cache
@@ -27,6 +32,7 @@ class FinalLinkTargetPayload(TypedDict):
     id: str
     type: str
     name: str
+    ldataObjectMeta: Optional["LdataObjectMeta"]
 
 
 class LdataNodePayload(TypedDict):
@@ -48,6 +54,7 @@ class NodeData:
     name: str
     type: LDataNodeType
     is_parent: bool
+    modify_time: Optional[datetime]
 
 
 @dataclass(frozen=True)
@@ -81,6 +88,9 @@ def get_node_data(
                         id
                         name
                         type
+                        ldataObjectMeta {
+                            modifyTime
+                        }
                     }
                 }
             }
@@ -125,6 +135,7 @@ def get_node_data(
 
         try:
             final_link_target = node["ldataNode"]["finalLinkTarget"]
+            lom = final_link_target["ldataObjectMeta"]
             remaining = node["path"]
 
             is_parent = remaining is not None and remaining != ""
@@ -135,11 +146,16 @@ def get_node_data(
             if remaining is not None and "/" in remaining:
                 raise ValueError("node and parent does not exist")
 
+            modify_time: Optional[datetime] = None
+            if lom is not None and lom["modifyTime"] is not None:
+                modify_time = dp.isoparse(lom["modifyTime"])
+
             ret[remote_path] = NodeData(
                 id=final_link_target["id"],
                 name=final_link_target["name"],
                 type=LDataNodeType(final_link_target["type"].lower()),
                 is_parent=is_parent,
+                modify_time=modify_time,
             )
         except (TypeError, ValueError) as e:
             raise get_path_error(remote_path, "not found", acc_id) from e
@@ -292,3 +308,89 @@ def _get_known_domains_for_account() -> List[str]:
     res.extend(f"{x}.mount" for x in buckets)
 
     return res
+
+
+class LdataObjectMeta(TypedDict):
+    modifyTime: Optional[str]
+
+
+class InnerFinalLinkTarget(TypedDict):
+    id: str
+    ldataObjectMeta: Optional[LdataObjectMeta]
+
+
+class NodeDescendantData(TypedDict):
+    finalLinkTarget: InnerFinalLinkTarget
+
+
+class Node(TypedDict):
+    relPath: str
+    node: NodeDescendantData
+
+
+class Descendants(TypedDict):
+    nodes: List[Node]
+
+
+class OuterFinalLinkTarget(TypedDict):
+    descendants: Descendants
+
+
+class NodeDescendantsLdataResolvePathData(TypedDict):
+    finalLinkTarget: OuterFinalLinkTarget
+
+
+@dataclass(frozen=True)
+class NodeDescendant:
+    id: str
+    modify_time: Optional[datetime]
+
+
+@dataclass(frozen=True)
+class GetNodeDescendantsResult:
+    nodes: Dict[str, NodeDescendant]
+
+
+@cache
+def get_node_descendants(path: str) -> GetNodeDescendantsResult:
+    res: Dict[str, NodeDescendant] = {}
+    data: Optional[NodeDescendantsLdataResolvePathData] = execute(
+        gql.gql("""
+            query NodeDescendants($argPath: String!) {
+                ldataResolvePathData(argPath: $argPath) {
+                    finalLinkTarget {
+                        descendants {
+                            nodes {
+                                relPath
+                                node {
+                                    finalLinkTarget {
+                                        id
+                                        ldataObjectMeta {
+                                            modifyTime
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        """),
+        {"argPath": path},
+    )["ldataResolvePathData"]
+
+    if data is None:
+        return GetNodeDescendantsResult(nodes=res)
+
+    for descendant in data["finalLinkTarget"]["descendants"]["nodes"]:
+        rel_path = descendant["relPath"]
+        flt = descendant["node"]["finalLinkTarget"]
+        lom = flt["ldataObjectMeta"]
+
+        modify_time: Optional[datetime] = None
+        if lom is not None and lom["modifyTime"] is not None:
+            modify_time = dp.isoparse(lom["modifyTime"])
+
+        res[rel_path] = NodeDescendant(id=flt["id"], modify_time=modify_time)
+
+    return GetNodeDescendantsResult(nodes=res)
