@@ -16,13 +16,19 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.32.6 - 2023-09-07
+
+### Fixed
+
+* A bug in `latch develop` where images for newly registered workflows could not be found.
+
 ## 2.32.5 - 2023-08-28
 
 ### Fixed
 
 * Snakemake:
-    * Ignore global ruleorder directive
-    * Ignore temporary condition on output values
+  + Ignore global ruleorder directive
+  + Ignore temporary condition on output values
 
 ## 2.32.4 - 2023-08-28
 
@@ -286,7 +292,7 @@ Types of changes
 
 ### Dependencies
 
-* Removed `awscli`,                     `uvloop`, and `prompt-toolkit` as they were unused.
+* Removed `awscli`,                                             `uvloop`, and `prompt-toolkit` as they were unused.
 
 ## 2.22.4 - 2023-06-08
 
