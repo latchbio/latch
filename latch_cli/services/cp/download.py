@@ -68,7 +68,7 @@ def download(
             f" {res.status_code}: {res.json()['error']}",
             fg="red",
         )
-        raise click.exceptions.Exit()
+        raise click.exceptions.Exit(1)
 
     json_data = res.json()
     if can_have_children:
@@ -81,10 +81,10 @@ def download(
             dest.mkdir(exist_ok=True)
         except FileNotFoundError as e:
             click.secho(f"No such download destination {dest}", fg="red")
-            raise click.exceptions.Exit() from e
+            raise click.exceptions.Exit(1) from e
         except (FileExistsError, NotADirectoryError) as e:
             click.secho(f"Download destination {dest} is not a directory", fg="red")
-            raise click.exceptions.Exit() from e
+            raise click.exceptions.Exit(1) from e
 
         unconfirmed_jobs: List[DownloadJob] = []
         confirmed_jobs: List[DownloadJob] = []
