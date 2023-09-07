@@ -85,7 +85,7 @@ def _get_latest_image(pkg_root: Path) -> str:
         latest_version = resp.json()["version"]
         click.secho(latest_version, italic=True, bold=True)
     except HTTPException:
-        click.secho("Could not find any images. Retrying with new image name.")
+        click.secho("Could not find any images. Retrying with new image name.\n")
         click.secho("Image name: ", fg="blue", nl=False)
 
         registry_name = f"{ws_id}_{pkg_root.name}"
@@ -107,6 +107,8 @@ def _get_latest_image(pkg_root: Path) -> str:
             latest_version = resp.json()["version"]
             click.secho(latest_version, italic=True, bold=True)
         except HTTPException as e:
+            click.secho("Could not find any images.\n")
+
             click.secho(
                 dedent("""
                 There was an issue getting your workflow's docker image.
