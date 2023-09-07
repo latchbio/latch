@@ -292,7 +292,10 @@ Types of changes
 
 ### Dependencies
 
-* Removed `awscli`,                                             `uvloop`, and `prompt-toolkit` as they were unused.
+* Removed unused packages
+  + `awscli`
+  + `uvloop`
+  + `prompt-toolkit`
 
 ## 2.22.4 - 2023-06-08
 
