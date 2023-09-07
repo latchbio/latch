@@ -65,3 +65,5 @@ class OAuth2Constants:
 
 
 oauth2_constants = OAuth2Constants()
+
+docker_image_name_illegal_pat = re.compile(r"[^a-z0-9]+")
