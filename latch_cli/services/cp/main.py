@@ -1,4 +1,5 @@
 from pathlib import Path
+from textwrap import dedent
 from typing import List
 
 import click
@@ -44,9 +45,11 @@ def cp(
                 remote_copy(src, dest)
         else:
             click.secho(
-                f"`latch cp` cannot be used for purely local file copying. Please make"
-                f" sure one or both of your paths is a remote path (beginning with"
-                f" `latch://`)",
+                dedent(f"""
+                `latch cp` cannot be used for purely local file copying.
+
+                Please ensure at least one of your arguments is a remote path (beginning with `latch://`)
+                """).strip("\n"),
                 fg="red",
             )
             raise click.exceptions.Exit(1)

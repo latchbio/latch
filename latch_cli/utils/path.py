@@ -1,5 +1,6 @@
 import re
 from pathlib import Path
+from textwrap import dedent
 from urllib.parse import urlparse
 
 import click
@@ -59,7 +60,15 @@ domain = re.compile(
 def append_scheme(path: str, *, assume_remote: bool = False) -> str:
     match = scheme.match(path)
     if match is None:
-        raise PathResolutionError(f"{path} is not in a valid format")
+        click.secho(
+            dedent(f"""
+            `{path}` is not in a valid format.
+
+            See https://docs.latch.bio/basics/latch_urls.html for a list of valid remote path formats.
+            """).strip("\n"),
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
 
     if match["implicit_url"] is not None:
         path = f"latch{path}"
@@ -86,7 +95,15 @@ def append_domain(path: str) -> str:
 
     match = domain.match(dom)
     if match is None:
-        raise PathResolutionError(f"{dom} is not a valid path domain")
+        click.secho(
+            dedent(f"""
+            `{dom}` is not a valid path domain.
+
+            See https://docs.latch.bio/basics/latch_urls.html for a list of valid domains.
+            """).strip("\n"),
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
 
     if match["shared"] is not None and workspace != "":
         dom = f"shared.{workspace}.account"
@@ -107,7 +124,15 @@ def is_account_relative(path: str) -> bool:
 
     match = domain.match(dom)
     if match is None:
-        raise PathResolutionError(f"{dom} is not a valid path domain")
+        click.secho(
+            dedent(f"""
+            `{dom}` is not a valid path domain.
+
+            See https://docs.latch.bio/basics/latch_urls.html for a list of valid domains.
+            """).strip("\n"),
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
 
     return match["account_relative"] is not None
 
@@ -187,5 +212,6 @@ name = re.compile(r"^.*/(?P<name>[^/]+)/?$")
 def get_name_from_path(path: str):
     match = name.match(path)
     if match is None:
-        raise PathResolutionError(f"{path} is not a valid path")
+        click.secho(f"`{path}` is not a valid path.", fg="red")
+        raise click.exceptions.Exit(1)
     return match["name"]
