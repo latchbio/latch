@@ -2,6 +2,8 @@
 
 In this guide, we will walk through how you can upload a simple Snakemake workflow to Latch.
 
+The example being used here comes from the [short tutorial in Snakemake's documentation](https://snakemake.readthedocs.io/en/stable/tutorial/short.html).
+
 ## Prerequisites
 
 * Install the [Latch SDK](https://github.com/latchbio/latch#installation)
