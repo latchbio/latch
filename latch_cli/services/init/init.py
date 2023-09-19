@@ -13,15 +13,16 @@ from latch_cli.menus import select_tui
 from latch_cli.workflow_config import BaseImageOptions, create_and_write_config
 
 
-def _get_boilerplate(pkg_root: Path, source_path: Path):
+def _get_boilerplate(pkg_root: Path, source_path: Path, copy_wf_dir: bool = True):
     pkg_root = pkg_root.resolve()
     source_path = source_path.resolve()
 
     wf_root = pkg_root / "wf"
     wf_root.mkdir(exist_ok=True)
 
-    for f in source_path.glob("*.py"):
-        shutil.copy(f, wf_root)
+    if copy_wf_dir is True:
+        for f in source_path.glob("*.py"):
+            shutil.copy(f, wf_root)
 
     pkg_root_globs = [
         "LICENSE*",
@@ -177,7 +178,19 @@ def _gen_example_snakemake(pkg_root: Path):
     pkg_root = pkg_root.resolve()
     source_path = Path(__file__).parent / "example_snakemake"
 
-    _get_boilerplate(pkg_root, source_path)
+    _get_boilerplate(pkg_root, source_path, copy_wf_dir=False)
+
+    snakefile_dest = pkg_root / "Snakefile"
+    snakefile_src = source_path / "Snakefile"
+    shutil.copy(snakefile_src, snakefile_dest)
+
+    data_dest = pkg_root / "data"
+    data_src = source_path / "data"
+    shutil.copytree(data_src, data_dest)
+
+    scripts_dest = pkg_root / "scripts"
+    scripts_src = source_path / "scripts"
+    shutil.copytree(scripts_src, scripts_dest)
 
 
 def _gen_example_nfcore(pkg_root: Path):
