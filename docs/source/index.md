@@ -5,6 +5,7 @@ It takes months to build infrastructure with the compute, storage, and user-frie
 The Latch SDK is an open-source toolchain to define serverless bioinformatics workflows with plain python and deploy associated no-code interfaces using single command.
 
 Bioinformatics workflows developed with the SDK automatically receive:
+
 - Instant no-code interfaces for accessibility and publication
 - First class static typing
 - Containerization and versioning of every registered change
