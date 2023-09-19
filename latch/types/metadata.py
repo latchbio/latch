@@ -1,10 +1,16 @@
 import re
 from dataclasses import asdict, dataclass, field
 from enum import Enum
+from pathlib import Path
 from textwrap import indent
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Type, Union
 
 import yaml
+
+from latch_cli.utils import identifier_suffix_from_str
+
+from .directory import LatchDir
+from .file import LatchFile
 
 
 @dataclass
@@ -329,6 +335,18 @@ class LatchParameter:
 
 
 @dataclass
+class SnakemakeFileParameter(LatchParameter):
+    type: Optional[Union[Type[LatchFile], Type[LatchDir]]] = None
+    """
+    The python type of the parameter.
+    """
+    path: Optional[Path] = None
+    """
+    The path where the file passed to this parameter will be copied.
+    """
+
+
+@dataclass
 class LatchMetadata:
     """Class for organizing workflow metadata
 
@@ -376,7 +394,7 @@ class LatchMetadata:
     """
 
     display_name: str
-    """The name of the workflow"""
+    """The human-readable name of the workflow"""
     author: LatchAuthor
     """ A `LatchAuthor` object that describes the author of the workflow"""
     documentation: Optional[str] = None
@@ -428,3 +446,21 @@ class LatchMetadata:
         return (
             metadata_yaml + "Args:\n" + indent(parameter_yaml, "  ", lambda _: True)
         ).strip("\n ")
+
+
+@dataclass
+class SnakemakeMetadata(LatchMetadata):
+    output_dir: Optional[LatchDir] = None
+    name: Optional[str] = None
+
+    def __post_init__(self):
+        if self.name is None:
+            self.name = (
+                f"snakemake_{identifier_suffix_from_str(self.display_name.lower())}"
+            )
+
+        global _snakemake_metadata
+        _snakemake_metadata = self
+
+
+_snakemake_metadata: Optional[SnakemakeMetadata] = None

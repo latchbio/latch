@@ -1,13 +1,12 @@
 import re
-import urllib.parse
 from pathlib import Path
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse
 
 import click
 from latch_sdk_config.user import user_config
 
 from latch_cli.services.cp.exceptions import PathResolutionError
-from latch_cli.services.cp.utils import get_auth_header
+from latch_cli.utils import get_auth_header
 
 latch_url_regex = re.compile(r"^(latch)?://")
 
@@ -53,7 +52,11 @@ domain = re.compile(
 #   ://domain/a/b/c => latch://domain/a/b/c
 #   /a/b/c => file:///a/b/c
 #   a/b/c => file://${pwd}/a/b/c
-def append_scheme(path: str) -> str:
+#
+# if assume_remote = True (i.e. in the ls case):
+#   /a/b/c => latch:///a/b/c
+#   a/b/c => latch:///a/b/c
+def append_scheme(path: str, *, assume_remote: bool = False) -> str:
     match = scheme.match(path)
     if match is None:
         raise PathResolutionError(f"{path} is not in a valid format")
@@ -61,9 +64,9 @@ def append_scheme(path: str) -> str:
     if match["implicit_url"] is not None:
         path = f"latch{path}"
     elif match["absolute_path"] is not None:
-        path = f"file://{path}"
+        path = f"latch://{path}" if assume_remote else f"file://{path}"
     elif match["relative_path"] is not None:
-        path = f"file://{Path.cwd()}/{path}"
+        path = f"latch:///{path}" if assume_remote else f"file://{Path.cwd()}/{path}"
 
     return path
 
@@ -109,8 +112,8 @@ def is_account_relative(path: str) -> bool:
     return match["account_relative"] is not None
 
 
-def normalize_path(path: str) -> str:
-    path = append_scheme(path)
+def normalize_path(path: str, *, assume_remote: bool = False) -> str:
+    path = append_scheme(path, assume_remote=assume_remote)
 
     if path.startswith("file://"):
         return path

@@ -4,11 +4,7 @@ from gql.transport.exceptions import TransportQueryError
 from latch_sdk_gql.execute import execute
 
 from latch_cli.services.cp.ldata_utils import LDataNodeType, get_node_data
-from latch_cli.services.cp.path_utils import (
-    get_name_from_path,
-    get_path_error,
-    is_remote_path,
-)
+from latch_cli.utils.path import get_name_from_path, get_path_error, is_remote_path
 
 
 def move(
@@ -91,10 +87,8 @@ def move(
         elif msg.startswith("Refusing to move already moved node"):
             raise get_path_error(
                 src,
-                (
-                    "copy in progress. Please wait until the node has finished copying"
-                    " before moving."
-                ),
+                "copy in progress. Please wait until the node has finished copying"
+                " before moving.",
                 acc_id,
             ) from e
         elif msg == "Conflicting object in destination":

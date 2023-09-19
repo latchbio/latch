@@ -1,15 +1,12 @@
-from glob import glob
 from pathlib import Path
 from typing import List
-
-import click
 
 from latch_cli.services.cp.config import CPConfig, Progress
 from latch_cli.services.cp.download import download
 from latch_cli.services.cp.glob import expand_pattern
-from latch_cli.services.cp.path_utils import is_remote_path
 from latch_cli.services.cp.remote_copy import remote_copy
 from latch_cli.services.cp.upload import upload
+from latch_cli.utils.path import is_remote_path
 
 
 # todo(ayush): come up with a better behavior scheme than unix cp

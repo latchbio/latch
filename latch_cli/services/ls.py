@@ -1,55 +1,199 @@
 """Service to list files in a remote directory."""
 
-import os
-from typing import Dict, List
+from dataclasses import dataclass
+from datetime import datetime
+from textwrap import dedent
+from typing import List, Optional, TypedDict
 
-from latch_sdk_config.latch import config
+import click
+import dateutil.parser as dp
+import gql
+from latch_sdk_gql.execute import execute
 
-import latch_cli.tinyrequests as tinyrequests
-from latch_cli.utils import _normalize_remote_path, current_workspace, retrieve_or_login
+from latch_cli.click_utils import bold
+from latch_cli.services.cp.ldata_utils import LDataNodeType
+from latch_cli.utils import with_si_suffix
+from latch_cli.utils.path import normalize_path
 
 
-def ls(remote_directory: str) -> List[Dict[str, str]]:
-    """Lists the remote entities inside of a remote_directory
+class _LdataObjectMeta(TypedDict):
+    modifyTime: Optional[str]
+    contentSize: Optional[int]
+
+
+class _Child(TypedDict):
+    name: str
+    ldataObjectMeta: Optional[_LdataObjectMeta]
+    type: str
+
+
+class _Node(TypedDict):
+    child: _Child
+
+
+class _ChildLdataTreeEdges(TypedDict):
+    nodes: List[_Node]
+
+
+class _FinalLinkTarget(TypedDict):
+    childLdataTreeEdges: _ChildLdataTreeEdges
+
+
+class _LdataResolvePathData(TypedDict):
+    name: str
+    type: str
+    ldataObjectMeta: Optional[_LdataObjectMeta]
+    finalLinkTarget: _FinalLinkTarget
+
+
+@dataclass(frozen=True)
+class _Row:
+    name: str
+    type: LDataNodeType
+    size: Optional[int]
+    modify_time: Optional[datetime]
+
+
+def ls(path: str, *, group_directories_first: bool = False):
+    """Lists the children of a remote directory in Latch.
 
     Args:
-        remote_directory: A valid path to a remote destination, of the form
-            ``[latch://]/dir_1/dir_2/.../dir_n/dir_name``, where `dir_name`
-            is the name of the directory to list under. Every directory in the
-            path must already exist.
+        path: A valid remote path
+        group_directories_first: Option to display directories/links before
+            objects
 
     This function will list all of the entites under the remote directory
-    specified in the path `remote_directory`. Will error if the path is invalid
+    specified in the path `path`. Will error if the path is invalid
     or the directory doesn't exist.
 
     Examples:
-
         >>> ls("")
             # Lists all entities in the user's root directory
-
         >>> ls("latch:///dir1/dir2/dir_name")
             # Lists all entities inside dir1/dir2/dir_name
     """
-    remote_directory = _normalize_remote_path(remote_directory)
+    if path == "":
+        path = "/"
 
-    url = config.api.data.list
+    normalized_path = normalize_path(path, assume_remote=True)
 
-    token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", "")
-    if token != "":
-        auth_header = f"Latch-Execution-Token {token}"
-        ws_id = {}
-    else:
-        auth_header = f"Bearer {retrieve_or_login()}"
-        ws_id = {"ws_account_id": current_workspace()}
+    query = execute(
+        gql.gql("""
+            query LdataInfo ($argPath: String!) {
+                accountInfoCurrent {
+                    id
+                }
+                ldataResolvePathData(argPath: $argPath) {
+                    name
+                    ldataObjectMeta {
+                        modifyTime
+                        contentSize
+                    }
+                    type
+                    finalLinkTarget {
+                        childLdataTreeEdges(filter: {
+                            child: {
+                                removed: { equalTo: false },
+                                pending: { equalTo: false }
+                            }
+                        }) {
+                            nodes {
+                                child {
+                                    name
+                                    ldataObjectMeta {
+                                        modifyTime
+                                        contentSize
+                                    }
+                                    type
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        """),
+        {"argPath": normalized_path},
+    )
 
-    headers = {"Authorization": auth_header}
-    data = {"directory": remote_directory, **ws_id}
+    res: Optional[_LdataResolvePathData] = query["ldataResolvePathData"]
+    acc_id: str = query["accountInfoCurrent"]["id"]
 
-    response = tinyrequests.post(url, headers=headers, json=data)
+    if res is None:
+        click.secho(
+            dedent(f"""
+            {bold(path)}: no such file or directory.
 
-    if response.status_code == 400:
-        raise ValueError(f"The directory {remote_directory} does not exist.")
+            {bold("Check that:")}
+            1. The target directory exists,
+            2. Account {bold(acc_id)} has permissions to view the target directory, and
+            3. The correct workspace is selected.
 
-    output = list(response.json().values())
+            For privacy reasons, non-viewable objects and non-existent objects are indistinguishable.
+            """).strip("\n"),
+            fg="red",
+        )
+        return
 
-    return output
+    nodes = res["finalLinkTarget"]["childLdataTreeEdges"]["nodes"]
+    if LDataNodeType(res["type"].lower()) == LDataNodeType.obj:
+        # ls object should just display the object's info
+        nodes.append({"child": res})
+
+    rows: List[_Row] = []
+    for node in nodes:
+        child = node["child"]
+
+        meta = child["ldataObjectMeta"]
+        size = modify_time = None
+        if meta is not None:
+            if meta["contentSize"] is not None:
+                size = int(meta["contentSize"])
+            if meta["modifyTime"] is not None:
+                modify_time = dp.isoparse(meta["modifyTime"])
+
+        rows.append(
+            _Row(
+                name=child["name"],
+                type=LDataNodeType(child["type"].lower()),
+                size=size,
+                modify_time=modify_time,
+            )
+        )
+
+    rows.sort(key=lambda row: row.name)
+    if group_directories_first:
+        rows.sort(key=lambda row: 1 if row.type == LDataNodeType.obj else 0)
+
+    headers = [
+        "  " + click.style("Size", underline=True),
+        click.style("Date Modified", underline=True),
+        click.style("Name", underline=True),
+    ]
+
+    click.echo(" ".join(headers))
+
+    for row in rows:
+        mt_str = f'{"-": <13}'
+        size_str = f'{"-": >6}'
+        if row.type == LDataNodeType.obj:
+            if row.modify_time is not None:
+                mt_str = click.style(
+                    f'{row.modify_time.strftime("%d %b %H:%M"): <13}', fg="blue"
+                )
+
+            if row.size is not None:
+                size_str = with_si_suffix(row.size, suffix="")
+                size_str = click.style(f"{size_str: >6}", fg="bright_green")
+
+        name_str = row.name
+        if len(name_str) > 50:
+            name_str = f"{name_str[:47]}..."
+
+        if row.type != LDataNodeType.obj:
+            color = "bright_blue"
+            if row.type == LDataNodeType.link:
+                color = "bright_magenta"
+
+            name_str = click.style(f"{name_str}/", bold=True, fg=color)
+
+        click.echo(f"{size_str} {mt_str} {name_str}")
