@@ -19,6 +19,7 @@ from latch_cli.services.init.init import template_flag_to_option
 from latch_cli.services.local_dev import TaskSize
 from latch_cli.utils import (
     AuthenticationError,
+    WorkflowType,
     get_auth_header,
     get_latest_package_version,
     get_local_package_version,
@@ -72,7 +73,15 @@ def main():
 
 @main.command("dockerfile")
 @click.argument("pkg_root", type=click.Path(exists=True, file_okay=False))
-def dockerfile(pkg_root: str):
+@click.option(
+    "-s",
+    "--snakemake",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Generate a Dockerfile with arguments needed for Snakemake compatability",
+)
+def dockerfile(pkg_root: str, snakemake: bool = False):
     """Generates a user editable dockerfile for a workflow and saves under `pkg_root/Dockerfile`.
 
     Visit docs.latch.bio to learn more.
@@ -89,7 +98,10 @@ def dockerfile(pkg_root: str):
         f"Dockerfile already exists at `{dest}`. Overwrite?"
     ):
         return
-    generate_dockerfile(source, dest)
+    workflow_type = WorkflowType.latchbiosdk
+    if snakemake is True:
+        workflow_type = WorkflowType.snakemake
+    generate_dockerfile(source, dest, wf_type=workflow_type)
 
     click.secho(f"Successfully generated dockerfile `{dest}`", fg="green")
 
@@ -427,8 +439,10 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
     if version is None:
         version = "latest"
     click.secho(
-        f"Successfully generated python param map named {wf_name}.params.py with"
-        f" version {version}\n Run `latch launch {wf_name}.params.py` to launch it.",
+        (
+            f"Successfully generated python param map named {wf_name}.params.py with"
+            f" version {version}\n Run `latch launch {wf_name}.params.py` to launch it."
+        ),
         fg="green",
     )
 
