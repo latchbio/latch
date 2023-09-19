@@ -1,0 +1,743 @@
+Step 1/14 : from 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:b733-kenny--snakemake
+
+
+ ---> 77471241d7a3
+
+Step 2/14 : run mkdir /opt/latch
+
+
+ ---> Using cache
+
+ ---> 6d1d7399ec34
+
+Step 3/14 : RUN curl -L -O     https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Linux-x86_64.sh     && mkdir /root/.conda     && bash Mambaforge-Linux-x86_64.sh -b     && rm -f Mambaforge-Linux-x86_64.sh
+
+
+ ---> Using cache
+
+ ---> e5d7f1c377ad
+
+Step 4/14 : copy environment.yaml /root/environment.yaml
+
+
+ ---> Using cache
+
+ ---> f1895bb6bb01
+
+Step 5/14 : run /root/mambaforge/bin/mamba env create --name snakemake-tutorial --file environment.yaml
+
+
+ ---> Using cache
+
+ ---> 1c115b179fb8
+
+Step 6/14 : env PATH /root/mambaforge/envs/snakemake-tutorial/bin:$PATH
+
+
+ ---> Using cache
+
+ ---> 38bcbc3eaccf
+
+Step 7/14 : copy latch /root/latch
+
+
+ ---> 0a6841ad1519
+
+Step 8/14 : run cd /root/latch && python3 -m pip install -e .
+
+
+ ---> Running in dd7f0cbc398c
+
+Obtaining file:///root/latch
+
+  Installing build dependencies: started
+
+  Installing build dependencies: finished with status 'done'
+  Checking if build backend supports build_editable: started
+
+  Checking if build backend supports build_editable: finished with status 'done'
+
+  Getting requirements to build editable: started
+
+  Getting requirements to build editable: finished with status 'done'
+
+  Preparing editable metadata (pyproject.toml): started
+
+  Preparing editable metadata (pyproject.toml): finished with status 'done'
+
+Collecting asyncssh==2.12.0 (from latch==2.19.11)
+
+  Downloading asyncssh-2.12.0-py3-none-any.whl (346 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 346.7/346.7 kB 8.6 MB/s eta 0:00:00
+
+
+Collecting aioconsole==0.5.1 (from latch==2.19.11)
+
+  Downloading aioconsole-0.5.1-py3-none-any.whl (30 kB)
+
+Collecting kubernetes>=24.2.0 (from latch==2.19.11)
+
+  Downloading kubernetes-26.1.0-py2.py3-none-any.whl (1.4 MB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.4/1.4 MB 44.9 MB/s eta 0:00:00
+
+
+Collecting pyjwt>=0.2.0 (from latch==2.19.11)
+
+  Downloading PyJWT-2.7.0-py3-none-any.whl (22 kB)
+
+Requirement already satisfied: requests>=2.28.1 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from latch==2.19.11) (2.29.0)
+
+Collecting click>=8.0 (from latch==2.19.11)
+
+  Downloading click-8.1.3-py3-none-any.whl (96 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 96.6/96.6 kB 12.5 MB/s eta 0:00:00
+
+
+Collecting docker>=5.0 (from latch==2.19.11)
+
+  Downloading docker-6.1.2-py3-none-any.whl (148 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 148.1/148.1 kB 19.4 MB/s eta 0:00:00
+
+
+Collecting paramiko>=2.11.0 (from latch==2.19.11)
+
+  Downloading paramiko-3.1.0-py3-none-any.whl (211 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 211.2/211.2 kB 24.6 MB/s eta 0:00:00
+
+
+Collecting scp>=0.14.0 (from latch==2.19.11)
+
+  Downloading scp-0.14.5-py2.py3-none-any.whl (8.7 kB)
+
+Collecting boto3>=1.24.22 (from latch==2.19.11)
+
+  Using cached boto3-1.26.137-py3-none-any.whl (135 kB)
+
+Collecting tqdm>=4.63.0 (from latch==2.19.11)
+
+  Downloading tqdm-4.65.0-py3-none-any.whl (77 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 77.1/77.1 kB 10.9 MB/s eta 0:00:00
+
+
+Collecting lytekit==0.14.10 (from latch==2.19.11)
+
+  Downloading lytekit-0.14.10-py3-none-any.whl (391 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 391.8/391.8 kB 39.4 MB/s eta 0:00:00
+
+
+Collecting lytekitplugins-pods==0.4.0 (from latch==2.19.11)
+
+  Downloading lytekitplugins_pods-0.4.0-py3-none-any.whl (4.3 kB)
+
+Requirement already satisfied: typing-extensions==4.5.0 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from latch==2.19.11) (4.5.0)
+
+Collecting apscheduler==3.9.1 (from latch==2.19.11)
+
+  Downloading APScheduler-3.9.1-py2.py3-none-any.whl (59 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 59.5/59.5 kB 9.0 MB/s eta 0:00:00
+
+
+Collecting uvloop==0.17.0 (from latch==2.19.11)
+
+  Downloading uvloop-0.17.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (4.1 MB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.1/4.1 MB 69.9 MB/s eta 0:00:00
+
+
+Collecting websockets==10.3 (from latch==2.19.11)
+
+  Downloading websockets-10.3-cp310-cp310-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_12_x86_64.manylinux2010_x86_64.whl (111 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 111.5/111.5 kB 15.2 MB/s eta 0:00:00
+
+
+Collecting prompt-toolkit==3.0.33 (from latch==2.19.11)
+
+  Downloading prompt_toolkit-3.0.33-py3-none-any.whl (383 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 383.6/383.6 kB 36.6 MB/s eta 0:00:00
+
+
+Collecting watchfiles==0.18.1 (from latch==2.19.11)
+
+  Downloading watchfiles-0.18.1-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (1.2 MB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 63.8 MB/s eta 0:00:00
+
+
+Collecting gql==3.4.0 (from latch==2.19.11)
+
+  Downloading gql-3.4.0-py2.py3-none-any.whl (65 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 65.2/65.2 kB 9.5 MB/s eta 0:00:00
+
+
+Collecting graphql-core==3.2.3 (from latch==2.19.11)
+
+  Downloading graphql_core-3.2.3-py3-none-any.whl (202 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 202.9/202.9 kB 24.1 MB/s eta 0:00:00
+
+
+Collecting requests-toolbelt==0.10.1 (from latch==2.19.11)
+
+  Downloading requests_toolbelt-0.10.1-py2.py3-none-any.whl (54 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 54.5/54.5 kB 7.2 MB/s eta 0:00:00
+
+
+Requirement already satisfied: snakemake>=7.25.4 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from latch==2.19.11) (7.25.4)
+
+Requirement already satisfied: setuptools>=0.7 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from apscheduler==3.9.1->latch==2.19.11) (67.7.2)
+
+Requirement already satisfied: six>=1.4.0 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from apscheduler==3.9.1->latch==2.19.11) (1.16.0)
+
+Collecting pytz (from apscheduler==3.9.1->latch==2.19.11)
+
+  Downloading pytz-2023.3-py2.py3-none-any.whl (502 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 502.3/502.3 kB 43.0 MB/s eta 0:00:00
+
+
+Collecting tzlocal!=3.*,>=2.0 (from apscheduler==3.9.1->latch==2.19.11)
+
+  Downloading tzlocal-5.0.1-py3-none-any.whl (20 kB)
+
+Requirement already satisfied: cryptography>=3.1 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from asyncssh==2.12.0->latch==2.19.11) (39.0.0)
+
+Collecting yarl<2.0,>=1.6 (from gql==3.4.0->latch==2.19.11)
+
+  Downloading yarl-1.9.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (268 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 268.8/268.8 kB 29.6 MB/s eta 0:00:00
+
+
+Collecting backoff<3.0,>=1.11.1 (from gql==3.4.0->latch==2.19.11)
+
+  Downloading backoff-2.2.1-py3-none-any.whl (15 kB)
+
+Collecting lyteidl==0.2.0a0 (from lytekit==0.14.10->latch==2.19.11)
+
+  Downloading lyteidl-0.2.0a0-py3-none-any.whl (162 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 162.2/162.2 kB 21.9 MB/s eta 0:00:00
+
+
+Requirement already satisfied: wheel<1.0.0,>=0.30.0 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from lytekit==0.14.10->latch==2.19.11) (0.40.0)
+
+Collecting pandas<2.0.0,>=1.0.0 (from lytekit==0.14.10->latch==2.19.11)
+
+  Downloading pandas-1.5.3-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (12.1 MB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.1/12.1 MB 75.4 MB/s eta 0:00:00
+
+
+Collecting pyarrow<7.0.0,>=4.0.0 (from lytekit==0.14.10->latch==2.19.11)
+
+  Downloading pyarrow-6.0.1-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (25.6 MB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 25.6/25.6 MB 53.3 MB/s eta 0:00:00
+
+
+Collecting croniter<4.0.0,>=0.3.20 (from lytekit==0.14.10->latch==2.19.11)
+
+  Downloading croniter-1.3.14-py2.py3-none-any.whl (18 kB)
+
+Collecting deprecated<2.0,>=1.0 (from lytekit==0.14.10->latch==2.19.11)
+
+  Downloading Deprecated-1.2.13-py2.py3-none-any.whl (9.6 kB)
+
+Collecting docker>=5.0 (from latch==2.19.11)
+
+  Downloading docker-5.0.3-py2.py3-none-any.whl (146 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 146.2/146.2 kB 20.1 MB/s eta 0:00:00
+
+
+Requirement already satisfied: python-dateutil>=2.1 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from lytekit==0.14.10->latch==2.19.11) (2.8.2)
+
+Collecting grpcio!=1.45.0,<2.0,>=1.43.0 (from lytekit==0.14.10->latch==2.19.11)
+
+  Downloading grpcio-1.54.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (5.1 MB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.1/5.1 MB 75.4 MB/s eta 0:00:00
+
+
+Collecting grpcio-status!=1.45.0,>=1.43 (from lytekit==0.14.10->latch==2.19.11)
+
+  Downloading grpcio_status-1.54.2-py3-none-any.whl (5.1 kB)
+
+Collecting protobuf<4,>=3.6.1 (from lytekit==0.14.10->latch==2.19.11)
+
+  Downloading protobuf-3.20.3-cp310-cp310-manylinux_2_12_x86_64.manylinux2010_x86_64.whl (1.1 MB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.1/1.1 MB 63.2 MB/s eta 0:00:00
+
+
+Collecting python-json-logger>=2.0.0 (from lytekit==0.14.10->latch==2.19.11)
+
+  Downloading python_json_logger-2.0.7-py3-none-any.whl (8.1 kB)
+
+Collecting pytimeparse<2.0.0,>=1.1.8 (from lytekit==0.14.10->latch==2.19.11)
+
+  Downloading pytimeparse-1.1.8-py2.py3-none-any.whl (10.0 kB)
+
+Requirement already satisfied: pyyaml in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from lytekit==0.14.10->latch==2.19.11) (6.0)
+
+Collecting keyring>=18.0.1 (from lytekit==0.14.10->latch==2.19.11)
+
+  Downloading keyring-23.13.1-py3-none-any.whl (37 kB)
+
+Collecting responses>=0.10.7 (from lytekit==0.14.10->latch==2.19.11)
+
+  Downloading responses-0.23.1-py3-none-any.whl (52 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 52.1/52.1 kB 7.7 MB/s eta 0:00:00
+
+
+Collecting sortedcontainers<3.0.0,>=1.5.9 (from lytekit==0.14.10->latch==2.19.11)
+
+  Downloading sortedcontainers-2.4.0-py2.py3-none-any.whl (29 kB)
+
+Collecting statsd<4.0.0,>=3.0.0 (from lytekit==0.14.10->latch==2.19.11)
+
+  Downloading statsd-3.3.0-py2.py3-none-any.whl (11 kB)
+
+Requirement already satisfied: urllib3<2.0.0,>=1.22 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from lytekit==0.14.10->latch==2.19.11) (1.26.15)
+
+Requirement already satisfied: wrapt<2.0.0,>=1.0.0 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from lytekit==0.14.10->latch==2.19.11) (1.15.0)
+
+Collecting retry==0.9.2 (from lytekit==0.14.10->latch==2.19.11)
+
+  Downloading retry-0.9.2-py2.py3-none-any.whl (8.0 kB)
+
+Collecting dataclasses-json>=0.5.2 (from lytekit==0.14.10->latch==2.19.11)
+
+  Downloading dataclasses_json-0.5.7-py3-none-any.whl (25 kB)
+
+Requirement already satisfied: jsonschema>=4.5.1 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from lytekit==0.14.10->latch==2.19.11) (4.17.3)
+
+Collecting marshmallow-jsonschema>=0.12.0 (from lytekit==0.14.10->latch==2.19.11)
+
+  Downloading marshmallow_jsonschema-0.13.0-py3-none-any.whl (11 kB)
+
+Collecting natsort>=7.0.1 (from lytekit==0.14.10->latch==2.19.11)
+
+  Downloading natsort-8.3.1-py3-none-any.whl (38 kB)
+
+Collecting docker-image-py>=0.1.10 (from lytekit==0.14.10->latch==2.19.11)
+
+  Downloading docker-image-py-0.1.12.tar.gz (8.2 kB)
+
+  Preparing metadata (setup.py): started
+
+  Preparing metadata (setup.py): finished with status 'done'
+
+Collecting docstring-parser>=0.9.0 (from lytekit==0.14.10->latch==2.19.11)
+
+  Downloading docstring_parser-0.15-py3-none-any.whl (36 kB)
+
+Collecting diskcache>=5.2.1 (from lytekit==0.14.10->latch==2.19.11)
+
+  Downloading diskcache-5.6.1-py3-none-any.whl (45 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 45.6/45.6 kB 6.8 MB/s eta 0:00:00
+
+
+Collecting cloudpickle>=2.0.0 (from lytekit==0.14.10->latch==2.19.11)
+
+  Downloading cloudpickle-2.2.1-py3-none-any.whl (25 kB)
+
+Collecting cookiecutter>=1.7.3 (from lytekit==0.14.10->latch==2.19.11)
+
+  Downloading cookiecutter-2.1.1-py2.py3-none-any.whl (36 kB)
+
+Collecting numpy<1.22.0 (from lytekit==0.14.10->latch==2.19.11)
+
+  Downloading numpy-1.21.6-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (15.9 MB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 15.9/15.9 MB 72.9 MB/s eta 0:00:00
+
+
+Collecting wcwidth (from prompt-toolkit==3.0.33->latch==2.19.11)
+
+  Downloading wcwidth-0.2.6-py2.py3-none-any.whl (29 kB)
+
+Collecting anyio>=3.0.0 (from watchfiles==0.18.1->latch==2.19.11)
+
+  Downloading anyio-3.6.2-py3-none-any.whl (80 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 80.6/80.6 kB 11.6 MB/s eta 0:00:00
+
+
+Collecting googleapis-common-protos (from lyteidl==0.2.0a0->lytekit==0.14.10->latch==2.19.11)
+
+  Downloading googleapis_common_protos-1.59.0-py2.py3-none-any.whl (223 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 223.6/223.6 kB 28.8 MB/s eta 0:00:00
+
+
+Collecting protoc-gen-swagger (from lyteidl==0.2.0a0->lytekit==0.14.10->latch==2.19.11)
+
+  Downloading protoc_gen_swagger-0.1.0-py2.py3-none-any.whl (9.4 kB)
+
+Collecting decorator>=3.4.2 (from retry==0.9.2->lytekit==0.14.10->latch==2.19.11)
+
+  Downloading decorator-5.1.1-py3-none-any.whl (9.1 kB)
+
+Collecting py<2.0.0,>=1.4.26 (from retry==0.9.2->lytekit==0.14.10->latch==2.19.11)
+
+  Downloading py-1.11.0-py2.py3-none-any.whl (98 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 98.7/98.7 kB 14.9 MB/s eta 0:00:00
+
+
+Collecting botocore<1.30.0,>=1.29.137 (from boto3>=1.24.22->latch==2.19.11)
+
+  Using cached botocore-1.29.137-py3-none-any.whl (10.8 MB)
+
+Collecting jmespath<2.0.0,>=0.7.1 (from boto3>=1.24.22->latch==2.19.11)
+
+  Using cached jmespath-1.0.1-py3-none-any.whl (20 kB)
+
+Collecting s3transfer<0.7.0,>=0.6.0 (from boto3>=1.24.22->latch==2.19.11)
+
+  Using cached s3transfer-0.6.1-py3-none-any.whl (79 kB)
+
+Collecting websocket-client>=0.32.0 (from docker>=5.0->latch==2.19.11)
+
+  Downloading websocket_client-1.5.2-py3-none-any.whl (56 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 56.6/56.6 kB 9.0 MB/s eta 0:00:00
+
+
+Requirement already satisfied: certifi>=14.05.14 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from kubernetes>=24.2.0->latch==2.19.11) (2023.5.7)
+
+Collecting google-auth>=1.0.1 (from kubernetes>=24.2.0->latch==2.19.11)
+
+  Downloading google_auth-2.18.1-py2.py3-none-any.whl (178 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 178.9/178.9 kB 24.0 MB/s eta 0:00:00
+
+
+Collecting requests-oauthlib (from kubernetes>=24.2.0->latch==2.19.11)
+
+  Downloading requests_oauthlib-1.3.1-py2.py3-none-any.whl (23 kB)
+
+Collecting bcrypt>=3.2 (from paramiko>=2.11.0->latch==2.19.11)
+
+  Downloading bcrypt-4.0.1-cp36-abi3-manylinux_2_28_x86_64.whl (593 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 593.7/593.7 kB 49.7 MB/s eta 0:00:00
+
+
+Collecting pynacl>=1.5 (from paramiko>=2.11.0->latch==2.19.11)
+
+  Downloading PyNaCl-1.5.0-cp36-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_24_x86_64.whl (856 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 856.7/856.7 kB 58.5 MB/s eta 0:00:00
+
+
+Requirement already satisfied: charset-normalizer<4,>=2 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from requests>=2.28.1->latch==2.19.11) (3.1.0)
+
+Requirement already satisfied: idna<4,>=2.5 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from requests>=2.28.1->latch==2.19.11) (3.4)
+
+Requirement already satisfied: appdirs in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from snakemake>=7.25.4->latch==2.19.11) (1.4.4)
+
+Requirement already satisfied: configargparse in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from snakemake>=7.25.4->latch==2.19.11) (1.5.3)
+
+Requirement already satisfied: connection-pool>=0.0.3 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from snakemake>=7.25.4->latch==2.19.11) (0.0.3)
+
+Requirement already satisfied: datrie in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from snakemake>=7.25.4->latch==2.19.11) (0.8.2)
+
+Requirement already satisfied: docutils in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from snakemake>=7.25.4->latch==2.19.11) (0.20.1)
+
+Requirement already satisfied: gitpython in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from snakemake>=7.25.4->latch==2.19.11) (3.1.31)
+
+Requirement already satisfied: humanfriendly in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from snakemake>=7.25.4->latch==2.19.11) (10.0)
+
+Requirement already satisfied: jinja2<4.0,>=3.0 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from snakemake>=7.25.4->latch==2.19.11) (3.1.2)
+
+Requirement already satisfied: nbformat in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from snakemake>=7.25.4->latch==2.19.11) (5.8.0)
+
+Requirement already satisfied: psutil in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from snakemake>=7.25.4->latch==2.19.11) (5.9.5)
+
+Requirement already satisfied: pulp>=2.0 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from snakemake>=7.25.4->latch==2.19.11) (2.7.0)
+
+Requirement already satisfied: reretry in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from snakemake>=7.25.4->latch==2.19.11) (0.11.8)
+
+Requirement already satisfied: smart-open>=3.0 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from snakemake>=7.25.4->latch==2.19.11) (6.3.0)
+
+Requirement already satisfied: stopit in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from snakemake>=7.25.4->latch==2.19.11) (1.1.2)
+
+Requirement already satisfied: tabulate in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from snakemake>=7.25.4->latch==2.19.11) (0.9.0)
+
+Requirement already satisfied: throttler in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from snakemake>=7.25.4->latch==2.19.11) (1.2.1)
+
+Requirement already satisfied: toposort>=1.10 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from snakemake>=7.25.4->latch==2.19.11) (1.10)
+
+Requirement already satisfied: yte<2.0,>=1.0 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from snakemake>=7.25.4->latch==2.19.11) (1.5.1)
+
+Collecting sniffio>=1.1 (from anyio>=3.0.0->watchfiles==0.18.1->latch==2.19.11)
+
+  Downloading sniffio-1.3.0-py3-none-any.whl (10 kB)
+
+Collecting binaryornot>=0.4.4 (from cookiecutter>=1.7.3->lytekit==0.14.10->latch==2.19.11)
+
+  Downloading binaryornot-0.4.4-py2.py3-none-any.whl (9.0 kB)
+
+Collecting jinja2-time>=0.2.0 (from cookiecutter>=1.7.3->lytekit==0.14.10->latch==2.19.11)
+
+  Downloading jinja2_time-0.2.0-py2.py3-none-any.whl (6.4 kB)
+
+Collecting python-slugify>=4.0.0 (from cookiecutter>=1.7.3->lytekit==0.14.10->latch==2.19.11)
+
+  Downloading python_slugify-8.0.1-py2.py3-none-any.whl (9.7 kB)
+
+Requirement already satisfied: cffi>=1.12 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from cryptography>=3.1->asyncssh==2.12.0->latch==2.19.11) (1.15.1)
+
+Collecting marshmallow<4.0.0,>=3.3.0 (from dataclasses-json>=0.5.2->lytekit==0.14.10->latch==2.19.11)
+
+  Downloading marshmallow-3.19.0-py3-none-any.whl (49 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 49.1/49.1 kB 7.0 MB/s eta 0:00:00
+
+
+Collecting marshmallow-enum<2.0.0,>=1.5.1 (from dataclasses-json>=0.5.2->lytekit==0.14.10->latch==2.19.11)
+
+  Downloading marshmallow_enum-1.5.1-py2.py3-none-any.whl (4.2 kB)
+
+Collecting typing-inspect>=0.4.0 (from dataclasses-json>=0.5.2->lytekit==0.14.10->latch==2.19.11)
+
+  Downloading typing_inspect-0.8.0-py3-none-any.whl (8.7 kB)
+
+Collecting regex>=2019.4.14 (from docker-image-py>=0.1.10->lytekit==0.14.10->latch==2.19.11)
+
+  Downloading regex-2023.5.5-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (769 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 769.7/769.7 kB 56.9 MB/s eta 0:00:00
+
+
+Collecting cachetools<6.0,>=2.0.0 (from google-auth>=1.0.1->kubernetes>=24.2.0->latch==2.19.11)
+
+  Downloading cachetools-5.3.0-py3-none-any.whl (9.3 kB)
+
+Collecting pyasn1-modules>=0.2.1 (from google-auth>=1.0.1->kubernetes>=24.2.0->latch==2.19.11)
+
+  Downloading pyasn1_modules-0.3.0-py2.py3-none-any.whl (181 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 181.3/181.3 kB 21.8 MB/s eta 0:00:00
+
+
+Collecting rsa<5,>=3.1.4 (from google-auth>=1.0.1->kubernetes>=24.2.0->latch==2.19.11)
+
+  Downloading rsa-4.9-py3-none-any.whl (34 kB)
+
+INFO: pip is looking at multiple versions of grpcio-status to determine which version is compatible with other requirements. This could take a while.
+
+Collecting grpcio-status!=1.45.0,>=1.43 (from lytekit==0.14.10->latch==2.19.11)
+
+  Downloading grpcio_status-1.54.0-py3-none-any.whl (5.1 kB)
+
+  Downloading grpcio_status-1.53.1-py3-none-any.whl (5.1 kB)
+
+  Downloading grpcio_status-1.53.0-py3-none-any.whl (5.1 kB)
+
+  Downloading grpcio_status-1.51.3-py3-none-any.whl (5.1 kB)
+
+  Downloading grpcio_status-1.51.1-py3-none-any.whl (5.1 kB)
+
+  Downloading grpcio_status-1.50.0-py3-none-any.whl (14 kB)
+
+  Downloading grpcio_status-1.49.1-py3-none-any.whl (14 kB)
+
+INFO: pip is looking at multiple versions of grpcio-status to determine which version is compatible with other requirements. This could take a while.
+
+  Downloading grpcio_status-1.48.2-py3-none-any.whl (14 kB)
+
+Requirement already satisfied: MarkupSafe>=2.0 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from jinja2<4.0,>=3.0->snakemake>=7.25.4->latch==2.19.11) (2.1.2)
+
+Requirement already satisfied: attrs>=17.4.0 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from jsonschema>=4.5.1->lytekit==0.14.10->latch==2.19.11) (23.1.0)
+
+Requirement already satisfied: pyrsistent!=0.17.0,!=0.17.1,!=0.17.2,>=0.14.0 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from jsonschema>=4.5.1->lytekit==0.14.10->latch==2.19.11) (0.19.3)
+
+Collecting jaraco.classes (from keyring>=18.0.1->lytekit==0.14.10->latch==2.19.11)
+
+  Downloading jaraco.classes-3.2.3-py3-none-any.whl (6.0 kB)
+
+Requirement already satisfied: importlib-metadata>=4.11.4 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from keyring>=18.0.1->lytekit==0.14.10->latch==2.19.11) (6.6.0)
+
+Collecting SecretStorage>=3.2 (from keyring>=18.0.1->lytekit==0.14.10->latch==2.19.11)
+
+  Downloading SecretStorage-3.3.3-py3-none-any.whl (15 kB)
+
+Collecting jeepney>=0.4.2 (from keyring>=18.0.1->lytekit==0.14.10->latch==2.19.11)
+
+  Downloading jeepney-0.8.0-py3-none-any.whl (48 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 48.4/48.4 kB 7.6 MB/s eta 0:00:00
+
+
+Collecting types-PyYAML (from responses>=0.10.7->lytekit==0.14.10->latch==2.19.11)
+
+  Downloading types_PyYAML-6.0.12.9-py3-none-any.whl (14 kB)
+
+Collecting multidict>=4.0 (from yarl<2.0,>=1.6->gql==3.4.0->latch==2.19.11)
+
+  Downloading multidict-6.0.4-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (114 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 114.5/114.5 kB 15.6 MB/s eta 0:00:00
+
+
+Requirement already satisfied: dpath<3.0,>=2.0 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from yte<2.0,>=1.0->snakemake>=7.25.4->latch==2.19.11) (2.1.6)
+
+Requirement already satisfied: plac<2.0.0,>=1.3.4 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from yte<2.0,>=1.0->snakemake>=7.25.4->latch==2.19.11) (1.3.5)
+
+Requirement already satisfied: gitdb<5,>=4.0.1 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from gitpython->snakemake>=7.25.4->latch==2.19.11) (4.0.10)
+
+Requirement already satisfied: fastjsonschema in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from nbformat->snakemake>=7.25.4->latch==2.19.11) (2.16.3)
+
+Requirement already satisfied: jupyter-core in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from nbformat->snakemake>=7.25.4->latch==2.19.11) (5.3.0)
+
+Requirement already satisfied: traitlets>=5.1 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from nbformat->snakemake>=7.25.4->latch==2.19.11) (5.9.0)
+
+Collecting oauthlib>=3.0.0 (from requests-oauthlib->kubernetes>=24.2.0->latch==2.19.11)
+
+  Downloading oauthlib-3.2.2-py3-none-any.whl (151 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 151.7/151.7 kB 20.8 MB/s eta 0:00:00
+
+
+Collecting chardet>=3.0.2 (from binaryornot>=0.4.4->cookiecutter>=1.7.3->lytekit==0.14.10->latch==2.19.11)
+
+  Downloading chardet-5.1.0-py3-none-any.whl (199 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 199.1/199.1 kB 24.7 MB/s eta 0:00:00
+
+
+Requirement already satisfied: pycparser in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from cffi>=1.12->cryptography>=3.1->asyncssh==2.12.0->latch==2.19.11) (2.21)
+
+Requirement already satisfied: smmap<6,>=3.0.1 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from gitdb<5,>=4.0.1->gitpython->snakemake>=7.25.4->latch==2.19.11) (3.0.5)
+
+Requirement already satisfied: zipp>=0.5 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from importlib-metadata>=4.11.4->keyring>=18.0.1->lytekit==0.14.10->latch==2.19.11) (3.15.0)
+
+Collecting arrow (from jinja2-time>=0.2.0->cookiecutter>=1.7.3->lytekit==0.14.10->latch==2.19.11)
+
+  Downloading arrow-1.2.3-py3-none-any.whl (66 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 66.4/66.4 kB 8.8 MB/s eta 0:00:00
+
+
+Requirement already satisfied: packaging>=17.0 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from marshmallow<4.0.0,>=3.3.0->dataclasses-json>=0.5.2->lytekit==0.14.10->latch==2.19.11) (23.1)
+
+Collecting pyasn1<0.6.0,>=0.4.6 (from pyasn1-modules>=0.2.1->google-auth>=1.0.1->kubernetes>=24.2.0->latch==2.19.11)
+
+  Using cached pyasn1-0.5.0-py2.py3-none-any.whl (83 kB)
+
+Collecting text-unidecode>=1.3 (from python-slugify>=4.0.0->cookiecutter>=1.7.3->lytekit==0.14.10->latch==2.19.11)
+
+  Downloading text_unidecode-1.3-py2.py3-none-any.whl (78 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 78.2/78.2 kB 11.7 MB/s eta 0:00:00
+
+
+Collecting mypy-extensions>=0.3.0 (from typing-inspect>=0.4.0->dataclasses-json>=0.5.2->lytekit==0.14.10->latch==2.19.11)
+
+  Downloading mypy_extensions-1.0.0-py3-none-any.whl (4.7 kB)
+
+Collecting more-itertools (from jaraco.classes->keyring>=18.0.1->lytekit==0.14.10->latch==2.19.11)
+
+  Downloading more_itertools-9.1.0-py3-none-any.whl (54 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 54.2/54.2 kB 7.8 MB/s eta 0:00:00
+
+
+Requirement already satisfied: platformdirs>=2.5 in /root/mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from jupyter-core->nbformat->snakemake>=7.25.4->latch==2.19.11) (3.5.1)
+
+[91mWARNING: The candidate selected for download or install is a yanked version: 'apscheduler' candidate (version 3.9.1 at https://files.pythonhosted.org/packages/e4/9f/c3937d4babe62504b874d4bf2c0d85aa69c7f59fa84cf6050f3b9dc5d83e/APScheduler-3.9.1-py2.py3-none-any.whl (from https://pypi.org/simple/apscheduler/) (requires-python:>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, <4))
+Reason for being yanked: Not compatible with Python 2.7
+[0m
+Building wheels for collected packages: latch, docker-image-py
+
+  Building editable for latch (pyproject.toml): started
+
+  Building editable for latch (pyproject.toml): finished with status 'done'
+
+  Created wheel for latch: filename=latch-2.19.11-0.editable-py3-none-any.whl size=3728 sha256=45c37325a5f77f85cab10dbf6078b5c6c13a16e244e658684de17b426a03da77
+
+  Stored in directory: /tmp/pip-ephem-wheel-cache-2rp2kq11/wheels/66/25/3a/f25ede02a4206d090762dd0ca4dbdc81da4d61e154ed692990
+
+  Building wheel for docker-image-py (setup.py): started
+
+  Building wheel for docker-image-py (setup.py): finished with status 'done'
+
+  Created wheel for docker-image-py: filename=docker_image_py-0.1.12-py3-none-any.whl size=8812 sha256=60010da77a8bfeaf7239633bb9e48b81ba0a2431b6a10d6a13a137d18ed8bc30
+
+  Stored in directory: /root/.cache/pip/wheels/fb/45/02/503244da15fbcecde5c3edabb744ed0c4f9a7643126b2d222c
+
+Successfully built latch docker-image-py
+
+Installing collected packages: wcwidth, types-PyYAML, text-unidecode, statsd, sortedcontainers, pytz, pytimeparse, websockets, websocket-client, uvloop, tzlocal, tqdm, sniffio, regex, python-slugify, python-json-logger, pyjwt, pyasn1, py, protobuf, prompt-toolkit, oauthlib, numpy, natsort, mypy-extensions, multidict, more-itertools, marshmallow, jmespath, jeepney, grpcio, graphql-core, docstring-parser, diskcache, deprecated, decorator, cloudpickle, click, chardet, cachetools, bcrypt, backoff, aioconsole, yarl, typing-inspect, rsa, retry, responses, requests-toolbelt, requests-oauthlib, pynacl, pyasn1-modules, pyarrow, protoc-gen-swagger, pandas, marshmallow-jsonschema, marshmallow-enum, jaraco.classes, googleapis-common-protos, docker-image-py, docker, croniter, botocore, binaryornot, arrow, apscheduler, anyio, watchfiles, SecretStorage, s3transfer, paramiko, lyteidl, jinja2-time, grpcio-status, gql, google-auth, dataclasses-json, asyncssh, scp, kubernetes, keyring, cookiecutter, boto3, lytekit, lytekitplugins-pods, latch
+
+  Attempting uninstall: numpy
+
+    Found existing installation: numpy 1.24.3
+
+    Uninstalling numpy-1.24.3:
+
+      Successfully uninstalled numpy-1.24.3
+
+Successfully installed SecretStorage-3.3.3 aioconsole-0.5.1 anyio-3.6.2 apscheduler-3.9.1 arrow-1.2.3 asyncssh-2.12.0 backoff-2.2.1 bcrypt-4.0.1 binaryornot-0.4.4 boto3-1.26.137 botocore-1.29.137 cachetools-5.3.0 chardet-5.1.0 click-8.1.3 cloudpickle-2.2.1 cookiecutter-2.1.1 croniter-1.3.14 dataclasses-json-0.5.7 decorator-5.1.1 deprecated-1.2.13 diskcache-5.6.1 docker-5.0.3 docker-image-py-0.1.12 docstring-parser-0.15 google-auth-2.18.1 googleapis-common-protos-1.59.0 gql-3.4.0 graphql-core-3.2.3 grpcio-1.54.2 grpcio-status-1.48.2 jaraco.classes-3.2.3 jeepney-0.8.0 jinja2-time-0.2.0 jmespath-1.0.1 keyring-23.13.1 kubernetes-26.1.0 latch-2.19.11 lyteidl-0.2.0a0 lytekit-0.14.10 lytekitplugins-pods-0.4.0 marshmallow-3.19.0 marshmallow-enum-1.5.1 marshmallow-jsonschema-0.13.0 more-itertools-9.1.0 multidict-6.0.4 mypy-extensions-1.0.0 natsort-8.3.1 numpy-1.21.6 oauthlib-3.2.2 pandas-1.5.3 paramiko-3.1.0 prompt-toolkit-3.0.33 protobuf-3.20.3 protoc-gen-swagger-0.1.0 py-1.11.0 pyarrow-6.0.1 pyasn1-0.5.0 pyasn1-modules-0.3.0 pyjwt-2.7.0 pynacl-1.5.0 python-json-logger-2.0.7 python-slugify-8.0.1 pytimeparse-1.1.8 pytz-2023.3 regex-2023.5.5 requests-oauthlib-1.3.1 requests-toolbelt-0.10.1 responses-0.23.1 retry-0.9.2 rsa-4.9 s3transfer-0.6.1 scp-0.14.5 sniffio-1.3.0 sortedcontainers-2.4.0 statsd-3.3.0 text-unidecode-1.3 tqdm-4.65.0 types-PyYAML-6.0.12.9 typing-inspect-0.8.0 tzlocal-5.0.1 uvloop-0.17.0 watchfiles-0.18.1 wcwidth-0.2.6 websocket-client-1.5.2 websockets-10.3 yarl-1.9.2
+
+[91mWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+[0m
+ ---> 987ca2488773
+
+Step 9/14 : copy Snakefile config.yaml /root/
+
+
+ ---> ff2efbf9c325
+
+Step 10/14 : copy scripts/plot-quals.py /root/scripts/plot-quals.py
+
+
+ ---> efa63cf5aa2d
+
+Step 11/14 : copy .latch/latch_entrypoint.py /root/latch_entrypoint.py
+
+
+ ---> 5222bb3def10
+
+Step 12/14 : arg tag
+
+
+ ---> Running in 0d5670080d49
+
+ ---> 2b44d6814bf9
+
+Step 13/14 : env FLYTE_INTERNAL_IMAGE $tag
+
+
+ ---> Running in 7c86bbffcaba
+
+ ---> d60334da0de6
+
+Step 14/14 : workdir /root
+
+
+ ---> Running in 04fe88e9f8bb
+
+ ---> 2fde7c305cbd
+
+Successfully built 2fde7c305cbd
+
+Successfully tagged 812206152185.dkr.ecr.us-west-2.amazonaws.com/x1_test_latch_register:0.0.0-1d8b2c
+

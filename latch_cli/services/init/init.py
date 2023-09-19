@@ -173,6 +173,13 @@ def _gen_example_docker(pkg_root: Path):
     _get_boilerplate(pkg_root, source_docker_path)
 
 
+def _gen_example_snakemake(pkg_root: Path):
+    pkg_root = pkg_root.resolve()
+    source_path = Path(__file__).parent / "example_snakemake"
+
+    _get_boilerplate(pkg_root, source_path)
+
+
 def _gen_example_nfcore(pkg_root: Path):
     pkg_root = pkg_root.resolve()
     source_path = Path(__file__).parent / "example_nfcore"
@@ -186,6 +193,7 @@ option_map = {
     "R Example": _gen_example_r,
     "Conda Example": _gen_example_conda,
     "Docker Example": _gen_example_docker,
+    "Snakemake Example": _gen_example_snakemake,
     "NFCore Example": _gen_example_nfcore,
 }
 
@@ -196,6 +204,7 @@ template_flag_to_option = {
     "subprocess": "Subprocess Example",
     "r": "R Example",
     "conda": "Conda Example",
+    "snakemake": "Snakemake Example",
     "nfcore": "NFCore Example",
 }
 

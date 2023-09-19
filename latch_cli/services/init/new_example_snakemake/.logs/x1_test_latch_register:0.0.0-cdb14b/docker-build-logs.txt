@@ -1,0 +1,2083 @@
+Step 1/14 : from 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:9c8f-main
+
+
+ ---> b253e8cdab51
+
+Step 2/14 : run mkdir /opt/latch
+
+
+ ---> Using cache
+
+ ---> 89e0ab657f0d
+
+Step 3/14 : RUN curl -L -O     https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Linux-x86_64.sh     && mkdir /root/.conda     && bash Mambaforge-Linux-x86_64.sh -b     && rm -f Mambaforge-Linux-x86_64.sh
+
+
+ ---> Using cache
+
+ ---> 7741d9d31977
+
+Step 4/14 : copy environment.yaml /root/environment.yaml
+
+
+ ---> c2d3f498d2d5
+
+Step 5/14 : run /root/mambaforge/bin/mamba env create --name snakemake-tutorial --file environment.yaml
+
+
+ ---> Running in 3f2a1a3e5042
+
+
+
+Looking for: ["snakemake-minimal[version='>=7.3']", 'jinja2', 'matplotlib', 'graphviz', 'bcftools=1.15', 'samtools=1.15', 'bwa=0.7.17', 'pysam=0.19', 'pygments']
+
+
+
+Transaction
+
+  Prefix: /root/mambaforge/envs/snakemake-tutorial
+
+  Updating specs:
+
+   - snakemake-minimal[version='>=7.3']
+   - jinja2
+   - matplotlib
+   - graphviz
+   - bcftools=1.15
+   - samtools=1.15
+   - bwa=0.7.17
+   - pysam=0.19
+   - pygments
+
+
+
+  Package                           Version  Build                Channel                    Size
+───────────────────────────────────────────────────────────────────────────────────────────────────
+  Install:
+───────────────────────────────────────────────────────────────────────────────────────────────────
+
+  + _libgcc_mutex                       0.1  conda_forge          conda-forge/linux-64     Cached
+  + _openmp_mutex                       4.5  2_gnu                conda-forge/linux-64     Cached
+  + alsa-lib                          1.2.8  h166bdaf_0           conda-forge/linux-64      592kB
+  + amply                             0.1.5  pyhd8ed1ab_0         conda-forge/noarch         21kB
+  + appdirs                           1.4.4  pyh9f0ad1d_0         conda-forge/noarch         13kB
+  + atk-1.0                          2.38.0  hd4edc92_1           conda-forge/linux-64      552kB
+  + attr                              2.5.1  h166bdaf_1           conda-forge/linux-64       71kB
+  + attrs                            23.1.0  pyh71513ae_1         conda-forge/noarch         55kB
+  + bcftools                         1.15.1  hfe4b78e_1           bioconda/linux-64         867kB
+  + brotli                            1.0.9  h166bdaf_8           conda-forge/linux-64       19kB
+  + brotli-bin                        1.0.9  h166bdaf_8           conda-forge/linux-64       20kB
+  + brotlipy                          0.7.0  py310h5764c6d_1005   conda-forge/linux-64     Cached
+  + bwa                              0.7.17  he4a0461_11          bioconda/linux-64         196kB
+  + bzip2                             1.0.8  h7f98852_4           conda-forge/linux-64     Cached
+  + c-ares                           1.19.0  hd590300_0           conda-forge/linux-64      114kB
+  + ca-certificates                2023.5.7  hbcca054_0           conda-forge/linux-64      148kB
+  + cairo                            1.16.0  ha61ee94_1014        conda-forge/linux-64        2MB
+  + certifi                        2023.5.7  pyhd8ed1ab_0         conda-forge/noarch        152kB
+  + cffi                             1.15.1  py310h255011f_3      conda-forge/linux-64     Cached
+  + charset-normalizer                3.1.0  pyhd8ed1ab_0         conda-forge/noarch       Cached
+  + coin-or-cbc                     2.10.10  h9002f0b_0           conda-forge/linux-64      941kB
+  + coin-or-cgl                      0.60.7  h516709c_0           conda-forge/linux-64      551kB
+  + coin-or-clp                      1.17.8  h1ee7a9c_0           conda-forge/linux-64        1MB
+  + coin-or-osi                     0.108.8  ha2443b9_0           conda-forge/linux-64      389kB
+  + coin-or-utils                    2.11.9  hee58242_0           conda-forge/linux-64      687kB
+  + coincbc                         2.10.10  0_metapackage        conda-forge/noarch         12kB
+  + configargparse                    1.5.3  pyhd8ed1ab_0         conda-forge/noarch         33kB
+  + connection_pool                   0.0.3  pyhd3deb0d_0         conda-forge/noarch          8kB
+  + contourpy                         1.0.7  py310hdf3cbec_0      conda-forge/linux-64      216kB
+  + cryptography                     39.0.0  py310h65dfdc0_0      conda-forge/linux-64        1MB
+  + cycler                           0.11.0  pyhd8ed1ab_0         conda-forge/noarch         10kB
+  + datrie                            0.8.2  py310h5764c6d_6      conda-forge/linux-64      148kB
+  + dbus                             1.13.6  h5008d03_3           conda-forge/linux-64      619kB
+  + docutils                         0.20.1  py310hff52083_0      conda-forge/linux-64      721kB
+  + dpath                             2.1.5  pyha770c72_1         conda-forge/noarch         21kB
+  + expat                             2.5.0  hcb278e6_1           conda-forge/linux-64      137kB
+  + fftw                             3.3.10  nompi_hc118613_107   conda-forge/linux-64        2MB
+  + filelock                         3.12.0  pyhd8ed1ab_0         conda-forge/noarch         15kB
+  + font-ttf-dejavu-sans-mono          2.37  hab24e00_0           conda-forge/noarch        397kB
+  + font-ttf-inconsolata              3.000  h77eed37_0           conda-forge/noarch         97kB
+  + font-ttf-source-code-pro          2.038  h77eed37_0           conda-forge/noarch        701kB
+  + font-ttf-ubuntu                    0.83  hab24e00_0           conda-forge/noarch          2MB
+  + fontconfig                       2.14.2  h14ed4e7_0           conda-forge/linux-64      272kB
+  + fonts-conda-ecosystem                 1  0                    conda-forge/noarch          4kB
+  + fonts-conda-forge                     1  0                    conda-forge/noarch          4kB
+  + fonttools                        4.39.4  py310h2372a71_0      conda-forge/linux-64        2MB
+  + freetype                         2.12.1  hca18f0e_1           conda-forge/linux-64      626kB
+  + fribidi                          1.0.10  h36c2ea0_0           conda-forge/linux-64      114kB
+  + gdk-pixbuf                       2.42.8  hff1cb4f_1           conda-forge/linux-64      612kB
+  + gettext                          0.21.1  h27087fc_0           conda-forge/linux-64        4MB
+  + giflib                            5.2.1  h0b41bf4_3           conda-forge/linux-64       77kB
+  + gitdb                            4.0.10  pyhd8ed1ab_0         conda-forge/noarch         52kB
+  + gitpython                        3.1.31  pyhd8ed1ab_0         conda-forge/noarch        142kB
+  + glib                             2.76.2  hfc55251_0           conda-forge/linux-64      484kB
+  + glib-tools                       2.76.2  hfc55251_0           conda-forge/linux-64      112kB
+  + graphite2                        1.3.13  h58526e2_1001        conda-forge/linux-64      105kB
+  + graphviz                          7.0.5  h2e5815a_0           conda-forge/linux-64        2MB
+  + gsl                                 2.7  he838d99_0           conda-forge/linux-64        3MB
+  + gst-plugins-base                 1.21.3  h4243ec0_1           conda-forge/linux-64        3MB
+  + gstreamer                        1.21.3  h25f0c4b_1           conda-forge/linux-64        2MB
+  + gstreamer-orc                    0.4.33  h166bdaf_0           conda-forge/linux-64      306kB
+  + gtk2                            2.24.33  h90689f9_2           conda-forge/linux-64        8MB
+  + gts                               0.7.6  h64030ff_2           conda-forge/linux-64      421kB
+  + harfbuzz                          6.0.0  h8e241bc_0           conda-forge/linux-64        1MB
+  + htslib                             1.16  h6bc39ce_0           bioconda/linux-64           2MB
+  + humanfriendly                      10.0  py310hff52083_4      conda-forge/linux-64      123kB
+  + icu                                70.1  h27087fc_0           conda-forge/linux-64       14MB
+  + idna                                3.4  pyhd8ed1ab_0         conda-forge/noarch       Cached
+  + importlib-metadata                6.6.0  pyha770c72_0         conda-forge/noarch         26kB
+  + importlib_resources              5.12.0  pyhd8ed1ab_0         conda-forge/noarch         31kB
+  + jack                             1.9.22  h11f4161_0           conda-forge/linux-64      464kB
+  + jinja2                            3.1.2  pyhd8ed1ab_1         conda-forge/noarch        101kB
+  + jpeg                                 9e  h0b41bf4_3           conda-forge/linux-64      240kB
+  + jsonschema                       4.17.3  pyhd8ed1ab_0         conda-forge/noarch         70kB
+  + jupyter_core                      5.3.0  py310hff52083_0      conda-forge/linux-64       91kB
+  + keyutils                          1.6.1  h166bdaf_0           conda-forge/linux-64     Cached
+  + kiwisolver                        1.4.4  py310hbf28c38_1      conda-forge/linux-64       77kB
+  + krb5                             1.20.1  hf9c8cef_0           conda-forge/linux-64        1MB
+  + lame                              3.100  h166bdaf_1003        conda-forge/linux-64      508kB
+  + lcms2                              2.14  h6ed2654_0           conda-forge/linux-64      262kB
+  + ld_impl_linux-64                   2.40  h41732ed_0           conda-forge/linux-64     Cached
+  + lerc                              4.0.0  h27087fc_0           conda-forge/linux-64      282kB
+  + libblas                           3.9.0  16_linux64_openblas  conda-forge/linux-64       13kB
+  + libbrotlicommon                   1.0.9  h166bdaf_8           conda-forge/linux-64       67kB
+  + libbrotlidec                      1.0.9  h166bdaf_8           conda-forge/linux-64       34kB
+  + libbrotlienc                      1.0.9  h166bdaf_8           conda-forge/linux-64      295kB
+  + libcap                             2.66  ha37c62d_0           conda-forge/linux-64      100kB
+  + libcblas                          3.9.0  16_linux64_openblas  conda-forge/linux-64       13kB
+  + libclang                         15.0.7  default_h7634d5b_2   conda-forge/linux-64      133kB
+  + libclang13                       15.0.7  default_h9986a30_2   conda-forge/linux-64       10MB
+  + libcups                           2.3.3  h36d4200_3           conda-forge/linux-64        5MB
+  + libcurl                          7.87.0  h6312ad2_0           conda-forge/linux-64      347kB
+  + libdb                            6.2.32  h9c3ff4c_0           conda-forge/linux-64       24MB
+  + libdeflate                         1.13  h166bdaf_0           conda-forge/linux-64       80kB
+  + libedit                    3.1.20191231  he28a2e2_2           conda-forge/linux-64     Cached
+  + libev                              4.33  h516909a_1           conda-forge/linux-64     Cached
+  + libevent                         2.1.10  h9b69904_4           conda-forge/linux-64        1MB
+  + libexpat                          2.5.0  hcb278e6_1           conda-forge/linux-64       78kB
+  + libffi                            3.4.2  h7f98852_5           conda-forge/linux-64     Cached
+  + libflac                           1.4.2  h27087fc_0           conda-forge/linux-64      421kB
+  + libgcc-ng                        12.2.0  h65d4601_19          conda-forge/linux-64     Cached
+  + libgcrypt                        1.10.1  h166bdaf_0           conda-forge/linux-64      720kB
+  + libgd                             2.3.3  h18fbbfe_3           conda-forge/linux-64      272kB
+  + libgfortran-ng                   12.2.0  h69a702a_19          conda-forge/linux-64       23kB
+  + libgfortran5                     12.2.0  h337968e_19          conda-forge/linux-64        2MB
+  + libglib                          2.76.2  hebfc3b9_0           conda-forge/linux-64        3MB
+  + libgomp                          12.2.0  h65d4601_19          conda-forge/linux-64     Cached
+  + libgpg-error                       1.46  h620e276_0           conda-forge/linux-64      258kB
+  + libiconv                           1.17  h166bdaf_0           conda-forge/linux-64     Cached
+  + liblapack                         3.9.0  16_linux64_openblas  conda-forge/linux-64       13kB
+  + liblapacke                        3.9.0  16_linux64_openblas  conda-forge/linux-64       13kB
+  + libllvm15                        15.0.7  hadd5161_1           conda-forge/linux-64       33MB
+  + libnghttp2                       1.51.0  hdcd2b5c_0           conda-forge/linux-64      623kB
+  + libnsl                            2.0.0  h7f98852_0           conda-forge/linux-64     Cached
+  + libogg                            1.3.4  h7f98852_1           conda-forge/linux-64      211kB
+  + libopenblas                      0.3.21  pthreads_h78a6416_3  conda-forge/linux-64       11MB
+  + libopus                           1.3.1  h7f98852_1           conda-forge/linux-64      261kB
+  + libpng                           1.6.39  h753d276_0           conda-forge/linux-64      283kB
+  + libpq                              15.1  h2baec63_3           conda-forge/linux-64        2MB
+  + librsvg                          2.54.4  h7abd40a_0           conda-forge/linux-64        7MB
+  + libsndfile                        1.2.0  hb75c966_0           conda-forge/linux-64      350kB
+  + libsqlite                        3.42.0  h2797004_0           conda-forge/linux-64      829kB
+  + libssh2                          1.10.0  haa6b8db_3           conda-forge/linux-64      239kB
+  + libstdcxx-ng                     12.2.0  h46fd767_19          conda-forge/linux-64     Cached
+  + libsystemd0                         252  h2a991cd_0           conda-forge/linux-64      393kB
+  + libtiff                           4.4.0  h0e0dad5_3           conda-forge/linux-64      658kB
+  + libtool                           2.4.7  h27087fc_0           conda-forge/linux-64      412kB
+  + libudev1                            253  h0b41bf4_0           conda-forge/linux-64      119kB
+  + libuuid                          2.38.1  h0b41bf4_0           conda-forge/linux-64     Cached
+  + libvorbis                         1.3.7  h9c3ff4c_0           conda-forge/linux-64      286kB
+  + libwebp                           1.2.4  h522a892_0           conda-forge/linux-64       90kB
+  + libwebp-base                      1.2.4  h166bdaf_0           conda-forge/linux-64      413kB
+  + libxcb                             1.13  h7f98852_1004        conda-forge/linux-64      400kB
+  + libxkbcommon                      1.5.0  h79f4944_1           conda-forge/linux-64      563kB
+  + libxml2                          2.10.3  hca2bb57_4           conda-forge/linux-64      714kB
+  + libzlib                          1.2.13  h166bdaf_4           conda-forge/linux-64     Cached
+  + lz4-c                             1.9.4  hcb278e6_0           conda-forge/linux-64     Cached
+  + markupsafe                        2.1.2  py310h1fa729e_0      conda-forge/linux-64       23kB
+  + matplotlib                        3.7.1  py310hff52083_0      conda-forge/linux-64        8kB
+  + matplotlib-base                   3.7.1  py310he60537e_0      conda-forge/linux-64        7MB
+  + mpg123                           1.31.3  hcb278e6_0           conda-forge/linux-64      485kB
+  + munkres                           1.0.7  py_1                 bioconda/noarch            10kB
+  + mysql-common                     8.0.32  h14678bc_0           conda-forge/linux-64      803kB
+  + mysql-libs                       8.0.32  h54cf53e_0           conda-forge/linux-64        2MB
+  + nbformat                          5.8.0  pyhd8ed1ab_0         conda-forge/noarch        101kB
+  + ncurses                             6.3  h27087fc_1           conda-forge/linux-64     Cached
+  + nspr                               4.35  h27087fc_0           conda-forge/linux-64      227kB
+  + nss                                3.89  he45b914_0           conda-forge/linux-64        2MB
+  + numpy                            1.24.3  py310ha4c1d20_0      conda-forge/linux-64        7MB
+  + openjpeg                          2.5.0  h7d73246_1           conda-forge/linux-64      546kB
+  + openssl                          1.1.1t  h0b41bf4_0           conda-forge/linux-64        2MB
+  + packaging                          23.1  pyhd8ed1ab_0         conda-forge/noarch         46kB
+  + pango                           1.50.14  hd33c08f_0           conda-forge/linux-64      438kB
+  + pcre2                             10.40  hc3806b6_0           conda-forge/linux-64        2MB
+  + perl                             5.32.1  2_h7f98852_perl5     conda-forge/linux-64       15MB
+  + pillow                            9.2.0  py310h454ad03_3      conda-forge/linux-64       47MB
+  + pip                              23.1.2  pyhd8ed1ab_0         conda-forge/noarch          1MB
+  + pixman                           0.40.0  h36c2ea0_0           conda-forge/linux-64      643kB
+  + pkgutil-resolve-name             1.3.10  pyhd8ed1ab_0         conda-forge/noarch          9kB
+  + plac                              1.3.5  pyhd8ed1ab_0         conda-forge/noarch         23kB
+  + platformdirs                      3.5.1  pyhd8ed1ab_0         conda-forge/noarch         19kB
+  + ply                                3.11  py_1                 conda-forge/noarch         45kB
+  + psutil                            5.9.5  py310h1fa729e_0      conda-forge/linux-64      362kB
+  + pthread-stubs                       0.4  h36c2ea0_1001        conda-forge/linux-64        6kB
+  + pulp                              2.7.0  py310hff52083_0      conda-forge/linux-64      141kB
+  + pulseaudio                         16.1  h4ab2085_1           conda-forge/linux-64        2MB
+  + pycparser                          2.21  pyhd8ed1ab_0         conda-forge/noarch       Cached
+  + pygments                         2.15.1  pyhd8ed1ab_0         conda-forge/noarch        841kB
+  + pyopenssl                        23.1.1  pyhd8ed1ab_0         conda-forge/noarch       Cached
+  + pyparsing                         3.0.9  pyhd8ed1ab_0         conda-forge/noarch         81kB
+  + pyqt                             5.15.7  py310hab646b1_3      conda-forge/linux-64        5MB
+  + pyqt5-sip                       12.11.0  py310heca2aa9_3      conda-forge/linux-64       85kB
+  + pyrsistent                       0.19.3  py310h1fa729e_0      conda-forge/linux-64      100kB
+  + pysam                            0.19.1  py310hff46b53_1      bioconda/linux-64           3MB
+  + pysocks                           1.7.1  pyha2e5f31_6         conda-forge/noarch       Cached
+  + python                           3.10.8  h257c98d_0_cpython   conda-forge/linux-64       23MB
+  + python-dateutil                   2.8.2  pyhd8ed1ab_0         conda-forge/noarch        246kB
+  + python-fastjsonschema            2.16.3  pyhd8ed1ab_0         conda-forge/noarch        225kB
+  + python_abi                         3.10  3_cp310              conda-forge/linux-64     Cached
+  + pyyaml                              6.0  py310h5764c6d_5      conda-forge/linux-64      176kB
+  + qt-main                          5.15.6  h18908ee_6           conda-forge/linux-64       55MB
+  + readline                            8.2  h8228510_1           conda-forge/linux-64     Cached
+  + requests                         2.29.0  pyhd8ed1ab_0         conda-forge/noarch         57kB
+  + reretry                          0.11.8  pyhd8ed1ab_0         conda-forge/noarch         12kB
+  + samtools                         1.15.1  h6899075_1           bioconda/linux-64         406kB
+  + setuptools                       67.7.2  pyhd8ed1ab_0         conda-forge/noarch        583kB
+  + sip                               6.7.9  py310hc6cd4ac_0      conda-forge/linux-64      493kB
+  + six                              1.16.0  pyh6c4a22f_0         conda-forge/noarch         14kB
+  + smart_open                        6.3.0  pyhd8ed1ab_1         conda-forge/noarch         47kB
+  + smmap                             3.0.5  pyh44b312d_0         conda-forge/noarch         23kB
+  + snakemake-minimal                7.25.4  pyhdfd78af_0         bioconda/noarch           266kB
+  + stopit                            1.1.2  py_0                 conda-forge/noarch         16kB
+  + tabulate                          0.9.0  pyhd8ed1ab_1         conda-forge/noarch         36kB
+  + throttler                         1.2.1  pyhd8ed1ab_0         conda-forge/noarch         11kB
+  + tk                               8.6.12  h27826a3_0           conda-forge/linux-64     Cached
+  + toml                             0.10.2  pyhd8ed1ab_0         conda-forge/noarch         18kB
+  + tomli                             2.0.1  pyhd8ed1ab_0         conda-forge/noarch         16kB
+  + toposort                           1.10  pyhd8ed1ab_0         conda-forge/noarch         14kB
+  + tornado                           6.3.2  py310h2372a71_0      conda-forge/linux-64      639kB
+  + traitlets                         5.9.0  pyhd8ed1ab_0         conda-forge/noarch         98kB
+  + typing-extensions                 4.5.0  hd8ed1ab_0           conda-forge/noarch         10kB
+  + typing_extensions                 4.5.0  pyha770c72_0         conda-forge/noarch         31kB
+  + tzdata                            2023c  h71feb2d_0           conda-forge/noarch       Cached
+  + unicodedata2                     15.0.0  py310h5764c6d_0      conda-forge/linux-64      512kB
+  + urllib3                         1.26.15  pyhd8ed1ab_0         conda-forge/noarch       Cached
+  + wheel                            0.40.0  pyhd8ed1ab_0         conda-forge/noarch       Cached
+  + wrapt                            1.15.0  py310h1fa729e_0      conda-forge/linux-64       54kB
+  + xcb-util                          0.4.0  h516909a_0           conda-forge/linux-64       20kB
+  + xcb-util-image                    0.4.0  h166bdaf_0           conda-forge/linux-64       24kB
+  + xcb-util-keysyms                  0.4.0  h516909a_0           conda-forge/linux-64       12kB
+  + xcb-util-renderutil               0.3.9  h166bdaf_0           conda-forge/linux-64       16kB
+  + xcb-util-wm                       0.4.1  h516909a_0           conda-forge/linux-64       56kB
+  + xkeyboard-config                   2.38  h0b41bf4_0           conda-forge/linux-64      882kB
+  + xorg-kbproto                      1.0.7  h7f98852_1002        conda-forge/linux-64       27kB
+  + xorg-libice                      1.0.10  h7f98852_0           conda-forge/linux-64       59kB
+  + xorg-libsm                        1.2.3  hd9c2040_1000        conda-forge/linux-64       26kB
+  + xorg-libx11                       1.8.4  h0b41bf4_0           conda-forge/linux-64      830kB
+  + xorg-libxau                       1.0.9  h7f98852_0           conda-forge/linux-64       13kB
+  + xorg-libxdmcp                     1.1.3  h7f98852_0           conda-forge/linux-64       19kB
+  + xorg-libxext                      1.3.4  h0b41bf4_2           conda-forge/linux-64       50kB
+  + xorg-libxrender                  0.9.10  h7f98852_1003        conda-forge/linux-64       33kB
+  + xorg-renderproto                 0.11.1  h7f98852_1002        conda-forge/linux-64       10kB
+  + xorg-xextproto                    7.3.0  h0b41bf4_1003        conda-forge/linux-64       30kB
+  + xorg-xproto                      7.0.31  h7f98852_1007        conda-forge/linux-64       75kB
+  + xz                                5.2.6  h166bdaf_0           conda-forge/linux-64     Cached
+  + yaml                              0.2.5  h7f98852_2           conda-forge/linux-64       89kB
+  + yte                               1.5.1  py310hff52083_1      conda-forge/linux-64       18kB
+  + zipp                             3.15.0  pyhd8ed1ab_0         conda-forge/noarch         17kB
+  + zlib                             1.2.13  h166bdaf_4           conda-forge/linux-64       94kB
+  + zstd                              1.5.2  h3eb15da_6           conda-forge/linux-64     Cached
+
+  Summary:
+
+  Install: 230 packages
+
+  Total download: 357MB
+
+───────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+
+
+Downloading and Extracting Packages
+
+Preparing transaction: ...working... 
+done
+
+Verifying transaction: ...working... 
+done
+
+Executing transaction: ...working... 
+
+
+done
+
+#
+# To activate this environment, use
+#
+#     $ conda activate snakemake-tutorial
+#
+# To deactivate an active environment, use
+#
+#     $ conda deactivate
+
+
+ ---> 0370179f98b9
+
+Step 6/14 : env PATH /root/mambaforge/envs/snakemake-tutorial/bin:$PATH
+
+
+ ---> Running in 3e94901f04ce
+
+ ---> 558ea5988368
+
+Step 7/14 : run python3 -m pip install latch
+
+
+ ---> Running in f3dc76132437
+
+Collecting latch
+
+  Downloading latch-2.19.11-py3-none-any.whl (150 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 150.6/150.6 kB 7.0 MB/s eta 0:00:00
+
+
+Collecting awscli==1.25.22 (from latch)
+
+  Downloading awscli-1.25.22-py3-none-any.whl (3.9 MB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.9/3.9 MB 59.9 MB/s eta 0:00:00
+
+
+Collecting asyncssh==2.12.0 (from latch)
+
+  Downloading asyncssh-2.12.0-py3-none-any.whl (346 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 346.7/346.7 kB 35.0 MB/s eta 0:00:00
+
+
+Collecting aioconsole==0.5.1 (from latch)
+
+  Downloading aioconsole-0.5.1-py3-none-any.whl (30 kB)
+
+Collecting kubernetes>=24.2.0 (from latch)
+
+  Downloading kubernetes-26.1.0-py2.py3-none-any.whl (1.4 MB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.4/1.4 MB 64.9 MB/s eta 0:00:00
+
+
+Collecting pyjwt>=0.2.0 (from latch)
+
+  Downloading PyJWT-2.7.0-py3-none-any.whl (22 kB)
+
+Requirement already satisfied: requests>=2.28.1 in ./mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from latch) (2.29.0)
+
+Collecting click>=8.0 (from latch)
+
+  Downloading click-8.1.3-py3-none-any.whl (96 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 96.6/96.6 kB 14.5 MB/s eta 0:00:00
+
+
+Collecting docker>=5.0 (from latch)
+
+  Downloading docker-6.1.2-py3-none-any.whl (148 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 148.1/148.1 kB 20.4 MB/s eta 0:00:00
+
+
+Collecting paramiko>=2.11.0 (from latch)
+
+  Downloading paramiko-3.1.0-py3-none-any.whl (211 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 211.2/211.2 kB 26.5 MB/s eta 0:00:00
+
+
+Collecting scp>=0.14.0 (from latch)
+
+  Downloading scp-0.14.5-py2.py3-none-any.whl (8.7 kB)
+
+Collecting boto3>=1.24.22 (from latch)
+
+  Downloading boto3-1.26.136-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 16.9 MB/s eta 0:00:00
+
+
+Collecting tqdm>=4.63.0 (from latch)
+
+  Downloading tqdm-4.65.0-py3-none-any.whl (77 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 77.1/77.1 kB 11.3 MB/s eta 0:00:00
+
+
+Collecting lytekit==0.14.10 (from latch)
+
+  Downloading lytekit-0.14.10-py3-none-any.whl (391 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 391.8/391.8 kB 41.6 MB/s eta 0:00:00
+
+
+Collecting lytekitplugins-pods==0.4.0 (from latch)
+
+  Downloading lytekitplugins_pods-0.4.0-py3-none-any.whl (4.3 kB)
+
+Requirement already satisfied: typing-extensions==4.5.0 in ./mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from latch) (4.5.0)
+
+Collecting apscheduler==3.9.1 (from latch)
+
+  Downloading APScheduler-3.9.1-py2.py3-none-any.whl (59 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 59.5/59.5 kB 9.5 MB/s eta 0:00:00
+
+
+Collecting uvloop==0.17.0 (from latch)
+
+  Downloading uvloop-0.17.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (4.1 MB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 4.1/4.1 MB 63.5 MB/s eta 0:00:00
+
+
+Collecting websockets==10.3 (from latch)
+
+  Downloading websockets-10.3-cp310-cp310-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_12_x86_64.manylinux2010_x86_64.whl (111 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 111.5/111.5 kB 15.6 MB/s eta 0:00:00
+
+
+Collecting prompt-toolkit==3.0.33 (from latch)
+
+  Downloading prompt_toolkit-3.0.33-py3-none-any.whl (383 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 383.6/383.6 kB 41.3 MB/s eta 0:00:00
+
+
+Collecting watchfiles==0.18.1 (from latch)
+
+  Downloading watchfiles-0.18.1-cp37-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (1.2 MB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 67.5 MB/s eta 0:00:00
+
+
+Collecting gql==3.4.0 (from latch)
+
+  Downloading gql-3.4.0-py2.py3-none-any.whl (65 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 65.2/65.2 kB 9.6 MB/s eta 0:00:00
+
+
+Collecting graphql-core==3.2.3 (from latch)
+
+  Downloading graphql_core-3.2.3-py3-none-any.whl (202 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 202.9/202.9 kB 26.3 MB/s eta 0:00:00
+
+
+Collecting requests-toolbelt==0.10.1 (from latch)
+
+  Downloading requests_toolbelt-0.10.1-py2.py3-none-any.whl (54 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 54.5/54.5 kB 8.8 MB/s eta 0:00:00
+
+
+Requirement already satisfied: setuptools>=0.7 in ./mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from apscheduler==3.9.1->latch) (67.7.2)
+
+Requirement already satisfied: six>=1.4.0 in ./mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from apscheduler==3.9.1->latch) (1.16.0)
+
+Collecting pytz (from apscheduler==3.9.1->latch)
+
+  Downloading pytz-2023.3-py2.py3-none-any.whl (502 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 502.3/502.3 kB 46.3 MB/s eta 0:00:00
+
+
+Collecting tzlocal!=3.*,>=2.0 (from apscheduler==3.9.1->latch)
+
+  Downloading tzlocal-5.0.1-py3-none-any.whl (20 kB)
+
+Requirement already satisfied: cryptography>=3.1 in ./mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from asyncssh==2.12.0->latch) (39.0.0)
+
+Collecting botocore==1.27.22 (from awscli==1.25.22->latch)
+
+  Downloading botocore-1.27.22-py3-none-any.whl (8.9 MB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 8.9/8.9 MB 85.4 MB/s eta 0:00:00
+
+
+Collecting docutils<0.17,>=0.10 (from awscli==1.25.22->latch)
+
+  Using cached docutils-0.16-py2.py3-none-any.whl (548 kB)
+
+Collecting s3transfer<0.7.0,>=0.6.0 (from awscli==1.25.22->latch)
+
+  Downloading s3transfer-0.6.1-py3-none-any.whl (79 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 79.8/79.8 kB 12.2 MB/s eta 0:00:00
+
+
+Collecting PyYAML<5.5,>=3.10 (from awscli==1.25.22->latch)
+
+  Downloading PyYAML-5.4.1.tar.gz (175 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 175.1/175.1 kB 23.4 MB/s eta 0:00:00
+
+
+  Installing build dependencies: started
+
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+
+  Getting requirements to build wheel: finished with status 'done'
+  Preparing metadata (pyproject.toml): started
+
+  Preparing metadata (pyproject.toml): finished with status 'done'
+
+Collecting colorama<0.4.5,>=0.2.5 (from awscli==1.25.22->latch)
+
+  Using cached colorama-0.4.4-py2.py3-none-any.whl (16 kB)
+
+Collecting rsa<4.8,>=3.1.2 (from awscli==1.25.22->latch)
+
+  Using cached rsa-4.7.2-py3-none-any.whl (34 kB)
+
+Collecting yarl<2.0,>=1.6 (from gql==3.4.0->latch)
+
+  Downloading yarl-1.9.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (268 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 268.8/268.8 kB 32.0 MB/s eta 0:00:00
+
+
+Collecting backoff<3.0,>=1.11.1 (from gql==3.4.0->latch)
+
+  Downloading backoff-2.2.1-py3-none-any.whl (15 kB)
+
+Collecting lyteidl==0.2.0a0 (from lytekit==0.14.10->latch)
+
+  Downloading lyteidl-0.2.0a0-py3-none-any.whl (162 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 162.2/162.2 kB 22.7 MB/s eta 0:00:00
+
+
+Requirement already satisfied: wheel<1.0.0,>=0.30.0 in ./mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from lytekit==0.14.10->latch) (0.40.0)
+
+Collecting pandas<2.0.0,>=1.0.0 (from lytekit==0.14.10->latch)
+
+  Downloading pandas-1.5.3-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (12.1 MB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 12.1/12.1 MB 79.6 MB/s eta 0:00:00
+
+
+Collecting pyarrow<7.0.0,>=4.0.0 (from lytekit==0.14.10->latch)
+
+  Downloading pyarrow-6.0.1-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (25.6 MB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 25.6/25.6 MB 37.9 MB/s eta 0:00:00
+
+
+Collecting croniter<4.0.0,>=0.3.20 (from lytekit==0.14.10->latch)
+
+  Downloading croniter-1.3.14-py2.py3-none-any.whl (18 kB)
+
+Collecting deprecated<2.0,>=1.0 (from lytekit==0.14.10->latch)
+
+  Downloading Deprecated-1.2.13-py2.py3-none-any.whl (9.6 kB)
+
+Collecting docker>=5.0 (from latch)
+
+  Downloading docker-5.0.3-py2.py3-none-any.whl (146 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 146.2/146.2 kB 20.4 MB/s eta 0:00:00
+
+
+Requirement already satisfied: python-dateutil>=2.1 in ./mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from lytekit==0.14.10->latch) (2.8.2)
+
+Collecting grpcio!=1.45.0,<2.0,>=1.43.0 (from lytekit==0.14.10->latch)
+
+  Downloading grpcio-1.54.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (5.1 MB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 5.1/5.1 MB 60.8 MB/s eta 0:00:00
+
+
+Collecting grpcio-status!=1.45.0,>=1.43 (from lytekit==0.14.10->latch)
+
+  Downloading grpcio_status-1.54.2-py3-none-any.whl (5.1 kB)
+
+Collecting protobuf<4,>=3.6.1 (from lytekit==0.14.10->latch)
+
+  Downloading protobuf-3.20.3-cp310-cp310-manylinux_2_12_x86_64.manylinux2010_x86_64.whl (1.1 MB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.1/1.1 MB 56.8 MB/s eta 0:00:00
+
+
+Collecting python-json-logger>=2.0.0 (from lytekit==0.14.10->latch)
+
+  Downloading python_json_logger-2.0.7-py3-none-any.whl (8.1 kB)
+
+Collecting pytimeparse<2.0.0,>=1.1.8 (from lytekit==0.14.10->latch)
+
+  Downloading pytimeparse-1.1.8-py2.py3-none-any.whl (10.0 kB)
+
+Collecting keyring>=18.0.1 (from lytekit==0.14.10->latch)
+
+  Downloading keyring-23.13.1-py3-none-any.whl (37 kB)
+
+Collecting responses>=0.10.7 (from lytekit==0.14.10->latch)
+
+  Downloading responses-0.23.1-py3-none-any.whl (52 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 52.1/52.1 kB 8.2 MB/s eta 0:00:00
+
+
+Collecting sortedcontainers<3.0.0,>=1.5.9 (from lytekit==0.14.10->latch)
+
+  Downloading sortedcontainers-2.4.0-py2.py3-none-any.whl (29 kB)
+
+Collecting statsd<4.0.0,>=3.0.0 (from lytekit==0.14.10->latch)
+
+  Downloading statsd-3.3.0-py2.py3-none-any.whl (11 kB)
+
+Requirement already satisfied: urllib3<2.0.0,>=1.22 in ./mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from lytekit==0.14.10->latch) (1.26.15)
+
+Requirement already satisfied: wrapt<2.0.0,>=1.0.0 in ./mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from lytekit==0.14.10->latch) (1.15.0)
+
+Collecting retry==0.9.2 (from lytekit==0.14.10->latch)
+
+  Downloading retry-0.9.2-py2.py3-none-any.whl (8.0 kB)
+
+Collecting dataclasses-json>=0.5.2 (from lytekit==0.14.10->latch)
+
+  Downloading dataclasses_json-0.5.7-py3-none-any.whl (25 kB)
+
+Requirement already satisfied: jsonschema>=4.5.1 in ./mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from lytekit==0.14.10->latch) (4.17.3)
+
+Collecting marshmallow-jsonschema>=0.12.0 (from lytekit==0.14.10->latch)
+
+  Downloading marshmallow_jsonschema-0.13.0-py3-none-any.whl (11 kB)
+
+Collecting natsort>=7.0.1 (from lytekit==0.14.10->latch)
+
+  Downloading natsort-8.3.1-py3-none-any.whl (38 kB)
+
+Collecting docker-image-py>=0.1.10 (from lytekit==0.14.10->latch)
+
+  Downloading docker-image-py-0.1.12.tar.gz (8.2 kB)
+
+  Preparing metadata (setup.py): started
+
+  Preparing metadata (setup.py): finished with status 'done'
+
+Collecting docstring-parser>=0.9.0 (from lytekit==0.14.10->latch)
+
+  Downloading docstring_parser-0.15-py3-none-any.whl (36 kB)
+
+Collecting diskcache>=5.2.1 (from lytekit==0.14.10->latch)
+
+  Downloading diskcache-5.6.1-py3-none-any.whl (45 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 45.6/45.6 kB 6.4 MB/s eta 0:00:00
+
+
+Collecting cloudpickle>=2.0.0 (from lytekit==0.14.10->latch)
+
+  Downloading cloudpickle-2.2.1-py3-none-any.whl (25 kB)
+
+Collecting cookiecutter>=1.7.3 (from lytekit==0.14.10->latch)
+
+  Downloading cookiecutter-2.1.1-py2.py3-none-any.whl (36 kB)
+
+Collecting numpy<1.22.0 (from lytekit==0.14.10->latch)
+
+  Downloading numpy-1.21.6-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (15.9 MB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 15.9/15.9 MB 57.7 MB/s eta 0:00:00
+
+
+Collecting wcwidth (from prompt-toolkit==3.0.33->latch)
+
+  Downloading wcwidth-0.2.6-py2.py3-none-any.whl (29 kB)
+
+Collecting anyio>=3.0.0 (from watchfiles==0.18.1->latch)
+
+  Downloading anyio-3.6.2-py3-none-any.whl (80 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 80.6/80.6 kB 12.7 MB/s eta 0:00:00
+
+
+Collecting jmespath<2.0.0,>=0.7.1 (from botocore==1.27.22->awscli==1.25.22->latch)
+
+  Using cached jmespath-1.0.1-py3-none-any.whl (20 kB)
+
+Collecting googleapis-common-protos (from lyteidl==0.2.0a0->lytekit==0.14.10->latch)
+
+  Downloading googleapis_common_protos-1.59.0-py2.py3-none-any.whl (223 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 223.6/223.6 kB 29.0 MB/s eta 0:00:00
+
+
+Collecting protoc-gen-swagger (from lyteidl==0.2.0a0->lytekit==0.14.10->latch)
+
+  Downloading protoc_gen_swagger-0.1.0-py2.py3-none-any.whl (9.4 kB)
+
+Collecting decorator>=3.4.2 (from retry==0.9.2->lytekit==0.14.10->latch)
+
+  Downloading decorator-5.1.1-py3-none-any.whl (9.1 kB)
+
+Collecting py<2.0.0,>=1.4.26 (from retry==0.9.2->lytekit==0.14.10->latch)
+
+  Downloading py-1.11.0-py2.py3-none-any.whl (98 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 98.7/98.7 kB 14.4 MB/s eta 0:00:00
+
+
+INFO: pip is looking at multiple versions of boto3 to determine which version is compatible with other requirements. This could take a while.
+
+Collecting boto3>=1.24.22 (from latch)
+
+  Downloading boto3-1.26.135-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 19.3 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.134-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 18.8 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.133-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 19.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.132-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 18.9 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.131-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 18.1 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.130-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 19.0 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.129-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 18.2 MB/s eta 0:00:00
+
+
+INFO: pip is looking at multiple versions of boto3 to determine which version is compatible with other requirements. This could take a while.
+
+  Downloading boto3-1.26.128-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 20.6 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.127-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 18.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.126-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 18.6 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.125-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 18.9 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.124-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 18.8 MB/s eta 0:00:00
+
+
+INFO: This is taking longer than usual. You might need to provide the dependency resolver with stricter constraints to reduce runtime. See https://pip.pypa.io/warnings/backtracking for guidance. If you want to abort this run, press Ctrl + C.
+
+  Downloading boto3-1.26.123-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 18.3 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.122-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 18.6 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.121-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 17.6 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.120-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 19.2 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.119-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 18.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.118-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 18.9 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.117-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 19.4 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.116-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 19.2 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.115-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 18.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.114-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 17.4 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.113-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 17.9 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.112-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 18.9 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.111-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 19.2 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.110-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 18.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.109-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 18.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.108-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 18.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.107-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 19.4 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.106-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 18.9 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.105-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 18.6 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.104-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 19.0 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.103-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 19.3 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.102-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.6/135.6 kB 20.1 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.101-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.5/135.5 kB 17.6 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.100-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.5/135.5 kB 16.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.99-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.5/135.5 kB 9.5 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.98-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.5/135.5 kB 18.4 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.97-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.5/135.5 kB 18.3 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.96-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.5/135.5 kB 18.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.95-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.5/135.5 kB 18.8 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.94-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.1/135.1 kB 17.9 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.93-py3-none-any.whl (135 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 135.1/135.1 kB 18.9 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.92-py3-none-any.whl (134 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 134.7/134.7 kB 19.6 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.91-py3-none-any.whl (134 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 134.7/134.7 kB 19.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.90-py3-none-any.whl (134 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 134.7/134.7 kB 18.9 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.89-py3-none-any.whl (134 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 134.7/134.7 kB 19.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.88-py3-none-any.whl (134 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 134.7/134.7 kB 17.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.87-py3-none-any.whl (134 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 134.7/134.7 kB 18.8 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.86-py3-none-any.whl (134 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 134.7/134.7 kB 18.8 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.85-py3-none-any.whl (134 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 134.7/134.7 kB 17.9 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.84-py3-none-any.whl (134 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 134.7/134.7 kB 18.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.83-py3-none-any.whl (134 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 134.7/134.7 kB 19.5 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.82-py3-none-any.whl (134 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 134.7/134.7 kB 19.1 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.81-py3-none-any.whl (134 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 134.7/134.7 kB 19.1 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.80-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.3 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.79-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.0 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.78-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.4 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.77-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.3 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.76-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.0 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.75-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.2 MB/s eta 0:00:00
+
+
+  Using cached boto3-1.26.74-py3-none-any.whl (132 kB)
+
+  Downloading boto3-1.26.73-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 19.1 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.72-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 19.0 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.71-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.8 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.70-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.69-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.68-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.2 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.67-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 19.2 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.66-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 19.8 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.65-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 20.2 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.64-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.1 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.63-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 19.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.62-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.3 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.61-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 17.8 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.60-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.0 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.59-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.2 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.58-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.1 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.57-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 17.3 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.56-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 17.2 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.55-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 17.5 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.54-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.9 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.53-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.1 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.52-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.8 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.51-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.5 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.50-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.49-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.48-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.4 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.47-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.9 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.46-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 17.1 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.45-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 17.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.44-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 17.3 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.43-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 17.3 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.42-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.2 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.41-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 20.6 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.40-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.2 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.39-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.8 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.38-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.4 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.37-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 19.5 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.36-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 17.9 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.35-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 18.2 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.34-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 17.5 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.33-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 19.8 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.32-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.7/132.7 kB 19.5 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.31-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.6/132.6 kB 18.0 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.30-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.6/132.6 kB 18.5 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.29-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.6/132.6 kB 17.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.28-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.6/132.6 kB 18.5 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.27-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.6/132.6 kB 16.5 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.26-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.6/132.6 kB 18.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.25-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.6/132.6 kB 17.1 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.24-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.6/132.6 kB 18.5 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.23-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.6/132.6 kB 19.1 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.22-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.6/132.6 kB 19.6 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.21-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.6/132.6 kB 18.2 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.20-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.6/132.6 kB 18.6 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.19-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.6/132.6 kB 18.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.18-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.6/132.6 kB 18.1 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.17-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.6/132.6 kB 17.5 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.16-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.15-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 19.0 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.14-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.2 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.13-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 16.2 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.12-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 19.3 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.11-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.5 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.10-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.4 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.9-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 17.2 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.8-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 19.2 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.7-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.5 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.6-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.4 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.5-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 19.6 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.4-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 11.5 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.3-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.3 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.2-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.0 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.1-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.26.0-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.4 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.25.5-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 16.3 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.25.4-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 17.9 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.25.3-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 17.2 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.25.2-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 17.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.25.1-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.4 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.25.0-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 17.9 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.96-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.1 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.95-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 16.6 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.94-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 17.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.93-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 17.2 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.92-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 15.9 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.91-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.90-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 19.2 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.89-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 17.1 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.88-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 19.0 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.87-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 16.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.86-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.5 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.85-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.5 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.84-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.5 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.83-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 19.6 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.82-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.9 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.81-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.0 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.80-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 19.5 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.79-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 16.9 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.78-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 17.0 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.77-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.1 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.76-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 16.1 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.75-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 17.1 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.74-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 17.0 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.73-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 16.9 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.72-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 19.0 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.71-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.8 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.70-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 19.0 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.69-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.8 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.68-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.6 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.67-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 17.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.66-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 17.9 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.65-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.4 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.64-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 19.1 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.63-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.5 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.62-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 19.1 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.61-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 17.9 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.60-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.0 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.59-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.8 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.58-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.9 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.57-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 17.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.56-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.0 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.55-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 17.8 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.54-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.4 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.53-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 17.8 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.52-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.4 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.51-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 13.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.50-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 17.4 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.49-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 19.4 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.48-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 17.5 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.47-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 19.0 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.46-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 20.3 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.45-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.3 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.44-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 19.2 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.43-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.5 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.42-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.2 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.41-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 19.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.40-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 17.6 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.39-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 16.8 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.38-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.2 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.37-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 19.0 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.36-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.0 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.35-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 17.6 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.34-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.33-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 19.3 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.32-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.4 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.31-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 18.8 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.30-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 19.5 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.29-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 16.4 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.28-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 17.5 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.27-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 17.8 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.26-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 17.9 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.25-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 19.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.24-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 17.7 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.23-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 14.9 MB/s eta 0:00:00
+
+
+  Downloading boto3-1.24.22-py3-none-any.whl (132 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 132.5/132.5 kB 17.6 MB/s eta 0:00:00
+
+
+Collecting websocket-client>=0.32.0 (from docker>=5.0->latch)
+
+  Downloading websocket_client-1.5.1-py3-none-any.whl (55 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 55.9/55.9 kB 9.6 MB/s eta 0:00:00
+
+
+Requirement already satisfied: certifi>=14.05.14 in ./mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from kubernetes>=24.2.0->latch) (2023.5.7)
+
+Collecting google-auth>=1.0.1 (from kubernetes>=24.2.0->latch)
+
+  Downloading google_auth-2.18.1-py2.py3-none-any.whl (178 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 178.9/178.9 kB 26.7 MB/s eta 0:00:00
+
+
+Collecting requests-oauthlib (from kubernetes>=24.2.0->latch)
+
+  Downloading requests_oauthlib-1.3.1-py2.py3-none-any.whl (23 kB)
+
+Collecting bcrypt>=3.2 (from paramiko>=2.11.0->latch)
+
+  Downloading bcrypt-4.0.1-cp36-abi3-manylinux_2_28_x86_64.whl (593 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 593.7/593.7 kB 46.7 MB/s eta 0:00:00
+
+
+Collecting pynacl>=1.5 (from paramiko>=2.11.0->latch)
+
+  Downloading PyNaCl-1.5.0-cp36-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_24_x86_64.whl (856 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 856.7/856.7 kB 57.8 MB/s eta 0:00:00
+
+
+Requirement already satisfied: charset-normalizer<4,>=2 in ./mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from requests>=2.28.1->latch) (3.1.0)
+
+Requirement already satisfied: idna<4,>=2.5 in ./mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from requests>=2.28.1->latch) (3.4)
+
+Collecting sniffio>=1.1 (from anyio>=3.0.0->watchfiles==0.18.1->latch)
+
+  Downloading sniffio-1.3.0-py3-none-any.whl (10 kB)
+
+Collecting binaryornot>=0.4.4 (from cookiecutter>=1.7.3->lytekit==0.14.10->latch)
+
+  Downloading binaryornot-0.4.4-py2.py3-none-any.whl (9.0 kB)
+
+Requirement already satisfied: Jinja2<4.0.0,>=2.7 in ./mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from cookiecutter>=1.7.3->lytekit==0.14.10->latch) (3.1.2)
+
+Collecting jinja2-time>=0.2.0 (from cookiecutter>=1.7.3->lytekit==0.14.10->latch)
+
+  Downloading jinja2_time-0.2.0-py2.py3-none-any.whl (6.4 kB)
+
+Collecting python-slugify>=4.0.0 (from cookiecutter>=1.7.3->lytekit==0.14.10->latch)
+
+  Downloading python_slugify-8.0.1-py2.py3-none-any.whl (9.7 kB)
+
+Requirement already satisfied: cffi>=1.12 in ./mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from cryptography>=3.1->asyncssh==2.12.0->latch) (1.15.1)
+
+Collecting marshmallow<4.0.0,>=3.3.0 (from dataclasses-json>=0.5.2->lytekit==0.14.10->latch)
+
+  Downloading marshmallow-3.19.0-py3-none-any.whl (49 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 49.1/49.1 kB 7.0 MB/s eta 0:00:00
+
+
+Collecting marshmallow-enum<2.0.0,>=1.5.1 (from dataclasses-json>=0.5.2->lytekit==0.14.10->latch)
+
+  Downloading marshmallow_enum-1.5.1-py2.py3-none-any.whl (4.2 kB)
+
+Collecting typing-inspect>=0.4.0 (from dataclasses-json>=0.5.2->lytekit==0.14.10->latch)
+
+  Downloading typing_inspect-0.8.0-py3-none-any.whl (8.7 kB)
+
+Collecting regex>=2019.4.14 (from docker-image-py>=0.1.10->lytekit==0.14.10->latch)
+
+  Downloading regex-2023.5.5-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (769 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 769.7/769.7 kB 53.6 MB/s eta 0:00:00
+
+
+Collecting cachetools<6.0,>=2.0.0 (from google-auth>=1.0.1->kubernetes>=24.2.0->latch)
+
+  Downloading cachetools-5.3.0-py3-none-any.whl (9.3 kB)
+
+Collecting pyasn1-modules>=0.2.1 (from google-auth>=1.0.1->kubernetes>=24.2.0->latch)
+
+  Downloading pyasn1_modules-0.3.0-py2.py3-none-any.whl (181 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 181.3/181.3 kB 22.4 MB/s eta 0:00:00
+
+
+INFO: pip is looking at multiple versions of grpcio-status to determine which version is compatible with other requirements. This could take a while.
+
+Collecting grpcio-status!=1.45.0,>=1.43 (from lytekit==0.14.10->latch)
+
+  Downloading grpcio_status-1.54.0-py3-none-any.whl (5.1 kB)
+
+  Downloading grpcio_status-1.53.1-py3-none-any.whl (5.1 kB)
+
+  Downloading grpcio_status-1.53.0-py3-none-any.whl (5.1 kB)
+
+  Downloading grpcio_status-1.51.3-py3-none-any.whl (5.1 kB)
+
+  Downloading grpcio_status-1.51.1-py3-none-any.whl (5.1 kB)
+
+  Downloading grpcio_status-1.50.0-py3-none-any.whl (14 kB)
+
+  Downloading grpcio_status-1.49.1-py3-none-any.whl (14 kB)
+
+INFO: pip is looking at multiple versions of grpcio-status to determine which version is compatible with other requirements. This could take a while.
+
+  Downloading grpcio_status-1.48.2-py3-none-any.whl (14 kB)
+
+Requirement already satisfied: attrs>=17.4.0 in ./mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from jsonschema>=4.5.1->lytekit==0.14.10->latch) (23.1.0)
+
+Requirement already satisfied: pyrsistent!=0.17.0,!=0.17.1,!=0.17.2,>=0.14.0 in ./mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from jsonschema>=4.5.1->lytekit==0.14.10->latch) (0.19.3)
+
+Collecting jaraco.classes (from keyring>=18.0.1->lytekit==0.14.10->latch)
+
+  Downloading jaraco.classes-3.2.3-py3-none-any.whl (6.0 kB)
+
+Requirement already satisfied: importlib-metadata>=4.11.4 in ./mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from keyring>=18.0.1->lytekit==0.14.10->latch) (6.6.0)
+
+Collecting SecretStorage>=3.2 (from keyring>=18.0.1->lytekit==0.14.10->latch)
+
+  Downloading SecretStorage-3.3.3-py3-none-any.whl (15 kB)
+
+Collecting jeepney>=0.4.2 (from keyring>=18.0.1->lytekit==0.14.10->latch)
+
+  Downloading jeepney-0.8.0-py3-none-any.whl (48 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 48.4/48.4 kB 7.7 MB/s eta 0:00:00
+
+
+Collecting types-PyYAML (from responses>=0.10.7->lytekit==0.14.10->latch)
+
+  Downloading types_PyYAML-6.0.12.9-py3-none-any.whl (14 kB)
+
+Collecting pyasn1>=0.1.3 (from rsa<4.8,>=3.1.2->awscli==1.25.22->latch)
+
+  Downloading pyasn1-0.5.0-py2.py3-none-any.whl (83 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 83.9/83.9 kB 13.4 MB/s eta 0:00:00
+
+
+Collecting multidict>=4.0 (from yarl<2.0,>=1.6->gql==3.4.0->latch)
+
+  Downloading multidict-6.0.4-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (114 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 114.5/114.5 kB 17.1 MB/s eta 0:00:00
+
+
+Collecting oauthlib>=3.0.0 (from requests-oauthlib->kubernetes>=24.2.0->latch)
+
+  Downloading oauthlib-3.2.2-py3-none-any.whl (151 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 151.7/151.7 kB 5.8 MB/s eta 0:00:00
+
+
+Collecting chardet>=3.0.2 (from binaryornot>=0.4.4->cookiecutter>=1.7.3->lytekit==0.14.10->latch)
+
+  Downloading chardet-5.1.0-py3-none-any.whl (199 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 199.1/199.1 kB 27.7 MB/s eta 0:00:00
+
+
+Requirement already satisfied: pycparser in ./mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from cffi>=1.12->cryptography>=3.1->asyncssh==2.12.0->latch) (2.21)
+
+Requirement already satisfied: zipp>=0.5 in ./mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from importlib-metadata>=4.11.4->keyring>=18.0.1->lytekit==0.14.10->latch) (3.15.0)
+
+Requirement already satisfied: MarkupSafe>=2.0 in ./mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from Jinja2<4.0.0,>=2.7->cookiecutter>=1.7.3->lytekit==0.14.10->latch) (2.1.2)
+
+Collecting arrow (from jinja2-time>=0.2.0->cookiecutter>=1.7.3->lytekit==0.14.10->latch)
+
+  Downloading arrow-1.2.3-py3-none-any.whl (66 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 66.4/66.4 kB 8.7 MB/s eta 0:00:00
+
+
+Requirement already satisfied: packaging>=17.0 in ./mambaforge/envs/snakemake-tutorial/lib/python3.10/site-packages (from marshmallow<4.0.0,>=3.3.0->dataclasses-json>=0.5.2->lytekit==0.14.10->latch) (23.1)
+
+Collecting text-unidecode>=1.3 (from python-slugify>=4.0.0->cookiecutter>=1.7.3->lytekit==0.14.10->latch)
+
+  Downloading text_unidecode-1.3-py2.py3-none-any.whl (78 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 78.2/78.2 kB 10.4 MB/s eta 0:00:00
+
+
+Collecting mypy-extensions>=0.3.0 (from typing-inspect>=0.4.0->dataclasses-json>=0.5.2->lytekit==0.14.10->latch)
+
+  Downloading mypy_extensions-1.0.0-py3-none-any.whl (4.7 kB)
+
+Collecting more-itertools (from jaraco.classes->keyring>=18.0.1->lytekit==0.14.10->latch)
+
+  Downloading more_itertools-9.1.0-py3-none-any.whl (54 kB)
+
+     ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 54.2/54.2 kB 8.6 MB/s eta 0:00:00
+
+
+[91mWARNING: The candidate selected for download or install is a yanked version: 'apscheduler' candidate (version 3.9.1 at https://files.pythonhosted.org/packages/e4/9f/c3937d4babe62504b874d4bf2c0d85aa69c7f59fa84cf6050f3b9dc5d83e/APScheduler-3.9.1-py2.py3-none-any.whl (from https://pypi.org/simple/apscheduler/) (requires-python:>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, <4))
+Reason for being yanked: Not compatible with Python 2.7
+[0m
+Building wheels for collected packages: docker-image-py, PyYAML
+
+  Building wheel for docker-image-py (setup.py): started
+
+  Building wheel for docker-image-py (setup.py): finished with status 'done'
+
+  Created wheel for docker-image-py: filename=docker_image_py-0.1.12-py3-none-any.whl size=8812 sha256=ea8e3c15a24840f8e9dd8f96be35bfe8807c4ac208bf6a7980dff5cab2708b31
+
+  Stored in directory: /root/.cache/pip/wheels/fb/45/02/503244da15fbcecde5c3edabb744ed0c4f9a7643126b2d222c
+
+  Building wheel for PyYAML (pyproject.toml): started
+
+  Building wheel for PyYAML (pyproject.toml): finished with status 'done'
+
+  Created wheel for PyYAML: filename=PyYAML-5.4.1-cp310-cp310-linux_x86_64.whl size=141558 sha256=c9a8c01805f3c3f49d01b9022369a08c8f9bcbd8818988d9c967f0932b6bb652
+
+  Stored in directory: /root/.cache/pip/wheels/c7/0d/22/696ee92245ad710f506eee79bb05c740d8abccd3ecdb778683
+
+Successfully built docker-image-py PyYAML
+
+Installing collected packages: wcwidth, types-PyYAML, text-unidecode, statsd, sortedcontainers, pytz, pytimeparse, websockets, websocket-client, uvloop, tzlocal, tqdm, sniffio, regex, PyYAML, python-slugify, python-json-logger, pyjwt, pyasn1, py, protobuf, prompt-toolkit, oauthlib, numpy, natsort, mypy-extensions, multidict, more-itertools, marshmallow, jmespath, jeepney, grpcio, graphql-core, docutils, docstring-parser, diskcache, deprecated, decorator, colorama, cloudpickle, click, chardet, cachetools, bcrypt, backoff, aioconsole, yarl, typing-inspect, rsa, retry, responses, requests-toolbelt, requests-oauthlib, pynacl, pyasn1-modules, pyarrow, protoc-gen-swagger, pandas, marshmallow-jsonschema, marshmallow-enum, jaraco.classes, googleapis-common-protos, docker-image-py, docker, croniter, botocore, binaryornot, arrow, apscheduler, anyio, watchfiles, SecretStorage, s3transfer, paramiko, lyteidl, jinja2-time, grpcio-status, gql, google-auth, dataclasses-json, asyncssh, scp, kubernetes, keyring, cookiecutter, boto3, awscli, lytekit, lytekitplugins-pods, latch
+
+  Attempting uninstall: PyYAML
+
+    Found existing installation: PyYAML 6.0
+
+    Uninstalling PyYAML-6.0:
+
+      Successfully uninstalled PyYAML-6.0
+
+  Attempting uninstall: numpy
+
+    Found existing installation: numpy 1.24.3
+
+    Uninstalling numpy-1.24.3:
+
+      Successfully uninstalled numpy-1.24.3
+
+  Attempting uninstall: docutils
+
+    Found existing installation: docutils 0.20.1
+
+    Uninstalling docutils-0.20.1:
+
+      Successfully uninstalled docutils-0.20.1
+
+[91mERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+yte 1.5.1 requires pyyaml<7.0,>=6.0, but you have pyyaml 5.4.1 which is incompatible.
+[0m
+Successfully installed PyYAML-5.4.1 SecretStorage-3.3.3 aioconsole-0.5.1 anyio-3.6.2 apscheduler-3.9.1 arrow-1.2.3 asyncssh-2.12.0 awscli-1.25.22 backoff-2.2.1 bcrypt-4.0.1 binaryornot-0.4.4 boto3-1.24.22 botocore-1.27.22 cachetools-5.3.0 chardet-5.1.0 click-8.1.3 cloudpickle-2.2.1 colorama-0.4.4 cookiecutter-2.1.1 croniter-1.3.14 dataclasses-json-0.5.7 decorator-5.1.1 deprecated-1.2.13 diskcache-5.6.1 docker-5.0.3 docker-image-py-0.1.12 docstring-parser-0.15 docutils-0.16 google-auth-2.18.1 googleapis-common-protos-1.59.0 gql-3.4.0 graphql-core-3.2.3 grpcio-1.54.2 grpcio-status-1.48.2 jaraco.classes-3.2.3 jeepney-0.8.0 jinja2-time-0.2.0 jmespath-1.0.1 keyring-23.13.1 kubernetes-26.1.0 latch-2.19.11 lyteidl-0.2.0a0 lytekit-0.14.10 lytekitplugins-pods-0.4.0 marshmallow-3.19.0 marshmallow-enum-1.5.1 marshmallow-jsonschema-0.13.0 more-itertools-9.1.0 multidict-6.0.4 mypy-extensions-1.0.0 natsort-8.3.1 numpy-1.21.6 oauthlib-3.2.2 pandas-1.5.3 paramiko-3.1.0 prompt-toolkit-3.0.33 protobuf-3.20.3 protoc-gen-swagger-0.1.0 py-1.11.0 pyarrow-6.0.1 pyasn1-0.5.0 pyasn1-modules-0.3.0 pyjwt-2.7.0 pynacl-1.5.0 python-json-logger-2.0.7 python-slugify-8.0.1 pytimeparse-1.1.8 pytz-2023.3 regex-2023.5.5 requests-oauthlib-1.3.1 requests-toolbelt-0.10.1 responses-0.23.1 retry-0.9.2 rsa-4.7.2 s3transfer-0.6.1 scp-0.14.5 sniffio-1.3.0 sortedcontainers-2.4.0 statsd-3.3.0 text-unidecode-1.3 tqdm-4.65.0 types-PyYAML-6.0.12.9 typing-inspect-0.8.0 tzlocal-5.0.1 uvloop-0.17.0 watchfiles-0.18.1 wcwidth-0.2.6 websocket-client-1.5.1 websockets-10.3 yarl-1.9.2
+
+[91mWARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+[0m
+ ---> 73f3b443e340
+
+Step 8/14 : copy Snakefile config.yaml latch_entrypoint.py /root/
+
+
+COPY failed: file not found in build context or excluded by .dockerignore: stat config.yaml: file does not exist

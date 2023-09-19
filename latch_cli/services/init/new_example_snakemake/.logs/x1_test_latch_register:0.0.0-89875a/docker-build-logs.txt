@@ -1,0 +1,98 @@
+Step 1/14 : from 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:b733-kenny--snakemake
+
+
+ ---> 77471241d7a3
+
+Step 2/14 : run mkdir /opt/latch
+
+
+ ---> Using cache
+
+ ---> 6d1d7399ec34
+
+Step 3/14 : RUN curl -L -O     https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Linux-x86_64.sh     && mkdir /root/.conda     && bash Mambaforge-Linux-x86_64.sh -b     && rm -f Mambaforge-Linux-x86_64.sh
+
+
+ ---> Using cache
+
+ ---> e5d7f1c377ad
+
+Step 4/14 : copy environment.yaml /root/environment.yaml
+
+
+ ---> Using cache
+
+ ---> f1895bb6bb01
+
+Step 5/14 : run /root/mambaforge/bin/mamba env create --name snakemake-tutorial --file environment.yaml
+
+
+ ---> Using cache
+
+ ---> 1c115b179fb8
+
+Step 6/14 : env PATH /root/mambaforge/envs/snakemake-tutorial/bin:$PATH
+
+
+ ---> Using cache
+
+ ---> 38bcbc3eaccf
+
+Step 7/14 : copy latch /root/latch
+
+
+ ---> Using cache
+
+ ---> 0a6841ad1519
+
+Step 8/14 : run cd /root/latch && python3 -m pip install -e .
+
+
+ ---> Using cache
+
+ ---> 987ca2488773
+
+Step 9/14 : copy Snakefile config.yaml /root/
+
+
+ ---> Using cache
+
+ ---> ff2efbf9c325
+
+Step 10/14 : copy scripts/plot-quals.py /root/scripts/plot-quals.py
+
+
+ ---> Using cache
+
+ ---> efa63cf5aa2d
+
+Step 11/14 : copy .latch/latch_entrypoint.py /root/latch_entrypoint.py
+
+
+ ---> 7ff56b528bef
+
+Step 12/14 : arg tag
+
+
+ ---> Running in a7aa5ba593e9
+
+ ---> 72806a2f7535
+
+Step 13/14 : env FLYTE_INTERNAL_IMAGE $tag
+
+
+ ---> Running in 9c8313cc6ddd
+
+ ---> 42412bb67f94
+
+Step 14/14 : workdir /root
+
+
+ ---> Running in 0f6f141d57a8
+
+ ---> 346d6b9d4401
+
+Successfully built 346d6b9d4401
+
+Successfully tagged 812206152185.dkr.ecr.us-west-2.amazonaws.com/x1_test_latch_register:0.0.0-89875a
+
