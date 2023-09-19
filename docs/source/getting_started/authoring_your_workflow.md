@@ -113,7 +113,7 @@ def my_task(
 ):
     ...
 
-@large_gpu_task #31 cpus, 120 gigs of memory, 2000 GiB of storage, 1 gpu
+@large_gpu_task # 31 cpus, 120 gigs of memory, 2000 GiB of storage, 1 gpu
 def inference(
     ...
 ):
@@ -126,7 +126,7 @@ To arbitrarily specify resource requirements, use:
 ```python
 from latch import custom_task
 
-@custom_task(cpu, memory, storage_gib = storage_gib)
+@custom_task(cpu=8, memory=64, storage_gib=1000)
 def my_task(
     ...
 ):

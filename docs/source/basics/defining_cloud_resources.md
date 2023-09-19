@@ -9,15 +9,15 @@ RAM, Storage, GPU) at runtime and these requests will be fullfilled during the s
 process.
 
 ## CPU
-The number of cpu cores available to the task. If your task uses more than the alotted
+The number of cpu cores available to the task. If the task uses more than the alotted
 number of cores, the task can continue running but will be throttled.
 
 ## Memory
-The amount of memory available to the task. If your task uses more than the alotted
+The amount of memory available to the task. If the task uses more than the alotted
 amount of memory, the task will crash.
 
 ## Storage
-The amount of disc space available to the task. If your task uses more than the alotted
+The amount of disc space available to the task. If the task uses more than the alotted
 amount of storage, the task will crash.
 
 ## GPU
@@ -60,7 +60,7 @@ You can also specify task resources using `@custom_task`:
 ```python
 from latch import custom_task
 
-@custom_task(cpu, memory, storage_gib = storage_gib) # cpu: int, memory: int, storage_gib: int
+@custom_task(cpu=8, memory=64, storage_gib=1000)
 def my_task(
     ...
 ):
