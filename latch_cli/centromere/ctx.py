@@ -3,6 +3,7 @@ import sys
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
+from textwrap import dedent
 from typing import Dict, Optional, Tuple
 
 import click
@@ -120,11 +121,12 @@ class _CentromereCtx:
                                 image_name=self.task_image_name(entity.name),
                                 pkg_dir=entity.dockerfile_path.parent,
                             )
-                if hasattr(self, "workflow_name"):
-                    raise ValueError("""Unable to locate workflow code. If you
+                if not hasattr(self, "workflow_name"):
+                    raise ValueError(dedent("""
+                                     Unable to locate workflow code. If you
                                      are a registering a Snakemake project,
                                      make sure to pass the Snakefile path with
-                                     the --snakefile flag.""")
+                                     the --snakefile flag."""))
             else:
                 assert snakefile is not None
 
