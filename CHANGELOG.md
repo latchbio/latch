@@ -20,6 +20,15 @@ Types of changes
 
 ### Fixed
 
+* Snakemake:
+    * `--snakemake` for `latch dockerfile` command to generate `Dockerfile` with
+    necessary instructions
+    * Snakemake example for `latch init`
+
+## 2.32.6 - 2023-09-07
+
+### Fixed
+
 * A bug in `latch develop` where images for newly registered workflows could not be found.
 
 ## 2.32.5 - 2023-08-28

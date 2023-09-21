@@ -1,0 +1,85 @@
+import subprocess
+from pathlib import Path
+from typing import NamedTuple
+
+from latch import small_task
+from latch.types import LatchFile
+
+def ensure_parents_exist(path: Path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+@small_task
+def bwa_map_4(data_genome_fa: LatchFile, data_samples_A_fastq: LatchFile, data_genome_fa_amb: LatchFile, data_genome_fa_ann: LatchFile, data_genome_fa_bwt: LatchFile, data_genome_fa_fai: LatchFile, data_genome_fa_pac: LatchFile, data_genome_fa_sa: LatchFile) -> NamedTuple('bwa_map_4_output', mapped_reads_A_bam=LatchFile):
+	Path(data_genome_fa).resolve().rename(ensure_parents_exist(Path("data/genome.fa")))
+	Path(data_samples_A_fastq).resolve().rename(ensure_parents_exist(Path("data/samples/A.fastq")))
+	Path(data_genome_fa_amb).resolve().rename(ensure_parents_exist(Path("data/genome.fa.amb")))
+	Path(data_genome_fa_ann).resolve().rename(ensure_parents_exist(Path("data/genome.fa.ann")))
+	Path(data_genome_fa_bwt).resolve().rename(ensure_parents_exist(Path("data/genome.fa.bwt")))
+	Path(data_genome_fa_fai).resolve().rename(ensure_parents_exist(Path("data/genome.fa.fai")))
+	Path(data_genome_fa_pac).resolve().rename(ensure_parents_exist(Path("data/genome.fa.pac")))
+	Path(data_genome_fa_sa).resolve().rename(ensure_parents_exist(Path("data/genome.fa.sa")))
+
+	subprocess.run(["snakemake", "--target-jobs", "bwa_map:sample=A", "--allowed-rules", "bwa_map", "--cores", "8", "--attempt", "1", "--force-use-threads"], check=True)
+	return (LatchFile('mapped_reads/A.bam'))
+
+@small_task
+def bwa_map_6(data_genome_fa: LatchFile, data_samples_B_fastq: LatchFile, data_genome_fa_amb: LatchFile, data_genome_fa_ann: LatchFile, data_genome_fa_bwt: LatchFile, data_genome_fa_fai: LatchFile, data_genome_fa_pac: LatchFile, data_genome_fa_sa: LatchFile) -> NamedTuple('bwa_map_6_output', mapped_reads_B_bam=LatchFile):
+	Path(data_genome_fa).resolve().rename(ensure_parents_exist(Path("data/genome.fa")))
+	Path(data_samples_B_fastq).resolve().rename(ensure_parents_exist(Path("data/samples/B.fastq")))
+	Path(data_genome_fa_amb).resolve().rename(ensure_parents_exist(Path("data/genome.fa.amb")))
+	Path(data_genome_fa_ann).resolve().rename(ensure_parents_exist(Path("data/genome.fa.ann")))
+	Path(data_genome_fa_bwt).resolve().rename(ensure_parents_exist(Path("data/genome.fa.bwt")))
+	Path(data_genome_fa_fai).resolve().rename(ensure_parents_exist(Path("data/genome.fa.fai")))
+	Path(data_genome_fa_pac).resolve().rename(ensure_parents_exist(Path("data/genome.fa.pac")))
+	Path(data_genome_fa_sa).resolve().rename(ensure_parents_exist(Path("data/genome.fa.sa")))
+
+	subprocess.run(["snakemake", "--target-jobs", "bwa_map:sample=B", "--allowed-rules", "bwa_map", "--cores", "8", "--attempt", "1", "--force-use-threads"], check=True)
+	return (LatchFile('mapped_reads/B.bam'))
+
+@small_task
+def samtools_sort_5(mapped_reads_B_bam: LatchFile) -> NamedTuple('samtools_sort_5_output', sorted_reads_B_bam=LatchFile):
+	Path(mapped_reads_B_bam).resolve().rename(ensure_parents_exist(Path("mapped_reads/B.bam")))
+
+	subprocess.run(["snakemake", "--target-jobs", "samtools_sort:sample=B", "--allowed-rules", "samtools_sort", "--cores", "8", "--attempt", "1", "--force-use-threads"], check=True)
+	return (LatchFile('sorted_reads/B.bam'))
+
+@small_task
+def samtools_sort_3(mapped_reads_A_bam: LatchFile) -> NamedTuple('samtools_sort_3_output', sorted_reads_A_bam=LatchFile):
+	Path(mapped_reads_A_bam).resolve().rename(ensure_parents_exist(Path("mapped_reads/A.bam")))
+
+	subprocess.run(["snakemake", "--target-jobs", "samtools_sort:sample=A", "--allowed-rules", "samtools_sort", "--cores", "8", "--attempt", "1", "--force-use-threads"], check=True)
+	return (LatchFile('sorted_reads/A.bam'))
+
+@small_task
+def samtools_index_7(sorted_reads_A_bam: LatchFile) -> NamedTuple('samtools_index_7_output', sorted_reads_A_bam_bai=LatchFile):
+	Path(sorted_reads_A_bam).resolve().rename(ensure_parents_exist(Path("sorted_reads/A.bam")))
+
+	subprocess.run(["snakemake", "--target-jobs", "samtools_index:sample=A", "--allowed-rules", "samtools_index", "--cores", "8", "--attempt", "1", "--force-use-threads"], check=True)
+	return (LatchFile('sorted_reads/A.bam.bai'))
+
+@small_task
+def samtools_index_8(sorted_reads_B_bam: LatchFile) -> NamedTuple('samtools_index_8_output', sorted_reads_B_bam_bai=LatchFile):
+	Path(sorted_reads_B_bam).resolve().rename(ensure_parents_exist(Path("sorted_reads/B.bam")))
+
+	subprocess.run(["snakemake", "--target-jobs", "samtools_index:sample=B", "--allowed-rules", "samtools_index", "--cores", "8", "--attempt", "1", "--force-use-threads"], check=True)
+	return (LatchFile('sorted_reads/B.bam.bai'))
+
+@small_task
+def bcftools_call_2(data_genome_fa: LatchFile, sorted_reads_A_bam: LatchFile, sorted_reads_B_bam: LatchFile, sorted_reads_A_bam_bai: LatchFile, sorted_reads_B_bam_bai: LatchFile) -> NamedTuple('bcftools_call_2_output', calls_all_vcf=LatchFile):
+	Path(data_genome_fa).resolve().rename(ensure_parents_exist(Path("data/genome.fa")))
+	Path(sorted_reads_A_bam).resolve().rename(ensure_parents_exist(Path("sorted_reads/A.bam")))
+	Path(sorted_reads_B_bam).resolve().rename(ensure_parents_exist(Path("sorted_reads/B.bam")))
+	Path(sorted_reads_A_bam_bai).resolve().rename(ensure_parents_exist(Path("sorted_reads/A.bam.bai")))
+	Path(sorted_reads_B_bam_bai).resolve().rename(ensure_parents_exist(Path("sorted_reads/B.bam.bai")))
+
+	subprocess.run(["snakemake", "--target-jobs", "bcftools_call:", "--allowed-rules", "bcftools_call", "--cores", "8", "--attempt", "1", "--force-use-threads"], check=True)
+	return (LatchFile('calls/all.vcf'))
+
+@small_task
+def plot_quals_1(calls_all_vcf: LatchFile) -> NamedTuple('plot_quals_1_output', plots_quals_svg=LatchFile):
+	Path(calls_all_vcf).resolve().rename(ensure_parents_exist(Path("calls/all.vcf")))
+
+	subprocess.run(["snakemake", "--target-jobs", "plot_quals:", "--allowed-rules", "plot_quals", "--cores", "8", "--attempt", "1", "--force-use-threads"], check=True)
+	return (LatchFile('plots/quals.svg', 'latch:///plots/quals.svg'))
