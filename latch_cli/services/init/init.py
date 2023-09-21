@@ -184,6 +184,10 @@ def _gen_example_snakemake(pkg_root: Path):
     snakefile_src = source_path / "Snakefile"
     shutil.copy(snakefile_src, snakefile_dest)
 
+    snakefile_dest = pkg_root / "latch_metadata.py"
+    snakefile_src = source_path / "latch_metadata.py"
+    shutil.copy(snakefile_src, snakefile_dest)
+
     data_dest = pkg_root / "data"
     data_src = source_path / "data"
     shutil.copytree(data_src, data_dest)
