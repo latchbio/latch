@@ -63,7 +63,7 @@ The `latch_metadata.py` is used to specify the input parameters that the Snakema
 
 For example, by parsing the Snakefile, we determine there are two parameters that the workflow needs: a reference genome and a list of samples to be aligned against the reference genome.
 
-For each parameter, the `path` key specifies the location of the input data; hence, values defined here must match the paths of the inputs for each rule in the Snakefile.
+For each `LatchFile`/`LatchDir` parameter, the `path` keyword specifies the path where files will be copied before the Snakemake workflow is run and should match the paths of the inputs for each rule in the Snakefile.
 
 ## Step 3: Add dependencies
 
