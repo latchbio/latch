@@ -120,6 +120,11 @@ class _CentromereCtx:
                                 image_name=self.task_image_name(entity.name),
                                 pkg_dir=entity.dockerfile_path.parent,
                             )
+                if hasattr(self, "workflow_name"):
+                    raise ValueError("""Unable to locate workflow code. If you
+                                     are a registering a Snakemake project,
+                                     make sure to pass the Snakefile path with
+                                     the --snakefile flag.""")
             else:
                 assert snakefile is not None
 
@@ -148,11 +153,13 @@ class _CentromereCtx:
                             fg="red",
                         )
                         click.secho(
-                            "\nIt is possible to avoid including the Snakefile prior to"
-                            " registration by providing a `latch_metadata.py` file in"
-                            " the workflow root.\nThis way it is not necessary to"
-                            " install dependencies or ensure that Snakemake inputs"
-                            " locally.",
+                            (
+                                "\nIt is possible to avoid including the Snakefile"
+                                " prior to registration by providing a"
+                                " `latch_metadata.py` file in the workflow root.\nThis"
+                                " way it is not necessary to install dependencies or"
+                                " ensure that Snakemake inputs locally."
+                            ),
                             fg="red",
                         )
                         click.secho("\nExample ", fg="red", nl=False)
@@ -205,8 +212,14 @@ class _CentromereCtx:
                                     click.secho("Failed to open file", fg="red")
                         sys.exit(1)
 
-                assert metadata._snakemake_metadata is not None
-                assert metadata._snakemake_metadata.name is not None
+                if (
+                    metadata._snakemake_metadata is None
+                    or metadata._snakemake_metadata.name is None
+                ):
+                    raise ValueError(
+                        "Make sure a `latch_metadata.py` file exists in the Snakemake"
+                        " project root."
+                    )
 
                 # todo(kenny): support per container task and custom workflow
                 # name for snakemake
@@ -230,8 +243,10 @@ class _CentromereCtx:
 
             if self.nucleus_check_version(self.version, self.workflow_name):
                 click.secho(
-                    f"\nVersion ({self.version}) already exists."
-                    " Make sure that you've saved any changes you made.",
+                    (
+                        f"\nVersion ({self.version}) already exists."
+                        " Make sure that you've saved any changes you made."
+                    ),
                     fg="red",
                     bold=True,
                 )
