@@ -125,7 +125,7 @@ Finally, type the following command to register the workflow to Latch:
 
 ```console
 cd snakemake-wf &&\ 
-latch register . --snakefile workflow/Snakefile
+latch register . --snakefile Snakefile
 ```
 
 During registration, a workflow image is built based on dependencies specified in the `environment.yaml` file. Once the registration finishes, the `stdout` provides a link to your workflow on Latch.
