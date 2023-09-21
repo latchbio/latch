@@ -3,7 +3,7 @@ README.md
 CHANGELOG.md
 docker-compose.yml
 Dockerfile
-.latch
+.latch/.logs
 .git
 **/__pycache__
 .latch_report.tar.gz

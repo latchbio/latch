@@ -18,7 +18,7 @@ run mkdir /opt/latch
 
 copy . /root/
 
-copy .latch/jit_entrypoint.py /root/jit_entrypoint.py
+copy .latch/snakemake_jit_entrypoint.py /root/snakemake_jit_entrypoint.py
 
 arg tag
 env FLYTE_INTERNAL_IMAGE $tag
