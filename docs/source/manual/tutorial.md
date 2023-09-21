@@ -99,7 +99,7 @@ During registration, a workflow image is built based on dependencies specified i
 ![Snakemake workflow interface on Latch](../assets/snakemake/tutorial.png)
 
 ## Step 4: Run the workflow
-Snakemake support is currently based on JIT (Just-In-Time) registration. This means that the workflow produced by `latch register` will only register a second workflow, which will run the actual pipeline tasks.
+Snakemake support is currently uses JIT (Just-In-Time) registration. This means that the workflow produced by `latch register` will register a second workflow, which will run the actual Snakemake jobs.
 
 Once the workflow finishes running, results will be deposited to [Latch Data](https://console.latch.bio/data) under the `Snakemake Outputs` folder.
 
