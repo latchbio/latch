@@ -16,7 +16,15 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.32.6 - 2023-09-07
+## 2.32.8 - 2023-09-07
+
+### Fixed
+
+* Snakemake:
+    * Better errors if `Snakefile` or `latch_metadata.py` file missing
+    * Correct issues with snakemake example project
+
+## 2.32.7 - 2023-09-07
 
 ### Fixed
 
