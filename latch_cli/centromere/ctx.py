@@ -122,11 +122,15 @@ class _CentromereCtx:
                                 pkg_dir=entity.dockerfile_path.parent,
                             )
                 if not hasattr(self, "workflow_name"):
-                    raise ValueError(dedent("""
+                    click.secho(
+                        dedent("""
                                      Unable to locate workflow code. If you
                                      are a registering a Snakemake project,
                                      make sure to pass the Snakefile path with
-                                     the --snakefile flag."""))
+                                     the --snakefile flag."""),
+                        fg="red",
+                    )
+                    raise click.exceptions.Exit(1)
             else:
                 assert snakefile is not None
 
@@ -214,14 +218,16 @@ class _CentromereCtx:
                                     click.secho("Failed to open file", fg="red")
                         sys.exit(1)
 
-                if (
-                    metadata._snakemake_metadata is None
-                    or metadata._snakemake_metadata.name is None
-                ):
-                    raise ValueError(
-                        "Make sure a `latch_metadata.py` file exists in the Snakemake"
-                        " project root."
+                if metadata._snakemake_metadata is None:
+                    click.secho(
+                        dedent(
+                            """
+                        Make sure a `latch_metadata.py` file exists in the Snakemake
+                         project root.""",
+                        ),
+                        fg="red",
                     )
+                    raise click.exceptions.Exit(1)
 
                 # todo(kenny): support per container task and custom workflow
                 # name for snakemake
