@@ -51,8 +51,7 @@ class LatchCommand(Command):
         )
 
 
-class LatchGroup(LatchCommand, Group):
-    ...
+class LatchGroup(LatchCommand, Group): ...
 
 
 def colored_exception_show(self, file: Optional[IO] = None) -> None:

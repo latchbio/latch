@@ -167,12 +167,10 @@ class Record:
     # get_name
 
     @overload
-    def get_name(self, *, load_if_missing: Literal[True] = True) -> str:
-        ...
+    def get_name(self, *, load_if_missing: Literal[True] = True) -> str: ...
 
     @overload
-    def get_name(self, *, load_if_missing: bool) -> Optional[str]:
-        ...
+    def get_name(self, *, load_if_missing: bool) -> Optional[str]: ...
 
     def get_name(self, *, load_if_missing: bool = True) -> Optional[str]:
         """Get the name of this record.
@@ -200,16 +198,14 @@ class Record:
         self,
         *,
         load_if_missing: Literal[True] = True,
-    ) -> Dict[str, Column]:
-        ...
+    ) -> Dict[str, Column]: ...
 
     @overload
     def get_columns(
         self,
         *,
         load_if_missing: bool,
-    ) -> Optional[Dict[str, Column]]:
-        ...
+    ) -> Optional[Dict[str, Column]]: ...
 
     def get_columns(
         self,
@@ -238,16 +234,14 @@ class Record:
         self,
         *,
         load_if_missing: Literal[True] = True,
-    ) -> Dict[str, RecordValue]:
-        ...
+    ) -> Dict[str, RecordValue]: ...
 
     @overload
     def get_values(
         self,
         *,
         load_if_missing: bool,
-    ) -> Optional[Dict[str, RecordValue]]:
-        ...
+    ) -> Optional[Dict[str, RecordValue]]: ...
 
     def get_values(
         self,

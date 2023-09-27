@@ -27,5 +27,4 @@ def mafft(
     offset: float = 0.0,
     maxiterate: int = 0,
     output_file: str = "aligned_mafft.fa",
-) -> LatchFile:
-    ...
+) -> LatchFile: ...

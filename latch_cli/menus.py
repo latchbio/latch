@@ -295,8 +295,7 @@ def select_tui(title: str, options: List[str], clear_terminal: bool = True):
                 start_index=start_index,
                 max_per_page=max_per_page,
             )
-    except KeyboardInterrupt:
-        ...
+    except KeyboardInterrupt: ...
     finally:
         clear(num_lines_rendered)
         reveal_cursor()

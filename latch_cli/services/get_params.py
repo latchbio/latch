@@ -21,8 +21,7 @@ from latch_cli.services.launch import _get_workflow_interface
 from latch_cli.utils import retrieve_or_login
 
 
-class _Unsupported:
-    ...
+class _Unsupported: ...
 
 
 _simple_table = {
@@ -326,8 +325,7 @@ def _guess_python_type(literal: LiteralType, param_name: str):
         # we can parse the variants and define the object in the param map
         # code.
 
-        class _VariantCarrier(enum.Enum):
-            ...
+        class _VariantCarrier(enum.Enum): ...
 
         _VariantCarrier._variants = literal.enum_type.values
         # Use param name to uniquely identify each enum
