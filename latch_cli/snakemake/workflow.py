@@ -2,10 +2,20 @@ import importlib
 import json
 import textwrap
 import typing
-from collections.abc import Generator, Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union
+from typing import (
+    Any,
+    Dict,
+    Generator,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 from urllib.parse import urlparse
 
 import snakemake
