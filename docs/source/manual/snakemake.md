@@ -1,4 +1,4 @@
-# [Alpha Pre-release] Snakemake Integration
+# Snakemake Integration
 
 ## Getting Started
 
