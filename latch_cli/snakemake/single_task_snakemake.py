@@ -106,16 +106,25 @@ def render_annotated_str(x) -> str:
     flags = dict(x["flags"])
 
     res = repr(value)
-    if flags.get("directory", False):
+
+    if len(flags) > 1:
+        raise RuntimeError(f"can only have one flag for {res} but found: {repr(flags)}")
+
+    if "directory" in flags:
         res = f"directory({res})"
-        del flags["directory"]
 
-    # TODO (kenny) ~ handle temporary values
-    if "temp" in flags:
+    elif "report" in flags:
+        report_vals = flags.get("report", False)
+        res = (
+            f"report({res}, caption={report_vals['caption']},"
+            f" category={report_vals['category']})"
+        )
+
+    elif "temp" in flags:
+        # A temporary modifier is no different from a normal file as all files
+        # are deleted on Latch after a job completes.
+        # https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#protected-and-temporary-files
         del flags["temp"]
-
-    if len(flags) != 0:
-        raise RuntimeError(f"found unsupported flags: {repr(flags)}")
 
     return res
 
@@ -184,7 +193,6 @@ Output.block_content = skipping_block_content
 Params.block_content = skipping_block_content
 Benchmark.block_content = skipping_block_content
 Log.block_content = skipping_block_content
-# todo(kenny): enforce rule order instead of ignoring it
 Ruleorder.block_content = lambda self, token: None
 
 
