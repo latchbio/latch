@@ -695,7 +695,16 @@ def test_data_ls():
     is_flag=True,
     default=False,
 )
-def sync(srcs: List[str], dst: str, delete: bool):
+@click.option(
+    "--ignore-unsyncable",
+    help=(
+        "Synchronize even if some source paths are do not exist or refer to special"
+        " files."
+    ),
+    is_flag=True,
+    default=False,
+)
+def sync(srcs: List[str], dst: str, delete: bool, ignore_unsyncable: bool):
     """
     Update the contents of a remote directory with local data or vice versa.
     """
@@ -703,4 +712,9 @@ def sync(srcs: List[str], dst: str, delete: bool):
 
     # todo(maximsmol): remote -> local
     # todo(maximsmol): remote -> remote
-    sync(srcs, dst, delete=delete)
+    sync(
+        srcs,
+        dst,
+        delete=delete,
+        ignore_unsyncable=ignore_unsyncable,
+    )

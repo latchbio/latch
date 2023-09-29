@@ -36,19 +36,11 @@ def check_src(p: Path, *, indent: str = "") -> Optional[Tuple[Path, os.stat_resu
     try:
         p_stat = os.stat(p)
     except FileNotFoundError:
-        click.echo(
-            indent
-            + click.style(p, bold=True, fg="red")
-            + click.style(": no such file or directory", fg="red")
-        )
+        click.secho(indent + f"`{p}`: no such file or directory", fg="red", bold=True)
         return
 
     if not stat.S_ISREG(p_stat.st_mode) and not stat.S_ISDIR(p_stat.st_mode):
-        click.echo(
-            indent
-            + click.style(p, bold=True, fg="red")
-            + click.style(": not a regular file", fg="red")
-        )
+        click.secho(indent + f"`{p}`: not a regular file", fg="red", bold=True)
         return
 
     return (p, p_stat)
@@ -129,10 +121,8 @@ def sync_rec(
         and dest_data is not None
         and dest_data["type"] != "DIR"
     ):
-        click.secho(f"`{dest}` is not a directory", fg="red")
-        click.secho(
-            "\nOnly a single file can be synced with a file", fg="red", bold=True
-        )
+        click.secho(f"`{dest}` is not a directory", fg="red", bold=True)
+        click.secho("\nOnly a single file can be synced with a file", fg="red")
         sys.exit(1)
 
     if dest_data is not None and dest_data["type"] != "DIR":
@@ -163,28 +153,28 @@ def sync_rec(
         if child is not None:
             flt = child["finalLinkTarget"]
             if flt["type"] not in {"DIR", "OBJ"}:
-                # todo(maximsmol): skip? pre-check?
+                # todo(maximsmol): confirm? pre-check?
                 click.secho(
                     click.style(child_dest, bold=True, fg="red")
                     + click.style(" is not a file or directory", fg="red"),
                 )
-                sys.exit(1)
+                continue
 
             if flt["type"] == "DIR" and not is_dir:
-                # todo(maximsmol): skip? pre-check?
+                # todo(maximsmol): confirm? pre-check?
                 click.secho(
                     click.style(child_dest, bold=True, fg="red")
                     + click.style(" is in the way of a file", fg="red"),
                 )
-                sys.exit(1)
+                continue
 
             if flt["type"] == "OBJ" and is_dir:
-                # todo(maximsmol): skip? pre-check?
+                # todo(maximsmol): confirm? pre-check?
                 click.secho(
                     click.style(child_dest, bold=True, fg="red")
                     + click.style(" is in the way of a directory", fg="red"),
                 )
-                sys.exit(1)
+                continue
 
             if flt["type"] == "OBJ":
                 meta = flt["ldataObjectMeta"]
@@ -266,7 +256,13 @@ def sync_rec(
             )
 
 
-def sync(srcs_raw: List[str], dest: str, *, delete: bool):
+def sync(
+    srcs_raw: List[str],
+    dest: str,
+    *,
+    delete: bool,
+    ignore_unsyncable: bool,
+):
     srcs: Dict[str, Tuple[Path, os.stat_result]] = {}
     have_errors = False
     for x in srcs_raw:
@@ -286,12 +282,16 @@ def sync(srcs_raw: List[str], dest: str, *, delete: bool):
 
     if have_errors:
         # todo(maximsmol): do we want to precheck recursively?
-        click.secho(
-            "\nSome source paths will be skipped due to errors", fg="red", bold=True
-        )
+        click.secho("\nSome source paths will be skipped due to errors", fg="red")
 
-        if not click.confirm(click.style(f"Confirm to proceed", fg="red")):
-            sys.exit(1)
+        if not ignore_unsyncable:
+            if not click.confirm(click.style(f"Proceed?", fg="red")):
+                sys.exit(1)
+        else:
+            click.secho(
+                "Proceeding due to " + click.style("`--ignore-unsyncable`", bold=True),
+                fg="yellow",
+            )
         click.echo()
 
     sync_rec(srcs, dest, delete=delete)
