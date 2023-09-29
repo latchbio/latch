@@ -1,14 +1,13 @@
 name: Test
-on: [push, pull_request_target]
-
+on: push
 jobs:
   macos:
-    name: Test MacOs
+    name: Test
     strategy:
       fail-fast: false
       matrix:
         python: ["3.8", "3.9", "3.10", "3.11"]
-        platform: ["macos-10.15"]
+        platform: ["macos-12", "ubuntu-22.04"]
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout
@@ -19,40 +18,12 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: Install dev
         run: |
-          python3 -m pip install -r dev-requirements.txt
+          pip install -r dev-requirements.txt
       - name: Install latch
         run: |
-          python3 -m pip install -e .
+          pip install .
       - name: Test
         env:
           TEST_TOKEN: ${{ secrets.TEST_TOKEN }}
         run: |
-          eval $(docker-machine env default)
-          cd tests; python3 -m pytest -s .
-  linux:
-    name: Test Linux
-    strategy:
-      fail-fast: false
-      matrix:
-        python: ["3.8", "3.9", "3.10", "3.11"]
-        platform: ["ubuntu-18.04"]
-    runs-on: ${{ matrix.platform }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Setup Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python }}
-      - name: Install dev
-        run: |
-          python3 -m pip install -r dev-requirements.txt
-      - name: Install latch
-        run: |
-          python3 -m pip install -e .
-      - name: Test
-        env:
-          TEST_TOKEN: ${{ secrets.TEST_TOKEN }}
-        run: |
-          eval $(docker-machine env default)
           cd tests; python3 -m pytest -s .
