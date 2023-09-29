@@ -1,6 +1,6 @@
 import subprocess
 
-from tests.fixtures import test_account_jwt
+from .fixtures import test_account_jwt
 
 
 def test_ls(test_account_jwt):
