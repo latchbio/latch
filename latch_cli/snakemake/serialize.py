@@ -4,7 +4,7 @@ import textwrap
 import traceback
 from pathlib import Path
 from textwrap import dedent
-from typing import List, Optional, Set, Union, get_args
+from typing import Dict, List, Optional, Set, Union, get_args
 
 import click
 from flyteidl.admin.launch_plan_pb2 import LaunchPlan as _idl_admin_LaunchPlan
@@ -46,7 +46,7 @@ def should_register_with_admin(entity: RegistrableEntity) -> bool:
 def get_snakemake_metadata_example(name: str) -> str:
     return dedent(f"""
         from pathlib import Path
-        from latch.types.metadata import SnakemakeMetadata, SnakemakeFileParameter
+        from latch.types.metadata import SnakemakeMetadata, SnakemakeParameter
         from latch.types.file import LatchFile
         from latch.types.metadata import LatchAuthor
 
@@ -56,7 +56,7 @@ def get_snakemake_metadata_example(name: str) -> str:
                 name="Anonymous",
             ),
             parameters={{
-                "example": SnakemakeFileParameter(
+                "example": SnakemakeParameter(
                     display_name="Example Parameter",
                     type=LatchFile,
                     path=Path("example.txt"),
@@ -122,9 +122,7 @@ class SnakemakeWorkflowExtractor(Workflow):
             targetrules=target_rules,
         )
 
-        self.persistence = Persistence(
-            dag=dag,
-        )
+        self._persistence = Persistence(dag=dag)
 
         dag.init()
         dag.update_checkpoint_dependencies()
@@ -312,6 +310,7 @@ def generate_snakemake_entrypoint(
     pkg_root: Path,
     snakefile: Path,
     remote_output_url: Optional[str] = None,
+    non_blob_parameters: Optional[Dict[str, str]] = None,
 ):
     entrypoint_code_block = textwrap.dedent(r"""
         import os
@@ -358,9 +357,12 @@ def generate_snakemake_entrypoint(
             return f"{si_unit(s.st_size):>7}B {x.name}"
 
     """).lstrip()
+
     entrypoint_code_block += "\n\n".join(
         task.get_fn_code(
-            snakefile_path_in_container(snakefile, pkg_root), remote_output_url
+            snakefile_path_in_container(snakefile, pkg_root),
+            remote_output_url,
+            non_blob_parameters,
         )
         for task in wf.snakemake_tasks
     )
@@ -422,6 +424,8 @@ def generate_jit_register_code(
         from latch_sdk_gql.execute import execute
         from latch.types.directory import LatchDir
         from latch.types.file import LatchFile
+
+        from latch_metadata import *
 
         sys.stdout.reconfigure(line_buffering=True)
         sys.stderr.reconfigure(line_buffering=True)
