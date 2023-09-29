@@ -701,4 +701,6 @@ def sync(srcs: List[str], dst: str, delete: bool):
     """
     from latch_cli.services.sync import sync
 
+    # todo(maximsmol): remote -> local
+    # todo(maximsmol): remote -> remote
     sync(srcs, dst, delete=delete)
