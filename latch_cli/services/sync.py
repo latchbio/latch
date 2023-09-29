@@ -116,6 +116,34 @@ def sync_rec(
 
         raise
 
+    if len(srcs) == 0:
+        if dest_data is not None:
+            if dest_data["type"] != "DIR":
+                click.secho(
+                    indent + f"`{dest}` is in the way of a directory",
+                    fg="red",
+                )
+                return
+
+            click.secho(indent + "Empty directory", dim=True)
+            return
+
+        if not dest[-1] == "/":
+            dest += "/"
+
+        click.secho(indent + "Creating empty directory", fg="bright_blue")
+        execute(
+            gql.gql("""
+                mutation LatchCLISyncMkdir($argPath: String!) {
+                    ldataMkdirp(input: {argPath: $argPath}) {
+                        clientMutationId
+                    }
+                }
+            """),
+            {"argPath": dest},
+        )
+        return
+
     if (
         (len(srcs) > 1 or stat.S_ISDIR(list(srcs.values())[0][1].st_mode))
         and dest_data is not None
@@ -152,27 +180,19 @@ def sync_rec(
         reason = "new"
         if child is not None:
             flt = child["finalLinkTarget"]
-            if flt["type"] not in {"DIR", "OBJ"}:
-                # todo(maximsmol): confirm? pre-check?
-                click.secho(
-                    click.style(child_dest, bold=True, fg="red")
-                    + click.style(" is not a file or directory", fg="red"),
-                )
-                continue
-
             if flt["type"] == "DIR" and not is_dir:
                 # todo(maximsmol): confirm? pre-check?
                 click.secho(
-                    click.style(child_dest, bold=True, fg="red")
-                    + click.style(" is in the way of a file", fg="red"),
+                    indent + f"`{dest}` is in the way of a file",
+                    fg="red",
                 )
                 continue
 
-            if flt["type"] == "OBJ" and is_dir:
+            if flt["type"] != "DIR" and is_dir:
                 # todo(maximsmol): confirm? pre-check?
                 click.secho(
-                    click.style(child_dest, bold=True, fg="red")
-                    + click.style(" is in the way of a directory", fg="red"),
+                    indent + f"`{dest}` is in the way of a directory",
+                    fg="red",
                 )
                 continue
 
@@ -206,7 +226,18 @@ def sync_rec(
 
         click.echo(
             click.style(
-                indent + verb + " " + click.style(reason, underline=True) + ": ",
+                indent + verb + " ",
+                fg=fg,
+                dim=dim,
+            )
+            + click.style(
+                reason,
+                underline=True,
+                fg=fg,
+                dim=dim,
+            )
+            + click.style(
+                ": ",
                 fg=fg,
                 dim=dim,
             )
@@ -246,12 +277,12 @@ def sync_rec(
             )
             execute(
                 gql.gql("""
-                mutation LatchCLISyncRemove($argNodeId: BigInt!) {
-                    ldataRmr(input: {argNodeId: $argNodeId}) {
-                        clientMutationId
+                    mutation LatchCLISyncRemove($argNodeId: BigInt!) {
+                        ldataRmr(input: {argNodeId: $argNodeId}) {
+                            clientMutationId
+                        }
                     }
-                }
-            """),
+                """),
                 {"argNodeId": child["id"]},
             )
 
