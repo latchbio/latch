@@ -698,8 +698,7 @@ def test_data_ls():
 @click.option(
     "--ignore-unsyncable",
     help=(
-        "Synchronize even if some source paths are do not exist or refer to special"
-        " files."
+        "Synchronize even if some source paths do not exist or refer to special files."
     ),
     is_flag=True,
     default=False,
