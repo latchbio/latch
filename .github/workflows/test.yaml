@@ -26,4 +26,4 @@ jobs:
         env:
           TEST_TOKEN: ${{ secrets.TEST_TOKEN }}
         run: |
-          cd tests; python3 -m pytest -s .
+          pytest -s
