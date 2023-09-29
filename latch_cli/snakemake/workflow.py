@@ -1221,6 +1221,8 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
 
         log_files = self.job.log if self.job.log is not None else []
 
+        print(f"\n\nSnakemake data to be serialized:\n{snakemake_data}")
+
         code_block += reindent(
             rf"""
             lp = LatchPersistence()
