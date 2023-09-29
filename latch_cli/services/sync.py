@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Tuple
 import click
 import gql
 from gql.transport.exceptions import TransportQueryError
-from latch_sdk_gql.execute import execute
+from latch_sdk_gql.execute import JsonValue, execute
 
 import latch_cli.services.cp.upload as upl
 
@@ -59,37 +59,36 @@ def sync_rec(
     dest: str,
     *,
     delete: bool,
-    indent: str = "",
+    level: int = 0,
 ):
-    name_filter = list(srcs.keys())
-    if delete:
-        name_filter = []
+    # rsync never deletes from the top level destination
+    delete_effective = delete and level > 0
+    indent = "  " * level
 
     try:
-        resolve_data = execute(
-            gql.gql("""
-                query LatchCLISync($argPath: String!, $nameFilter: [String!]) {
-                    ldataResolvePathData(argPath: $argPath) {
-                        finalLinkTarget {
-                            type
-                            childLdataTreeEdges(
-                                filter: {
-                                    child: {
-                                        removed: {equalTo: false},
-                                        pending: {equalTo: false},
-                                        copiedFrom: {isNull: true},
-                                        name: {in: $nameFilter}
-                                    }
+        query = """
+            query LatchCLISync($argPath: String! ${name_filter_arg}) {
+                ldataResolvePathData(argPath: $argPath) {
+                    finalLinkTarget {
+                        type
+                        childLdataTreeEdges(
+                            filter: {
+                                child: {
+                                    removed: {equalTo: false},
+                                    pending: {equalTo: false},
+                                    copiedFrom: {isNull: true}
+                                    ${name_filter}
                                 }
-                            ) {
-                                nodes {
-                                    child {
-                                        name
-                                        finalLinkTarget {
-                                            type
-                                            ldataObjectMeta {
-                                                modifyTime
-                                            }
+                            }
+                        ) {
+                            nodes {
+                                child {
+                                    id
+                                    name
+                                    finalLinkTarget {
+                                        type
+                                        ldataObjectMeta {
+                                            modifyTime
                                         }
                                     }
                                 }
@@ -97,8 +96,21 @@ def sync_rec(
                         }
                     }
                 }
-            """),
-            {"argPath": dest, "nameFilter": name_filter},
+            }
+        """
+
+        args: JsonValue = {"argPath": dest, "nameFilter": []}
+        if not delete_effective:
+            query = query.replace("${name_filter_arg}", ", $nameFilter: [String!]")
+            query = query.replace("${name_filter}", ", name: {in: $nameFilter}")
+            args["nameFilter"] = list(srcs.keys())
+        else:
+            query = query.replace("${name_filter_arg}", "")
+            query = query.replace("${name_filter}", "")
+
+        resolve_data = execute(
+            gql.gql(query),
+            args,
         )["ldataResolvePathData"]
 
         dest_data = None
@@ -132,7 +144,7 @@ def sync_rec(
 
     dest_children_by_name = (
         {
-            x["name"]: x["finalLinkTarget"]
+            x["name"]: x
             for x in (raw["child"] for raw in dest_data["childLdataTreeEdges"]["nodes"])
         }
         if dest_data is not None
@@ -149,7 +161,8 @@ def sync_rec(
         verb = "Uploading"
         reason = "new"
         if child is not None:
-            if child["type"] not in {"DIR", "OBJ"}:
+            flt = child["finalLinkTarget"]
+            if flt["type"] not in {"DIR", "OBJ"}:
                 # todo(maximsmol): skip? pre-check?
                 click.secho(
                     click.style(child_dest, bold=True, fg="red")
@@ -157,7 +170,7 @@ def sync_rec(
                 )
                 sys.exit(1)
 
-            if child["type"] == "DIR" and not is_dir:
+            if flt["type"] == "DIR" and not is_dir:
                 # todo(maximsmol): skip? pre-check?
                 click.secho(
                     click.style(child_dest, bold=True, fg="red")
@@ -165,7 +178,7 @@ def sync_rec(
                 )
                 sys.exit(1)
 
-            if child["type"] == "OBJ" and is_dir:
+            if flt["type"] == "OBJ" and is_dir:
                 # todo(maximsmol): skip? pre-check?
                 click.secho(
                     click.style(child_dest, bold=True, fg="red")
@@ -173,8 +186,8 @@ def sync_rec(
                 )
                 sys.exit(1)
 
-            if child["type"] == "OBJ":
-                meta = child["ldataObjectMeta"]
+            if flt["type"] == "OBJ":
+                meta = flt["ldataObjectMeta"]
                 remote_mtime = datetime.fromisoformat(meta["modifyTime"])
 
                 local_mtime = datetime.fromtimestamp(p_stat.st_mtime).astimezone()
@@ -226,11 +239,31 @@ def sync_rec(
                     continue
 
                 sub_srcs[x.name] = res
-            sync_rec(sub_srcs, child_dest, delete=delete, indent=indent + "  ")
+            sync_rec(sub_srcs, child_dest, delete=delete, level=level + 1)
             continue
 
         # todo(maximsmol): upload in parallel?
         upload_file(p, child_dest)
+
+    if delete_effective:
+        for name, child in dest_children_by_name.items():
+            child_dest = f"{dest}/{name}"
+            if name in srcs:
+                continue
+
+            click.echo(
+                indent + click.style("Removing extraneous: ", fg="yellow") + child_dest
+            )
+            execute(
+                gql.gql("""
+                mutation LatchCLISyncRemove($argNodeId: BigInt!) {
+                    ldataRmr(input: {argNodeId: $argNodeId}) {
+                        clientMutationId
+                    }
+                }
+            """),
+                {"argNodeId": child["id"]},
+            )
 
 
 def sync(srcs_raw: List[str], dest: str, *, delete: bool):
