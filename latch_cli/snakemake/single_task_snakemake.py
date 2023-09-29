@@ -56,7 +56,7 @@ for rule in rules:
     eprint_named_list(rule_data["outputs"])
 
     eprint("    Params:")
-    e(rule_data["params"])
+    eprint_named_list(rule_data["params"])
 
     eprint("    Benchmark:")
     eprint(f"      {rule_data['benchmark']}")

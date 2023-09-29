@@ -1215,7 +1215,10 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             snakemake_data["rules"][job.rule.name] = {
                 "inputs": named_list_to_json(job.input),
                 "outputs": named_list_to_json(job.output),
-                "params": json.dumps(job.params),
+                "params": {
+                    "keyword": {k: v for k, v in job.params.items()},
+                    "positional": [],
+                },
                 "benchmark": job.benchmark,
                 "log": job.log,
                 "shellcmd": job.shellcmd,
@@ -1227,8 +1230,6 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             remote_path = Path(urlparse(remote_output_url).path)
 
         log_files = self.job.log if self.job.log is not None else []
-
-        print(f"\n\nSnakemake data to be serialized:\n{snakemake_data}")
 
         code_block += reindent(
             rf"""
