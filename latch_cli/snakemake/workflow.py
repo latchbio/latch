@@ -582,6 +582,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             _interface_request = {
                 "workflow_id": wf_id,
                 "params": params,
+                "snakemake_jit": True,
             }
 
             response = requests.post(urljoin(config.nucleus_url, "/api/create-execution"), headers=headers, json=_interface_request)
