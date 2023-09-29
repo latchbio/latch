@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import click
+import dateutil.parser as dp
 import gql
 from gql.transport.exceptions import TransportQueryError
 from latch_sdk_gql.execute import JsonValue, execute
@@ -203,9 +204,7 @@ def sync_rec(
                 continue
 
             if flt["type"] == "OBJ":
-                remote_mtime = datetime.fromisoformat(
-                    flt["ldataNodeEvents"]["nodes"][0]["time"]
-                )
+                remote_mtime = dp.isoparse(flt["ldataNodeEvents"]["nodes"][0]["time"])
 
                 local_mtime = datetime.fromtimestamp(p_stat.st_mtime).astimezone()
                 if remote_mtime == local_mtime:
