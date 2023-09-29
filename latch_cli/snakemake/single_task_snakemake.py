@@ -116,7 +116,7 @@ def render_annotated_str(x) -> str:
     elif "report" in flags:
         report_vals = flags.get("report", False)
         res = (
-            f"report({res}, caption={report_vals['caption']},"
+            f"report({res}, caption={repr(report_vals['caption'])},"
             f" category={report_vals['category']})"
         )
 
