@@ -392,7 +392,6 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         code_block += reindent(
             rf"""
             image_name = "{image_name}"
-            image_base_name = image_name.split(":")[0]
             account_id = "{account_id}"
             snakefile = Path("{snakefile_path}")
 
@@ -409,6 +408,8 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             exec_id_hash.update(os.environ["FLYTE_INTERNAL_EXECUTION_ID"].encode("utf-8"))
             version = exec_id_hash.hexdigest()[:16]
 
+            import time
+            time.sleep(1000000)
             wf = extract_snakemake_workflow(pkg_root, snakefile, version)
             wf_name = wf.name
             generate_snakemake_entrypoint(wf, pkg_root, snakefile, {repr(remote_output_url)})
