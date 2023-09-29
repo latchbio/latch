@@ -408,8 +408,6 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             exec_id_hash.update(os.environ["FLYTE_INTERNAL_EXECUTION_ID"].encode("utf-8"))
             version = exec_id_hash.hexdigest()[:16]
 
-            import time
-            time.sleep(1000000)
             wf = extract_snakemake_workflow(pkg_root, snakefile, version)
             wf_name = wf.name
             generate_snakemake_entrypoint(wf, pkg_root, snakefile, {repr(remote_output_url)})
@@ -865,7 +863,15 @@ def annotated_str_to_json(
     if not isinstance(x, (snakemake.io.AnnotatedString, snakemake.io._IOFile)):
         return x
 
-    return {"value": str(x), "flags": dict(x.flags.items())}
+    flags = dict(x.flags.items())
+    if "report" in flags:
+        report = flags["report"]
+        flags["report"] = {
+            "caption": report.caption.get_filename(),
+            "category": report.category,
+        }
+
+    return {"value": str(x), "flags": flags}
 
 
 IONamedListItem = Union[MaybeAnnotatedStrJson, List[MaybeAnnotatedStrJson]]
@@ -1209,7 +1215,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             snakemake_data["rules"][job.rule.name] = {
                 "inputs": named_list_to_json(job.input),
                 "outputs": named_list_to_json(job.output),
-                "params": named_list_to_json(job.params),
+                "params": json.dumps(job.params),
                 "benchmark": job.benchmark,
                 "log": job.log,
                 "shellcmd": job.shellcmd,
