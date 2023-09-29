@@ -37,3 +37,6 @@ extend-ignore = [
   "UP006",
   "UP035",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
