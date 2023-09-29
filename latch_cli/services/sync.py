@@ -79,8 +79,14 @@ def sync_rec(
                                     name
                                     finalLinkTarget {
                                         type
-                                        ldataObjectMeta {
-                                            modifyTime
+                                        ldataNodeEvents(
+                                            condition: {type: INGRESS},
+                                            orderBy: TIME_DESC,
+                                            first: 1
+                                        ) {
+                                            nodes {
+                                                time
+                                            }
                                         }
                                     }
                                 }
@@ -147,13 +153,13 @@ def sync_rec(
     if (
         (len(srcs) > 1 or stat.S_ISDIR(list(srcs.values())[0][1].st_mode))
         and dest_data is not None
-        and dest_data["type"] != "DIR"
+        and dest_data["type"] not in {"DIR", "ACCOUNT_ROOT"}
     ):
         click.secho(f"`{dest}` is not a directory", fg="red", bold=True)
         click.secho("\nOnly a single file can be synced with a file", fg="red")
         sys.exit(1)
 
-    if dest_data is not None and dest_data["type"] != "DIR":
+    if dest_data is not None and dest_data["type"] not in {"DIR", "ACCOUNT_ROOT"}:
         # todo(maximsmol): implement
         click.secho(
             "Syncing single files is currently not supported", bold=True, fg="red"
@@ -197,8 +203,9 @@ def sync_rec(
                 continue
 
             if flt["type"] == "OBJ":
-                meta = flt["ldataObjectMeta"]
-                remote_mtime = datetime.fromisoformat(meta["modifyTime"])
+                remote_mtime = datetime.fromisoformat(
+                    flt["ldataNodeEvents"]["nodes"][0]["time"]
+                )
 
                 local_mtime = datetime.fromtimestamp(p_stat.st_mtime).astimezone()
                 if remote_mtime == local_mtime:
