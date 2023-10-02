@@ -120,6 +120,8 @@ class SnakemakeWorkflowExtractor(Workflow):
             self.rules,
             targetfiles=target_files,
             targetrules=target_rules,
+            priorityrules=set(),
+            priorityfiles=set(),
         )
 
         self._persistence = Persistence(dag=dag)

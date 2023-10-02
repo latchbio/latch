@@ -684,3 +684,36 @@ def test_data_ls():
     click.secho("Listing your managed objects by full S3 path.\n", fg="green")
     for o in objects:
         print(f"\ts3://latch-public/{o}")
+
+
+@main.command()
+@click.argument("srcs", nargs=-1)
+@click.argument("dst", nargs=1)
+@click.option(
+    "--delete",
+    help="Delete extraneous files from destination.",
+    is_flag=True,
+    default=False,
+)
+@click.option(
+    "--ignore-unsyncable",
+    help=(
+        "Synchronize even if some source paths do not exist or refer to special files."
+    ),
+    is_flag=True,
+    default=False,
+)
+def sync(srcs: List[str], dst: str, delete: bool, ignore_unsyncable: bool):
+    """
+    Update the contents of a remote directory with local data or vice versa.
+    """
+    from latch_cli.services.sync import sync
+
+    # todo(maximsmol): remote -> local
+    # todo(maximsmol): remote -> remote
+    sync(
+        srcs,
+        dst,
+        delete=delete,
+        ignore_unsyncable=ignore_unsyncable,
+    )

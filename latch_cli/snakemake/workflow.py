@@ -3,11 +3,21 @@ import json
 import sys
 import textwrap
 import typing
-from collections.abc import Generator, Iterable
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union
+from typing import (
+    Any,
+    Dict,
+    Generator,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 from urllib.parse import urlparse
 
 import snakemake
@@ -398,7 +408,6 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         code_block += reindent(
             rf"""
             image_name = "{image_name}"
-            image_base_name = image_name.split(":")[0]
             account_id = "{account_id}"
             snakefile = Path("{snakefile_path}")
 
@@ -590,6 +599,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             _interface_request = {
                 "workflow_id": wf_id,
                 "params": params,
+                "snakemake_jit": True,
             }
 
             response = requests.post(urljoin(config.nucleus_url, "/api/create-execution"), headers=headers, json=_interface_request)
@@ -871,7 +881,15 @@ def annotated_str_to_json(
     if not isinstance(x, (snakemake.io.AnnotatedString, snakemake.io._IOFile)):
         return x
 
-    return {"value": str(x), "flags": dict(x.flags.items())}
+    flags = dict(x.flags.items())
+    if "report" in flags:
+        report = flags["report"]
+        flags["report"] = {
+            "caption": report.caption.get_filename(),
+            "category": report.category,
+        }
+
+    return {"value": str(x), "flags": flags}
 
 
 IONamedListItem = Union[MaybeAnnotatedStrJson, List[MaybeAnnotatedStrJson]]
@@ -1224,7 +1242,10 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             snakemake_data["rules"][job.rule.name] = {
                 "inputs": named_list_to_json(job.input),
                 "outputs": named_list_to_json(job.output),
-                "params": named_list_to_json(job.params),
+                "params": {
+                    "keyword": {k: v for k, v in job.params.items()},
+                    "positional": [],
+                },
                 "benchmark": job.benchmark,
                 "log": job.log,
                 "shellcmd": job.shellcmd,

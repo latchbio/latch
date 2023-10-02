@@ -380,8 +380,8 @@ def upload_file_chunk(
     url: str,
     part_index: int,
     part_size: int,
-    progress_bars: ProgressBars,
-    pbar_index: Optional[int],
+    progress_bars: Optional[ProgressBars] = None,
+    pbar_index: Optional[int] = None,
     parts_by_source: Optional["PartsBySrcType"] = None,
     upload_id: Optional[str] = None,
     dest: Optional[str] = None,
@@ -405,20 +405,25 @@ def upload_file_chunk(
     if parts_by_source is not None:
         parts_by_source[src].append(ret)
 
-    progress_bars.update(pbar_index, len(data))
-    pending_parts = progress_bars.dec_usage(str(src))
+    if progress_bars is not None:
+        progress_bars.update(pbar_index, len(data))
+        pending_parts = progress_bars.dec_usage(str(src))
 
-    if pending_parts == 0:
-        progress_bars.return_task_bar(pbar_index)
-        progress_bars.update_total_progress(1)
-        progress_bars.write(f"Copied {src}")
+        if pending_parts == 0:
+            progress_bars.return_task_bar(pbar_index)
+            progress_bars.update_total_progress(1)
+            progress_bars.write(f"Copied {src}")
 
-        if dest is not None and parts_by_source is not None and upload_id is not None:
-            end_upload(
-                dest=dest,
-                upload_id=upload_id,
-                parts=list(parts_by_source[src]),
-            )
+            if (
+                dest is not None
+                and parts_by_source is not None
+                and upload_id is not None
+            ):
+                end_upload(
+                    dest=dest,
+                    upload_id=upload_id,
+                    parts=list(parts_by_source[src]),
+                )
 
     return ret
 

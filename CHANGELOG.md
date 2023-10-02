@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.33.0 - 2023-09-29
+
+### Added
+
+* Add `latch sync` for synchronization from local to remote directories that only uploads modified content
+
 ## 2.32.8 - 2023-09-07
 
 ### Fixed

@@ -32,7 +32,13 @@ class DockerCmdBlock:
         f.write("\n".join(self.commands) + "\n\n")
 
 
-def get_prologue(config: LatchWorkflowConfig) -> List[str]:
+def get_prologue(
+    config: LatchWorkflowConfig, wf_type: WorkflowType = WorkflowType.latchbiosdk
+) -> List[str]:
+    if wf_type == WorkflowType.snakemake:
+        library_name = '"latch[snakemake]"'
+    else:
+        library_name = "latch"
     return [
         "# DO NOT CHANGE",
         f"from {config.base_image}",
@@ -59,7 +65,7 @@ def get_prologue(config: LatchWorkflowConfig) -> List[str]:
         "",
         "# Latch SDK",
         "# DO NOT REMOVE",
-        f"run pip install latch=={config.latch_version}",
+        f"run pip install {library_name}=={config.latch_version}",
         "run mkdir /opt/latch",
     ]
 
@@ -360,7 +366,7 @@ def generate_dockerfile(
     click.echo()
 
     with outfile.open("w") as f:
-        f.write("\n".join(get_prologue(config)) + "\n\n")
+        f.write("\n".join(get_prologue(config, wf_type)) + "\n\n")
 
         commands = infer_commands(pkg_root)
         if len(commands) > 0:
