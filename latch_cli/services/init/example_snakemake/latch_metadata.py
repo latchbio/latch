@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from latch.types import LatchDir
-from latch.types.metadata import LatchAuthor, SnakemakeMetadata, SnakemakeParameter
+from latch.types.metadata import LatchAuthor, SnakemakeFileParameter, SnakemakeMetadata
 
 SnakemakeMetadata(
     output_dir=LatchDir("latch:///sample_output"),
@@ -10,13 +10,13 @@ SnakemakeMetadata(
         name="Kenneth",
     ),
     parameters={
-        "samples": SnakemakeParameter(
+        "samples": SnakemakeFileParameter(
             display_name="Sample Input Directory",
             description="A directory full of FastQ files",
             type=LatchDir,
             path=Path("data/samples"),
         ),
-        "ref_genome": SnakemakeParameter(
+        "ref_genome": SnakemakeFileParameter(
             display_name="Indexed Reference Genome",
             description=(
                 "A directory with a reference Fasta file and the 6 index files produced"

@@ -308,7 +308,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         params_str = ",\n".join(
             reindent(
                 rf"""
-                {param}: {t.__name__}
+                {param}: {"latch_metadata." if t.__name__ not in {"str", "LatchFile", "LatchDir"} else ""}{t.__name__}
                 """,
                 1,
             ).rstrip()
@@ -355,7 +355,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         for param, t in self.python_interface.inputs.items():
             if t in (LatchFile, LatchDir):
                 param_meta = self.parameter_metadata[param]
-                assert isinstance(param_meta, metadata.SnakemakeParameter)
+                assert isinstance(param_meta, metadata.SnakemakeFileParameter)
 
                 code_block += reindent(
                     rf"""
@@ -1198,12 +1198,9 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
 
         need_conda = any(x.conda_env is not None for x in jobs)
 
-        config_args = []
         if non_blob_parameters is not None and len(non_blob_parameters) > 0:
-            config_args = ["--config"]
             for k, v in non_blob_parameters.items():
-                self.job.rule.workflow.globals["config"][k] = v
-                config_args.append(f"{k}={v}")
+                self.job.rule.workflow.globals[k] = v
 
         snakemake_args = [
             "-m",
@@ -1219,7 +1216,6 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             str(self.job.jobid),
             "--cores",
             str(self.job.threads),
-            *config_args,
         ]
         if not self.job.is_group():
             snakemake_args.append("--force-use-threads")
@@ -1236,6 +1232,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
         snakemake_data = {
             "rules": {},
             "outputs": self.job.output,
+            "non_blob_parameters": non_blob_parameters,
         }
 
         for job in jobs:

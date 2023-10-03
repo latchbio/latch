@@ -338,10 +338,21 @@ class LatchParameter:
 class SnakemakeParameter(LatchParameter):
     type: Optional[
         Union[
-            Type[LatchFile],
-            Type[LatchDir],
             Type[str],
             Type[Enum],
+        ]
+    ] = None
+    """
+    The python type of the parameter.
+    """
+
+
+@dataclass
+class SnakemakeFileParameter(SnakemakeParameter):
+    type: Optional[
+        Union[
+            Type[LatchFile],
+            Type[LatchDir],
         ]
     ] = None
     """
@@ -350,8 +361,6 @@ class SnakemakeParameter(LatchParameter):
     path: Optional[Path] = None
     """
     The path where the file passed to this parameter will be copied.
-
-    Only relevant if self.type is `LatchFile` or `LatchDir`.
     """
 
 

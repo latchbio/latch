@@ -46,7 +46,7 @@ from pathlib import Path
 
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
-from latch.types.metadata import LatchAuthor, SnakemakeParameter, SnakemakeMetadata
+from latch.types.metadata import LatchAuthor, SnakemakeFileParameter, SnakemakeMetadata
 
 SnakemakeMetadata(
     display_name="fgbio Best Practise FASTQ -> Consensus Pipeline",
@@ -54,17 +54,17 @@ SnakemakeMetadata(
         name="Fulcrum Genomics",
     ),
     parameters={
-        "r1_fastq": SnakemakeParameter(
+        "r1_fastq": SnakemakeFileParameter(
             display_name="Read 1 FastQ",
             type=LatchFile,
             path=Path("tests/r1.fq.gz"),
         ),
-        "r2_fastq": SnakemakeParameter(
+        "r2_fastq": SnakemakeFileParameter(
             display_name="Read 2 FastQ",
             type=LatchFile,
             path=Path("tests/r2.fq.gz"),
         ),
-        "genome": SnakemakeParameter(
+        "genome": SnakemakeFileParameter(
             display_name="Reference Genome",
             type=LatchDir,
             path=Path("tests/hs38DH"),
@@ -225,7 +225,7 @@ If registration fails before metadata can be pulled, the CLI will generate an ex
 
 Since there is no explicit entrypoint ( `@workflow` ) function in a Snakemake workflow, parameters are instead specified in the metadata file.
 
-Currently only `LatchFile` and `LatchDir` parameters are supported. Both directory and file inputs are specified using `SnakemakeParameter` and setting the `type` field as appropriate.
+Currently only `LatchFile` and `LatchDir` parameters are supported. Both directory and file inputs are specified using `SnakemakeFileParameter` and setting the `type` field as appropriate.
 
 Parameters must include a `path` field which specifies where the data will be downloaded to. This usually matches some file location expected by a Snakemake rule. Frequently, instead of simple paths, a rule with use a `configfile` to dynamically find input paths. In this case the only requiremtn is that the path matches the config file included in the workflow Docker image.
 
@@ -233,7 +233,7 @@ Example:
 
 ```py
 parameters = {
-  "example": SnakemakeParameter(
+  "example": SnakemakeFileParameter(
     display_name="Example Parameter",
     type=LatchFile,
     path=Path("example.txt"),

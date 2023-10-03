@@ -1,4 +1,4 @@
-from latch.types.metadata import SnakemakeMetadata, SnakemakeParameter
+from latch.types.metadata import SnakemakeMetadata, SnakemakeFileParameter
 from latch.types.directory import LatchDir
 from latch.types.metadata import LatchAuthor, LatchMetadata, LatchParameter
 

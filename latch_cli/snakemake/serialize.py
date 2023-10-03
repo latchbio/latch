@@ -46,7 +46,7 @@ def should_register_with_admin(entity: RegistrableEntity) -> bool:
 def get_snakemake_metadata_example(name: str) -> str:
     return dedent(f"""
         from pathlib import Path
-        from latch.types.metadata import SnakemakeMetadata, SnakemakeParameter
+        from latch.types.metadata import SnakemakeMetadata, SnakemakeFileParameter
         from latch.types.file import LatchFile
         from latch.types.metadata import LatchAuthor
 
@@ -56,7 +56,7 @@ def get_snakemake_metadata_example(name: str) -> str:
                 name="Anonymous",
             ),
             parameters={{
-                "example": SnakemakeParameter(
+                "example": SnakemakeFileParameter(
                     display_name="Example Parameter",
                     type=LatchFile,
                     path=Path("example.txt"),
@@ -427,7 +427,7 @@ def generate_jit_register_code(
         from latch.types.directory import LatchDir
         from latch.types.file import LatchFile
 
-        from latch_metadata import *
+        import latch_metadata
 
         sys.stdout.reconfigure(line_buffering=True)
         sys.stderr.reconfigure(line_buffering=True)
