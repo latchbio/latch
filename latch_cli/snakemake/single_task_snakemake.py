@@ -154,7 +154,17 @@ def emit_overrides(self, token):
     else:
         raise ValueError(f"tried to emit overrides for unknown state: {type(self)}")
 
-    positional_data = (render_annotated_str_list(x) for x in xs["positional"])
+    if (
+        isinstance(self, Params)
+        and xs[0].get("flags")
+        and "multiext" in xs[0].get("flags")
+    ):
+        quote = "'"
+        positional_data = (
+            f"multiext('{xs[0]['value']}',{','.join([quote + x['value'].split('.')[-1] + quote for x in xs])})"
+        )
+    else:
+        positional_data = (render_annotated_str_list(x) for x in xs["positional"])
 
     modifier_fn = render_annotated_str_list
     if isinstance(self, Params):
