@@ -29,8 +29,7 @@ def eprint(x: str) -> None:
     print(x, file=sys.stderr)
 
 
-print_compilation_env = os.environ["LATCH_PRINT_COMPILATION"]
-print_compilation = False
+print_compilation_env = os.environ.get("LATCH_PRINT_COMPILATION", False)
 if print_compilation_env == "1":
     print_compilation = True
 
