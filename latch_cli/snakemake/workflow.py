@@ -1325,21 +1325,6 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             finally:
                 ignored_paths = {{".cache", ".snakemake/conda"}}
                 ignored_names = {{".git", ".latch", "__pycache__"}}
-
-                print("Recursive directory listing:")
-                stack = [(Path("."), 0)]
-                while len(stack) > 0:
-                    cur, indent = stack.pop()
-                    print("  " * indent + cur.name)
-
-                    if cur.is_dir():
-                        if cur.name in ignored_names or str(cur) in ignored_paths:
-                            print("  " * indent + "  ...")
-                            continue
-
-                        for x in cur.iterdir():
-                            stack.append((x, indent + 1))
-
             """,
             1,
         )
