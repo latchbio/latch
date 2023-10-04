@@ -161,6 +161,7 @@ def emit_overrides(self, token):
 
     if (
         isinstance(self, Output)
+        and len(xs["positional"]) > 0
         and xs["positional"][0].get("flags") is not None
         and "multiext" in xs["positional"][0].get("flags")
     ):
