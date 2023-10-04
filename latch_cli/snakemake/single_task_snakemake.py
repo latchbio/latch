@@ -155,9 +155,12 @@ def emit_overrides(self, token):
         raise ValueError(f"tried to emit overrides for unknown state: {type(self)}")
 
     positional_data = (render_annotated_str_list(x) for x in xs["positional"])
-    keyword_data = (
-        f"{k}={render_annotated_str_list(v)}" for k, v in xs["keyword"].items()
-    )
+
+    modifier_fn = render_annotated_str_list
+    if isinstance(self, Params):
+        modifier_fn = repr
+
+    keyword_data = (f"{k}={modifier_fn(v)}" for k, v in xs["keyword"].items())
     data = chain(positional_data, keyword_data)
 
     for x in data:
@@ -199,6 +202,14 @@ Ruleorder.block_content = lambda self, token: None
 class SkippingRule(Rule):
     def start(self, aux=""):
         if self.rulename not in rules:
+            # Rules can be nested in conditional statements:
+            #
+            # if (<condition>):
+            #   rule A:
+            #       <stuff>
+            #
+            # We want correct python code if we remove them.
+            yield "..."
             return
 
         yield from super().start(aux)
