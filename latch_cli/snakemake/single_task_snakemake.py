@@ -164,13 +164,9 @@ def emit_overrides(self, token):
         and xs["positional"][0].get("flags")
         and "multiext" in xs["positional"][0].get("flags")
     ):
-        eprint("inside")
-        quote = "'"
-        positional_data = (
-            (
-                f"multiext('{xs['positional'][0]['value']}',{','.join([quote + x['value'].split('.')[-1] + quote for x in xs])})"
-            ),
-        )
+        filename = repr(xs["positional"][0]["value"])
+        exts = [repr(x["value"].split(".")[-1]) for x in xs["positional"]]
+        positional_data = (f"multiext({filename},{','.join(exts)})",)
     else:
         positional_data = (render_annotated_str_list(x) for x in xs["positional"])
 
