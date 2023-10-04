@@ -9,6 +9,7 @@ import snakemake
 from snakemake.parser import (
     INDENT,
     Benchmark,
+    Include,
     Input,
     Log,
     Output,
@@ -27,6 +28,11 @@ sys.stderr.reconfigure(line_buffering=True)
 def eprint(x: str) -> None:
     print(x, file=sys.stderr)
 
+
+print_compilation_env = os.environ["LATCH_PRINT_COMPILATION"]
+print_compilation = False
+if print_compilation_env == "1":
+    print_compilation = True
 
 data = json.loads(os.environ["LATCH_SNAKEMAKE_DATA"])
 rules = data["rules"]
@@ -156,9 +162,10 @@ def emit_overrides(self, token):
 
     if (
         isinstance(self, Output)
-        and xs[0].get("flags")
-        and "multiext" in xs[0].get("flags")
+        and xs["positional"][0].get("flags")
+        and "multiext" in xs["positional"][0].get("flags")
     ):
+        eprint("inside")
         quote = "'"
         positional_data = (
             (
@@ -203,12 +210,20 @@ def skipping_block_content(self, token):
     emitted_overrides.add(self.rulename)
 
 
+def block_content_with_print_compilation(self, token):
+    if print_compilation:
+        yield f"{token.string}, print_compilation=True", token
+    else:
+        yield token.string, token
+
+
 Input.block_content = skipping_block_content
 Output.block_content = skipping_block_content
 Params.block_content = skipping_block_content
 Benchmark.block_content = skipping_block_content
 Log.block_content = skipping_block_content
 Ruleorder.block_content = lambda self, token: None
+Include.block_content = block_content_with_print_compilation
 
 
 class SkippingRule(Rule):

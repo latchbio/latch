@@ -1243,7 +1243,8 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
                         check=True,
                         env={{
                             **os.environ,
-                            "LATCH_SNAKEMAKE_DATA": {repr(json.dumps(snakemake_data))}
+                            "LATCH_SNAKEMAKE_DATA": {repr(json.dumps(snakemake_data))},
+                            "LATCH_PRINT_COMPILATION": "1"
                         }},
                         stdout=f
                     )
