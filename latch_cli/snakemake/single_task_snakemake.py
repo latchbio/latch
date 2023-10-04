@@ -29,8 +29,8 @@ def eprint(x: str) -> None:
     print(x, file=sys.stderr)
 
 
-print_compilation_env = os.environ.get("LATCH_PRINT_COMPILATION", False)
-if print_compilation_env == "1":
+print_compilation = os.environ.get("LATCH_PRINT_COMPILATION", False)
+if print_compilation == "1":
     print_compilation = True
 
 data = json.loads(os.environ["LATCH_SNAKEMAKE_DATA"])
@@ -161,7 +161,7 @@ def emit_overrides(self, token):
 
     if (
         isinstance(self, Output)
-        and xs["positional"][0].get("flags")
+        and xs["positional"][0].get("flags") is not None
         and "multiext" in xs["positional"][0].get("flags")
     ):
         filename = repr(xs["positional"][0]["value"])
