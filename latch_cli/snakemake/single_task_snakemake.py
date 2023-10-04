@@ -168,7 +168,7 @@ def emit_overrides(self, token):
         quote = "'"
         positional_data = (
             (
-                f"multiext('{xs[0]['value']}',{','.join([quote + x['value'].split('.')[-1] + quote for x in xs])})"
+                f"multiext('{xs['positional'][0]['value']}',{','.join([quote + x['value'].split('.')[-1] + quote for x in xs])})"
             ),
         )
     else:
