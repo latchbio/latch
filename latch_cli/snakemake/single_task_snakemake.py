@@ -155,7 +155,7 @@ def emit_overrides(self, token):
         raise ValueError(f"tried to emit overrides for unknown state: {type(self)}")
 
     if (
-        isinstance(self, Params)
+        isinstance(self, Output)
         and xs[0].get("flags")
         and "multiext" in xs[0].get("flags")
     ):
