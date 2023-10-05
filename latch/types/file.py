@@ -1,5 +1,7 @@
+import os
 import re
 from os import PathLike
+from pathlib import Path
 from typing import Optional, Type, Union
 from urllib.parse import urlparse
 
@@ -58,6 +60,8 @@ class LatchFile(FlyteFile):
         self,
         path: Union[str, PathLike],
         remote_path: Optional[Union[str, PathLike]] = None,
+        *,
+        do_download: bool = True,
         **kwargs,
     ):
         if path is None:
@@ -108,6 +112,12 @@ class LatchFile(FlyteFile):
                             local_path_hint = data["name"]
 
                     self.path = ctx.file_access.get_random_local_path(local_path_hint)
+
+                    if not do_download:
+                        Path(self.path).parent.mkdir(parents=True, exist_ok=True)
+                        Path(self.path).touch(exist_ok=True)
+                        return
+
                     return ctx.file_access.get_data(
                         self._remote_path,
                         self.path,

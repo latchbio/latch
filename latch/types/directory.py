@@ -7,6 +7,7 @@ import gql
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
+from flytekit.exceptions.user import FlyteUserException
 from flytekit.models.literals import Literal
 from flytekit.types.directory.types import (
     FlyteDirectory,
@@ -21,25 +22,41 @@ from latch_cli.utils import urljoins
 from latch_cli.utils.path import normalize_path
 
 
-class Child(TypedDict):
+class IterdirChild(TypedDict):
     type: str
     name: str
 
 
-class ChildLdataTreeEdge(TypedDict):
-    child: Child
+class IterdirChildLdataTreeEdge(TypedDict):
+    child: IterdirChild
 
 
-class ChildLdataTreeEdges(TypedDict):
-    nodes: List[ChildLdataTreeEdge]
+class IterdirChildLdataTreeEdges(TypedDict):
+    nodes: List[IterdirChildLdataTreeEdge]
 
 
-class LDataResolvePathFinalLinkTarget(TypedDict):
-    childLdataTreeEdges: ChildLdataTreeEdges
+class IterDirLDataResolvePathFinalLinkTarget(TypedDict):
+    childLdataTreeEdges: IterdirChildLdataTreeEdges
 
 
-class LdataResolvePathData(TypedDict):
-    finalLinkTarget: LDataResolvePathFinalLinkTarget
+class IterdirLdataResolvePathData(TypedDict):
+    finalLinkTarget: IterDirLDataResolvePathFinalLinkTarget
+
+
+class NodeDescendantsNode(TypedDict):
+    relPath: str
+
+
+class NodeDescendantsDescendants(TypedDict):
+    nodes: List[NodeDescendantsNode]
+
+
+class NodeDescendantsFinalLinkTarget(TypedDict):
+    descendants: NodeDescendantsDescendants
+
+
+class NodeDescendantsLDataResolvePathData(TypedDict):
+    finalLinkTarget: NodeDescendantsFinalLinkTarget
 
 
 class LatchDir(FlyteDirectory):
@@ -78,6 +95,8 @@ class LatchDir(FlyteDirectory):
         self,
         path: Union[str, PathLike],
         remote_path: Optional[PathLike] = None,
+        *,
+        do_download: bool = True,
         **kwargs,
     ):
         if path is None:
@@ -112,11 +131,42 @@ class LatchDir(FlyteDirectory):
                     and ctx.inspect_objects_only is False
                 ):
                     self.path = ctx.file_access.get_random_local_directory()
-                    return ctx.file_access.get_data(
-                        self._remote_directory,
-                        self.path,
-                        is_multipart=True,
-                    )
+
+                    if do_download:
+                        return ctx.file_access.get_data(
+                            self._remote_directory,
+                            self.path,
+                            is_multipart=True,
+                        )
+
+                    res: Optional[NodeDescendantsLDataResolvePathData] = execute(
+                        gql.gql("""
+                            query NodeDescendantsQuery($path: String!) {
+                                ldataResolvePathData(argPath: $path) {
+                                    finalLinkTarget {
+                                        descendants {
+                                            nodes {
+                                                relPath
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        """),
+                        {"path": self._remote_directory},
+                    )["ldataResolvePathData"]
+
+                    if res is None:
+                        # todo(ayush): proper error message + exit
+                        raise FlyteUserException(
+                            f"No directory at {self._remote_directory}"
+                        )
+
+                    for x in res["finalLinkTarget"]["descendants"]["nodes"]:
+                        p = Path(self.path) / x["relPath"]
+
+                        p.parent.mkdir(exist_ok=True, parents=True)
+                        p.touch(exist_ok=True)
 
             super().__init__(self.path, downloader, self._remote_directory)
 
@@ -132,7 +182,7 @@ class LatchDir(FlyteDirectory):
 
             return ret
 
-        res: Optional[LdataResolvePathData] = execute(
+        res: Optional[IterdirLdataResolvePathData] = execute(
             gql.gql("""
             query LDataChildren($argPath: String!) {
                 ldataResolvePathData(argPath: $argPath) {
