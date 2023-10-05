@@ -321,12 +321,13 @@ def generate_snakemake_entrypoint(
         import shutil
         import subprocess
         from subprocess import CalledProcessError
+        import traceback
         from typing import NamedTuple
         import stat
         import sys
 
         from flytekit.extras.persistence import LatchPersistence
-        import traceback
+        from snakemake.exceptions import CreateCondaEnvironmentException
 
         from latch.resources.tasks import custom_task
         from latch.types.directory import LatchDir

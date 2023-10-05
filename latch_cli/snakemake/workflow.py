@@ -1269,14 +1269,25 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
 
                     print("\n\n\n")
                     try:
-                        subprocess.run(
-                            [sys.executable,{','.join(repr(x) for x in snakemake_args)}],
-                            check=True,
-                            env={{
-                                **os.environ,
-                                "LATCH_SNAKEMAKE_DATA": {repr(json.dumps(snakemake_data))}
-                            }}
-                        )
+                        conda_retries = 0
+                        while conda_retries < 3:
+                            try:
+                                subprocess.run(
+                                    [sys.executable,{','.join(repr(x) for x in snakemake_args)}],
+                                    check=True,
+                                    env={{
+                                        **os.environ,
+                                        "LATCH_SNAKEMAKE_DATA": {repr(json.dumps(snakemake_data))}
+                                    }}
+                                )
+                                break
+                            except CreateCondaEnvironmentException as e:
+                                if conda_retries < 3:
+                                    print("Retrying snakemake\n\n")
+                                    conda_retries +=1
+                                    continue
+                                else:
+                                    raise e
                     finally:
                         if tail is not None:
                             import signal
