@@ -15,5 +15,4 @@ def gene_ontology_pathway_analysis(
     report_name: str,
     number_of_pathways: int = 20,
     output_location: LatchDir = LatchDir("latch:///Pathway Analysis/"),
-) -> LatchDir:
-    ...
+) -> LatchDir: ...

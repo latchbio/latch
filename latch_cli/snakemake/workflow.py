@@ -95,8 +95,7 @@ class JobOutputInfo:
     type_: Union[LatchFile, LatchDir]
 
 
-def task_fn_placeholder():
-    ...
+def task_fn_placeholder(): ...
 
 
 def variable_name_for_file(file: snakemake.io.AnnotatedString):
@@ -583,6 +582,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             _interface_request = {
                 "workflow_id": wf_id,
                 "params": params,
+                "snakemake_jit": True,
             }
 
             response = requests.post(urljoin(config.nucleus_url, "/api/create-execution"), headers=headers, json=_interface_request)

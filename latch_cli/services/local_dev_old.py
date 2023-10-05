@@ -311,8 +311,7 @@ async def _shell_session(
     try:
         io_task = asyncio.gather(input_task(), output_task(), resize_task())
         await io_task
-    except asyncio.CancelledError:
-        ...
+    except asyncio.CancelledError: ...
     finally:
         termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, old_settings_stdin)
         signal.signal(signal.SIGWINCH, old_sigwinch_handler)

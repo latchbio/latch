@@ -58,5 +58,4 @@ def trim_galore(
     retain_unpaired: bool = True,
     length_1: int = 35,
     length_2: int = 35,
-) -> LatchDir:
-    ...
+) -> LatchDir: ...

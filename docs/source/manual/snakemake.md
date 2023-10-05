@@ -1,10 +1,4 @@
-# [Alpha Pre-release] Snakemake Integration
-
-## Pre-release Disclaimer - Currently not ready for production use
-
-Latch support for Snakemake is in active development. Some workflows already work but a lot of common use cases need minor work. This documentation is also in active development.
-
-This pre-release was created to integrate miscellaneous improvements that accumulated over the course of developing the integration and to prevent the codebase from further diverging from the main branch.
+# Snakemake Integration
 
 ## Getting Started
 
