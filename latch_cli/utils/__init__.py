@@ -58,8 +58,7 @@ def urljoins(*args: str, dir: bool = False) -> str:
     return res
 
 
-class AuthenticationError(RuntimeError):
-    ...
+class AuthenticationError(RuntimeError): ...
 
 
 def get_auth_header() -> str:
@@ -199,8 +198,7 @@ def hash_directory(dir_path: Path) -> str:
                     continue
 
                 exclude.append(l)
-    except FileNotFoundError:
-        ...
+    except FileNotFoundError: ...
 
     from docker.utils import exclude_paths
 

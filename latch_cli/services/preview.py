@@ -176,8 +176,7 @@ def _select_workflow_tui(title: str, options: List[str], clear_terminal: bool = 
                 start_index=start_index,
                 max_per_page=max_per_page,
             )
-    except KeyboardInterrupt:
-        ...
+    except KeyboardInterrupt: ...
     finally:
         menus.clear(num_lines_rendered)
         menus.reveal_cursor()

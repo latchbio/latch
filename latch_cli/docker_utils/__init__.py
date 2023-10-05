@@ -248,8 +248,7 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
 
                 has_buildable_pyproject = True
                 break
-    except FileNotFoundError:
-        ...
+    except FileNotFoundError: ...
 
     # from https://peps.python.org/pep-0518/ and https://peps.python.org/pep-0621/
     if has_setup_py or has_buildable_pyproject:

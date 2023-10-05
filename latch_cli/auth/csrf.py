@@ -27,5 +27,4 @@ class CSRFState:
     def __enter__(self, *args):
         return self
 
-    def __exit__(self, *args):
-        ...
+    def __exit__(self, *args): ...

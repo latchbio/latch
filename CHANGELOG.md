@@ -16,7 +16,7 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.33.0 - 2023-10-04
+## 2.34.0 - 2023-10-04
 
 ### Added
 
@@ -33,6 +33,12 @@ temporary because they are deleted at the end of each job on Latch.
 * Patched parser to generate compiled code for `workflow.include` calls Compiled workflow.include should carry `print_compilation` keyword (snakemake/snakemake#2469)
 * Detect use of `conda` keyword and install in image. This effectively supports wrapper/conda keywords.
 * `Iterable, Generator` cause issues as type hints when imported from `collections.abc` rather than `typing`
+
+## 2.33.0 - 2023-09-29
+
+### Added
+
+* Add `latch sync` for synchronization from local to remote directories that only uploads modified content
 
 ## 2.32.8 - 2023-09-07
 

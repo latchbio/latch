@@ -149,6 +149,7 @@ cli/mv
 :maxdepth: 2
 :caption: Manual
 manual/snakemake.md
+manual/tutorial.md
 ```
 
 ```{toctree}
