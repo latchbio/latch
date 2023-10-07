@@ -124,9 +124,7 @@ class SnakemakeWorkflowExtractor(Workflow):
             priorityfiles=set(),
         )
 
-        self.persistence = Persistence(
-            dag=dag,
-        )
+        self._persistence = Persistence(dag=dag)
 
         dag.init()
         dag.update_checkpoint_dependencies()

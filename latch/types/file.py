@@ -60,8 +60,6 @@ class LatchFile(FlyteFile):
         self,
         path: Union[str, PathLike],
         remote_path: Optional[Union[str, PathLike]] = None,
-        *,
-        do_download: bool = True,
         **kwargs,
     ):
         if path is None:
@@ -76,6 +74,8 @@ class LatchFile(FlyteFile):
             self.path = normalize_path(str(path))
         else:
             self.path = str(path)
+
+        self._path_witness = False
 
         if _is_valid_url(self.path) and remote_path is None:
             self._remote_path = str(path)
@@ -111,12 +111,7 @@ class LatchFile(FlyteFile):
                         if data is not None and data["name"] is not None:
                             local_path_hint = data["name"]
 
-                    self.path = ctx.file_access.get_random_local_path(local_path_hint)
-
-                    if not do_download:
-                        Path(self.path).parent.mkdir(parents=True, exist_ok=True)
-                        Path(self.path).touch(exist_ok=True)
-                        return
+                    self._idempotent_set_path(local_path_hint)
 
                     return ctx.file_access.get_data(
                         self._remote_path,
@@ -125,6 +120,24 @@ class LatchFile(FlyteFile):
                     )
 
             super().__init__(self.path, downloader, self._remote_path)
+
+    def _idempotent_set_path(self, hint: Optional[str] = None):
+        if self._path_witness:
+            return
+
+        ctx = FlyteContextManager.current_context()
+        if ctx is None:
+            return
+
+        self.path = ctx.file_access.get_random_local_path(hint)
+        self._path_witness = True
+
+    def touch(self):
+        self._idempotent_set_path()
+
+        p = Path(self.path)
+        p.parent.mkdir(exist_ok=True, parents=True)
+        p.touch(exist_ok=True)
 
     @property
     def local_path(self) -> str:

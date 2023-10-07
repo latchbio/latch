@@ -95,8 +95,6 @@ class LatchDir(FlyteDirectory):
         self,
         path: Union[str, PathLike],
         remote_path: Optional[PathLike] = None,
-        *,
-        do_download: bool = True,
         **kwargs,
     ):
         if path is None:
@@ -111,6 +109,8 @@ class LatchDir(FlyteDirectory):
             self.path = normalize_path(str(path))
         else:
             self.path = str(path)
+
+        self._path_witness = False
 
         if _is_valid_url(self.path) and remote_path is None:
             self._remote_directory = self.path
@@ -130,45 +130,26 @@ class LatchDir(FlyteDirectory):
                     # todo(kenny) is this necessary?
                     and ctx.inspect_objects_only is False
                 ):
-                    self.path = ctx.file_access.get_random_local_directory()
+                    self._idempotent_set_path()
 
-                    if do_download:
-                        return ctx.file_access.get_data(
-                            self._remote_directory,
-                            self.path,
-                            is_multipart=True,
-                        )
-
-                    res: Optional[NodeDescendantsLDataResolvePathData] = execute(
-                        gql.gql("""
-                            query NodeDescendantsQuery($path: String!) {
-                                ldataResolvePathData(argPath: $path) {
-                                    finalLinkTarget {
-                                        descendants {
-                                            nodes {
-                                                relPath
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        """),
-                        {"path": self._remote_directory},
-                    )["ldataResolvePathData"]
-
-                    if res is None:
-                        # todo(ayush): proper error message + exit
-                        raise FlyteUserException(
-                            f"No directory at {self._remote_directory}"
-                        )
-
-                    for x in res["finalLinkTarget"]["descendants"]["nodes"]:
-                        p = Path(self.path) / x["relPath"]
-
-                        p.parent.mkdir(exist_ok=True, parents=True)
-                        p.touch(exist_ok=True)
+                    return ctx.file_access.get_data(
+                        self._remote_directory,
+                        self.path,
+                        is_multipart=True,
+                    )
 
             super().__init__(self.path, downloader, self._remote_directory)
+
+    def _idempotent_set_path(self):
+        if self._path_witness:
+            return
+
+        ctx = FlyteContextManager.current_context()
+        if ctx is None:
+            return
+
+        self.path = ctx.file_access.get_random_local_directory()
+        self._path_witness = True
 
     def iterdir(self) -> List[Union[LatchFile, "LatchDir"]]:
         ret: List[Union[LatchFile, "LatchDir"]] = []
@@ -214,6 +195,36 @@ class LatchDir(FlyteDirectory):
                 ret.append(LatchFile(path))
 
         return ret
+
+    def touch(self):  # fixme(ayush): better name
+        self._idempotent_set_path()
+
+        res: Optional[NodeDescendantsLDataResolvePathData] = execute(
+            gql.gql("""
+                query NodeDescendantsQuery($path: String!) {
+                    ldataResolvePathData(argPath: $path) {
+                        finalLinkTarget {
+                            descendants {
+                                nodes {
+                                    relPath
+                                }
+                            }
+                        }
+                    }
+                }
+            """),
+            {"path": self._remote_directory},
+        )["ldataResolvePathData"]
+
+        if res is None:
+            # todo(ayush): proper error message + exit
+            raise FlyteUserException(f"No directory at {self._remote_directory}")
+
+        for x in res["finalLinkTarget"]["descendants"]["nodes"]:
+            p = Path(self.path) / x["relPath"]
+
+            p.parent.mkdir(exist_ok=True, parents=True)
+            p.touch(exist_ok=True)
 
     @property
     def local_path(self) -> str:
