@@ -3,7 +3,7 @@ from dataclasses import asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
 from textwrap import indent
-from typing import Dict, List, Optional, Tuple, Type, Union
+from typing import Dict, Generic, List, Optional, Tuple, Type, TypeVar, Union
 
 import yaml
 
@@ -335,8 +335,26 @@ class LatchParameter:
 
 
 @dataclass
-class SnakemakeFileParameter(LatchParameter):
-    type: Optional[Union[Type[LatchFile], Type[LatchDir]]] = None
+class SnakemakeParameter(LatchParameter):
+    type: Optional[
+        Union[
+            Type[str],
+            Type[Enum],
+        ]
+    ] = None
+    """
+    The python type of the parameter.
+    """
+
+
+@dataclass
+class SnakemakeFileParameter(SnakemakeParameter):
+    type: Optional[
+        Union[
+            Type[LatchFile],
+            Type[LatchDir],
+        ]
+    ] = None
     """
     The python type of the parameter.
     """
@@ -413,7 +431,7 @@ class LatchMetadata:
     no_standard_bulk_execution: bool = False
     """
     Disable the standard CSV-based bulk execution. Intended for workflows that
-    support an aleternative way of processing bulk data e.g. using a samplesheet
+    support an alternative way of processing bulk data e.g. using a samplesheet
     parameter
     """
     _non_standard: Dict[str, object] = field(default_factory=dict)
@@ -452,6 +470,7 @@ class LatchMetadata:
 class SnakemakeMetadata(LatchMetadata):
     output_dir: Optional[LatchDir] = None
     name: Optional[str] = None
+    parameters: Dict[str, SnakemakeParameter] = field(default_factory=dict)
 
     def __post_init__(self):
         if self.name is None:

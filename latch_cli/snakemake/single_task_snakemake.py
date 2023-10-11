@@ -6,6 +6,7 @@ from textwrap import dedent
 from typing import Dict, Set
 
 import snakemake
+import snakemake.workflow
 from snakemake.parser import (
     INDENT,
     Benchmark,
@@ -36,6 +37,13 @@ if print_compilation == "1":
 data = json.loads(os.environ["LATCH_SNAKEMAKE_DATA"])
 rules = data["rules"]
 outputs = data["outputs"]
+
+non_blob_parameters = data.get("non_blob_parameters", {})
+
+sw = sys.modules["snakemake.workflow"]
+for k, v in non_blob_parameters.items():
+    if not hasattr(sw, k):
+        setattr(sw, k, v)
 
 
 def eprint_named_list(xs):

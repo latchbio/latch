@@ -45,17 +45,18 @@ temporary because they are deleted at the end of each job on Latch.
 ### Fixed
 
 * Snakemake:
-    * Better errors if `Snakefile` or `latch_metadata.py` file missing
-    * Correct issues with snakemake example project
+    - Better errors if `Snakefile` or `latch_metadata.py` file missing
+    - Correct issues with snakemake example project
 
 ## 2.32.7 - 2023-09-07
 
 ### Fixed
 
 * Snakemake:
-    * `--snakemake` for `latch dockerfile` command to generate `Dockerfile` with
+    - `--snakemake` for `latch dockerfile` command to generate `Dockerfile` with
     necessary instructions
-    * Snakemake example for `latch init`
+
+    - Snakemake example for `latch init`
 
 ## 2.32.6 - 2023-09-07
 
