@@ -357,7 +357,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     {param}_dst_p = Path("{param_meta.path}")
 
                     print(f"Downloading {param}: {{{param}.remote_path}}")
-                    {param}.touch()
+                    {param}._create_imposters()
                     {param}_p = Path({param}.path)
                     print(f"  {{file_name_and_size({param}_p)}}")
 

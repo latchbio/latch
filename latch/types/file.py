@@ -75,7 +75,7 @@ class LatchFile(FlyteFile):
         else:
             self.path = str(path)
 
-        self._path_witness = False
+        self._path_generated = False
 
         if _is_valid_url(self.path) and remote_path is None:
             self._remote_path = str(path)
@@ -122,7 +122,7 @@ class LatchFile(FlyteFile):
             super().__init__(self.path, downloader, self._remote_path)
 
     def _idempotent_set_path(self, hint: Optional[str] = None):
-        if self._path_witness:
+        if self._path_generated:
             return
 
         ctx = FlyteContextManager.current_context()
@@ -130,9 +130,9 @@ class LatchFile(FlyteFile):
             return
 
         self.path = ctx.file_access.get_random_local_path(hint)
-        self._path_witness = True
+        self._path_generated = True
 
-    def touch(self):
+    def _create_imposters(self):
         self._idempotent_set_path()
 
         p = Path(self.path)

@@ -110,7 +110,7 @@ class LatchDir(FlyteDirectory):
         else:
             self.path = str(path)
 
-        self._path_witness = False
+        self._path_generated = False
 
         if _is_valid_url(self.path) and remote_path is None:
             self._remote_directory = self.path
@@ -141,7 +141,7 @@ class LatchDir(FlyteDirectory):
             super().__init__(self.path, downloader, self._remote_directory)
 
     def _idempotent_set_path(self):
-        if self._path_witness:
+        if self._path_generated:
             return
 
         ctx = FlyteContextManager.current_context()
@@ -149,7 +149,7 @@ class LatchDir(FlyteDirectory):
             return
 
         self.path = ctx.file_access.get_random_local_directory()
-        self._path_witness = True
+        self._path_generated = True
 
     def iterdir(self) -> List[Union[LatchFile, "LatchDir"]]:
         ret: List[Union[LatchFile, "LatchDir"]] = []
@@ -196,7 +196,7 @@ class LatchDir(FlyteDirectory):
 
         return ret
 
-    def touch(self):  # fixme(ayush): better name
+    def _create_imposters(self):
         self._idempotent_set_path()
 
         res: Optional[NodeDescendantsLDataResolvePathData] = execute(
