@@ -220,8 +220,9 @@ class LatchDir(FlyteDirectory):
             # todo(ayush): proper error message + exit
             raise FlyteUserException(f"No directory at {self._remote_directory}")
 
+        root = Path(self.path)
         for x in res["finalLinkTarget"]["descendants"]["nodes"]:
-            p = Path(self.path) / x["relPath"]
+            p = root / x["relPath"]
 
             p.parent.mkdir(exist_ok=True, parents=True)
             p.touch(exist_ok=True)
