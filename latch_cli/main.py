@@ -396,6 +396,16 @@ def ls(paths: Tuple[str], group_directories_first: bool):
             click.echo("")
 
 
+@main.command("generate-metadata")
+@click.argument("config_file", nargs=1, type=click.Path(exists=True, path_type=Path))
+def generate_metadata(config_file: Path):
+    """Generate a `latch_metadata.py` file from a Snakemake config file"""
+
+    from latch_cli.snakemake.config.parser import generate_metadata
+
+    generate_metadata(config_file)
+
+
 @main.command("launch")
 @click.argument("params_file", nargs=1, type=click.Path(exists=True))
 @click.option(

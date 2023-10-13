@@ -41,9 +41,7 @@ outputs = data["outputs"]
 non_blob_parameters = data.get("non_blob_parameters", {})
 
 sw = sys.modules["snakemake.workflow"]
-for k, v in non_blob_parameters.items():
-    if not hasattr(sw, k):
-        setattr(sw, k, v)
+setattr(sw, "config", non_blob_parameters)
 
 
 def eprint_named_list(xs):

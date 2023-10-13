@@ -3,7 +3,7 @@ import json
 import sys
 import textwrap
 import typing
-from dataclasses import dataclass
+from dataclasses import dataclass, is_dataclass
 from enum import Enum
 from pathlib import Path
 from typing import (
@@ -17,6 +17,8 @@ from typing import (
     Type,
     TypeVar,
     Union,
+    get_args,
+    get_origin,
 )
 from urllib.parse import urlparse
 
@@ -63,6 +65,7 @@ import latch.types.metadata as metadata
 from latch.resources.tasks import custom_task
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
+from latch_cli.snakemake.config.utils import is_primitive_type, type_repr
 
 from ..utils import identifier_suffix_from_str
 
@@ -308,7 +311,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         params_str = ",\n".join(
             reindent(
                 rf"""
-                {param}: {"latch_metadata." if t.__name__ not in {"str", "LatchFile", "LatchDir"} else ""}{t.__name__}
+                {param}: {type_repr(t, add_namespace=True)}
                 """,
                 1,
             ).rstrip()
@@ -390,20 +393,14 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     """,
                     1,
                 )
-            elif t is str or issubclass(t, Enum):
-                ending = ""
-                if issubclass(t, Enum):
-                    ending = ".value"
-
+            else:
                 code_block += reindent(
                     rf"""
-                    print(f"Saving parameter value {param} = {{{param}{ending}}}")
-                    non_blob_parameters[{repr(param)}] = {param}{ending}
+                    print(f"Saving parameter value {param} = {{get_parameter_json_value({param})}}")
+                    non_blob_parameters[{repr(param)}] = get_parameter_json_value({param})
                     """,
                     1,
                 )
-            else:
-                raise ValueError(f"Unsupported parameter type {t} for {param}")
 
         code_block += reindent(
             rf"""
@@ -1199,8 +1196,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
         need_conda = any(x.conda_env is not None for x in jobs)
 
         if non_blob_parameters is not None and len(non_blob_parameters) > 0:
-            for k, v in non_blob_parameters.items():
-                self.job.rule.workflow.globals[k] = v
+            self.job.rule.workflow.globals["config"] = non_blob_parameters
 
         snakemake_args = [
             "-m",

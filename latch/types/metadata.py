@@ -3,7 +3,18 @@ from dataclasses import asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
 from textwrap import indent
-from typing import Dict, Generic, List, Optional, Tuple, Type, TypeVar, Union
+from typing import (
+    ClassVar,
+    Dict,
+    Generic,
+    List,
+    Optional,
+    Protocol,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import yaml
 
@@ -334,12 +345,21 @@ class LatchParameter:
         return {"__metadata__": parameter_dict}
 
 
+# https://stackoverflow.com/questions/54668000/type-hint-for-an-instance-of-a-non-specific-dataclass
+class _IsDataclass(Protocol):
+    __dataclass_fields__: ClassVar[Dict]
+
+
 @dataclass
 class SnakemakeParameter(LatchParameter):
     type: Optional[
         Union[
+            Type[int],
+            Type[float],
             Type[str],
+            Type[bool],
             Type[Enum],
+            Type[_IsDataclass],
         ]
     ] = None
     """
