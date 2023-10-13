@@ -17,6 +17,7 @@ from typing import (
 )
 
 import yaml
+from typing_extensions import TypeAlias
 
 from latch_cli.utils import identifier_suffix_from_str
 
@@ -350,18 +351,20 @@ class _IsDataclass(Protocol):
     __dataclass_fields__: ClassVar[Dict]
 
 
+ParameterType: TypeAlias = Union[
+    Type[int],
+    Type[float],
+    Type[str],
+    Type[bool],
+    Type[Enum],
+    Type[_IsDataclass],
+    Type[List["ParameterType"]],
+]
+
+
 @dataclass
 class SnakemakeParameter(LatchParameter):
-    type: Optional[
-        Union[
-            Type[int],
-            Type[float],
-            Type[str],
-            Type[bool],
-            Type[Enum],
-            Type[_IsDataclass],
-        ]
-    ] = None
+    type: Optional[ParameterType] = None
     """
     The python type of the parameter.
     """
