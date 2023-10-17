@@ -8,11 +8,14 @@ from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
 from latch_cli.utils import identifier_suffix_from_str
 
-JSONValue: TypeAlias = Union[int, str, bool, float, List["JSONValue"], "JSONDict"]
+JSONValue: TypeAlias = Union[int, str, bool, float, None, List["JSONValue"], "JSONDict"]
 JSONDict: TypeAlias = Dict[str, "JSONValue"]
 
 
 def parse_type(v: JSONValue, name: Optional[str] = None) -> Type:
+    if v is None:
+        return str
+
     if is_primitive_value(v):
         return type(v)
 
