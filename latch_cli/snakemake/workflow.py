@@ -124,9 +124,12 @@ class RemoteFile:
 
 
 def snakemake_dag_to_interface(
-    dag: DAG, wf_name: str, docstring: Optional[Docstring] = None
+    dag: DAG,
+    wf_name: str,
+    docstring: Optional[Docstring] = None,
+    local_to_remote_path_mapping: Optional[Dict[str, str]] = None,
 ) -> Tuple[Interface, LiteralMap, List[RemoteFile]]:
-    outputs: Dict[str, LatchFile] = {}
+    outputs: Dict[str, Union[Type[LatchFile], Type[LatchDir]]] = {}
     for target in dag.targetjobs:
         for desired in target.input:
             param = variable_name_for_value(desired, target.input)
@@ -141,7 +144,7 @@ def snakemake_dag_to_interface(
                 outputs[param] = LatchFile
 
     literals: Dict[str, Literal] = {}
-    inputs: Dict[str, Tuple[LatchFile, None]] = {}
+    inputs: Dict[str, Tuple[Type[LatchFile], None]] = {}
     return_files: List[RemoteFile] = []
     for job in dag.jobs:
         dep_outputs = []
@@ -157,11 +160,31 @@ def snakemake_dag_to_interface(
                     LatchFile,
                     None,
                 )
+
+                print(x)
+
+                print(local_to_remote_path_mapping)
+
                 remote_path = (
                     Path("/.snakemake_latch") / "workflows" / wf_name / "inputs" / x
                 )
-                remote_url = f"latch://{remote_path}"
-                return_files.append(RemoteFile(local_path=x, remote_path=remote_url))
+                use_original_remote_path: bool = (
+                    local_to_remote_path_mapping is not None
+                    and x in local_to_remote_path_mapping
+                )
+
+                if use_original_remote_path:
+                    remote_path = local_to_remote_path_mapping.get(x)
+
+                remote_url = (
+                    urlparse(str(remote_path))._replace(scheme="latch").geturl()
+                )
+
+                if not use_original_remote_path:
+                    return_files.append(
+                        RemoteFile(local_path=x, remote_path=remote_url)
+                    )
+
                 literals[param] = Literal(
                     scalar=Scalar(
                         blob=Blob(
@@ -347,6 +370,13 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         code_block = ""
         code_block += self.get_fn_interface(fn_name=task_name)
 
+        code_block += reindent(
+            r"""
+            local_to_remote_path_mapping = {}
+            """,
+            1,
+        )
+
         for param, t in self.python_interface.inputs.items():
             if t in (LatchFile, LatchDir):
                 param_meta = self.parameter_metadata[param]
@@ -383,6 +413,8 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                         {param}_dst_p
                     )
 
+                    update_mapping({param}_dst_p, {param}.remote_path, local_to_remote_path_mapping)
+
                     """,
                     1,
                 )
@@ -408,7 +440,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             exec_id_hash.update(os.environ["FLYTE_INTERNAL_EXECUTION_ID"].encode("utf-8"))
             version = exec_id_hash.hexdigest()[:16]
 
-            wf = extract_snakemake_workflow(pkg_root, snakefile, version)
+            wf = extract_snakemake_workflow(pkg_root, snakefile, version, local_to_remote_path_mapping)
             wf_name = wf.name
             generate_snakemake_entrypoint(wf, pkg_root, snakefile, {repr(remote_output_url)})
 
@@ -583,7 +615,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             _interface_request = {
                 "workflow_id": wf_id,
                 "params": params,
-                "snakemake_jit": True,
+                # "snakemake_jit": True,
             }
 
             response = requests.post(urljoin(config.nucleus_url, "/api/create-execution"), headers=headers, json=_interface_request)
@@ -600,6 +632,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         self,
         dag: DAG,
         version: Optional[str] = None,
+        local_to_remote_path_mapping: Optional[Dict[str, str]] = None,
     ):
         assert metadata._snakemake_metadata is not None
         name = metadata._snakemake_metadata.name
@@ -607,7 +640,10 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         assert name is not None
 
         native_interface, literal_map, return_files = snakemake_dag_to_interface(
-            dag, name, None
+            dag,
+            name,
+            None,
+            local_to_remote_path_mapping,
         )
         self.literal_map = literal_map
         self.return_files = return_files
