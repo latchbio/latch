@@ -9,6 +9,7 @@
 # - if source/dest remote:
 #   - domain type
 
+import urllib.parse
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
@@ -29,16 +30,23 @@ class Domain(Enum, str):
 
 @dataclass(frozen=True)
 class TestCase:
-    remote: bool
     dir: bool
     exists: bool
-    trailing_slash: bool = False
-    domain: Domain = Domain.infer
+    trailing_slash: bool
 
 
-def generate_test_case(src: TestCase, dest: TestCase):
-    s = ""
-    if src.remote:
-        s = f"latch://{src.domain}/"
-        if src.exists:
-            ...
+@dataclass(frozen=True)
+class RemoteTestCase(TestCase):
+    domain: Domain
+
+
+urllib.parse.uses_netloc.append("latch")
+urllib.parse.uses_relative.append("latch")
+
+
+def generate_test_case(case: TestCase) -> str:
+    scheme: str = ""
+    netloc: str = ""
+    if isinstance(case, RemoteTestCase):
+        scheme = "latch"
+        netloc = case.domain.value
