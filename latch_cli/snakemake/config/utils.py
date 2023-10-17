@@ -96,7 +96,7 @@ def dataclass_repr(typ: Type) -> str:
 
 
 def get_preamble(typ: Type) -> str:
-    if typ in {str, int, bool}:
+    if is_primitive_type(typ):
         return ""
 
     if get_origin(typ) in {Union, list}:
