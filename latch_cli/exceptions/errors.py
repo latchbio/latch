@@ -12,8 +12,7 @@ class _SyntaxError(BaseException):
     end_offset: int
 
 
-class _FlytekitError(BaseException):
-    ...
+class _FlytekitError(BaseException): ...
 
 
 _HandledError = Union[_SyntaxError, _FlytekitError]

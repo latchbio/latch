@@ -131,12 +131,10 @@ class Table:
     # get_display_name
 
     @overload
-    def get_display_name(self, *, load_if_missing: Literal[True] = True) -> str:
-        ...
+    def get_display_name(self, *, load_if_missing: Literal[True] = True) -> str: ...
 
     @overload
-    def get_display_name(self, *, load_if_missing: bool) -> Optional[str]:
-        ...
+    def get_display_name(self, *, load_if_missing: bool) -> Optional[str]: ...
 
     def get_display_name(self, *, load_if_missing: bool = True) -> Optional[str]:
         """Get the display name of this table.
@@ -164,12 +162,10 @@ class Table:
     @overload
     def get_columns(
         self, *, load_if_missing: Literal[True] = True
-    ) -> Dict[str, Column]:
-        ...
+    ) -> Dict[str, Column]: ...
 
     @overload
-    def get_columns(self, *, load_if_missing: bool) -> Optional[Dict[str, Column]]:
-        ...
+    def get_columns(self, *, load_if_missing: bool) -> Optional[Dict[str, Column]]: ...
 
     def get_columns(
         self, *, load_if_missing: bool = True

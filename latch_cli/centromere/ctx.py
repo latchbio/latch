@@ -3,6 +3,7 @@ import sys
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
+from textwrap import dedent
 from typing import Dict, Optional, Tuple
 
 import click
@@ -120,6 +121,16 @@ class _CentromereCtx:
                                 image_name=self.task_image_name(entity.name),
                                 pkg_dir=entity.dockerfile_path.parent,
                             )
+                if not hasattr(self, "workflow_name"):
+                    click.secho(
+                        dedent("""
+                                     Unable to locate workflow code. If you
+                                     are a registering a Snakemake project,
+                                     make sure to pass the Snakefile path with
+                                     the --snakefile flag."""),
+                        fg="red",
+                    )
+                    raise click.exceptions.Exit(1)
             else:
                 assert snakefile is not None
 
@@ -148,11 +159,11 @@ class _CentromereCtx:
                             fg="red",
                         )
                         click.secho(
-                            "\nIt is possible to avoid including the Snakefile prior to"
-                            " registration by providing a `latch_metadata.py` file in"
-                            " the workflow root.\nThis way it is not necessary to"
-                            " install dependencies or ensure that Snakemake inputs"
-                            " locally.",
+                            "\nIt is possible to avoid including the Snakefile"
+                            " prior to registration by providing a"
+                            " `latch_metadata.py` file in the workflow root.\nThis"
+                            " way it is not necessary to install dependencies or"
+                            " ensure that Snakemake inputs locally.",
                             fg="red",
                         )
                         click.secho("\nExample ", fg="red", nl=False)
@@ -205,8 +216,16 @@ class _CentromereCtx:
                                     click.secho("Failed to open file", fg="red")
                         sys.exit(1)
 
-                assert metadata._snakemake_metadata is not None
-                assert metadata._snakemake_metadata.name is not None
+                if metadata._snakemake_metadata is None:
+                    click.secho(
+                        dedent(
+                            """
+                        Make sure a `latch_metadata.py` file exists in the Snakemake
+                         project root.""",
+                        ),
+                        fg="red",
+                    )
+                    raise click.exceptions.Exit(1)
 
                 # todo(kenny): support per container task and custom workflow
                 # name for snakemake
@@ -270,8 +289,7 @@ class _CentromereCtx:
                 )
                 self.ssh_client = ssh_client
 
-                def _patched_connect(self):
-                    ...
+                def _patched_connect(self): ...
 
                 def _patched_create_paramiko_client(self, base_url):
                     self.ssh_client = ssh_client

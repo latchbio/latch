@@ -2,10 +2,20 @@ import importlib
 import json
 import textwrap
 import typing
-from collections.abc import Generator, Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union
+from typing import (
+    Any,
+    Dict,
+    Generator,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 from urllib.parse import urlparse
 
 import snakemake
@@ -85,8 +95,7 @@ class JobOutputInfo:
     type_: Union[LatchFile, LatchDir]
 
 
-def task_fn_placeholder():
-    ...
+def task_fn_placeholder(): ...
 
 
 def variable_name_for_file(file: snakemake.io.AnnotatedString):
@@ -382,7 +391,6 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         code_block += reindent(
             rf"""
             image_name = "{image_name}"
-            image_base_name = image_name.split(":")[0]
             account_id = "{account_id}"
             snakefile = Path("{snakefile_path}")
 
@@ -574,6 +582,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             _interface_request = {
                 "workflow_id": wf_id,
                 "params": params,
+                "snakemake_jit": True,
             }
 
             response = requests.post(urljoin(config.nucleus_url, "/api/create-execution"), headers=headers, json=_interface_request)
@@ -854,7 +863,15 @@ def annotated_str_to_json(
     if not isinstance(x, (snakemake.io.AnnotatedString, snakemake.io._IOFile)):
         return x
 
-    return {"value": str(x), "flags": dict(x.flags.items())}
+    flags = dict(x.flags.items())
+    if "report" in flags:
+        report = flags["report"]
+        flags["report"] = {
+            "caption": report.caption.get_filename(),
+            "category": report.category,
+        }
+
+    return {"value": str(x), "flags": flags}
 
 
 IONamedListItem = Union[MaybeAnnotatedStrJson, List[MaybeAnnotatedStrJson]]
@@ -1198,7 +1215,10 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             snakemake_data["rules"][job.rule.name] = {
                 "inputs": named_list_to_json(job.input),
                 "outputs": named_list_to_json(job.output),
-                "params": named_list_to_json(job.params),
+                "params": {
+                    "keyword": {k: v for k, v in job.params.items()},
+                    "positional": [],
+                },
                 "benchmark": job.benchmark,
                 "log": job.log,
                 "shellcmd": job.shellcmd,
@@ -1223,7 +1243,8 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
                         check=True,
                         env={{
                             **os.environ,
-                            "LATCH_SNAKEMAKE_DATA": {repr(json.dumps(snakemake_data))}
+                            "LATCH_SNAKEMAKE_DATA": {repr(json.dumps(snakemake_data))},
+                            "LATCH_PRINT_COMPILATION": "1"
                         }},
                         stdout=f
                     )
@@ -1305,21 +1326,6 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             finally:
                 ignored_paths = {{".cache", ".snakemake/conda"}}
                 ignored_names = {{".git", ".latch", "__pycache__"}}
-
-                print("Recursive directory listing:")
-                stack = [(Path("."), 0)]
-                while len(stack) > 0:
-                    cur, indent = stack.pop()
-                    print("  " * indent + cur.name)
-
-                    if cur.is_dir():
-                        if cur.name in ignored_names or str(cur) in ignored_paths:
-                            print("  " * indent + "  ...")
-                            continue
-
-                        for x in cur.iterdir():
-                            stack.append((x, indent + 1))
-
             """,
             1,
         )

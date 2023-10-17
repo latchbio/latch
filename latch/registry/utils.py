@@ -26,8 +26,7 @@ from latch.types.file import LatchFile
 T = TypeVar("T")
 
 
-class RegistryTransformerException(ValueError):
-    ...
+class RegistryTransformerException(ValueError): ...
 
 
 def to_python_type(registry_type: RegistryType) -> Type[RegistryPythonValue]:

@@ -10,7 +10,7 @@ Bioinformatics workflows developed with the SDK automatically receive:
 - First class static typing
 - Containerization and versioning of every registered change
 - Reliable and scalable managed cloud infrastructure
-- Single line definition of arbitrary resource requirements (eg. CPU, GPU) for serverless execution
+- Single line definition of arbitrary resource requirements (eg. CPU, GPU, Storage) for serverless execution
 
 ![SDK Overview](./assets/sdk-intro.png)
 
@@ -24,7 +24,7 @@ Lacth SDK allows developers to upload workflows to the full-featured [Latch Plat
 
 With Latch SDK, developers can write the description to their workflow and customize input parameters using plain Markdown. Latch automatically parses the written text and Python function headers to compile a type-safe UI.
 
-**Specifying arbitrary cloud compute and storage resources for bioinformatics pipelines is difficult.** With Latch SDK, there are several Python task decorators that easily allow you to define the resources available at runtime. The framework starts at 2 CPUs and 4 GBs of memory and goes all the way to 31 CPUs, 120 GBs of memory and 1 GPU (24 GBs of VRAM, 9,216 CUDA cores) to easily handle all processing needs.
+**Specifying arbitrary cloud compute and storage resources for bioinformatics pipelines is difficult.** With the Latch SDK, there are several Python task decorators that easily allow you to define the resources available at runtime. The framework starts at 2 CPUs and 4 GiBs of memory and goes all the way to 95 CPUs, 490 GiBs of memory, 4949 GiB of storage, and 1 GPU (24 GiBs of VRAM, 9,216 CUDA cores) to easily handle all processing needs.
 
 **Bioinformatics tools face the challenges of irreproducibility.** The lack of proper versioning and dependencies management results in a long tail of poorly documented and unusable bioinformatics software tools.
 
@@ -149,6 +149,7 @@ cli/mv
 :maxdepth: 2
 :caption: Manual
 manual/snakemake.md
+manual/tutorial.md
 ```
 
 ```{toctree}

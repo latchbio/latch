@@ -19,6 +19,7 @@ from latch_cli.services.init.init import template_flag_to_option
 from latch_cli.services.local_dev import TaskSize
 from latch_cli.utils import (
     AuthenticationError,
+    WorkflowType,
     get_auth_header,
     get_latest_package_version,
     get_local_package_version,
@@ -72,7 +73,15 @@ def main():
 
 @main.command("dockerfile")
 @click.argument("pkg_root", type=click.Path(exists=True, file_okay=False))
-def dockerfile(pkg_root: str):
+@click.option(
+    "-s",
+    "--snakemake",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Generate a Dockerfile with arguments needed for Snakemake compatability",
+)
+def dockerfile(pkg_root: str, snakemake: bool = False):
     """Generates a user editable dockerfile for a workflow and saves under `pkg_root/Dockerfile`.
 
     Visit docs.latch.bio to learn more.
@@ -89,7 +98,10 @@ def dockerfile(pkg_root: str):
         f"Dockerfile already exists at `{dest}`. Overwrite?"
     ):
         return
-    generate_dockerfile(source, dest)
+    workflow_type = WorkflowType.latchbiosdk
+    if snakemake is True:
+        workflow_type = WorkflowType.snakemake
+    generate_dockerfile(source, dest, wf_type=workflow_type)
 
     click.secho(f"Successfully generated dockerfile `{dest}`", fg="green")
 
@@ -672,3 +684,36 @@ def test_data_ls():
     click.secho("Listing your managed objects by full S3 path.\n", fg="green")
     for o in objects:
         print(f"\ts3://latch-public/{o}")
+
+
+@main.command()
+@click.argument("srcs", nargs=-1)
+@click.argument("dst", nargs=1)
+@click.option(
+    "--delete",
+    help="Delete extraneous files from destination.",
+    is_flag=True,
+    default=False,
+)
+@click.option(
+    "--ignore-unsyncable",
+    help=(
+        "Synchronize even if some source paths do not exist or refer to special files."
+    ),
+    is_flag=True,
+    default=False,
+)
+def sync(srcs: List[str], dst: str, delete: bool, ignore_unsyncable: bool):
+    """
+    Update the contents of a remote directory with local data or vice versa.
+    """
+    from latch_cli.services.sync import sync
+
+    # todo(maximsmol): remote -> local
+    # todo(maximsmol): remote -> remote
+    sync(
+        srcs,
+        dst,
+        delete=delete,
+        ignore_unsyncable=ignore_unsyncable,
+    )

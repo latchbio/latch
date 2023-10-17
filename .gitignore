@@ -18,5 +18,4 @@ docs/build
 .vscode
 scratch.py
 /scratch
-test_*
 .latch_report.tar.gz
