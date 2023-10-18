@@ -1,9 +1,10 @@
 import re
-from dataclasses import asdict, dataclass, field
+from dataclasses import Field, asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
 from textwrap import indent
 from typing import (
+    Any,
     ClassVar,
     Dict,
     Generic,
@@ -348,10 +349,11 @@ class LatchParameter:
 
 # https://stackoverflow.com/questions/54668000/type-hint-for-an-instance-of-a-non-specific-dataclass
 class _IsDataclass(Protocol):
-    __dataclass_fields__: ClassVar[Dict]
+    __dataclass_fields__: ClassVar[Dict[str, Field[Any]]]
 
 
 ParameterType: TypeAlias = Union[
+    Type[None],
     Type[int],
     Type[float],
     Type[str],

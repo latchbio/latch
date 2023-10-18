@@ -1,36 +1,26 @@
 from pathlib import Path
-from typing import Dict, Type
+from typing import Dict, List, Type
 
 import click
 import yaml
 
 from latch_cli.snakemake.workflow import reindent
-from latch_cli.utils import identifier_suffix_from_str
+from latch_cli.utils import identifier_from_str
 
-from .utils import *
+from .utils import JSONValue, get_preamble, parse_type, type_repr
 
 
 def parse_config(config_path: Path) -> Dict[str, Type]:
     if not config_path.exists():
         click.secho(
-            reindent(
-                f"""
-                No config file found at {config_path}.
-                """,
-                0,
-            ),
+            f"No config file found at {config_path}.",
             fg="red",
         )
         raise click.exceptions.Exit(1)
 
     if config_path.is_dir():
         click.secho(
-            reindent(
-                f"""
-                Path {config_path} points to a directory.
-                """,
-                0,
-            ),
+            f"Path {config_path} points to a directory.",
             fg="red",
         )
         raise click.exceptions.Exit(1)
@@ -57,7 +47,7 @@ def parse_config(config_path: Path) -> Dict[str, Type]:
 
     parsed: Dict[str, Type] = {}
     for k, v in res.items():
-        parsed[k] = parse_type(v, identifier_suffix_from_str(k))
+        parsed[k] = parse_type(v, k)
 
     return parsed
 
@@ -65,15 +55,15 @@ def parse_config(config_path: Path) -> Dict[str, Type]:
 def generate_metadata(config_path: Path):
     parsed = parse_config(config_path)
 
-    preambles = []
-    params = []
+    preambles: List[str] = []
+    params: List[str] = []
 
     for k, typ in parsed.items():
         preambles.append(get_preamble(typ))
         params.append(
             reindent(
                 f"""\
-                {repr(k)}: SnakemakeParameter(
+                {repr(identifier_from_str(k))}: SnakemakeParameter(
                     display_name={repr(k)},
                     type={type_repr(typ)},
                 ),""",

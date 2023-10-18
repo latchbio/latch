@@ -6,7 +6,7 @@ from typing_extensions import TypeAlias, TypeGuard, TypeVar
 
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
-from latch_cli.utils import identifier_suffix_from_str
+from latch_cli.utils import identifier_from_str
 
 JSONValue: TypeAlias = Union[int, str, bool, float, None, List["JSONValue"], "JSONDict"]
 JSONDict: TypeAlias = Dict[str, "JSONValue"]
@@ -28,38 +28,21 @@ def parse_type(v: JSONValue, name: Optional[str] = None) -> Type:
     if name is None:
         name = "SnakemakeRecord"
 
-    fields = {}
+    fields: Dict[str, Type] = {}
     for k, x in v.items():
-        fields[identifier_suffix_from_str(k)] = parse_type(
-            x, identifier_suffix_from_str(k)
-        )
+        fields[identifier_from_str(k)] = parse_type(x, k)
 
-    return make_dataclass(name, fields.items())
+    return make_dataclass(identifier_from_str(name), fields.items())
 
 
 def is_primitive_type(
     typ: Type,
-) -> TypeGuard[Union[Type[str], Type[bool], Type[int], Type[float]]]:
-    return _is_primitive(t=typ)
+) -> TypeGuard[Union[Type[None], Type[str], Type[bool], Type[int], Type[float]]]:
+    return typ in {Type[None], str, bool, int, float}
 
 
-def is_primitive_value(
-    val: Any,
-) -> TypeGuard[Union[str, bool, int, float]]:
-    return _is_primitive(v=val)
-
-
-def _is_primitive(
-    *,
-    t: Optional[Type] = None,
-    v: Optional[Any] = None,
-) -> bool:
-    if v is not None:
-        t = type(v)
-
-    assert t is not None
-
-    return t in {str, bool, int, float}
+def is_primitive_value(val: object) -> TypeGuard[Union[None, str, bool, int, float]]:
+    return is_primitive_type(type(val))
 
 
 def type_repr(t: Type, *, add_namespace: bool = False) -> str:
