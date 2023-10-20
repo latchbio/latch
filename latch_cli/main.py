@@ -404,7 +404,7 @@ def ls(paths: Tuple[str], group_directories_first: bool):
     is_flag=True,
     default=False,
     help=(
-        "Overwrite an existing `latch_metadata_parameters.py` file without confirming."
+        "Overwrite an existing `latch_metadata/parameters.py` file without confirming."
     ),
 )
 @click.option(
@@ -412,7 +412,7 @@ def ls(paths: Tuple[str], group_directories_first: bool):
     "-I",
     is_flag=True,
     default=False,
-    help="Don't parse strings with common file extensions as file parameters",
+    help="Don't parse strings with common file extensions as file parameters.",
 )
 @click.option(
     "--no-defaults",
