@@ -386,8 +386,9 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         )
 
         for param, t in self.python_interface.inputs.items():
+            param_meta = self.parameter_metadata[param]
+
             if t in (LatchFile, LatchDir):
-                param_meta = self.parameter_metadata[param]
                 assert isinstance(param_meta, metadata.SnakemakeFileParameter)
 
                 code_block += reindent(
@@ -426,14 +427,22 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     """,
                     1,
                 )
-            else:
-                code_block += reindent(
-                    rf"""
-                    print(f"Saving parameter value {param} = {{get_parameter_json_value({param})}}")
-                    non_blob_parameters[{repr(param)}] = get_parameter_json_value({param})
-                    """,
-                    1,
-                )
+
+            if not getattr(param_meta, "config", True):
+                continue
+
+            val_str = f"get_parameter_json_value({param})"
+            if hasattr(param_meta, "path"):
+                val_str = repr(str(param_meta.path))
+
+            code_block += reindent(
+                rf"""
+                print(f"Saving parameter value {param} = {{{val_str}}}")
+                non_blob_parameters[{repr(param)}] = {val_str}
+
+                """,
+                1,
+            )
 
         code_block += reindent(
             rf"""

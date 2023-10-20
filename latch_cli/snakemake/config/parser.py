@@ -4,6 +4,8 @@ from typing import Dict, List, Tuple, Type, TypeVar
 import click
 import yaml
 
+from latch.types.directory import LatchDir
+from latch.types.file import LatchFile
 from latch_cli.snakemake.workflow import reindent
 from latch_cli.utils import identifier_from_str
 
@@ -12,7 +14,11 @@ from .utils import JSONValue, get_preamble, parse_type, parse_value, type_repr
 T = TypeVar("T")
 
 
-def parse_config(config_path: Path) -> Dict[str, Tuple[Type[T], T]]:
+def parse_config(
+    config_path: Path,
+    *,
+    infer_files: bool = False,
+) -> Dict[str, Tuple[Type[T], T]]:
     if not config_path.exists():
         click.secho(
             f"No config file found at {config_path}.",
@@ -45,11 +51,11 @@ def parse_config(config_path: Path) -> Dict[str, Tuple[Type[T], T]]:
 
     if not isinstance(res, dict):
         # ayush: this case doesn't matter bc a non-dict .yaml file isn't valid snakemake
-        return {"snakemake_parameter": (parse_type(res), res)}
+        return {"snakemake_parameter": (parse_type(res, infer_files=infer_files), res)}
 
     parsed: Dict[str, Type] = {}
     for k, v in res.items():
-        typ = parse_type(v, k)
+        typ = parse_type(v, k, infer_files=infer_files)
         val = parse_value(typ, v)
 
         parsed[k] = (typ, val)
@@ -62,8 +68,9 @@ def generate_metadata(
     *,
     skip_confirmation: bool = False,
     generate_defaults: bool = False,
+    infer_files: bool = False,
 ):
-    parsed = parse_config(config_path)
+    parsed = parse_config(config_path, infer_files=infer_files)
 
     preambles: List[str] = []
     params: List[str] = []
@@ -71,23 +78,31 @@ def generate_metadata(
     for k, (typ, val) in parsed.items():
         preambles.append(get_preamble(typ))
 
-        param = reindent(
+        is_file = typ in {LatchFile, LatchDir}
+        param_typ = "SnakemakeFileParameter" if is_file else "SnakemakeParameter"
+        param_str = reindent(
             f"""\
-            {repr(identifier_from_str(k))}: SnakemakeParameter(
+            {repr(identifier_from_str(k))}: {param_typ}(
                 display_name={repr(k)},
                 type={type_repr(typ)},
-            __default__),""",
+            __config____default__),""",
             0,
         )
 
+        config = ""
+        if is_file:
+            config = "    config=True,\n"
+
+        param_str = param_str.replace("__config__", config)
+
         default = ""
-        if generate_defaults:
+        if generate_defaults and val is not None:
             default = f"    default={repr(val)},\n"
 
-        param = param.replace("__default__", default)
-        param = reindent(param, 1)
+        param_str = param_str.replace("__default__", default)
 
-        params.append(param)
+        param_str = reindent(param_str, 1)
+        params.append(param_str)
 
     metadata_root = Path("latch_metadata")
     if metadata_root.is_file():
@@ -109,10 +124,6 @@ def generate_metadata(
         ):
             old_metadata_path.rename(metadata_path)
     elif old_metadata_path.exists() and metadata_path.exists():
-        # todo(ayush): seems like python path-based import hooks seem to choose the
-        # package latch_metadata/__init__.py over latch_metadata.py
-        #
-        # Couldn't find this documented anywhere - is this a CPython implementation detail?
         click.secho(
             "Warning: Found both `latch_metadata.py` and `latch_metadata/__init__.py`"
             " in current directory. `latch_metadata.py` will be ignored.",
@@ -160,7 +171,9 @@ def generate_metadata(
             from dataclasses import dataclass
             import typing
 
-            from latch.types.metadata import SnakemakeParameter
+            from latch.types.metadata import SnakemakeParameter, SnakemakeFileParameter
+            from latch.types.file import LatchFile
+            from latch.types.directory import LatchDir
 
             __preambles__
 

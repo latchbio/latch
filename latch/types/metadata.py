@@ -389,6 +389,10 @@ class SnakemakeFileParameter(SnakemakeParameter):
     """
     The path where the file passed to this parameter will be copied.
     """
+    config: bool = False
+    """
+    Whether or not the file path is exposed in the Snakemake config
+    """
 
 
 @dataclass
