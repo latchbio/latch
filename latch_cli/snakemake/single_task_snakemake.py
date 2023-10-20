@@ -40,6 +40,7 @@ outputs = data["outputs"]
 
 non_blob_parameters = data.get("non_blob_parameters", {})
 
+# todo(ayush): do this without overwriting globals
 sw = sys.modules["snakemake.workflow"]
 setattr(sw, "config", non_blob_parameters)
 
