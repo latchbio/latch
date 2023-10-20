@@ -4,7 +4,7 @@ import textwrap
 import traceback
 from pathlib import Path
 from textwrap import dedent
-from typing import List, Optional, Set, Union, get_args
+from typing import Dict, List, Optional, Set, Union, get_args
 
 import click
 from flyteidl.admin.launch_plan_pb2 import LaunchPlan as _idl_admin_LaunchPlan
@@ -124,9 +124,7 @@ class SnakemakeWorkflowExtractor(Workflow):
             priorityfiles=set(),
         )
 
-        self.persistence = Persistence(
-            dag=dag,
-        )
+        self._persistence = Persistence(dag=dag)
 
         dag.init()
         dag.update_checkpoint_dependencies()
@@ -191,12 +189,15 @@ def snakemake_workflow_extractor(
 
 
 def extract_snakemake_workflow(
-    pkg_root: Path, snakefile: Path, version: Optional[str] = None
+    pkg_root: Path,
+    snakefile: Path,
+    version: Optional[str] = None,
+    local_to_remote_path_mapping: Optional[Dict[str, str]] = None,
 ) -> SnakemakeWorkflow:
     extractor = snakemake_workflow_extractor(pkg_root, snakefile, version)
     with extractor:
         dag = extractor.extract_dag()
-        wf = SnakemakeWorkflow(dag, version)
+        wf = SnakemakeWorkflow(dag, version, local_to_remote_path_mapping)
         wf.compile()
 
     return wf
@@ -321,7 +322,7 @@ def generate_snakemake_entrypoint(
         import shutil
         import subprocess
         from subprocess import CalledProcessError
-        from typing import NamedTuple
+        from typing import NamedTuple, Dict
         import stat
         import sys
 
@@ -332,8 +333,18 @@ def generate_snakemake_entrypoint(
         from latch.types.directory import LatchDir
         from latch.types.file import LatchFile
 
+        from latch_cli.utils import urljoins
+
         sys.stdout.reconfigure(line_buffering=True)
         sys.stderr.reconfigure(line_buffering=True)
+
+        def update_mapping(local: Path, remote: str, mapping: Dict[str, str]):
+            if local.is_file():
+                mapping[str(local)] = remote
+                return
+
+            for p in local.iterdir():
+                update_mapping(p, urljoins(remote, p.name), mapping)
 
         def check_exists_and_rename(old: Path, new: Path):
             if new.exists():
@@ -390,7 +401,7 @@ def generate_jit_register_code(
         from functools import partial
         from pathlib import Path
         import shutil
-        from typing import List, NamedTuple, Optional, TypedDict
+        from typing import List, NamedTuple, Optional, TypedDict, Dict
         import hashlib
         from urllib.parse import urljoin
 
@@ -419,6 +430,7 @@ def generate_jit_register_code(
             serialize_snakemake,
         )
         import latch_cli.snakemake
+        from latch_cli.utils import urljoins
 
         from latch import small_task
         from latch_sdk_gql.execute import execute
@@ -427,6 +439,14 @@ def generate_jit_register_code(
 
         sys.stdout.reconfigure(line_buffering=True)
         sys.stderr.reconfigure(line_buffering=True)
+
+        def update_mapping(local: Path, remote: str, mapping: Dict[str, str]):
+            if local.is_file():
+                mapping[str(local)] = remote
+                return
+
+            for p in local.iterdir():
+                update_mapping(p, urljoins(remote, p.name), mapping)
 
         def check_exists_and_rename(old: Path, new: Path):
             if new.exists():

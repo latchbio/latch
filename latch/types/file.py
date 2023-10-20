@@ -1,5 +1,7 @@
+import os
 import re
 from os import PathLike
+from pathlib import Path
 from typing import Optional, Type, Union
 from urllib.parse import urlparse
 
@@ -73,6 +75,8 @@ class LatchFile(FlyteFile):
         else:
             self.path = str(path)
 
+        self._path_generated = False
+
         if _is_valid_url(self.path) and remote_path is None:
             self._remote_path = str(path)
         else:
@@ -107,7 +111,8 @@ class LatchFile(FlyteFile):
                         if data is not None and data["name"] is not None:
                             local_path_hint = data["name"]
 
-                    self.path = ctx.file_access.get_random_local_path(local_path_hint)
+                    self._idempotent_set_path(local_path_hint)
+
                     return ctx.file_access.get_data(
                         self._remote_path,
                         self.path,
@@ -115,6 +120,24 @@ class LatchFile(FlyteFile):
                     )
 
             super().__init__(self.path, downloader, self._remote_path)
+
+    def _idempotent_set_path(self, hint: Optional[str] = None):
+        if self._path_generated:
+            return
+
+        ctx = FlyteContextManager.current_context()
+        if ctx is None:
+            return
+
+        self.path = ctx.file_access.get_random_local_path(hint)
+        self._path_generated = True
+
+    def _create_imposters(self):
+        self._idempotent_set_path()
+
+        p = Path(self.path)
+        p.parent.mkdir(exist_ok=True, parents=True)
+        p.touch(exist_ok=True)
 
     @property
     def local_path(self) -> str:
