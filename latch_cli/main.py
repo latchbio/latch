@@ -412,9 +412,18 @@ def ls(paths: Tuple[str], group_directories_first: bool):
     "-I",
     is_flag=True,
     default=False,
-    help="Parse strings with common file extensions as file parameters",
+    help="Don't parse strings with common file extensions as file parameters",
 )
-def generate_metadata(config_file: Path, yes: bool, no_infer_files: bool):
+@click.option(
+    "--no-defaults",
+    "-D",
+    is_flag=True,
+    default=False,
+    help="Don't generate defaults for parameters.",
+)
+def generate_metadata(
+    config_file: Path, yes: bool, no_infer_files: bool, no_defaults: bool
+):
     """Generate a `latch_metadata.py` file from a Snakemake config file"""
 
     from latch_cli.snakemake.config.parser import generate_metadata
@@ -423,6 +432,7 @@ def generate_metadata(config_file: Path, yes: bool, no_infer_files: bool):
         config_file,
         skip_confirmation=yes,
         infer_files=not no_infer_files,
+        generate_defaults=not no_defaults,
     )
 
 

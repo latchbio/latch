@@ -28,6 +28,7 @@ import snakemake.jobs
 from flytekit.configuration import SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
 from flytekit.core.node import Node
@@ -265,21 +266,26 @@ def interface_to_parameters(
 ) -> interface_models.ParameterMap:
     if interface is None or interface.inputs_with_defaults is None:
         return interface_models.ParameterMap({})
+
     if interface.docstring is None:
         inputs_vars = transform_types_in_variable_map(interface.inputs)
     else:
         inputs_vars = transform_types_in_variable_map(
             interface.inputs, interface.docstring.input_descriptions
         )
+
     params: Dict[str, interface_models.Parameter] = {}
     for k, v in inputs_vars.items():
         val, default = interface.inputs_with_defaults[k]
         required = default is None
         default_lv = None
+
+        ctx = FlyteContextManager.current_context()
         if default is not None:
             default_lv = TypeEngine.to_literal(
-                None, default, python_type=interface.inputs[k], expected=v.type
+                ctx, default, python_type=interface.inputs[k], expected=v.type
             )
+
         params[k] = interface_models.Parameter(
             var=v, default=default_lv, required=required
         )
@@ -303,7 +309,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             + str(metadata._snakemake_metadata)
         )
         python_interface = Interface(
-            {k: v.type for k, v in parameter_metadata.items()},
+            {k: (v.type, v.default) for k, v in parameter_metadata.items()},
             {self.out_parameter_name: bool},
             docstring=docstring,
         )
@@ -331,15 +337,29 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         if fn_name is None:
             fn_name = self.name
 
-        params_str = ",\n".join(
-            reindent(
-                rf"""
-                {param}: {type_repr(t, add_namespace=True)}
-                """,
-                1,
-            ).rstrip()
-            for param, t in self.python_interface.inputs.items()
-        )
+        params: List[str] = []
+        for param, t in self.python_interface.inputs.items():
+            meta = self.parameter_metadata[param]
+
+            if meta.default is None:
+                default_str = ""
+            elif isinstance(meta.default, (LatchFile, LatchDir)):
+                default_str = f"= {meta.type.__name__}({repr(meta.default.path)})"
+            else:
+                default_str = f"= {repr(meta.default)}"
+
+            params.append(
+                reindent(
+                    rf"""
+                    {param}: {type_repr(t, add_namespace=True)} __default__
+                    """,
+                    1,
+                )
+                .replace("__default__", default_str)
+                .rstrip()
+            )
+
+        params_str = ",\n".join(params)
 
         return reindent(
             rf"""
@@ -374,12 +394,6 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         code_block += reindent(
             r"""
             non_blob_parameters = {}
-            """,
-            1,
-        )
-
-        code_block += reindent(
-            r"""
             local_to_remote_path_mapping = {}
             """,
             1,
