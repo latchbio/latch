@@ -63,6 +63,7 @@ def parse_config(
     return parsed
 
 
+# todo(ayush): print informative stuff here ala register
 def generate_metadata(
     config_path: Path,
     *,

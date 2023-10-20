@@ -408,18 +408,22 @@ def ls(paths: Tuple[str], group_directories_first: bool):
     ),
 )
 @click.option(
-    "--infer-files",
-    "-i",
+    "--no-infer-files",
+    "-I",
     is_flag=True,
     default=False,
     help="Parse strings with common file extensions as file parameters",
 )
-def generate_metadata(config_file: Path, yes: bool, infer_files: bool):
+def generate_metadata(config_file: Path, yes: bool, no_infer_files: bool):
     """Generate a `latch_metadata.py` file from a Snakemake config file"""
 
     from latch_cli.snakemake.config.parser import generate_metadata
 
-    generate_metadata(config_file, skip_confirmation=yes, infer_files=infer_files)
+    generate_metadata(
+        config_file,
+        skip_confirmation=yes,
+        infer_files=not no_infer_files,
+    )
 
 
 @main.command("launch")
