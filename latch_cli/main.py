@@ -398,12 +398,21 @@ def ls(paths: Tuple[str], group_directories_first: bool):
 
 @main.command("generate-metadata")
 @click.argument("config_file", nargs=1, type=click.Path(exists=True, path_type=Path))
-def generate_metadata(config_file: Path):
+@click.option(
+    "--yes",
+    "-y",
+    is_flag=True,
+    default=False,
+    help=(
+        "Overwrite an existing `latch_metadata_parameters.py` file without confirming."
+    ),
+)
+def generate_metadata(config_file: Path, yes: bool):
     """Generate a `latch_metadata.py` file from a Snakemake config file"""
 
     from latch_cli.snakemake.config.parser import generate_metadata
 
-    generate_metadata(config_file)
+    generate_metadata(config_file, skip_confirmation=yes)
 
 
 @main.command("launch")

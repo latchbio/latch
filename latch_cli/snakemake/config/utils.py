@@ -35,6 +35,33 @@ def parse_type(v: JSONValue, name: Optional[str] = None) -> Type:
     return make_dataclass(identifier_from_str(name), fields.items())
 
 
+def parse_value(t: Type, v: JSONValue):
+    if is_primitive_value(v):
+        return v
+
+    if isinstance(v, list):
+        assert get_origin(t) is list
+
+        sub_type = get_args(t)[0]
+
+        return [parse_value(sub_type, x) for x in v]
+
+    assert isinstance(v, dict), v
+    assert is_dataclass(t), t
+
+    ret = {}
+    fs = {identifier_from_str(f.name): f for f in fields(t)}
+
+    print(fs)
+    for k, x in v.items():
+        sanitized = identifier_from_str(k)
+        assert sanitized in fs, sanitized
+
+        ret[sanitized] = parse_value(fs[sanitized].type, x)
+
+    return t(**ret)
+
+
 def is_primitive_type(
     typ: Type,
 ) -> TypeGuard[Union[Type[None], Type[str], Type[bool], Type[int], Type[float]]]:

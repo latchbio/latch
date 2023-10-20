@@ -370,6 +370,8 @@ class SnakemakeParameter(LatchParameter):
     """
     The python type of the parameter.
     """
+    # todo(ayush): unused rn, needs to be typed properly
+    default: Optional[Any] = None
 
 
 @dataclass

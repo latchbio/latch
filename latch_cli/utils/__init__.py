@@ -5,6 +5,7 @@ import os
 import stat
 import subprocess
 import urllib.parse
+from dataclasses import asdict, is_dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
@@ -384,3 +385,16 @@ def identifier_suffix_from_str(x: str) -> str:
 
 def identifier_from_str(x: str) -> str:
     return (x[0] if x[0].isidentifier() else "_") + identifier_suffix_from_str(x[1:])
+
+
+def get_parameter_json_value(v):
+    if is_dataclass(v):
+        return asdict(v)
+    elif isinstance(v, Enum):
+        return v.value
+    elif isinstance(v, list):
+        return [get_parameter_json_value(x) for x in v]
+    elif isinstance(v, dict):
+        return {k: get_parameter_json_value(x) for k, x in v.items()}
+    else:
+        return v

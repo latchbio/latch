@@ -333,20 +333,10 @@ def generate_snakemake_entrypoint(
         from latch.types.directory import LatchDir
         from latch.types.file import LatchFile
 
+        from latch_cli.utils import get_parameter_json_value
+
         sys.stdout.reconfigure(line_buffering=True)
         sys.stderr.reconfigure(line_buffering=True)
-
-        def get_parameter_json_value(v):
-            if is_dataclass(v):
-                return asdict(v)
-            elif isinstance(v, Enum):
-                return v.value
-            elif isinstance(v, list):
-                return [get_parameter_json_value(x) for x in v]
-            elif isinstance(v, dict):
-                return {k: get_parameter_json_value(x) for k, x in v.items()}
-            else:
-                return v
 
         def check_exists_and_rename(old: Path, new: Path):
             if new.exists():
@@ -436,6 +426,7 @@ def generate_jit_register_code(
             generate_snakemake_entrypoint,
             serialize_snakemake,
         )
+        from latch_cli.utils import get_parameter_json_value
         import latch_cli.snakemake
 
         from latch import small_task
@@ -447,18 +438,6 @@ def generate_jit_register_code(
 
         sys.stdout.reconfigure(line_buffering=True)
         sys.stderr.reconfigure(line_buffering=True)
-
-        def get_parameter_json_value(v):
-            if is_dataclass(v):
-                return asdict(v)
-            elif isinstance(v, Enum):
-                return v.value
-            elif isinstance(v, list):
-                return [get_parameter_json_value(x) for x in v]
-            elif isinstance(v, dict):
-                return {k: get_parameter_json_value(x) for k, x in v.items()}
-            else:
-                return v
 
         def check_exists_and_rename(old: Path, new: Path):
             if new.exists():
