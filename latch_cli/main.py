@@ -407,12 +407,19 @@ def ls(paths: Tuple[str], group_directories_first: bool):
         "Overwrite an existing `latch_metadata_parameters.py` file without confirming."
     ),
 )
-def generate_metadata(config_file: Path, yes: bool):
+@click.option(
+    "--infer-files",
+    "-i",
+    is_flag=True,
+    default=False,
+    help="Parse strings with common file extensions as file parameters",
+)
+def generate_metadata(config_file: Path, yes: bool, infer_files: bool):
     """Generate a `latch_metadata.py` file from a Snakemake config file"""
 
     from latch_cli.snakemake.config.parser import generate_metadata
 
-    generate_metadata(config_file, skip_confirmation=yes)
+    generate_metadata(config_file, skip_confirmation=yes, infer_files=infer_files)
 
 
 @main.command("launch")
