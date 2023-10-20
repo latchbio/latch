@@ -170,9 +170,13 @@ def snakemake_workflow_extractor(
 ) -> SnakemakeWorkflowExtractor:
     snakefile = snakefile.resolve()
 
-    meta = pkg_root / "latch_metadata.py"
-    if meta.exists():
-        import_module_by_path(meta)
+    new_meta = pkg_root / "latch_metadata" / "__init__.py"
+    if new_meta.exists():
+        import_module_by_path(new_meta)
+
+    old_meta = pkg_root / "latch_metadata.py"
+    if old_meta.exists():
+        import_module_by_path(old_meta)
 
     extractor = SnakemakeWorkflowExtractor(
         pkg_root=pkg_root,
@@ -446,7 +450,10 @@ def generate_jit_register_code(
         from latch.types.directory import LatchDir
         from latch.types.file import LatchFile
 
-        import latch_metadata
+        try:
+            import latch_metadata.parameters as latch_metadata
+        except ImportError:
+            import latch_metadata
 
         sys.stdout.reconfigure(line_buffering=True)
         sys.stderr.reconfigure(line_buffering=True)

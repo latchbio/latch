@@ -52,7 +52,6 @@ def parse_value(t: Type, v: JSONValue):
     ret = {}
     fs = {identifier_from_str(f.name): f for f in fields(t)}
 
-    print(fs)
     for k, x in v.items():
         sanitized = identifier_from_str(k)
         assert sanitized in fs, sanitized
