@@ -172,10 +172,8 @@ def _print_reg_resp(resp, image):
         sys.exit(1)
     elif not "Successfully registered file" in resp["stdout"]:
         click.secho(
-            (
-                f"\nVersion ({version}) already exists."
-                " Make sure that you've saved any changes you made."
-            ),
+            f"\nVersion ({version}) already exists."
+            " Make sure that you've saved any changes you made.",
             fg="red",
             bold=True,
         )
@@ -522,10 +520,8 @@ def register(
                         fg="red",
                     )
                     click.secho(
-                        (
-                            "If the workflow is not visible in latch console, contact"
-                            " support."
-                        ),
+                        "If the workflow is not visible in latch console, contact"
+                        " support.",
                         fg="red",
                     )
                     break
@@ -535,10 +531,8 @@ def register(
             if len(wf_infos) > 0:
                 if len(wf_infos) > 1:
                     click.secho(
-                        (
-                            f"Worfklow {ctx.workflow_name}:{ctx.version} is not unique."
-                            " The link below might be wrong."
-                        ),
+                        f"Worfklow {ctx.workflow_name}:{ctx.version} is not unique."
+                        " The link below might be wrong.",
                         fg="yellow",
                     )
 
