@@ -339,24 +339,13 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         params: List[str] = []
         for param, t in self.python_interface.inputs.items():
-            meta = self.parameter_metadata[param]
-
-            if meta.default is None:
-                default_str = ""
-            elif isinstance(meta.default, (LatchFile, LatchDir)):
-                default_str = f"= {meta.type.__name__}({repr(meta.default.path)})"
-            else:
-                default_str = f"= {repr(meta.default)}"
-
             params.append(
                 reindent(
                     rf"""
-                    {param}: {type_repr(t, add_namespace=True)} __default__
+                    {param}: {type_repr(t, add_namespace=True)}
                     """,
                     1,
-                )
-                .replace("__default__", default_str)
-                .rstrip()
+                ).rstrip()
             )
 
         params_str = ",\n".join(params)
