@@ -531,7 +531,7 @@ def register(
             if len(wf_infos) > 0:
                 if len(wf_infos) > 1:
                     click.secho(
-                        f"Worfklow {ctx.workflow_name}:{ctx.version} is not unique."
+                        f"Workflow {ctx.workflow_name}:{ctx.version} is not unique."
                         " The link below might be wrong.",
                         fg="yellow",
                     )
