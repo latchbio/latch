@@ -405,12 +405,16 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             if t in (LatchFile, LatchDir):
                 assert isinstance(param_meta, metadata.SnakemakeFileParameter)
 
+                touch_str = f"{param}._create_imposters()"
+                if param_meta.download:
+                    touch_str = f"Path({param}).resolve()"
+
                 code_block += reindent(
                     rf"""
                     {param}_dst_p = Path("{param_meta.path}")
 
                     print(f"Downloading {param}: {{{param}.remote_path}}")
-                    {param}._create_imposters()
+                    {touch_str}
                     {param}_p = Path({param}.path)
                     print(f"  {{file_name_and_size({param}_p)}}")
 

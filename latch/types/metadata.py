@@ -370,7 +370,7 @@ class SnakemakeParameter(LatchParameter):
     """
     The python type of the parameter.
     """
-    # todo(ayush): unused rn, needs to be typed properly
+    # todo(ayush): needs to be typed properly
     default: Optional[Any] = None
 
 
@@ -392,6 +392,10 @@ class SnakemakeFileParameter(SnakemakeParameter):
     config: bool = False
     """
     Whether or not the file path is exposed in the Snakemake config
+    """
+    download: bool = False
+    """
+    Whether or not the file is downloaded in the JIT step
     """
 
 
