@@ -13,6 +13,7 @@ JSONDict: TypeAlias = Dict[str, "JSONValue"]
 
 # ayush: yoinked from console
 valid_extensions = {
+    "bed",
     "vcf",
     "css",
     "csv",
