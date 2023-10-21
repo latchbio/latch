@@ -124,7 +124,11 @@ class SnakemakeWorkflowExtractor(Workflow):
             priorityfiles=set(),
         )
 
-        self._persistence = self.persistence = Persistence(dag=dag)
+        if hasattr(self, "persistence"):
+            self.persistence = Persistence(dag=dag)
+        else:
+            # snakemake version 7.30.2 introduced new attribute
+            self._persistence = Persistence(dag=dag)
 
         dag.init()
         dag.update_checkpoint_dependencies()
