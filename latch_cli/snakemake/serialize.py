@@ -343,7 +343,7 @@ def generate_snakemake_entrypoint(
         from latch.types.directory import LatchDir
         from latch.types.file import LatchFile
 
-        from latch_cli.utils import get_parameter_json_value, urljoins
+        from latch_cli.utils import get_parameter_json_value, urljoins, check_exists_and_rename
 
         sys.stdout.reconfigure(line_buffering=True)
         sys.stderr.reconfigure(line_buffering=True)
@@ -355,13 +355,6 @@ def generate_snakemake_entrypoint(
 
             for p in local.iterdir():
                 update_mapping(p, urljoins(remote, p.name), mapping)
-
-        def check_exists_and_rename(old: Path, new: Path):
-            if new.exists():
-                print(f"A file already exists at {new} and will be overwritten.")
-                if new.is_dir():
-                    shutil.rmtree(new)
-            os.renames(old, new)
 
 
         def si_unit(num, base: float = 1000.0):
@@ -444,7 +437,7 @@ def generate_jit_register_code(
             generate_snakemake_entrypoint,
             serialize_snakemake,
         )
-        from latch_cli.utils import get_parameter_json_value
+        from latch_cli.utils import get_parameter_json_value, check_exists_and_rename
         import latch_cli.snakemake
         from latch_cli.utils import urljoins
 
@@ -469,12 +462,6 @@ def generate_jit_register_code(
             for p in local.iterdir():
                 update_mapping(p, urljoins(remote, p.name), mapping)
 
-        def check_exists_and_rename(old: Path, new: Path):
-            if new.exists():
-                print(f"A file already exists at {new} and will be overwritten.")
-                if new.is_dir():
-                    shutil.rmtree(new)
-            os.renames(old, new)
 
         def si_unit(num, base: float = 1000.0):
             for unit in (" ", "k", "M", "G", "T", "P", "E", "Z"):

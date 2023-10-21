@@ -2,6 +2,7 @@
 
 import hashlib
 import os
+import shutil
 import stat
 import subprocess
 import urllib.parse
@@ -398,3 +399,35 @@ def get_parameter_json_value(v):
         return {k: get_parameter_json_value(x) for k, x in v.items()}
     else:
         return v
+
+
+def check_exists_and_rename(old: Path, new: Path):
+    if not new.exists():
+        os.renames(old, new)
+        return
+
+    if old.is_file():
+        if new.is_file():
+            print(f"Warning: A file already exists at {new} and will be overwritten.")
+            os.renames(old, new)
+            return
+
+        print(
+            f"Warning: {old} is a file but {new} is not. Everything within {new} will"
+            " be overwritten."
+        )
+        shutil.rmtree(new)
+        os.renames(old, new)
+        return
+
+    if new.is_file():
+        print(
+            f"Warning: {old} is a directory but {new} is not. {new} will be"
+            " overwritten."
+        )
+        shutil.rmtree(new)
+        os.renames(old, new)
+        return
+
+    for sub in old.iterdir():
+        check_exists_and_rename(sub, new / sub.name)
