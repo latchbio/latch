@@ -165,10 +165,6 @@ def snakemake_dag_to_interface(
                     None,
                 )
 
-                print(x)
-
-                print(local_to_remote_path_mapping)
-
                 remote_path = (
                     Path("/.snakemake_latch") / "workflows" / wf_name / "inputs" / x
                 )
