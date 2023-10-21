@@ -407,13 +407,15 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
                 touch_str = f"{param}._create_imposters()"
                 if param_meta.download:
-                    touch_str = f"Path({param}).resolve()"
+                    touch_str = (
+                        f'print(f"Downloading {param}: {{{param}.remote_path}}");'
+                        f" Path({param}).resolve()"
+                    )
 
                 code_block += reindent(
                     rf"""
                     {param}_dst_p = Path("{param_meta.path}")
 
-                    print(f"Downloading {param}: {{{param}.remote_path}}")
                     {touch_str}
                     {param}_p = Path({param}.path)
                     print(f"  {{file_name_and_size({param}_p)}}")
