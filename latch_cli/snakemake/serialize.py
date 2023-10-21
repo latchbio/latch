@@ -124,7 +124,10 @@ class SnakemakeWorkflowExtractor(Workflow):
             priorityfiles=set(),
         )
 
-        self._persistence = Persistence(dag=dag)
+        try:
+            self.persistence = Persistence(dag=dag)
+        except AttributeError:
+            self._persistence = Persistence(dag=dag)
 
         dag.init()
         dag.update_checkpoint_dependencies()
