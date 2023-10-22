@@ -16,23 +16,43 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.35.0
+
+### Added
+
+* Snakemake
+  + Remote register support
+  + `download` field for file inputs
+  + `config` field for file inputs
+  + Blanket support for parameters of any type via the `SnakemakeParameter` class
+  + Support for generating a `latch_metadata` directory from a `config.yaml` with `latch generate-metadata`
+  + Support for default values for parameters
+
+### Changed
+
+* Snakemake
+  + JIT register step no longer downloads input files by default
+  + `latch_metadata` should now be a module (directory containing an `__init__.py` file), as opposed to just being a file
+
 ## 2.34.0 - 2023-10-04
 
 ### Added
 
-* `directory` modifier for input / outputs
-* Support `temp` by removing from compiled rules. All files / directories are
-temporary because they are deleted at the end of each job on Latch.
-* `multiext` output modifier
-* `report` output modifier
-* `params` in rules
+* Snakemake
+  + `directory` modifier for input / outputs
+  + Support `temp` by removing from compiled rules. All files / directories are
+  temporary because they are deleted at the end of each job on Latch.
+  + `multiext` output modifier
+  + `report` output modifier
+  + `params` in rules
 
 ### Fixed
 
-* Replace skipped rules with `Ellipsis`. Supports rules nested in conditionals where previously an empty block was produced.
-* Patched parser to generate compiled code for `workflow.include` calls Compiled workflow.include should carry `print_compilation` keyword (snakemake/snakemake#2469)
-* Detect use of `conda` keyword and install in image. This effectively supports wrapper/conda keywords.
-* `Iterable, Generator` cause issues as type hints when imported from `collections.abc` rather than `typing`
+* Snakemake
+  + Replace skipped rules with `Ellipsis`. Supports rules nested in conditionals where previously an empty block was produced.
+  + Patched parser to generate compiled code for `workflow.include` calls Compiled workflow.include should carry `print_compilation` keyword (snakemake/snakemake#2469)
+  + Detect use of `conda` keyword and install in image. This effectively supports wrapper/conda keywords.
+  + `Iterable, Generator` cause issues as type hints when imported from `collections.abc` rather than `typing`
 
 ## 2.33.0 - 2023-09-29
 
