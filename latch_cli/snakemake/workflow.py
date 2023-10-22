@@ -156,6 +156,9 @@ def snakemake_dag_to_interface(
             for o in dep.output:
                 if o in dep_files:
                     dep_outputs.append(o)
+            for o in dep.log:
+                if o in dep_files:
+                    dep_outputs.append(o)
 
         for x in job.input:
             if x not in dep_outputs:
@@ -587,7 +590,8 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
                 protos = _recursive_list(td)
                 reg_resp = register_serialized_pkg(protos, None, version, account_id)
-                _print_reg_resp(reg_resp, new_image_name)
+                reg_resp.get("stdout")
+                # _print_reg_resp(reg_resp, new_image_name, silent=True)
 
             wf_spec_remote = f"latch:///.snakemake_latch/workflows/{wf_name}/spec"
             spec_dir = Path("spec")
@@ -610,8 +614,9 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
 
             nodes: Optional[List[_WorkflowInfoNode]] = None
-            while not nodes:
+            while True:
                 time.sleep(1)
+                print("Getting Workflow Data:", end=" ")
                 nodes = execute(
                     gql.gql('''
                     query workflowQuery($name: String, $ownerId: BigInt, $version: String) {
@@ -624,6 +629,13 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     '''),
                     {"name": wf_name, "version": version, "ownerId": account_id},
                 )["workflowInfos"]["nodes"]
+
+                if not nodes:
+                    print("Failed. Trying again.")
+                else:
+                    print("Succeeded.")
+                    break
+
 
             if len(nodes) > 1:
                 raise ValueError(
@@ -639,6 +651,8 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
             wf_id = nodes[0]["id"]
             params = gpjson.MessageToDict(wf.literal_map.to_flyte_idl()).get("literals", {})
+
+            print(params)
 
             _interface_request = {
                 "workflow_id": wf_id,
