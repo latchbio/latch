@@ -590,7 +590,6 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
                 protos = _recursive_list(td)
                 reg_resp = register_serialized_pkg(protos, None, version, account_id)
-                reg_resp.get("stdout")
                 # _print_reg_resp(reg_resp, new_image_name, silent=True)
 
             wf_spec_remote = f"latch:///.snakemake_latch/workflows/{wf_name}/spec"
