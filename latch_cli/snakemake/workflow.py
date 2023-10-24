@@ -101,7 +101,8 @@ class JobOutputInfo:
     type_: Union[Type[LatchFile], Type[LatchDir]]
 
 
-def task_fn_placeholder(): ...
+def task_fn_placeholder():
+    ...
 
 
 def variable_name_for_file(file: snakemake.io.AnnotatedString):
@@ -1090,6 +1091,22 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             final_containers.append(container)
 
         self.task_config._pod_spec.containers = final_containers
+
+        self.task_config._pod_spec.init_containers = [
+            V1Container(
+                command=[
+                    "latch",
+                    "cp",
+                    "latch://1.account/foo.txt",
+                    "/opt/latch/latch_entrypoint.py",
+                ],
+                image="x1_snakemake_snakemake_tutorial_workflow:0.0.0-75c0bf",
+                resources=V1ResourceRequirements(
+                    requests={"memory": "1Gi", "cpu": "1"},
+                ),
+                name="foo",
+            )
+        ]
 
         return ApiClient().sanitize_for_serialization(self.task_config.pod_spec)
 
