@@ -317,14 +317,6 @@ def register(
     """
 
     if snakefile is not None:
-        if remote:
-            click.secho(
-                "Cannot use remote builds with Snakemake, switching to a local build\n",
-                fg="yellow",
-                bold=True,
-            )
-            remote = False
-
         try:
             import snakemake
         except ImportError as e:
@@ -411,7 +403,11 @@ def register(
             scp = SCPClient(transport=transport, sanitize=lambda x: x)
 
         with contextlib.ExitStack() as stack:
-            td: str = stack.enter_context(MaybeRemoteDir(ctx.ssh_client))
+            # We serialize locally with snakemake projects
+            remote_dir_client = None
+            if snakefile is None:
+                remote_dir_client = ctx.ssh_client
+            td: str = stack.enter_context(MaybeRemoteDir(remote_dir_client))
             _build_and_serialize(
                 ctx,
                 ctx.default_container.image_name,
@@ -421,7 +417,7 @@ def register(
                 progress_plain=progress_plain,
             )
 
-            if remote:
+            if remote and snakefile is None:
                 local_td = Path(stack.enter_context(tempfile.TemporaryDirectory()))
 
                 assert scp is not None
@@ -535,8 +531,8 @@ def register(
             if len(wf_infos) > 0:
                 if len(wf_infos) > 1:
                     click.secho(
-                        f"Worfklow {ctx.workflow_name}:{ctx.version} is not unique. The"
-                        " link below might be wrong.",
+                        f"Workflow {ctx.workflow_name}:{ctx.version} is not unique."
+                        " The link below might be wrong.",
                         fg="yellow",
                     )
 

@@ -42,7 +42,7 @@ class _Stack:
     error: Optional[_HandledError] = None
     frames: List[_Frame] = field(default_factory=list)
 
-    def pretty_print(self, max_frames: int = 2):
+    def pretty_print(self, max_frames: int = 20):
         render_full_idx = len(self.frames) - max_frames
         for i, frame in enumerate(self.frames):
             if i < render_full_idx:

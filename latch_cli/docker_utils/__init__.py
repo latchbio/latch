@@ -243,7 +243,7 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
     try:
         with (pkg_root / "pyproject.toml").open("r") as f:
             for line in f:
-                if not line.startswith("[build-syste]"):
+                if not line.startswith("[build-system]"):
                     continue
 
                 has_buildable_pyproject = True

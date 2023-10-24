@@ -173,9 +173,13 @@ def snakemake_workflow_extractor(
 ) -> SnakemakeWorkflowExtractor:
     snakefile = snakefile.resolve()
 
-    meta = pkg_root / "latch_metadata.py"
-    if meta.exists():
-        import_module_by_path(meta)
+    new_meta = pkg_root / "latch_metadata" / "__init__.py"
+    if new_meta.exists():
+        import_module_by_path(new_meta)
+
+    old_meta = pkg_root / "latch_metadata.py"
+    if old_meta.exists():
+        import_module_by_path(old_meta)
 
     extractor = SnakemakeWorkflowExtractor(
         pkg_root=pkg_root,
@@ -318,6 +322,7 @@ def generate_snakemake_entrypoint(
     pkg_root: Path,
     snakefile: Path,
     remote_output_url: Optional[str] = None,
+    non_blob_parameters: Optional[Dict[str, str]] = None,
 ):
     entrypoint_code_block = textwrap.dedent(r"""
         import os
@@ -328,6 +333,8 @@ def generate_snakemake_entrypoint(
         from typing import NamedTuple, Dict
         import stat
         import sys
+        from dataclasses import is_dataclass, asdict
+        from enum import Enum
 
         from flytekit.extras.persistence import LatchPersistence
         import traceback
@@ -336,7 +343,7 @@ def generate_snakemake_entrypoint(
         from latch.types.directory import LatchDir
         from latch.types.file import LatchFile
 
-        from latch_cli.utils import urljoins
+        from latch_cli.utils import get_parameter_json_value, urljoins, check_exists_and_rename
 
         sys.stdout.reconfigure(line_buffering=True)
         sys.stderr.reconfigure(line_buffering=True)
@@ -348,13 +355,6 @@ def generate_snakemake_entrypoint(
 
             for p in local.iterdir():
                 update_mapping(p, urljoins(remote, p.name), mapping)
-
-        def check_exists_and_rename(old: Path, new: Path):
-            if new.exists():
-                print(f"A file already exists at {new} and will be overwritten.")
-                if new.is_dir():
-                    shutil.rmtree(new)
-            os.renames(old, new)
 
 
         def si_unit(num, base: float = 1000.0):
@@ -374,9 +374,12 @@ def generate_snakemake_entrypoint(
             return f"{si_unit(s.st_size):>7}B {x.name}"
 
     """).lstrip()
+
     entrypoint_code_block += "\n\n".join(
         task.get_fn_code(
-            snakefile_path_in_container(snakefile, pkg_root), remote_output_url
+            snakefile_path_in_container(snakefile, pkg_root),
+            remote_output_url,
+            non_blob_parameters,
         )
         for task in wf.snakemake_tasks
     )
@@ -407,6 +410,8 @@ def generate_jit_register_code(
         from typing import List, NamedTuple, Optional, TypedDict, Dict
         import hashlib
         from urllib.parse import urljoin
+        from dataclasses import is_dataclass, asdict
+        from enum import Enum
 
         import stat
         import base64
@@ -432,6 +437,7 @@ def generate_jit_register_code(
             generate_snakemake_entrypoint,
             serialize_snakemake,
         )
+        from latch_cli.utils import get_parameter_json_value, check_exists_and_rename
         import latch_cli.snakemake
         from latch_cli.utils import urljoins
 
@@ -439,6 +445,11 @@ def generate_jit_register_code(
         from latch_sdk_gql.execute import execute
         from latch.types.directory import LatchDir
         from latch.types.file import LatchFile
+
+        try:
+            import latch_metadata.parameters as latch_metadata
+        except ImportError:
+            import latch_metadata
 
         sys.stdout.reconfigure(line_buffering=True)
         sys.stderr.reconfigure(line_buffering=True)
@@ -451,12 +462,6 @@ def generate_jit_register_code(
             for p in local.iterdir():
                 update_mapping(p, urljoins(remote, p.name), mapping)
 
-        def check_exists_and_rename(old: Path, new: Path):
-            if new.exists():
-                print(f"A file already exists at {new} and will be overwritten.")
-                if new.is_dir():
-                    shutil.rmtree(new)
-            os.renames(old, new)
 
         def si_unit(num, base: float = 1000.0):
             for unit in (" ", "k", "M", "G", "T", "P", "E", "Z"):

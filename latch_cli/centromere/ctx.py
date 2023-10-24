@@ -141,10 +141,18 @@ class _CentromereCtx:
                     snakemake_workflow_extractor,
                 )
 
-                meta = pkg_root / "latch_metadata.py"
-                if meta.exists():
-                    click.echo(f"Using metadata file {click.style(meta, italic=True)}")
-                    import_module_by_path(meta)
+                new_meta = pkg_root / "latch_metadata" / "__init__.py"
+                old_meta = pkg_root / "latch_metadata.py"
+                if new_meta.exists():
+                    click.echo(
+                        f"Using metadata file {click.style(new_meta, italic=True)}"
+                    )
+                    import_module_by_path(new_meta)
+                elif old_meta.exists():
+                    click.echo(
+                        f"Using metadata file {click.style(old_meta, italic=True)}"
+                    )
+                    import_module_by_path(old_meta)
                 else:
                     click.echo("Trying to extract metadata from the Snakefile")
                     try:
@@ -171,7 +179,7 @@ class _CentromereCtx:
                         snakemake_metadata_example = get_snakemake_metadata_example(
                             pkg_root.name
                         )
-                        click.secho(f"`{meta}`", bold=True, fg="red", nl=False)
+                        click.secho(f"`{new_meta}`", bold=True, fg="red", nl=False)
                         click.secho(
                             f" file:\n```\n{snakemake_metadata_example}```",
                             fg="red",
@@ -184,7 +192,7 @@ class _CentromereCtx:
                             ),
                             default=True,
                         ):
-                            meta.write_text(snakemake_metadata_example)
+                            new_meta.write_text(snakemake_metadata_example)
 
                             import platform
 
@@ -202,13 +210,15 @@ class _CentromereCtx:
                                 import subprocess
 
                                 if system == "Linux":
-                                    res = subprocess.run(["xdg-open", meta]).returncode
+                                    res = subprocess.run(
+                                        ["xdg-open", new_meta]
+                                    ).returncode
                                 elif system == "Darwin":
-                                    res = subprocess.run(["open", meta]).returncode
+                                    res = subprocess.run(["open", new_meta]).returncode
                                 elif system == "Windows":
                                     import os
 
-                                    res = os.system(str(meta.resolve()))
+                                    res = os.system(str(new_meta.resolve()))
                                 else:
                                     res = None
 
