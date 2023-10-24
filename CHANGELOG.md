@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.36.0 - 2023-10-23
+
+### Added
+
+* `latch.registry.record.Record.get_table_id` method for querying the ID of the table containing a given registry record
+* `latch.registry.table.Table.get_project_id` method for querying the ID of the project containing a given registry table
+
 ## 2.34.0 - 2023-10-04
 
 ### Added
