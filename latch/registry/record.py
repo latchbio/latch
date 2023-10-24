@@ -169,6 +169,7 @@ class Record:
         self._cache.values = vals
 
     # get_table_id
+
     @overload
     def get_table_id(self, *, load_if_missing: Literal[True] = True) -> str: ...
 
