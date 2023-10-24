@@ -347,9 +347,17 @@ def cp(
 
 
 @main.command("mv")
-@click.argument("src", shell_complete=remote_complete, nargs=-1)
+@click.argument("src", shell_complete=remote_complete, nargs=1)
 @click.argument("dest", shell_complete=remote_complete, nargs=1)
-def mv(src: str, dest: str):
+@click.option(
+    "--no-glob",
+    "-G",
+    help="Don't expand globs in remote paths",
+    is_flag=True,
+    default=False,
+    show_default=True,
+)
+def mv(src: str, dest: str, no_glob: bool):
     """Move remote files in LatchData."""
 
     crash_handler.message = f"Unable to move {src} to {dest}"
@@ -357,7 +365,7 @@ def mv(src: str, dest: str):
 
     from latch_cli.services.move import move
 
-    move(src, dest)
+    move(src, dest, no_glob=no_glob)
 
 
 @main.command("ls")

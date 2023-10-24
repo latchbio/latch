@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.36.1 - 2023-10-24
+
+### Changed
+
+* `latch mv` now supports glob patterns (with the same restrictions as `latch cp`)
+
 ## 2.36.0 - 2023-10-23
 
 ### Added
