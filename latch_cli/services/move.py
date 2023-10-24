@@ -16,6 +16,14 @@ def move(
     *,
     no_glob: bool = False,
 ):
+    if not is_remote_path(src) or not is_remote_path(dest):
+        click.secho(
+            f"`latch mv` cannot be used for local file operations. Please make sure"
+            f" all of your input paths are remote (beginning with `latch://`)",
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
+
     if no_glob:
         srcs = [src]
     else:
@@ -24,14 +32,6 @@ def move(
     if len(srcs) == 0:
         click.secho(f"Could not find any files that match pattern {src}. Exiting.")
         raise click.exceptions.Exit(0)
-
-    if not all([is_remote_path(s) for s in srcs]) or not is_remote_path(dest):
-        click.secho(
-            f"`latch mv` cannot be used for local file operations. Please make sure"
-            f" all of your input paths are remote (beginning with `latch://`)",
-            fg="red",
-        )
-        raise click.exceptions.Exit(1)
 
     node_data = get_node_data(*srcs, dest, allow_resolve_to_parent=True)
 
