@@ -184,6 +184,9 @@ def _get_immediate_children_of_node(path: str) -> List[str]:
         {"argPath": path},
     )["ldataResolvePathData"]
 
+    if lrpd is None:
+        return []
+
     res: List[str] = []
     for node in lrpd["childLdataTreeEdges"]["nodes"]:
         res.append(node["child"]["name"])
