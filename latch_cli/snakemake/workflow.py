@@ -163,10 +163,7 @@ def snakemake_dag_to_interface(
         for x in job.input:
             if x not in dep_outputs:
                 param = variable_name_for_value(x, job.input)
-                inputs[param] = (
-                    LatchFile,
-                    None,
-                )
+                inputs[param] = (LatchFile, None)
 
                 remote_path = (
                     Path("/.snakemake_latch") / "workflows" / wf_name / "inputs" / x
@@ -744,6 +741,19 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     else:
                         python_outputs[param] = LatchFile
 
+                for x in job.log:
+                    assert isinstance(x, SnakemakeInputVal)
+
+                    if x in target_files:
+                        is_target = True
+                    param = variable_name_for_value(x, job.log)
+                    target_file_for_output_param[param] = x
+
+                    if x.is_directory:
+                        python_outputs[param] = LatchDir
+                    else:
+                        python_outputs[param] = LatchFile
+
                 dep_outputs: Dict[SnakemakeInputVal, JobOutputInfo] = {}
                 for dep, dep_files in self._dag.dependencies[job].items():
                     for o in dep.output:
@@ -755,6 +765,16 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                                 output_param_name=variable_name_for_value(
                                     o, dep.output
                                 ),
+                                type_=LatchDir if o.is_directory else LatchFile,
+                            )
+
+                    for o in dep.log:
+                        if o in dep_files:
+                            assert isinstance(o, SnakemakeInputVal)
+
+                            dep_outputs[o] = JobOutputInfo(
+                                jobid=dep.jobid,
+                                output_param_name=variable_name_for_value(o, dep.log),
                                 type_=LatchDir if o.is_directory else LatchFile,
                             )
 
