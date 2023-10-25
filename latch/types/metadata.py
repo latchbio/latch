@@ -1,4 +1,5 @@
 import re
+import sys
 from dataclasses import Field, asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -349,7 +350,7 @@ class LatchParameter:
 
 # https://stackoverflow.com/questions/54668000/type-hint-for-an-instance-of-a-non-specific-dataclass
 class _IsDataclass(Protocol):
-    __dataclass_fields__: ClassVar[Dict[str, Field[Any]]]
+    __dataclass_fields__: ClassVar[Dict[str, Field]]
 
 
 ParameterType: TypeAlias = Union[
