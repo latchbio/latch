@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.36.2 - 2023-10-25
+
+### Changed
+
+* Snakemake
+  + Log files are now marked as outputs - this enables rules to use logs of previous rules as inputs
+
 ## 2.36.1 - 2023-10-24
 
 ### Changed
