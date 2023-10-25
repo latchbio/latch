@@ -475,7 +475,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             wf_name = wf.name
             generate_snakemake_entrypoint(wf, pkg_root, snakefile, {repr(remote_output_url)}, non_blob_parameters)
 
-            entrypoint_remote = f"latch:///.snakemake_latch/workflows/{{wf_name}}/entrypoint.py"
+            entrypoint_remote = f"latch:///.snakemake_latch/workflows/{{wf_name}}/{{version}}/entrypoint.py"
             lp.upload("latch_entrypoint.py", entrypoint_remote)
             print(f"latch_entrypoint.py -> {{entrypoint_remote}}")
             """,
@@ -497,7 +497,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 reg_resp = register_serialized_pkg(protos, None, version, account_id)
                 # _print_reg_resp(reg_resp, new_image_name, silent=True)
 
-            wf_spec_remote = f"latch:///.snakemake_latch/workflows/{wf_name}/spec"
+            wf_spec_remote = f"latch:///.snakemake_latch/workflows/{wf_name}/{version}/spec"
             spec_dir = Path("spec")
             for x_dir in spec_dir.iterdir():
                 if not x_dir.is_dir():
@@ -582,6 +582,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
     ):
         assert metadata._snakemake_metadata is not None
         name = metadata._snakemake_metadata.name
+        self.version = version
 
         assert name is not None
 
@@ -968,7 +969,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
                     "-c",
                     (
                         "exec 3>&1 4>&2 && latch cp"
-                        f" latch:///.snakemake_latch/workflows/{self.wf.name}/entrypoint.py"
+                        f" latch:///.snakemake_latch/workflows/{self.wf.name}/{self.wf.version}/entrypoint.py"
                         " /opt/latch/latch_entrypoint.py && ("
                         f" {' '.join(sdk_default_container.args)} 1>&3 2>&4 )"
                     ),
