@@ -489,6 +489,6 @@ def generate_jit_register_code(
 
     entrypoint = pkg_root / ".latch" / "snakemake_jit_entrypoint.py"
     entrypoint.parent.mkdir(parents=True, exist_ok=True)
-    # entrypoint.write_text(code_block + "\n")
+    entrypoint.write_text(code_block + "\n")
 
     return entrypoint

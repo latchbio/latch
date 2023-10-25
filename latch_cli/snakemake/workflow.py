@@ -485,105 +485,10 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         code_block += reindent(
             r"""
-            dockerfile = Path("Dockerfile-dynamic").resolve()
-            dockerfile.write_text(
-            textwrap.dedent(
-                    f'''
-                    from 812206152185.dkr.ecr.us-west-2.amazonaws.com/{image_name}
-
-                    copy latch_entrypoint.py /root/latch_entrypoint.py
-                    '''
-                )
-            )
-            new_image_name = f"{image_name}-{version}"
-
-            os.mkdir("/root/.ssh")
-            ssh_key_path = Path("/root/.ssh/id_rsa")
-            cmd = ["ssh-keygen", "-f", ssh_key_path, "-N", "", "-q"]
-            try:
-                subprocess.run(cmd, check=True)
-            except subprocess.CalledProcessError as e:
-                raise ValueError(
-                    "There was a problem creating temporary SSH credentials. Please ensure"
-                    " that `ssh-keygen` is installed and available in your PATH."
-                ) from e
-            os.chmod(ssh_key_path, 0o700)
-
             token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", "")
             headers = {
                 "Authorization": f"Latch-Execution-Token {token}",
             }
-
-            ssh_public_key_path = Path("/root/.ssh/id_rsa.pub")
-            response = tinyrequests.post(
-                config.api.centromere.provision,
-                headers=headers,
-                json={
-                    "public_key": ssh_public_key_path.read_text().strip(),
-                },
-            )
-
-            resp = response.json()
-            try:
-                public_ip = resp["ip"]
-                username = resp["username"]
-            except KeyError as e:
-                raise ValueError(
-                    f"Malformed response from request for centromere login: {resp}"
-                ) from e
-
-
-            subprocess.run(["ssh", "-o", "StrictHostKeyChecking=no", f"{username}@{public_ip}", "uptime"])
-            dkr_client = _construct_dkr_client(ssh_host=f"ssh://{username}@{public_ip}")
-
-            data = {"pkg_name": new_image_name.split(":")[0], "ws_account_id": account_id}
-            response = requests.post(config.api.workflow.upload_image, headers=headers, json=data)
-
-            try:
-                response = response.json()
-                access_key = response["tmp_access_key"]
-                secret_key = response["tmp_secret_key"]
-                session_token = response["tmp_session_token"]
-            except KeyError as err:
-                raise ValueError(f"malformed response on image upload: {response}") from err
-
-            try:
-                client = boto3.session.Session(
-                    aws_access_key_id=access_key,
-                    aws_secret_access_key=secret_key,
-                    aws_session_token=session_token,
-                    region_name="us-west-2",
-                ).client("ecr")
-                token = client.get_authorization_token()["authorizationData"][0][
-                    "authorizationToken"
-                ]
-            except Exception as err:
-                raise ValueError(
-                    f"unable to retreive an ecr login token for user {account_id}"
-                ) from err
-
-            user, password = base64.b64decode(token).decode("utf-8").split(":")
-            dkr_client.login(
-                username=user,
-                password=password,
-                registry=config.dkr_repo,
-            )
-
-            image_build_logs = dkr_client.build(
-                path=str(pkg_root),
-                dockerfile=str(dockerfile),
-                buildargs={"tag": f"{config.dkr_repo}/{new_image_name}"},
-                tag=f"{config.dkr_repo}/{new_image_name}",
-                decode=True,
-            )
-            print_and_write_build_logs(image_build_logs, new_image_name, pkg_root)
-
-            upload_image_logs = dkr_client.push(
-                repository=f"{config.dkr_repo}/{new_image_name}",
-                stream=True,
-                decode=True,
-            )
-            print_upload_logs(upload_image_logs, new_image_name)
 
             temp_dir = tempfile.TemporaryDirectory()
             with Path(temp_dir.name).resolve() as td:
@@ -1052,19 +957,20 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             containers.append(V1Container(name=self.task_config.primary_container_name))
 
         final_containers = []
+        sdk_default_container = super().get_container(settings)
         for container in containers:
             # In the case of the primary container, we overwrite specific container attributes with the default values
             # used in the regular Python task.
             if container.name == self.task_config.primary_container_name:
-                sdk_default_container = super().get_container(settings)
-
                 container.image = sdk_default_container.image
                 # Spawn entrypoint as child process so it can receive signals
                 container.command = [
                     "/bin/bash",
                     "-c",
                     (
-                        "exec 3>&1 4>&2 && ("
+                        "exec 3>&1 4>&2 && latch cp"
+                        f" latch:///.snakemake_latch/workflows/{self.wf.name}/entrypoint.py"
+                        " /opt/latch/latch_entrypoint.py && ("
                         f" {' '.join(sdk_default_container.args)} 1>&3 2>&4 )"
                     ),
                 ]
@@ -1091,22 +997,6 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             final_containers.append(container)
 
         self.task_config._pod_spec.containers = final_containers
-
-        self.task_config._pod_spec.init_containers = [
-            V1Container(
-                command=[
-                    "latch",
-                    "cp",
-                    "latch://1.account/foo.txt",
-                    "/opt/latch/latch_entrypoint.py",
-                ],
-                image="x1_snakemake_snakemake_tutorial_workflow:0.0.0-75c0bf",
-                resources=V1ResourceRequirements(
-                    requests={"memory": "1Gi", "cpu": "1"},
-                ),
-                name="foo",
-            )
-        ]
 
         return ApiClient().sanitize_for_serialization(self.task_config.pod_spec)
 
@@ -1454,7 +1344,7 @@ class SnakemakeJobTaskResolver(DefaultTaskResolver):
     def loader_args(
         self, settings: SerializationSettings, task: SnakemakeJobTask
     ) -> List[str]:
-        return ["task-module", "latch_entrypoint", "task-name", task.name]
+        return ["task-module", "/opt/latch/latch_entrypoint", "task-name", task.name]
 
     def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
         _, task_module, _, task_name, *_ = loader_args
