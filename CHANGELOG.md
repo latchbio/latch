@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.36.3 - 2023-10-25
+
+### Fixed
+
+* Bug where Python 3.8 clients would crash due to a broken type annotation
+
 ## 2.36.2 - 2023-10-25
 
 ### Changed
