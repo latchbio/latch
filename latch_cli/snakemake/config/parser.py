@@ -126,8 +126,9 @@ def generate_metadata(
             old_metadata_path.rename(metadata_path)
     elif old_metadata_path.exists() and metadata_path.exists():
         click.secho(
-            "Warning: Found both `latch_metadata.py` and `latch_metadata/__init__.py`"
-            " in current directory. `latch_metadata.py` will be ignored.",
+            "Warning: Found both `latch_metadata.py` and"
+            " `latch_metadata/__init__.py` in current directory."
+            " `latch_metadata.py` will be ignored.",
             fg="yellow",
         )
 
