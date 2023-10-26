@@ -1,8 +1,10 @@
 import importlib
 import json
+import sys
 import textwrap
 import typing
-from dataclasses import dataclass
+from dataclasses import dataclass, is_dataclass
+from enum import Enum
 from pathlib import Path
 from typing import (
     Any,
@@ -15,6 +17,8 @@ from typing import (
     Type,
     TypeVar,
     Union,
+    get_args,
+    get_origin,
 )
 from urllib.parse import urlparse
 
@@ -24,6 +28,7 @@ import snakemake.jobs
 from flytekit.configuration import SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
 from flytekit.core.node import Node
@@ -61,6 +66,7 @@ import latch.types.metadata as metadata
 from latch.resources.tasks import custom_task
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
+from latch_cli.snakemake.config.utils import is_primitive_type, type_repr
 
 from ..utils import identifier_suffix_from_str
 
@@ -92,7 +98,7 @@ def reindent(x: str, level: int) -> str:
 class JobOutputInfo:
     jobid: str
     output_param_name: str
-    type_: Union[LatchFile, LatchDir]
+    type_: Union[Type[LatchFile], Type[LatchDir]]
 
 
 def task_fn_placeholder(): ...
@@ -124,24 +130,25 @@ class RemoteFile:
 
 
 def snakemake_dag_to_interface(
-    dag: DAG, wf_name: str, docstring: Optional[Docstring] = None
+    dag: DAG,
+    wf_name: str,
+    docstring: Optional[Docstring] = None,
+    local_to_remote_path_mapping: Optional[Dict[str, str]] = None,
 ) -> Tuple[Interface, LiteralMap, List[RemoteFile]]:
-    outputs: Dict[str, LatchFile] = {}
+    outputs: Dict[str, Union[Type[LatchFile], Type[LatchDir]]] = {}
     for target in dag.targetjobs:
         for desired in target.input:
             param = variable_name_for_value(desired, target.input)
 
             jobs: List[snakemake.jobs.Job] = dag.file2jobs(desired)
-            producer_out: snakemake.io._IOFile = next(
-                x for x in jobs[0].output if x == x
-            )
+            producer_out: snakemake.io._IOFile = next(x for x in jobs[0].output)
             if producer_out.is_directory:
                 outputs[param] = LatchDir
             else:
                 outputs[param] = LatchFile
 
     literals: Dict[str, Literal] = {}
-    inputs: Dict[str, Tuple[LatchFile, None]] = {}
+    inputs: Dict[str, Tuple[Type[LatchFile], None]] = {}
     return_files: List[RemoteFile] = []
     for job in dag.jobs:
         dep_outputs = []
@@ -149,19 +156,35 @@ def snakemake_dag_to_interface(
             for o in dep.output:
                 if o in dep_files:
                     dep_outputs.append(o)
+            for o in dep.log:
+                if o in dep_files:
+                    dep_outputs.append(o)
 
         for x in job.input:
             if x not in dep_outputs:
                 param = variable_name_for_value(x, job.input)
-                inputs[param] = (
-                    LatchFile,
-                    None,
-                )
+                inputs[param] = (LatchFile, None)
+
                 remote_path = (
                     Path("/.snakemake_latch") / "workflows" / wf_name / "inputs" / x
                 )
-                remote_url = f"latch://{remote_path}"
-                return_files.append(RemoteFile(local_path=x, remote_path=remote_url))
+                use_original_remote_path: bool = (
+                    local_to_remote_path_mapping is not None
+                    and x in local_to_remote_path_mapping
+                )
+
+                if use_original_remote_path:
+                    remote_path = local_to_remote_path_mapping.get(x)
+
+                remote_url = (
+                    urlparse(str(remote_path))._replace(scheme="latch").geturl()
+                )
+
+                if not use_original_remote_path:
+                    return_files.append(
+                        RemoteFile(local_path=x, remote_path=remote_url)
+                    )
+
                 literals[param] = Literal(
                     scalar=Scalar(
                         blob=Blob(
@@ -239,21 +262,26 @@ def interface_to_parameters(
 ) -> interface_models.ParameterMap:
     if interface is None or interface.inputs_with_defaults is None:
         return interface_models.ParameterMap({})
+
     if interface.docstring is None:
         inputs_vars = transform_types_in_variable_map(interface.inputs)
     else:
         inputs_vars = transform_types_in_variable_map(
             interface.inputs, interface.docstring.input_descriptions
         )
+
     params: Dict[str, interface_models.Parameter] = {}
     for k, v in inputs_vars.items():
         val, default = interface.inputs_with_defaults[k]
         required = default is None
         default_lv = None
+
+        ctx = FlyteContextManager.current_context()
         if default is not None:
             default_lv = TypeEngine.to_literal(
-                None, default, python_type=interface.inputs[k], expected=v.type
+                ctx, default, python_type=interface.inputs[k], expected=v.type
             )
+
         params[k] = interface_models.Parameter(
             var=v, default=default_lv, required=required
         )
@@ -269,7 +297,6 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         assert metadata._snakemake_metadata is not None
 
         parameter_metadata = metadata._snakemake_metadata.parameters
-        metadata._snakemake_metadata.parameters = parameter_metadata
         display_name = metadata._snakemake_metadata.display_name
         name = metadata._snakemake_metadata.name
 
@@ -277,8 +304,8 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             f"{display_name}\n\nSample Description\n\n"
             + str(metadata._snakemake_metadata)
         )
-        native_interface = Interface(
-            {k: v.type for k, v in parameter_metadata.items()},
+        python_interface = Interface(
+            {k: (v.type, v.default) for k, v in parameter_metadata.items()},
             {self.out_parameter_name: bool},
             docstring=docstring,
         )
@@ -297,7 +324,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             name=name,
             workflow_metadata=workflow_metadata,
             workflow_metadata_defaults=workflow_metadata_defaults,
-            python_interface=native_interface,
+            python_interface=python_interface,
         )
 
     def get_fn_interface(
@@ -306,15 +333,18 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         if fn_name is None:
             fn_name = self.name
 
-        params_str = ",\n".join(
-            reindent(
-                rf"""
-                {param}: {t.__name__}
-                """,
-                1,
-            ).rstrip()
-            for param, t in self.python_interface.inputs.items()
-        )
+        params: List[str] = []
+        for param, t in self.python_interface.inputs.items():
+            params.append(
+                reindent(
+                    rf"""
+                    {param}: {type_repr(t, add_namespace=True)}
+                    """,
+                    1,
+                ).rstrip()
+            )
+
+        params_str = ",\n".join(params)
 
         return reindent(
             rf"""
@@ -344,20 +374,35 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
     ):
         task_name = f"{self.name}_task"
 
-        code_block = ""
-        code_block += self.get_fn_interface(fn_name=task_name)
+        code_block = self.get_fn_interface(fn_name=task_name)
+
+        code_block += reindent(
+            r"""
+            non_blob_parameters = {}
+            local_to_remote_path_mapping = {}
+            """,
+            1,
+        )
 
         for param, t in self.python_interface.inputs.items():
+            param_meta = self.parameter_metadata[param]
+
             if t in (LatchFile, LatchDir):
-                param_meta = self.parameter_metadata[param]
                 assert isinstance(param_meta, metadata.SnakemakeFileParameter)
+
+                touch_str = f"{param}._create_imposters()"
+                if param_meta.download:
+                    touch_str = (
+                        f'print(f"Downloading {param}: {{{param}.remote_path}}");'
+                        f" Path({param}).resolve()"
+                    )
 
                 code_block += reindent(
                     rf"""
                     {param}_dst_p = Path("{param_meta.path}")
 
-                    print(f"Downloading {param}: {{{param}.remote_path}}")
-                    {param}_p = Path({param}).resolve()
+                    {touch_str}
+                    {param}_p = Path({param}.path)
                     print(f"  {{file_name_and_size({param}_p)}}")
 
                     """,
@@ -382,11 +427,27 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                         {param}_dst_p
                     )
 
+                    update_mapping({param}_dst_p, {param}.remote_path, local_to_remote_path_mapping)
+
                     """,
                     1,
                 )
-            else:
-                raise ValueError(f"Unsupported parameter type {t} for {param}")
+
+            if not getattr(param_meta, "config", True):
+                continue
+
+            val_str = f"get_parameter_json_value({param})"
+            if hasattr(param_meta, "path"):
+                val_str = repr(str(param_meta.path))
+
+            code_block += reindent(
+                rf"""
+                print(f"Saving parameter value {param} = {{{val_str}}}")
+                non_blob_parameters[{repr(param)}] = {val_str}
+
+                """,
+                1,
+            )
 
         code_block += reindent(
             rf"""
@@ -400,18 +461,42 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         )
 
         code_block += reindent(
-            rf"""
+            r"""
             pkg_root = Path(".")
 
             exec_id_hash = hashlib.sha1()
-            exec_id_hash.update(os.environ["FLYTE_INTERNAL_EXECUTION_ID"].encode("utf-8"))
+            token = os.environ["FLYTE_INTERNAL_EXECUTION_ID"]
+            exec_id_hash.update(token.encode("utf-8"))
             version = exec_id_hash.hexdigest()[:16]
 
-            wf = extract_snakemake_workflow(pkg_root, snakefile, version)
-            wf_name = wf.name
-            generate_snakemake_entrypoint(wf, pkg_root, snakefile, {repr(remote_output_url)})
+            jit_wf_version = os.environ["FLYTE_INTERNAL_TASK_VERSION"]
+            jit_exec_display_name = execute(
+                gql.gql('''
+                query executionCreatorsByToken($token: String!) {
+                  executionCreatorByToken(token: $token) {
+                      flytedbId
+                        info {
+                        displayName
+                      }
+                  }
+                }
+                '''),
+                {"token": token},
+            )["executionCreatorByToken"]["info"]["displayName"]
+            """,
+            1,
+        )
 
-            entrypoint_remote = f"latch:///.snakemake_latch/workflows/{{wf_name}}/entrypoint.py"
+        code_block += reindent(
+            rf"""
+            print(f"JIT Workflow Version: {{jit_wf_version}}")
+            print(f"JIT Execution Display Name: {{jit_exec_display_name}}")
+
+            wf = extract_snakemake_workflow(pkg_root, snakefile, jit_wf_version, jit_exec_display_name, local_to_remote_path_mapping)
+            wf_name = wf.name
+            generate_snakemake_entrypoint(wf, pkg_root, snakefile, {repr(remote_output_url)}, non_blob_parameters)
+
+            entrypoint_remote = f"latch:///.snakemake_latch/workflows/{{wf_name}}/{{jit_wf_version}}/{{jit_exec_display_name}}/entrypoint.py"
             lp.upload("latch_entrypoint.py", entrypoint_remote)
             print(f"latch_entrypoint.py -> {{entrypoint_remote}}")
             """,
@@ -420,115 +505,19 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         code_block += reindent(
             r"""
-            dockerfile = Path("Dockerfile-dynamic").resolve()
-            dockerfile.write_text(
-            textwrap.dedent(
-                    f'''
-                    from 812206152185.dkr.ecr.us-west-2.amazonaws.com/{image_name}
-
-                    copy latch_entrypoint.py /root/latch_entrypoint.py
-                    '''
-                )
-            )
-            new_image_name = f"{image_name}-{version}"
-
-            os.mkdir("/root/.ssh")
-            ssh_key_path = Path("/root/.ssh/id_rsa")
-            cmd = ["ssh-keygen", "-f", ssh_key_path, "-N", "", "-q"]
-            try:
-                subprocess.run(cmd, check=True)
-            except subprocess.CalledProcessError as e:
-                raise ValueError(
-                    "There was a problem creating temporary SSH credentials. Please ensure"
-                    " that `ssh-keygen` is installed and available in your PATH."
-                ) from e
-            os.chmod(ssh_key_path, 0o700)
-
-            token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", "")
             headers = {
                 "Authorization": f"Latch-Execution-Token {token}",
             }
 
-            ssh_public_key_path = Path("/root/.ssh/id_rsa.pub")
-            response = tinyrequests.post(
-                config.api.centromere.provision,
-                headers=headers,
-                json={
-                    "public_key": ssh_public_key_path.read_text().strip(),
-                },
-            )
-
-            resp = response.json()
-            try:
-                public_ip = resp["ip"]
-                username = resp["username"]
-            except KeyError as e:
-                raise ValueError(
-                    f"Malformed response from request for centromere login: {resp}"
-                ) from e
-
-
-            subprocess.run(["ssh", "-o", "StrictHostKeyChecking=no", f"{username}@{public_ip}", "uptime"])
-            dkr_client = _construct_dkr_client(ssh_host=f"ssh://{username}@{public_ip}")
-
-            data = {"pkg_name": new_image_name.split(":")[0], "ws_account_id": account_id}
-            response = requests.post(config.api.workflow.upload_image, headers=headers, json=data)
-
-            try:
-                response = response.json()
-                access_key = response["tmp_access_key"]
-                secret_key = response["tmp_secret_key"]
-                session_token = response["tmp_session_token"]
-            except KeyError as err:
-                raise ValueError(f"malformed response on image upload: {response}") from err
-
-            try:
-                client = boto3.session.Session(
-                    aws_access_key_id=access_key,
-                    aws_secret_access_key=secret_key,
-                    aws_session_token=session_token,
-                    region_name="us-west-2",
-                ).client("ecr")
-                token = client.get_authorization_token()["authorizationData"][0][
-                    "authorizationToken"
-                ]
-            except Exception as err:
-                raise ValueError(
-                    f"unable to retreive an ecr login token for user {account_id}"
-                ) from err
-
-            user, password = base64.b64decode(token).decode("utf-8").split(":")
-            dkr_client.login(
-                username=user,
-                password=password,
-                registry=config.dkr_repo,
-            )
-
-            image_build_logs = dkr_client.build(
-                path=str(pkg_root),
-                dockerfile=str(dockerfile),
-                buildargs={"tag": f"{config.dkr_repo}/{new_image_name}"},
-                tag=f"{config.dkr_repo}/{new_image_name}",
-                decode=True,
-            )
-            print_and_write_build_logs(image_build_logs, new_image_name, pkg_root)
-
-            upload_image_logs = dkr_client.push(
-                repository=f"{config.dkr_repo}/{new_image_name}",
-                stream=True,
-                decode=True,
-            )
-            print_upload_logs(upload_image_logs, new_image_name)
-
             temp_dir = tempfile.TemporaryDirectory()
             with Path(temp_dir.name).resolve() as td:
-                serialize_snakemake(wf, td, new_image_name, config.dkr_repo)
+                serialize_snakemake(wf, td, image_name, config.dkr_repo)
 
                 protos = _recursive_list(td)
                 reg_resp = register_serialized_pkg(protos, None, version, account_id)
-                _print_reg_resp(reg_resp, new_image_name)
+                # _print_reg_resp(reg_resp, image_name, silent=True)
 
-            wf_spec_remote = f"latch:///.snakemake_latch/workflows/{wf_name}/spec"
+            wf_spec_remote = f"latch:///.snakemake_latch/workflows/{wf_name}/{version}/spec"
             spec_dir = Path("spec")
             for x_dir in spec_dir.iterdir():
                 if not x_dir.is_dir():
@@ -549,8 +538,9 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
 
             nodes: Optional[List[_WorkflowInfoNode]] = None
-            while not nodes:
+            while True:
                 time.sleep(1)
+                print("Getting Workflow Data:", end=" ")
                 nodes = execute(
                     gql.gql('''
                     query workflowQuery($name: String, $ownerId: BigInt, $version: String) {
@@ -563,6 +553,13 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     '''),
                     {"name": wf_name, "version": version, "ownerId": account_id},
                 )["workflowInfos"]["nodes"]
+
+                if not nodes:
+                    print("Failed. Trying again.")
+                else:
+                    print("Succeeded.")
+                    break
+
 
             if len(nodes) > 1:
                 raise ValueError(
@@ -578,6 +575,8 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
             wf_id = nodes[0]["id"]
             params = gpjson.MessageToDict(wf.literal_map.to_flyte_idl()).get("literals", {})
+
+            print(params)
 
             _interface_request = {
                 "workflow_id": wf_id,
@@ -598,21 +597,29 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
     def __init__(
         self,
         dag: DAG,
-        version: Optional[str] = None,
+        jit_wf_version: str,
+        jit_exec_display_name: str,
+        local_to_remote_path_mapping: Optional[Dict[str, str]] = None,
     ):
         assert metadata._snakemake_metadata is not None
         name = metadata._snakemake_metadata.name
+        self.jit_wf_version = jit_wf_version
+        self.jit_exec_display_name = jit_exec_display_name
 
         assert name is not None
 
-        native_interface, literal_map, return_files = snakemake_dag_to_interface(
-            dag, name, None
+        python_interface, literal_map, return_files = snakemake_dag_to_interface(
+            dag,
+            name,
+            None,
+            local_to_remote_path_mapping,
         )
+
         self.literal_map = literal_map
         self.return_files = return_files
         self._input_parameters = None
         self._dag = dag
-        self.snakemake_tasks = []
+        self.snakemake_tasks: List[SnakemakeJobTask] = []
 
         workflow_metadata = WorkflowMetadata(
             on_failure=WorkflowFailurePolicy.FAIL_IMMEDIATELY
@@ -622,7 +629,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
             name=name,
             workflow_metadata=workflow_metadata,
             workflow_metadata_defaults=workflow_metadata_defaults,
-            python_interface=native_interface,
+            python_interface=python_interface,
         )
 
     def compile(self, **kwargs):
@@ -651,13 +658,26 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 target_file_for_output_param: Dict[str, str] = {}
                 target_file_for_input_param: Dict[str, str] = {}
 
-                python_outputs: Dict[str, Union[LatchFile, LatchDir]] = {}
+                python_outputs: Dict[str, Union[Type[LatchFile], Type[LatchDir]]] = {}
                 for x in job.output:
                     assert isinstance(x, SnakemakeInputVal)
 
                     if x in target_files:
                         is_target = True
                     param = variable_name_for_value(x, job.output)
+                    target_file_for_output_param[param] = x
+
+                    if x.is_directory:
+                        python_outputs[param] = LatchDir
+                    else:
+                        python_outputs[param] = LatchFile
+
+                for x in job.log:
+                    assert isinstance(x, SnakemakeInputVal)
+
+                    if x in target_files:
+                        is_target = True
+                    param = variable_name_for_value(x, job.log)
                     target_file_for_output_param[param] = x
 
                     if x.is_directory:
@@ -679,7 +699,17 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                                 type_=LatchDir if o.is_directory else LatchFile,
                             )
 
-                python_inputs: Dict[str, Union[LatchFile, LatchDir]] = {}
+                    for o in dep.log:
+                        if o in dep_files:
+                            assert isinstance(o, SnakemakeInputVal)
+
+                            dep_outputs[o] = JobOutputInfo(
+                                jobid=dep.jobid,
+                                output_param_name=variable_name_for_value(o, dep.log),
+                                type_=LatchDir if o.is_directory else LatchFile,
+                            )
+
+                python_inputs: Dict[str, Union[Type[LatchFile], Type[LatchDir]]] = {}
                 promise_map: Dict[str, JobOutputInfo] = {}
                 for x in job.input:
                     param = variable_name_for_value(x, job.input)
@@ -972,19 +1002,20 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             containers.append(V1Container(name=self.task_config.primary_container_name))
 
         final_containers = []
+        sdk_default_container = super().get_container(settings)
         for container in containers:
             # In the case of the primary container, we overwrite specific container attributes with the default values
             # used in the regular Python task.
             if container.name == self.task_config.primary_container_name:
-                sdk_default_container = super().get_container(settings)
-
                 container.image = sdk_default_container.image
                 # Spawn entrypoint as child process so it can receive signals
                 container.command = [
                     "/bin/bash",
                     "-c",
                     (
-                        "exec 3>&1 4>&2 && ("
+                        "exec 3>&1 4>&2 && latch cp"
+                        f' "latch:///.snakemake_latch/workflows/{self.wf.name}/{self.wf.jit_wf_version}/{self.wf.jit_exec_display_name}/entrypoint.py"'
+                        " latch_entrypoint.py && ("
                         f" {' '.join(sdk_default_container.args)} 1>&3 2>&4 )"
                     ),
                 ]
@@ -1140,10 +1171,12 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
         )
 
     def get_fn_code(
-        self, snakefile_path_in_container: str, remote_output_url: Optional[str] = None
+        self,
+        snakefile_path_in_container: str,
+        remote_output_url: Optional[str] = None,
+        non_blob_parameters: Optional[Dict[str, str]] = None,
     ):
-        code_block = ""
-        code_block += self.get_fn_interface()
+        code_block = self.get_fn_interface()
 
         for param, t in self._python_inputs.items():
             if not issubclass(t, (LatchFile, LatchDir)):
@@ -1178,6 +1211,9 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
 
         need_conda = any(x.conda_env is not None for x in jobs)
 
+        if non_blob_parameters is not None and len(non_blob_parameters) > 0:
+            self.job.rule.workflow.globals["config"] = non_blob_parameters
+
         snakemake_args = [
             "-m",
             "latch_cli.snakemake.single_task_snakemake",
@@ -1192,7 +1228,6 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             str(self.job.jobid),
             "--cores",
             str(self.job.threads),
-            # "--print-compilation",
         ]
         if not self.job.is_group():
             snakemake_args.append("--force-use-threads")
@@ -1209,6 +1244,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
         snakemake_data = {
             "rules": {},
             "outputs": self.job.output,
+            "non_blob_parameters": non_blob_parameters,
         }
 
         for job in jobs:

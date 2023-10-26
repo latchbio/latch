@@ -1,5 +1,6 @@
 import base64
 import contextlib
+import importlib.machinery as im
 import importlib.util as iu
 import io
 import os
@@ -179,12 +180,13 @@ def register_serialized_pkg(
         return response.json()
 
 
-def import_module_by_path(x: Path):
-    spec = iu.spec_from_file_location("metadata", x)
+def import_module_by_path(x: Path, *, module_name: str = "latch_metadata"):
+    spec = iu.spec_from_file_location(module_name, x)
     assert spec is not None
     assert spec.loader is not None
 
     module = iu.module_from_spec(spec)
+    sys.modules[module_name] = module
     spec.loader.exec_module(module)
 
     return module

@@ -2,9 +2,11 @@
 
 import hashlib
 import os
+import shutil
 import stat
 import subprocess
 import urllib.parse
+from dataclasses import asdict, is_dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
@@ -218,8 +220,8 @@ def hash_directory(dir_path: Path) -> str:
         file_size = p_stat.st_size
         if not stat.S_ISREG(p_stat.st_mode):
             click.secho(
-                f"{p.relative_to(dir_path.resolve())} is not a regular file. Ignoring"
-                " contents",
+                f"{p.relative_to(dir_path.resolve())} is not a regular file."
+                " Ignoring contents",
                 fg="yellow",
                 bold=True,
             )
@@ -384,3 +386,48 @@ def identifier_suffix_from_str(x: str) -> str:
 
 def identifier_from_str(x: str) -> str:
     return (x[0] if x[0].isidentifier() else "_") + identifier_suffix_from_str(x[1:])
+
+
+def get_parameter_json_value(v):
+    if is_dataclass(v):
+        return asdict(v)
+    elif isinstance(v, Enum):
+        return v.value
+    elif isinstance(v, list):
+        return [get_parameter_json_value(x) for x in v]
+    elif isinstance(v, dict):
+        return {k: get_parameter_json_value(x) for k, x in v.items()}
+    else:
+        return v
+
+
+def check_exists_and_rename(old: Path, new: Path):
+    if not new.exists():
+        os.renames(old, new)
+        return
+
+    if old.is_file():
+        if new.is_file():
+            print(f"Warning: A file already exists at {new} and will be overwritten.")
+            os.renames(old, new)
+            return
+
+        print(
+            f"Warning: {old} is a file but {new} is not. Everything within {new} will"
+            " be overwritten."
+        )
+        shutil.rmtree(new)
+        os.renames(old, new)
+        return
+
+    if new.is_file():
+        print(
+            f"Warning: {old} is a directory but {new} is not. {new} will be"
+            " overwritten."
+        )
+        shutil.rmtree(new)
+        os.renames(old, new)
+        return
+
+    for sub in old.iterdir():
+        check_exists_and_rename(sub, new / sub.name)

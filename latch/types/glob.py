@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from latch.types.file import LatchFile
-from latch.types.utils import _is_valid_url
+from latch.types.utils import is_valid_url
 
 
 def file_glob(
@@ -41,7 +41,7 @@ def file_glob(
 
     """
 
-    if not _is_valid_url(remote_directory):
+    if not is_valid_url(remote_directory):
         return []
 
     if target_dir is None:

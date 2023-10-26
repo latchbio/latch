@@ -47,6 +47,7 @@ class _ColumnDefinitionConnection(TypedDict):
 
 
 class _CatalogExperiment(TypedDict):
+    id: str
     catalogExperimentColumnDefinitionsByExperimentId: _ColumnDefinitionConnection
 
 
@@ -70,6 +71,7 @@ class _CatalogSample(TypedDict):
 class _Cache:
     """Internal cache class to organize information for a `Record`."""
 
+    table_id: Optional[str] = None
     name: Optional[str] = None
     columns: Optional[Dict[str, Column]] = None
     values: Optional[Dict[str, RecordValue]] = None
@@ -117,6 +119,7 @@ class Record:
                         }
                     }
                     experiment {
+                        id
                         catalogExperimentColumnDefinitionsByExperimentId {
                             nodes {
                                 type
@@ -132,6 +135,7 @@ class Record:
         )["catalogSample"]
         # todo(maximsmol): deal with nonexistent records
 
+        self._cache.table_id = data["experiment"]["id"]
         self._cache.name = data["name"]
 
         typeNodes = data["experiment"][
@@ -162,7 +166,37 @@ class Record:
             if not c.upstream_type["allowEmpty"]:
                 vals[k] = InvalidValue("")
 
+            # prevent keyerrors when accessing columns that don't have a value
+            vals[k] = None
+
         self._cache.values = vals
+
+    # get_table_id
+
+    @overload
+    def get_table_id(self, *, load_if_missing: Literal[True] = True) -> str: ...
+
+    @overload
+    def get_table_id(self, *, load_if_missing: bool) -> Optional[str]: ...
+
+    def get_table_id(self, *, load_if_missing: bool = True) -> Optional[str]:
+        """Get the ID of the table that contains this record.
+
+        Args:
+            load_if_missing:
+                If true, :meth:`load` the table ID if not in cache.
+                If false, return `None` if not in cache.
+
+        Returns:
+            ID of the :class:`Table` containing this record.
+        """
+        if self._cache.table_id is None:
+            if not load_if_missing:
+                return None
+
+            self.load()
+
+        return self._cache.table_id
 
     # get_name
 

@@ -243,7 +243,7 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
     try:
         with (pkg_root / "pyproject.toml").open("r") as f:
             for line in f:
-                if not line.startswith("[build-syste]"):
+                if not line.startswith("[build-system]"):
                     continue
 
                 has_buildable_pyproject = True
@@ -379,7 +379,9 @@ def generate_dockerfile(
             block.write_block(f)
 
         f.write("# Copy workflow data (use .dockerignore to skip files)\n")
-        f.write("copy . /root/\n\n")
+
+        # this will only copy the snakemake entrypoint (if it exists) due to .dockerignore
+        f.write("copy . .latch/* /root/\n\n")
 
         for block in commands:
             if block.order != DockerCmdBlockOrder.postcopy:

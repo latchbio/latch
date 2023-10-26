@@ -67,6 +67,7 @@ class _ColumnNode(TypedDict("_ColumnNodeReserved", {"def": DBValue})):
 class _Cache:
     display_name: Optional[str] = None
     columns: Optional[Dict[str, Column]] = None
+    project_id: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -107,6 +108,7 @@ class Table:
                                 def
                             }
                         }
+                        projectId
                     }
                 }
                 """),
@@ -114,6 +116,7 @@ class Table:
         )["catalogExperiment"]
         # todo(maximsmol): deal with nonexistent tables
 
+        self._cache.project_id = data["projectId"]
         self._cache.display_name = data["displayName"]
 
         self._cache.columns = {}
@@ -127,6 +130,33 @@ class Table:
 
             cur = Column(x["key"], py_type, x["type"])
             self._cache.columns[cur.key] = cur
+
+    # get_project_id
+
+    @overload
+    def get_project_id(self, *, load_if_missing: Literal[True] = True) -> str: ...
+
+    @overload
+    def get_project_id(self, *, load_if_missing: bool) -> Optional[str]: ...
+
+    def get_project_id(self, *, load_if_missing: bool = True) -> Optional[str]:
+        """Get the ID of the project that contains this table.
+
+        Args:
+            load_if_missing:
+                If true, :meth:`load` the project ID if not in cache.
+                If false, return `None` if not in cache.
+
+        Returns:
+            ID of the :class:`Project` containing this table.
+        """
+        if self._cache.project_id is None:
+            if not load_if_missing:
+                return None
+
+            self.load()
+
+        return self._cache.project_id
 
     # get_display_name
 
@@ -260,6 +290,38 @@ class Table:
 
         if len(page) > 0:
             yield page
+
+    def get_dataframe(self):
+        """Get a pandas DataFrame of all records in this table.
+
+        Returns:
+            DataFrame representing all records in this table.
+        """
+
+        try:
+            import pandas as pd
+        except ImportError:
+            raise ImportError(
+                "pandas needs to be installed to use get_dataframe. Install it with"
+                " `pip install pandas` or `pip install latch[pandas]`."
+            )
+
+        records = []
+        for page in self.list_records():
+            for record in page.values():
+                full_record = record.get_values()
+                if full_record is not None:
+                    full_record["Name"] = record.get_name()
+                    records.append(full_record)
+
+        if len(records) == 0:
+            cols = self.get_columns()
+            if cols is None:
+                return pd.DataFrame()
+
+            return pd.DataFrame(columns=list(cols.keys()))
+
+        return pd.DataFrame(records)
 
     @contextmanager
     def update(self, *, reload_on_commit: bool = True) -> Iterator["TableUpdate"]:

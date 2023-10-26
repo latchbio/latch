@@ -8,7 +8,7 @@ SAMPLES = ["A", "B"]
 
 rule all:
     input:
-        "plots/quals.svg"
+        "plots/quals.svg",
 
 
 rule bwa_map:
@@ -16,22 +16,22 @@ rule bwa_map:
         "genome/genome.fa",
         "data/samples/{sample}.fastq",
         "genome/genome.fa.amb",
-        "genome/genome.fa.ann", 
-        "genome/genome.fa.bwt", 
-        "genome/genome.fa.fai", 
-        "genome/genome.fa.pac", 
-        "genome/genome.fa.sa"
+        "genome/genome.fa.ann",
+        "genome/genome.fa.bwt",
+        "genome/genome.fa.fai",
+        "genome/genome.fa.pac",
+        "genome/genome.fa.sa",
     output:
-        "mapped_reads/{sample}.bam"
+        "mapped_reads/{sample}.bam",
     shell:
         "bwa mem genome/genome.fa data/samples/{wildcards.sample}.fastq | samtools view -Sb - > {output}"
 
 
 rule samtools_sort:
     input:
-        "mapped_reads/{sample}.bam"
+        "mapped_reads/{sample}.bam",
     output:
-        "sorted_reads/{sample}.bam"
+        "sorted_reads/{sample}.bam",
     shell:
         "samtools sort -T sorted_reads/{wildcards.sample} "
         "-O bam {input} > {output}"
@@ -39,9 +39,9 @@ rule samtools_sort:
 
 rule samtools_index:
     input:
-        "sorted_reads/{sample}.bam"
+        "sorted_reads/{sample}.bam",
     output:
-        "sorted_reads/{sample}.bam.bai"
+        "sorted_reads/{sample}.bam.bai",
     shell:
         "samtools index {input}"
 
@@ -50,9 +50,9 @@ rule bcftools_call:
     input:
         fa="genome/genome.fa",
         bam=expand("sorted_reads/{sample}.bam", sample=SAMPLES),
-        bai=expand("sorted_reads/{sample}.bam.bai", sample=SAMPLES)
+        bai=expand("sorted_reads/{sample}.bam.bai", sample=SAMPLES),
     output:
-        "calls/all.vcf"
+        "calls/all.vcf",
     shell:
         "bcftools mpileup -f {input.fa} {input.bam} | "
         "bcftools call -mv - > {output}"
@@ -60,8 +60,8 @@ rule bcftools_call:
 
 rule plot_quals:
     input:
-        "calls/all.vcf"
+        "calls/all.vcf",
     output:
-        "plots/quals.svg"
+        "plots/quals.svg",
     script:
         "scripts/plot-quals.py"

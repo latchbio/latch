@@ -347,9 +347,17 @@ def cp(
 
 
 @main.command("mv")
-@click.argument("src", shell_complete=remote_complete, nargs=-1)
+@click.argument("src", shell_complete=remote_complete, nargs=1)
 @click.argument("dest", shell_complete=remote_complete, nargs=1)
-def mv(src: str, dest: str):
+@click.option(
+    "--no-glob",
+    "-G",
+    help="Don't expand globs in remote paths",
+    is_flag=True,
+    default=False,
+    show_default=True,
+)
+def mv(src: str, dest: str, no_glob: bool):
     """Move remote files in LatchData."""
 
     crash_handler.message = f"Unable to move {src} to {dest}"
@@ -357,7 +365,7 @@ def mv(src: str, dest: str):
 
     from latch_cli.services.move import move
 
-    move(src, dest)
+    move(src, dest, no_glob=no_glob)
 
 
 @main.command("ls")
@@ -394,6 +402,46 @@ def ls(paths: Tuple[str], group_directories_first: bool):
 
         if len(paths) > 1:
             click.echo("")
+
+
+@main.command("generate-metadata")
+@click.argument("config_file", nargs=1, type=click.Path(exists=True, path_type=Path))
+@click.option(
+    "--yes",
+    "-y",
+    is_flag=True,
+    default=False,
+    help=(
+        "Overwrite an existing `latch_metadata/parameters.py` file without confirming."
+    ),
+)
+@click.option(
+    "--no-infer-files",
+    "-I",
+    is_flag=True,
+    default=False,
+    help="Don't parse strings with common file extensions as file parameters.",
+)
+@click.option(
+    "--no-defaults",
+    "-D",
+    is_flag=True,
+    default=False,
+    help="Don't generate defaults for parameters.",
+)
+def generate_metadata(
+    config_file: Path, yes: bool, no_infer_files: bool, no_defaults: bool
+):
+    """Generate a `latch_metadata.py` file from a Snakemake config file"""
+
+    from latch_cli.snakemake.config.parser import generate_metadata
+
+    generate_metadata(
+        config_file,
+        skip_confirmation=yes,
+        infer_files=not no_infer_files,
+        generate_defaults=not no_defaults,
+    )
 
 
 @main.command("launch")

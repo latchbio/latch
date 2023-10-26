@@ -323,8 +323,8 @@ def custom_memory_optimized_task(cpu: int, memory: int):
         memory: An integer number of Gibibytes of RAM to request, up to 511 GiB
     """
     warn(
-        "`custom_memory_optimized_task` is deprecated and will be removed in a future"
-        " release: use `custom_task` instead",
+        "`custom_memory_optimized_task` is deprecated and will be removed in a"
+        " future release: use `custom_task` instead",
         DeprecationWarning,
         stacklevel=2,
     )
