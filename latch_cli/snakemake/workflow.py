@@ -461,18 +461,42 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         )
 
         code_block += reindent(
-            rf"""
+            r"""
             pkg_root = Path(".")
 
             exec_id_hash = hashlib.sha1()
-            exec_id_hash.update(os.environ["FLYTE_INTERNAL_EXECUTION_ID"].encode("utf-8"))
+            token = os.environ["FLYTE_INTERNAL_EXECUTION_ID"]
+            exec_id_hash.update(token.encode("utf-8"))
             version = exec_id_hash.hexdigest()[:16]
 
-            wf = extract_snakemake_workflow(pkg_root, snakefile, version, local_to_remote_path_mapping)
+            jit_wf_version = os.environ["FLYTE_INTERNAL_TASK_VERSION"]
+            jit_exec_display_name = execute(
+                gql.gql('''
+                query executionCreatorsByToken($token: String!) {
+                  executionCreatorByToken(token: $token) {
+                      flytedbId
+                        info {
+                        displayName
+                      }
+                  }
+                }
+                '''),
+                {"token": token},
+            )["executionCreatorByToken"]["info"]["displayName"]
+            """,
+            1,
+        )
+
+        code_block += reindent(
+            rf"""
+            print(f"JIT Workflow Version: {{jit_wf_version}}")
+            print(f"JIT Execution Display Name: {{jit_exec_display_name}}")
+
+            wf = extract_snakemake_workflow(pkg_root, snakefile, jit_wf_version, jit_exec_display_name, local_to_remote_path_mapping)
             wf_name = wf.name
             generate_snakemake_entrypoint(wf, pkg_root, snakefile, {repr(remote_output_url)}, non_blob_parameters)
 
-            entrypoint_remote = f"latch:///.snakemake_latch/workflows/{{wf_name}}/entrypoint.py"
+            entrypoint_remote = f"latch:///.snakemake_latch/workflows/{{wf_name}}/{{jit_wf_version}}/{{jit_exec_display_name}}/entrypoint.py"
             lp.upload("latch_entrypoint.py", entrypoint_remote)
             print(f"latch_entrypoint.py -> {{entrypoint_remote}}")
             """,
@@ -481,115 +505,19 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         code_block += reindent(
             r"""
-            dockerfile = Path("Dockerfile-dynamic").resolve()
-            dockerfile.write_text(
-            textwrap.dedent(
-                    f'''
-                    from 812206152185.dkr.ecr.us-west-2.amazonaws.com/{image_name}
-
-                    copy latch_entrypoint.py /root/latch_entrypoint.py
-                    '''
-                )
-            )
-            new_image_name = f"{image_name}-{version}"
-
-            os.mkdir("/root/.ssh")
-            ssh_key_path = Path("/root/.ssh/id_rsa")
-            cmd = ["ssh-keygen", "-f", ssh_key_path, "-N", "", "-q"]
-            try:
-                subprocess.run(cmd, check=True)
-            except subprocess.CalledProcessError as e:
-                raise ValueError(
-                    "There was a problem creating temporary SSH credentials. Please ensure"
-                    " that `ssh-keygen` is installed and available in your PATH."
-                ) from e
-            os.chmod(ssh_key_path, 0o700)
-
-            token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", "")
             headers = {
                 "Authorization": f"Latch-Execution-Token {token}",
             }
 
-            ssh_public_key_path = Path("/root/.ssh/id_rsa.pub")
-            response = tinyrequests.post(
-                config.api.centromere.provision,
-                headers=headers,
-                json={
-                    "public_key": ssh_public_key_path.read_text().strip(),
-                },
-            )
-
-            resp = response.json()
-            try:
-                public_ip = resp["ip"]
-                username = resp["username"]
-            except KeyError as e:
-                raise ValueError(
-                    f"Malformed response from request for centromere login: {resp}"
-                ) from e
-
-
-            subprocess.run(["ssh", "-o", "StrictHostKeyChecking=no", f"{username}@{public_ip}", "uptime"])
-            dkr_client = _construct_dkr_client(ssh_host=f"ssh://{username}@{public_ip}")
-
-            data = {"pkg_name": new_image_name.split(":")[0], "ws_account_id": account_id}
-            response = requests.post(config.api.workflow.upload_image, headers=headers, json=data)
-
-            try:
-                response = response.json()
-                access_key = response["tmp_access_key"]
-                secret_key = response["tmp_secret_key"]
-                session_token = response["tmp_session_token"]
-            except KeyError as err:
-                raise ValueError(f"malformed response on image upload: {response}") from err
-
-            try:
-                client = boto3.session.Session(
-                    aws_access_key_id=access_key,
-                    aws_secret_access_key=secret_key,
-                    aws_session_token=session_token,
-                    region_name="us-west-2",
-                ).client("ecr")
-                token = client.get_authorization_token()["authorizationData"][0][
-                    "authorizationToken"
-                ]
-            except Exception as err:
-                raise ValueError(
-                    f"unable to retreive an ecr login token for user {account_id}"
-                ) from err
-
-            user, password = base64.b64decode(token).decode("utf-8").split(":")
-            dkr_client.login(
-                username=user,
-                password=password,
-                registry=config.dkr_repo,
-            )
-
-            image_build_logs = dkr_client.build(
-                path=str(pkg_root),
-                dockerfile=str(dockerfile),
-                buildargs={"tag": f"{config.dkr_repo}/{new_image_name}"},
-                tag=f"{config.dkr_repo}/{new_image_name}",
-                decode=True,
-            )
-            print_and_write_build_logs(image_build_logs, new_image_name, pkg_root)
-
-            upload_image_logs = dkr_client.push(
-                repository=f"{config.dkr_repo}/{new_image_name}",
-                stream=True,
-                decode=True,
-            )
-            print_upload_logs(upload_image_logs, new_image_name)
-
             temp_dir = tempfile.TemporaryDirectory()
             with Path(temp_dir.name).resolve() as td:
-                serialize_snakemake(wf, td, new_image_name, config.dkr_repo)
+                serialize_snakemake(wf, td, image_name, config.dkr_repo)
 
                 protos = _recursive_list(td)
                 reg_resp = register_serialized_pkg(protos, None, version, account_id)
-                # _print_reg_resp(reg_resp, new_image_name, silent=True)
+                # _print_reg_resp(reg_resp, image_name, silent=True)
 
-            wf_spec_remote = f"latch:///.snakemake_latch/workflows/{wf_name}/spec"
+            wf_spec_remote = f"latch:///.snakemake_latch/workflows/{wf_name}/{version}/spec"
             spec_dir = Path("spec")
             for x_dir in spec_dir.iterdir():
                 if not x_dir.is_dir():
@@ -669,11 +597,14 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
     def __init__(
         self,
         dag: DAG,
-        version: Optional[str] = None,
+        jit_wf_version: str,
+        jit_exec_display_name: str,
         local_to_remote_path_mapping: Optional[Dict[str, str]] = None,
     ):
         assert metadata._snakemake_metadata is not None
         name = metadata._snakemake_metadata.name
+        self.jit_wf_version = jit_wf_version
+        self.jit_exec_display_name = jit_exec_display_name
 
         assert name is not None
 
@@ -1071,19 +1002,20 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             containers.append(V1Container(name=self.task_config.primary_container_name))
 
         final_containers = []
+        sdk_default_container = super().get_container(settings)
         for container in containers:
             # In the case of the primary container, we overwrite specific container attributes with the default values
             # used in the regular Python task.
             if container.name == self.task_config.primary_container_name:
-                sdk_default_container = super().get_container(settings)
-
                 container.image = sdk_default_container.image
                 # Spawn entrypoint as child process so it can receive signals
                 container.command = [
                     "/bin/bash",
                     "-c",
                     (
-                        "exec 3>&1 4>&2 && ("
+                        "exec 3>&1 4>&2 && latch cp"
+                        f' "latch:///.snakemake_latch/workflows/{self.wf.name}/{self.wf.jit_wf_version}/{self.wf.jit_exec_display_name}/entrypoint.py"'
+                        " latch_entrypoint.py && ("
                         f" {' '.join(sdk_default_container.args)} 1>&3 2>&4 )"
                     ),
                 ]

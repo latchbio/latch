@@ -220,8 +220,8 @@ def hash_directory(dir_path: Path) -> str:
         file_size = p_stat.st_size
         if not stat.S_ISREG(p_stat.st_mode):
             click.secho(
-                f"{p.relative_to(dir_path.resolve())} is not a regular file. Ignoring"
-                " contents",
+                f"{p.relative_to(dir_path.resolve())} is not a regular file."
+                " Ignoring contents",
                 fg="yellow",
                 bold=True,
             )
