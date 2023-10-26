@@ -39,6 +39,14 @@ def download(
     dest: Path,
     config: CPConfig,
 ):
+    if not dest.parent.exists():
+        click.secho(
+            f"Invalid copy destination {dest}. Parent directory {dest.parent} does not"
+            " exist.",
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
+
     normalized = normalize_path(src)
     data = get_node_data(src)
 
