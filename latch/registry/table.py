@@ -291,6 +291,38 @@ class Table:
         if len(page) > 0:
             yield page
 
+    def get_dataframe(self):
+        """Get a pandas DataFrame of all records in this table.
+
+        Returns:
+            DataFrame representing all records in this table.
+        """
+
+        try:
+            import pandas as pd
+        except ImportError:
+            raise ImportError(
+                "pandas needs to be installed to use get_dataframe. Install it with"
+                " `pip install pandas` or `pip install latch[pandas]`."
+            )
+
+        records = []
+        for page in self.list_records():
+            for record in page.values():
+                full_record = record.get_values()
+                if full_record is not None:
+                    full_record["Name"] = record.get_name()
+                    records.append(full_record)
+
+        if len(records) == 0:
+            cols = self.get_columns()
+            if cols is None:
+                return pd.DataFrame()
+
+            return pd.DataFrame(columns=list(cols.keys()))
+
+        return pd.DataFrame(records)
+
     @contextmanager
     def update(self, *, reload_on_commit: bool = True) -> Iterator["TableUpdate"]:
         """Start an update transaction.

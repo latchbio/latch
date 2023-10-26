@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.36.4 - 2023-10-25
+
+### Added
+
+* Added ability to get a pandas Dataframe from a registry table.
+
 ## 2.36.3 - 2023-10-25
 
 ### Fixed

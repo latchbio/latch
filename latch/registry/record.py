@@ -166,6 +166,9 @@ class Record:
             if not c.upstream_type["allowEmpty"]:
                 vals[k] = InvalidValue("")
 
+            # prevent keyerrors when accessing columns that don't have a value
+            vals[k] = None
+
         self._cache.values = vals
 
     # get_table_id
