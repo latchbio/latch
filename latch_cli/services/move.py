@@ -30,7 +30,7 @@ def move(
         srcs = expand_pattern(src)
 
     if len(srcs) == 0:
-        click.secho(f"Could not find any files that match pattern {src}. Exiting.")
+        click.echo(f"Could not find any files that match pattern {src}. Exiting.")
         raise click.exceptions.Exit(0)
 
     node_data = get_node_data(*srcs, dest, allow_resolve_to_parent=True)
@@ -61,16 +61,14 @@ def move(
         src_data = node_data.data[s]
 
         if src_data.is_parent:
-            click.secho(get_path_error(s, "not found", acc_id), fg="red")
+            click.echo(get_path_error(s, "not found", acc_id))
             raise click.exceptions.Exit(1)
 
         new_name = None
         if dest_data.is_parent:
             new_name = get_name_from_path(dest)
         elif dest_data.type in {LDataNodeType.obj, LDataNodeType.link}:
-            click.secho(
-                get_path_error(dest, "object already exists at path.", acc_id), fg="red"
-            )
+            click.echo(get_path_error(dest, "object already exists at path.", acc_id))
             raise click.exceptions.Exit(1)
 
         try:
@@ -108,19 +106,13 @@ def move(
                 node_id = msg.rsplit(" ", 1)[1]
                 path = path_by_id[node_id]
 
-                click.secho(
-                    get_path_error(path, "permission denied.", acc_id), fg="red"
-                )
+                click.echo(get_path_error(path, "permission denied.", acc_id))
                 raise click.exceptions.Exit(1) from e
             elif msg == "Refusing to make node its own parent":
-                click.secho(
-                    get_path_error(dest, f"is a parent of {s}.", acc_id), fg="red"
-                )
+                click.echo(get_path_error(dest, f"is a parent of {s}.", acc_id))
                 raise click.exceptions.Exit(1) from e
             elif msg == "Refusing to parent node to an object node":
-                click.secho(
-                    get_path_error(dest, f"object exists at path.", acc_id), fg="red"
-                )
+                click.echo(get_path_error(dest, f"object exists at path.", acc_id))
                 raise click.exceptions.Exit(1) from e
             elif msg == "Refusing to move a share link (or into a share link)":
                 if src_data.type is LDataNodeType.link:
@@ -128,35 +120,29 @@ def move(
                 else:
                     path = dest
 
-                click.secho(get_path_error(path, f"is a share link.", acc_id), fg="red")
+                click.echo(get_path_error(path, f"is a share link.", acc_id))
                 raise click.exceptions.Exit(1) from e
             elif msg.startswith("Refusing to move account root"):
-                click.secho(get_path_error(s, "is an account root.", acc_id), fg="red")
+                click.echo(get_path_error(s, "is an account root.", acc_id))
                 raise click.exceptions.Exit(1) from e
             elif msg.startswith("Refusing to move removed node"):
-                click.secho(get_path_error(s, "not found.", acc_id), fg="red")
+                click.echo(get_path_error(s, "not found.", acc_id))
                 raise click.exceptions.Exit(1) from e
             elif msg.startswith("Refusing to move already moved node"):
-                click.secho(
+                click.echo(
                     get_path_error(
                         s,
                         "copy in progress. Please wait until the node has finished"
                         " copying before moving.",
                         acc_id,
-                    ),
-                    fg="red",
+                    )
                 )
                 raise click.exceptions.Exit(1) from e
             elif msg == "Conflicting object in destination":
-                click.secho(
-                    get_path_error(dest, "object exists at path.", acc_id), fg="red"
-                )
+                click.echo(get_path_error(dest, "object exists at path.", acc_id))
                 raise click.exceptions.Exit(1) from e
             elif msg.startswith("Refusing to do noop move"):
-                click.secho(
-                    get_path_error(dest, "cannot move node to itself.", acc_id),
-                    fg="red",
-                )
+                click.echo(get_path_error(dest, "cannot move node to itself.", acc_id))
                 raise click.exceptions.Exit(1) from e
             else:
                 raise e
