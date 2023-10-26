@@ -169,7 +169,7 @@ class SnakemakeWorkflowExtractor(Workflow):
 
 
 def snakemake_workflow_extractor(
-    pkg_root: Path, snakefile: Path, version: Optional[str] = None
+    pkg_root: Path, snakefile: Path
 ) -> SnakemakeWorkflowExtractor:
     snakefile = snakefile.resolve()
 
@@ -198,13 +198,16 @@ def snakemake_workflow_extractor(
 def extract_snakemake_workflow(
     pkg_root: Path,
     snakefile: Path,
-    version: Optional[str] = None,
+    jit_wf_version: str,
+    jit_exec_display_name: str,
     local_to_remote_path_mapping: Optional[Dict[str, str]] = None,
 ) -> SnakemakeWorkflow:
-    extractor = snakemake_workflow_extractor(pkg_root, snakefile, version)
+    extractor = snakemake_workflow_extractor(pkg_root, snakefile)
     with extractor:
         dag = extractor.extract_dag()
-        wf = SnakemakeWorkflow(dag, version, local_to_remote_path_mapping)
+        wf = SnakemakeWorkflow(
+            dag, jit_wf_version, jit_exec_display_name, local_to_remote_path_mapping
+        )
         wf.compile()
 
     return wf

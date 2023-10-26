@@ -488,10 +488,6 @@ def register(
             retries = 0
 
             wf_name = ctx.workflow_name
-            if snakefile is not None:
-                # todo(maximsmol): this is quite awful
-                wf_name = f"{wf_name}_jit_register"
-
             while len(wf_infos) == 0:
                 wf_infos = l_gql.execute(
                     gql.gql("""

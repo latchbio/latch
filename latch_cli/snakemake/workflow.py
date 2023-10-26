@@ -101,7 +101,8 @@ class JobOutputInfo:
     type_: Union[Type[LatchFile], Type[LatchDir]]
 
 
-def task_fn_placeholder(): ...
+def task_fn_placeholder():
+    ...
 
 
 def variable_name_for_file(file: snakemake.io.AnnotatedString):
@@ -464,18 +465,42 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         )
 
         code_block += reindent(
-            rf"""
+            r"""
             pkg_root = Path(".")
 
             exec_id_hash = hashlib.sha1()
-            exec_id_hash.update(os.environ["FLYTE_INTERNAL_EXECUTION_ID"].encode("utf-8"))
+            token = os.environ["FLYTE_INTERNAL_EXECUTION_ID"]
+            exec_id_hash.update(token.encode("utf-8"))
             version = exec_id_hash.hexdigest()[:16]
 
-            wf = extract_snakemake_workflow(pkg_root, snakefile, version, local_to_remote_path_mapping)
+            jit_wf_version = os.environ["FLYTE_INTERNAL_TASK_VERSION"]
+            jit_exec_display_name = execute(
+                gql.gql('''
+                query executionCreatorsByToken($token: String!) {
+                  executionCreatorByToken(token: $token) {
+                      flytedbId
+                        info {
+                        displayName
+                      }
+                  }
+                }
+                '''),
+                {"token": token},
+            )["executionCreatorByToken"]["info"]["displayName"]
+            """,
+            1,
+        )
+
+        code_block += reindent(
+            rf"""
+            print(f"JIT Workflow Version: {{jit_wf_version}}")
+            print(f"JIT Execution Display Name: {{jit_exec_display_name}}")
+
+            wf = extract_snakemake_workflow(pkg_root, snakefile, jit_wf_version, jit_exec_display_name, local_to_remote_path_mapping)
             wf_name = wf.name
             generate_snakemake_entrypoint(wf, pkg_root, snakefile, {repr(remote_output_url)}, non_blob_parameters)
 
-            entrypoint_remote = f"latch:///.snakemake_latch/workflows/{{wf_name}}/{{version}}/entrypoint.py"
+            entrypoint_remote = f"latch:///.snakemake_latch/workflows/{{wf_name}}/{{jit_wf_version}}/{{jit_exec_display_name}}/entrypoint.py"
             lp.upload("latch_entrypoint.py", entrypoint_remote)
             print(f"latch_entrypoint.py -> {{entrypoint_remote}}")
             """,
@@ -484,18 +509,17 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         code_block += reindent(
             r"""
-            token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", "")
             headers = {
                 "Authorization": f"Latch-Execution-Token {token}",
             }
 
             temp_dir = tempfile.TemporaryDirectory()
             with Path(temp_dir.name).resolve() as td:
-                serialize_snakemake(wf, td, new_image_name, config.dkr_repo)
+                serialize_snakemake(wf, td, image_name, config.dkr_repo)
 
                 protos = _recursive_list(td)
                 reg_resp = register_serialized_pkg(protos, None, version, account_id)
-                # _print_reg_resp(reg_resp, new_image_name, silent=True)
+                # _print_reg_resp(reg_resp, image_name, silent=True)
 
             wf_spec_remote = f"latch:///.snakemake_latch/workflows/{wf_name}/{version}/spec"
             spec_dir = Path("spec")
@@ -577,12 +601,14 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
     def __init__(
         self,
         dag: DAG,
-        version: Optional[str] = None,
+        jit_wf_version: str,
+        jit_exec_display_name: str,
         local_to_remote_path_mapping: Optional[Dict[str, str]] = None,
     ):
         assert metadata._snakemake_metadata is not None
         name = metadata._snakemake_metadata.name
-        self.version = version
+        self.jit_wf_version = jit_wf_version
+        self.jit_exec_display_name = jit_exec_display_name
 
         assert name is not None
 
@@ -969,8 +995,8 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
                     "-c",
                     (
                         "exec 3>&1 4>&2 && latch cp"
-                        f" latch:///.snakemake_latch/workflows/{self.wf.name}/{self.wf.version}/entrypoint.py"
-                        " /opt/latch/latch_entrypoint.py && ("
+                        f' "latch:///.snakemake_latch/workflows/{self.wf.name}/{self.wf.jit_wf_version}/{self.wf.jit_exec_display_name}/entrypoint.py"'
+                        " latch_entrypoint.py && ("
                         f" {' '.join(sdk_default_container.args)} 1>&3 2>&4 )"
                     ),
                 ]
@@ -1344,7 +1370,7 @@ class SnakemakeJobTaskResolver(DefaultTaskResolver):
     def loader_args(
         self, settings: SerializationSettings, task: SnakemakeJobTask
     ) -> List[str]:
-        return ["task-module", "/opt/latch/latch_entrypoint", "task-name", task.name]
+        return ["task-module", "latch_entrypoint", "task-name", task.name]
 
     def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
         _, task_module, _, task_name, *_ = loader_args
