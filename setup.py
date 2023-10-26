@@ -52,7 +52,7 @@ setup(
     ],
     extras_require={
         "snakemake": ["snakemake>=7.18.0, <7.30.2"],
-        "pandas": ["pandas==2.0.3"],
+        "pandas": ["pandas>=2.0.0"],
     },
     classifiers=[
         "Programming Language :: Python :: 3.8",
