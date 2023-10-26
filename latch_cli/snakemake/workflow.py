@@ -101,8 +101,7 @@ class JobOutputInfo:
     type_: Union[Type[LatchFile], Type[LatchDir]]
 
 
-def task_fn_placeholder():
-    ...
+def task_fn_placeholder(): ...
 
 
 def variable_name_for_file(file: snakemake.io.AnnotatedString):
