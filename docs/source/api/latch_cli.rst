@@ -9,7 +9,6 @@ Subpackages
 
    latch_cli.auth
    latch_cli.centromere
-   latch_cli.config
    latch_cli.docker_utils
    latch_cli.exceptions
    latch_cli.services

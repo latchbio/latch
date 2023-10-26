@@ -1,5 +1,6 @@
 sphinx
 sphinx-book-theme
 sphinx-copybutton
+sphinx-click
 myst-parser
 furo

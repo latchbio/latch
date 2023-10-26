@@ -4,10 +4,10 @@ from typing import Iterator, List, Literal, Optional, TypedDict, Union, overload
 
 import gql
 import graphql.language as l
+from latch_sdk_gql.execute import execute
+from latch_sdk_gql.utils import _GqlJsonValue, _json_value, _name_node, _parse_selection
 from typing_extensions import TypeAlias
 
-from latch.gql._execute import execute
-from latch.gql._utils import _GqlJsonValue, _json_value, _name_node, _parse_selection
 from latch.registry.table import Table
 
 
@@ -48,8 +48,7 @@ class Project:
         Always makes a network request.
         """
         data = execute(
-            document=gql.gql(
-                """
+            document=gql.gql("""
                 query ProjectQuery($id: BigInt!) {
                     catalogProject(id: $id) {
                         id
@@ -67,8 +66,7 @@ class Project:
                         }
                     }
                 }
-                """
-            ),
+                """),
             variables={"id": self.id},
         )["catalogProject"]
         # todo(maximsmol): deal with nonexistent projects
@@ -87,12 +85,10 @@ class Project:
     # get_display_name
 
     @overload
-    def get_display_name(self, *, load_if_missing: Literal[True] = True) -> str:
-        ...
+    def get_display_name(self, *, load_if_missing: Literal[True] = True) -> str: ...
 
     @overload
-    def get_display_name(self, *, load_if_missing: bool) -> Optional[str]:
-        ...
+    def get_display_name(self, *, load_if_missing: bool) -> Optional[str]: ...
 
     def get_display_name(self, *, load_if_missing: bool = True) -> Optional[str]:
         """Get the display name of this project.
@@ -118,12 +114,10 @@ class Project:
     # list_tables
 
     @overload
-    def list_tables(self, *, load_if_missing: Literal[True] = True) -> List[Table]:
-        ...
+    def list_tables(self, *, load_if_missing: Literal[True] = True) -> List[Table]: ...
 
     @overload
-    def list_tables(self, *, load_if_missing: bool) -> Optional[List[Table]]:
-        ...
+    def list_tables(self, *, load_if_missing: bool) -> Optional[List[Table]]: ...
 
     def list_tables(self, *, load_if_missing: bool = True) -> Optional[List[Table]]:
         """List Registry tables contained in this project.
@@ -225,13 +219,11 @@ class ProjectUpdate:
 
         display_names: _GqlJsonValue = [x.display_name for x in upserts]
 
-        res = _parse_selection(
-            """
-            catalogMultiUpsertExperiments(input: {}) {
+        res = _parse_selection("""
+            catalogMultiCreateExperiments(input: {}) {
                 clientMutationId
             }
-            """
-        )
+            """)
         assert isinstance(res, l.FieldNode)
 
         args = l.ArgumentNode()
@@ -266,13 +258,11 @@ class ProjectUpdate:
 
         ids: _GqlJsonValue = [x.id for x in deletes]
 
-        res = _parse_selection(
-            """
+        res = _parse_selection("""
             catalogMultiDeleteExperiments(input: {}) {
                 clientMutationId
             }
-            """
-        )
+            """)
         assert isinstance(res, l.FieldNode)
 
         args = l.ArgumentNode()
@@ -324,13 +314,11 @@ class ProjectUpdate:
         sel_set = l.SelectionSetNode()
         sel_set.selections = tuple(mutations)
 
-        doc = l.parse(
-            """
+        doc = l.parse("""
             mutation ProjectUpdate {
                 placeholder
             }
-        """
-        )
+        """)
 
         assert len(doc.definitions) == 1
         mut = doc.definitions[0]

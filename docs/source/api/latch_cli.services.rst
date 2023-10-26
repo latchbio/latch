@@ -7,6 +7,7 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
+   latch_cli.services.cp
    latch_cli.services.deprecated
    latch_cli.services.init
    latch_cli.services.register
@@ -14,14 +15,6 @@ Subpackages
 
 Submodules
 ----------
-
-latch\_cli.services.cp module
------------------------------
-
-.. automodule:: latch_cli.services.cp
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
 latch\_cli.services.execute module
 ----------------------------------
@@ -71,6 +64,14 @@ latch\_cli.services.local\_dev module
    :undoc-members:
    :show-inheritance:
 
+latch\_cli.services.local\_dev\_old module
+------------------------------------------
+
+.. automodule:: latch_cli.services.local_dev_old
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 latch\_cli.services.login module
 --------------------------------
 
@@ -87,6 +88,14 @@ latch\_cli.services.ls module
    :undoc-members:
    :show-inheritance:
 
+latch\_cli.services.move module
+-------------------------------
+
+.. automodule:: latch_cli.services.move
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 latch\_cli.services.open\_file module
 -------------------------------------
 
@@ -99,6 +108,14 @@ latch\_cli.services.preview module
 ----------------------------------
 
 .. automodule:: latch_cli.services.preview
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+latch\_cli.services.stop\_pod module
+------------------------------------
+
+.. automodule:: latch_cli.services.stop_pod
    :members:
    :undoc-members:
    :show-inheritance:

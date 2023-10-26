@@ -107,13 +107,13 @@ Specifying compute and storage requirements is as easy as using a Python decorat
 ```python
 from latch import small_task
 
-@small_task # 2 cpus, 4 gigs of memory, 0 gpus
+@small_task # 2 cpus, 4 gigs of memory, 500 GiB of storage, 0 gpus
 def my_task(
     ...
 ):
     ...
 
-@large_gpu_task #31 cpus, 120 gigs of memory, 1 gpu
+@large_gpu_task # 31 cpus, 120 gigs of memory, 2000 GiB of storage, 1 gpu
 def inference(
     ...
 ):
@@ -126,7 +126,7 @@ To arbitrarily specify resource requirements, use:
 ```python
 from latch import custom_task
 
-@custom_task(cpu, memory)
+@custom_task(cpu=8, memory=64, storage_gib=1000)
 def my_task(
     ...
 ):
@@ -154,7 +154,7 @@ Now run `latch dockerfile .` to examine the auto generated Dockerfile:
 
 ```Dockerfile
 # latch base image + dependencies for latch SDK --- removing these will break the workflow
-from 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:ace9-main
+from 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:fe0b-main
 run pip install latch==2.12.1
 run mkdir /opt/latch
 
@@ -236,10 +236,8 @@ Dockerfile      reference       version         wf
 
 Then, type the following command:
 ```bash
-latch preview assemble_and_sort
+latch preview .
 ```
-Make sure what comes after `preview` is the exactly same as the name of your workflow function.
-
 `latch preview` will open up a browser displaying your interface.
 
 ## 6. Add test data for your workflow
@@ -290,10 +288,15 @@ These default values will be available under the 'Test Data' dropdown at Latch C
 ![Launch Plan](../assets/launchplan.png)
 
 ## 7. Register your workflow to Latch
-You can release a live version of your workflow by registering it on Latch:
 
+First, select the workspace you want to upload your Latch workflow to:
 ```bash
-latch register --remote <path_to_workflow_dir>
+latch workspace
+```
+
+You can register the workflow to the selected workspace by typinhg:
+```bash
+latch register --remote --yes <path_to_workflow_dir>
 ```
 
 The registration process will:

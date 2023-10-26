@@ -1,14 +1,21 @@
+import os
+import re
 from os import PathLike
+from pathlib import Path
 from typing import Optional, Type, Union
+from urllib.parse import urlparse
 
+import gql
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.models.literals import Literal
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
+from latch_sdk_gql.execute import execute
 from typing_extensions import Annotated
 
-from latch.types.utils import _is_valid_url
+from latch.types.utils import format_path, is_absolute_node_path, is_valid_url
+from latch_cli.utils.path import normalize_path
 
 
 class LatchFile(FlyteFile):
@@ -58,9 +65,17 @@ class LatchFile(FlyteFile):
 
         # Cast PathLike objects so that LatchFile has consistent JSON
         # representation.
-        self.path = str(path)
+        parsed = urlparse(str(path))
+        if parsed.scheme == "file":
+            self.path = parsed.path
+        elif parsed.scheme == "latch":
+            self.path = normalize_path(str(path))
+        else:
+            self.path = str(path)
 
-        if _is_valid_url(self.path) and remote_path is None:
+        self._path_generated = False
+
+        if is_valid_url(self.path) and remote_path is None:
             self._remote_path = str(path)
         else:
             self._remote_path = None if remote_path is None else str(remote_path)
@@ -78,7 +93,24 @@ class LatchFile(FlyteFile):
                     # todo(kenny) is this necessary?
                     and ctx.inspect_objects_only is False
                 ):
-                    self.path = ctx.file_access.get_random_local_path(self._remote_path)
+                    local_path_hint = self._remote_path
+                    if is_absolute_node_path.match(self._remote_path) is not None:
+                        data = execute(
+                            gql.gql("""
+                            query getName($argPath: String!) {
+                                ldataResolvePathData(argPath: $argPath) {
+                                    name
+                                }
+                            }
+                            """),
+                            {"argPath": self._remote_path},
+                        )["ldataResolvePathData"]
+
+                        if data is not None and data["name"] is not None:
+                            local_path_hint = data["name"]
+
+                    self._idempotent_set_path(local_path_hint)
+
                     return ctx.file_access.get_data(
                         self._remote_path,
                         self.path,
@@ -86,6 +118,24 @@ class LatchFile(FlyteFile):
                     )
 
             super().__init__(self.path, downloader, self._remote_path)
+
+    def _idempotent_set_path(self, hint: Optional[str] = None):
+        if self._path_generated:
+            return
+
+        ctx = FlyteContextManager.current_context()
+        if ctx is None:
+            return
+
+        self.path = ctx.file_access.get_random_local_path(hint)
+        self._path_generated = True
+
+    def _create_imposters(self):
+        self._idempotent_set_path()
+
+        p = Path(self.path)
+        p.parent.mkdir(exist_ok=True, parents=True)
+        p.touch(exist_ok=True)
 
     @property
     def local_path(self) -> str:
@@ -104,13 +154,17 @@ class LatchFile(FlyteFile):
 
     def __repr__(self):
         if self.remote_path is None:
-            return f'LatchFile("{self.local_path}")'
-        return f'LatchFile("{self.path}", remote_path="{self.remote_path}")'
+            return f"LatchFile({repr(format_path(self.local_path))})"
+
+        return (
+            f"LatchFile({repr(self.path)},"
+            f" remote_path={repr(format_path(self.remote_path))})"
+        )
 
     def __str__(self):
         if self.remote_path is None:
             return "LatchFile()"
-        return f'LatchFile("{self.remote_path}")'
+        return f"LatchFile({format_path(self.remote_path)})"
 
 
 LatchOutputFile = Annotated[
@@ -137,7 +191,7 @@ class LatchFilePathTransformer(FlyteFilePathTransformer):
         ctx: FlyteContext,
         lv: Literal,
         expected_python_type: Union[Type[LatchFile], PathLike],
-    ) -> FlyteFile:
+    ) -> LatchFile:
         uri = lv.scalar.blob.uri
         if expected_python_type is PathLike:
             raise TypeError(

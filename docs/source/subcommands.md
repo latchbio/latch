@@ -1,5 +1,7 @@
 # CLI Reference
 
+<!-- todo(ayush): kill this -->
+
 ## `latch init`
 
 ```console

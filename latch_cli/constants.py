@@ -1,5 +1,3 @@
-"""Package-wide constants."""
-
 import re
 from dataclasses import dataclass
 from enum import Enum
@@ -25,7 +23,7 @@ units = Units
 @dataclass(frozen=True)
 class LatchConstants:
     base_image: str = (
-        "812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:5303-main"
+        "812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:fe0b-main"
     )
 
     file_max_size: int = 4 * units.MiB
@@ -36,13 +34,19 @@ class LatchConstants:
     maximum_upload_size = 5 * units.TiB
 
     pkg_name: str = "latch"
-    pkg_ssh_key: str = ".latch/ssh_key"
     pkg_config: str = ".latch/config"
 
     # todo(aidan): make this aware of the current working directory so that we do not remove useful context
     ignore_regex = re.compile(
         r"(\.git|\.latch_report\.tar\.gz|traceback\.txt|metadata\.json)$"
     )
+
+    jump_host: str = "jump.centromere.latch.bio"
+    jump_user: str = "jumpuser"
+
+    # seconds
+    centromere_poll_timeout: int = 18000
+    centromere_keepalive_interval: int = 30
 
 
 latch_constants = LatchConstants()
@@ -61,3 +65,5 @@ class OAuth2Constants:
 
 
 oauth2_constants = OAuth2Constants()
+
+docker_image_name_illegal_pat = re.compile(r"[^a-z0-9]+")

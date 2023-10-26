@@ -56,16 +56,12 @@ t = Table(id="1234")
 
 with t.update() as updater:
     updater.upsert_record(
-        "record 1",
-        {
-            "Size": 10,
-        }
+        name="record 1",
+        Size=10
     )
     updater.upsert_record(
-        "record 2",
-        {
-            "Size": 15,
-        }
+        name="record 2",
+        Size=15
     )
 ```
 

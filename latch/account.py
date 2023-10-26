@@ -1,17 +1,22 @@
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from functools import cache
+
+try:
+    from functools import cache
+except ImportError:
+    from functools import lru_cache as cache
+
 from typing import Iterator, List, Literal, Optional, TypedDict, Union, overload
 
 import gql
 import graphql.language as l
+from latch_sdk_config.user import user_config
+from latch_sdk_gql.execute import execute
+from latch_sdk_gql.utils import _GqlJsonValue, _json_value, _name_node, _parse_selection
 from typing_extensions import Self, TypeAlias
 
-from latch.gql._execute import execute
-from latch.gql._utils import _GqlJsonValue, _json_value, _name_node, _parse_selection
 from latch.registry.project import Project
 from latch.registry.table import Table
-from latch_cli.config.user import user_config
 
 
 class _CatalogExperiment(TypedDict):
@@ -150,14 +155,12 @@ class Account:
     @overload
     def list_registry_projects(
         self, *, load_if_missing: Literal[True] = True
-    ) -> List[Project]:
-        ...
+    ) -> List[Project]: ...
 
     @overload
     def list_registry_projects(
         self, *, load_if_missing: bool
-    ) -> Optional[List[Project]]:
-        ...
+    ) -> Optional[List[Project]]: ...
 
     def list_registry_projects(
         self, *, load_if_missing: bool = True
@@ -260,7 +263,7 @@ class AccountUpdate:
         display_names: _GqlJsonValue = [x.display_name for x in upserts]
 
         res = _parse_selection("""
-            catalogMultiUpsertProjects(input: {}) {
+            catalogMultiCreateProjects(input: {}) {
                 clientMutationId
             }
             """)

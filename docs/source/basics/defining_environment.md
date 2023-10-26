@@ -102,8 +102,7 @@ run apt-get update --yes && \
     mkdir /root/.conda && \
     # docs for -b and -p flags: https://docs.anaconda.com/anaconda/install/silent-mode/#linux-macos
     bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \
-    rm -f Miniconda3-latest-Linux-x86_64.sh && \
-    conda init bash
+    rm -f Miniconda3-latest-Linux-x86_64.sh
 
 copy environment.yaml /opt/latch/environment.yaml
 run conda env create --file /opt/latch/environment.yaml --name workflow
@@ -207,7 +206,7 @@ The following Dockerfile is generated in the `subprocess` template (using `latch
 
 ```Dockerfile
 # latch base image + dependencies for latch SDK --- removing these will break the workflow
-from 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:ace9-main
+from 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:fe0b-main
 run pip install latch==2.12.1
 run mkdir /opt/latch
 

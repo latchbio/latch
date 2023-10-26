@@ -1,12 +1,18 @@
 local_install:
   python -m pip install -e .
 
-build:
+_clear:
   rm -rf __pycache__ dist build latch.egg-info
+
+_build:
   python3 setup.py sdist bdist_wheel
 
-publish:
+_upload:
   twine upload dist/*
+
+build: _clear _build
+
+publish: _clear _build _upload _clear
 
 requirements:
   pip-compile requirements.in

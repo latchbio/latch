@@ -13,8 +13,8 @@ import requests
 import websocket
 from kubernetes.client.api import core_v1_api
 from kubernetes.stream import stream
+from latch_sdk_config.latch import config
 
-from latch_cli.config.latch import config
 from latch_cli.utils import account_id_from_token, current_workspace, retrieve_or_login
 
 
@@ -31,8 +31,7 @@ def _construct_kubeconfig(
     region_code = "us-west-2"
     cluster_name = "prion-prod"
 
-    return textwrap.dedent(
-        f"""apiVersion: v1
+    return textwrap.dedent(f"""apiVersion: v1
 clusters:
 - cluster:
     certificate-authority-data: {cert_auth_data}
@@ -65,8 +64,7 @@ users:
         - name: 'AWS_SECRET_ACCESS_KEY'
           value: '{secret_key}'
         - name: 'AWS_SESSION_TOKEN'
-          value: '{session_token}'"""
-    )
+          value: '{session_token}'""")
 
 
 def _fetch_pod_info(token: str, task_name: str) -> Tuple[str, str, str]:
