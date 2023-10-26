@@ -85,12 +85,10 @@ class Project:
     # get_display_name
 
     @overload
-    def get_display_name(self, *, load_if_missing: Literal[True] = True) -> str:
-        ...
+    def get_display_name(self, *, load_if_missing: Literal[True] = True) -> str: ...
 
     @overload
-    def get_display_name(self, *, load_if_missing: bool) -> Optional[str]:
-        ...
+    def get_display_name(self, *, load_if_missing: bool) -> Optional[str]: ...
 
     def get_display_name(self, *, load_if_missing: bool = True) -> Optional[str]:
         """Get the display name of this project.
@@ -116,12 +114,10 @@ class Project:
     # list_tables
 
     @overload
-    def list_tables(self, *, load_if_missing: Literal[True] = True) -> List[Table]:
-        ...
+    def list_tables(self, *, load_if_missing: Literal[True] = True) -> List[Table]: ...
 
     @overload
-    def list_tables(self, *, load_if_missing: bool) -> Optional[List[Table]]:
-        ...
+    def list_tables(self, *, load_if_missing: bool) -> Optional[List[Table]]: ...
 
     def list_tables(self, *, load_if_missing: bool = True) -> Optional[List[Table]]:
         """List Registry tables contained in this project.

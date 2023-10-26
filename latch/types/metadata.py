@@ -1,11 +1,25 @@
 import re
-from dataclasses import asdict, dataclass, field
+import sys
+from dataclasses import Field, asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
 from textwrap import indent
-from typing import Dict, List, Optional, Tuple, Type, Union
+from typing import (
+    Any,
+    ClassVar,
+    Dict,
+    Generic,
+    List,
+    Optional,
+    Protocol,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import yaml
+from typing_extensions import TypeAlias
 
 from latch_cli.utils import identifier_suffix_from_str
 
@@ -334,15 +348,55 @@ class LatchParameter:
         return {"__metadata__": parameter_dict}
 
 
+# https://stackoverflow.com/questions/54668000/type-hint-for-an-instance-of-a-non-specific-dataclass
+class _IsDataclass(Protocol):
+    __dataclass_fields__: ClassVar[Dict[str, Field]]
+
+
+ParameterType: TypeAlias = Union[
+    Type[None],
+    Type[int],
+    Type[float],
+    Type[str],
+    Type[bool],
+    Type[Enum],
+    Type[_IsDataclass],
+    Type[List["ParameterType"]],
+]
+
+
 @dataclass
-class SnakemakeFileParameter(LatchParameter):
-    type: Optional[Union[Type[LatchFile], Type[LatchDir]]] = None
+class SnakemakeParameter(LatchParameter):
+    type: Optional[ParameterType] = None
+    """
+    The python type of the parameter.
+    """
+    # todo(ayush): needs to be typed properly
+    default: Optional[Any] = None
+
+
+@dataclass
+class SnakemakeFileParameter(SnakemakeParameter):
+    type: Optional[
+        Union[
+            Type[LatchFile],
+            Type[LatchDir],
+        ]
+    ] = None
     """
     The python type of the parameter.
     """
     path: Optional[Path] = None
     """
     The path where the file passed to this parameter will be copied.
+    """
+    config: bool = False
+    """
+    Whether or not the file path is exposed in the Snakemake config
+    """
+    download: bool = False
+    """
+    Whether or not the file is downloaded in the JIT step
     """
 
 
@@ -413,7 +467,7 @@ class LatchMetadata:
     no_standard_bulk_execution: bool = False
     """
     Disable the standard CSV-based bulk execution. Intended for workflows that
-    support an aleternative way of processing bulk data e.g. using a samplesheet
+    support an alternative way of processing bulk data e.g. using a samplesheet
     parameter
     """
     _non_standard: Dict[str, object] = field(default_factory=dict)
@@ -452,6 +506,7 @@ class LatchMetadata:
 class SnakemakeMetadata(LatchMetadata):
     output_dir: Optional[LatchDir] = None
     name: Optional[str] = None
+    parameters: Dict[str, SnakemakeParameter] = field(default_factory=dict)
 
     def __post_init__(self):
         if self.name is None:

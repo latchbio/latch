@@ -16,6 +16,140 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.36.4 - 2023-10-25
+
+### Added
+
+* Added ability to get a pandas Dataframe from a registry table.
+
+### Changed
+
+* Better error messaging for both `latch cp` and `latch mv`.
+
+## 2.36.3 - 2023-10-25
+
+### Fixed
+
+* Bug where Python 3.8 clients would crash due to a broken type annotation
+
+## 2.36.2 - 2023-10-25
+
+### Changed
+
+* Snakemake
+  + Log files are now marked as outputs - this enables rules to use logs of previous rules as inputs
+
+## 2.36.1 - 2023-10-24
+
+### Changed
+
+* `latch mv` now supports glob patterns (with the same restrictions as `latch cp`)
+
+## 2.36.0 - 2023-10-23
+
+### Added
+
+* `latch.registry.record.Record.get_table_id` method for querying the ID of the table containing a given registry record
+* `latch.registry.table.Table.get_project_id` method for querying the ID of the project containing a given registry table
+
+## 2.35.0 - 2023-10-21
+
+### Added
+
+* Snakemake
+  + Remote register support
+  + `download` field for file inputs
+  + `config` field for file inputs
+  + Blanket support for parameters of any type via the `SnakemakeParameter` class
+  + Support for generating a `latch_metadata` directory from a `config.yaml` with `latch generate-metadata`
+  + Support for default values for parameters
+
+### Changed
+
+* Snakemake
+  + JIT register step no longer downloads input files by default
+  + `latch_metadata` should now be a module (directory containing an `__init__.py` file), as opposed to just being a file
+
+## 2.34.0 - 2023-10-04
+
+### Added
+
+* Snakemake
+  + `directory` modifier for input / outputs
+  + Support `temp` by removing from compiled rules. All files / directories are
+  temporary because they are deleted at the end of each job on Latch.
+  + `multiext` output modifier
+  + `report` output modifier
+  + `params` in rules
+
+### Fixed
+
+* Snakemake
+  + Replace skipped rules with `Ellipsis`. Supports rules nested in conditionals where previously an empty block was produced.
+  + Patched parser to generate compiled code for `workflow.include` calls Compiled workflow.include should carry `print_compilation` keyword (snakemake/snakemake#2469)
+  + Detect use of `conda` keyword and install in image. This effectively supports wrapper/conda keywords.
+  + `Iterable, Generator` cause issues as type hints when imported from `collections.abc` rather than `typing`
+
+## 2.33.0 - 2023-09-29
+
+### Added
+
+* Add `latch sync` for synchronization from local to remote directories that only uploads modified content
+
+## 2.32.8 - 2023-09-07
+
+### Fixed
+
+* Snakemake:
+    - Better errors if `Snakefile` or `latch_metadata.py` file missing
+    - Correct issues with snakemake example project
+
+## 2.32.7 - 2023-09-07
+
+### Fixed
+
+* Snakemake:
+    - `--snakemake` for `latch dockerfile` command to generate `Dockerfile` with
+    necessary instructions
+
+    - Snakemake example for `latch init`
+
+## 2.32.6 - 2023-09-07
+
+### Fixed
+
+* A bug in `latch develop` where images for newly registered workflows could not be found.
+
+## 2.32.5 - 2023-08-28
+
+### Fixed
+
+* Snakemake:
+  + Ignore global ruleorder directive
+  + Ignore temporary condition on output values
+
+## 2.32.4 - 2023-08-28
+
+### Fixed
+
+* Fixed a bug in `latch ls` where `datetime.isoformat` was called on strings with timestamps (which is not supported on python < 3.11)
+
+## 2.32.3 - 2023-08-26
+
+### Fixed
+
+* Snakemake issues
+  + bounded snakemake versions to prevent compatibility issues that arise in later versions
+  + small bugs in list json encoder
+  + mishandled http issues.
+
+## 2.32.2 - 2023-08-25
+
+### Fixed
+
+* Fixed `latch ls` to work with all latch URLs
+* Fixed autocomplete bug where no completion results would be returned for longer paths
+
 ## 2.32.1 - 2023-08-24
 
 ### Fixed
@@ -256,7 +390,10 @@ Types of changes
 
 ### Dependencies
 
-* Removed `awscli`,      `uvloop`, and `prompt-toolkit` as they were unused.
+* Removed unused packages
+  + `awscli`
+  + `uvloop`
+  + `prompt-toolkit`
 
 ## 2.22.4 - 2023-06-08
 
@@ -629,9 +766,18 @@ Types of changes
 
 ### Deprecated
 
-* The commands `latch rm`,      `latch mkdir`, and `latch touch`.
-* The operators `left_join`,      `right_join`,      `inner_join`,      `outer_join`, 
-`group_tuple` , `latch_filter` , and `combine`
+* The commands
+  + `latch rm`, 
+  + `latch mkdir`, and
+  + `latch touch`.
+* The operators
+  + `left_join`, 
+  + `right_join`, 
+  + `inner_join`, 
+  + `outer_join`, 
+  + `group_tuple`, 
+  + `latch_filter`, and
+  + `combine`.
 
 ### Removed
 

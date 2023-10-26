@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, List, TypedDict
 
+import click
+
 try:
     from functools import cache
 except ImportError:
@@ -12,7 +14,7 @@ import graphql.language as l
 from latch_sdk_gql.execute import execute
 from latch_sdk_gql.utils import _name_node, _parse_selection
 
-from latch_cli.services.cp.path_utils import get_path_error, normalize_path
+from latch_cli.utils.path import get_path_error, normalize_path
 
 
 class LDataNodeType(str, Enum):
@@ -142,7 +144,8 @@ def get_node_data(
                 is_parent=is_parent,
             )
         except (TypeError, ValueError) as e:
-            raise get_path_error(remote_path, "not found", acc_id) from e
+            click.echo(get_path_error(remote_path, "not found", acc_id))
+            raise click.exceptions.Exit(1) from e
 
     return GetNodeDataResult(acc_id, ret)
 
@@ -183,6 +186,9 @@ def _get_immediate_children_of_node(path: str) -> List[str]:
         """),
         {"argPath": path},
     )["ldataResolvePathData"]
+
+    if lrpd is None:
+        return []
 
     res: List[str] = []
     for node in lrpd["childLdataTreeEdges"]["nodes"]:

@@ -155,14 +155,12 @@ class Account:
     @overload
     def list_registry_projects(
         self, *, load_if_missing: Literal[True] = True
-    ) -> List[Project]:
-        ...
+    ) -> List[Project]: ...
 
     @overload
     def list_registry_projects(
         self, *, load_if_missing: bool
-    ) -> Optional[List[Project]]:
-        ...
+    ) -> Optional[List[Project]]: ...
 
     def list_registry_projects(
         self, *, load_if_missing: bool = True

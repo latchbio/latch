@@ -70,5 +70,4 @@ def deseq2_wf(
         ),
     ] = [],
     number_of_genes_to_plot: int = 30,
-) -> LatchDir:
-    ...
+) -> LatchDir: ...

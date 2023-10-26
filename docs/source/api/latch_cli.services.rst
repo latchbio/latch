@@ -64,6 +64,14 @@ latch\_cli.services.local\_dev module
    :undoc-members:
    :show-inheritance:
 
+latch\_cli.services.local\_dev\_old module
+------------------------------------------
+
+.. automodule:: latch_cli.services.local_dev_old
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 latch\_cli.services.login module
 --------------------------------
 
@@ -100,6 +108,14 @@ latch\_cli.services.preview module
 ----------------------------------
 
 .. automodule:: latch_cli.services.preview
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+latch\_cli.services.stop\_pod module
+------------------------------------
+
+.. automodule:: latch_cli.services.stop_pod
    :members:
    :undoc-members:
    :show-inheritance:

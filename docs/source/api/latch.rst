@@ -8,7 +8,6 @@ Subpackages
    :maxdepth: 4
 
    latch.functions
-   latch.gql
    latch.registry
    latch.resources
    latch.types

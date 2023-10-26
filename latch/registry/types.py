@@ -16,13 +16,11 @@ if not TYPE_CHECKING:
         from enum import StrEnum
     except ImportError:
 
-        class StrEnum(str, Enum):
-            ...
+        class StrEnum(str, Enum): ...
 
 else:
 
-    class StrEnum(str, Enum):
-        ...
+    class StrEnum(str, Enum): ...
 
 
 @dataclass(frozen=True)

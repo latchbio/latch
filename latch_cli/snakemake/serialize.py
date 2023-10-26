@@ -4,7 +4,7 @@ import textwrap
 import traceback
 from pathlib import Path
 from textwrap import dedent
-from typing import List, Optional, Set, Union, get_args
+from typing import Dict, List, Optional, Set, Union, get_args
 
 import click
 from flyteidl.admin.launch_plan_pb2 import LaunchPlan as _idl_admin_LaunchPlan
@@ -48,7 +48,7 @@ def get_snakemake_metadata_example(name: str) -> str:
         from pathlib import Path
         from latch.types.metadata import SnakemakeMetadata, SnakemakeFileParameter
         from latch.types.file import LatchFile
-        from latch.types.metadata import LatchAuthor, LatchMetadata
+        from latch.types.metadata import LatchAuthor
 
         SnakemakeMetadata(
             display_name={repr(name)},
@@ -72,16 +72,18 @@ def ensure_snakemake_metadata_exists():
     if metadata._snakemake_metadata is None:
         click.secho(
             dedent("""
-                    No `SnakemakeMetadata` object was detected in your Snakefile. This
+                    No `SnakemakeMetadata` object was detected in your project. This
                     object needs to be defined to register this workflow with Latch.
 
-                    You can paste the following in the top of your Snakefile to get
-                    started:
+                    Create a file named `latch_metadata.py` with the following
+                    code to get started:
 
                     __example__
 
                     Find more information at docs.latch.bio.
-                    """).replace("__example__", snakemake_metadata_example),
+                    """).replace(
+                "__example__", get_snakemake_metadata_example("example_name")
+            ),
             bold=True,
             fg="red",
         )
@@ -118,11 +120,14 @@ class SnakemakeWorkflowExtractor(Workflow):
             self.rules,
             targetfiles=target_files,
             targetrules=target_rules,
+            priorityrules=set(),
+            priorityfiles=set(),
         )
 
-        self.persistence = Persistence(
-            dag=dag,
-        )
+        try:
+            self.persistence = Persistence(dag=dag)
+        except AttributeError:
+            self._persistence = Persistence(dag=dag)
 
         dag.init()
         dag.update_checkpoint_dependencies()
@@ -164,13 +169,17 @@ class SnakemakeWorkflowExtractor(Workflow):
 
 
 def snakemake_workflow_extractor(
-    pkg_root: Path, snakefile: Path, version: Optional[str] = None
+    pkg_root: Path, snakefile: Path
 ) -> SnakemakeWorkflowExtractor:
     snakefile = snakefile.resolve()
 
-    meta = pkg_root / "latch_metadata.py"
-    if meta.exists():
-        import_module_by_path(meta)
+    new_meta = pkg_root / "latch_metadata" / "__init__.py"
+    if new_meta.exists():
+        import_module_by_path(new_meta)
+
+    old_meta = pkg_root / "latch_metadata.py"
+    if old_meta.exists():
+        import_module_by_path(old_meta)
 
     extractor = SnakemakeWorkflowExtractor(
         pkg_root=pkg_root,
@@ -187,12 +196,18 @@ def snakemake_workflow_extractor(
 
 
 def extract_snakemake_workflow(
-    pkg_root: Path, snakefile: Path, version: Optional[str] = None
+    pkg_root: Path,
+    snakefile: Path,
+    jit_wf_version: str,
+    jit_exec_display_name: str,
+    local_to_remote_path_mapping: Optional[Dict[str, str]] = None,
 ) -> SnakemakeWorkflow:
-    extractor = snakemake_workflow_extractor(pkg_root, snakefile, version)
+    extractor = snakemake_workflow_extractor(pkg_root, snakefile)
     with extractor:
         dag = extractor.extract_dag()
-        wf = SnakemakeWorkflow(dag, version)
+        wf = SnakemakeWorkflow(
+            dag, jit_wf_version, jit_exec_display_name, local_to_remote_path_mapping
+        )
         wf.compile()
 
     return wf
@@ -310,6 +325,7 @@ def generate_snakemake_entrypoint(
     pkg_root: Path,
     snakefile: Path,
     remote_output_url: Optional[str] = None,
+    non_blob_parameters: Optional[Dict[str, str]] = None,
 ):
     entrypoint_code_block = textwrap.dedent(r"""
         import os
@@ -317,9 +333,11 @@ def generate_snakemake_entrypoint(
         import shutil
         import subprocess
         from subprocess import CalledProcessError
-        from typing import NamedTuple
+        from typing import NamedTuple, Dict
         import stat
         import sys
+        from dataclasses import is_dataclass, asdict
+        from enum import Enum
 
         from flytekit.extras.persistence import LatchPersistence
         import traceback
@@ -328,15 +346,18 @@ def generate_snakemake_entrypoint(
         from latch.types.directory import LatchDir
         from latch.types.file import LatchFile
 
+        from latch_cli.utils import get_parameter_json_value, urljoins, check_exists_and_rename
+
         sys.stdout.reconfigure(line_buffering=True)
         sys.stderr.reconfigure(line_buffering=True)
 
-        def check_exists_and_rename(old: Path, new: Path):
-            if new.exists():
-                print(f"A file already exists at {new} and will be overwritten.")
-                if new.is_dir():
-                    shutil.rmtree(new)
-            os.renames(old, new)
+        def update_mapping(local: Path, remote: str, mapping: Dict[str, str]):
+            if local.is_file():
+                mapping[str(local)] = remote
+                return
+
+            for p in local.iterdir():
+                update_mapping(p, urljoins(remote, p.name), mapping)
 
 
         def si_unit(num, base: float = 1000.0):
@@ -356,9 +377,12 @@ def generate_snakemake_entrypoint(
             return f"{si_unit(s.st_size):>7}B {x.name}"
 
     """).lstrip()
+
     entrypoint_code_block += "\n\n".join(
         task.get_fn_code(
-            snakefile_path_in_container(snakefile, pkg_root), remote_output_url
+            snakefile_path_in_container(snakefile, pkg_root),
+            remote_output_url,
+            non_blob_parameters,
         )
         for task in wf.snakemake_tasks
     )
@@ -386,9 +410,11 @@ def generate_jit_register_code(
         from functools import partial
         from pathlib import Path
         import shutil
-        from typing import List, NamedTuple, Optional, TypedDict
+        from typing import List, NamedTuple, Optional, TypedDict, Dict
         import hashlib
         from urllib.parse import urljoin
+        from dataclasses import is_dataclass, asdict
+        from enum import Enum
 
         import stat
         import base64
@@ -414,22 +440,31 @@ def generate_jit_register_code(
             generate_snakemake_entrypoint,
             serialize_snakemake,
         )
+        from latch_cli.utils import get_parameter_json_value, check_exists_and_rename
         import latch_cli.snakemake
+        from latch_cli.utils import urljoins
 
         from latch import small_task
         from latch_sdk_gql.execute import execute
         from latch.types.directory import LatchDir
         from latch.types.file import LatchFile
 
+        try:
+            import latch_metadata.parameters as latch_metadata
+        except ImportError:
+            import latch_metadata
+
         sys.stdout.reconfigure(line_buffering=True)
         sys.stderr.reconfigure(line_buffering=True)
 
-        def check_exists_and_rename(old: Path, new: Path):
-            if new.exists():
-                print(f"A file already exists at {new} and will be overwritten.")
-                if new.is_dir():
-                    shutil.rmtree(new)
-            os.renames(old, new)
+        def update_mapping(local: Path, remote: str, mapping: Dict[str, str]):
+            if local.is_file():
+                mapping[str(local)] = remote
+                return
+
+            for p in local.iterdir():
+                update_mapping(p, urljoins(remote, p.name), mapping)
+
 
         def si_unit(num, base: float = 1000.0):
             for unit in (" ", "k", "M", "G", "T", "P", "E", "Z"):

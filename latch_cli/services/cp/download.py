@@ -14,10 +14,10 @@ from latch_cli.constants import Units
 from latch_cli.services.cp.config import CPConfig, Progress
 from latch_cli.services.cp.ldata_utils import LDataNodeType, get_node_data
 from latch_cli.services.cp.manager import CPStateManager
-from latch_cli.services.cp.path_utils import normalize_path
 from latch_cli.services.cp.progress import ProgressBars, get_free_index
 from latch_cli.services.cp.utils import get_max_workers, human_readable_time
 from latch_cli.utils import get_auth_header, with_si_suffix
+from latch_cli.utils.path import normalize_path
 
 
 class GetSignedUrlData(TypedDict):
@@ -39,6 +39,14 @@ def download(
     dest: Path,
     config: CPConfig,
 ):
+    if not dest.parent.exists():
+        click.secho(
+            f"Invalid copy destination {dest}. Parent directory {dest.parent} does not"
+            " exist.",
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
+
     normalized = normalize_path(src)
     data = get_node_data(src)
 
@@ -63,10 +71,12 @@ def download(
     )
 
     if res.status_code != 200:
-        raise ValueError(
+        click.secho(
             f"failed to fetch presigned url(s) for path {src} with code"
-            f" {res.status_code}: {res.json()['error']}"
+            f" {res.status_code}: {res.json()['error']}",
+            fg="red",
         )
+        raise click.exceptions.Exit(1)
 
     json_data = res.json()
     if can_have_children:
@@ -78,9 +88,11 @@ def download(
         try:
             dest.mkdir(exist_ok=True)
         except FileNotFoundError as e:
-            raise ValueError(f"No such download destination {dest}") from e
-        except FileExistsError as e:
-            raise ValueError(f"Download destination {dest} is not a directory") from e
+            click.secho(f"No such download destination {dest}", fg="red")
+            raise click.exceptions.Exit(1) from e
+        except (FileExistsError, NotADirectoryError) as e:
+            click.secho(f"Download destination {dest} is not a directory", fg="red")
+            raise click.exceptions.Exit(1) from e
 
         unconfirmed_jobs: List[DownloadJob] = []
         confirmed_jobs: List[DownloadJob] = []

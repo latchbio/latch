@@ -3,6 +3,7 @@ import sys
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
+from textwrap import dedent
 from typing import Dict, Optional, Tuple
 
 import click
@@ -22,6 +23,7 @@ from latch_cli.centromere.utils import (
     _construct_ssh_client,
     _import_flyte_objects,
 )
+from latch_cli.constants import docker_image_name_illegal_pat
 from latch_cli.docker_utils import get_default_dockerfile
 from latch_cli.utils import (
     WorkflowType,
@@ -41,9 +43,6 @@ class _Container:
     dockerfile: Path
     pkg_dir: Path
     image_name: str
-
-
-docker_image_name_illegal_pat = re.compile(r"[^a-z0-9]+")
 
 
 class _CentromereCtx:
@@ -122,6 +121,16 @@ class _CentromereCtx:
                                 image_name=self.task_image_name(entity.name),
                                 pkg_dir=entity.dockerfile_path.parent,
                             )
+                if not hasattr(self, "workflow_name"):
+                    click.secho(
+                        dedent("""
+                                     Unable to locate workflow code. If you
+                                     are a registering a Snakemake project,
+                                     make sure to pass the Snakefile path with
+                                     the --snakefile flag."""),
+                        fg="red",
+                    )
+                    raise click.exceptions.Exit(1)
             else:
                 assert snakefile is not None
 
@@ -132,10 +141,18 @@ class _CentromereCtx:
                     snakemake_workflow_extractor,
                 )
 
-                meta = pkg_root / "latch_metadata.py"
-                if meta.exists():
-                    click.echo(f"Using metadata file {click.style(meta, italic=True)}")
-                    import_module_by_path(meta)
+                new_meta = pkg_root / "latch_metadata" / "__init__.py"
+                old_meta = pkg_root / "latch_metadata.py"
+                if new_meta.exists():
+                    click.echo(
+                        f"Using metadata file {click.style(new_meta, italic=True)}"
+                    )
+                    import_module_by_path(new_meta)
+                elif old_meta.exists():
+                    click.echo(
+                        f"Using metadata file {click.style(old_meta, italic=True)}"
+                    )
+                    import_module_by_path(old_meta)
                 else:
                     click.echo("Trying to extract metadata from the Snakefile")
                     try:
@@ -150,11 +167,11 @@ class _CentromereCtx:
                             fg="red",
                         )
                         click.secho(
-                            "\nIt is possible to avoid including the Snakefile prior to"
-                            " registration by providing a `latch_metadata.py` file in"
-                            " the workflow root.\nThis way it is not necessary to"
-                            " install dependencies or ensure that Snakemake inputs"
-                            " locally.",
+                            "\nIt is possible to avoid including the Snakefile"
+                            " prior to registration by providing a"
+                            " `latch_metadata.py` file in the workflow root.\nThis"
+                            " way it is not necessary to install dependencies or"
+                            " ensure that Snakemake inputs locally.",
                             fg="red",
                         )
                         click.secho("\nExample ", fg="red", nl=False)
@@ -162,7 +179,7 @@ class _CentromereCtx:
                         snakemake_metadata_example = get_snakemake_metadata_example(
                             pkg_root.name
                         )
-                        click.secho(f"`{meta}`", bold=True, fg="red", nl=False)
+                        click.secho(f"`{new_meta}`", bold=True, fg="red", nl=False)
                         click.secho(
                             f" file:\n```\n{snakemake_metadata_example}```",
                             fg="red",
@@ -175,7 +192,7 @@ class _CentromereCtx:
                             ),
                             default=True,
                         ):
-                            meta.write_text(snakemake_metadata_example)
+                            new_meta.write_text(snakemake_metadata_example)
 
                             import platform
 
@@ -193,13 +210,15 @@ class _CentromereCtx:
                                 import subprocess
 
                                 if system == "Linux":
-                                    res = subprocess.run(["xdg-open", meta]).returncode
+                                    res = subprocess.run(
+                                        ["xdg-open", new_meta]
+                                    ).returncode
                                 elif system == "Darwin":
-                                    res = subprocess.run(["open", meta]).returncode
+                                    res = subprocess.run(["open", new_meta]).returncode
                                 elif system == "Windows":
                                     import os
 
-                                    res = os.system(str(meta.resolve()))
+                                    res = os.system(str(new_meta.resolve()))
                                 else:
                                     res = None
 
@@ -207,8 +226,16 @@ class _CentromereCtx:
                                     click.secho("Failed to open file", fg="red")
                         sys.exit(1)
 
-                assert metadata._snakemake_metadata is not None
-                assert metadata._snakemake_metadata.name is not None
+                if metadata._snakemake_metadata is None:
+                    click.secho(
+                        dedent(
+                            """
+                        Make sure a `latch_metadata.py` file exists in the Snakemake
+                         project root.""",
+                        ),
+                        fg="red",
+                    )
+                    raise click.exceptions.Exit(1)
 
                 # todo(kenny): support per container task and custom workflow
                 # name for snakemake
@@ -272,8 +299,7 @@ class _CentromereCtx:
                 )
                 self.ssh_client = ssh_client
 
-                def _patched_connect(self):
-                    ...
+                def _patched_connect(self): ...
 
                 def _patched_create_paramiko_client(self, base_url):
                     self.ssh_client = ssh_client

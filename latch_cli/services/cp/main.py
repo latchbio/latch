@@ -1,12 +1,15 @@
 from pathlib import Path
+from textwrap import dedent
 from typing import List
+
+import click
 
 from latch_cli.services.cp.config import CPConfig, Progress
 from latch_cli.services.cp.download import download
 from latch_cli.services.cp.glob import expand_pattern
-from latch_cli.services.cp.path_utils import is_remote_path
 from latch_cli.services.cp.remote_copy import remote_copy
 from latch_cli.services.cp.upload import upload
+from latch_cli.utils.path import is_remote_path
 
 
 # todo(ayush): come up with a better behavior scheme than unix cp
@@ -41,8 +44,12 @@ def cp(
             else:
                 remote_copy(src, dest)
         else:
-            raise ValueError(
-                f"`latch cp` cannot be used for purely local file copying. Please make"
-                f" sure one or both of your paths is a remote path (beginning with"
-                f" `latch://`)"
+            click.secho(
+                dedent(f"""
+                `latch cp` cannot be used for purely local file copying.
+
+                Please ensure at least one of your arguments is a remote path (beginning with `latch://`)
+                """).strip("\n"),
+                fg="red",
             )
+            raise click.exceptions.Exit(1)

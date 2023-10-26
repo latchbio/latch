@@ -4,6 +4,14 @@ latch\_cli.services.cp package
 Submodules
 ----------
 
+latch\_cli.services.cp.autocomplete module
+------------------------------------------
+
+.. automodule:: latch_cli.services.cp.autocomplete
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 latch\_cli.services.cp.config module
 ------------------------------------
 
@@ -24,6 +32,14 @@ latch\_cli.services.cp.exceptions module
 ----------------------------------------
 
 .. automodule:: latch_cli.services.cp.exceptions
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+latch\_cli.services.cp.glob module
+----------------------------------
+
+.. automodule:: latch_cli.services.cp.glob
    :members:
    :undoc-members:
    :show-inheritance:

@@ -6,15 +6,18 @@ from textwrap import dedent
 from typing import Dict, Set
 
 import snakemake
+import snakemake.workflow
 from snakemake.parser import (
     INDENT,
     Benchmark,
+    Include,
     Input,
     Log,
     Output,
     Params,
     Python,
     Rule,
+    Ruleorder,
     Shell,
 )
 from snakemake.rules import Rule as RRule
@@ -27,9 +30,19 @@ def eprint(x: str) -> None:
     print(x, file=sys.stderr)
 
 
+print_compilation = os.environ.get("LATCH_PRINT_COMPILATION", False)
+if print_compilation == "1":
+    print_compilation = True
+
 data = json.loads(os.environ["LATCH_SNAKEMAKE_DATA"])
 rules = data["rules"]
 outputs = data["outputs"]
+
+non_blob_parameters = data.get("non_blob_parameters", {})
+
+# todo(ayush): do this without overwriting globals
+sw = sys.modules["snakemake.workflow"]
+setattr(sw, "config", non_blob_parameters)
 
 
 def eprint_named_list(xs):
@@ -105,12 +118,25 @@ def render_annotated_str(x) -> str:
     flags = dict(x["flags"])
 
     res = repr(value)
-    if flags.get("directory", False):
-        res = f"directory({res})"
-        del flags["directory"]
 
-    if len(flags) != 0:
-        raise RuntimeError(f"found unsupported flags: {repr(flags)}")
+    if len(flags) > 1:
+        raise RuntimeError(f"can only have one flag for {res} but found: {repr(flags)}")
+
+    if "directory" in flags:
+        res = f"directory({res})"
+
+    elif "report" in flags:
+        report_vals = flags.get("report", False)
+        res = (
+            f"report({res}, caption={repr(report_vals['caption'])},"
+            f" category={report_vals['category']})"
+        )
+
+    elif "temp" in flags:
+        # A temporary modifier is no different from a normal file as all files
+        # are deleted on Latch after a job completes.
+        # https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#protected-and-temporary-files
+        del flags["temp"]
 
     return res
 
@@ -140,10 +166,23 @@ def emit_overrides(self, token):
     else:
         raise ValueError(f"tried to emit overrides for unknown state: {type(self)}")
 
-    positional_data = (render_annotated_str_list(x) for x in xs["positional"])
-    keyword_data = (
-        f"{k}={render_annotated_str_list(v)}" for k, v in xs["keyword"].items()
-    )
+    if (
+        isinstance(self, Output)
+        and len(xs["positional"]) > 0
+        and xs["positional"][0].get("flags") is not None
+        and "multiext" in xs["positional"][0].get("flags")
+    ):
+        filename = repr(xs["positional"][0]["flags"]["multiext"])
+        exts = [repr("." + x["value"].split(".")[-1]) for x in xs["positional"]]
+        positional_data = (f"multiext({filename},{','.join(exts)})",)
+    else:
+        positional_data = (render_annotated_str_list(x) for x in xs["positional"])
+
+    modifier_fn = render_annotated_str_list
+    if isinstance(self, Params):
+        modifier_fn = repr
+
+    keyword_data = (f"{k}={modifier_fn(v)}" for k, v in xs["keyword"].items())
     data = chain(positional_data, keyword_data)
 
     for x in data:
@@ -174,16 +213,33 @@ def skipping_block_content(self, token):
     emitted_overrides.add(self.rulename)
 
 
+def block_content_with_print_compilation(self, token):
+    if print_compilation:
+        yield f"{token.string}, print_compilation=True", token
+    else:
+        yield token.string, token
+
+
 Input.block_content = skipping_block_content
 Output.block_content = skipping_block_content
 Params.block_content = skipping_block_content
 Benchmark.block_content = skipping_block_content
 Log.block_content = skipping_block_content
+Ruleorder.block_content = lambda self, token: None
+Include.block_content = block_content_with_print_compilation
 
 
 class SkippingRule(Rule):
     def start(self, aux=""):
         if self.rulename not in rules:
+            # Rules can be nested in conditional statements:
+            #
+            # if (<condition>):
+            #   rule A:
+            #       <stuff>
+            #
+            # We want correct python code if we remove them.
+            yield "..."
             return
 
         yield from super().start(aux)
