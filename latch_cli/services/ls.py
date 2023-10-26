@@ -121,7 +121,9 @@ def ls(path: str, *, group_directories_first: bool = False):
     if res is None:
         click.secho(
             dedent(f"""
-            {bold(path)}: no such file or directory.
+            {bold(path)}: no such directory.
+
+            Resolved to: {bold(normalized_path)}
 
             {bold("Check that:")}
             1. The target directory exists,
@@ -132,7 +134,7 @@ def ls(path: str, *, group_directories_first: bool = False):
             """).strip("\n"),
             fg="red",
         )
-        return
+        raise click.exceptions.Exit(1)
 
     nodes = res["finalLinkTarget"]["childLdataTreeEdges"]["nodes"]
     if LDataNodeType(res["type"].lower()) == LDataNodeType.obj:

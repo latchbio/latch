@@ -22,6 +22,10 @@ Types of changes
 
 * Added ability to get a pandas Dataframe from a registry table.
 
+### Changed
+
+* Better error messaging for both `latch cp` and `latch mv`.
+
 ## 2.36.3 - 2023-10-25
 
 ### Fixed
