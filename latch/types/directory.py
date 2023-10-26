@@ -17,7 +17,7 @@ from latch_sdk_gql.execute import execute
 from typing_extensions import Annotated
 
 from latch.types.file import LatchFile
-from latch.types.utils import _is_valid_url, format_path
+from latch.types.utils import _format_path, _is_valid_url
 from latch_cli.utils import urljoins
 from latch_cli.utils.path import normalize_path
 
@@ -244,18 +244,18 @@ class LatchDir(FlyteDirectory):
 
     def __repr__(self):
         if self.remote_path is None:
-            return f"LatchDir({repr(format_path(self.local_path))})"
+            return f"LatchDir({repr(_format_path(self.local_path))})"
 
         return (
             f"LatchDir({repr(self.path)},"
-            f" remote_path={repr( format_path(self.remote_path))})"
+            f" remote_path={repr( _format_path(self.remote_path))})"
         )
 
     def __str__(self):
         if self.remote_path is None:
             return "LatchDir()"
 
-        return f"LatchDir({format_path(self.remote_path)})"
+        return f"LatchDir({_format_path(self.remote_path)})"
 
 
 LatchOutputDir = Annotated[

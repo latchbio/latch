@@ -1,6 +1,6 @@
 import re
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 from urllib.parse import urlparse
 
 import gql
@@ -23,10 +23,13 @@ def _is_valid_url(raw_url: Union[str, Path]) -> bool:
     return True
 
 
-is_absolute_node_path = re.compile(r"^(latch)?://(?P<node_id>\d+).node(/)?$")
+_is_absolute_node_path = re.compile(r"^(latch)?://(?P<node_id>\d+).node(/)?$")
 
-def format_path(path: str) -> str:
-    match = is_absolute_node_path.match(path)
+_old_path_expr = re.compile(r"^(?:(?P<account_root>account_root)|(?P<mount>mount))")
+
+
+def _format_path(path: str) -> str:
+    match = _is_absolute_node_path.match(path)
 
     if match is None:
         return path
@@ -43,21 +46,27 @@ def format_path(path: str) -> str:
         {"id": node_id},
     )
 
-    raw_path = data["ldataGetPath"]
-    owner = data["ldataOwner"]
-
+    raw_path: Optional[str] = data["ldataGetPath"]
     if raw_path is None:
         return path
 
     path_split = raw_path.split("/")
 
-    if path_split[0] == "mount":
-        mount_name = path_split[1]
-        fpath = "/".join(path_split[2:])
-        return f"latch://{mount_name}.mount/{fpath}"
+    match = _old_path_expr.match(raw_path)
+    if match is None:
+        return path
 
-    if path_split[0] == "account_root":
-        fpath = "/".join(path_split[2:])
-        return f"latch://{owner}.account/{fpath}"
+    if match["mount"] is not None:
+        bucket = path_split[1]
+        key = "/".join(path_split[2:])
+        return f"latch://{bucket}.mount/{key}"
+
+    owner: Optional[str] = data["ldataOwner"]
+    if owner is None:
+        return path
+
+    if match["account_root"] is not None:
+        key = "/".join(path_split[2:])
+        return f"latch://{owner}.account/{key}"
 
     return path

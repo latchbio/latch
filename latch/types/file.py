@@ -14,7 +14,7 @@ from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
 from latch_sdk_gql.execute import execute
 from typing_extensions import Annotated
 
-from latch.types.utils import _is_valid_url, format_path, is_absolute_node_path
+from latch.types.utils import _format_path, _is_absolute_node_path, _is_valid_url
 from latch_cli.utils.path import normalize_path
 
 
@@ -94,7 +94,7 @@ class LatchFile(FlyteFile):
                     and ctx.inspect_objects_only is False
                 ):
                     local_path_hint = self._remote_path
-                    if is_absolute_node_path.match(self._remote_path) is not None:
+                    if _is_absolute_node_path.match(self._remote_path) is not None:
                         data = execute(
                             gql.gql("""
                             query getName($argPath: String!) {
@@ -154,17 +154,17 @@ class LatchFile(FlyteFile):
 
     def __repr__(self):
         if self.remote_path is None:
-            return f"LatchFile({repr(format_path(self.local_path))})"
+            return f"LatchFile({repr(_format_path(self.local_path))})"
 
         return (
             f"LatchFile({repr(self.path)},"
-            f" remote_path={repr(format_path(self.remote_path))})"
+            f" remote_path={repr(_format_path(self.remote_path))})"
         )
 
     def __str__(self):
         if self.remote_path is None:
             return "LatchFile()"
-        return f"LatchFile({format_path(self.remote_path)})"
+        return f"LatchFile({_format_path(self.remote_path)})"
 
 
 LatchOutputFile = Annotated[
