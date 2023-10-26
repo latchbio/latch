@@ -125,8 +125,7 @@ def _get_large_pod() -> Pod:
 
 
 def _get_medium_pod() -> Pod:
-    """[ "m5.8xlarge", "m5ad.8xlarge", "m5d.8xlarge", "m5n.8xlarge", "m5dn.8xlarge", "m5a.8xlarge" ]
-    """
+    """[ "m5.8xlarge", "m5ad.8xlarge", "m5d.8xlarge", "m5n.8xlarge", "m5dn.8xlarge", "m5a.8xlarge" ]"""
 
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
@@ -360,7 +359,7 @@ def custom_memory_optimized_task(cpu: int, memory: int):
         ),
         primary_container_name="primary",
     )
-    return functools.partial(task(task_config=task_config))
+    return functools.partial(task, task_config=task_config)
 
 
 def custom_task(cpu: int, memory: int, *, storage_gib: int = 500):
@@ -463,4 +462,4 @@ def custom_task(cpu: int, memory: int, *, storage_gib: int = 500):
                 " 4949 GiB)"
             )
 
-    return functools.partial(task(task_config=task_config))
+    return functools.partial(task, task_config=task_config)

@@ -2,13 +2,18 @@
 
 import hashlib
 import os
+import shutil
+import stat
 import subprocess
 import urllib.parse
+from dataclasses import asdict, is_dataclass
 from datetime import datetime, timedelta
+from enum import Enum
 from pathlib import Path
 from typing import List
 from urllib.parse import urljoin
 
+import click
 import jwt
 from latch_sdk_config.user import user_config
 
@@ -55,6 +60,23 @@ def urljoins(*args: str, dir: bool = False) -> str:
     return res
 
 
+class AuthenticationError(RuntimeError): ...
+
+
+def get_auth_header() -> str:
+    sdk_token = user_config.token
+    execution_token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
+
+    if sdk_token is not None and sdk_token != "":
+        header = f"Latch-SDK-Token {sdk_token}"
+    elif execution_token is not None:
+        header = f"Latch-Execution-Token {execution_token}"
+    else:
+        raise AuthenticationError("Unable to find authentication credentials.")
+
+    return header
+
+
 def retrieve_or_login() -> str:
     """Returns a valid JWT to access Latch, prompting a login flow if needed.
 
@@ -75,6 +97,7 @@ def current_workspace() -> str:
     if ws == "":
         ws = account_id_from_token(retrieve_or_login())
         user_config.update_workspace(ws, "Personal Workspace")
+
     return ws
 
 
@@ -155,23 +178,29 @@ def with_si_suffix(num, suffix="B", styled=False):
 
 
 def hash_directory(dir_path: Path) -> str:
+    # todo(maximsmol): store per-file hashes to show which files triggered a version change
+    click.secho("Calculating workflow version based on file content hash", bold=True)
+    click.secho("  Disable with --disable-auto-version/-d", italic=True, dim=True)
+
     m = hashlib.new("sha256")
     m.update(current_workspace().encode("utf-8"))
 
     ignore_file = dir_path / ".dockerignore"
-    exclude: List[str] = []
+    exclude: List[str] = ["/.latch", ".git"]
     try:
-        for l in ignore_file.open("r"):
-            l = l.strip()
+        with ignore_file.open("r") as f:
+            click.secho("  Using .dockerignore", italic=True)
 
-            if l == "":
-                continue
-            if l[0] == "#":
-                continue
+            for l in f:
+                l = l.strip()
 
-            exclude.append(l)
-    except FileNotFoundError:
-        print("No .dockerignore file found --- including all files")
+                if l == "":
+                    continue
+                if l[0] == "#":
+                    continue
+
+                exclude.append(l)
+    except FileNotFoundError: ...
 
     from docker.utils import exclude_paths
 
@@ -179,23 +208,35 @@ def hash_directory(dir_path: Path) -> str:
     paths.sort()
 
     for item in paths:
-        # for repeatability guarantees
         p = Path(dir_path / item)
-        if p.is_dir():
-            m.update(str(p).encode("utf-8"))
+
+        p_stat = p.stat()
+        if stat.S_ISDIR(p_stat.st_mode):
+            m.update(p.name.encode("utf-8"))
             continue
 
-        m.update(str(p).encode("utf-8"))
-        file_size = p.stat().st_size
-        if file_size < latch_constants.file_max_size:
-            m.update(p.read_bytes())
-        else:
-            print(
-                "\x1b[38;5;226m"
-                f"WARNING: {p.relative_to(dir_path.resolve())} is too large "
-                f"({with_si_suffix(file_size)}) to checksum, skipping."
-                "\x1b[0m"
+        m.update(p.name.encode("utf-8"))
+
+        file_size = p_stat.st_size
+        if not stat.S_ISREG(p_stat.st_mode):
+            click.secho(
+                f"{p.relative_to(dir_path.resolve())} is not a regular file. Ignoring"
+                " contents",
+                fg="yellow",
+                bold=True,
             )
+            continue
+
+        if file_size > latch_constants.file_max_size:
+            click.secho(
+                f"{p.relative_to(dir_path.resolve())} is too large"
+                f" ({with_si_suffix(file_size)}) to checksum. Ignoring contents",
+                fg="yellow",
+                bold=True,
+            )
+            continue
+
+        m.update(p.read_bytes())
 
     return m.hexdigest()
 
@@ -241,8 +282,7 @@ def generate_temporary_ssh_credentials(ssh_key_path: Path) -> str:
     except subprocess.CalledProcessError as e:
         raise ValueError(
             "There was an issue adding temporary SSH credentials to your SSH Agent."
-            " Please ensure that your SSH Agent is running, or (re)start it manually by"
-            " running\n\n    $ eval `ssh-agent -s`\n\n"
+            " Please ensure that your SSH Agent is running"
         ) from e
 
     # decode private key into public key
@@ -330,3 +370,64 @@ class TemporarySSHCredentials:
 
     def __exit__(self, type, value, traceback):
         self.cleanup()
+
+
+class WorkflowType(Enum):
+    latchbiosdk = "latchbiosdk"
+    snakemake = "snakemake"
+
+
+def identifier_suffix_from_str(x: str) -> str:
+    res = ""
+    for c in x:
+        res += c if f"_{c}".isidentifier() else "_"
+    return res
+
+
+def identifier_from_str(x: str) -> str:
+    return (x[0] if x[0].isidentifier() else "_") + identifier_suffix_from_str(x[1:])
+
+
+def get_parameter_json_value(v):
+    if is_dataclass(v):
+        return asdict(v)
+    elif isinstance(v, Enum):
+        return v.value
+    elif isinstance(v, list):
+        return [get_parameter_json_value(x) for x in v]
+    elif isinstance(v, dict):
+        return {k: get_parameter_json_value(x) for k, x in v.items()}
+    else:
+        return v
+
+
+def check_exists_and_rename(old: Path, new: Path):
+    if not new.exists():
+        os.renames(old, new)
+        return
+
+    if old.is_file():
+        if new.is_file():
+            print(f"Warning: A file already exists at {new} and will be overwritten.")
+            os.renames(old, new)
+            return
+
+        print(
+            f"Warning: {old} is a file but {new} is not. Everything within {new} will"
+            " be overwritten."
+        )
+        shutil.rmtree(new)
+        os.renames(old, new)
+        return
+
+    if new.is_file():
+        print(
+            f"Warning: {old} is a directory but {new} is not. {new} will be"
+            " overwritten."
+        )
+        shutil.rmtree(new)
+        os.renames(old, new)
+        return
+
+    for sub in old.iterdir():
+        check_exists_and_rename(sub, new / sub.name)

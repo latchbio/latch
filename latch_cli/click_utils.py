@@ -51,8 +51,7 @@ class LatchCommand(Command):
         )
 
 
-class LatchGroup(LatchCommand, Group):
-    ...
+class LatchGroup(LatchCommand, Group): ...
 
 
 def colored_exception_show(self, file: Optional[IO] = None) -> None:
@@ -100,6 +99,10 @@ def patch():
 
     click.ClickException.show = colored_exception_show
     click.UsageError.show = colored_usage_error_show
+
+
+def bold(s: str) -> str:
+    return f"{AnsiCodes.bold}{s}{AnsiCodes.reset}"
 
 
 class AnsiCodes:

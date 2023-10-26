@@ -76,5 +76,4 @@ def rnaseq(
     salmon_index: Optional[LatchFile] = None,
     save_indices: bool = False,
     custom_output_dir: Optional[LatchDir] = None,
-) -> List[LatchFile]:
-    ...
+) -> List[LatchFile]: ...

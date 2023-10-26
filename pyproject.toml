@@ -1,17 +1,20 @@
 [tool.poetry.dev-dependencies]
-black = "^23.3.0"
+black = "^23.9.1"
 isort = "^5.12.0"
 ruff = "^0.0.261"
 
+[tool.pyright]
+pythonVersion = "3.8"
+
 [tool.black]
 preview = true
-target-version = ["py39"]
+target-version = ["py38"]
 
 [tool.isort]
 profile = "black"
 
 [tool.ruff]
-target-version = "py39"
+target-version = "py38"
 pydocstyle = { convention = "google" }
 extend-select = ["W", "D", "U", "N", "C", "B", "A", "T", "Q", "RUF100"]
 extend-ignore = [
@@ -34,3 +37,6 @@ extend-ignore = [
   "UP006",
   "UP035",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

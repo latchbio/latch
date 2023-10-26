@@ -1,10 +1,10 @@
 """Entrypoints to service functions through a latch_cli."""
 
 import os
-import textwrap
-from collections import OrderedDict
+import sys
 from pathlib import Path
-from typing import List, Optional, Union
+from textwrap import dedent
+from typing import List, Optional, Tuple, Union
 
 import click
 from packaging.version import parse as parse_version
@@ -17,7 +17,13 @@ from latch_cli.services.cp.autocomplete import remote_complete
 from latch_cli.services.cp.config import Progress
 from latch_cli.services.init.init import template_flag_to_option
 from latch_cli.services.local_dev import TaskSize
-from latch_cli.utils import get_latest_package_version, get_local_package_version
+from latch_cli.utils import (
+    AuthenticationError,
+    WorkflowType,
+    get_auth_header,
+    get_latest_package_version,
+    get_local_package_version,
+)
 from latch_cli.workflow_config import BaseImageOptions
 
 latch_cli.click_utils.patch()
@@ -37,16 +43,28 @@ def main():
     Collection of command line tools for using the Latch SDK and
     interacting with the Latch platform.
     """
+    try:
+        get_auth_header()
+    except AuthenticationError as e:
+        click.secho(
+            dedent("""
+            Unable to authenticate with Latch.
+
+            If you are on a machine with a browser, run `latch login`.
+            If not, navigate to `https://console.latch.bio/settings/developer` on a different machine, select `Access Tokens`, and copy your `API Key` to `~/.latch/token` on this machine.
+            """).strip("\n"),
+            fg="red",
+        )
+        raise click.exceptions.Exit() from e
+
     local_ver = parse_version(get_local_package_version())
     latest_ver = parse_version(get_latest_package_version())
     if local_ver < latest_ver:
         click.secho(
-            textwrap.dedent(
-                f"""
+            dedent(f"""
                 WARN: Your local version of latch ({local_ver}) is out of date. This may result in unexpected behavior.
                 Please upgrade to the latest version ({latest_ver}) using `python3 -m pip install --upgrade latch`.
-                """
-            ).strip("\n"),
+                """).strip("\n"),
             fg="yellow",
         )
 
@@ -55,7 +73,15 @@ def main():
 
 @main.command("dockerfile")
 @click.argument("pkg_root", type=click.Path(exists=True, file_okay=False))
-def dockerfile(pkg_root: str):
+@click.option(
+    "-s",
+    "--snakemake",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Generate a Dockerfile with arguments needed for Snakemake compatability",
+)
+def dockerfile(pkg_root: str, snakemake: bool = False):
     """Generates a user editable dockerfile for a workflow and saves under `pkg_root/Dockerfile`.
 
     Visit docs.latch.bio to learn more.
@@ -72,7 +98,10 @@ def dockerfile(pkg_root: str):
         f"Dockerfile already exists at `{dest}`. Overwrite?"
     ):
         return
-    generate_dockerfile(source, dest)
+    workflow_type = WorkflowType.latchbiosdk
+    if snakemake is True:
+        workflow_type = WorkflowType.snakemake
+    generate_dockerfile(source, dest, wf_type=workflow_type)
 
     click.secho(f"Successfully generated dockerfile `{dest}`", fg="green")
 
@@ -98,6 +127,16 @@ def dockerfile(pkg_root: str):
     help="Use a remote server to build workflow.",
 )
 @click.option(
+    "--docker-progress",
+    type=click.Choice(["plain", "tty", "auto"], case_sensitive=False),
+    default="auto",
+    help=(
+        "`tty` shows only the last N lines of the build log. `plain` does no special"
+        " handling. `auto` chooses `tty` when stdout is a terminal and `plain`"
+        " otherwise. Equivalent to Docker's `--progress` flag."
+    ),
+)
+@click.option(
     "-y",
     "--yes",
     is_flag=True,
@@ -105,7 +144,20 @@ def dockerfile(pkg_root: str):
     type=bool,
     help="Skip the confirmation dialog.",
 )
-def register(pkg_root: str, disable_auto_version: bool, remote: bool, yes: bool):
+@click.option(
+    "--snakefile",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Path to a Snakefile to register.",
+)
+def register(
+    pkg_root: str,
+    disable_auto_version: bool,
+    remote: bool,
+    docker_progress: str,
+    yes: bool,
+    snakefile: Optional[Path],
+):
     """Register local workflow code to Latch.
 
     Visit docs.latch.bio to learn more.
@@ -123,6 +175,9 @@ def register(pkg_root: str, disable_auto_version: bool, remote: bool, yes: bool)
         disable_auto_version=disable_auto_version,
         remote=remote,
         skip_confirmation=yes,
+        snakefile=snakefile,
+        progress_plain=(docker_progress == "auto" and not sys.stdout.isatty())
+        or docker_progress == "plain",
         use_new_centromere=use_new_centromere,
     )
 
@@ -292,9 +347,17 @@ def cp(
 
 
 @main.command("mv")
-@click.argument("src", shell_complete=remote_complete, nargs=-1)
+@click.argument("src", shell_complete=remote_complete, nargs=1)
 @click.argument("dest", shell_complete=remote_complete, nargs=1)
-def mv(src: str, dest: str):
+@click.option(
+    "--no-glob",
+    "-G",
+    help="Don't expand globs in remote paths",
+    is_flag=True,
+    default=False,
+    show_default=True,
+)
+def mv(src: str, dest: str, no_glob: bool):
     """Move remote files in LatchData."""
 
     crash_handler.message = f"Unable to move {src} to {dest}"
@@ -302,7 +365,7 @@ def mv(src: str, dest: str):
 
     from latch_cli.services.move import move
 
-    move(src, dest)
+    move(src, dest, no_glob=no_glob)
 
 
 @main.command("ls")
@@ -313,103 +376,72 @@ def mv(src: str, dest: str):
     is_flag=True,
     default=False,
 )
-# todo(maximsmol): enable once ls uses gql and supports new paths
-# @click.argument("remote_directories", nargs=-1, shell_complete=remote_complete)
-@click.argument("remote_directories", nargs=-1)
-def ls(group_directories_first: bool, remote_directories: Union[None, List[str]]):
+@click.argument("paths", nargs=-1, shell_complete=remote_complete)
+def ls(paths: Tuple[str], group_directories_first: bool):
     """
     List the contents of a Latch Data directory
     """
 
-    crash_handler.message = f"Unable to display contents of {remote_directories}"
+    crash_handler.message = f"Unable to display contents of {paths}"
     crash_handler.pkg_root = str(Path.cwd())
 
-    from datetime import datetime
-
     from latch_cli.services.ls import ls
-    from latch_cli.utils import with_si_suffix
 
     # If the user doesn't provide any arguments, default to root
-    if not remote_directories:
-        remote_directories = ["latch:///"]
+    if len(paths) == 0:
+        paths = ("/",)
 
-    for remote_directory in remote_directories:
-        if len(remote_directories) > 1:
-            click.echo(f"{remote_directory}:")
+    for path in paths:
+        if len(paths) > 1:
+            click.echo(f"{path}:")
 
-        output = ls(remote_directory)
-
-        output.sort(key=lambda row: row["name"])
-        if group_directories_first:
-            output.sort(key=lambda row: row["type"])
-
-        formatted = []
-        for row in output:
-            vals = {
-                "contentSize": (
-                    click.style(
-                        with_si_suffix(int(row["contentSize"]), suffix="", styled=True),
-                        fg="bright_green",
-                    )
-                    if row["contentSize"] != "-" and row["type"] != "dir"
-                    else click.style("-", dim=True)
-                ),
-                "modifyTime": (
-                    click.style(
-                        datetime.fromisoformat(row["modifyTime"]).strftime(
-                            "%d %b %H:%M"
-                        ),
-                        fg="blue",
-                    )
-                    if row["modifyTime"] != "-" and row["type"] != "dir"
-                    else click.style("-", dim=True)
-                ),
-                "name": (
-                    row["name"] if len(row["name"]) <= 50 else f"{row['name'][:47]}..."
-                ),
-            }
-
-            if row["type"] == "dir":
-                vals["name"] = (
-                    click.style(row["name"], fg="bright_blue", bold=True) + "/"
-                )
-
-            formatted.append(vals)
-
-        columns = OrderedDict(
-            contentSize="Size", modifyTime="Date Modified", name="Name"
+        ls(
+            path,
+            group_directories_first=group_directories_first,
         )
 
-        column_width = {key: len(title) for key, title in columns.items()}
-        for row in formatted:
-            for key in columns:
-                column_width[key] = max(column_width[key], len(click.unstyle(row[key])))
+        if len(paths) > 1:
+            click.echo("")
 
-        def pad_styled(x: str, l: int, align_right=False):
-            cur = len(click.unstyle(x))
 
-            pad = " " * (l - cur)
-            if align_right:
-                return pad + x
-            return x + pad
+@main.command("generate-metadata")
+@click.argument("config_file", nargs=1, type=click.Path(exists=True, path_type=Path))
+@click.option(
+    "--yes",
+    "-y",
+    is_flag=True,
+    default=False,
+    help=(
+        "Overwrite an existing `latch_metadata/parameters.py` file without confirming."
+    ),
+)
+@click.option(
+    "--no-infer-files",
+    "-I",
+    is_flag=True,
+    default=False,
+    help="Don't parse strings with common file extensions as file parameters.",
+)
+@click.option(
+    "--no-defaults",
+    "-D",
+    is_flag=True,
+    default=False,
+    help="Don't generate defaults for parameters.",
+)
+def generate_metadata(
+    config_file: Path, yes: bool, no_infer_files: bool, no_defaults: bool
+):
+    """Generate a `latch_metadata.py` file from a Snakemake config file"""
 
-        click.echo(
-            " ".join(
-                pad_styled(
-                    click.style(title, underline=True),
-                    column_width[key],
-                    key == "contentSize",
-                )
-                for key, title in columns.items()
-            )
-        )
-        for row in formatted:
-            click.echo(
-                " ".join(
-                    pad_styled(row[k], column_width[k], k == "contentSize")
-                    for k in columns
-                )
-            )
+    from latch_cli.snakemake.config.parser import generate_metadata
+
+    generate_metadata(
+        config_file,
+        skip_confirmation=yes,
+        infer_files=not no_infer_files,
+        generate_defaults=not no_defaults,
+    )
 
 
 @main.command("launch")
@@ -532,7 +564,7 @@ def mkdir(remote_directory: str):
     from latch_cli.services.deprecated.mkdir import mkdir
 
     click.secho(
-        f"Warning: `latch mkdir` is deprecated and will be removed soon.",
+        "Warning: `latch mkdir` is deprecated and will be removed soon.",
         fg="yellow",
     )
     mkdir(remote_directory)
@@ -549,7 +581,7 @@ def touch(remote_file: str):
     from latch_cli.services.deprecated.touch import touch
 
     click.secho(
-        f"Warning: `latch touch` is deprecated and will be removed soon.",
+        "Warning: `latch touch` is deprecated and will be removed soon.",
         fg="yellow",
     )
     touch(remote_file)
@@ -582,8 +614,7 @@ def preview(pkg_root: Path):
 
 @main.command("workspace")
 def workspace():
-    """Spawns an interactive terminal prompt allowing users to choose what workspace they want to work in.
-    """
+    """Spawns an interactive terminal prompt allowing users to choose what workspace they want to work in."""
 
     crash_handler.message = "Unable to fetch workspaces"
     crash_handler.pkg_root = str(Path.cwd())
@@ -595,8 +626,7 @@ def workspace():
 
 @main.command("get-executions")
 def get_executions():
-    """Spawns an interactive terminal UI that shows all executions in a given workspace
-    """
+    """Spawns an interactive terminal UI that shows all executions in a given workspace"""
 
     crash_handler.message = "Unable to fetch executions"
 
@@ -604,10 +634,12 @@ def get_executions():
 
     get_executions()
 
+
 @main.group()
 def pods():
     """Manage pods"""
     pass
+
 
 @pods.command("stop")
 @click.argument("pod_id", nargs=1, type=int, required=False)
@@ -700,3 +732,36 @@ def test_data_ls():
     click.secho("Listing your managed objects by full S3 path.\n", fg="green")
     for o in objects:
         print(f"\ts3://latch-public/{o}")
+
+
+@main.command()
+@click.argument("srcs", nargs=-1)
+@click.argument("dst", nargs=1)
+@click.option(
+    "--delete",
+    help="Delete extraneous files from destination.",
+    is_flag=True,
+    default=False,
+)
+@click.option(
+    "--ignore-unsyncable",
+    help=(
+        "Synchronize even if some source paths do not exist or refer to special files."
+    ),
+    is_flag=True,
+    default=False,
+)
+def sync(srcs: List[str], dst: str, delete: bool, ignore_unsyncable: bool):
+    """
+    Update the contents of a remote directory with local data or vice versa.
+    """
+    from latch_cli.services.sync import sync
+
+    # todo(maximsmol): remote -> local
+    # todo(maximsmol): remote -> remote
+    sync(
+        srcs,
+        dst,
+        delete=delete,
+        ignore_unsyncable=ignore_unsyncable,
+    )

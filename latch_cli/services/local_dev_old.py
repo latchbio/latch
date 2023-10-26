@@ -9,6 +9,7 @@ import time
 import traceback
 import tty
 from enum import Enum
+from http.client import HTTPException
 from pathlib import Path
 from textwrap import dedent
 from typing import Callable, Optional, Tuple, Union
@@ -17,26 +18,57 @@ import aioconsole
 import asyncssh
 import boto3
 import click
-import websockets.client as websockets
+import websockets.client as client
 import websockets.exceptions
 from latch_sdk_config.latch import config
 from watchfiles import awatch
 
-from latch_cli.constants import latch_constants
+from latch_cli.constants import docker_image_name_illegal_pat
 from latch_cli.tinyrequests import post
 from latch_cli.utils import (
     TemporarySSHCredentials,
     current_workspace,
+    identifier_suffix_from_str,
     retrieve_or_login,
 )
 
 
+def _get_workflow_name(pkg_root: Path) -> str:
+    from flytekit.core.context_manager import FlyteEntities
+    from flytekit.core.workflow import PythonFunctionWorkflow
+
+    from latch_cli.centromere.utils import _import_flyte_objects
+
+    _import_flyte_objects([pkg_root])
+    for entity in FlyteEntities.entities:
+        if isinstance(entity, PythonFunctionWorkflow):
+            return entity.name
+
+    click.secho(
+        dedent(f"""
+        Unable to find a workflow in {pkg_root}: Check that
+
+        1. {pkg_root} is a valid workflow directory, and
+        2. Your workflow function has the @workflow decorator.
+        """).strip("\n"),
+        fg="red",
+    )
+    raise click.exceptions.Exit(1)
+
+
 def _get_latest_image(pkg_root: Path) -> str:
+    click.secho("Image name: ", fg="blue", nl=False)
+
     ws_id = current_workspace()
     if int(ws_id) < 10:
         ws_id = f"x{ws_id}"
 
-    registry_name = f"{ws_id}_{pkg_root.name}"
+    wf_name = identifier_suffix_from_str(_get_workflow_name(pkg_root)).lower()
+    wf_name = docker_image_name_illegal_pat.sub("_", wf_name)
+
+    registry_name = f"{ws_id}_{wf_name}"
+
+    click.secho(registry_name, italic=True, bold=True)
 
     resp = post(
         config.api.workflow.get_latest,
@@ -49,14 +81,45 @@ def _get_latest_image(pkg_root: Path) -> str:
 
     try:
         resp.raise_for_status()
+        click.secho("Found image. Using version ", nl=False)
         latest_version = resp.json()["version"]
-    except:
-        raise ValueError(
-            "There was an issue getting your workflow's docker image. Please make sure"
-            " you've registered your workflow at least once."
+        click.secho(latest_version, italic=True, bold=True)
+    except HTTPException:
+        click.secho("Could not find any images. Retrying with new image name.\n")
+        click.secho("Image name: ", fg="blue", nl=False)
+
+        registry_name = f"{ws_id}_{pkg_root.name}"
+
+        click.secho(registry_name, italic=True, bold=True)
+
+        resp = post(
+            config.api.workflow.get_latest,
+            headers={"Authorization": f"Bearer {retrieve_or_login()}"},
+            json={
+                "registry_name": registry_name,
+                "ws_account_id": current_workspace(),
+            },
         )
 
-    return f"{config.dkr_repo}/{ws_id}_{pkg_root.name}:{latest_version}"
+        try:
+            resp.raise_for_status()
+            click.secho("Found image. Using version ", nl=False)
+            latest_version = resp.json()["version"]
+            click.secho(latest_version, italic=True, bold=True)
+        except HTTPException as e:
+            click.secho("Could not find any images.\n")
+
+            click.secho(
+                dedent("""
+                There was an issue getting your workflow's docker image.
+
+                Please make sure you've registered your workflow at least once.
+                """).strip("\n"),
+                fg="red",
+            )
+            raise click.exceptions.Exit(1)
+
+    return f"{config.dkr_repo}/{registry_name}:{latest_version}"
 
 
 rsync_stop_event = asyncio.Event()
@@ -124,7 +187,7 @@ class _MessageType(Enum):
 
 
 async def _get_messages(
-    ws: websockets.WebSocketClientProtocol,
+    ws: client.WebSocketClientProtocol,
     show_output: bool,
 ):
     async for message in ws:
@@ -140,7 +203,7 @@ async def _get_messages(
 
 
 async def _send_message(
-    ws: websockets.WebSocketClientProtocol,
+    ws: client.WebSocketClientProtocol,
     message: Union[str, bytes],
     typ: Optional[_MessageType] = None,
 ):
@@ -156,7 +219,7 @@ async def _send_message(
 
 
 async def _send_resize_message(
-    ws: websockets.WebSocketClientProtocol,
+    ws: client.WebSocketClientProtocol,
     term_width: int,
     term_height: int,
 ):
@@ -173,7 +236,7 @@ async def _send_resize_message(
 
 
 async def _shell_session(
-    ws: websockets.WebSocketClientProtocol,
+    ws: client.WebSocketClientProtocol,
 ):
     old_settings_stdin = termios.tcgetattr(sys.stdin.fileno())
     tty.setraw(sys.stdin)
@@ -238,17 +301,17 @@ async def _shell_session(
                 return
 
             message = obj.get("Body")
-            if isinstance(message, str):
-                message = message.encode("utf-8")
-            writer.write(message)
+            if message is not None:
+                if isinstance(message, str):
+                    message = message.encode("utf-8")
+                writer.write(message)
             await writer.drain()
             await asyncio.sleep(0)
 
     try:
         io_task = asyncio.gather(input_task(), output_task(), resize_task())
         await io_task
-    except asyncio.CancelledError:
-        ...
+    except asyncio.CancelledError: ...
     finally:
         termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, old_settings_stdin)
         signal.signal(signal.SIGWINCH, old_sigwinch_handler)
@@ -257,9 +320,8 @@ async def _shell_session(
 async def _run_local_dev_session(pkg_root: Path):
     # hit the endpoint to make sure that a workflow image exists in ecr before
     # doing anything
-    _get_latest_image(pkg_root)
-
-    key_path = pkg_root / latch_constants.pkg_ssh_key
+    image_name_tagged = _get_latest_image(pkg_root)
+    key_path = pkg_root / ".latch" / "ssh_key"
 
     with TemporarySSHCredentials(key_path) as ssh:
         headers = {"Authorization": f"Bearer {retrieve_or_login()}"}
@@ -290,7 +352,6 @@ async def _run_local_dev_session(pkg_root: Path):
         try:
             cent_data = cent_resp.json()
             centromere_ip = cent_data["ip"]
-            centromere_username = cent_data["username"]
         except KeyError as e:
             raise ValueError(f"Malformed response from provision endpoint: missing {e}")
 
@@ -328,54 +389,50 @@ async def _run_local_dev_session(pkg_root: Path):
 
         # todo(aidan): edit known hosts file with centromere ip and address to allow strict host checking
         try:
-            async with asyncssh.connect(
-                centromere_ip, username=centromere_username, known_hosts=None
+            async for ws in client.connect(
+                f"ws://{centromere_ip}:{port}/ws",
+                close_timeout=0,
+                extra_headers=headers,
             ):
-                async for ws in websockets.connect(
-                    f"ws://{centromere_ip}:{port}/ws",
-                    close_timeout=0,
-                    extra_headers=headers,
-                ):
+                try:
+                    await aioconsole.aprint(
+                        "Successfully connected to remote instance."
+                    )
                     try:
-                        await aioconsole.aprint(
-                            "Successfully connected to remote instance."
-                        )
-                        try:
-                            await aioconsole.aprint("Setting up local sync...")
-                            watch_task = asyncio.create_task(
-                                _watch_and_rsync(
-                                    pkg_root, centromere_ip, ssh_port, key_path
-                                )
+                        await aioconsole.aprint("Setting up local sync...")
+                        watch_task = asyncio.create_task(
+                            _watch_and_rsync(
+                                pkg_root, centromere_ip, ssh_port, key_path
                             )
-                            await aioconsole.aprint("Done.")
-
-                            image_name_tagged = _get_latest_image(pkg_root)
-                            await _send_message(ws, docker_access_token)
-                            await _send_message(ws, image_name_tagged)
-                            await aioconsole.aprint(f"Pulling {image_name_tagged}... ")
-
-                            await _get_messages(ws, show_output=False)
-                            await aioconsole.aprint("Image successfully pulled.\n")
-
-                            await _get_messages(ws, show_output=True)
-
-                            await _shell_session(ws)
-                            rsync_stop_event.set()
-                            await watch_task
-
-                        except websockets.exceptions.ConnectionClosed:
-                            continue
-                    except Exception as e:
-                        await aioconsole.aprint(traceback.format_exc())
-                    finally:
-                        await aioconsole.aprint("Exiting local development session")
-                        await ws.close()
-                        close_resp = post(
-                            config.api.centromere.stop_local_dev,
-                            headers={"Authorization": f"Bearer {retrieve_or_login()}"},
                         )
-                        close_resp.raise_for_status()
-                        return
+                        await aioconsole.aprint("Done.")
+
+                        await _send_message(ws, docker_access_token)
+                        await _send_message(ws, image_name_tagged)
+                        await aioconsole.aprint(f"Pulling {image_name_tagged}... ")
+
+                        await _get_messages(ws, show_output=False)
+                        await aioconsole.aprint("Image successfully pulled.\n")
+
+                        await _get_messages(ws, show_output=True)
+
+                        await _shell_session(ws)
+                        rsync_stop_event.set()
+                        await watch_task
+
+                    except websockets.exceptions.ConnectionClosed:
+                        continue
+                except Exception as e:
+                    await aioconsole.aprint(traceback.format_exc())
+                finally:
+                    await aioconsole.aprint("Exiting local development session")
+                    await ws.close()
+                    close_resp = post(
+                        config.api.centromere.stop_local_dev,
+                        headers={"Authorization": f"Bearer {retrieve_or_login()}"},
+                    )
+                    close_resp.raise_for_status()
+                    return
         except asyncssh.ProtocolError as e:
             if "Too many authentication failures" in str(e):
                 click.secho(
