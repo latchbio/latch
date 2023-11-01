@@ -198,6 +198,7 @@ def snakemake_workflow_extractor(
 def extract_snakemake_workflow(
     pkg_root: Path,
     snakefile: Path,
+    full_image: str,
     jit_wf_version: str,
     jit_exec_display_name: str,
     local_to_remote_path_mapping: Optional[Dict[str, str]] = None,
@@ -206,7 +207,11 @@ def extract_snakemake_workflow(
     with extractor:
         dag = extractor.extract_dag()
         wf = SnakemakeWorkflow(
-            dag, jit_wf_version, jit_exec_display_name, local_to_remote_path_mapping
+            dag,
+            full_image,
+            jit_wf_version,
+            jit_exec_display_name,
+            local_to_remote_path_mapping,
         )
         wf.compile()
 
@@ -218,6 +223,7 @@ def serialize_snakemake(
     output_dir: Path,
     image_name: str,
     dkr_repo: str,
+    wrapper_image_names: List[str] = [],
 ):
     image_name_no_version, version = image_name.split(":")
     default_img = Image(
@@ -225,8 +231,19 @@ def serialize_snakemake(
         fqn=f"{dkr_repo}/{image_name_no_version}",
         tag=version,
     )
+
+    wrapper_images = [
+        Image(name=w, fqn=f"{dkr_repo}/{w}", tag=version) for w in wrapper_image_names
+    ]
+
     settings = SerializationSettings(
-        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+        image_config=ImageConfig(
+            default_image=default_img,
+            images=[
+                default_img,
+                *wrapper_images,
+            ],
+        ),
     )
 
     registrable_entity_cache: EntityCache = {}
@@ -395,7 +412,7 @@ def generate_jit_register_code(
     wf: JITRegisterWorkflow,
     pkg_root: Path,
     snakefile: Path,
-    version: str,
+    dkr_repo: str,
     image_name: str,
     account_id: str,
 ) -> Path:
@@ -484,7 +501,7 @@ def generate_jit_register_code(
     """).lstrip()
     code_block += wf.get_fn_code(
         snakefile_path_in_container(snakefile, pkg_root),
-        version,
+        dkr_repo,
         image_name,
         account_id,
         wf.remote_output_url,

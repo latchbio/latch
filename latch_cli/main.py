@@ -137,6 +137,13 @@ def dockerfile(pkg_root: str, snakemake: bool = False):
     ),
 )
 @click.option(
+    "--build-wrappers",
+    type=bool,
+    default=False,
+    is_flag=True,
+    help="Build wrapper images for snakemake workflows.",
+)
+@click.option(
     "-y",
     "--yes",
     is_flag=True,
@@ -155,6 +162,7 @@ def register(
     disable_auto_version: bool,
     remote: bool,
     docker_progress: str,
+    build_wrappers: bool,
     yes: bool,
     snakefile: Optional[Path],
 ):
@@ -179,6 +187,7 @@ def register(
         progress_plain=(docker_progress == "auto" and not sys.stdout.isatty())
         or docker_progress == "plain",
         use_new_centromere=use_new_centromere,
+        build_wrappers=build_wrappers,
     )
 
 

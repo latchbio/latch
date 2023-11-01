@@ -1,5 +1,6 @@
 import importlib
 import json
+import re
 import sys
 import textwrap
 import typing
@@ -66,9 +67,10 @@ import latch.types.metadata as metadata
 from latch.resources.tasks import custom_task
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
+from latch_cli.services.register.utils import with_latest_version
 from latch_cli.snakemake.config.utils import is_primitive_type, type_repr
 
-from ..utils import identifier_suffix_from_str
+from ..utils import identifier_from_str, identifier_suffix_from_str
 
 SnakemakeInputVal: TypeAlias = snakemake.io._IOFile
 
@@ -367,7 +369,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
     def get_fn_code(
         self,
         snakefile_path: str,
-        version: str,
+        dkr_repo: str,
         image_name: str,
         account_id: str,
         remote_output_url: Optional[str],
@@ -451,9 +453,10 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         code_block += reindent(
             rf"""
-            image_name = "{image_name}"
-            account_id = "{account_id}"
-            snakefile = Path("{snakefile_path}")
+            image_name = {repr(image_name)}
+            image_name_full = {repr("/".join([dkr_repo, image_name]))}
+            account_id = {repr(account_id)}
+            snakefile = Path({repr(snakefile_path)})
 
             lp = LatchPersistence()
             """,
@@ -492,7 +495,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             print(f"JIT Workflow Version: {{jit_wf_version}}")
             print(f"JIT Execution Display Name: {{jit_exec_display_name}}")
 
-            wf = extract_snakemake_workflow(pkg_root, snakefile, jit_wf_version, jit_exec_display_name, local_to_remote_path_mapping)
+            wf = extract_snakemake_workflow(pkg_root, snakefile, image_name_full, jit_wf_version, jit_exec_display_name, local_to_remote_path_mapping)
             wf_name = wf.name
             generate_snakemake_entrypoint(wf, pkg_root, snakefile, {repr(remote_output_url)}, non_blob_parameters)
 
@@ -581,7 +584,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             _interface_request = {
                 "workflow_id": wf_id,
                 "params": params,
-                "snakemake_jit": True,
+                # "snakemake_jit": True,
             }
 
             response = requests.post(urljoin(config.nucleus_url, "/api/create-execution"), headers=headers, json=_interface_request)
@@ -593,16 +596,30 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         return code_block
 
 
+docker_expr = re.compile(r"(?P<repo>[^/:]+)/(?P<image>[^/:]+):(?P<tag>[^/:]+)")
+
+
 class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
     def __init__(
         self,
         dag: DAG,
+        full_image: str,
         jit_wf_version: str,
         jit_exec_display_name: str,
         local_to_remote_path_mapping: Optional[Dict[str, str]] = None,
     ):
         assert metadata._snakemake_metadata is not None
         name = metadata._snakemake_metadata.name
+
+        self.image_name = full_image
+
+        match = docker_expr.match(full_image)
+        assert match is not None
+
+        self.repo = match["repo"]
+        self.image = match["image"]
+        self.tag = match["tag"]
+
         self.jit_wf_version = jit_wf_version
         self.jit_exec_display_name = jit_exec_display_name
 
@@ -723,6 +740,15 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                         python_inputs[param] = dep_out.type_
                         promise_map[param] = dep_out
 
+                image_override: Optional[str] = None
+                if job.is_wrapper:
+                    suffix = identifier_suffix_from_str(job.rule.wrapper)
+                    image_override = with_latest_version(
+                        f"{self.repo}/{self.image}_{suffix}"
+                    )
+
+                    print(image_override)
+
                 interface = Interface(python_inputs, python_outputs, docstring=None)
                 task = SnakemakeJobTask(
                     wf=self,
@@ -733,6 +759,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     target_file_for_output_param=target_file_for_output_param,
                     is_target=is_target,
                     interface=interface,
+                    image_override=image_override,
                 )
                 self.snakemake_tasks.append(task)
 
@@ -961,6 +988,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
         target_file_for_output_param: Dict[str, str],
         is_target: bool,
         interface: Interface,
+        image_override: Optional[str] = None,
     ):
         name = f"{job.name}_{job.jobid}"
 
@@ -980,12 +1008,21 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
         # convert MB to GiB
         mem = limits.get("mem_mb", 8589) * 1000 * 1000 // 1024 // 1024 // 1024
 
+        task_config: Pod = custom_task(cpu=cores, memory=mem).keywords["task_config"]
+
+        if image_override is not None:
+            assert task_config.pod_spec.containers is not None
+            assert len(task_config.pod_spec.containers) == 1
+
+            container: V1Container = task_config.pod_spec.containers[0]
+            container.image = image_override
+
         super().__init__(
             task_type="sidecar",
             task_type_version=2,
             name=name,
             interface=interface,
-            task_config=custom_task(cpu=cores, memory=mem).keywords["task_config"],
+            task_config=task_config,
             task_resolver=SnakemakeJobTaskResolver(),
         )
 
@@ -1013,7 +1050,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
                     "/bin/bash",
                     "-c",
                     (
-                        "exec 3>&1 4>&2 && latch cp"
+                        "exec 3>&1 4>&2 && latch cp --progress=none"
                         f' "latch:///.snakemake_latch/workflows/{self.wf.name}/{self.wf.jit_wf_version}/{self.wf.jit_exec_display_name}/entrypoint.py"'
                         " latch_entrypoint.py && ("
                         f" {' '.join(sdk_default_container.args)} 1>&3 2>&4 )"

@@ -7,6 +7,7 @@ import os
 import sys
 import typing
 from pathlib import Path
+from textwrap import dedent
 from typing import (
     TYPE_CHECKING,
     Dict,
@@ -19,11 +20,14 @@ from typing import (
 )
 
 import boto3
+import click
 import docker
 import requests
 from latch_sdk_config.latch import config
 
-from ...utils import current_workspace
+from latch_cli.tinyrequests import post
+
+from ...utils import current_workspace, get_auth_header, retrieve_or_login
 
 if TYPE_CHECKING:
     from ...centromere.ctx import _CentromereCtx
@@ -32,11 +36,16 @@ else:
 
 
 # todo(maximsmol): only login if the credentials are expired
-def _docker_login(ctx: _CentromereCtx):
+def _docker_login(ctx: _CentromereCtx, *, override_image: Optional[str] = None):
     assert ctx.dkr_client is not None
 
     headers = {"Authorization": f"Bearer {ctx.token}"}
-    data = {"pkg_name": ctx.image, "ws_account_id": current_workspace()}
+
+    image = ctx.image
+    if override_image is not None:
+        image = override_image
+
+    data = {"pkg_name": image, "ws_account_id": current_workspace()}
     response = requests.post(ctx.latch_image_api_url, headers=headers, json=data)
 
     try:
@@ -190,3 +199,19 @@ def import_module_by_path(x: Path, *, module_name: str = "latch_metadata"):
     spec.loader.exec_module(module)
 
     return module
+
+
+# dkr_repo/image_name -> dkr_repo/image_name:latest_version
+def with_latest_version(image_name: str) -> Optional[str]:
+    resp = post(
+        config.api.workflow.get_latest,
+        headers={"Authorization": get_auth_header()},
+        json={"registry_name": image_name},
+    )
+
+    if resp.status_code != 200:
+        return None
+
+    version = resp.json()["version"]
+
+    return f"{image_name}:{version}"

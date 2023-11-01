@@ -1,7 +1,6 @@
 from pathlib import Path
-from typing import List
+from typing import List, Set
 
-from snakemake.rules import Rule
 from snakemake.workflow import Workflow
 
 
@@ -11,14 +10,13 @@ class SnakemakeWrapperExtractor(Workflow):
 
         super().__init__(snakefile=snakefile)
 
-    def extract_wrappers(self) -> List[str]:
-        wrappers: List[str] = []
+    def extract_wrappers(self) -> Set[str]:
+        wrappers: Set[str] = set()
 
-        rule: Rule
         for rule in self.rules:
             if not rule.is_wrapper:
                 continue
 
-            wrappers.append(rule.wrapper)
+            wrappers.add(rule.wrapper)
 
         return wrappers

@@ -12,13 +12,22 @@ import gql
 import latch_sdk_gql.execute as l_gql
 from scp import SCPClient
 
+from latch_cli import tinyrequests
+
 from ...centromere.ctx import _CentromereCtx
 from ...centromere.utils import MaybeRemoteDir
-from ...utils import WorkflowType, current_workspace
+from ...utils import (
+    WorkflowType,
+    current_workspace,
+    get_auth_header,
+    identifier_from_str,
+    identifier_suffix_from_str,
+)
 from ..workspace import _get_workspaces
 from .constants import ANSI_REGEX, MAX_LINES
 from .utils import (
     DockerBuildLogItem,
+    _docker_login,
     build_image,
     register_serialized_pkg,
     serialize_pkg_in_container,
@@ -61,8 +70,10 @@ def print_and_write_build_logs(
     pkg_root: Path,
     *,
     progress_plain: bool = False,
+    print_build_message: bool = True,
 ):
-    click.secho(f"Building Docker image", bold=True)
+    if print_build_message:
+        click.secho(f"Building Docker image", bold=True)
 
     logs_path = pkg_root / ".latch" / ".logs" / image
     logs_path.mkdir(parents=True, exist_ok=True)
@@ -195,6 +206,7 @@ def _build_and_serialize(
     tmp_dir: str,
     dockerfile: Optional[Path] = None,
     *,
+    build_wrappers: bool = False,
     progress_plain: bool = False,
 ):
     assert ctx.pkg_root is not None
@@ -212,7 +224,7 @@ def _build_and_serialize(
             jit_wf,
             ctx.pkg_root,
             ctx.snakefile,
-            ctx.version,
+            ctx.dkr_repo,
             image_name,
             current_workspace(),
         )
@@ -225,8 +237,55 @@ def _build_and_serialize(
     if ctx.workflow_type == WorkflowType.snakemake:
         assert jit_wf is not None
         assert ctx.dkr_repo is not None
+        assert ctx.snakefile is not None
 
         from ...snakemake.serialize import serialize_jit_register_workflow
+        from ...snakemake.wrappers.build import get_dockerfile_content
+        from ...snakemake.wrappers.extractor import SnakemakeWrapperExtractor
+
+        wrapper_extractor = SnakemakeWrapperExtractor(
+            pkg_root=ctx.pkg_root, snakefile=ctx.snakefile
+        )
+        wrapper_extractor.include(ctx.snakefile)
+        wrappers = wrapper_extractor.extract_wrappers()
+
+        # todo(ayush): make it optional to rebuild wrappers
+        if build_wrappers:
+            for i, wrapper in enumerate(wrappers):
+                suffix = identifier_suffix_from_str(wrapper)
+                wrapped_image = f"{ctx.image}_{suffix}"
+                wrapped_tagged = f"{wrapped_image}:{ctx.version}"
+
+                _docker_login(ctx, override_image=wrapped_image)
+
+                with tempfile.TemporaryDirectory() as td:
+                    dockerfile = Path(td) / "Dockerfile"
+                    dockerfile.write_text(
+                        get_dockerfile_content(f"{ctx.dkr_repo}/{image_name}", wrapper)
+                    )
+
+                    build_logs = build_image(
+                        ctx, wrapped_tagged, context_path, dockerfile
+                    )
+
+                    click.echo()
+                    click.echo(
+                        "Building Wrapper"
+                        f" {click.style(wrapper, italic=True, underline=True)} [{i + 1}/{len(wrappers)}]"
+                    )
+
+                    print_and_write_build_logs(
+                        build_logs,
+                        wrapped_tagged,
+                        ctx.pkg_root,
+                        progress_plain=progress_plain,
+                        print_build_message=False,
+                    )
+
+                    click.echo()
+                    upload_logs = upload_image(ctx, wrapped_tagged)
+                    print_upload_logs(upload_logs, wrapped_tagged)
+                    click.echo()
 
         serialize_jit_register_workflow(jit_wf, tmp_dir, image_name, ctx.dkr_repo)
     else:
@@ -268,7 +327,8 @@ def register(
     skip_confirmation: bool = False,
     snakefile: Optional[Path] = None,
     *,
-    progress_plain=False,
+    build_wrappers: bool = False,
+    progress_plain: bool = False,
     use_new_centromere: bool = False,
 ):
     """Registers a workflow, defined as python code, with Latch.
@@ -414,6 +474,7 @@ def register(
                 ctx.default_container.pkg_dir,
                 td,
                 dockerfile=ctx.default_container.dockerfile,
+                build_wrappers=build_wrappers,
                 progress_plain=progress_plain,
             )
 
