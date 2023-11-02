@@ -1,4 +1,17 @@
-# A simple Snakemake example
+# Getting started
+
+## Motivation
+Latch's snakemake integration allows developers to build graphical interfaces to expose their workflows to wet lab teams. It also provides managed cloud infrastructure for the execution of the workflow's jobs.
+
+A primary design goal for the Snakemake integration is to allow developers to register existing projects with minimal added boilerplate and modifications to code. Here, we outline these changes and why they are needed.
+
+## How to Upload a Snakemake Workflow
+Recall a snakemake project consists of a `Snakefile` , which describes workflow
+rules in an ["extension"](https://snakemake.readthedocs.io/en/stable/snakefiles/rules.html) of Python, and associated python code imported and called by these rules. To make this project compatible with Latch, we need to do the following:
+
+1. Identify and construct explicit parameters for each file dependency in `latch_metadata.py`
+2. Build a container with all runtime dependencies
+3. Ensure your `Snakefile` is compatible with cloud execution
 
 In this guide, we will walk through how you can upload a simple Snakemake workflow to Latch.
 
@@ -11,8 +24,6 @@ The example being used here comes from the [short tutorial in Snakemake's docume
 ```console
 pip install latch[snakemake]
 ```
-
-* Install [Docker](https://www.docker.com/get-started/) and have Docker run locally
 
 ## Step 1
 
@@ -93,6 +104,11 @@ SnakemakeMetadata(
 
 For each `LatchFile`/`LatchDir` parameter, the `path` keyword specifies the path where files will be copied before the Snakemake workflow is run and should match the paths of the inputs for each rule in the Snakefile.
 
+If your Snakemake project has an existing `config.yaml` file, you can automatically generate the `latch_metadata.py` file by typing:
+```console
+latch generate-metadata <path_to_config.yaml>
+```
+
 ## Step 3: Add dependencies
 
 Next, create an `environment.yaml` file to specify the dependencies that the Snakefile needs to run successfully:
@@ -140,5 +156,7 @@ Once the workflow finishes running, results will be deposited to [Latch Data](ht
 
 ## Next Steps
 
-* Learn more in-depth about how Snakemake integration works on Latch by reading our [manual](../manual/snakemake.md).
+* Learn more about the lifecycle of a Snakemake workflow on Latch by reading our [manual](../snakemake/lifecycle.md).
+* Learn about how to modify Snakemake workflows to be cloud-compatible [here](../snakemake/cloud.md).
+* Visit [troubleshooting](../snakemake/troubleshooting.md) to diagnose and find solutions to common issues.
 * Visit the repository of [public examples](https://github.com/latchbio/latch-snakemake-examples) of Snakemake workflows on Latch.
