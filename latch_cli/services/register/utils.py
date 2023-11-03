@@ -100,10 +100,13 @@ def build_image(
     image_name: str,
     context_path: Path,
     dockerfile: Optional[Path] = None,
+    login: bool = True,
 ) -> Iterable[DockerBuildLogItem]:
     assert ctx.dkr_client is not None
 
-    _docker_login(ctx)
+    if login:
+        _docker_login(ctx)
+
     build_logs = ctx.dkr_client.build(
         path=str(context_path),
         dockerfile=str(dockerfile) if dockerfile is not None else None,

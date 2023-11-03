@@ -1010,17 +1010,11 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
 
         task_config: Pod = custom_task(cpu=cores, memory=mem).keywords["task_config"]
 
-        if image_override is not None:
-            assert task_config.pod_spec.containers is not None
-            assert len(task_config.pod_spec.containers) == 1
-
-            container: V1Container = task_config.pod_spec.containers[0]
-            container.image = image_override
-
         super().__init__(
             task_type="sidecar",
             task_type_version=2,
             name=name,
+            container_image=image_override,
             interface=interface,
             task_config=task_config,
             task_resolver=SnakemakeJobTaskResolver(),
@@ -1256,7 +1250,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             "latch_cli.snakemake.single_task_snakemake",
             "-s",
             snakefile_path_in_container,
-            *(["--use-conda"] if need_conda else []),
+            # *(["--use-conda"] if need_conda else []),
             "--target-jobs",
             *jobs_cli_args(jobs),
             "--allowed-rules",

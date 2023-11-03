@@ -249,7 +249,14 @@ def _build_and_serialize(
         wrapper_extractor.include(ctx.snakefile)
         wrappers = wrapper_extractor.extract_wrappers()
 
-        # todo(ayush): make it optional to rebuild wrappers
+        wrappers = [
+            "0.74.0/bio/trimmomatic/se",
+            "0.74.0/bio/trimmomatic/pe",
+            "0.74.0/bio/reference/ensembl-sequence",
+            "0.74.0/bio/vep/cache",
+            "0.74.0/bio/vep/plugins",
+        ]
+
         if build_wrappers:
             for i, wrapper in enumerate(wrappers):
                 suffix = identifier_suffix_from_str(wrapper)
@@ -260,13 +267,7 @@ def _build_and_serialize(
 
                 with tempfile.TemporaryDirectory() as td:
                     dockerfile = Path(td) / "Dockerfile"
-                    dockerfile.write_text(
-                        get_dockerfile_content(f"{ctx.dkr_repo}/{image_name}", wrapper)
-                    )
-
-                    build_logs = build_image(
-                        ctx, wrapped_tagged, context_path, dockerfile
-                    )
+                    dockerfile.write_text(get_dockerfile_content(wrapper))
 
                     click.echo()
                     click.echo(
@@ -274,6 +275,13 @@ def _build_and_serialize(
                         f" {click.style(wrapper, italic=True, underline=True)} [{i + 1}/{len(wrappers)}]"
                     )
 
+                    build_logs = build_image(
+                        ctx,
+                        wrapped_tagged,
+                        context_path,
+                        dockerfile=dockerfile,
+                        login=False,
+                    )
                     print_and_write_build_logs(
                         build_logs,
                         wrapped_tagged,
@@ -283,8 +291,10 @@ def _build_and_serialize(
                     )
 
                     click.echo()
+
                     upload_logs = upload_image(ctx, wrapped_tagged)
                     print_upload_logs(upload_logs, wrapped_tagged)
+
                     click.echo()
 
         serialize_jit_register_workflow(jit_wf, tmp_dir, image_name, ctx.dkr_repo)
