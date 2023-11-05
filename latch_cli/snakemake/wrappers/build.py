@@ -24,20 +24,24 @@ def get_dockerfile_content(wrapper: str):
 
         env PATH=/opt/conda/bin:$PATH
 
+        workdir /opt/latch
+
+        run curl -sSL https://latch-public.s3.us-west-2.amazonaws.com/pin_python.py --output update_env.py
         run curl -sSL {urljoins(url, "environment.yaml")} --output environment.yaml
+
+        run python3 -m pip install pyyaml && \
+            python3 update_env.py environment.yaml
 
         run mamba env create \
             --file environment.yaml \
-            --name workflow \
-            python=3.10
-
-        run mamba install -y -n workflow -c bioconda snakemake snakemake-wrapper-utils
+            --name workflow
 
         env PATH=/opt/conda/envs/workflow/bin:$PATH
 
-        run pip install latch
-
         workdir /root
+
+        copy . /root/
+
         arg tag
         env FLYTE_INTERNAL_IMAGE $tag
         """,

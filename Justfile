@@ -59,3 +59,7 @@ docker_image_full := docker_registry + "/" + docker_image_name + ":" + docker_im
   docker push {{docker_image_full}}
 
 @dbnp: build-docs docker-build docker-push
+
+
+@update-pin-python:
+  aws s3 cp latch_cli/snakemake/wrappers/pin_python.py s3://latch-public/pin_python.py

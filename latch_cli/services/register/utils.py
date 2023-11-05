@@ -101,6 +101,7 @@ def build_image(
     context_path: Path,
     dockerfile: Optional[Path] = None,
     login: bool = True,
+    cache: bool = True,
 ) -> Iterable[DockerBuildLogItem]:
     assert ctx.dkr_client is not None
 
@@ -113,6 +114,7 @@ def build_image(
         buildargs={"tag": f"{ctx.dkr_repo}/{image_name}"},
         tag=f"{ctx.dkr_repo}/{image_name}",
         decode=True,
+        nocache=not cache,
     )
 
     return build_logs

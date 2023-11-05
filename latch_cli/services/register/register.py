@@ -208,6 +208,7 @@ def _build_and_serialize(
     *,
     build_wrappers: bool = False,
     progress_plain: bool = False,
+    cache: bool = True,
 ):
     assert ctx.pkg_root is not None
 
@@ -229,7 +230,9 @@ def _build_and_serialize(
             current_workspace(),
         )
 
-    image_build_logs = build_image(ctx, image_name, context_path, dockerfile)
+    image_build_logs = build_image(
+        ctx, image_name, context_path, dockerfile, cache=cache
+    )
     print_and_write_build_logs(
         image_build_logs, image_name, ctx.pkg_root, progress_plain=progress_plain
     )
@@ -248,14 +251,6 @@ def _build_and_serialize(
         )
         wrapper_extractor.include(ctx.snakefile)
         wrappers = wrapper_extractor.extract_wrappers()
-
-        wrappers = [
-            "0.74.0/bio/trimmomatic/se",
-            "0.74.0/bio/trimmomatic/pe",
-            "0.74.0/bio/reference/ensembl-sequence",
-            "0.74.0/bio/vep/cache",
-            "0.74.0/bio/vep/plugins",
-        ]
 
         if build_wrappers:
             for i, wrapper in enumerate(wrappers):
@@ -281,6 +276,7 @@ def _build_and_serialize(
                         context_path,
                         dockerfile=dockerfile,
                         login=False,
+                        cache=cache,
                     )
                     print_and_write_build_logs(
                         build_logs,
@@ -340,6 +336,7 @@ def register(
     build_wrappers: bool = False,
     progress_plain: bool = False,
     use_new_centromere: bool = False,
+    cache: bool = True,
 ):
     """Registers a workflow, defined as python code, with Latch.
 
@@ -486,6 +483,7 @@ def register(
                 dockerfile=ctx.default_container.dockerfile,
                 build_wrappers=build_wrappers,
                 progress_plain=progress_plain,
+                cache=cache,
             )
 
             if remote and snakefile is None:
@@ -508,6 +506,7 @@ def register(
                         task_td,
                         dockerfile=container.dockerfile,
                         progress_plain=progress_plain,
+                        cache=cache,
                     )
 
                     if remote:

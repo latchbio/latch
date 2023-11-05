@@ -137,7 +137,7 @@ def dockerfile(pkg_root: str, snakemake: bool = False):
     ),
 )
 @click.option(
-    "--build-wrappers",
+    "--build-wrappers/--no-build-wrappers",
     type=bool,
     default=False,
     is_flag=True,
@@ -148,6 +148,13 @@ def dockerfile(pkg_root: str, snakemake: bool = False):
     "--yes",
     is_flag=True,
     default=False,
+    type=bool,
+    help="Skip the confirmation dialog.",
+)
+@click.option(
+    "--cache/--no-cache",
+    is_flag=True,
+    default=True,
     type=bool,
     help="Skip the confirmation dialog.",
 )
@@ -165,6 +172,7 @@ def register(
     build_wrappers: bool,
     yes: bool,
     snakefile: Optional[Path],
+    cache: bool,
 ):
     """Register local workflow code to Latch.
 
@@ -188,6 +196,7 @@ def register(
         or docker_progress == "plain",
         use_new_centromere=use_new_centromere,
         build_wrappers=build_wrappers,
+        cache=cache,
     )
 
 
