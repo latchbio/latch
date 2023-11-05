@@ -264,17 +264,6 @@ class SkippingCheckpoint(SkippingRule):
         yield from super().start(aux=", checkpoint=True")
 
 
-# class SkippingWrapper(Script):
-#     def block_content(self, token):
-#         it = tokenize.tokenize(lambda: b'"/opt/latch/wrapper.py"')
-
-#         next(it)  # first token is always empty for some reason
-#         token = next(it)
-
-#         yield from super().block_content(token)
-
-
-# SkippingRule.subautomata["wrapper"] = SkippingWrapper
 Python.subautomata["rule"] = SkippingRule
 Python.subautomata["checkpoint"] = SkippingCheckpoint
 

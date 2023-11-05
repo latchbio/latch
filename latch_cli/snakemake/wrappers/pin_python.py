@@ -5,8 +5,6 @@ from typing import Any, Dict, List, Union
 
 import yaml
 
-supported_python_versions = ["3.8", "3.9", "3.10", "3.11"]
-
 
 def pin_python(env_file: Path):
     content: Dict[str, Any] = yaml.safe_load(env_file.read_text())
