@@ -1241,6 +1241,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             jobs = self.job.jobs
 
         need_conda = any(x.conda_env is not None for x in jobs)
+        need_wrapper = any(x.is_wrapper for x in jobs)
 
         if non_blob_parameters is not None and len(non_blob_parameters) > 0:
             self.job.rule.workflow.globals["config"] = non_blob_parameters
@@ -1250,7 +1251,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             "latch_cli.snakemake.single_task_snakemake",
             "-s",
             snakefile_path_in_container,
-            # *(["--use-conda"] if need_conda else []),
+            *(["--use-conda"] if need_conda and not need_wrapper else []),
             "--target-jobs",
             *jobs_cli_args(jobs),
             "--allowed-rules",

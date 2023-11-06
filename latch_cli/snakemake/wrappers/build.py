@@ -5,7 +5,9 @@ from latch_cli.utils import urljoins
 
 def get_dockerfile_content(wrapper: str):
     url = urljoins(
-        "https://raw.githubusercontent.com/snakemake/snakemake-wrappers/", wrapper
+        "https://raw.githubusercontent.com/snakemake/snakemake-wrappers/",
+        wrapper,
+        "environment.yaml",
     )
 
     return reindent(
@@ -27,7 +29,7 @@ def get_dockerfile_content(wrapper: str):
         workdir /opt/latch
 
         run curl -sSL https://latch-public.s3.us-west-2.amazonaws.com/pin_python.py --output update_env.py
-        run curl -sSL {urljoins(url, "environment.yaml")} --output environment.yaml
+        run curl -sSL {url} --output environment.yaml
 
         run python3 -m pip install pyyaml && \
             python3 update_env.py environment.yaml
