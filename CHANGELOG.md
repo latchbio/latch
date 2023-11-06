@@ -21,6 +21,9 @@ Types of changes
 ### Added
 
 * Added ability to get a pandas Dataframe from a registry table.
+* Added `Multiselect` to `LatchAppearance`
+* Snakemake
+  + fixed case where config values would not be populated correctly in the JIT workflow
 
 ### Changed
 
