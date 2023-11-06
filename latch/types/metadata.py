@@ -1,22 +1,9 @@
 import re
-import sys
 from dataclasses import Field, asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
 from textwrap import indent
-from typing import (
-    Any,
-    ClassVar,
-    Dict,
-    Generic,
-    List,
-    Optional,
-    Protocol,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-)
+from typing import Any, ClassVar, Dict, List, Optional, Protocol, Tuple, Type, Union
 
 import yaml
 from typing_extensions import TypeAlias
@@ -47,9 +34,27 @@ class LatchRule:
             raise ValueError(f"Malformed regex {self.regex}: {e.msg}")
 
 
-class LatchAppearanceType(Enum):
+class LatchAppearanceEnum(Enum):
     line = "line"
     paragraph = "paragraph"
+
+
+@dataclass(frozen=True)
+class MultiselectOption:
+    name: str
+    value: object
+
+
+@dataclass(frozen=True)
+class Multiselect:
+    options: List[MultiselectOption] = field(default_factory=list)
+    allow_custom: bool = False
+
+
+# backwards compatibility
+LatchAppearanceType = LatchAppearanceEnum
+
+LatchAppearance: TypeAlias = Union[LatchAppearanceEnum, Multiselect]
 
 
 @dataclass
@@ -288,7 +293,7 @@ class LatchParameter:
     Whether this parameter should be given a column in the batch
     table at the top of the workflow inputs
     """
-    appearance_type: LatchAppearanceType = LatchAppearanceType.line
+    appearance_type: LatchAppearance = LatchAppearanceEnum.line
     """
     Whether the parameter should be rendered as a line or paragraph
     (must be exactly one of either LatchAppearanceType.line or
@@ -314,7 +319,8 @@ class LatchParameter:
 
     @property
     def dict(self):
-        parameter_dict = {"display_name": self.display_name}
+        parameter_dict: Dict[str, Any] = {"display_name": self.display_name}
+
         if self.output:
             parameter_dict["output"] = True
         if self.batch_table_column:
@@ -322,7 +328,7 @@ class LatchParameter:
         if self.samplesheet:
             parameter_dict["samplesheet"] = True
 
-        temp_dict = {"hidden": self.hidden}
+        temp_dict: Dict[str, Any] = {"hidden": self.hidden}
         if self.section_title is not None:
             temp_dict["section_title"] = self.section_title
         if self._custom_ingestion is not None:
@@ -330,13 +336,21 @@ class LatchParameter:
 
         parameter_dict["_tmp"] = temp_dict
 
-        appearance_dict = {"type": self.appearance_type.value}
+        appearance_dict: Dict[str, Any]
+        if isinstance(self.appearance_type, LatchAppearanceEnum):
+            appearance_dict = {"type": self.appearance_type.value}
+        elif isinstance(self.appearance_type, Multiselect):
+            appearance_dict = {"multiselect": asdict(self.appearance_type)}
+        else:
+            appearance_dict = {}
+
         if self.placeholder is not None:
             appearance_dict["placeholder"] = self.placeholder
         if self.comment is not None:
             appearance_dict["comment"] = self.comment
         if self.detail is not None:
             appearance_dict["detail"] = self.detail
+
         parameter_dict["appearance"] = appearance_dict
 
         if len(self.rules) > 0:
