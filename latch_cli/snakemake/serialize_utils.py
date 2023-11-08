@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Dict, Union
 
 from flytekit import LaunchPlan
@@ -16,6 +17,8 @@ from flytekit.models.core import identifier as identifier_model
 from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.workflow import TaskNodeOverrides
 from typing_extensions import TypeAlias
+
+from latch_cli.utils import urljoins
 
 FlyteLocalEntity: TypeAlias = Union[
     PythonTask,
@@ -210,3 +213,12 @@ def get_serializable_workflow(
     admin_wf = admin_workflow_models.WorkflowSpec(template=wf_t, sub_workflows=[])
     cache[entity] = admin_wf
     return admin_wf
+
+
+def update_mapping(cur: Path, stem: Path, remote: str, mapping: Dict[str, str]):
+    if cur.is_file():
+        mapping[str(stem / cur.name)] = remote
+        return
+
+    for p in cur.iterdir():
+        update_mapping(p, stem / cur.name, urljoins(remote, p.name), mapping)

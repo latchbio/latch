@@ -427,7 +427,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                         {param}_dst_p
                     )
 
-                    update_mapping({param}_dst_p, {param}.remote_path, local_to_remote_path_mapping)
+                    update_mapping({param}_p, {param}_dst_p.parent, {param}.remote_path, local_to_remote_path_mapping)
 
                     """,
                     1,
