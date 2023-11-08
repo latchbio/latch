@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.36.5 - 2023-11-07
+
+### Fixed
+
+* Bug in `latch login` where not having a token would prevent token generation
+
 ## 2.36.4 - 2023-10-25
 
 ### Added
