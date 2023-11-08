@@ -768,7 +768,7 @@ def test_data_ls():
         print(f"\ts3://latch-public/{o}")
 
 
-@main.command()
+@main.command("sync")
 @click.argument("srcs", nargs=-1)
 @click.argument("dst", nargs=1)
 @click.option(
