@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.36.6 - 2023-11-09
+
+### Added
+
+* Added ability to skip version check using an env variable
+
 ## 2.36.5 - 2023-11-08
 
 ### Fixed
