@@ -422,12 +422,12 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 code_block += reindent(
                     rf"""
                     print(f"Moving {param} to {{{param}_dst_p}}")
+
+                    update_mapping({param}_p, {param}_dst_p, {param}.remote_path, local_to_remote_path_mapping)
                     check_exists_and_rename(
                         {param}_p,
                         {param}_dst_p
                     )
-
-                    update_mapping({param}_p, {param}_dst_p.parent, {param}.remote_path, local_to_remote_path_mapping)
 
                     """,
                     1,
@@ -491,6 +491,9 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             rf"""
             print(f"JIT Workflow Version: {{jit_wf_version}}")
             print(f"JIT Execution Display Name: {{jit_exec_display_name}}")
+
+            import json
+            print(json.dumps(local_to_remote_path_mapping, indent=2))
 
             wf = extract_snakemake_workflow(pkg_root, snakefile, jit_wf_version, jit_exec_display_name, local_to_remote_path_mapping, non_blob_parameters)
             wf_name = wf.name
@@ -581,7 +584,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             _interface_request = {
                 "workflow_id": wf_id,
                 "params": params,
-                "snakemake_jit": True,
+                # "snakemake_jit": True,
             }
 
             response = requests.post(urljoin(config.nucleus_url, "/api/create-execution"), headers=headers, json=_interface_request)
@@ -1261,11 +1264,12 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             }
 
         if remote_output_url is None:
-            remote_path = Path("/Snakemake Outputs") / self.wf.name
+            remote_path = Path("/Snakemake Outputs") / self.wf.name / self.job.name
         else:
             remote_path = Path(urlparse(remote_output_url).path)
 
         log_files = self.job.log if self.job.log is not None else []
+        output_files = self.job.output if self.job.output is not None else []
 
         code_block += reindent(
             rf"""
@@ -1334,6 +1338,18 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
                 finally:
                     print("Uploading logs:")
                     for x in log_files:
+                        local = Path(x)
+                        remote = f"latch://{remote_path}/{{str(local).removeprefix('/')}}"
+                        print(f"  {{file_name_and_size(local)}} -> {{remote}}")
+                        if not local.exists():
+                            print("  Does not exist")
+                            continue
+
+                        lp.upload(local, remote)
+                        print("    Done")
+
+                    print("Uploading outputs:")
+                    for x in {repr(output_files)}:
                         local = Path(x)
                         remote = f"latch://{remote_path}/{{str(local).removeprefix('/')}}"
                         print(f"  {{file_name_and_size(local)}} -> {{remote}}")
