@@ -70,6 +70,8 @@ def main():
     Collection of command line tools for using the Latch SDK and
     interacting with the Latch platform.
     """
+    if os.environ.get("LATCH_SKIP_VERSION_CHECK") is not None:
+        return
 
     local_ver = parse_version(get_local_package_version())
     latest_ver = parse_version(get_latest_package_version())
