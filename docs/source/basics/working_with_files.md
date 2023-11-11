@@ -89,7 +89,6 @@ Case 2: there is an existing 'test.txt' file in the LatchDir.
 ├── test.txt [Creation Time: 1/1/2022, 01:00:00 AM]
              [Last Modified: 1/1/2022, 23:00:00 AM]
 ```
-```
 
 ## Local Paths and Remote Paths
 
