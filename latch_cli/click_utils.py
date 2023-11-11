@@ -4,12 +4,6 @@ from typing import Any, Dict, IO, List, Optional, Sequence, Tuple, Type
 from click import Choice, Command, Context, Group, HelpFormatter, Parameter, echo, style
 from click._compat import get_text_stderr
 
-from enum import Enum
-from typing import Any, Dict, IO, List, Optional, Sequence, Tuple, Type
-
-from click import Choice, Command, Context, Group, HelpFormatter, Parameter, echo, style
-from click._compat import get_text_stderr
-
 
 def _levenshtein(str1: str, str2: str, swap: int = 0, substitution: int = 2, insertion: int = 1, deletion: int = 4) -> int:
     """Computes the levenshtein distance between two strings"""
