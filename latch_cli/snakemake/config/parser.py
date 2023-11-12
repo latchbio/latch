@@ -126,14 +126,19 @@ def generate_metadata(
             old_metadata_path.rename(metadata_path)
     elif old_metadata_path.exists() and metadata_path.exists():
         click.secho(
-            "Warning: Found both `latch_metadata.py` and"
-            " `latch_metadata/__init__.py` in current directory."
-            " `latch_metadata.py` will be ignored.",
+            (
+                "Warning: Found both `latch_metadata.py` and"
+                " `latch_metadata/__init__.py` in current directory."
+                " `latch_metadata.py` will be ignored."
+            ),
             fg="yellow",
         )
 
     if not metadata_path.exists() and click.confirm(
-        "Could not find an `__init__.py` file in `latch_metadata`. Generate one?"
+        "Could not find an `__init__.py` file in `latch_metadata`. This file"
+        "will hold your metadata object the parameterizes your interface and"
+        "will use parameters imported from parameters.py"
+        "Generate one?"
     ):
         metadata_path.write_text(
             reindent(
@@ -183,6 +188,9 @@ def generate_metadata(
             #
             # from .parameters import generated_parameters
             #
+            # Use fully qualified names for types from typing (eg. typing.List,
+            # typing.Optional)
+
             generated_parameters = {
             __params__
             }
