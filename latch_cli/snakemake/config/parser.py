@@ -136,8 +136,8 @@ def generate_metadata(
 
     if not metadata_path.exists() and click.confirm(
         "Could not find an `__init__.py` file in `latch_metadata`. This file"
-        "will hold your metadata object the parameterizes your interface and"
-        "will use parameters imported from parameters.py"
+        "defines the metadata object that configures your interface and "
+        "uses parameters imported from `parameters.py`"
         "Generate one?"
     ):
         metadata_path.write_text(
