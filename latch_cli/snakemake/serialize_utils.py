@@ -1,3 +1,4 @@
+import re
 from typing import Dict, Union
 
 from flytekit import LaunchPlan
@@ -210,3 +211,8 @@ def get_serializable_workflow(
     admin_wf = admin_workflow_models.WorkflowSpec(template=wf_t, sub_workflows=[])
     cache[entity] = admin_wf
     return admin_wf
+
+
+def best_effort_display_name(x: str):
+    expr = re.compile(r"_+")
+    return expr.sub(" ", x).title().strip()
