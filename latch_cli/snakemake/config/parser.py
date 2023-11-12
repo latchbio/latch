@@ -81,10 +81,16 @@ def generate_metadata(
 
         is_file = typ in {LatchFile, LatchDir}
         param_typ = "SnakemakeFileParameter" if is_file else "SnakemakeParameter"
+
+        def _best_effort_display_name(param_name: str):
+            if param_name[0] == "_":
+                param_name = param_name[1:]
+            return " ".join(map(lambda x: x.capitalize(), param_name.split("_")))
+
         param_str = reindent(
             f"""\
             {repr(identifier_from_str(k))}: {param_typ}(
-                display_name={repr(k)},
+                display_name={repr(_best_effort_display_name(k))},
                 type={type_repr(typ)},
             __config____default__),""",
             0,
