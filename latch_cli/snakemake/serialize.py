@@ -419,7 +419,8 @@ def generate_jit_register_code(
         from functools import partial
         from pathlib import Path
         import shutil
-        from typing import List, NamedTuple, Optional, TypedDict, Dict
+        import typing
+        from typing import NamedTuple, Optional, TypedDict, Dict
         import hashlib
         from urllib.parse import urljoin
         from dataclasses import is_dataclass, asdict

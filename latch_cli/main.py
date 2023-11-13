@@ -4,10 +4,11 @@ import os
 import sys
 from pathlib import Path
 from textwrap import dedent
-from typing import List, Optional, Tuple, Union
+from typing import Callable, List, Optional, Tuple, TypeVar, Union
 
 import click
 from packaging.version import parse as parse_version
+from typing_extensions import ParamSpec
 
 import latch_cli.click_utils
 from latch_cli.click_utils import EnumChoice
@@ -30,6 +31,32 @@ latch_cli.click_utils.patch()
 
 crash_handler = CrashHandler()
 
+P = ParamSpec("P")
+T = TypeVar("T")
+
+
+def requires_login(f: Callable[P, T]) -> Callable[P, T]:
+    def decorated(*args, **kwargs):
+        try:
+            get_auth_header()
+        except AuthenticationError as e:
+            click.secho(
+                dedent("""
+                Unable to authenticate with Latch.
+
+                If you are on a machine with a browser, run `latch login`.
+
+                If not, navigate to `https://console.latch.bio/settings/developer` on a different machine, select `Access Tokens`, and copy your `API Key` to `~/.latch/token` on this machine.
+                If you do not see this value in the console, make sure you are logged into your personal workspace.
+                """).strip("\n"),
+                fg="red",
+            )
+            raise click.exceptions.Exit(1) from e
+
+        return f(*args, **kwargs)
+
+    return decorated
+
 
 @click.group(
     "latch",
@@ -43,19 +70,8 @@ def main():
     Collection of command line tools for using the Latch SDK and
     interacting with the Latch platform.
     """
-    try:
-        get_auth_header()
-    except AuthenticationError as e:
-        click.secho(
-            dedent("""
-            Unable to authenticate with Latch.
-
-            If you are on a machine with a browser, run `latch login`.
-            If not, navigate to `https://console.latch.bio/settings/developer` on a different machine, select `Access Tokens`, and copy your `API Key` to `~/.latch/token` on this machine.
-            """).strip("\n"),
-            fg="red",
-        )
-        raise click.exceptions.Exit(1) from e
+    if os.environ.get("LATCH_SKIP_VERSION_CHECK") is not None:
+        return
 
     local_ver = parse_version(get_local_package_version())
     latest_ver = parse_version(get_latest_package_version())
@@ -150,6 +166,7 @@ def dockerfile(pkg_root: str, snakemake: bool = False):
     default=None,
     help="Path to a Snakefile to register.",
 )
+@requires_login
 def register(
     pkg_root: str,
     disable_auto_version: bool,
@@ -204,6 +221,7 @@ def register(
     type=EnumChoice(TaskSize, case_sensitive=False),
     help="Instance size to use for develop session.",
 )
+@requires_login
 def local_development(
     pkg_root: Path, yes: bool, image: Optional[str], size: Optional[TaskSize]
 ):
@@ -323,6 +341,7 @@ def init(
     default=False,
     show_default=True,
 )
+@requires_login
 def cp(
     src: List[str],
     dest: str,
@@ -357,6 +376,7 @@ def cp(
     default=False,
     show_default=True,
 )
+@requires_login
 def mv(src: str, dest: str, no_glob: bool):
     """Move remote files in LatchData."""
 
@@ -377,6 +397,7 @@ def mv(src: str, dest: str, no_glob: bool):
     default=False,
 )
 @click.argument("paths", nargs=-1, shell_complete=remote_complete)
+@requires_login
 def ls(paths: Tuple[str], group_directories_first: bool):
     """
     List the contents of a Latch Data directory
@@ -451,6 +472,7 @@ def generate_metadata(
     default=None,
     help="The version of the workflow to launch. Defaults to latest.",
 )
+@requires_login
 def launch(params_file: Path, version: Union[str, None] = None):
     """Launch a workflow using a python parameter map."""
 
@@ -476,6 +498,7 @@ def launch(params_file: Path, version: Union[str, None] = None):
     default=None,
     help="The version of the workflow. Defaults to latest.",
 )
+@requires_login
 def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
     """Generate a python parameter map for a workflow."""
     crash_handler.message = "Unable to generate param map for workflow"
@@ -499,6 +522,7 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
     default=None,
     help="The name of the workflow to list. Will display all versions",
 )
+@requires_login
 def get_wf(name: Union[str, None] = None):
     """List workflows."""
     crash_handler.message = "Unable to get workflows"
@@ -527,6 +551,7 @@ def get_wf(name: Union[str, None] = None):
 
 @main.command("open")
 @click.argument("remote_file", nargs=1, type=str)
+@requires_login
 def open_remote_file(remote_file: str):
     """Open a remote file in the browser."""
     crash_handler.message = f"Unable to open {remote_file}"
@@ -540,6 +565,7 @@ def open_remote_file(remote_file: str):
 
 @main.command("rm")
 @click.argument("remote_path", nargs=1, type=str)
+@requires_login
 def rm(remote_path: str):
     """Deletes a remote entity."""
     crash_handler.message = f"Unable to delete {remote_path}"
@@ -556,6 +582,7 @@ def rm(remote_path: str):
 
 @main.command("mkdir")
 @click.argument("remote_directory", nargs=1, type=str)
+@requires_login
 def mkdir(remote_directory: str):
     """Creates a new remote directory."""
     crash_handler.message = f"Unable to create directory {remote_directory}"
@@ -573,6 +600,7 @@ def mkdir(remote_directory: str):
 
 @main.command("touch")
 @click.argument("remote_file", nargs=1, type=str)
+@requires_login
 def touch(remote_file: str):
     """Creates an empty text file."""
     crash_handler.message = f"Unable to create {remote_file}"
@@ -590,6 +618,7 @@ def touch(remote_file: str):
 
 @main.command("exec")
 @click.argument("task_name", nargs=1, type=str)
+@requires_login
 def execute(task_name: str):
     """Drops the user into an interactive shell from within a task."""
     crash_handler.message = f"Unable to exec into {task_name}"
@@ -602,6 +631,7 @@ def execute(task_name: str):
 
 @main.command("preview")
 @click.argument("pkg_root", nargs=1, type=click.Path(exists=True, path_type=Path))
+@requires_login
 def preview(pkg_root: Path):
     """Creates a preview of your workflow interface."""
     crash_handler.message = f"Unable to preview inputs for {pkg_root}"
@@ -613,6 +643,7 @@ def preview(pkg_root: Path):
 
 
 @main.command("workspace")
+@requires_login
 def workspace():
     """Spawns an interactive terminal prompt allowing users to choose what workspace they want to work in."""
 
@@ -625,6 +656,7 @@ def workspace():
 
 
 @main.command("get-executions")
+@requires_login
 def get_executions():
     """Spawns an interactive terminal UI that shows all executions in a given workspace"""
 
@@ -643,6 +675,7 @@ def pods():
 
 @pods.command("stop")
 @click.argument("pod_id", nargs=1, type=int, required=False)
+@requires_login
 def stop_pod(pod_id: Optional[int] = None):
     """Stops a pod given a pod_id or the pod from which the command is run"""
     crash_handler.message = "Unable to stop pod"
@@ -693,6 +726,7 @@ def test_data(ctx: click.Context):
     type=bool,
     help="Automatically overwrite any files without asking for confirmation.",
 )
+@requires_login
 def test_data_upload(src_path: str, dont_confirm_overwrite: bool):
     """Upload test data object."""
 
@@ -707,6 +741,7 @@ def test_data_upload(src_path: str, dont_confirm_overwrite: bool):
 
 @test_data.command("remove")
 @click.argument("object_url", nargs=1, type=str)
+@requires_login
 def test_data_remove(object_url: str):
     """Remove test data object."""
 
@@ -720,6 +755,7 @@ def test_data_remove(object_url: str):
 
 
 @test_data.command("ls")
+@requires_login
 def test_data_ls():
     """List test data objects."""
 
@@ -734,7 +770,7 @@ def test_data_ls():
         print(f"\ts3://latch-public/{o}")
 
 
-@main.command()
+@main.command("sync")
 @click.argument("srcs", nargs=-1)
 @click.argument("dst", nargs=1)
 @click.option(
@@ -751,6 +787,7 @@ def test_data_ls():
     is_flag=True,
     default=False,
 )
+@requires_login
 def sync(srcs: List[str], dst: str, delete: bool, ignore_unsyncable: bool):
     """
     Update the contents of a remote directory with local data or vice versa.
