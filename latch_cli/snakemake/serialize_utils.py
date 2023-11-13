@@ -228,5 +228,5 @@ def update_mapping(cur: Path, stem: Path, remote: str, mapping: Dict[str, str]):
 underscores = re.compile(r"_+")
 
 
-def best_effort_display_name(x: str):
+def best_effort_display_name(x: str) -> str:
     return underscores.sub(" ", x).title().strip()
