@@ -120,6 +120,14 @@ latch\_cli.services.stop\_pod module
    :undoc-members:
    :show-inheritance:
 
+latch\_cli.services.sync module
+-------------------------------
+
+.. automodule:: latch_cli.services.sync
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 latch\_cli.services.workspace module
 ------------------------------------
 

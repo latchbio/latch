@@ -60,10 +60,10 @@ latch\_cli.services.cp.main module
    :undoc-members:
    :show-inheritance:
 
-latch\_cli.services.cp.path\_utils module
------------------------------------------
+latch\_cli.services.cp.manager module
+-------------------------------------
 
-.. automodule:: latch_cli.services.cp.path_utils
+.. automodule:: latch_cli.services.cp.manager
    :members:
    :undoc-members:
    :show-inheritance:
@@ -80,6 +80,14 @@ latch\_cli.services.cp.remote\_copy module
 ------------------------------------------
 
 .. automodule:: latch_cli.services.cp.remote_copy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+latch\_cli.services.cp.throttle module
+--------------------------------------
+
+.. automodule:: latch_cli.services.cp.throttle
    :members:
    :undoc-members:
    :show-inheritance:
