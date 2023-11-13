@@ -16,6 +16,19 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.36.7 - 2023-11-13
+
+### Added
+
+* Snakemake
+  + added best effort display name parsing for `generate-metadata`
+  + tasks now upload their intermediate outputs for better debugging
+
+### Fixed
+
+* Snakemake
+  + bug where `update_mapping` would iterate over the entirety of `/root`
+
 ## 2.36.6 - 2023-11-09
 
 ### Added
