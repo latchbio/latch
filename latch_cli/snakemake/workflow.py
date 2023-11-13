@@ -492,9 +492,6 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             print(f"JIT Workflow Version: {{jit_wf_version}}")
             print(f"JIT Execution Display Name: {{jit_exec_display_name}}")
 
-            import json
-            print(json.dumps(local_to_remote_path_mapping, indent=2))
-
             wf = extract_snakemake_workflow(pkg_root, snakefile, jit_wf_version, jit_exec_display_name, local_to_remote_path_mapping, non_blob_parameters)
             wf_name = wf.name
             generate_snakemake_entrypoint(wf, pkg_root, snakefile, {repr(remote_output_url)}, non_blob_parameters)
@@ -584,7 +581,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             _interface_request = {
                 "workflow_id": wf_id,
                 "params": params,
-                # "snakemake_jit": True,
+                "snakemake_jit": True,
             }
 
             response = requests.post(urljoin(config.nucleus_url, "/api/create-execution"), headers=headers, json=_interface_request)
