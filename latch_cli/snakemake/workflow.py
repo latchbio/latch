@@ -422,12 +422,12 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 code_block += reindent(
                     rf"""
                     print(f"Moving {param} to {{{param}_dst_p}}")
+
+                    update_mapping({param}_p, {param}_dst_p, {param}.remote_path, local_to_remote_path_mapping)
                     check_exists_and_rename(
                         {param}_p,
                         {param}_dst_p
                     )
-
-                    update_mapping({param}_dst_p, {param}.remote_path, local_to_remote_path_mapping)
 
                     """,
                     1,
@@ -1261,11 +1261,12 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             }
 
         if remote_output_url is None:
-            remote_path = Path("/Snakemake Outputs") / self.wf.name
+            remote_path = Path("/Snakemake Outputs") / self.wf.name / self.job.name
         else:
             remote_path = Path(urlparse(remote_output_url).path)
 
         log_files = self.job.log if self.job.log is not None else []
+        output_files = self.job.output if self.job.output is not None else []
 
         code_block += reindent(
             rf"""
@@ -1334,6 +1335,18 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
                 finally:
                     print("Uploading logs:")
                     for x in log_files:
+                        local = Path(x)
+                        remote = f"latch://{remote_path}/{{str(local).removeprefix('/')}}"
+                        print(f"  {{file_name_and_size(local)}} -> {{remote}}")
+                        if not local.exists():
+                            print("  Does not exist")
+                            continue
+
+                        lp.upload(local, remote)
+                        print("    Done")
+
+                    print("Uploading outputs:")
+                    for x in {repr(output_files)}:
                         local = Path(x)
                         remote = f"latch://{remote_path}/{{str(local).removeprefix('/')}}"
                         print(f"  {{file_name_and_size(local)}} -> {{remote}}")
