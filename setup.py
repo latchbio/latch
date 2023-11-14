@@ -51,7 +51,7 @@ setup(
         "watchfiles==0.19.0",
     ],
     extras_require={
-        "snakemake": ["snakemake>=7.18.0, <7.30.2"],
+        "snakemake": ["snakemake>=7.18.0, <7.30.2", "snakemake-wrapper-utils>=0.6.0"],
         "pandas": ["pandas>=2.0.0"],
     },
     classifiers=[

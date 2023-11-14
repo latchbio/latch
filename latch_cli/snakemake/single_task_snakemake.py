@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+import tokenize
 from itertools import chain
 from textwrap import dedent
 from typing import Dict, Set
@@ -18,6 +19,7 @@ from snakemake.parser import (
     Python,
     Rule,
     Ruleorder,
+    Script,
     Shell,
 )
 from snakemake.rules import Rule as RRule
