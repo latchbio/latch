@@ -78,10 +78,10 @@ def _get_small_gpu_pod() -> Pod:
             "ephemeral-storage": "1500Gi",
         },
         limits={
-            "cpu": "8",
-            "memory": "32Gi",
+            "cpu": "7",
+            "memory": "30Gi",
             "nvidia.com/gpu": "1",
-            "ephemeral-storage": "2000Gi",
+            "ephemeral-storage": "1500Gi",
         },
     )
     primary_container.resources = resources
@@ -103,7 +103,7 @@ def _get_large_pod() -> Pod:
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
         requests={"cpu": "90", "memory": "170Gi", "ephemeral-storage": "4500Gi"},
-        limits={"cpu": "96", "memory": "192Gi", "ephemeral-storage": "5000Gi"},
+        limits={"cpu": "90", "memory": "170Gi", "ephemeral-storage": "4500Gi"},
     )
     primary_container.resources = resources
 
@@ -129,8 +129,8 @@ def _get_medium_pod() -> Pod:
 
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
-        requests={"cpu": "28", "memory": "100Gi", "ephemeral-storage": "1500Gi"},
-        limits={"cpu": "32", "memory": "128Gi", "ephemeral-storage": "2000Gi"},
+        requests={"cpu": "30", "memory": "100Gi", "ephemeral-storage": "1500Gi"},
+        limits={"cpu": "30", "memory": "100Gi", "ephemeral-storage": "1500Gi"},
     )
     primary_container.resources = resources
 
@@ -157,7 +157,7 @@ def _get_small_pod() -> Pod:
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
         requests={"cpu": "2", "memory": "4Gi", "ephemeral-storage": "100Gi"},
-        limits={"cpu": "4", "memory": "8Gi", "ephemeral-storage": "500Gi"},
+        limits={"cpu": "2", "memory": "4Gi", "ephemeral-storage": "100Gi"},
     )
     primary_container.resources = resources
 
@@ -323,8 +323,10 @@ def custom_memory_optimized_task(cpu: int, memory: int):
         memory: An integer number of Gibibytes of RAM to request, up to 511 GiB
     """
     warn(
-        "`custom_memory_optimized_task` is deprecated and will be removed in a"
-        " future release: use `custom_task` instead",
+        (
+            "`custom_memory_optimized_task` is deprecated and will be removed in a"
+            " future release: use `custom_task` instead"
+        ),
         DeprecationWarning,
         stacklevel=2,
     )
