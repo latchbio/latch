@@ -23,6 +23,7 @@ from snakemake.parser import (
     Shell,
 )
 from snakemake.rules import Rule as RRule
+from snakemake.workflow import Workflow as WWorkflow
 
 sys.stdout.reconfigure(line_buffering=True)
 sys.stderr.reconfigure(line_buffering=True)
@@ -42,9 +43,15 @@ outputs = data["outputs"]
 
 non_blob_parameters = data.get("non_blob_parameters", {})
 
-# todo(ayush): do this without overwriting globals
-sw = sys.modules["snakemake.workflow"]
-setattr(sw, "config", non_blob_parameters)
+old_workflow_init = WWorkflow.__init__
+
+
+def new_init(self: WWorkflow, *args, **kwargs):
+    kwargs["overwrite_config"] = non_blob_parameters
+    old_workflow_init(self, *args, **kwargs)
+
+
+WWorkflow.__init__ = new_init
 
 
 def eprint_named_list(xs):

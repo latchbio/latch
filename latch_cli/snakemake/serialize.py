@@ -1,10 +1,11 @@
+import json
 import os
 import sys
 import textwrap
 import traceback
 from pathlib import Path
 from textwrap import dedent
-from typing import Dict, List, Optional, Set, Union, get_args
+from typing import Any, Dict, List, Optional, Set, Union, get_args
 
 import click
 from flyteidl.admin.launch_plan_pb2 import LaunchPlan as _idl_admin_LaunchPlan
@@ -91,11 +92,19 @@ def ensure_snakemake_metadata_exists():
 
 # todo(maximsmol): this needs to run in a subprocess because it pollutes globals
 class SnakemakeWorkflowExtractor(Workflow):
-    def __init__(self, pkg_root: Path, snakefile: Path):
-        super().__init__(snakefile=snakefile)
+    def __init__(
+        self,
+        pkg_root: Path,
+        snakefile: Path,
+        non_blob_parameters: Optional[Dict[str, Any]] = None,
+    ):
+        super().__init__(snakefile=snakefile, overwrite_config=non_blob_parameters)
 
         self.pkg_root = pkg_root
         self._old_cwd = ""
+
+        if non_blob_parameters is not None:
+            print(f"Config: {json.dumps(non_blob_parameters, indent=2)}")
 
     def extract_dag(self):
         targets: List[str] = (
@@ -169,7 +178,9 @@ class SnakemakeWorkflowExtractor(Workflow):
 
 
 def snakemake_workflow_extractor(
-    pkg_root: Path, snakefile: Path
+    pkg_root: Path,
+    snakefile: Path,
+    non_blob_parameters: Optional[Dict[str, Any]] = None,
 ) -> SnakemakeWorkflowExtractor:
     snakefile = snakefile.resolve()
 
@@ -184,6 +195,7 @@ def snakemake_workflow_extractor(
     extractor = SnakemakeWorkflowExtractor(
         pkg_root=pkg_root,
         snakefile=snakefile,
+        non_blob_parameters=non_blob_parameters,
     )
     with extractor:
         extractor.include(
@@ -202,8 +214,9 @@ def extract_snakemake_workflow(
     jit_wf_version: str,
     jit_exec_display_name: str,
     local_to_remote_path_mapping: Optional[Dict[str, str]] = None,
+    non_blob_parameters: Optional[Dict[str, Any]] = None,
 ) -> SnakemakeWorkflow:
-    extractor = snakemake_workflow_extractor(pkg_root, snakefile)
+    extractor = snakemake_workflow_extractor(pkg_root, snakefile, non_blob_parameters)
     with extractor:
         dag = extractor.extract_dag()
         wf = SnakemakeWorkflow(
@@ -364,17 +377,10 @@ def generate_snakemake_entrypoint(
         from latch.types.file import LatchFile
 
         from latch_cli.utils import get_parameter_json_value, urljoins, check_exists_and_rename
+        from latch_cli.snakemake.serialize_utils import update_mapping
 
         sys.stdout.reconfigure(line_buffering=True)
         sys.stderr.reconfigure(line_buffering=True)
-
-        def update_mapping(local: Path, remote: str, mapping: Dict[str, str]):
-            if local.is_file():
-                mapping[str(local)] = remote
-                return
-
-            for p in local.iterdir():
-                update_mapping(p, urljoins(remote, p.name), mapping)
 
 
         def si_unit(num, base: float = 1000.0):
@@ -427,7 +433,8 @@ def generate_jit_register_code(
         from functools import partial
         from pathlib import Path
         import shutil
-        from typing import List, NamedTuple, Optional, TypedDict, Dict
+        import typing
+        from typing import NamedTuple, Optional, TypedDict, Dict
         import hashlib
         from urllib.parse import urljoin
         from dataclasses import is_dataclass, asdict
@@ -459,6 +466,7 @@ def generate_jit_register_code(
         )
         from latch_cli.utils import get_parameter_json_value, check_exists_and_rename
         import latch_cli.snakemake
+        from latch_cli.snakemake.serialize_utils import update_mapping
         from latch_cli.utils import urljoins
 
         from latch import small_task
@@ -473,14 +481,6 @@ def generate_jit_register_code(
 
         sys.stdout.reconfigure(line_buffering=True)
         sys.stderr.reconfigure(line_buffering=True)
-
-        def update_mapping(local: Path, remote: str, mapping: Dict[str, str]):
-            if local.is_file():
-                mapping[str(local)] = remote
-                return
-
-            for p in local.iterdir():
-                update_mapping(p, urljoins(remote, p.name), mapping)
 
 
         def si_unit(num, base: float = 1000.0):

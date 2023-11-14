@@ -24,10 +24,12 @@ dev-requirements:
   pip-compile dev-requirements.in
 
 build-api-docs:
+  rm docs/source/api/*
   sphinx-apidoc \
     --force \
     -o docs/source/api/ . \
     'latch_cli/services/init/*/**' \
+    'latch_cli/snakemake' \
     'setup.py' \
     'tests/*'
 
