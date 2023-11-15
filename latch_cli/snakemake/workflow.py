@@ -452,7 +452,6 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         code_block += reindent(
             rf"""
             image_name = "{image_name}"
-            account_id = "{account_id}"
             snakefile = Path("{snakefile_path}")
 
             lp = LatchPersistence()
@@ -470,19 +469,25 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             version = exec_id_hash.hexdigest()[:16]
 
             jit_wf_version = os.environ["FLYTE_INTERNAL_TASK_VERSION"]
-            jit_exec_display_name = execute(
+            res = execute(
                 gql.gql('''
                 query executionCreatorsByToken($token: String!) {
-                  executionCreatorByToken(token: $token) {
-                      flytedbId
+                    executionCreatorByToken(token: $token) {
+                        flytedbId
                         info {
-                        displayName
-                      }
-                  }
+                            displayName
+                        }
+                        accountInfoByCreatedBy {
+                            id
+                        }
+                    }
                 }
                 '''),
                 {"token": token},
-            )["executionCreatorByToken"]["info"]["displayName"]
+            )["executionCreatorByToken"]
+
+            jit_exec_display_name = res["info"]["displayName"]
+            account_id = res["accountInfoByCreatedBy"]["id"]
             """,
             1,
         )
@@ -544,11 +549,11 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 nodes = execute(
                     gql.gql('''
                     query workflowQuery($name: String, $ownerId: BigInt, $version: String) {
-                    workflowInfos(condition: { name: $name, ownerId: $ownerId, version: $version}) {
-                        nodes {
-                            id
+                        workflowInfos(condition: { name: $name, ownerId: $ownerId, version: $version}) {
+                            nodes {
+                                id
+                            }
                         }
-                    }
                     }
                     '''),
                     {"name": wf_name, "version": version, "ownerId": account_id},
