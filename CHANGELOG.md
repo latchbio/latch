@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.36.8 - 2023-11-14
+
+### Fixed
+
+* Snakemake
+  + bug where a snakemake workflow would only run successfully for the user who registered it
+
 ## 2.36.7 - 2023-11-13
 
 ### Added
