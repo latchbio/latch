@@ -1342,27 +1342,36 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
                     for x in log_files:
                         local = Path(x)
                         remote = f"latch://{remote_path}/{{str(local).removeprefix('/')}}"
-                        print(f"  {{file_name_and_size(local)}} -> {{remote}}")
+
                         if not local.exists():
                             print("  Does not exist")
                             continue
 
-                        lp.upload(local, remote)
+                        print(f"  {{file_name_and_size(local)}} -> {{remote}}")
+
+                        if local.is_file():
+                            lp.upload(local, remote)
+                        else:
+                            lp.upload_directory(local, remote)
+
                         print("    Done")
 
                     print("Uploading outputs:")
                     for x in {repr(output_files)}:
                         local = Path(x)
                         remote = f"latch://{remote_path}/{{str(local).removeprefix('/')}}"
-                        print(f"  {{file_name_and_size(local)}} -> {{remote}}")
+
                         if not local.exists():
                             print("  Does not exist")
                             continue
+
+                        print(f"  {{file_name_and_size(local)}} -> {{remote}}")
 
                         if local.is_file():
                             lp.upload(local, remote)
                         else:
                             lp.upload_directory(local, remote)
+
                         print("    Done")
 
                     benchmark_file = {repr(self.job.benchmark)}
