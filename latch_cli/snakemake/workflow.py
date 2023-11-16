@@ -1359,7 +1359,10 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
                             print("  Does not exist")
                             continue
 
-                        lp.upload(local, remote)
+                        if local.is_file():
+                            lp.upload(local, remote)
+                        else:
+                            lp.upload_directory(local, remote)
                         print("    Done")
 
                     benchmark_file = {repr(self.job.benchmark)}
