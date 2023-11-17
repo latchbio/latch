@@ -16,6 +16,20 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.36.10 - 2023-11-17
+
+### Fixed
+
+* Snakemake
+  + bug in 2.36.9 where output directories would still fail to upload because of a missing `pathlib.Path` -> `str` conversion.
+
+## 2.36.9 - 2023-11-16
+
+### Fixed
+
+* Snakemake
+  + bug where a snakemake task would fail to upload output directories
+
 ## 2.36.8 - 2023-11-14
 
 ### Fixed
