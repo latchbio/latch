@@ -1352,7 +1352,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
                         if local.is_file():
                             lp.upload(local, remote)
                         else:
-                            lp.upload_directory(local, remote)
+                            lp.upload_directory(str(local), remote)
 
                         print("    Done")
 
@@ -1370,7 +1370,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
                         if local.is_file():
                             lp.upload(local, remote)
                         else:
-                            lp.upload_directory(local, remote)
+                            lp.upload_directory(str(local), remote)
 
                         print("    Done")
 
