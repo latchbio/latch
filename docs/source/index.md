@@ -121,6 +121,13 @@ registry/record.md
 ```{toctree}
 :hidden:
 :maxdepth: 2
+:caption: Automation
+automation/overview.md
+```
+
+```{toctree}
+:hidden:
+:maxdepth: 2
 :caption: Examples
 examples/workflows_examples
 ```
