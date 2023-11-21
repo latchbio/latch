@@ -4,7 +4,7 @@ Task executions produce logs, displayed on the Latch console to provide users vi
 
 ```python
 from latch import small_task
-from latch.functions import message
+from latch.functions import messages
 
 @small_task
 def task():
