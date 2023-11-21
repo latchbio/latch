@@ -1,10 +1,9 @@
+import hashlib
 import importlib
 import json
-import sys
 import textwrap
 import typing
-from dataclasses import dataclass, is_dataclass
-from enum import Enum
+from dataclasses import dataclass
 from pathlib import Path
 from typing import (
     Any,
@@ -17,8 +16,6 @@ from typing import (
     Type,
     TypeVar,
     Union,
-    get_args,
-    get_origin,
 )
 from urllib.parse import urlparse
 
@@ -27,8 +24,9 @@ import snakemake.io
 import snakemake.jobs
 from flytekit.configuration import SerializationSettings
 from flytekit.core import constants as _common_constants
+from flytekit.core.base_task import TaskMetadata
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
-from flytekit.core.context_manager import FlyteContext, FlyteContextManager
+from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
 from flytekit.core.node import Node
@@ -66,7 +64,7 @@ import latch.types.metadata as metadata
 from latch.resources.tasks import custom_task
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
-from latch_cli.snakemake.config.utils import is_primitive_type, type_repr
+from latch_cli.snakemake.config.utils import type_repr
 
 from ..utils import identifier_suffix_from_str
 
@@ -520,7 +518,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
                 protos = _recursive_list(td)
                 reg_resp = register_serialized_pkg(protos, None, version, account_id)
-                # _print_reg_resp(reg_resp, image_name, silent=True)
+                _print_reg_resp(reg_resp, image_name, silent=True)
 
             wf_spec_remote = f"latch:///.snakemake_latch/workflows/{wf_name}/{version}/spec"
             spec_dir = Path("spec")
@@ -652,6 +650,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         target_files = [x for job in self._dag.targetjobs for x in job.input]
 
+        node_id = 0
         for layer in self._dag.toposorted():
             for job in layer:
                 assert isinstance(job, snakemake.jobs.Job)
@@ -739,6 +738,20 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     is_target=is_target,
                     interface=interface,
                 )
+
+                if getattr(task, "_metadata") is None:
+                    task._metadata = TaskMetadata()
+
+                task._metadata.cache = True
+                task._metadata.cache_serialize = True
+
+                hash = hashlib.new("sha256")
+                hash.update(job.properties().encode())
+                if job.is_script:
+                    hash.update(Path(job.rule.script).read_bytes())
+
+                task._metadata.cache_version = hash.hexdigest()
+
                 self.snakemake_tasks.append(task)
 
                 typed_interface = transform_interface_to_typed_interface(interface)
@@ -776,13 +789,15 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                         upstream_nodes.append(node_map[x.jobid])
 
                 node = Node(
-                    id=f"n{job.jobid}",
+                    id=f"n{node_id}",
                     metadata=task.construct_node_metadata(),
                     bindings=sorted(bindings, key=lambda b: b.var),
                     upstream_nodes=upstream_nodes,
                     flyte_entity=task,
                 )
                 node_map[job.jobid] = node
+
+                node_id += 1
 
         bindings: List[literals_models.Binding] = []
         for i, out in enumerate(self.interface.outputs.keys()):
@@ -1132,10 +1147,11 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             )
 
             if not self._is_target:
+                remote_path = f"latch:///.snakemake_latch/workflows/{self.wf.name}/task_outputs/{self.wf.jit_wf_version}/{self.wf.jit_exec_display_name}/{self.name}/{out_name}"
                 results.append(
                     reindent(
                         rf"""
-                        {out_name}={out_type.__name__}("{target_path}")
+                        {out_name}={out_type.__name__}({repr(target_path)}, {repr(remote_path)})
                         """,
                         2,
                     ).rstrip()
