@@ -94,7 +94,7 @@ The key segment to modify in the data structure is `params`. This refers to the 
 
 ```python
 def launch_workflow(
-    wf_id: str,
+    target_wf_id: str,
     input_directory: LatchDir,
     output_directory: LatchOutputDir,
 ) -> None:
@@ -112,7 +112,7 @@ def launch_workflow(
     data = {
         "account_id": workspace_id,
         "launcher_id": workspace_id,
-        "workflow_id": wf_id,
+        "workflow_id": target_wf_id,
 ​
         ### MODIFY WORKFLOW PARAMETERS BELOW
         "params": {
@@ -140,7 +140,7 @@ def launch_workflow(
         headers=headers,
         json=data,
     )
-    print(f"Launched workflow {wf_id}: {response.json()}")
+    print(f"Launched workflow {target_wf_id}: {response.json()}")
 ```
 
 To obtain the JSON representation of the workflow inputs, navigate to a previous execution of your workflow. Select **Graph and Logs**, click on square box around the first task, and select **Inputs**. Copy the workflow parameters inside the `literal` object, and pass it to `params`.
