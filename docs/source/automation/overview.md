@@ -6,14 +6,13 @@ Note: This document is a work in progress and is subject to change.
 
 Automations allow you to automatically run a workflow on top of folders in Latch Data based on specific triggers such as when files are added to folders. Automations consist of a trigger, automation workflow and your target workflow.
 
-* _Trigger_ allows you to specify a target directory to watch, the event which kicks off a workflow(right now we support monitoring for file addition events), and a timer for how long to wait to start the workflow after the last file has been added to the target directory.
+* _Trigger_ allows you to specify a target directory to watch, the event which kicks off a workflow, and a timer for how long to wait to start the workflow after the last file has been added to the target directory. Currently, automations only support file addition events.
 * _Automation workflow_ runs when the automation triggers. We have supplied a template workflow which reads children of the target folder, runs your _target workflow_ on children and updates which children have been processed in a table your specify inside [Latch Registry](../registry/overview.md).
 * _Target workflow_ contains the logic of how to process the files in the child directories.
 
 Below, we will walk through the process of creating an automation on Latch. We assume that you understand how to write and register [Workflows](../basics/what_is_a_workflow.md) on Latch.
 
-**Prerequisite:**
-* [Automation Workflow Template](https://github.com/latchbio/automation-wf)
+**Prerequisites:**
 * An existing Table in [Latch Registry](https://latch.wiki/what-is-registry)
 * An target folder in [Latch Data](https://console.latch.bio/data)
 
@@ -46,21 +45,33 @@ File Tree:
     └── automation.py
 ```
 
-## 2. Configure the Parameters
+## 2. Configure Automation Workflow Parameters
 
 To specify the child workflow and the registry table with processed children, configure the following parameters in `wf/__init__.py`:
 
 * `wf_id`: The ID of the workflow you want to run.
-* `table_id`: The ID of the table that stores metadata for this automation
+* `table_id`: The ID of the table that stores metadata for this automation.
 
 Get `wf_id` for the target workflow by going to `Workflows` page on Latch Console, clicking on your workflow and getting the ID from the sidebar.
 
 You will need to create a table to record processed children directories. Go to `Registry` on Latch Console, and create a new table in one of your existing projects. Get the ID of the table from the sidebar and pass it as `table_id`.
 
+### Get Workflow ID
+![Workflow ID](../assets/automation//get-workflow-id.png)
+
+### Get Table ID
+![Table ID](../assets/automation//get-table-id.png)
+
 ```python
 # __init__.py
+from latch.resources.workflow import workflow
+from latch.types.directory import LatchDir, LatchOutputDir
+from latch.types.metadata import LatchAuthor, LatchMetadata, LatchParameter
+
+from wf.automation import automation_task
 
 ...
+
 @workflow(metadata)
 def automation_workflow(input_directory: LatchDir, automation_id: str) -> None:
     automation_task(
@@ -70,14 +81,28 @@ def automation_workflow(input_directory: LatchDir, automation_id: str) -> None:
     )
 ```
 
+## 3. Configure Target Workflow Parameters
+
 You can configure the parameters for your workflow in `wf/automation.py`:
 
 * output_directory: The directory where the output of the workflow will be stored.
 
 ```python
 # automation.py
+import os
+import uuid
+from typing import Set
+from urllib.parse import urljoin
+
+import requests
+from latch.account import Account
+from latch.registry.table import Table
+from latch.resources.tasks import small_task
+from latch.types.directory import LatchDir, LatchOutputDir
+from latch.types.file import LatchFile
 
 ...
+
 @small_task
 def automation_task(input_directory: LatchDir, wf_id: str, table_id: str) -> None:
     automation_table = Table(table_id)
@@ -103,14 +128,10 @@ Right now, the automation workflow is configured to pass `input_directory` and `
 
 You can modify the `launch_workflow` function to pass any parameters for your workflow by modifying the `data` dictionary. You can find the exact object to pass as `data` by going to an existing execution of your workflow, clicking on `inputs` and copying your workflow parameters inside the `literal` object.
 
-i.e.
-```json
-{
- "literals": {
-    # copy everything inside the brackets
- }
-}
-```
+### Get the Parameters for Your Workflow
+
+![Table ID](../assets/automation/get-workflow-parameters.png)
+
 
 Code to change:
 
@@ -148,7 +169,7 @@ def launch_workflow(
 ```
 
 
-## 3. Register Workflow
+## 4. Register Workflow
 
 Register the workflow to your Latch workspace.
 
@@ -162,7 +183,7 @@ Once the workflow has been registered. Go to [Latch Console](https://console.lat
 
 ![Workflow ID](../assets/automation//get-workflow-id.png)
 
-## 4. Create Automation
+## 5. Create Automation
 
 Navigate to [Automations](https://console.latch.bio/automations) tab via **Worfklows** > **Automations** and click on the **Create Automation** button.
 
