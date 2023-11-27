@@ -51,11 +51,11 @@ File Tree:
 
 ## 2. Select the Target Workflow
 
-To specify the child workflow and the registry table with processed children, configure the following parameters in `wf/__init__.py`:
+To specify the target workflow and the registry table with processed child directories, configure the following parameters in `wf/__init__.py`:
 
 * `output_directory`: The Latch Path to the output folder which this automation workflow will populate. i.e. `latch://...`
 * `target_wf_id`: The ID of the workflow you want to automate. To find the workflow ID, navigate to the `Workflows` page on Latch Console, select the workflow of interest, and obtain the ID from the right sidebar.
-* `table_id`: The ID of the table that stores metadata for this automation. Automations currently rely on a table to record processed children directories. To obtain the `table_id`, navigate to `Registry` on Latch Console. Then, create a new table in one of your existing projects, and get the ID of the table from the sidebar.
+* `table_id`: The ID of the table that stores metadata for this automation. Automations currently rely on a table to record processed child directories. To obtain the `table_id`, navigate to `Registry` on Latch Console. Then, create a new table in one of your existing projects, and get the ID of the table from the sidebar.
 
 
 ```python
@@ -74,11 +74,11 @@ def automation_workflow(input_directory: LatchDir, automation_id: str) -> None:
     )
 ```
 
-### Get Workflow ID
-![Workflow ID](../assets/automation//get-workflow-id.png)
+![Workflow ID](../assets/automation/get-workflow-id.png)
+*Get Workflow ID*
 
-### Get Table ID
-![Table ID](../assets/automation//get-table-id.png)
+![Table ID](../assets/automation/get-table-id.png)
+*Get Table ID*
 
 ## 3. Configure Automation Logic
 
