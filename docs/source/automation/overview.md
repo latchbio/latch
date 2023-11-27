@@ -59,8 +59,8 @@ To specify the target workflow and the registry table with processed child direc
 
 
 ```python
-# __init__.py
-​
+# __init__.py​
+
 ...
 @workflow(metadata)
 def automation_workflow(input_directory: LatchDir, automation_id: str) -> None:
@@ -93,27 +93,29 @@ The `data` variable contains the JSON body required for the `POST` request. It i
 The key segment to modify in the data structure is `params`. This refers to the JSON representation of the inputs to the target workflow.
 
 ```python
+# automation.py
+
 def launch_workflow(
     target_wf_id: str,
     input_directory: LatchDir,
     output_directory: LatchOutputDir,
 ) -> None:
-​
+
     ### DO NOT CHANGE BELOW
     token = os.environ["FLYTE_INTERNAL_EXECUTION_ID"]
     nucleus_endpoint = os.environ["LATCH_AUTHENTICATION_ENDPOINT"]
     workspace_id = Account.current().id
-​
+
     headers = {
         "Authorization": f"Latch-Execution-Token {token}",
     }
     ### DO NOT CHANGE ABOVE
-​
+
     data = {
         "account_id": workspace_id,
         "launcher_id": workspace_id,
         "workflow_id": target_wf_id,
-​
+
         ### MODIFY WORKFLOW PARAMETERS BELOW
         "params": {
             "input_directory": {
@@ -134,7 +136,7 @@ def launch_workflow(
             },
         },
     }
-​
+
     response = requests.post(
         urljoin(nucleus_endpoint, "/api/create-execution"),
         headers=headers,
@@ -148,9 +150,9 @@ To obtain the JSON representation of the workflow inputs, navigate to a previous
 i.e.
 ```json
 {
- "literals": {
+  "literals": {
     # copy everything inside the brackets
- }
+  }
 }
 ```
 ​
@@ -167,7 +169,7 @@ The `automation_task` defines the logic that is used to launch the workflow. The
 
 ```python
 # automation.py
-​
+
 ...
 @small_task
 def automation_task(
@@ -195,7 +197,7 @@ def automation_task(
 
 Register the automation workflow to your Latch workspace.
 
-```
+```shell-session
 $ latch register --remote --yes automation-wf
 ```
 
