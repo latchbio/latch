@@ -289,9 +289,9 @@ def interface_to_parameters(
 class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
     out_parameter_name = "o0"  # must be "o0"
 
-    def __init__(
-        self,
-    ):
+    def __init__(self, cache_tasks: bool = False):
+        self.cache_tasks = cache_tasks
+
         assert metadata._snakemake_metadata is not None
 
         parameter_metadata = metadata._snakemake_metadata.parameters
@@ -495,7 +495,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             print(f"JIT Workflow Version: {{jit_wf_version}}")
             print(f"JIT Execution Display Name: {{jit_exec_display_name}}")
 
-            wf = extract_snakemake_workflow(pkg_root, snakefile, jit_wf_version, jit_exec_display_name, local_to_remote_path_mapping, non_blob_parameters)
+            wf = extract_snakemake_workflow(pkg_root, snakefile, jit_wf_version, jit_exec_display_name, local_to_remote_path_mapping, non_blob_parameters, {self.cache_tasks})
             wf_name = wf.name
             generate_snakemake_entrypoint(wf, pkg_root, snakefile, {repr(remote_output_url)}, non_blob_parameters)
 
@@ -518,7 +518,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
                 protos = _recursive_list(td)
                 reg_resp = register_serialized_pkg(protos, None, version, account_id)
-                _print_reg_resp(reg_resp, image_name, silent=True)
+                _print_reg_resp(reg_resp, image_name)
 
             wf_spec_remote = f"latch:///.snakemake_latch/workflows/{wf_name}/{version}/spec"
             spec_dir = Path("spec")
@@ -603,6 +603,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         jit_wf_version: str,
         jit_exec_display_name: str,
         local_to_remote_path_mapping: Optional[Dict[str, str]] = None,
+        cache_tasks: bool = False,
     ):
         assert metadata._snakemake_metadata is not None
         name = metadata._snakemake_metadata.name
@@ -622,6 +623,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         self.return_files = return_files
         self._input_parameters = None
         self._dag = dag
+        self._cache_tasks = cache_tasks
         self.snakemake_tasks: List[SnakemakeJobTask] = []
 
         workflow_metadata = WorkflowMetadata(
@@ -742,15 +744,16 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 if getattr(task, "_metadata") is None:
                     task._metadata = TaskMetadata()
 
-                task._metadata.cache = True
-                task._metadata.cache_serialize = True
+                if self._cache_tasks:
+                    task._metadata.cache = True
+                    task._metadata.cache_serialize = True
 
-                hash = hashlib.new("sha256")
-                hash.update(job.properties().encode())
-                if job.is_script:
-                    hash.update(Path(job.rule.script).read_bytes())
+                    hash = hashlib.new("sha256")
+                    hash.update(job.properties().encode())
+                    if job.is_script:
+                        hash.update(Path(job.rule.script).read_bytes())
 
-                task._metadata.cache_version = hash.hexdigest()
+                    task._metadata.cache_version = hash.hexdigest()
 
                 self.snakemake_tasks.append(task)
 
@@ -831,8 +834,8 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
 
 
-def build_jit_register_wrapper() -> JITRegisterWorkflow:
-    wrapper_wf = JITRegisterWorkflow()
+def build_jit_register_wrapper(cache_tasks: bool = False) -> JITRegisterWorkflow:
+    wrapper_wf = JITRegisterWorkflow(cache_tasks)
     out_parameter_name = wrapper_wf.out_parameter_name
 
     python_interface = wrapper_wf.python_interface
