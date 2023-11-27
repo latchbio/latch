@@ -207,6 +207,6 @@ Input an **Automation Name** and **Description**.
 
 Next, select a folder where files/folders will be uploaded using the `Select Target` button. Any items uploaded to this folder will trigger the specified workflow.
 
-Finally, input the automation ID you obtained in the previous step.
+Finally, select the automation workflow that you have just registered using the selector.
 
 ![Create Automation Example](../assets/automation/create-automation-example.png)
