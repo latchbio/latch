@@ -1,8 +1,16 @@
-# Creating an Automaiton (WIP)
+# Workflow Automations
 
 Note: This document is a work in progress and is subject to change.
 
-In this document, we will walk through the process of creating an automation on Latch. We assume that you understand how to write and register [Worfklows](../basics/what_is_a_workflow.md) on Latch.
+**Description**
+
+Automations allow you to automatically run a workflow on top of folders in Latch Data based on specific triggers such as when files are added to folders. Automations consist of a trigger, automation workflow and your target workflow.
+
+* _Trigger_ allows you to specify a target directory to watch, the event which kicks off a workflow(right now we support monitoring for file addition events), and a timer for how long to wait to start the workflow after the last file has been added to the target directory.
+* _Automation workflow_ runs when the automation triggers. We have supplied a template workflow which reads children of the target folder, runs your _target workflow_ on children and updates which children have been processed in a table your specify inside [Latch Registry](../registry/overview.md).
+* _Target workflow_ contains the logic of how to process the files in the child directories.
+
+Below, we will walk through the process of creating an automation on Latch. We assume that you understand how to write and register [Workflows](../basics/what_is_a_workflow.md) on Latch.
 
 **Prerequisite:**
 * [Automation Workflow Template](https://github.com/latchbio/automation-wf)
@@ -12,7 +20,8 @@ In this document, we will walk through the process of creating an automation on 
 ---
 
 ## 1: Create Automation Workflow
-Clone the [Automation Workflow Template](https://github.com/latchbio/automation-wf) and naviagate to the `automation-wf/wf` directory.
+
+Clone the [Automation Workflow Template](https://github.com/latchbio/automation-wf) and navigate to the `automation-wf/wf` directory.
 
 ```shell-session
 $ git clone git@github.com:latchbio/automation-wf.git
@@ -37,12 +46,16 @@ File Tree:
     └── automation.py
 ```
 
-## 2. Change Parameters
+## 2. Configure the Parameters
 
-Configure the following parameters in `wf/__init__.py`:
+To specify the child workflow and the registry table with processed children, configure the following parameters in `wf/__init__.py`:
 
 * `wf_id`: The ID of the workflow you want to run.
 * `table_id`: The ID of the table that stores metadata for this automation
+
+Get `wf_id` for the target workflow by going to `Workflows` page on Latch Console, clicking on your workflow and getting the ID from the sidebar.
+
+You will need to create a table to record processed children directories. Go to `Registry` on Latch Console, and create a new table in one of your existing projects. Get the ID of the table from the sidebar and pass it as `table_id`.
 
 ```python
 # __init__.py
@@ -57,7 +70,7 @@ def automation_workflow(input_directory: LatchDir, automation_id: str) -> None:
     )
 ```
 
-Configure the followin parameters in `wf/automation.py`:
+You can configure the parameters for your workflow in `wf/automation.py`:
 
 * output_directory: The directory where the output of the workflow will be stored.
 
@@ -86,7 +99,20 @@ def automation_task(input_directory: LatchDir, wf_id: str, table_id: str) -> Non
 ...
 ```
 
-Optionally, you can modify the `launch_workflow` function to match the parameters of your workflow.
+Right now, the automation workflow is configured to pass `input_directory` and `output_directory` as parameters to the child workflow.
+
+You can modify the `launch_workflow` function to pass any parameters for your workflow by modifying the `data` dictionary. You can find the exact object to pass as `data` by going to an existing execution of your workflow, clicking on `inputs` and copying your workflow parameters inside the `literal` object.
+
+i.e.
+```json
+{
+ "literals": {
+    # copy everything inside the brackets
+ }
+}
+```
+
+Code to change:
 
 ```python
 # automation.py
