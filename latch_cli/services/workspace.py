@@ -30,25 +30,36 @@ def workspace():
     data = _get_workspaces()
     ids = {}
 
+    old_id = current_workspace()
+
+    selected_marker = "\x1b[3m\x1b[2m (currently selected) \x1b[22m\x1b[23m"
+
     for id, name in sorted(
-        data.items(), key=lambda x: "" if x[1] == "Personal Workspace" else x[1]
+        data.items(), key=lambda x: "" if x[1] == "Personal Workspace" else x[0]
     ):
+        if id == old_id:
+            name = f"{name}{selected_marker}"
+
         ids[name] = id
         options.append(name)
 
     selected_option = select_tui(
         title="Select Workspace",
         options=options,
+        clear_terminal=False,
     )
 
     if selected_option is None:
         return
 
     new_id = ids[selected_option]
+
     user_config.update_workspace(new_id, selected_option)
 
-    old_id = current_workspace()
     if old_id != new_id:
         click.secho(f"Successfully switched to context {selected_option}", fg="green")
     else:
+        if selected_option.endswith(selected_marker):
+            selected_option = selected_option.replace(selected_marker, "")
+
         click.secho(f"Already in context {selected_option}.", fg="green")

@@ -16,6 +16,40 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.36.11 - 2023-11-28
+
+### Added
+
+* Snakemake
+  + ability to cache snakemake tasks using the `--cache-tasks` option with `latch register`
+
+### Changed
+
+* Minor aesthetic enhancements to `latch workspace`
+  + the currently active workspace is now marked
+  + the current selection is marked with a `>` for enhanced readability on terminals with limited color support
+
+## 2.36.10 - 2023-11-17
+
+### Fixed
+
+* Snakemake
+  + bug in 2.36.9 where output directories would still fail to upload because of a missing `pathlib.Path` -> `str` conversion.
+
+## 2.36.9 - 2023-11-16
+
+### Fixed
+
+* Snakemake
+  + bug where a snakemake task would fail to upload output directories
+
+## 2.36.8 - 2023-11-14
+
+### Fixed
+
+* Snakemake
+  + bug where a snakemake workflow would only run successfully for the user who registered it
+
 ## 2.36.7 - 2023-11-13
 
 ### Added

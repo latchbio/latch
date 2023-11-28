@@ -166,6 +166,17 @@ def dockerfile(pkg_root: str, snakemake: bool = False):
     default=None,
     help="Path to a Snakefile to register.",
 )
+@click.option(
+    "--cache-tasks/--no-cache-tasks",
+    "-c/-C",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help=(
+        "Whether or not to cache snakemake tasks. Ignored if --snakefile is not"
+        " provided."
+    ),
+)
 @requires_login
 def register(
     pkg_root: str,
@@ -174,6 +185,7 @@ def register(
     docker_progress: str,
     yes: bool,
     snakefile: Optional[Path],
+    cache_tasks: bool,
 ):
     """Register local workflow code to Latch.
 
@@ -196,6 +208,7 @@ def register(
         progress_plain=(docker_progress == "auto" and not sys.stdout.isatty())
         or docker_progress == "plain",
         use_new_centromere=use_new_centromere,
+        cache_tasks=cache_tasks,
     )
 
 

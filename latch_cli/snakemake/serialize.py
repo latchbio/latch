@@ -214,6 +214,7 @@ def extract_snakemake_workflow(
     jit_exec_display_name: str,
     local_to_remote_path_mapping: Optional[Dict[str, str]] = None,
     non_blob_parameters: Optional[Dict[str, Any]] = None,
+    cache_tasks: bool = False,
 ) -> SnakemakeWorkflow:
     extractor = snakemake_workflow_extractor(pkg_root, snakefile, non_blob_parameters)
     with extractor:
@@ -223,6 +224,7 @@ def extract_snakemake_workflow(
             jit_wf_version,
             jit_exec_display_name,
             local_to_remote_path_mapping,
+            cache_tasks,
         )
         wf.compile()
 
