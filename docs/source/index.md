@@ -123,6 +123,7 @@ registry/record.md
 :maxdepth: 2
 :caption: Automation
 automation/overview.md
+automation/automation-usecase.md
 ```
 
 ```{toctree}
