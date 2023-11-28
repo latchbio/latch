@@ -196,6 +196,7 @@ def _build_and_serialize(
     dockerfile: Optional[Path] = None,
     *,
     progress_plain: bool = False,
+    cache_tasks: bool = False,
 ):
     assert ctx.pkg_root is not None
 
@@ -207,7 +208,7 @@ def _build_and_serialize(
         from ...snakemake.serialize import generate_jit_register_code
         from ...snakemake.workflow import build_jit_register_wrapper
 
-        jit_wf = build_jit_register_wrapper()
+        jit_wf = build_jit_register_wrapper(cache_tasks)
         generate_jit_register_code(
             jit_wf,
             ctx.pkg_root,
@@ -268,7 +269,8 @@ def register(
     skip_confirmation: bool = False,
     snakefile: Optional[Path] = None,
     *,
-    progress_plain=False,
+    progress_plain: bool = False,
+    cache_tasks: bool = False,
     use_new_centromere: bool = False,
 ):
     """Registers a workflow, defined as python code, with Latch.
@@ -415,6 +417,7 @@ def register(
                 td,
                 dockerfile=ctx.default_container.dockerfile,
                 progress_plain=progress_plain,
+                cache_tasks=cache_tasks,
             )
 
             if remote and snakefile is None:
