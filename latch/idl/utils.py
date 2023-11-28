@@ -12,8 +12,7 @@ R = TypeVar("R", covariant=True)
 
 
 class HasToIdl(Protocol[R]):
-    def to_idl(self) -> R:
-        ...
+    def to_idl(self) -> R: ...
 
 
 def try_to_idl(x: Optional[HasToIdl[R]]) -> Optional[R]:

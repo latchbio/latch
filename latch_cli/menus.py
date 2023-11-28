@@ -226,10 +226,13 @@ def select_tui(title: str, options: List[str], clear_terminal: bool = True):
                 break
             name = options[i]
             if i == curr_selected:
-                color = "\x1b[38;5;40m"
+                color = "\x1b[38;5;39m"
                 bold = "\x1b[1m"
                 reset = "\x1b[0m"
-                _print(f"{indent}{color}{bold}{name}{reset}\x1b[1E")
+
+                prefix = indent[:-2] + "> "
+
+                _print(f"{color}{bold}{prefix}{name}{reset}\x1b[1E")
             else:
                 _print(f"{indent}{name}\x1b[1E")
             num_lines_rendered += 1
@@ -252,13 +255,14 @@ def select_tui(title: str, options: List[str], clear_terminal: bool = True):
     _, term_height = os.get_terminal_size()
     remove_cursor()
 
-    if not clear_terminal:
-        _, curs_height = current_cursor_position()
-        max_per_page = term_height - curs_height - 4
-    else:
+    max_per_page = min(len(options), term_height - 4)
+
+    if clear_terminal:
         clear_screen()
         move_cursor((0, 0))
-        max_per_page = term_height - 4
+    else:
+        print("\n" * (max_per_page + 3))
+        move_cursor_up(max_per_page + 4)
 
     num_lines_rendered = render(
         curr_selected,

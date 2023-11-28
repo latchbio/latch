@@ -9,6 +9,7 @@ from latch.types.file import LatchFile
 from latch_cli.snakemake.workflow import reindent
 from latch_cli.utils import identifier_from_str
 
+from ..serialize_utils import best_effort_display_name
 from .utils import JSONValue, get_preamble, parse_type, parse_value, type_repr
 
 T = TypeVar("T")
@@ -81,10 +82,11 @@ def generate_metadata(
 
         is_file = typ in {LatchFile, LatchDir}
         param_typ = "SnakemakeFileParameter" if is_file else "SnakemakeParameter"
+
         param_str = reindent(
             f"""\
             {repr(identifier_from_str(k))}: {param_typ}(
-                display_name={repr(k)},
+                display_name={repr(best_effort_display_name(k))},
                 type={type_repr(typ)},
             __config____default__),""",
             0,
@@ -133,7 +135,10 @@ def generate_metadata(
         )
 
     if not metadata_path.exists() and click.confirm(
-        "Could not find an `__init__.py` file in `latch_metadata`. Generate one?"
+        "Could not find an `__init__.py` file in `latch_metadata`. This file"
+        "defines the metadata object that configures your interface and "
+        "uses parameters imported from `parameters.py`"
+        "Generate one?"
     ):
         metadata_path.write_text(
             reindent(
@@ -182,7 +187,7 @@ def generate_metadata(
             # Import these into your `__init__.py` file:
             #
             # from .parameters import generated_parameters
-            #
+
             generated_parameters = {
             __params__
             }

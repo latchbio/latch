@@ -121,6 +121,13 @@ registry/record.md
 ```{toctree}
 :hidden:
 :maxdepth: 2
+:caption: Automation
+automation/overview.md
+```
+
+```{toctree}
+:hidden:
+:maxdepth: 2
 :caption: Examples
 examples/workflows_examples
 ```
@@ -147,9 +154,12 @@ cli/mv
 ```{toctree}
 :hidden:
 :maxdepth: 2
-:caption: Manual
-manual/snakemake.md
-manual/tutorial.md
+:caption: Snakemake Integration
+snakemake/tutorial.md
+snakemake/lifecycle.md
+snakemake/metadata.md
+snakemake/cloud.md
+snakemake/troubleshooting.md
 ```
 
 ```{toctree}
