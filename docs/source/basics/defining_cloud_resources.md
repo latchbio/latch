@@ -27,13 +27,13 @@ The number of GPUs available to the task.
 
 ## Prespecified Task Resource
 
-The Latch SDK currently supports a set of prespecified task resource requests
+The Latch SDK currently supports a set of prespecified task resource profiles
 represented as decorators:
 
-* `small_task`: 2 cpus, 4 gigs of memory, 500 GiB of storage, 0 gpus
-* `medium_task`: 32 cpus, 128 gigs of memory, 2000 GiB of storage, 0 gpus
-* `large_task`: 96 cpus, 192 gigs of memory, 5000 GiB of storage, 0 gpus
-* `small_gpu_task`: 8 cpus, 32 gigs of memory, 2000 GiB of storage, 1 gpu (24 gigs of VRAM, 9,216 cuda cores)
+* `small_task`: 2 cpus, 4 gigs of memory, 100 GiB of storage, 0 gpus
+* `medium_task`: 30 cpus, 100 gigs of memory, 1500 GiB of storage, 0 gpus
+* `large_task`: 90 cpus, 170 gigs of memory, 4500 GiB of storage, 0 gpus
+* `small_gpu_task`: 7 cpus, 30 gigs of memory, 1500 GiB of storage, 1 gpu (24 gigs of VRAM, 9,216 cuda cores)
 * `large_gpu_task`: 31 cpus, 120 gigs of memory, 2000 GiB of storage, 1 gpu (24 gigs of VRAM, 9,216 cuda cores)
 
 We use the tasks as follows:
