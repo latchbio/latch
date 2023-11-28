@@ -16,6 +16,19 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.36.11 - 2023-11-28
+
+### Added
+
+* Snakemake
+  + ability to cache snakemake tasks using the `--cache-tasks` option with `latch register`
+
+### Changed
+
+* Minor aesthetic enhancements to `latch workspace`
+  + the currently active workspace is now marked
+  + the current selection is marked with a `>` for enhanced readability on terminals with limited color support
+
 ## 2.36.10 - 2023-11-17
 
 ### Fixed
