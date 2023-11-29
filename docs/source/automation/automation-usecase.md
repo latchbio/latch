@@ -236,8 +236,6 @@ Modify the function below to change the logic for launching target workflows.
 
 ```python
 # automation.py
-
-
 import uuid
 from typing import Set
 
@@ -255,7 +253,6 @@ def automation_task(
     output_directory: LatchOutputDir,
     target_wf_id: str,
     table_id: str,
-    params: Dict[T,T],
 ) -> None:
     """
     Logic on how to process the input directory and launch the target workflows.

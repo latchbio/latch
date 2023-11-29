@@ -4,7 +4,7 @@ Note: This document is a work in progress and is subject to change.
 
 ### Description
 
-Automations allow you to automaically run workflows on top of folders in Latch Data when triggered by specific events such as when files are added to folders. Automations consist of a [*trigger*](#trigger) and an [*automation workflow*](#automation-workflow).
+Automations allow you to automatically run workflows on top of folders in Latch Data when triggered by specific events such as when files are added to folders. Automations consist of a [*trigger*](#trigger) and an [*automation workflow*](#automation-workflow).
 
 Additionally, you can pause and resume automations by toggling status radio on the sidebar.
 
@@ -19,9 +19,9 @@ Automation trigger specifies the conditions to run the automation(i.e. child got
 *Available events:*
 
 - _Data Update_ event type specifies when to run the automation if a data tree in Latch Data has been modified.
-\
-Supported events:
-    -  _Child Added_ event triggers if a new child has been added to the target directory at any depth. Automation will not run if the child has been modified or deleted.
+
+    Supported events:
+        -  _Child Added_ event triggers if a new child has been added to the target directory at any depth. Automation will not run if the child has been modified or deleted.
 
 #### Trigger Timer
 
