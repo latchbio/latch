@@ -100,7 +100,7 @@ This example requires another _target workflow_ which will get executes on every
 
 In this example, we record all processed child directories in the Registry Table to not reprocess directories when automation workflow is runs again. This example requires you to create a new table with no existing columns. The automation workflow will add a column `Processed Directory` with the directory name of processed children.
 
-For many common use cases, Registry serves as a location to track workflow inputs and outputs, and hence we include an example of it here. However, having a registry table is not required, if you don't want to use Registry as a mean to track your inputs and outputs.
+For many common use cases, Registry serves as the location to track workflow inputs and outputs, and hence we include an example of it here. However, having a registry table is not required, if you don't want to use Registry as a mean to track your inputs and outputs.
 
 To create a new table to be used with the automation:
 
