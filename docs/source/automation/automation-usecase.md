@@ -14,75 +14,74 @@ This example requires another _target workflow_ which will get executes on every
 
 1. Initialize a new workflow using `latch init test-workflow`.
 2. Replace `__init__.py` and `task.py` with the following sample code.
-```python
-# __init__.py
+    ```python
+    # __init__.py
 
-from wf.task import task
+    from wf.task import task
 
-from latch.resources.workflow import workflow
-from latch.types.directory import LatchDir, LatchOutputDir
-from latch.types.file import LatchFile
-from latch.types.metadata import LatchAuthor, LatchMetadata, LatchParameter
+    from latch.resources.workflow import workflow
+    from latch.types.directory import LatchDir, LatchOutputDir
+    from latch.types.file import LatchFile
+    from latch.types.metadata import LatchAuthor, LatchMetadata, LatchParameter
 
-metadata = LatchMetadata(
-    display_name="Target Workflow",
-    author=LatchAuthor(
-        name="Your Name",
-    ),
-    parameters={
-        "input_directory": LatchParameter(
-            display_name="Input Directory",
-            batch_table_column=True,  # Show this parameter in batched mode.
+    metadata = LatchMetadata(
+        display_name="Target Workflow",
+        author=LatchAuthor(
+            name="Your Name",
         ),
-        "output_directory": LatchParameter(
-            display_name="Output Directory",
-            batch_table_column=True,  # Show this parameter in batched mode.
-        ),
-    },
-)
+        parameters={
+            "input_directory": LatchParameter(
+                display_name="Input Directory",
+                batch_table_column=True,  # Show this parameter in batched mode.
+            ),
+            "output_directory": LatchParameter(
+                display_name="Output Directory",
+                batch_table_column=True,  # Show this parameter in batched mode.
+            ),
+        },
+    )
 
 
-@workflow(metadata)
-def template_workflow(
-    input_directory: LatchDir, output_directory: LatchOutputDir
-) -> LatchOutputDir:
-    return task(input_directory=input_directory, output_directory=output_directory)
-```
+    @workflow(metadata)
+    def template_workflow(
+        input_directory: LatchDir, output_directory: LatchOutputDir
+    ) -> LatchOutputDir:
+        return task(input_directory=input_directory, output_directory=output_directory)
+    ```
+    ```python
+    # task.py
 
-```python
-# task.py
+    import os
+    from logging import Logger
+    from urllib.parse import urljoin
 
-import os
-from logging import Logger
-from urllib.parse import urljoin
-
-from latch import message
-from latch.resources.tasks import small_task
-from latch.types.directory import LatchDir, LatchFile, LatchOutputDir
-from latch.account import Account
-
-
-log = Logger("wf.task")
+    from latch import message
+    from latch.resources.tasks import small_task
+    from latch.types.directory import LatchDir, LatchFile, LatchOutputDir
+    from latch.account import Account
 
 
-@small_task
-def task(input_directory: LatchDir, output_directory: LatchOutputDir) -> LatchOutputDir:
+    log = Logger("wf.task")
 
-    # iterate through all directories of the child input directories using iterdir()
-    for file in input_directory.iterdir():
-        log.error(f"{file} {file.remote_path}") # note: `error` is used here since its the highest logging level
 
-    return output_directory
+    @small_task
+    def task(input_directory: LatchDir, output_directory: LatchOutputDir) -> LatchOutputDir:
 
-```
+        # iterate through all directories of the child input directories using iterdir()
+        for file in input_directory.iterdir():
+            log.error(f"{file} {file.remote_path}") # note: `error` is used here since its the highest logging level
+
+        return output_directory
+
+    ```
 3. Register the sample target workflow with Latch using `latch register --remote --yes test-workflow`.
 4. Record the ID of your workflow on the sidebar which we will use later in the example.
-
-![Workflow ID](../assets/automation/get-workflow-id.png)
-
-5. You will need to pass the parameters into your target workflow from your automation. To obtain the JSON representation of the workflow inputs, navigate to a previous execution of your workflow. Select **Graph and Logs**, click on square box around the first task, and select **Inputs**. Copy the workflow parameters inside the `literal` object, and pass it to `params`.
+    ![Workflow ID](../assets/automation/get-workflow-id.png)
+5. Test the workflow by running it on Latch
+6. You will need to pass the parameters into your target workflow from your automation. To obtain the JSON representation of the workflow inputs, navigate to a previous execution of your workflow. Select **Graph and Logs**, click on square box around the first task, and select **Inputs**. Copy the workflow parameters inside the `literal` object, and pass it to `params`.
 \
-i.e.
+\
+    i.e.
     ```json
     {
         "literals": {
@@ -90,12 +89,12 @@ i.e.
         }
     }
     ```
-![Workflow Parameters](../assets/automation/get-workflow-parameters.png)
+    ![Workflow Parameters](../assets/automation/get-workflow-parameters.png)
 
 
 ## 2: Create a New Registry Table
 
-In this example, we record all processed child directories in the Registry Table to not reprocess directories when automation workflow is runs again. This example requires you to create a new table with no existing columns. The automation workflow will add a column `Processed directories` with the directory name of processed children.
+In this example, we record all processed child directories in the Registry Table to not reprocess directories when automation workflow is runs again. This example requires you to create a new table with no existing columns. The automation workflow will add a column `Processed Directory` with the directory name of processed children.
 
 To create a new table to be used with the automation:
 
@@ -176,37 +175,42 @@ metadata = LatchMetadata(
 @workflow(metadata)
 def automation_workflow(input_directory: LatchDir, automation_id: str) -> None:
     output_directory = LatchOutputDir(
-        path="your path here"  # fixme: change to latch path of the desired output directory
+        path="fixme"  # fixme: change to remote path of desired output directory
     )
-
-    # MODIFY THE WORKFLOW PARAMETERS BELOW
-    params = {
-        "input_directory": {
-            "scalar": {
-                "blob": {
-                    "metadata": {"type": {"dimensionality": "MULTIPART"}},
-                    "uri": input_directory.remote_path,
-                }
-            }
-        },
-        "output_directory": {
-            "scalar": {
-                "blob": {
-                    "metadata": {"type": {"dimensionality": "MULTIPART"}},
-                    "uri": output_directory.remote_path,
-                }
-            }
-        },
-    }
-    # MODIFY WORKFLOW PARAMETERS ABOVE
 
     automation_task(
         input_directory=input_directory,
         output_directory=output_directory,
-        params=params,
         target_wf_id="fixme",  # fixme: change wf_id to the desired workflow id
         table_id="fixme",  # fixme: change table_id to the desired registry table
     )
+```
+
+Change the parameters object in `automation.py` from [step 1.6](#1-create-the-target-workflow):
+```python
+# automation.py
+
+...
+
+params = {
+    "input_directory": {
+        "scalar": {
+            "blob": {
+                "metadata": {"type": {"dimensionality": "MULTIPART"}},
+                "uri": input_directory.remote_path,
+            }
+        }
+    },
+    "output_directory": {
+        "scalar": {
+            "blob": {
+                "metadata": {"type": {"dimensionality": "MULTIPART"}},
+                "uri": output_directory.remote_path,
+            }
+        }
+    },
+}
+...
 ```
 
 **Usage Notes**:
@@ -214,13 +218,13 @@ def automation_workflow(input_directory: LatchDir, automation_id: str) -> None:
 * The `output_directory` refers to directory where the output of the target workflow will be stored.
 
 
-## 5. Configure Automation Logic
+## 5. (Optional) Modify Automation Logic
 
 The file `wf/automation.py` contains the logic that determines how an execution for the target workflow should be launched.
 
 The `automation_task` defines the logic that is used to launch the workflow. The code below checks a registry table to see whether an output directory exists, and launches an execution for the target workflow if that is not the case.
 
-Optionally, modify the function below to change the logic for launching target workflows.
+Modify the function below to change the logic for launching target workflows.
 
 ```python
 # automation.py
@@ -242,7 +246,7 @@ def automation_task(
     output_directory: LatchOutputDir,
     target_wf_id: str,
     table_id: str,
-    params: dict,
+    params: Dict[T,T],
 ) -> None:
     """
     Logic on how to process the input directory and launch the target workflows.
@@ -251,6 +255,8 @@ def automation_task(
     # fetch the table using Latch SDK
     automation_table = Table(table_id)
     processed_directory_column = "Processed Directory"
+
+    # [PARAMS OMITTED]
 
     # check if the provided table contains column `Processed Directory` and creates one if it isn't present
     # we use Latch SDK to get the columns of the table and try to get the column by name
@@ -329,4 +335,3 @@ Finally, select the automation workflow that you have just registered using the 
 To test your automation, go to the target directory that you have specified when creating automation, and create a couple of folders. Upload any files to the folders, and wait for the trigger timer to expire.
 
 Go to **Worfklows** > **All Executions**. There should be 1 automation workflow execution, and a target workflow execution for each child in your target directory. Each target workflow should print out
-

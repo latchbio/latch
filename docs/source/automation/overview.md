@@ -4,24 +4,22 @@ Note: This document is a work in progress and is subject to change.
 
 ### Description
 
-Automations allow you to automatically run workflows on top of folders in Latch Data when triggered by specific events such as when files are added to folders. Automations consist of a *trigger*, *automation workflow*.
+Automations allow you to automatically run workflows on top of folders in Latch Data when triggered by specific events such as when files are added to folders. Automations consist of a [*trigger*](#trigger) and an [*automation workflow*](#automation-workflow).
 
-<!-- * _Status_ specifies if automation is active or not. Use automation sidebar to toggle status of your automation. -->
+Additionally, you can pause and resume automations by toggling status radio on the sidebar.
 
 ### Trigger
 
-Automation trigger specifies the conditions after which the automation will run. It allows you to specify a target directory to watch, the _event_ which kicks off a workflow, and a _timer_.
+Automation trigger specifies the conditions after which the automation will run(i.e. child got added to the target directory). It allows you to specify a target directory to watch, the [_event_](#trigger-event-types) which kicks off a workflow, and a [_timer_](#trigger-timer).
 
 #### Trigger Event Types
 
-Automation events consist of a type and an event itself. Type is a high level definition of event(i.e. data has been updated), and specific event specifies what triggers automation(i.e. child has been added).
+> Note: currently, only child addition events are supported in automations.
 
-> Currently, only child addition events are supported in automations.
-
-Available events types:
+*Available events:*
 
 - _Data Update_ event type specifies when to run the automation if a data tree in Latch Data has been modified. Supported events for this type are:
-    -  _Child Added_ event triggers if a new child has been added to the target directory at any depth. Automation will not run if the child has been modified.
+    -  _Child Added_ event triggers if a new child has been added to the target directory at any depth. Automation will not run if the child has been modified or deleted.
 
 #### Trigger Timer
 
@@ -63,8 +61,6 @@ def automation_workflow(input_directory: LatchDir, automation_id: str) -> None:
     pass
 ```
 
-#### Automation Workflow Example
-
 See an [example](automation-usecase.md) of how we create an automation workflow which reads all children of the target directory and kicks off another workflow which runs processing on child directories.
 
 ## Creating an Automation
@@ -77,6 +73,6 @@ Next, select a folder where files/folders will be uploaded using the `Select Tar
 
 Finally, select the [automation workflow](#automation-workflow) that you have registered with Latch.
 
-Checkout the [example above](#automation-workflow-example) on how to create and register automation workflows.
+Checkout an [example](automation-usecase.md) on how to create and register automation workflows.
 
 ![Create Automation Example](../assets/automation/create-automation-example.png)
