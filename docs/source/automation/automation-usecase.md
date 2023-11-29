@@ -152,7 +152,9 @@ To specify the target workflow and the registry table which you have just create
 * `table_id`: The ID of the table which you created that stores metadata for this automation. Refer to [Create A New Registry Table](#2-create-a-new-registry-table) to create a table and get the ID.
 
 >**Important**:
-Currently, automations are only passing `input_directory` as the parameter to the automation workflow. If your workflow has different parameters automation will fail to start it. Make sure that the workflows which you use with automation have the following parameter dictionary:
+Currently, automations are only passing `input_directory` as the parameter to the automation workflow. If your workflow has different parameters automation will fail to start it.
+\
+In case you need more parameters to pass to your automation workflow, we suggest to hard-code them into the workflow while we are working on adding parameter support for automations.
 
 
 ```python
