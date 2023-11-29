@@ -34,7 +34,11 @@ For example, if the timer is 10 minutes and the trigger event is `Child Added`, 
 This is the [workflow](../basics/what_is_a_workflow.md) that will run whenever the automation has been [triggered](#trigger).
 
 #### Usage Note:
-Currently, automations are only passing `input_directory` as the parameter to the automation workflow. If your workflow has different parameters automation will fail to start it. Make sure that the workflows which you use with automation have the following parameter dictionary:
+Currently, automations are only passing `input_directory` as the parameter to the automation workflow. If your workflow has different parameters automation will fail to start it.
+
+In case you need more parameters to pass your workflow, we suggest to hard-code them into your workflow while we are working on adding parameter support for automations.
+
+Make sure that the workflows which you use with automation have the following parameter dictionary:
 
 ```python
 # __init__.py
