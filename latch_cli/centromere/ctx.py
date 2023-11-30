@@ -34,9 +34,6 @@ from latch_cli.utils import (
     retrieve_or_login,
 )
 
-from ..services.register.utils import import_module_by_path
-from ..utils import identifier_suffix_from_str
-
 
 @dataclass
 class _Container:
@@ -136,6 +133,7 @@ class _CentromereCtx:
 
                 import latch.types.metadata as metadata
 
+                from ..services.register.utils import import_module_by_path
                 from ..snakemake.serialize import (
                     get_snakemake_metadata_example,
                     snakemake_workflow_extractor,
@@ -143,6 +141,7 @@ class _CentromereCtx:
 
                 new_meta = pkg_root / "latch_metadata" / "__init__.py"
                 old_meta = pkg_root / "latch_metadata.py"
+
                 if new_meta.exists():
                     click.echo(
                         f"Using metadata file {click.style(new_meta, italic=True)}"
@@ -328,6 +327,8 @@ class _CentromereCtx:
             account_id = f"x{self.account_id}"
         else:
             account_id = self.account_id
+
+        from ..utils import identifier_suffix_from_str
 
         wf_name = identifier_suffix_from_str(self.workflow_name).lower()
         wf_name = docker_image_name_illegal_pat.sub("_", wf_name)
