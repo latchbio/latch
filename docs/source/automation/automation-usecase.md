@@ -4,9 +4,13 @@ Note: This document is a work in progress and is subject to change.
 
 We will walk through the process of creating an [automation](overview.md) on Latch which will run a _target workflow_ on all children of the target directory. We assume that you understand how to write and register [Workflows](../basics/what_is_a_workflow.md) on Latch.
 
-**Prerequisite:**
-* An existing Table in [Latch Registry](https://latch.wiki/what-is-registry)
-* An target folder in [Latch Data](https://console.latch.bio/data)
+**Prerequisites:**
+* _Target directory in [Latch Data](https://console.latch.bio/data): this is the folder which is watched by the automation. Automation will be triggered if a child is added to this folder.
+
+**Terms:**
+- _Automation Workflow_: workflow which will be called by automation. This is the workflow we create in [steps 3-5](#3-create-the-automation-workflow) of this tutorial.
+- _Target Workflow_: workflow which will be ran by automation workflow on child of the _target directory_. This workflow should contain the logic on how to process the files in child directories. This is the workflow we create in [step 1](#1-create-the-target-workflow) of this tutorial.
+- _Registry Table_: we use a Registry Table in this tutorial to record child directories which are processed by the target workflow to avoid reprocessing same directories in consequent runs of automation. We create this table in [step 2](#2-create-a-new-registry-table) of this tutorial.
 
 ## 1: Create the Target Workflow
 
@@ -96,6 +100,8 @@ This example requires another _target workflow_ which will get executes on every
 
 In this example, we record all processed child directories in the Registry Table to not reprocess directories when automation workflow is runs again. This example requires you to create a new table with no existing columns. The automation workflow will add a column `Processed Directory` with the directory name of processed children.
 
+For many common use cases, Registry serves as the location to track workflow inputs and outputs, and hence we include an example of it here. However, having a registry table is not required, if you don't want to use Registry as a mean to track your inputs and outputs.
+
 To create a new table to be used with the automation:
 
 1. Go to [Latch Registry](https://console.latch.bio/registry).
@@ -145,13 +151,18 @@ To specify the target workflow and the registry table which you have just create
 * `params`: The parameters for your workflow. Refer to [Create The Target Workflow](#1-create-the-target-workflow) to get the parameters.
 * `table_id`: The ID of the table which you created that stores metadata for this automation. Refer to [Create A New Registry Table](#2-create-a-new-registry-table) to create a table and get the ID.
 
+>**Important**:
+Currently, automations are only passing `input_directory` as the parameter to the automation workflow. If your workflow has different parameters automation will fail to start it.
+\
+In case you need more parameters to pass to your automation workflow, we suggest to hard-code them into the workflow while we are working on adding parameter support for automations.
+
+
 ```python
 # __init__.py​
 
 from latch.resources.workflow import workflow
 from latch.types.directory import LatchDir, LatchOutputDir
 from latch.types.metadata import LatchAuthor, LatchMetadata, LatchParameter
-
 from wf.automation import automation_task
 
 metadata = LatchMetadata(
@@ -161,32 +172,31 @@ metadata = LatchMetadata(
         name="Your Name Here",
     ),
     # MODIFY NAMING METADATA ABOVE
+    # IMPORTANT: these exact parameters are required for the workflow to work with automations
     parameters={
         "input_directory": LatchParameter(
             display_name="Input Directory",
-        ),
-        "automation_id": LatchParameter(
-            display_name="Automation ID",
-        ),
+        )
     },
 )
 
 
 @workflow(metadata)
-def automation_workflow(input_directory: LatchDir, automation_id: str) -> None:
+def automation_workflow(input_directory: LatchDir) -> None:
     output_directory = LatchOutputDir(
-        path="fixme"  # fixme: change to remote path of desired output directory
+        path="latch://FIXME"  # fixme: change to remote path of desired output directory
     )
 
     automation_task(
         input_directory=input_directory,
         output_directory=output_directory,
-        target_wf_id="fixme",  # fixme: change wf_id to the desired workflow id
-        table_id="fixme",  # fixme: change table_id to the desired registry table
+        target_wf_id="FIXME",  # fixme: change wf_id to the desired workflow id
+        table_id="FIXME",  # fixme: change table_id to the desired registry table
     )
+
 ```
 
-Change the parameters object in `automation.py` from [step 1.6](#1-create-the-target-workflow):
+(Optional) Change the parameters object in `automation.py` from [step 1.6](#1-create-the-target-workflow) if your target workflow takes different parameters than `input_directory` and `output_directory`:
 ```python
 # automation.py
 
@@ -228,7 +238,6 @@ Modify the function below to change the logic for launching target workflows.
 
 ```python
 # automation.py
-
 import uuid
 from typing import Set
 
@@ -246,7 +255,6 @@ def automation_task(
     output_directory: LatchOutputDir,
     target_wf_id: str,
     table_id: str,
-    params: Dict[T,T],
 ) -> None:
     """
     Logic on how to process the input directory and launch the target workflows.
