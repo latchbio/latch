@@ -218,6 +218,25 @@ def _build_and_serialize(
             current_workspace(),
         )
 
+    elif ctx.workflow_type == WorkflowType.nextflow:
+        # TODO
+        # assert ctx.snakefile is not None
+        assert ctx.version is not None
+
+        from ...nextflow.jit import (
+            build_nf_jit_register_wrapper,
+            generate_nf_jit_register_code,
+        )
+
+        jit_wf = build_nf_jit_register_wrapper()
+        generate_nf_jit_register_code(
+            jit_wf,
+            ctx.pkg_root,
+            ctx.version,
+            image_name,
+            current_workspace(),
+        )
+
     image_build_logs = build_image(ctx, image_name, context_path, dockerfile)
     print_and_write_build_logs(
         image_build_logs, image_name, ctx.pkg_root, progress_plain=progress_plain
@@ -230,6 +249,13 @@ def _build_and_serialize(
         from ...snakemake.serialize import serialize_jit_register_workflow
 
         serialize_jit_register_workflow(jit_wf, tmp_dir, image_name, ctx.dkr_repo)
+    elif ctx.workflow_type == WorkflowType.nextflow:
+        assert jit_wf is not None
+        assert ctx.dkr_repo is not None
+
+        from ...nextflow.serialize import serialize_nf_jit_register_workflow
+
+        serialize_nf_jit_register_workflow(jit_wf, tmp_dir, image_name, ctx.dkr_repo)
     else:
         serialize_logs, container_id = serialize_pkg_in_container(
             ctx, image_name, tmp_dir
@@ -268,6 +294,7 @@ def register(
     remote: bool = False,
     skip_confirmation: bool = False,
     snakefile: Optional[Path] = None,
+    nf_script: Optional[Path] = None,
     *,
     progress_plain: bool = False,
     cache_tasks: bool = False,
@@ -286,7 +313,7 @@ def register(
     .. _RFC6749:
         https://datatracker.ietf.org/doc/html/rfc6749
 
-    The major constituent steps are:
+    The major steps are:
 
         - Constructing a Docker image
         - Serializing flyte objects within an instantiated container
@@ -294,7 +321,7 @@ def register(
         - Registering serialized objects + the container with latch.
 
     The Docker image is constructed by inferring relevant files + dependencies
-    from the workflow package code itself. If a Dockerfile is provided
+    from the workflow package code. If a Dockerfile is provided
     explicitly, it will be used for image construction instead.
 
     The registration flow makes heavy use of `Flyte`_, and while the Latch SDK
@@ -330,6 +357,7 @@ def register(
         disable_auto_version=disable_auto_version,
         remote=remote,
         snakefile=snakefile,
+        nf_script=nf_script,
         use_new_centromere=use_new_centromere,
     ) as ctx:
         assert ctx.workflow_name is not None, "Unable to determine workflow name"
@@ -405,9 +433,8 @@ def register(
             scp = SCPClient(transport=transport, sanitize=lambda x: x)
 
         with contextlib.ExitStack() as stack:
-            # We serialize locally with snakemake projects
             remote_dir_client = None
-            if snakefile is None:
+            if snakefile is None and nf_script is None:
                 remote_dir_client = ctx.ssh_client
             td: str = stack.enter_context(MaybeRemoteDir(remote_dir_client))
             _build_and_serialize(

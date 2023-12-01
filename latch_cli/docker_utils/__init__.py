@@ -37,6 +37,8 @@ def get_prologue(
 ) -> List[str]:
     if wf_type == WorkflowType.snakemake:
         library_name = '"latch[snakemake]"'
+    elif wf_type == WorkflowType.nextflow:
+        library_name = '"latch[nextflow]"'
     else:
         library_name = "latch"
     return [
@@ -79,6 +81,14 @@ def get_epilogue(wf_type: WorkflowType = WorkflowType.latchbiosdk) -> List[str]:
             "# Latch snakemake workflow entrypoint",
             "# DO NOT CHANGE",
             "copy .latch/snakemake_jit_entrypoint.py /root/snakemake_jit_entrypoint.py",
+        ]
+    elif wf_type == WorkflowType.nextflow:
+        cmds += [
+            "",
+            "# Latch nextflow workflow entrypoint",
+            "# DO NOT CHANGE",
+            "copy .latch/latch-nextflow /root/latch-nextflow",
+            "copy .latch/nextflow_jit_entrypoint.py /root/nextflow_jit_entrypoint.py",
         ]
 
     cmds += [
@@ -248,7 +258,8 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
 
                 has_buildable_pyproject = True
                 break
-    except FileNotFoundError: ...
+    except FileNotFoundError:
+        ...
 
     # from https://peps.python.org/pep-0518/ and https://peps.python.org/pep-0621/
     if has_setup_py or has_buildable_pyproject:

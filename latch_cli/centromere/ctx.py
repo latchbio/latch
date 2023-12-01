@@ -61,6 +61,7 @@ class _CentromereCtx:
     default_container: _Container
     workflow_type: WorkflowType
     snakefile: Optional[Path]
+    nf_script: Optional[Path]
 
     latch_register_api_url = config.api.workflow.register
     latch_image_api_url = config.api.workflow.upload_image
@@ -82,6 +83,7 @@ class _CentromereCtx:
         disable_auto_version: bool = False,
         remote: bool = False,
         snakefile: Optional[Path] = None,
+        nf_script: Optional[Path] = None,
         use_new_centromere: bool = False,
     ):
         self.use_new_centromere = use_new_centromere
@@ -95,11 +97,20 @@ class _CentromereCtx:
             self.dkr_repo = config.dkr_repo
             self.pkg_root = pkg_root.resolve()
 
-            if snakefile is None:
-                self.workflow_type = WorkflowType.latchbiosdk
-            else:
+            if snakefile and nf_script:
+                raise ValueError(
+                    "Cannot provide both a snakefile and nextflow script to the"
+                    " register command."
+                )
+
+            if snakefile is not None:
                 self.workflow_type = WorkflowType.snakemake
                 self.snakefile = snakefile
+            elif nf_script is not None:
+                self.workflow_type = WorkflowType.nextflow
+                self.nf_script = nf_script
+            else:
+                self.workflow_type = WorkflowType.latchbiosdk
 
             self.container_map: Dict[str, _Container] = {}
             if self.workflow_type == WorkflowType.latchbiosdk:
@@ -128,7 +139,7 @@ class _CentromereCtx:
                         fg="red",
                     )
                     raise click.exceptions.Exit(1)
-            else:
+            elif self.workflow_type == WorkflowType.snakemake:
                 assert snakefile is not None
 
                 import latch.types.metadata as metadata
@@ -166,11 +177,13 @@ class _CentromereCtx:
                             fg="red",
                         )
                         click.secho(
-                            "\nIt is possible to avoid including the Snakefile"
-                            " prior to registration by providing a"
-                            " `latch_metadata.py` file in the workflow root.\nThis"
-                            " way it is not necessary to install dependencies or"
-                            " ensure that Snakemake inputs locally.",
+                            (
+                                "\nIt is possible to avoid including the Snakefile"
+                                " prior to registration by providing a"
+                                " `latch_metadata.py` file in the workflow root.\nThis"
+                                " way it is not necessary to install dependencies or"
+                                " ensure that Snakemake inputs locally."
+                            ),
                             fg="red",
                         )
                         click.secho("\nExample ", fg="red", nl=False)
@@ -240,6 +253,28 @@ class _CentromereCtx:
                 # name for snakemake
                 self.workflow_name = metadata._snakemake_metadata.name
 
+            else:
+                assert nf_script is not None
+
+                import latch.types.metadata as metadata
+
+                meta = pkg_root / "latch_metadata" / "__init__.py"
+                if meta.exists():
+                    click.echo(f"Using metadata file {click.style(meta, italic=True)}")
+                    import_module_by_path(meta)
+
+                if metadata._nextflow_metadata is None:
+                    click.secho(
+                        dedent(
+                            """Make sure a `latch_metadata.py` file exists in the
+                        nextflow project root.""",
+                        ),
+                        fg="red",
+                    )
+                    raise click.exceptions.Exit(1)
+
+                self.workflow_name = metadata._nextflow_metadata.name
+
             version_file = self.pkg_root / "version"
             try:
                 self.version = version_file.read_text()
@@ -258,8 +293,10 @@ class _CentromereCtx:
 
             if self.nucleus_check_version(self.version, self.workflow_name):
                 click.secho(
-                    f"\nVersion ({self.version}) already exists."
-                    " Make sure that you've saved any changes you made.",
+                    (
+                        f"\nVersion ({self.version}) already exists."
+                        " Make sure that you've saved any changes you made."
+                    ),
                     fg="red",
                     bold=True,
                 )
@@ -298,7 +335,8 @@ class _CentromereCtx:
                 )
                 self.ssh_client = ssh_client
 
-                def _patched_connect(self): ...
+                def _patched_connect(self):
+                    ...
 
                 def _patched_create_paramiko_client(self, base_url):
                     self.ssh_client = ssh_client

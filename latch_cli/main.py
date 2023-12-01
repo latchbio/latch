@@ -176,6 +176,10 @@ def dockerfile(pkg_root: str, snakemake: bool = False):
         "Whether or not to cache snakemake tasks. Ignored if --snakefile is not"
         " provided."
     ),
+    "--nf-script",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Path to a nextflow script to register.",
 )
 @requires_login
 def register(
@@ -186,6 +190,7 @@ def register(
     yes: bool,
     snakefile: Optional[Path],
     cache_tasks: bool,
+    nf_script: Optional[Path],
 ):
     """Register local workflow code to Latch.
 
@@ -205,6 +210,7 @@ def register(
         remote=remote,
         skip_confirmation=yes,
         snakefile=snakefile,
+        nf_script=nf_script,
         progress_plain=(docker_progress == "auto" and not sys.stdout.isatty())
         or docker_progress == "plain",
         use_new_centromere=use_new_centromere,
@@ -523,8 +529,10 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
     if version is None:
         version = "latest"
     click.secho(
-        f"Successfully generated python param map named {wf_name}.params.py with"
-        f" version {version}\n Run `latch launch {wf_name}.params.py` to launch it.",
+        (
+            f"Successfully generated python param map named {wf_name}.params.py with"
+            f" version {version}\n Run `latch launch {wf_name}.params.py` to launch it."
+        ),
         fg="green",
     )
 

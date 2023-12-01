@@ -365,10 +365,17 @@ def generate_snakemake_entrypoint(
         from latch.types.file import LatchFile
 
         from latch_cli.utils import get_parameter_json_value, urljoins, check_exists_and_rename
-        from latch_cli.snakemake.serialize_utils import update_mapping
 
         sys.stdout.reconfigure(line_buffering=True)
         sys.stderr.reconfigure(line_buffering=True)
+
+        def update_mapping(local: Path, remote: str, mapping: Dict[str, str]):
+            if local.is_file():
+                mapping[str(local)] = remote
+                return
+
+            for p in local.iterdir():
+                update_mapping(p, urljoins(remote, p.name), mapping)
 
 
         def si_unit(num, base: float = 1000.0):
@@ -421,8 +428,7 @@ def generate_jit_register_code(
         from functools import partial
         from pathlib import Path
         import shutil
-        import typing
-        from typing import NamedTuple, Optional, TypedDict, Dict
+        from typing import List, NamedTuple, Optional, TypedDict, Dict
         import hashlib
         from urllib.parse import urljoin
         from dataclasses import is_dataclass, asdict
@@ -454,7 +460,6 @@ def generate_jit_register_code(
         )
         from latch_cli.utils import get_parameter_json_value, check_exists_and_rename
         import latch_cli.snakemake
-        from latch_cli.snakemake.serialize_utils import update_mapping
         from latch_cli.utils import urljoins
 
         from latch import small_task
@@ -469,6 +474,14 @@ def generate_jit_register_code(
 
         sys.stdout.reconfigure(line_buffering=True)
         sys.stderr.reconfigure(line_buffering=True)
+
+        def update_mapping(local: Path, remote: str, mapping: Dict[str, str]):
+            if local.is_file():
+                mapping[str(local)] = remote
+                return
+
+            for p in local.iterdir():
+                update_mapping(p, urljoins(remote, p.name), mapping)
 
 
         def si_unit(num, base: float = 1000.0):

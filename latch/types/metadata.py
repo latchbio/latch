@@ -97,83 +97,79 @@ class Section(FlowBase):
 
     Example:
 
+    ![Example of a user interface for a workflow with a custom flow](../assets/flow-example/flow_example_1.png)
 
-    .. image:: ../assets/flow-example/flow_example_1.png
-        :alt: Example of a user interface for a workflow with a custom flow
+    ![Example of a spoiler flow element](../assets/flow-example/flow_example_spoiler.png)
 
-    .. image:: ../assets/flow-example/flow_example_spoiler.png
-        :alt: Example of a spoiler flow element
+    The `LatchMedata` for the example above can be defined as follows:
 
+    ```python
+    from latch.types import LatchMetadata, LatchParameter
+    from latch.types.metadata import FlowBase, Section, Text, Params, Fork, Spoiler
+    from latch import workflow
 
-    The `LatchMetadata` for the example above can be defined as follows:
-
-    .. code-block:: python
-
-        from latch.types import LatchMetadata, LatchParameter
-        from latch.types.metadata import FlowBase, Section, Text, Params, Fork, Spoiler
-        from latch import workflow
-
-        flow = [
-            Section(
-                "Samples",
-                Text(
-                    "Sample provided has to include an identifier for the sample (Sample name)"
-                    " and one or two files corresponding to the reads (single-end or paired-end, respectively)"
-                ),
-                Fork(
-                    "sample_fork",
-                    "Choose read type",
-                    paired_end=ForkBranch("Paired-end", Params("paired_end")),
-                    single_end=ForkBranch("Single-end", Params("single_end")),
-                ),
+    flow = [
+        Section(
+            "Samples",
+            Text(
+                "Sample provided has to include an identifier for the sample (Sample name)"
+                " and one or two files corresponding to the reads (single-end or paired-end, respectively)"
             ),
-            Section(
-                "Quality threshold",
-                Text(
-                    "Select the quality value in which a base is qualified."
-                    "Quality value refers to a Phred quality score"
-                ),
-                Params("quality_threshold"),
+            Fork(
+                "sample_fork",
+                "Choose read type",
+                paired_end=ForkBranch("Paired-end", Params("paired_end")),
+                single_end=ForkBranch("Single-end", Params("single_end")),
             ),
-            Spoiler(
-                "Output directory",
-                Text("Name of the output directory to send results to."),
-                Params("output_directory"),
+        ),
+        Section(
+            "Quality threshold",
+            Text(
+                "Select the quality value in which a base is qualified."
+                "Quality value refers to a Phred quality score"
             ),
-        ]
+            Params("quality_threshold"),
+        ),
+        Spoiler(
+            "Output directory",
+            Text("Name of the output directory to send results to."),
+            Params("output_directory"),
+        ),
+    ]
 
-        metadata = LatchMetadata(
-            display_name="fastp - Flow Tutorial",
-            author=LatchAuthor(
-                name="LatchBio",
+    metadata = LatchMetadata(
+        display_name="fastp - Flow Tutorial",
+        author=LatchAuthor(
+            name="LatchBio",
+        ),
+        parameters={
+            "sample_fork": LatchParameter(),
+            "paired_end": LatchParameter(
+                display_name="Paired-end reads",
+                description="FASTQ files",
+                batch_table_column=True,
             ),
-            parameters={
-                "sample_fork": LatchParameter(),
-                "paired_end": LatchParameter(
-                    display_name="Paired-end reads",
-                    description="FASTQ files",
-                    batch_table_column=True,
-                ),
-                "single_end": LatchParameter(
-                    display_name="Single-end reads",
-                    description="FASTQ files",
-                    batch_table_column=True,
-                ),
-                "output_directory": LatchParameter(
-                    display_name="Output directory",
-                ),
-            },
-            flow=flow,
-        )
+            "single_end": LatchParameter(
+                display_name="Single-end reads",
+                description="FASTQ files",
+                batch_table_column=True,
+            ),
+            "output_directory": LatchParameter(
+                display_name="Output directory",
+            ),
+        },
+        flow=flow,
+    )
 
-        @workflow(metadata)
-        def fastp(
-            sample_fork: str,
-            paired_end: PairedEnd,
-            single_end: Optional[SingleEnd] = None,
-            output_directory: str = "fastp_results",
-        ) -> LatchDir:
-            ...
+    @workflow(metadata)
+    def fastp(
+        sample_fork: str,
+        paired_end: PairedEnd,
+        single_end: Optional[SingleEnd] = None,
+        output_directory: str = "fastp_results",
+    ) -> LatchDir:
+        ...
+    ```
     """
 
     section: str
@@ -424,46 +420,45 @@ class LatchMetadata:
 
     Example:
 
-    .. code-block:: python
+    ```python
+    from latch.types import LatchMetadata, LatchAuthor, LatchRule, LatchAppearanceType
 
-        from latch.types import LatchMetadata, LatchAuthor, LatchRule, LatchAppearanceType
-
-        metadata = LatchMetadata(
-            parameters={
-                "read1": LatchParameter(
-                    display_name="Read 1",
-                    description="Paired-end read 1 file to be assembled.",
-                    hidden=True,
-                    section_title="Sample Reads",
-                    placeholder="Select a file",
-                    comment="This is a comment",
-                    output=False,
-                    appearance_type=LatchAppearanceType.paragraph,
-                    rules=[
-                        LatchRule(
-                            regex="(.fasta|.fa|.faa|.fas)$",
-                            message="Only .fasta, .fa, .fas, or .faa extensions are valid"
-                        )
-                    ],
-                    batch_table_column=True,  # Show this parameter in batched mode.
-                    # The below parameters will be displayed on the side bar of the workflow
-                    documentation="https://github.com/author/my_workflow/README.md",
-                    author=LatchAuthor(
-                        name="Workflow Author",
-                        email="licensing@company.com",
-                        github="https://github.com/author",
-                    ),
-                    repository="https://github.com/author/my_workflow",
-                    license="MIT",
-                    # If the workflow is public, display it under the defined categories on Latch to be more easily discovered by users
-                    tags=["NGS", "MAG"],
+    metadata = LatchMetadata(
+        parameters={
+            "read1": LatchParameter(
+                display_name="Read 1",
+                description="Paired-end read 1 file to be assembled.",
+                hidden=True,
+                section_title="Sample Reads",
+                placeholder="Select a file",
+                comment="This is a comment",
+                output=False,
+                appearance_type=LatchAppearanceType.paragraph,
+                rules=[
+                    LatchRule(
+                        regex="(.fasta|.fa|.faa|.fas)$",
+                        message="Only .fasta, .fa, .fas, or .faa extensions are valid"
+                    )
+                ],
+                batch_table_column=True,  # Show this parameter in batched mode.
+                # The below parameters will be displayed on the side bar of the workflow
+                documentation="https://github.com/author/my_workflow/README.md",
+                author=LatchAuthor(
+                    name="Workflow Author",
+                    email="licensing@company.com",
+                    github="https://github.com/author",
                 ),
-        )
+                repository="https://github.com/author/my_workflow",
+                license="MIT",
+                # If the workflow is public, display it under the defined categories on Latch to be more easily discovered by users
+                tags=["NGS", "MAG"],
+            ),
+    )
 
-        @workflow(metadata)
-        def wf(read1: LatchFile):
-            ...
-
+    @workflow(metadata)
+    def wf(read1: LatchFile):
+        ...
+    ```
     """
 
     display_name: str
@@ -537,4 +532,18 @@ class SnakemakeMetadata(LatchMetadata):
         _snakemake_metadata = self
 
 
+@dataclass
+class NextflowMetadata(LatchMetadata):
+    name: Optional[str] = None
+    parameters: Dict[str, SnakemakeParameter] = field(default_factory=dict)
+
+    def __post_init__(self):
+        if self.name is None:
+            self.name = f"nf_{identifier_suffix_from_str(self.display_name.lower())}"
+
+        global _nextflow_metadata
+        _nextflow_metadata = self
+
+
 _snakemake_metadata: Optional[SnakemakeMetadata] = None
+_nextflow_metadata: Optional[NextflowMetadata] = None
