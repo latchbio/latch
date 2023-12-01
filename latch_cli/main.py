@@ -176,6 +176,8 @@ def dockerfile(pkg_root: str, snakemake: bool = False):
         "Whether or not to cache snakemake tasks. Ignored if --snakefile is not"
         " provided."
     ),
+)
+@click.option(
     "--nf-script",
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     default=None,
@@ -529,10 +531,8 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
     if version is None:
         version = "latest"
     click.secho(
-        (
-            f"Successfully generated python param map named {wf_name}.params.py with"
-            f" version {version}\n Run `latch launch {wf_name}.params.py` to launch it."
-        ),
+        f"Successfully generated python param map named {wf_name}.params.py with"
+        f" version {version}\n Run `latch launch {wf_name}.params.py` to launch it.",
         fg="green",
     )
 

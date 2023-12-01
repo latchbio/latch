@@ -177,13 +177,11 @@ class _CentromereCtx:
                             fg="red",
                         )
                         click.secho(
-                            (
-                                "\nIt is possible to avoid including the Snakefile"
-                                " prior to registration by providing a"
-                                " `latch_metadata.py` file in the workflow root.\nThis"
-                                " way it is not necessary to install dependencies or"
-                                " ensure that Snakemake inputs locally."
-                            ),
+                            "\nIt is possible to avoid including the Snakefile"
+                            " prior to registration by providing a"
+                            " `latch_metadata.py` file in the workflow root.\nThis"
+                            " way it is not necessary to install dependencies or"
+                            " ensure that Snakemake inputs locally.",
                             fg="red",
                         )
                         click.secho("\nExample ", fg="red", nl=False)
@@ -258,6 +256,8 @@ class _CentromereCtx:
 
                 import latch.types.metadata as metadata
 
+                from ..services.register.utils import import_module_by_path
+
                 meta = pkg_root / "latch_metadata" / "__init__.py"
                 if meta.exists():
                     click.echo(f"Using metadata file {click.style(meta, italic=True)}")
@@ -293,10 +293,8 @@ class _CentromereCtx:
 
             if self.nucleus_check_version(self.version, self.workflow_name):
                 click.secho(
-                    (
-                        f"\nVersion ({self.version}) already exists."
-                        " Make sure that you've saved any changes you made."
-                    ),
+                    f"\nVersion ({self.version}) already exists."
+                    " Make sure that you've saved any changes you made.",
                     fg="red",
                     bold=True,
                 )
@@ -335,8 +333,7 @@ class _CentromereCtx:
                 )
                 self.ssh_client = ssh_client
 
-                def _patched_connect(self):
-                    ...
+                def _patched_connect(self): ...
 
                 def _patched_create_paramiko_client(self, base_url):
                     self.ssh_client = ssh_client
