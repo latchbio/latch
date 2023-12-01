@@ -74,7 +74,7 @@ class NFJITRegisterWorkflowResolver(DefaultTaskResolver):
     def loader_args(
         self, settings: SerializationSettings, task: PythonAutoContainerTask[T]
     ) -> List[str]:
-        return ["task-module", "nf_jit_entrypoint", "task-name", task.name]
+        return ["task-module", "nextflow_jit_entrypoint", "task-name", task.name]
 
     def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
         _, task_module, _, task_name, *_ = loader_args
@@ -215,7 +215,7 @@ class NFJITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     rf"""
                     print(f"Moving {param} to {{{param}_dst_p}}")
 
-                    update_mapping({param}_p, {param}_dst_p, {param}.remote_path, local_to_remote_path_mapping)
+                    update_mapping({param}_p, {param}.remote_path, local_to_remote_path_mapping)
                     check_exists_and_rename(
                         {param}_p,
                         {param}_dst_p
@@ -288,7 +288,7 @@ class NFJITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
             wf = build_nf_wf()
             wf_name = wf.name
-            generate_nf_entrypoint(wf, pkg_root)
+            # generate_nf_entrypoint(wf, pkg_root)
             """,
             1,
         )
@@ -302,25 +302,8 @@ class NFJITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             temp_dir = tempfile.TemporaryDirectory()
             with Path(temp_dir.name).resolve() as td:
                 serialize_nf(wf, td, image_name, config.dkr_repo)
-
                 protos = _recursive_list(td)
                 register_serialized_pkg(protos, None, version, account_id)
-
-            wf_spec_remote = f"latch:///.nf_latch/workflows/{wf_name}/{version}/spec"
-            spec_dir = Path("spec")
-            for x_dir in spec_dir.iterdir():
-                if not x_dir.is_dir():
-                    dst = f"{wf_spec_remote}/{x_dir.name}"
-                    print(f"{x_dir} -> {dst}")
-                    lp.upload(str(x_dir), dst)
-                    print("  done")
-                    continue
-
-                for x in x_dir.iterdir():
-                    dst = f"{wf_spec_remote}/{x_dir.name}/{x.name}"
-                    print(f"{x} -> {dst}")
-                    lp.upload(str(x), dst)
-                    print("  done")
 
             class _WorkflowInfoNode(TypedDict):
                 id: str
@@ -357,10 +340,6 @@ class NFJITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 )
 
             print(nodes)
-
-            for file in wf.return_files:
-                print(f"Uploading {file.local_path} -> {file.remote_path}")
-                lp.upload(file.local_path, file.remote_path)
 
             wf_id = nodes[0]["id"]
             params = gpjson.MessageToDict(wf.literal_map.to_flyte_idl()).get("literals", {})
@@ -494,13 +473,7 @@ def generate_nf_jit_register_code(
             print_and_write_build_logs,
             print_upload_logs,
         )
-        from latch_cli.snakemake.serialize import (
-            extract_snakemake_workflow,
-            generate_snakemake_entrypoint,
-            serialize_snakemake,
-        )
         from latch_cli.utils import get_parameter_json_value, check_exists_and_rename
-        from latch_cli.snakemake.serialize_utils import update_mapping
         from latch_cli.nextflow.workflow import build_nf_wf, generate_nf_entrypoint
         from latch_cli.nextflow.serialize import serialize_nf
         from latch_cli.utils import urljoins
@@ -510,14 +483,16 @@ def generate_nf_jit_register_code(
         from latch.types.directory import LatchDir
         from latch.types.file import LatchFile
 
-        try:
-            import latch_metadata.parameters as latch_metadata
-        except ImportError:
-            import latch_metadata
-
         sys.stdout.reconfigure(line_buffering=True)
         sys.stderr.reconfigure(line_buffering=True)
 
+        def update_mapping(local: Path, remote: str, mapping: Dict[str, str]):
+            if local.is_file():
+                mapping[str(local)] = remote
+                return
+
+            for p in local.iterdir():
+                update_mapping(p, urljoins(remote, p.name), mapping)
 
         def si_unit(num, base: float = 1000.0):
             for unit in (" ", "k", "M", "G", "T", "P", "E", "Z"):
@@ -541,7 +516,7 @@ def generate_nf_jit_register_code(
         account_id,
     )
 
-    entrypoint = pkg_root / ".latch" / "latch_jit_entrypoint.py"
+    entrypoint = pkg_root / ".latch" / "nextflow_jit_entrypoint.py"
     entrypoint.parent.mkdir(parents=True, exist_ok=True)
     entrypoint.write_text(code_block + "\n")
 

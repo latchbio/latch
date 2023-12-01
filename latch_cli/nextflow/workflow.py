@@ -1,12 +1,13 @@
 import importlib
 import json
 import os
+import subprocess
 import textwrap
 from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar
+from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union
 from urllib.parse import urlparse
 
 import click
@@ -34,7 +35,7 @@ from flytekit.core.workflow import (
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.models import literals as literals_models
 from flytekit.models.interface import Variable
-from flytekit.models.literals import Literal
+from flytekit.models.literals import Literal, LiteralMap
 from flytekit.tools.serialize_helpers import persist_registrable_entities
 from flytekitplugins.pod.task import Pod
 
@@ -82,30 +83,30 @@ class NextflowOutputParamType(Enum):
     fileoutparam = "fileoutparam"
 
 
-NextflowParamType = NextflowInputParamType | NextflowOutputParamType
+NextflowParamType = Union[NextflowInputParamType, NextflowOutputParamType]
 
 
 @dataclass
 class NextflowParam:
     name: str
-    paramType: NextflowInputParamType | NextflowOutputParamType
+    paramType: NextflowParamType
 
 
 @dataclass
 class NextflowDAGVertex:
     id: int
-    label: None | str
+    label: Union[None, str]
     vertex_type: VertexType
-    input_params: None | List[NextflowParam]
-    output_params: None | List[NextflowParam]
-    code: None | str
+    input_params: Union[None, List[NextflowParam]]
+    output_params: Union[None, List[NextflowParam]]
+    code: Union[None, str]
 
 
 @dataclass
 class NextflowDAGEdge:
     id: int
-    idx: None | int
-    label: None | str
+    idx: Union[None, int]
+    label: Union[None, str]
     connection: Tuple[int, int]
 
 
@@ -114,6 +115,9 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
     def __init__(
         self,
+        vertices: Dict[int, NextflowDAGVertex],
+        dependent_vertices: Dict[int, List[int]],
+        edges_idx_by_end: Dict[int, NextflowDAGEdge],
     ):
         name = "placeholder_nextflow_name"
 
@@ -122,10 +126,13 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         self.nextflow_tasks = []
 
-        python_interface, literal_map, nodes, output_bindings = (
-            self.build_from_nextflow_dag(name)
+        python_interface, literals, nodes, output_bindings = (
+            self.build_from_nextflow_dag(
+                name, vertices, dependent_vertices, edges_idx_by_end
+            )
         )
-        self.literal_map = literal_map
+
+        self.literal_map = LiteralMap(literals=literals)
 
         workflow_metadata = WorkflowMetadata(
             on_failure=WorkflowFailurePolicy.FAIL_IMMEDIATELY
@@ -142,7 +149,13 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
         self._nodes = nodes
         self._output_bindings = output_bindings
 
-    def build_from_nextflow_dag(self, name: str):
+    def build_from_nextflow_dag(
+        self,
+        name: str,
+        vertices: Dict[int, NextflowDAGVertex],
+        dependent_vertices: Dict[int, List[int]],
+        edges_idx_by_end: Dict[int, NextflowDAGEdge],
+    ):
         GLOBAL_START_NODE = Node(
             id=_common_constants.GLOBAL_INPUT_NODE_ID,
             metadata=None,
@@ -202,7 +215,6 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
                         if source_param == "-":
                             source_param = "stdout"
 
-                    print(vertex.id, source_param, param_name)
                     node_output = NodeOutput(
                         node=node_map[depen_vertex.id],
                         var=source_param,
@@ -754,8 +766,18 @@ class NextflowOperatorTask(NextflowTask):
 
 
 def build_nf_wf():
+    try:
+        subprocess.run(
+            [".latch/latch-nextflow", "run", "foo.nf", "-latchJIT"],
+            check=True,
+        )
+    except Exception as e:
+        print("\n\n\n[!] Failed\n\n\n")
+        raise e
+
     with open(".latch/nextflowDAG.json") as f:
         dag = json.load(f)
+        print(f"\n\n{dag}\n\n")
 
     vertices_json = dag["vertices"]
     edges_json = dag["edges"]
@@ -831,4 +853,47 @@ def build_nf_wf():
         if to_vertex is not None:
             dependent_vertices[to_vertex].append(from_vertex)
 
-    nf_wf = NextflowWorkflow()
+    return NextflowWorkflow(vertices, dependent_vertices, edges_idx_by_end)
+
+
+def generate_nf_entrypoint(
+    wf: NextflowWorkflow,
+    pkg_root: Path,
+    remote_output_url: Optional[str] = None,
+):
+    entrypoint_code_block = textwrap.dedent(r"""
+        import os
+        from pathlib import Path
+        import shutil
+        import subprocess
+        from subprocess import CalledProcessError
+        from typing import NamedTuple, Dict
+        import stat
+        import sys
+        from dataclasses import is_dataclass, asdict
+        from enum import Enum
+
+        from flytekit.extras.persistence import LatchPersistence
+        import traceback
+
+        from latch.resources.tasks import custom_task
+        from latch.types.directory import LatchDir
+        from latch.types.file import LatchFile
+
+        from latch_cli.utils import get_parameter_json_value, urljoins, check_exists_and_rename
+        from latch_cli.snakemake.serialize import update_mapping
+
+        sys.stdout.reconfigure(line_buffering=True)
+        sys.stderr.reconfigure(line_buffering=True)
+    """).lstrip()
+
+    for task in wf.nextflow_tasks:
+        if isinstance(task, NextflowProcessTask):
+            entrypoint_code_block += (
+                task.container_task.get_fn_code(remote_output_url) + "\n\n"
+            )
+        else:
+            entrypoint_code_block += task.get_fn_code(remote_output_url) + "\n\n"
+
+    entrypoint = pkg_root / "latch_entrypoint.py"
+    entrypoint.write_text(entrypoint_code_block + "\n")

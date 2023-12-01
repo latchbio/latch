@@ -447,7 +447,7 @@ def register(
                 cache_tasks=cache_tasks,
             )
 
-            if remote and snakefile is None:
+            if remote and snakefile is None and nf_script is None:
                 local_td = Path(stack.enter_context(tempfile.TemporaryDirectory()))
 
                 assert scp is not None
