@@ -119,7 +119,7 @@ See an [example](automation-usecase.md) of how we create an automation workflow 
 
     3. Specify `Follow-up Update Period` or `Interval` depending on the type of the trigger you have selected.
 
-    4. (For [`Data Added`](#data-added) trigger) Sselect a folder where files/folders will be uploaded using the `Select Target` button. Any items uploaded to this folder will trigger the specified workflow.
+    4. (For [`Data Added`](#data-added) trigger) select a folder where files/folders will be uploaded using the `Select Target` button. Any items uploaded to this folder will trigger the specified workflow.
 
     5. Select the [automation workflow](#automation-workflow) that you have just registered with Latch.
 
