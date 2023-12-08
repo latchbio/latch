@@ -126,3 +126,18 @@ See an [example](automation-usecase.md) of how we create an automation workflow 
 Checkout an [example](automation-usecase.md) on how to create and register automation workflows with `Data Added` triggers.
 
 ![Create Automation Example](../assets/automation/create-automation-example.png)
+
+## Configuring Automations
+
+If you want to configure the name, description or wait intervals or delete your automation, you can do so in automation settings.
+
+1. Navigate to [Automations](https://console.latch.bio/automations) tab via **Worfklows** > **Automations** and click on any of your automations.
+![Click on the automation](../assets/automation/select-automation.png)
+
+2. Click on the settings tab on the selected automation overview page.
+![Click on settings](../assets/automation/select-settings-for-automation.png)
+
+3. Update any information that you want on the settings page.
+![Settings Page](../assets/automation/automation-settings.png)
+
+4. Click `Save Changes` to persist your updated settings.
