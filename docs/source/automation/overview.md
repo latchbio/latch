@@ -105,7 +105,9 @@ This is the [workflow](../basics/what_is_a_workflow.md) that will run whenever t
 
     In case you need more parameters to pass your workflow, we suggest to hard-code them into your workflow while we are working on adding parameter support for automations.
 
-See an [example](example-data-addition.md) of how we create an automation workflow with `Data Added` trigger which reads all children of the target directory and kicks off another workflow which runs processing on child directories.
+### Examples
+
+For step-by-step instructions on how to create automations, checkout our examples on how to create [Data Added](example-data-addition.md) and [Interval](example-interval.md) automations.
 
 ## Creating an Automation
 
@@ -123,8 +125,7 @@ See an [example](example-data-addition.md) of how we create an automation workfl
 
     5. Select the [automation workflow](#automation-workflow) that you have just registered with Latch.
 
-Checkout an [example](example-data-addition.md) on how to create and register automation workflows with `Data Added` triggers.
-
+See our [examples](#examples) for step-by-step instructions on how to create automations.
 ![Create Automation Example](../assets/automation/create-automation-example.png)
 
 ## Configuring Automations
