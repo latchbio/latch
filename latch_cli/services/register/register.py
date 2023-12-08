@@ -172,8 +172,10 @@ def _print_reg_resp(resp, image):
         sys.exit(1)
     elif not "Successfully registered file" in resp["stdout"]:
         click.secho(
-            f"\nVersion ({version}) already exists."
-            " Make sure that you've saved any changes you made.",
+            (
+                f"\nVersion ({version}) already exists."
+                " Make sure that you've saved any changes you made."
+            ),
             fg="red",
             bold=True,
         )
@@ -219,23 +221,13 @@ def _build_and_serialize(
         )
 
     elif ctx.workflow_type == WorkflowType.nextflow:
-        # TODO
-        # assert ctx.snakefile is not None
+        assert ctx.nf_script is not None
         assert ctx.version is not None
 
-        from ...nextflow.jit import (
-            build_nf_jit_register_wrapper,
-            generate_nf_jit_register_code,
-        )
+        from ...nextflow.workflow import build_nf_wf, generate_nf_entrypoint
 
-        jit_wf = build_nf_jit_register_wrapper()
-        generate_nf_jit_register_code(
-            jit_wf,
-            ctx.pkg_root,
-            ctx.version,
-            image_name,
-            current_workspace(),
-        )
+        nf_wf = build_nf_wf(ctx.pkg_root, ctx.nf_script)
+        generate_nf_entrypoint(nf_wf, ctx.pkg_root, ctx.nf_script)
 
     image_build_logs = build_image(ctx, image_name, context_path, dockerfile)
     print_and_write_build_logs(
@@ -250,12 +242,12 @@ def _build_and_serialize(
 
         serialize_jit_register_workflow(jit_wf, tmp_dir, image_name, ctx.dkr_repo)
     elif ctx.workflow_type == WorkflowType.nextflow:
-        assert jit_wf is not None
+        assert nf_wf is not None
         assert ctx.dkr_repo is not None
 
-        from ...nextflow.serialize import serialize_nf_jit_register_workflow
+        from ...nextflow.serialize import serialize_nf
 
-        serialize_nf_jit_register_workflow(jit_wf, tmp_dir, image_name, ctx.dkr_repo)
+        serialize_nf(nf_wf, tmp_dir, image_name, ctx.dkr_repo)
     else:
         serialize_logs, container_id = serialize_pkg_in_container(
             ctx, image_name, tmp_dir
@@ -546,8 +538,10 @@ def register(
                         fg="red",
                     )
                     click.secho(
-                        "If the workflow is not visible in latch console, contact"
-                        " support.",
+                        (
+                            "If the workflow is not visible in latch console, contact"
+                            " support."
+                        ),
                         fg="red",
                     )
                     break
@@ -557,8 +551,10 @@ def register(
             if len(wf_infos) > 0:
                 if len(wf_infos) > 1:
                     click.secho(
-                        f"Workflow {ctx.workflow_name}:{ctx.version} is not unique."
-                        " The link below might be wrong.",
+                        (
+                            f"Workflow {ctx.workflow_name}:{ctx.version} is not unique."
+                            " The link below might be wrong."
+                        ),
                         fg="yellow",
                     )
 

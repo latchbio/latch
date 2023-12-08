@@ -42,7 +42,11 @@ from latch.resources.tasks import custom_task
 from latch.types import metadata
 from latch.types.metadata import ParameterType
 from latch_cli.nextflow.jit import NFJITRegisterWorkflow
-from latch_cli.nextflow.workflow import NextflowProcessTask, NextflowWorkflow
+from latch_cli.nextflow.workflow import (
+    NextflowOperatorTask,
+    NextflowProcessTask,
+    NextflowWorkflow,
+)
 from latch_cli.services.register.register import (
     _print_reg_resp,
     _recursive_list,
@@ -137,46 +141,3 @@ def serialize_nf(
 
     click.secho("\nSerializing workflow entities", bold=True)
     persist_registrable_entities(registrable_entities, output_dir)
-
-
-def generate_nf_entrypoint(
-    wf: NextflowWorkflow,
-    pkg_root: Path,
-    remote_output_url: Optional[str] = None,
-):
-    entrypoint_code_block = textwrap.dedent(r"""
-        import os
-        from pathlib import Path
-        import shutil
-        import subprocess
-        from subprocess import CalledProcessError
-        from typing import NamedTuple, Dict
-        import stat
-        import sys
-        from dataclasses import is_dataclass, asdict
-        from enum import Enum
-
-        from flytekit.extras.persistence import LatchPersistence
-        import traceback
-
-        from latch.resources.tasks import custom_task
-        from latch.types.directory import LatchDir
-        from latch.types.file import LatchFile
-
-        from latch_cli.utils import get_parameter_json_value, urljoins, check_exists_and_rename
-        from latch_cli.snakemake.serialize_utils import update_mapping
-
-        sys.stdout.reconfigure(line_buffering=True)
-        sys.stderr.reconfigure(line_buffering=True)
-    """).lstrip()
-
-    for task in wf.nextflow_tasks:
-        if isinstance(task, NextflowProcessTask):
-            entrypoint_code_block += (
-                task.container_task.get_fn_code(remote_output_url) + "\n\n"
-            )
-        else:
-            entrypoint_code_block += task.get_fn_code(remote_output_url) + "\n\n"
-
-    entrypoint = pkg_root / "latch_entrypoint.py"
-    entrypoint.write_text(entrypoint_code_block + "\n")
