@@ -123,7 +123,8 @@ registry/record.md
 :maxdepth: 2
 :caption: Automation
 automation/overview.md
-automation/automation-usecase.md
+automation/example-data-addition.md
+automation/example-interval.md
 ```
 
 ```{toctree}

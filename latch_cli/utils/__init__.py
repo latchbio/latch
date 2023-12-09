@@ -10,6 +10,7 @@ from dataclasses import asdict, is_dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
+from textwrap import dedent
 from typing import List
 from urllib.parse import urljoin
 
@@ -17,6 +18,7 @@ import click
 import jwt
 from latch_sdk_config.user import user_config
 
+from latch_cli.click_utils import bold
 from latch_cli.constants import latch_constants
 from latch_cli.tinyrequests import get
 
@@ -256,9 +258,16 @@ def generate_temporary_ssh_credentials(ssh_key_path: Path) -> str:
                 raise
 
             # if both files are valid and their fingerprints match, use them instead of generating a new pair
-            print(f"Found existing key pair at {ssh_key_path}.")
+            click.secho(
+                f"Found existing key pair at {ssh_key_path}.", dim=True, italic=True
+            )
         except:
-            print(f"Found malformed key-pair at {ssh_key_path}. Overwriting.")
+            click.secho(
+                f"Found malformed key-pair at {ssh_key_path}. Overwriting.",
+                dim=True,
+                italic=True,
+            )
+
             ssh_key_path.unlink(missing_ok=True)
             ssh_key_path.with_suffix(".pub").unlink(missing_ok=True)
 
@@ -266,34 +275,56 @@ def generate_temporary_ssh_credentials(ssh_key_path: Path) -> str:
     if not ssh_key_path.exists():
         ssh_key_path.parent.mkdir(parents=True, exist_ok=True)
         cmd = ["ssh-keygen", "-f", ssh_key_path, "-N", "", "-q"]
+
         try:
             subprocess.run(cmd, check=True)
         except subprocess.CalledProcessError as e:
-            raise ValueError(
-                "There was a problem creating temporary SSH credentials. Please ensure"
-                " that `ssh-keygen` is installed and available in your PATH."
-            ) from e
+            click.secho(
+                dedent(f"""
+                    There was a problem creating temporary SSH credentials. Please ensure
+                    that `{bold("ssh-keygen")}` is installed and available in your PATH.
+                """.strip()),
+                fg="red",
+            )
+
+            raise click.exceptions.Exit(1) from e
+
         os.chmod(ssh_key_path, 0o700)
 
     # make key available to ssh-agent daemon
     cmd = ["ssh-add", ssh_key_path]
+
     try:
         subprocess.run(cmd, check=True, stderr=subprocess.DEVNULL)
     except subprocess.CalledProcessError as e:
-        raise ValueError(
-            "There was an issue adding temporary SSH credentials to your SSH Agent."
-            " Please ensure that your SSH Agent is running"
-        ) from e
+        click.secho(
+            dedent(f"""
+                There was an issue adding temporary SSH credentials to your SSH Agent.
+                Please activate your SSH Agent by running
+
+                    {bold("$ eval `ssh-agent -s`")}
+
+                in your terminal.
+            """.strip()),
+            fg="red",
+        )
+
+        raise click.exceptions.Exit(1) from e
 
     # decode private key into public key
     cmd = ["ssh-keygen", "-y", "-f", ssh_key_path]
     try:
         out = subprocess.run(cmd, check=True, capture_output=True)
     except subprocess.CalledProcessError as e:
-        raise ValueError(
-            "There was a problem decoding your temporary credentials. Please ensure"
-            " that `ssh-keygen` is installed and available in your PATH."
-        ) from e
+        click.secho(
+            dedent(f"""
+                There was a problem decoding your temporary credentials. Please ensure
+                that `{bold("ssh-keygen")}` is installed and available in your PATH.
+            """.strip()),
+            fg="red",
+        )
+
+        raise click.exceptions.Exit(1) from e
 
     public_key = out.stdout.decode("utf-8").strip("\n")
     return public_key

@@ -2,74 +2,112 @@
 
 Note: This document is a work in progress and is subject to change.
 
-### Description
+## Description
 
-Automations allow you to automatically run workflows on top of folders in Latch Data when triggered by specific events such as when files are added to folders. Automations consist of a [*trigger*](#trigger) and an [*automation workflow*](#automation-workflow).
+Automations allow you to automatically run workflows on top of folders in Latch Data when triggered by specific events such as when files are added to folders or on a regular interval. Automations consist of a [*trigger*](#trigger) and an [*automation workflow*](#automation-workflow).
 
 Additionally, you can pause and resume automations by toggling status radio on the sidebar.
 
-### Trigger
+## Triggers
 
-Automation trigger specifies the conditions to run the automation(i.e. child got added to the target directory). It allows you to specify a target directory to watch, the [_event_](#trigger-event-types) which kicks off a workflow, and a [_timer_](#trigger-timer).
+Automation trigger specifies the conditions to run the automation: child got added to the target directory, interval expired, etc.
 
-#### Trigger Event Types
+<!-- It allows you to specify a target directory to watch, the [_event_](#trigger-event-types) which kicks off a workflow, and a [_timer_](#trigger-timer). -->
 
-> Note: currently, only child addition event is supported in automations.
+### Available Trigger Types
 
-*Available events:*
+#### Data Added
 
-- _Data Update_ event type specifies when to run the automation if a data tree in Latch Data has been modified.
+This trigger type runs [automation workflow](#automation-workflow) if a new child has been added to the target directory at any depth. Automation will not run if the child has been modified or deleted.
 
-    Supported events:
-        -  _Child Added_ event triggers if a new child has been added to the target directory at any depth. Automation will not run if the child has been modified or deleted.
+_Trigger Parameters_:
 
-#### Trigger Timer
-
-Automation trigger timer specifies the wait period after the last trigger event after which the workflow will run.
-
+- `Follow-up Update Period`: this is the wait period after the last trigger event after which the workflow will run.\
 For example, if the timer is 10 minutes and the trigger event is `Child Added`, the automation will wait 10 minutes after a child has been added to the target directory and then run automation workflow.
+- `Input Target`: trigger will watch this target Ldata directory and will be activated when a child is added at any depth.
 
-### Automation Workflow
+_Example_: automation with `Data Added` trigger with `Input Target` directory as `/test` and `Follow-up Update Period` as 10 minutes, will run the [automation workflow](#automation-workflow) 10 minutes after the last child is added at any depth to `/test` directory in Latch Data.
+
+#### Interval
+This trigger type runs [automation workflow](#automation-workflow) on a regular interval specified by the user.
+
+_Trigger Parameters_:
+
+- `Interval`: trigger will be activated and will run [automation workflow](#automation-workflow) at a regular interval.
+
+_Example_: automation with `Interval` trigger with `Interval` as `1 hour` will run the [automation workflow](#automation-workflow) hourly.
+
+## Automation Workflow
 
 This is the [workflow](../basics/what_is_a_workflow.md) that will run whenever the automation has been [triggered](#trigger).
 
 #### Usage Note:
-Currently, automations are only passing `input_directory` as the parameter to the automation workflow. If your workflow has different parameters automation will fail to start it.
 
-In case you need more parameters to pass your workflow, we suggest to hard-code them into your workflow while we are working on adding parameter support for automations.
+- When using [`Data Added`](#data-added) trigger, automation workflow has to have `input_directory` as the only parameter. If your workflow has different parameters automation will fail to start it.
 
-Make sure that the workflows which you use with automation have the following parameter dictionary:
+    _Required Workflow Definition_:
+    ```python
+    # __init__.py
 
-```python
-# __init__.py
+    from latch.resources.workflow import workflow
+    from latch.types.directory import LatchDir, LatchOutputDir
+    from latch.types.metadata import LatchAuthor, LatchMetadata, LatchParameter
+    from wf.automation import automation_task
 
-from latch.resources.workflow import workflow
-from latch.types.directory import LatchDir, LatchOutputDir
-from latch.types.metadata import LatchAuthor, LatchMetadata, LatchParameter
-from wf.automation import automation_task
-
-metadata = LatchMetadata(
-    # MODIFY NAMING METADATA BELOW
-    display_name="Workflow Name",
-    author=LatchAuthor(
-        name="Your Name Here",
-    ),
-    # MODIFY NAMING METADATA ABOVE
-    # IMPORTANT: these exact parameters are required for the workflow to work with automations
-    parameters={
-        "input_directory": LatchParameter(
-            display_name="Input Directory",
-        )
-    },
-)
+    metadata = LatchMetadata(
+        # MODIFY NAMING METADATA BELOW
+        display_name="Workflow Name",
+        author=LatchAuthor(
+            name="Your Name Here",
+        ),
+        # MODIFY NAMING METADATA ABOVE
+        # IMPORTANT: these exact parameters are required for the workflow to work with automations
+        parameters={
+            "input_directory": LatchParameter(
+                display_name="Input Directory",
+            )
+        },
+    )
 
 
-@workflow(metadata)
-def automation_workflow(input_directory: LatchDir) -> None:
-    pass
-```
+    @workflow(metadata)
+    def automation_workflow(input_directory: LatchDir) -> None:
+        pass
+    ```
 
-See an [example](automation-usecase.md) of how we create an automation workflow which reads all children of the target directory and kicks off another workflow which runs processing on child directories.
+- When using [`Interval`](#interval) trigger, automation workflow has to have no parameters. If your workflow has any parameters automation will fail to start it.
+
+    _Required Workflow Definition_
+    ```python
+    # __init__.py
+
+    from latch.resources.workflow import workflow
+    from latch.types.directory import LatchDir, LatchOutputDir
+    from latch.types.metadata import LatchAuthor, LatchMetadata, LatchParameter
+    from wf.automation import automation_task
+
+    metadata = LatchMetadata(
+        # MODIFY NAMING METADATA BELOW
+        display_name="Workflow Name",
+        author=LatchAuthor(
+            name="Your Name Here",
+        ),
+        # IMPORTANT: these exact parameters are required for the workflow to work with automations
+        parameters={
+        },
+    )
+
+
+    @workflow(metadata)
+    def automation_workflow() -> None:
+        pass
+    ```
+
+    In case you need more parameters to pass your workflow, we suggest to hard-code them into your workflow while we are working on adding parameter support for automations.
+
+### Examples
+
+For step-by-step instructions on how to create automations, checkout our examples on how to create [Data Added](example-data-addition.md) and [Interval](example-interval.md) automations.
 
 ## Creating an Automation
 
@@ -77,12 +115,30 @@ See an [example](automation-usecase.md) of how we create an automation workflow 
 
 2. Navigate to [Automations](https://console.latch.bio/automations) tab via **Worfklows** > **Automations** and click on the **Create Automation** button.
 
-    Input an **Automation Name** and **Description**.
+    1. Input an **Automation Name** and **Description**.
 
-    Next, select a folder where files/folders will be uploaded using the `Select Target` button. Any items uploaded to this folder will trigger the specified workflow.
+    2. Select the `Event Type`. Refer to the [Available Trigger Types](#available-trigger-types) for explanation of trigger behaviors.
 
-    Finally, select the [automation workflow](#automation-workflow) that you have registered with Latch.
+    3. Specify `Follow-up Update Period` or `Interval` depending on the type of the trigger you have selected.
 
-    Checkout an [example](automation-usecase.md) on how to create and register automation workflows.
+    4. (For [`Data Added`](#data-added) trigger) select a folder where files/folders will be uploaded using the `Select Target` button. Any items uploaded to this folder will trigger the specified workflow.
 
-    ![Create Automation Example](../assets/automation/create-automation-example.png)
+    5. Select the [automation workflow](#automation-workflow) that you have just registered with Latch.
+
+See our [examples](#examples) for step-by-step instructions on how to create automations.
+![Create Automation Example](../assets/automation/create-automation-example.png)
+
+## Configuring Automations
+
+If you want to configure the name, description or wait intervals or delete your automation, you can do so in automation settings.
+
+1. Navigate to [Automations](https://console.latch.bio/automations) tab via **Worfklows** > **Automations** and click on any of your automations.
+![Click on the automation](../assets/automation/select-automation.png)
+
+2. Click on the settings tab on the selected automation overview page.
+![Click on settings](../assets/automation/select-settings-for-automation.png)
+
+3. Update any information that you want on the settings page.
+![Settings Page](../assets/automation/automation-settings.png)
+
+4. Click `Save Changes` to persist your updated settings.

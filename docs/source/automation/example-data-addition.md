@@ -1,11 +1,11 @@
-# Automation Example
+# Automation Example - Data Addition Trigger
 
 Note: This document is a work in progress and is subject to change.
 
-We will walk through the process of creating an [automation](overview.md) on Latch which will run a _target workflow_ on all children of the target directory. We assume that you understand how to write and register [Workflows](../basics/what_is_a_workflow.md) on Latch.
+We will walk through the process of creating an [automation](overview.md) using `Data Addition` trigger on Latch which will run a _target workflow_ on all children of the target directory. We assume that you understand how to write and register [Workflows](../basics/what_is_a_workflow.md) on Latch.
 
 **Prerequisites:**
-* _Target directory in [Latch Data](https://console.latch.bio/data): this is the folder which is watched by the automation. Automation will be triggered if a child is added to this folder.
+* _Target directory_ in [Latch Data](https://console.latch.bio/data): this is the folder which is watched by the automation. Automation will be triggered if a child is added to this folder.
 
 **Terms:**
 - _Automation Workflow_: workflow which will be called by automation. This is the workflow we create in [steps 3-5](#3-create-the-automation-workflow) of this tutorial.
@@ -327,16 +327,17 @@ $ latch register --remote --yes automation-wf
 
 Navigate to [Automations](https://console.latch.bio/automations) tab via **Worfklows** > **Automations** and click on the **Create Automation** button.
 
-Input an **Automation Name** and **Description**.
+1. Input an **Automation Name** and **Description**.
 
-Next, select a folder where files/folders will be uploaded using the `Select Target` button. Any items uploaded to this folder will trigger the specified workflow.
+2. Select the `Event Type` as `Data Added`.
 
-Set `Follow-up Update Period` to something short like 30 seconds to make your automation easy to test.
+3. Specify `Follow-up Update Period` to something short like 30 seconds to make your automation easy to test.
 
-Finally, select the automation workflow that you have just registered using the selector.
+4. Select a folder where files/folders will be uploaded using the `Select Target` button. Any items uploaded to this folder will trigger the automation workflow.
 
-![Create Automation Example](../assets/automation/create-automation-example.png)
+5. Select the automation workflow that you have just registered with Latch.
 
+![Create Ldata Automation Example](../assets/automation/create-ldata-automation-example.png)
 
 ## 7. Test Your Automation
 
