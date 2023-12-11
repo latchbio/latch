@@ -20,7 +20,7 @@ Types of changes
 
 ### Added
 
-* `rename_current_execution` function which allows programmatic execution renaming
+* `rename_current_execution` function which allows programmatic execution renaming.
 
 ## 2.36.11 - 2023-11-28
 
