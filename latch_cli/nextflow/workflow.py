@@ -210,10 +210,11 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     depen_vertex is None
                     or depen_vertex.vertex_type == VertexType.origin
                 ):
-                    param_name = f"v{len(main_task.main_target_ids)}_c{edge.to_idx}"
-                    main_task.main_target_ids.append(vertex.id)
-                    node_output = NodeOutput(node=main_node, var=param_name)
-                    main_node_outputs[param_name] = List[str]
+                    if vertex.id not in main_task.main_target_ids:
+                        main_task.main_target_ids.append(vertex.id)
+                    main_out_param_name = f"v{vertex.id}_c{edge.to_idx}"
+                    node_output = NodeOutput(node=main_node, var=main_out_param_name)
+                    main_node_outputs[main_out_param_name] = List[str]
                 else:
                     if edge.from_idx is None:
                         raise ValueError(
