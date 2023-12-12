@@ -210,8 +210,8 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     depen_vertex is None
                     or depen_vertex.vertex_type == VertexType.origin
                 ):
-                    # TODO - multiple main target ids
-                    main_task.main_target_id = vertex.id
+                    param_name = f"v{len(main_task.main_target_ids)}_c{edge.to_idx}"
+                    main_task.main_target_ids.append(vertex.id)
                     node_output = NodeOutput(node=main_node, var=param_name)
                     main_node_outputs[param_name] = List[str]
                 else:
@@ -869,17 +869,12 @@ class NextflowOperatorTask(NextflowTask):
                 raise e
 
 
-            def order_channel_files(fname: str):
-                match = re.search(channel_pattern, Path(fname).name)
-                if match:
-                    return match.group(1)
-                return -1
-
             out_channels = {{}}
-            files = sorted(list(glob.glob(".latch/channel*.txt")), key=order_channel_files)
-            for i, file in enumerate(files):
+            files = list(glob.glob(".latch/channel*.txt"))
+            for file in files:
+                idx = parse_channel_file(file)
                 vals = Path(file).read_text().strip().split("\n")
-                out_channels["c"+str(i)] = vals
+                out_channels[f"c{{idx}}"] = vals
             """,
             1,
         )
@@ -891,6 +886,8 @@ class NextflowOperatorTask(NextflowTask):
 class NextflowMainTask(PythonAutoContainerTask[Pod]):
     def __init__(self, interface: Interface):
         self._python_inputs = interface.inputs
+        # Target IDs (processes / operators) for main task node
+        self.main_target_ids = []
         super().__init__(
             name="main",
             task_type="python-task",
@@ -961,7 +958,7 @@ class NextflowMainTask(PythonAutoContainerTask[Pod]):
             results.append(
                 reindent(
                     rf"""
-                    {out_name}={out_name}
+                    {out_name}=out_channels.get("{out_name}", [])
                     """,
                     2,
                 ).rstrip()
@@ -995,7 +992,7 @@ class NextflowMainTask(PythonAutoContainerTask[Pod]):
                     [{','.join([repr(x) for x in run_task_entrypoint])}], 
                     env={{
                         **os.environ,
-                        "LATCH_MAIN_TARGET_ID": "{self.main_target_id}",
+                        "LATCH_MAIN_TARGET_IDS": "{json.dumps(self.main_target_ids)}",
                     }},
                     check=True,
                 )
@@ -1004,18 +1001,13 @@ class NextflowMainTask(PythonAutoContainerTask[Pod]):
                 raise e
 
 
-            def order_channel_files(fname: str):
-                match = re.search(channel_pattern, Path(fname).name)
-                if match:
-                    return match.group(1)
-                return -1
-
-            thismodule = sys.modules[__name__]
-            files = sorted(list(glob.glob(".latch/channel*.txt")), key=order_channel_files)
-            for i, file in enumerate(files):
+            out_channels = {{}}
+            files = list(glob.glob(".latch/*/channel*.txt"))
+            for file in files:
+                idx = parse_channel_file(file)
                 vals = Path(file).read_text().strip().split("\n")
-                setattr(thismodule, f"c{{i}}", vals)
-
+                v_id = Path(file).parent.name
+                out_channels[f"v{{v_id}}_c{{idx}}"] = vals
             """,
             1,
         )
@@ -1160,6 +1152,12 @@ def generate_nf_entrypoint(
 
 
         channel_pattern = r"channel(\d+)\.txt"
+
+        def parse_channel_file(fname: str) -> int:
+            match = re.search(channel_pattern, Path(fname).name)
+            if match:
+                return match.group(1)
+            raise ValueError(f"Malformed file name for parameter output: {fname}")
     """).lstrip()
 
     entrypoint_code_block += wf.main_task.get_fn_code(
