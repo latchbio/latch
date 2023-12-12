@@ -242,6 +242,8 @@ def _build_and_serialize(
             click.secho("\nWorkflow failed to serialize", fg="red", bold=True)
             sys.exit(1)
 
+        ctx.dkr_client.remove_container(container_id)
+
     click.echo()
     upload_image_logs = upload_image(ctx, image_name)
     print_upload_logs(upload_image_logs, image_name)
