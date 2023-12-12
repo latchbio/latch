@@ -2,7 +2,7 @@
 
 Note: This document is a work in progress and is subject to change.
 
-We will walk through the process of creating an [automation](overview.md) using `Interval` trigger on Latch which will run automation workflow hourly. We assume that you understand how to write and register [Workflows](../basics/what_is_a_workflow.md) on Latch.
+We will walk through the process of creating an [automation](overview.md) using an `Interval` trigger type on Latch that will run an automation workflow hourly. We assume that you understand how to write and register [Workflows](../basics/what_is_a_workflow.md) on Latch.
 
 **Terms:**
 - _Automation Workflow_: workflow which will be called by automation. This is the workflow we create in [step 1](#1-create-the-automation-workflow) of this tutorial.
@@ -60,7 +60,7 @@ Note: to upload `LatchDir` or ``
 
 3. Register the sample target workflow with Latch using
 ```shell-session
-$ latch register --remote --yes automation-wf
+$ latch register --yes automation-wf
 ```
 5. Test the workflow by running it on Latch
 
