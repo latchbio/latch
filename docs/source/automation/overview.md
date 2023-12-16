@@ -4,38 +4,39 @@ Note: This document is a work in progress and is subject to change.
 
 ## Description
 
-Automations allow you to automatically run workflows on top of folders in Latch Data when triggered by specific events such as when files are added to folders or on a regular interval. Automations consist of a [*trigger*](#trigger) and an [*automation workflow*](#automation-workflow).
+Automations allow you to automatically run workflows on top of folders in Latch Data when triggered by specific events such as when files are added to folders or after a regular interval of time has passed. Automations consist of a [*trigger*](#trigger) and an [*automation workflow*](#automation-workflow).
 
-Additionally, you can pause and resume automations by toggling status radio on the sidebar.
+Additionally, you can inactivate and reactivate automations by toggling the status radio on the sidebar.
 
 ## Triggers
 
-Automation trigger specifies the conditions to run the automation: child got added to the target directory, interval expired, etc.
+Automation triggers specify the conditions needed to run the automation, such as "child got added to the target directory" or "time interval expired".
 
-<!-- It allows you to specify a target directory to watch, the [_event_](#trigger-event-types) which kicks off a workflow, and a [_timer_](#trigger-timer). -->
+Triggers are created and configured in the [Latch console](https://console.latch.bio/automations/new).
 
 ### Available Trigger Types
 
 #### Data Added
 
-This trigger type runs [automation workflow](#automation-workflow) if a new child has been added to the target directory at any depth. Automation will not run if the child has been modified or deleted.
+This trigger type runs an [automation workflow](#automation-workflow) if a new child has been added to the target directory at any depth (level of nested directory). The automation will not run if a child has been modified or deleted.
 
 _Trigger Parameters_:
 
+- `Input Target`: the target directory to watch for new children.
 - `Follow-up Update Period`: this is the wait period after the last trigger event after which the workflow will run.\
-For example, if the timer is 10 minutes and the trigger event is `Child Added`, the automation will wait 10 minutes after a child has been added to the target directory and then run automation workflow.
-- `Input Target`: trigger will watch this target Ldata directory and will be activated when a child is added at any depth.
+For example, if this value is 10 minutes, the automation will run 10 minutes after a child has been added to the target directory.
 
-_Example_: automation with `Data Added` trigger with `Input Target` directory as `/test` and `Follow-up Update Period` as 10 minutes, will run the [automation workflow](#automation-workflow) 10 minutes after the last child is added at any depth to `/test` directory in Latch Data.
+_Example_: an automation with the `Data Added` trigger type configured with `Input Target` of directory `/test` and `Follow-up Update Period` of 10 minutes will run the [automation workflow](#automation-workflow) 10 minutes after the last child is added at any depth to `/test` directory in Latch Data.
 
 #### Interval
-This trigger type runs [automation workflow](#automation-workflow) on a regular interval specified by the user.
+
+This trigger type runs [automation workflow](#automation-workflow) on a regular time interval specified by the user.
 
 _Trigger Parameters_:
 
-- `Interval`: trigger will be activated and will run [automation workflow](#automation-workflow) at a regular interval.
+- `Interval`: the time interval that will activate a trigger
 
-_Example_: automation with `Interval` trigger with `Interval` as `1 hour` will run the [automation workflow](#automation-workflow) hourly.
+_Example_: an automation with the `Interval` trigger type configured with `Interval` of `1 hour` will run the [automation workflow](#automation-workflow) hourly.
 
 ## Automation Workflow
 
@@ -43,7 +44,7 @@ This is the [workflow](../basics/what_is_a_workflow.md) that will run whenever t
 
 #### Usage Note:
 
-- When using [`Data Added`](#data-added) trigger, automation workflow has to have `input_directory` as the only parameter. If your workflow has different parameters automation will fail to start it.
+- When using [`Data Added`](#data-added) trigger, the automation workflow function must have `input_directory: LatchDir` as the _only_ parameter, else the automation will fail to start.
 
     _Required Workflow Definition_:
     ```python
@@ -75,7 +76,7 @@ This is the [workflow](../basics/what_is_a_workflow.md) that will run whenever t
         pass
     ```
 
-- When using [`Interval`](#interval) trigger, automation workflow has to have no parameters. If your workflow has any parameters automation will fail to start it.
+- When using [`Interval`](#interval) trigger, the automation workflow function must have no parameters, else the automation will fail to start.
 
     _Required Workflow Definition_
     ```python
@@ -111,7 +112,7 @@ For step-by-step instructions on how to create automations, checkout our example
 
 ## Creating an Automation
 
-1. Register automation workflow with Latch. See [Usage Note](#usage-note) to make sure that your workflow can be run by automations.
+1. Author an automation workflow in Python with the Latch SDK and register it with Latch. See [Usage Note](#usage-note) to make sure that your workflow can be run by automations.
 
 2. Navigate to [Automations](https://console.latch.bio/automations) tab via **Worfklows** > **Automations** and click on the **Create Automation** button.
 
