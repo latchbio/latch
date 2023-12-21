@@ -7,7 +7,7 @@ import graphql
 from latch_sdk_config.user import user_config
 from latch_sdk_gql.execute import execute
 
-from latch_cli.click_utils import bold
+from latch_cli.click_utils import color
 from latch_cli.menus import select_tui
 from latch_cli.utils import current_workspace
 
@@ -126,6 +126,8 @@ class RunningExecutions(TypedDict):
 
 
 def get_execution_info(execution_id: Optional[str]) -> ExecutionInfoNode:
+    workspace_str: str = user_config.workspace_name or user_config.workspace_id
+
     if execution_id is not None:
         info: Optional[ExecutionInfoNode] = execute(
             with_fragments(
@@ -144,13 +146,14 @@ def get_execution_info(execution_id: Optional[str]) -> ExecutionInfoNode:
 
         if info is None:
             click.secho(
-                f"Could not find an execution with ID {execution_id}.", fg="red"
+                f"Could not find an execution with ID {color(execution_id)}.", fg="red"
             )
             raise click.exceptions.Exit(1)
 
         if info["status"] != "RUNNING":
             click.secho(
-                f"The selected execution ({info['displayName']}) is no longer running.",
+                f"The selected execution ({color(info['displayName'])}) is no longer"
+                " running.",
                 fg="red",
             )
             raise click.exceptions.Exit(1)
@@ -182,17 +185,18 @@ def get_execution_info(execution_id: Optional[str]) -> ExecutionInfoNode:
         execution = res["nodes"][0]
         click.secho(
             "Selecting execution"
-            f" {click.style(execution['displayName'], bold=True, fg='blue')} as it is"
+            f" {color(execution['displayName'])} as it is"
             " the only"
-            " one running in Workspace"
-            f" {click.style(user_config.workspace_name or user_config.workspace_id, bold=True, fg='blue')}.",
+            " one currently running in Workspace"
+            f" {color(workspace_str)}.",
         )
 
         return execution
 
     selected_execution = select_tui(
         "You have multiple executions running in this workspace"
-        f" ({user_config.workspace_name}). Which execution would you like to inspect?",
+        f" ({color(workspace_str)}). Which"
+        " execution would you like to inspect?",
         [
             {
                 "display_name": f'{x["displayName"]} ({x["workflow"]["displayName"]})',
@@ -229,14 +233,14 @@ def get_egn_info(
         )["executionGraphNode"]
 
         if res is None:
-            click.secho(f"Could not find a task with ID {egn_id}.", fg="red")
+            click.secho(f"Could not find a task with ID {color(egn_id)}.", fg="red")
             raise click.exceptions.Exit(1)
 
         if res["status"] != "RUNNING":
             click.secho(
                 "The selected task"
-                f" ({res['finalWorkflowGraphNode']['taskInfo']['displayName']}) is no"
-                " longer running.",
+                f" ({color(res['finalWorkflowGraphNode']['taskInfo']['displayName'])})"
+                " is no longer running.",
                 fg="red",
             )
             raise click.exceptions.Exit(1)
@@ -253,8 +257,8 @@ def get_egn_info(
 
     if len(egn_nodes) == 0:
         click.secho(
-            "No running tasks found for this execution"
-            f" ({execution_info['displayName']}).",
+            "No running tasks found for execution"
+            f" {color(execution_info['displayName'])}.",
             fg="red",
         )
         raise click.exceptions.Exit(1)
@@ -263,16 +267,16 @@ def get_egn_info(
         node = egn_nodes[0]
         click.secho(
             "Selecting task"
-            f" {click.style(node['finalWorkflowGraphNode']['taskInfo']['displayName'], bold=True, fg='blue')} as"
+            f" {color(node['finalWorkflowGraphNode']['taskInfo']['displayName'])} as"
             " it is the only one running in Execution"
-            f" {click.style(execution_info['displayName'], bold=True, fg='blue')}.",
+            f" {color(execution_info['displayName'])}.",
         )
 
         return egn_nodes[0]
 
     selected_egn_node = select_tui(
-        f"The execution you selected ({execution_info['displayName']}) has multiple"
-        " running tasks. Which would you like to inspect?",
+        f"The execution you selected ({color(execution_info['displayName'])}) has"
+        " multiple running tasks. Which would you like to inspect?",
         [
             {
                 "display_name": (
@@ -305,10 +309,10 @@ def get_container_info(
             return container
 
         click.secho(
-            f"The specified container index ({container_index}) is either not present"
-            " in this map task"
-            f" ({egn_info['finalWorkflowGraphNode']['taskInfo']['displayName']}) or is"
-            " no longer running."
+            f"The specified container index ({color(str(container_index))}) is either"
+            " not present in this map task"
+            f" ({color(egn_info['finalWorkflowGraphNode']['taskInfo']['displayName'])})"
+            " or is no longer running."
         )
         raise click.exceptions.Exit(1)
 
@@ -319,16 +323,17 @@ def get_container_info(
         container = container_infos[0]
         click.echo(
             "Selecting container"
-            f" {click.style(container['index'], bold=True, fg='blue')} as it is the"
+            f" {color(container['index'])} as it is the"
             " only running"
             " container in Map Task"
-            f" {click.style(egn_info['finalWorkflowGraphNode']['taskInfo']['displayName'], bold=True, fg='blue')}"
+            f" {color(egn_info['finalWorkflowGraphNode']['taskInfo']['displayName'])}"
         )
         return container_infos[0]
 
     selected_container_info = select_tui(
-        "You selected a Map Task with multiple running containers. Which one would you"
-        " like to inspect?",
+        "The map task you selected"
+        f" ({color(egn_info['finalWorkflowGraphNode']['taskInfo']['displayName'])}) has"
+        " multiple running containers. Which one would you like to inspect?",
         [
             {"display_name": f'Container {x["index"]}', "value": x}
             for x in container_infos

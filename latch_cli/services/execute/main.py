@@ -6,7 +6,7 @@ import sys
 import termios
 import tty
 from typing import Literal, Optional, Tuple, TypedDict, Union
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import websockets.client as websockets
 from latch_sdk_config.latch import NUCLEUS_URL
@@ -15,11 +15,12 @@ from typing_extensions import TypeAlias
 from latch_cli.services.execute.utils import (
     ContainerNode,
     EGNNode,
+    ExecutionInfoNode,
     get_container_info,
     get_egn_info,
     get_execution_info,
 )
-from latch_cli.utils import get_auth_header, urljoins
+from latch_cli.utils import get_auth_header
 
 
 class StdoutResponse(TypedDict):
@@ -136,12 +137,14 @@ async def connect(egn_info: EGNNode, container_info: Optional[ContainerNode]):
     reader, writer = await get_stdio_streams()
 
     async with websockets.connect(
-        urlparse(urljoins(NUCLEUS_URL, "/sdk/exec"))._replace(scheme="ws").geturl(),
+        urlparse(urljoin("http://localhost:5000", "/workflows/exec"))
+        ._replace(scheme="ws")
+        .geturl(),
         close_timeout=0,
         extra_headers={"Authorization": get_auth_header()},
     ) as ws:
         request = {
-            "egn_id": egn_info["id"],
+            "egn_id": f'{egn_info["id"]}',
             "container_index": (
                 container_info["index"] if container_info is not None else None
             ),
@@ -166,7 +169,10 @@ def exec(
     egn_id: Optional[str] = None,
     container_index: Optional[int] = None,
 ):
-    execution_info = get_execution_info(execution_id)
+    execution_info: Optional[ExecutionInfoNode] = None
+    if egn_id is None:
+        execution_info = get_execution_info(execution_id)
+
     egn_info = get_egn_info(execution_info, egn_id)
     container_info = get_container_info(egn_info, container_index)
 

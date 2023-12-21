@@ -4,6 +4,8 @@ import termios
 import tty
 from typing import Any, Callable, Generic, List, Optional, Tuple, TypedDict, TypeVar
 
+from latch_cli.click_utils import AnsiCodes
+
 
 def buffered_print() -> Tuple[Callable, Callable]:
     buffer = []
@@ -236,9 +238,9 @@ def select_tui(
                 break
             name = options[i]["display_name"]
             if i == curr_selected:
-                color = "\x1b[38;5;39m"
-                bold = "\x1b[1m"
-                reset = "\x1b[0m"
+                color = AnsiCodes.color
+                bold = AnsiCodes.bold
+                reset = AnsiCodes.full_reset
 
                 prefix = indent[:-2] + "> "
 
