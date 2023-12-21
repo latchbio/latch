@@ -105,6 +105,10 @@ def bold(s: str) -> str:
     return f"{AnsiCodes.bold}{s}{AnsiCodes.reset}"
 
 
+def underline(s: str) -> str:
+    return f"{AnsiCodes.underline}{s}{AnsiCodes.no_underline}"
+
+
 class AnsiCodes:
     bold = "\x1b[1m"
     reset = "\x1b[22m"

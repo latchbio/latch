@@ -138,15 +138,16 @@ def local_development(
         image = _get_latest_image(pkg_root)
 
     if size is None:
-        human_readable_size = select_tui(
+        size = select_tui(
             "Please select an instance size",
-            list(human_readable_task_sizes.keys()),
+            [
+                {"display_name": k, "value": v}
+                for k, v in human_readable_task_sizes.items()
+            ],
         )
-        if human_readable_size is None:
+        if size is None:
             click.echo("Session cancelled.")
             return
-
-        size = human_readable_task_sizes[human_readable_size]
 
     click.secho("Initiating local development session", fg="blue")
     click.echo(click.style("Selected image: ", fg="blue") + image)

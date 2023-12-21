@@ -239,9 +239,11 @@ template_flag_to_option = {
 
 
 base_docker_image_options = {
-    "Default Latch Docker image with No Dependencies": "default",
-    "Latch Docker image with Nvidia CUDA/cuDNN (cuda 11.4.2, cudnn 8) drivers": "cuda",
-    "Latch Docker image with OpenCL (ubuntu 18.04) drivers": "opencl",
+    "Default Latch Docker image with No Dependencies": BaseImageOptions.default,
+    "Latch Docker image with Nvidia CUDA/cuDNN (cuda 11.4.2, cudnn 8) drivers": (
+        BaseImageOptions.cuda
+    ),
+    "Latch Docker image with OpenCL (ubuntu 18.04) drivers": BaseImageOptions.opencl,
 }
 
 
@@ -327,19 +329,18 @@ def init(
                 ),
             )
 
-    selected_option = (
-        select_tui(
+    if template is None:
+        template_func = select_tui(
             title="Select Workflow Template",
-            options=list(option_map.keys()),
+            options=[
+                {"display_name": name, "value": fn} for name, fn in option_map.items()
+            ],
         )
-        if template is None
-        else template_flag_to_option[template]
-    )
+    else:
+        template_func = option_map[template_flag_to_option[template]]
 
-    if selected_option is None:
+    if template_func is None:
         return False
-
-    template_func = option_map[selected_option]
 
     try:
         pkg_root.mkdir(parents=True)
@@ -356,19 +357,21 @@ def init(
         ):
             return False
 
-    template_func(pkg_root)
-
-    if selected_option == "Empty workflow":
-        selected_image = select_tui(
-            title="Select the base docker image to use for the workflow",
-            options=list(base_docker_image_options.keys()),
-        )
-
-        base_image_type_str = base_docker_image_options.get(
-            str(selected_image), base_image_type_str
-        )
-
     base_image_type = BaseImageOptions.__members__[base_image_type_str]
+
+    if template_func == "Empty workflow":
+        base_image_type = select_tui(
+            title="Select the base docker image to use for the workflow",
+            options=[
+                {"display_name": name, "value": value}
+                for name, value in base_docker_image_options.items()
+            ],
+        )
+
+        if base_image_type is None:
+            return False
+
+    template_func(pkg_root)
 
     create_and_write_config(pkg_root, base_image_type)
 

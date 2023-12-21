@@ -2,7 +2,7 @@ import os
 import sys
 import termios
 import tty
-from typing import Callable, List, Optional, Tuple
+from typing import Any, Callable, Generic, List, Optional, Tuple, TypedDict, TypeVar
 
 
 def buffered_print() -> Tuple[Callable, Callable]:
@@ -192,7 +192,17 @@ def read_bytes(num_bytes: int) -> bytes:
     return result
 
 
-def select_tui(title: str, options: List[str], clear_terminal: bool = True):
+T = TypeVar("T")
+
+
+class SelectOption(Generic[T], TypedDict):
+    display_name: str
+    value: T
+
+
+def select_tui(
+    title: str, options: List[SelectOption[T]], clear_terminal: bool = True
+) -> Optional[T]:
     """
     Renders a terminal UI that allows users to select one of the options
     listed in `options`
@@ -224,7 +234,7 @@ def select_tui(title: str, options: List[str], clear_terminal: bool = True):
         for i in range(start_index, start_index + max_per_page):
             if i >= len(options):
                 break
-            name = options[i]
+            name = options[i]["display_name"]
             if i == curr_selected:
                 color = "\x1b[38;5;39m"
                 bold = "\x1b[1m"
@@ -274,7 +284,7 @@ def select_tui(title: str, options: List[str], clear_terminal: bool = True):
         while True:
             b = read_bytes(1)
             if b == b"\r":
-                return options[curr_selected]
+                return options[curr_selected]["value"]
             elif b == b"\x1b":
                 b = read_bytes(2)
                 if b == b"[A":  # Up Arrow
