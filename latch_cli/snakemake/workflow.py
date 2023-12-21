@@ -1235,8 +1235,9 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
 
         need_conda = any(x.conda_env is not None for x in jobs)
 
-        if non_blob_parameters is not None and len(non_blob_parameters) > 0:
-            self.job.rule.workflow.globals["config"] = non_blob_parameters
+        if non_blob_parameters is not None:
+            for param, val in non_blob_parameters.items():
+                self.job.rule.workflow.globals["config"][param] = val
 
         snakemake_args = [
             "-m",
