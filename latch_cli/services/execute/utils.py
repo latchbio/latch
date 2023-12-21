@@ -25,50 +25,53 @@ def with_fragments(doc: graphql.DocumentNode, *fragments: graphql.DocumentNode):
     return res
 
 
-fragments = (
-    gql.gql("""
-        fragment EGNFrag on ExecutionGraphNode {
-            id
-            status
-            finalWorkflowGraphNode {
-                nodeName
-                taskInfo {
-                    displayName
-                }
-            }
-            taskExecutionInfos {
-                nodes {
-                    retry
-                }
-            }
-            containerInfo(
-                orderBy: INDEX_ASC
-                filter: { status: { equalTo: RUNNING } }
-            ) {
-                nodes {
-                    containerName
-                    index
-                }
-            }
-        }
-    """),
-    gql.gql("""
-        fragment EIFrag on ExecutionInfo {
-            id
-            status
-            displayName
-            workflow {
+egn_fragment = gql.gql("""
+    fragment EGNFrag on ExecutionGraphNode {
+        id
+        status
+        finalWorkflowGraphNode {
+            nodeName
+            taskInfo {
                 displayName
             }
-            executionGraphNodesByExecutionId(condition: { status: RUNNING }) {
-                nodes {
-                    id
-                    ...EGNFrag
-                }
+        }
+        taskExecutionInfos {
+            nodes {
+                retry
             }
         }
-    """),
-)
+        containerInfo(
+            orderBy: INDEX_ASC
+            filter: { status: { equalTo: RUNNING } }
+        ) {
+            nodes {
+                containerName
+                index
+            }
+        }
+    }
+""")
+
+
+ei_fragment = gql.gql("""
+    fragment EIFrag on ExecutionInfo {
+        id
+        status
+        displayName
+        workflow {
+            displayName
+        }
+        executionGraphNodesByExecutionId(condition: { status: RUNNING }) {
+            nodes {
+                id
+                ...EGNFrag
+            }
+        }
+    }
+""")
+
+
+fragments = (egn_fragment, ei_fragment)
 
 
 class ContainerNode(TypedDict):
@@ -227,7 +230,7 @@ def get_egn_info(
                         }
                     }
                 """),
-                *fragments,
+                egn_fragment,
             ),
             {"egnId": egn_id},
         )["executionGraphNode"]
@@ -244,6 +247,11 @@ def get_egn_info(
                 fg="red",
             )
             raise click.exceptions.Exit(1)
+
+        click.secho(
+            "Selecting task"
+            f" {color(res['finalWorkflowGraphNode']['taskInfo']['displayName'])}.",
+        )
 
         return res
 
@@ -292,6 +300,11 @@ def get_egn_info(
     if selected_egn_node is None:
         click.secho("No task selected.", dim=True)
         raise click.exceptions.Exit(0)
+
+    click.secho(
+        "Selecting task"
+        f" {color(selected_egn_node['finalWorkflowGraphNode']['taskInfo']['displayName'])}.",
+    )
 
     return selected_egn_node
 
