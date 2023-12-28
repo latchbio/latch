@@ -484,9 +484,7 @@ def generate_jit_register_code(
     """).lstrip()
     code_block += wf.get_fn_code(
         snakefile_path_in_container(snakefile, pkg_root),
-        version,
         image_name,
-        account_id,
         wf.remote_output_url,
     )
 
