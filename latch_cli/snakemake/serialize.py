@@ -401,10 +401,13 @@ def generate_jit_register_code(
     wf: JITRegisterWorkflow,
     pkg_root: Path,
     snakefile: Path,
-    version: str,
-    image_name: str,
-    account_id: str,
+    image_name: str = None,
+    dry_run: bool = False,
 ) -> Path:
+    assert (
+        dry_run or image_name is not None
+    ), "image_name is required when not in dry_run mode"
+
     code_block = textwrap.dedent(r"""
         import json
         import os
@@ -484,10 +487,9 @@ def generate_jit_register_code(
     """).lstrip()
     code_block += wf.get_fn_code(
         snakefile_path_in_container(snakefile, pkg_root),
-        version,
         image_name,
-        account_id,
         wf.remote_output_url,
+        dry_run,
     )
 
     entrypoint = pkg_root / ".latch" / "snakemake_jit_entrypoint.py"

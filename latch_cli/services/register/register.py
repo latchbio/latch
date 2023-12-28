@@ -213,9 +213,7 @@ def _build_and_serialize(
             jit_wf,
             ctx.pkg_root,
             ctx.snakefile,
-            ctx.version,
             image_name,
-            current_workspace(),
         )
 
     image_build_logs = build_image(ctx, image_name, context_path, dockerfile)
