@@ -33,37 +33,53 @@ from latch_cli.utils import (
 )
 
 
-def _get_workflow_name(pkg_root: Path) -> str:
-    from flytekit.core.context_manager import FlyteEntities
-    from flytekit.core.workflow import PythonFunctionWorkflow
+def _get_workflow_name(pkg_root: Path, snakemake: bool) -> str:
+    if snakemake:
+        import latch.types.metadata as metadata
+        from latch_cli.snakemake.utils import load_snakemake_metadata
 
-    from latch_cli.centromere.utils import _import_flyte_objects
+        if not load_snakemake_metadata(pkg_root):
+            click.secho(
+                dedent(f"""
+                Unable to find latch_metadata in {pkg_root}.
+                """).strip("\n"),
+                fg="red",
+            )
+        return metadata._snakemake_metadata.name
+    else:
+        from flytekit.core.context_manager import FlyteEntities
+        from flytekit.core.workflow import PythonFunctionWorkflow
 
-    _import_flyte_objects([pkg_root])
-    for entity in FlyteEntities.entities:
-        if isinstance(entity, PythonFunctionWorkflow):
-            return entity.name
+        from latch_cli.centromere.utils import _import_flyte_objects
 
-    click.secho(
-        dedent(f"""
-        Unable to find a workflow in {pkg_root}: Check that
+        _import_flyte_objects([pkg_root])
+        for entity in FlyteEntities.entities:
+            if isinstance(entity, PythonFunctionWorkflow):
+                return entity.name
 
-        1. {pkg_root} is a valid workflow directory, and
-        2. Your workflow function has the @workflow decorator.
-        """).strip("\n"),
-        fg="red",
-    )
-    raise click.exceptions.Exit(1)
+        click.secho(
+            dedent(f"""
+            Unable to find a workflow in {pkg_root}: Check that
+
+            1. {pkg_root} is a valid workflow directory, and
+            2. Your workflow function has the @workflow decorator.
+            3. Pass in the --snakemake flag if you are using snakemake.
+            """).strip("\n"),
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
 
 
-def _get_latest_image(pkg_root: Path) -> str:
+def _get_latest_image(pkg_root: Path, snakemake: bool) -> str:
     click.secho("Image name: ", fg="blue", nl=False)
 
     ws_id = current_workspace()
     if int(ws_id) < 10:
         ws_id = f"x{ws_id}"
 
-    wf_name = identifier_suffix_from_str(_get_workflow_name(pkg_root)).lower()
+    wf_name = identifier_suffix_from_str(
+        _get_workflow_name(pkg_root, snakemake)
+    ).lower()
     wf_name = docker_image_name_illegal_pat.sub("_", wf_name)
 
     registry_name = f"{ws_id}_{wf_name}"
@@ -317,10 +333,10 @@ async def _shell_session(
         signal.signal(signal.SIGWINCH, old_sigwinch_handler)
 
 
-async def _run_local_dev_session(pkg_root: Path):
+async def _run_local_dev_session(pkg_root: Path, snakemake: bool):
     # hit the endpoint to make sure that a workflow image exists in ecr before
     # doing anything
-    image_name_tagged = _get_latest_image(pkg_root)
+    image_name_tagged = _get_latest_image(pkg_root, snakemake)
     key_path = pkg_root / ".latch" / "ssh_key"
 
     with TemporarySSHCredentials(key_path) as ssh:
@@ -448,7 +464,7 @@ async def _run_local_dev_session(pkg_root: Path):
                 raise e
 
 
-def local_development(pkg_root: Path):
+def local_development(pkg_root: Path, snakemake: bool):
     """Starts a REPL that allows a user to interactively run tasks to help with
     debugging during workflow development.
 
@@ -482,4 +498,4 @@ def local_development(pkg_root: Path):
                     mac: brew install rsync
                 """))
 
-    asyncio.run(_run_local_dev_session(pkg_root))
+    asyncio.run(_run_local_dev_session(pkg_root, snakemake))

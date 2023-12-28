@@ -31,6 +31,7 @@ from .serialize_utils import (
     get_serializable_launch_plan,
     get_serializable_workflow,
 )
+from .utils import load_snakemake_metadata
 from .workflow import JITRegisterWorkflow, SnakemakeWorkflow, interface_to_parameters
 
 RegistrableEntity = Union[
@@ -184,13 +185,7 @@ def snakemake_workflow_extractor(
 ) -> SnakemakeWorkflowExtractor:
     snakefile = snakefile.resolve()
 
-    new_meta = pkg_root / "latch_metadata" / "__init__.py"
-    if new_meta.exists():
-        import_module_by_path(new_meta)
-
-    old_meta = pkg_root / "latch_metadata.py"
-    if old_meta.exists():
-        import_module_by_path(old_meta)
+    load_snakemake_metadata(pkg_root)
 
     extractor = SnakemakeWorkflowExtractor(
         pkg_root=pkg_root,
