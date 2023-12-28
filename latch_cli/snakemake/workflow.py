@@ -1277,7 +1277,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
                 "inputs": named_list_to_json(job.input),
                 "outputs": named_list_to_json(job.output),
                 "params": {
-                    "keyword": {k: v for k, v in job.params.items()},
+                    "keyword": {k: str(v) for k, v in job.params.items()},
                     "positional": [],
                 },
                 "benchmark": job.benchmark,
