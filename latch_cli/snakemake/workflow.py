@@ -298,14 +298,12 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         display_name = metadata._snakemake_metadata.display_name
         name = metadata._snakemake_metadata.name
 
-        inputs = {k: (v.type, v.default) for k, v in parameter_metadata.items()}
-        inputs["dry_run"] = (bool, False)
         docstring = Docstring(
             f"{display_name}\n\nSample Description\n\n"
             + str(metadata._snakemake_metadata)
         )
         python_interface = Interface(
-            inputs,
+            {k: (v.type, v.default) for k, v in parameter_metadata.items()},
             {self.out_parameter_name: bool},
             docstring=docstring,
         )
@@ -383,8 +381,6 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         )
 
         for param, t in self.python_interface.inputs.items():
-            if param not in self.parameter_metadata:
-                continue
             param_meta = self.parameter_metadata[param]
 
             if t in (LatchFile, LatchDir):
@@ -455,7 +451,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             snakefile = Path("{snakefile_path}")
 
             lp = LatchPersistence()
-            pkg_root = Path(".")
+            pkg_root = Path.cwd()
             """,
             1,
         )
@@ -463,6 +459,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         code_block += reindent(
             r"""
 
+            dry_run = os.environ.get("LATCH_SNAKEMAKE_DRY_RUN")
             if dry_run:
                 token = None
                 version = None
