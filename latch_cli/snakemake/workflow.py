@@ -1,10 +1,12 @@
 import hashlib
 import importlib
 import json
+import sys
 import textwrap
 import typing
 from dataclasses import dataclass
 from pathlib import Path
+from textwrap import dedent
 from typing import (
     Any,
     Dict,
@@ -19,6 +21,7 @@ from typing import (
 )
 from urllib.parse import urlparse
 
+import click
 import snakemake
 import snakemake.io
 import snakemake.jobs
@@ -182,6 +185,18 @@ def snakemake_dag_to_interface(
                     return_files.append(
                         RemoteFile(local_path=x, remote_path=remote_url)
                     )
+
+                # it is possible for two different input files to have the same parameter name
+                # as long as they are defined in different rules. This can lead to name collisions
+                # because we use a global mapping (across all rules) of param_name -> input_file.
+                if param in literals and literals[param].scalar.blob.uri != remote_url:
+                    click.secho(dedent(f"""
+                        Name collision detected for {job.name}. The following two input
+                        parameters have the same name but different remote paths:
+                        {param} -> {remote_url}
+                        {param} -> {literals[param].scalar.blob.uri}
+                        """))
+                    sys.exit(1)
 
                 literals[param] = Literal(
                     scalar=Scalar(
