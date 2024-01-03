@@ -460,7 +460,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             r"""
 
             dry_run = os.environ.get("LATCH_SNAKEMAKE_DRY_RUN")
-            if dry_run:
+            if dry_run is not None:
                 token = None
                 version = None
                 jit_wf_version = "0.0.0-dry"
@@ -515,7 +515,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         code_block += reindent(
             r"""
 
-            if not dry_run:
+            if dry_run is None:
                 headers = {
                     "Authorization": f"Latch-Execution-Token {token}",
                 }

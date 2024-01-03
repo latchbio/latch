@@ -14,13 +14,7 @@ Run the following command to use `latch develop` with your Snakemake workflow:
 $ latch develop . --snakemake
 ```
 
-Once you are in the container, run the following command to run the JIT task in "dry run" mode.
-
-```console
-$ export LATCH_SNAKEMAKE_DRY_RUN=true
-```
-
-To run the task, create a test file that calls the task function defined in `snakemake_jit_entrypoint.py` with test inputs.
+To run the JIT task, create a test file that calls the task function defined in `snakemake_jit_entrypoint.py` with test inputs.
 
 For example:
 
@@ -38,7 +32,7 @@ your_workflow_name_jit_register_task(
 
 ```
 
-You can execute the script in `latch develop` like so:
+You can execute the script in your `latch develop` session like so:
 
 ```console
 $ python3 scripts/dry_run.py
