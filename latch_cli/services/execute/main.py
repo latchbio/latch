@@ -111,15 +111,13 @@ async def propagate_resize_events(
         cols, rows = await resize_event_queue.get()
 
         await ws.send(
-            json.dumps(
-                {
-                    "stream": "resize",
-                    "size": {
-                        "Width": cols,
-                        "Height": rows,
-                    },
-                }
-            )
+            json.dumps({
+                "stream": "resize",
+                "size": {
+                    "Width": cols,
+                    "Height": rows,
+                },
+            })
         )
 
 
@@ -137,7 +135,7 @@ async def connect(egn_info: EGNNode, container_info: Optional[ContainerNode]):
     reader, writer = await get_stdio_streams()
 
     async with websockets.connect(
-        urlparse(urljoin("http://localhost:5000", "/workflows/exec"))
+        urlparse(urljoin("http://localhost:5000", "/workflows/cli/shell"))
         ._replace(scheme="ws")
         .geturl(),
         close_timeout=0,
