@@ -2,10 +2,10 @@
 
 Note: This document is a work in progress and is subject to change.
 
-We will walk through the process of creating an [automation](overview.md) using `Data Addition` trigger on Latch which will run a _target workflow_ on all children of the target directory. We assume that you understand how to write and register [Workflows](../basics/what_is_a_workflow.md) on Latch.
+We will walk through the process of creating an [automation](overview.md) using the `Data Addition` trigger type on Latch which will run a _target workflow_ on all children of the target directory. We assume that you understand how to write and register [Workflows](../basics/what_is_a_workflow.md) on Latch.
 
 **Prerequisites:**
-* _Target directory_ in [Latch Data](https://console.latch.bio/data): this is the folder which is watched by the automation. Automation will be triggered if a child is added to this folder.
+* _Target directory_ in [Latch Data](https://console.latch.bio/data): this is the folder which is watched by the automation. The automation workflow will be triggered if a child is added to this folder.
 
 **Terms:**
 - _Automation Workflow_: workflow which will be called by automation. This is the workflow we create in [steps 3-5](#3-create-the-automation-workflow) of this tutorial.

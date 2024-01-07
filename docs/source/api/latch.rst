@@ -24,6 +24,14 @@ latch.account module
    :undoc-members:
    :show-inheritance:
 
+latch.executions module
+-----------------------
+
+.. automodule:: latch.executions
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 

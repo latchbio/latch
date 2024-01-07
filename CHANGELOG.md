@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.37.0 - 2023-12-11
+
+### Added
+
+* `rename_current_execution` function which allows programmatic execution renaming.
+
 ## 2.36.11 - 2023-11-28
 
 ### Added
