@@ -4,7 +4,7 @@ import os
 import subprocess
 import textwrap
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union, get_args
@@ -210,10 +210,11 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     depen_vertex is None
                     or depen_vertex.vertex_type == VertexType.origin
                 ):
-                    # TODO - multiple main target ids
-                    main_task.main_target_id = vertex.id
-                    node_output = NodeOutput(node=main_node, var=param_name)
-                    main_node_outputs[param_name] = List[str]
+                    if vertex.id not in main_task.main_target_ids:
+                        main_task.main_target_ids.append(vertex.id)
+                    main_out_param_name = f"v{vertex.id}_c{edge.to_idx}"
+                    node_output = NodeOutput(node=main_node, var=main_out_param_name)
+                    main_node_outputs[main_out_param_name] = List[str]
                 else:
                     if edge.from_idx is None:
                         raise ValueError(
@@ -251,11 +252,9 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 for e in dependent_edges_by_start.get(vertex.id, [])
             }
 
-            python_inputs[param_name] = List[str]
             if vertex.vertex_type == VertexType.process:
                 pre_adapter_task = NextflowProcessPreAdapterTask(
                     inputs=python_inputs,
-                    outputs={"default": List[str]},
                     id=f"{vertex.id}_pre",
                     name=f"pre_adapter_{vertex.label}",
                     wf=self,
@@ -271,15 +270,39 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 )
                 extra_nodes.append(pre_adapter_node)
 
+                post_adapter_task = NextflowProcessPostAdapterTask(
+                    outputs=python_outputs,
+                    id=f"{vertex.id}_post",
+                    name=f"post_adapter_{vertex.label}",
+                    wf=self,
+                )
+
+                self.nextflow_tasks.append(post_adapter_task)
+
+                # todo: maybe validate dataclass fields are contiguous sequences of
+                # integers starting at 0
+
+                def parse_dataclass(x: List[dataclass]) -> (dataclass, int):
+                    d = get_args(x)[0]
+                    return d, len(fields(d))
+
+                input_dataclass, num_inputs = parse_dataclass(
+                    pre_adapter_task._python_outputs["default"]
+                )
+                output_dataclass, num_outputs = parse_dataclass(
+                    post_adapter_task._python_inputs["default"]
+                )
+
                 process_task = NextflowProcessTask(
-                    inputs={"default": str},
-                    outputs={"default": str},
+                    inputs={"default": input_dataclass},
+                    outputs={"default": output_dataclass},
+                    num_inputs=num_inputs,
+                    num_outputs=num_outputs,
                     id=vertex.id,
                     name=vertex.label,
                     code=vertex.code,
                     wf=self,
                 )
-                self.nextflow_tasks.append(process_task)
 
                 process_node = Node(
                     id=f"n{vertex.id}",
@@ -302,16 +325,11 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     flyte_entity=process_task,
                 )
 
-                extra_nodes.append(process_node)
+                # adapter tasks are ordered before process task because of
+                # dependent types defined in code generated from adapters
 
-                post_adapter_task = NextflowProcessPostAdapterTask(
-                    inputs={"default": List[str]},
-                    outputs=python_outputs,
-                    id=f"{vertex.id}_post",
-                    name=f"post_adapter_{vertex.label}",
-                    wf=self,
-                )
-                self.nextflow_tasks.append(post_adapter_task)
+                extra_nodes.append(process_node)
+                self.nextflow_tasks.append(process_task)
 
                 post_adapter_node = Node(
                     id=f"n{vertex.id}-post-adapter",
@@ -507,6 +525,8 @@ class NextflowProcessMappedTask(NextflowTask):
         self,
         inputs: Dict[str, ParameterType],
         outputs: Dict[str, ParameterType],
+        num_inputs: int,
+        num_outputs: int,
         id: int,
         name: str,
         code: str,
@@ -515,58 +535,79 @@ class NextflowProcessMappedTask(NextflowTask):
         super().__init__(inputs, outputs, id, name, wf)
         self.code = code
         self.process_name = name
+        assert len(self._python_inputs) == 1 and len(self._python_outputs) == 1
+
+        self.num_inputs = num_inputs
+        self.num_outputs = num_outputs
 
     def get_fn_interface(self):
         res = ""
-
         params_str = ",\n".join(
             reindent(
                 rf"""
-                {param}: {t.__name__}
                 """,
                 1,
             ).rstrip()
             for param, t in self._python_interface.inputs.items()
         )
 
+        inputs = list(self._python_inputs.items())[0]
+        output_t = list(self._python_outputs.values())[0]
         res += reindent(
             rf"""
                 task = custom_task(cpu=-1, memory=-1) # these limits are a lie and are ignored when generating the task spec
                 @map_task
                 @task(cache=True)
                 def {self.name}(
-                __params__
-                ) -> str
+                    {inputs[0]}: {inputs[1].__name__}
+                ) -> {output_t.__name__}:
                 """,
             0,
         ).replace("__params__", params_str)
         return res
 
     def get_fn_return_stmt(self):
-        return reindent("return default", 1)
+        results: List[str] = []
 
-    def get_fn_code(self):
+        for i in range(self.num_outputs):
+            results.append(
+                reindent(
+                    rf"""
+                    c{i}=out_channels.get(f"c{i}", "")
+                    """,
+                    2,
+                ).rstrip()
+            )
+
+        return_str = ",\n".join(results)
+
+        return reindent(
+            rf"""
+                    return {list(self._python_outputs.values())[0].__name__}(
+                __return_str__
+                    )
+            """,
+            0,
+        ).replace("__return_str__", return_str)
+
+    def get_fn_code(self, nf_path_in_container: str):
         code_block = self.get_fn_interface()
 
-        # TODO
-        nextflow_script_path = "/root/workflow.nf"
-        run_task_entrypoint = [
-            "/root/latch-nextflow",
-            "run",
-            nextflow_script_path,
-        ]
+        run_task_entrypoint = [".latch/bin/latch-nextflow", "run", nf_path_in_container]
 
-        nextflow_script_path = "/root/workflow.nf"
         code_block += reindent(
             rf"""
-            print("\n\n\nRunning nextflow task\n")
+
+            channel_vals = [{','.join([f"default.c{i}" for i in range(self.num_inputs)])}]
+
+            print("\n\n\nRunning nextflow task: {run_task_entrypoint}\n")
             try:
                 subprocess.run(
                     [{','.join([repr(x) for x in run_task_entrypoint])}], 
                     env={{
                         **os.environ,
                         "LATCH_TARGET_PROCESS_NAME": "{self.process_name}",
-                        "LATCH_INPUT_VALS": default,
+                        "LATCH_PARAM_VALS": json.dumps(channel_vals),
                     }},
                     check=True,
                 )
@@ -574,9 +615,14 @@ class NextflowProcessMappedTask(NextflowTask):
                 print("\n\n\n[!] Failed\n\n\n")
                 raise e
 
-            with open("/root/.latch/outputValues.json") as f:
-                 return json.load(f)
 
+            out_channels = {{}}
+            vals = Path(".latch/process-out.txt").read_text().strip().split("\n")
+
+            assert len(fields({list(self._python_outputs.values())[0].__name__})) == len(vals)
+
+            for i, val in enumerate(vals):
+                out_channels[f"c{{i}}"] = val
             """,
             1,
         )
@@ -590,65 +636,104 @@ class NextflowProcessTask(MapContainerTask):
         self,
         inputs: Dict[str, ParameterType],
         outputs: Dict[str, ParameterType],
+        num_inputs: int,
+        num_outputs: int,
         id: int,
         name: str,
         code: str,
         wf: NextflowWorkflow,
     ):
-        mapped = NextflowProcessMappedTask(inputs, outputs, id, name, code, wf)
+        mapped = NextflowProcessMappedTask(
+            inputs, outputs, num_inputs, num_outputs, id, name, code, wf
+        )
         super().__init__(mapped)
+
+
+def dataclass_code_from_python_params(params: Dict[str, ParameterType], name: str):
+    output_fields = "\n".join(
+        reindent(
+            rf"""
+                {param}: str
+                """,
+            1,
+        ).rstrip()
+        for param, t in params.items()
+    )
+
+    return reindent(
+        rf"""
+            @dataclass
+            class Res_{name}():
+            __output_fields__
+
+            """,
+        0,
+    ).replace("__output_fields__", output_fields)
 
 
 class NextflowProcessPreAdapterTask(NextflowTask):
     def __init__(
         self,
         inputs: Dict[str, ParameterType],
-        outputs: Dict[str, ParameterType],
         id: int,
         name: str,
         wf: NextflowWorkflow,
     ):
+        self.dataclass_code = dataclass_code_from_python_params(inputs, id)
+        self.num_params = len(inputs)
+
+        exec(self.dataclass_code, globals())
+        outputs = {"default": List[globals()[f"Res_{id}"]]}
+
         super().__init__(inputs, outputs, id, name, wf)
         self.process_name = name
 
     def get_fn_interface(self):
         res = ""
 
-        print(self._python_inputs)
-
         params_str = ",\n".join(
             reindent(
                 rf"""
-                {param}: {t.__name__}
+                {param}: List[str]
                 """,
                 1,
             ).rstrip()
             for param, t in self._python_inputs.items()
         )
 
-        res += reindent(
-            rf"""
+        res += self.dataclass_code
+
+        outputs_str = f"List[Res_{self.id}]:"
+
+        res += (
+            reindent(
+                rf"""
                 task = custom_task(cpu=-1, memory=-1) # these limits are a lie and are ignored when generating the task spec
                 @task(cache=True)
                 def {self.name}(
                 __params__
-                ) -> str
+                ) -> __outputs__
                 """,
-            0,
-        ).replace("__params__", params_str)
+                0,
+            )
+            .replace("__outputs__", outputs_str)
+            .replace("__params__", params_str)
+        )
+
         return res
 
     def get_fn_return_stmt(self):
-        return reindent("return default", 1)
+        return reindent("return result", 1)
 
-    def get_fn_code(self):
+    def get_fn_code(self, nf_path_in_container: str):
         code_block = self.get_fn_interface()
+
+        assignment_str = ",".join([f"c{i}=x[{i}]" for i in range(self.num_params)])
+        variables = ",".join([f"c{i}" for i in range(self.num_params)])
 
         code_block += reindent(
             rf"""
-
-            # collate values
-
+            result = [Res_{self.id}({assignment_str}) for x in zip({variables})]
             """,
             1,
         )
@@ -660,46 +745,50 @@ class NextflowProcessPreAdapterTask(NextflowTask):
 class NextflowProcessPostAdapterTask(NextflowTask):
     def __init__(
         self,
-        inputs: Dict[str, ParameterType],
         outputs: Dict[str, ParameterType],
         id: int,
         name: str,
         wf: NextflowWorkflow,
     ):
+        self.dataclass_code = dataclass_code_from_python_params(outputs, id)
+
+        exec(self.dataclass_code, globals())
+        inputs = {"default": List[globals()[f"Res_{id}"]]}
         super().__init__(inputs, outputs, id, name, wf)
         self.process_name = name
 
     def get_fn_interface(self):
         res = ""
 
-        outputs_str = "None:"
-        if len(self._python_outputs.items()) > 0:
-            output_fields = "\n".join(
-                reindent(
-                    rf"""
-                    {param}: {t.__name__}
-                    """,
-                    1,
-                ).rstrip()
-                for param, t in self._python_outputs.items()
-            )
-
-            res += reindent(
+        output_fields = "\n".join(
+            reindent(
                 rf"""
-                class Res{self.name}(NamedTuple):
-                __output_fields__
-
+                {param}: List[str]
                 """,
-                0,
-            ).replace("__output_fields__", output_fields)
-            outputs_str = f"Res{self.name}:"
+                1,
+            ).rstrip()
+            for param, t in self._python_outputs.items()
+        )
+
+        res += reindent(
+            rf"""
+            class Res{self.name}(NamedTuple):
+            __output_fields__
+
+            """,
+            0,
+        ).replace("__output_fields__", output_fields)
+
+        res += self.dataclass_code
+
+        outputs_str = f"Res{self.name}:"
 
         res += reindent(
             rf"""
                 task = custom_task(cpu=-1, memory=-1) # these limits are a lie and are ignored when generating the task spec
                 @task(cache=True)
                 def {self.name}(
-                    default: str
+                    default: List[Res_{self.id}]
                 ) -> __outputs__
                 """,
             0,
@@ -708,13 +797,13 @@ class NextflowProcessPostAdapterTask(NextflowTask):
 
     def get_fn_return_stmt(self):
         results: List[str] = []
-        for out_name, out_type in self._python_outputs.items():
+        for out_name in self._python_outputs.keys():
             results.append(
                 reindent(
                     rf"""
-                    {out_name}={out_name}
+                    {out_name}=[x.{out_name} for x in default]
                     """,
-                    2,
+                    1,
                 ).rstrip()
             )
 
@@ -722,27 +811,15 @@ class NextflowProcessPostAdapterTask(NextflowTask):
 
         return reindent(
             rf"""
-                    return Res{self.name}(
-                __return_str__
-                    )
-            """,
-            0,
-        ).replace("__return_str__", return_str)
-
-    def get_fn_code(
-        self,
-    ):
-        code_block = self.get_fn_interface()
-
-        code_block += reindent(
-            rf"""
-
-            # spread values
-
+            return Res{self.name}(
+            __return_str__
+            )
             """,
             1,
-        )
+        ).replace("__return_str__", return_str)
 
+    def get_fn_code(self, nf_path_in_container: str):
+        code_block = self.get_fn_interface()
         code_block += self.get_fn_return_stmt()
         return code_block
 
@@ -869,17 +946,12 @@ class NextflowOperatorTask(NextflowTask):
                 raise e
 
 
-            def order_channel_files(fname: str):
-                match = re.search(channel_pattern, Path(fname).name)
-                if match:
-                    return match.group(1)
-                return -1
-
             out_channels = {{}}
-            files = sorted(list(glob.glob(".latch/channel*.txt")), key=order_channel_files)
-            for i, file in enumerate(files):
+            files = list(glob.glob(".latch/channel*.txt"))
+            for file in files:
+                idx = parse_channel_file(file)
                 vals = Path(file).read_text().strip().split("\n")
-                out_channels["c"+str(i)] = vals
+                out_channels[f"c{{idx}}"] = vals
             """,
             1,
         )
@@ -891,6 +963,7 @@ class NextflowOperatorTask(NextflowTask):
 class NextflowMainTask(PythonAutoContainerTask[Pod]):
     def __init__(self, interface: Interface):
         self._python_inputs = interface.inputs
+        self.main_target_ids = []
         super().__init__(
             name="main",
             task_type="python-task",
@@ -961,7 +1034,7 @@ class NextflowMainTask(PythonAutoContainerTask[Pod]):
             results.append(
                 reindent(
                     rf"""
-                    {out_name}={out_name}
+                    {out_name}=out_channels.get("{out_name}", [])
                     """,
                     2,
                 ).rstrip()
@@ -995,7 +1068,7 @@ class NextflowMainTask(PythonAutoContainerTask[Pod]):
                     [{','.join([repr(x) for x in run_task_entrypoint])}], 
                     env={{
                         **os.environ,
-                        "LATCH_MAIN_TARGET_ID": "{self.main_target_id}",
+                        "LATCH_MAIN_TARGET_IDS": "{json.dumps(self.main_target_ids)}",
                     }},
                     check=True,
                 )
@@ -1004,18 +1077,13 @@ class NextflowMainTask(PythonAutoContainerTask[Pod]):
                 raise e
 
 
-            def order_channel_files(fname: str):
-                match = re.search(channel_pattern, Path(fname).name)
-                if match:
-                    return match.group(1)
-                return -1
-
-            thismodule = sys.modules[__name__]
-            files = sorted(list(glob.glob(".latch/channel*.txt")), key=order_channel_files)
-            for i, file in enumerate(files):
+            out_channels = {{}}
+            files = list(glob.glob(".latch/*/channel*.txt"))
+            for file in files:
+                idx = parse_channel_file(file)
                 vals = Path(file).read_text().strip().split("\n")
-                setattr(thismodule, f"c{{i}}", vals)
-
+                v_id = Path(file).parent.name
+                out_channels[f"v{{v_id}}_c{{idx}}"] = vals
             """,
             1,
         )
@@ -1134,6 +1202,7 @@ def generate_nf_entrypoint(
     entrypoint_code_block = textwrap.dedent(r"""
         import os
         from pathlib import Path
+        from dataclasses import dataclass, fields
         import shutil
         import subprocess
         from subprocess import CalledProcessError
@@ -1150,6 +1219,7 @@ def generate_nf_entrypoint(
         import traceback
 
         from latch.resources.tasks import custom_task
+        from latch.resources.map_tasks import map_task
         from latch.types.directory import LatchDir
         from latch.types.file import LatchFile
 
@@ -1160,6 +1230,12 @@ def generate_nf_entrypoint(
 
 
         channel_pattern = r"channel(\d+)\.txt"
+
+        def parse_channel_file(fname: str) -> int:
+            match = re.search(channel_pattern, Path(fname).name)
+            if match:
+                return match.group(1)
+            raise ValueError(f"Malformed file name for parameter output: {fname}")
     """).lstrip()
 
     entrypoint_code_block += wf.main_task.get_fn_code(
