@@ -229,6 +229,14 @@ def register(
     help="Image to use for develop session.",
 )
 @click.option(
+    "-s",
+    "--snakemake",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Start a develop session for a Snakemake workflow.",
+)
+@click.option(
     "--size",
     "-s",
     type=EnumChoice(TaskSize, case_sensitive=False),
@@ -236,7 +244,11 @@ def register(
 )
 @requires_login
 def local_development(
-    pkg_root: Path, yes: bool, image: Optional[str], size: Optional[TaskSize]
+    pkg_root: Path,
+    yes: bool,
+    image: Optional[str],
+    snakemake: bool,
+    size: Optional[TaskSize],
 ):
     """Develop workflows "locally"
 
@@ -255,7 +267,7 @@ def local_development(
     else:
         from latch_cli.services.local_dev_old import local_development
 
-        local_development(pkg_root.resolve())
+        local_development(pkg_root.resolve(), snakemake)
 
 
 @main.command("login")
