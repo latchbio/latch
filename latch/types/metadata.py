@@ -3,7 +3,19 @@ from dataclasses import Field, asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
 from textwrap import indent
-from typing import Any, ClassVar, Dict, List, Optional, Protocol, Tuple, Type, Union
+from typing import (
+    Any,
+    ClassVar,
+    Dict,
+    Generic,
+    List,
+    Optional,
+    Protocol,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import yaml
 from typing_extensions import TypeAlias
@@ -372,38 +384,24 @@ class _IsDataclass(Protocol):
 
 
 ParameterType: TypeAlias = Union[
-    Type[None],
-    Type[int],
-    Type[float],
-    Type[str],
-    Type[bool],
-    Type[Enum],
-    Type[_IsDataclass],
-    Type[List["ParameterType"]],
+    None, int, float, str, bool, Enum, _IsDataclass, List["ParameterType"]
 ]
 
 
-@dataclass
-class SnakemakeParameter(LatchParameter):
-    type: Optional[ParameterType] = None
-    """
-    The python type of the parameter.
-    """
-    # todo(ayush): needs to be typed properly
-    default: Optional[Any] = None
+T = TypeVar("T", bound=ParameterType)
 
 
 @dataclass
-class SnakemakeFileParameter(SnakemakeParameter):
-    type: Optional[
-        Union[
-            Type[LatchFile],
-            Type[LatchDir],
-        ]
-    ] = None
+class SnakemakeParameter(Generic[T], LatchParameter):
+    type: Optional[Type[T]] = None
     """
     The python type of the parameter.
     """
+    default: Optional[T] = None
+
+
+@dataclass
+class SnakemakeFileParameter(SnakemakeParameter[Union[LatchFile, LatchDir]]):
     path: Optional[Path] = None
     """
     The path where the file passed to this parameter will be copied.

@@ -188,7 +188,7 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         node_map: Dict[str, Node] = {}
         extra_nodes: List[Node] = [main_node]
-        main_node_outputs: Dict[str, ParameterType] = {}
+        main_node_outputs: Dict[str, Type[ParameterType]] = {}
         for vertex_id in sorted(dependent_vertices.keys()):
             vertex = vertices[vertex_id]
             if vertex.vertex_type == VertexType.origin:
@@ -396,8 +396,8 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
 class NextflowTask(PythonAutoContainerTask[Pod]):
     def __init__(
         self,
-        inputs: Dict[str, ParameterType],
-        outputs: Dict[str, ParameterType],
+        inputs: Dict[str, Type[ParameterType]],
+        outputs: Dict[str, Type[ParameterType]],
         id: int,
         name: str,
         wf: NextflowWorkflow,
@@ -523,8 +523,8 @@ class MapContainerTask(PythonAutoContainerTask[Pod]):
 class NextflowProcessMappedTask(NextflowTask):
     def __init__(
         self,
-        inputs: Dict[str, ParameterType],
-        outputs: Dict[str, ParameterType],
+        inputs: Dict[str, Type[ParameterType]],
+        outputs: Dict[str, Type[ParameterType]],
         num_inputs: int,
         num_outputs: int,
         id: int,
@@ -634,8 +634,8 @@ class NextflowProcessMappedTask(NextflowTask):
 class NextflowProcessTask(MapContainerTask):
     def __init__(
         self,
-        inputs: Dict[str, ParameterType],
-        outputs: Dict[str, ParameterType],
+        inputs: Dict[str, Type[ParameterType]],
+        outputs: Dict[str, Type[ParameterType]],
         num_inputs: int,
         num_outputs: int,
         id: int,
@@ -649,7 +649,9 @@ class NextflowProcessTask(MapContainerTask):
         super().__init__(mapped)
 
 
-def dataclass_code_from_python_params(params: Dict[str, ParameterType], name: str):
+def dataclass_code_from_python_params(
+    params: Dict[str, Type[ParameterType]], name: str
+):
     output_fields = "\n".join(
         reindent(
             rf"""
@@ -674,7 +676,7 @@ def dataclass_code_from_python_params(params: Dict[str, ParameterType], name: st
 class NextflowProcessPreAdapterTask(NextflowTask):
     def __init__(
         self,
-        inputs: Dict[str, ParameterType],
+        inputs: Dict[str, Type[ParameterType]],
         id: int,
         name: str,
         wf: NextflowWorkflow,
@@ -745,7 +747,7 @@ class NextflowProcessPreAdapterTask(NextflowTask):
 class NextflowProcessPostAdapterTask(NextflowTask):
     def __init__(
         self,
-        outputs: Dict[str, ParameterType],
+        outputs: Dict[str, Type[ParameterType]],
         id: int,
         name: str,
         wf: NextflowWorkflow,
@@ -827,8 +829,8 @@ class NextflowProcessPostAdapterTask(NextflowTask):
 class NextflowOperatorTask(NextflowTask):
     def __init__(
         self,
-        inputs: Dict[str, ParameterType],
-        outputs: Dict[str, ParameterType],
+        inputs: Dict[str, Type[ParameterType]],
+        outputs: Dict[str, Type[ParameterType]],
         id: int,
         name: str,
         wf: NextflowWorkflow,
