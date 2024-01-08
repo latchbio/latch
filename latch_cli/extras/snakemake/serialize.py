@@ -453,7 +453,7 @@ def generate_jit_register_code(
             print_and_write_build_logs,
             print_upload_logs,
         )
-        from latch_cli.snakemake.serialize import (
+        from latch_cli.extras.snakemake.serialize import (
             extract_snakemake_workflow,
             generate_snakemake_entrypoint,
             serialize_snakemake,

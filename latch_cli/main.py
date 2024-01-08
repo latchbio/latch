@@ -58,12 +58,7 @@ def requires_login(f: Callable[P, T]) -> Callable[P, T]:
     return decorated
 
 
-@click.group(
-    "latch",
-    context_settings={
-        "max_content_width": 160,
-    },
-)
+@click.group("latch", context_settings={"max_content_width": 160})
 @click.version_option(package_name="latch")
 def main():
     """
@@ -476,7 +471,7 @@ def generate_metadata(
 ):
     """Generate a `latch_metadata.py` file from a Snakemake config file"""
 
-    from latch_cli.snakemake.config.parser import generate_metadata
+    from latch_cli.extras.snakemake.config.parser import generate_metadata
 
     generate_metadata(
         config_file,

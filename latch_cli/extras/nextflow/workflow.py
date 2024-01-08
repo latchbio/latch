@@ -35,7 +35,7 @@ from flytekitplugins.pod.task import Pod
 from latch.resources.tasks import custom_task
 from latch.types import metadata
 from latch.types.metadata import ParameterType
-from latch_cli.snakemake.workflow import binding_from_python
+from latch_cli.extras.snakemake.workflow import binding_from_python
 
 T = TypeVar("T")
 
@@ -603,7 +603,7 @@ class NextflowProcessMappedTask(NextflowTask):
             print("\n\n\nRunning nextflow task: {run_task_entrypoint}\n")
             try:
                 subprocess.run(
-                    [{','.join([repr(x) for x in run_task_entrypoint])}], 
+                    [{','.join([repr(x) for x in run_task_entrypoint])}],
                     env={{
                         **os.environ,
                         "LATCH_TARGET_PROCESS_NAME": "{self.process_name}",
@@ -933,7 +933,7 @@ class NextflowOperatorTask(NextflowTask):
             print(f"\n\n\nRunning nextflow task: {run_task_entrypoint}\n")
             try:
                 subprocess.run(
-                    [{','.join([repr(x) for x in run_task_entrypoint])}], 
+                    [{','.join([repr(x) for x in run_task_entrypoint])}],
                     env={{
                         **os.environ,
                         "LATCH_TARGET_OPERATOR_ID": "{self.operator_id}",
@@ -1065,7 +1065,7 @@ class NextflowMainTask(PythonAutoContainerTask[Pod]):
             print(f"\n\n\nRunning nextflow task: {run_task_entrypoint}\n")
             try:
                 subprocess.run(
-                    [{','.join([repr(x) for x in run_task_entrypoint])}], 
+                    [{','.join([repr(x) for x in run_task_entrypoint])}],
                     env={{
                         **os.environ,
                         "LATCH_MAIN_TARGET_IDS": "{json.dumps(self.main_target_ids)}",

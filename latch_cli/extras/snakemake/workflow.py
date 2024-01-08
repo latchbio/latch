@@ -64,9 +64,8 @@ import latch.types.metadata as metadata
 from latch.resources.tasks import custom_task
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
-from latch_cli.snakemake.config.utils import type_repr
-
-from ..utils import identifier_suffix_from_str
+from latch_cli.extras.snakemake.config.utils import type_repr
+from latch_cli.utils import identifier_suffix_from_str
 
 SnakemakeInputVal: TypeAlias = snakemake.io._IOFile
 
@@ -1236,7 +1235,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
 
         snakemake_args = [
             "-m",
-            "latch_cli.snakemake.single_task_snakemake",
+            "latch_cli.extras.snakemake.single_task_snakemake",
             "-s",
             snakefile_path_in_container,
             *(["--use-conda"] if need_conda else []),

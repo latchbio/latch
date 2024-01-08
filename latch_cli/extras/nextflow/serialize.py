@@ -1,64 +1,18 @@
-import importlib
-import json
-import os
-import textwrap
-from contextlib import contextmanager
-from dataclasses import dataclass
-from enum import Enum
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar
-from urllib.parse import urlparse
-
 import click
 from flytekit import LaunchPlan
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
-from flytekit.core import constants as _common_constants
-from flytekit.core.class_based_resolver import ClassStorageTaskResolver
-from flytekit.core.constants import SdkTaskType
-from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.docstring import Docstring
-from flytekit.core.interface import Interface, transform_interface_to_typed_interface
-from flytekit.core.map_task import MapPythonTask
-from flytekit.core.node import Node
-from flytekit.core.promise import NodeOutput, Promise
-from flytekit.core.python_auto_container import (
-    DefaultTaskResolver,
-    PythonAutoContainerTask,
-)
-from flytekit.core.workflow import (
-    WorkflowBase,
-    WorkflowFailurePolicy,
-    WorkflowMetadata,
-    WorkflowMetadataDefaults,
-)
-from flytekit.exceptions import scopes as exception_scopes
 from flytekit.models import literals as literals_models
-from flytekit.models.interface import Variable
-from flytekit.models.literals import Literal
 from flytekit.tools.serialize_helpers import persist_registrable_entities
-from flytekitplugins.pod.task import Pod
 
-from latch.resources.tasks import custom_task
-from latch.types import metadata
-from latch.types.metadata import ParameterType
-from latch_cli.nextflow.jit import NFJITRegisterWorkflow
-from latch_cli.nextflow.workflow import (
-    NextflowOperatorTask,
-    NextflowProcessTask,
-    NextflowWorkflow,
-)
-from latch_cli.services.register.register import (
-    _print_reg_resp,
-    _recursive_list,
-    register_serialized_pkg,
-)
-from latch_cli.snakemake.serialize import should_register_with_admin
-from latch_cli.snakemake.serialize_utils import (
+from latch_cli.extras.nextflow.jit import NFJITRegisterWorkflow
+from latch_cli.extras.nextflow.workflow import NextflowWorkflow
+from latch_cli.extras.snakemake.serialize import should_register_with_admin
+from latch_cli.extras.snakemake.serialize_utils import (
     EntityCache,
     get_serializable_launch_plan,
     get_serializable_workflow,
 )
-from latch_cli.snakemake.workflow import binding_from_python, interface_to_parameters
+from latch_cli.extras.snakemake.workflow import interface_to_parameters
 
 
 def serialize_nf_jit_register_workflow(
