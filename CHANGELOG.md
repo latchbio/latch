@@ -16,6 +16,20 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.37.1 - 2023-01-08
+
+### Added
+
+* Snakemake
+  + support for `latch develop` for JIT workflow
+
+### Fixed
+
+* Snakemake
+  + user input config overrides default config instead of merging
+  + JIT workflow fails if the same keyword is used to define two different input parameters
+  + fail to serialize `snakemake_data` when any params are defined as `pathlib.Path`
+
 ## 2.37.0 - 2023-12-11
 
 ### Added
