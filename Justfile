@@ -8,7 +8,7 @@ _build:
   python3 setup.py sdist bdist_wheel
 
 _upload:
-  twine upload dist/*
+  twine upload dist/* -u __token__ -p $(<credentials/pypi_token)
 
 build: _clear _build
 

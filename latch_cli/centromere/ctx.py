@@ -138,21 +138,15 @@ class _CentromereCtx:
                     get_snakemake_metadata_example,
                     snakemake_workflow_extractor,
                 )
+                from ..snakemake.utils import load_snakemake_metadata
 
-                new_meta = pkg_root / "latch_metadata" / "__init__.py"
-                old_meta = pkg_root / "latch_metadata.py"
-
-                if new_meta.exists():
+                meta_file = load_snakemake_metadata(pkg_root)
+                if meta_file is not None:
                     click.echo(
-                        f"Using metadata file {click.style(new_meta, italic=True)}"
+                        f"Using metadata file {click.style(meta_file, italic=True)}"
                     )
-                    import_module_by_path(new_meta)
-                elif old_meta.exists():
-                    click.echo(
-                        f"Using metadata file {click.style(old_meta, italic=True)}"
-                    )
-                    import_module_by_path(old_meta)
                 else:
+                    new_meta = pkg_root / "latch_metadata" / "__init__.py"
                     click.echo("Trying to extract metadata from the Snakefile")
                     try:
                         snakemake_workflow_extractor(pkg_root, snakefile)

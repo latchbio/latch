@@ -1,10 +1,12 @@
 import hashlib
 import importlib
 import json
+import sys
 import textwrap
 import typing
 from dataclasses import dataclass
 from pathlib import Path
+from textwrap import dedent
 from typing import (
     Any,
     Dict,
@@ -19,6 +21,7 @@ from typing import (
 )
 from urllib.parse import urlparse
 
+import click
 import snakemake
 import snakemake.io
 import snakemake.jobs
@@ -182,6 +185,21 @@ def snakemake_dag_to_interface(
                     return_files.append(
                         RemoteFile(local_path=x, remote_path=remote_url)
                     )
+
+                # it is possible for two different input files to have the same parameter name
+                # as long as they are defined in different rules. This can lead to name collisions
+                # because we use a global mapping (across all rules) of param_name -> input_file.
+                if param in literals and literals[param].scalar.blob.uri != remote_url:
+                    click.secho(
+                        dedent(f"""
+                        Name collision detected for {job.name}. The following two input
+                        parameters have the same name but different remote paths:
+                        {param} -> {remote_url}
+                        {param} -> {literals[param].scalar.blob.uri}
+                        """),
+                        fg="red",
+                    )
+                    sys.exit(1)
 
                 literals[param] = Literal(
                     scalar=Scalar(
@@ -365,9 +383,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
     def get_fn_code(
         self,
         snakefile_path: str,
-        version: str,
         image_name: str,
-        account_id: str,
         remote_output_url: Optional[str],
     ):
         task_name = f"{self.name}_task"
@@ -453,39 +469,47 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             snakefile = Path("{snakefile_path}")
 
             lp = LatchPersistence()
+            pkg_root = Path.cwd()
             """,
             1,
         )
 
         code_block += reindent(
             r"""
-            pkg_root = Path(".")
 
-            exec_id_hash = hashlib.sha1()
-            token = os.environ["FLYTE_INTERNAL_EXECUTION_ID"]
-            exec_id_hash.update(token.encode("utf-8"))
-            version = exec_id_hash.hexdigest()[:16]
+            dry_run = os.environ.get("LATCH_SNAKEMAKE_DRY_RUN")
+            if dry_run is not None:
+                token = None
+                version = None
+                jit_wf_version = "0.0.0-dry"
+                jit_exec_display_name = "jit-dry-run"
+                account_id = None
+            else:
+                exec_id_hash = hashlib.sha1()
+                token = os.environ["FLYTE_INTERNAL_EXECUTION_ID"]
+                exec_id_hash.update(token.encode("utf-8"))
+                version = exec_id_hash.hexdigest()[:16]
 
-            jit_wf_version = os.environ["FLYTE_INTERNAL_TASK_VERSION"]
-            res = execute(
-                gql.gql('''
-                query executionCreatorsByToken($token: String!) {
-                    executionCreatorByToken(token: $token) {
-                        flytedbId
-                        info {
-                            displayName
-                        }
-                        accountInfoByCreatedBy {
-                            id
+                jit_wf_version = os.environ["FLYTE_INTERNAL_TASK_VERSION"]
+                res = execute(
+                    gql.gql('''
+                    query executionCreatorsByToken($token: String!) {
+                        executionCreatorByToken(token: $token) {
+                            flytedbId
+                            info {
+                                displayName
+                            }
+                            accountInfoByCreatedBy {
+                                id
+                            }
                         }
                     }
-                }
-                '''),
-                {"token": token},
-            )["executionCreatorByToken"]
+                    '''),
+                    {"token": token},
+                )["executionCreatorByToken"]
 
-            jit_exec_display_name = res["info"]["displayName"]
-            account_id = res["accountInfoByCreatedBy"]["id"]
+                jit_exec_display_name = res["info"]["displayName"]
+                account_id = res["accountInfoByCreatedBy"]["id"]
             """,
             1,
         )
@@ -508,87 +532,91 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         code_block += reindent(
             r"""
-            headers = {
-                "Authorization": f"Latch-Execution-Token {token}",
-            }
 
-            temp_dir = tempfile.TemporaryDirectory()
-            with Path(temp_dir.name).resolve() as td:
-                serialize_snakemake(wf, td, image_name, config.dkr_repo)
+            if dry_run is None:
+                headers = {
+                    "Authorization": f"Latch-Execution-Token {token}",
+                }
 
-                protos = _recursive_list(td)
-                reg_resp = register_serialized_pkg(protos, None, version, account_id)
-                _print_reg_resp(reg_resp, image_name)
+                temp_dir = tempfile.TemporaryDirectory()
+                with Path(temp_dir.name).resolve() as td:
+                    serialize_snakemake(wf, td, image_name, config.dkr_repo)
 
-            wf_spec_remote = f"latch:///.snakemake_latch/workflows/{wf_name}/{version}/spec"
-            spec_dir = Path("spec")
-            for x_dir in spec_dir.iterdir():
-                if not x_dir.is_dir():
-                    dst = f"{wf_spec_remote}/{x_dir.name}"
-                    print(f"{x_dir} -> {dst}")
-                    lp.upload(str(x_dir), dst)
-                    print("  done")
-                    continue
+                    protos = _recursive_list(td)
+                    reg_resp = register_serialized_pkg(protos, None, version, account_id)
+                    _print_reg_resp(reg_resp, image_name)
 
-                for x in x_dir.iterdir():
-                    dst = f"{wf_spec_remote}/{x_dir.name}/{x.name}"
-                    print(f"{x} -> {dst}")
-                    lp.upload(str(x), dst)
-                    print("  done")
+                wf_spec_remote = f"latch:///.snakemake_latch/workflows/{wf_name}/{version}/spec"
+                spec_dir = Path("spec")
+                for x_dir in spec_dir.iterdir():
+                    if not x_dir.is_dir():
+                        dst = f"{wf_spec_remote}/{x_dir.name}"
+                        print(f"{x_dir} -> {dst}")
+                        lp.upload(str(x_dir), dst)
+                        print("  done")
+                        continue
 
-            class _WorkflowInfoNode(TypedDict):
-                id: str
+                    for x in x_dir.iterdir():
+                        dst = f"{wf_spec_remote}/{x_dir.name}/{x.name}"
+                        print(f"{x} -> {dst}")
+                        lp.upload(str(x), dst)
+                        print("  done")
+
+                class _WorkflowInfoNode(TypedDict):
+                    id: str
 
 
-            nodes: Optional[List[_WorkflowInfoNode]] = None
-            while True:
-                time.sleep(1)
-                print("Getting Workflow Data:", end=" ")
-                nodes = execute(
-                    gql.gql('''
-                    query workflowQuery($name: String, $ownerId: BigInt, $version: String) {
-                        workflowInfos(condition: { name: $name, ownerId: $ownerId, version: $version}) {
-                            nodes {
-                                id
+                nodes: Optional[List[_WorkflowInfoNode]] = None
+                while True:
+                    time.sleep(1)
+                    print("Getting Workflow Data:", end=" ")
+                    nodes = execute(
+                        gql.gql('''
+                        query workflowQuery($name: String, $ownerId: BigInt, $version: String) {
+                            workflowInfos(condition: { name: $name, ownerId: $ownerId, version: $version}) {
+                                nodes {
+                                    id
+                                }
                             }
                         }
-                    }
-                    '''),
-                    {"name": wf_name, "version": version, "ownerId": account_id},
-                )["workflowInfos"]["nodes"]
+                        '''),
+                        {"name": wf_name, "version": version, "ownerId": account_id},
+                    )["workflowInfos"]["nodes"]
 
-                if not nodes:
-                    print("Failed. Trying again.")
-                else:
-                    print("Succeeded.")
-                    break
+                    if not nodes:
+                        print("Failed. Trying again.")
+                    else:
+                        print("Succeeded.")
+                        break
 
 
-            if len(nodes) > 1:
-                raise ValueError(
-                    "Invariant violated - more than one workflow identified for unique combination"
-                    " of {wf_name}, {version}, {account_id}"
-                )
+                if len(nodes) > 1:
+                    raise ValueError(
+                        "Invariant violated - more than one workflow identified for unique combination"
+                        " of {wf_name}, {version}, {account_id}"
+                    )
 
-            print(nodes)
+                print(nodes)
 
-            for file in wf.return_files:
-                print(f"Uploading {file.local_path} -> {file.remote_path}")
-                lp.upload(file.local_path, file.remote_path)
+                for file in wf.return_files:
+                    print(f"Uploading {file.local_path} -> {file.remote_path}")
+                    lp.upload(file.local_path, file.remote_path)
 
-            wf_id = nodes[0]["id"]
-            params = gpjson.MessageToDict(wf.literal_map.to_flyte_idl()).get("literals", {})
+                wf_id = nodes[0]["id"]
+                params = gpjson.MessageToDict(wf.literal_map.to_flyte_idl()).get("literals", {})
 
-            print(params)
+                print(params)
 
-            _interface_request = {
-                "workflow_id": wf_id,
-                "params": params,
-                "snakemake_jit": True,
-            }
+                _interface_request = {
+                    "workflow_id": wf_id,
+                    "params": params,
+                    "snakemake_jit": True,
+                }
 
-            response = requests.post(urljoin(config.nucleus_url, "/api/create-execution"), headers=headers, json=_interface_request)
-            print(response.json())
+                response = requests.post(urljoin(config.nucleus_url, "/api/create-execution"), headers=headers, json=_interface_request)
+                print(response.json())
+            else:
+                print("Dry run successful. Exiting.")
             """,
             1,
         )
@@ -1235,8 +1263,9 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
 
         need_conda = any(x.conda_env is not None for x in jobs)
 
-        if non_blob_parameters is not None and len(non_blob_parameters) > 0:
-            self.job.rule.workflow.globals["config"] = non_blob_parameters
+        if non_blob_parameters is not None:
+            for param, val in non_blob_parameters.items():
+                self.job.rule.workflow.globals["config"][param] = val
 
         snakemake_args = [
             "-m",
@@ -1276,7 +1305,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
                 "inputs": named_list_to_json(job.input),
                 "outputs": named_list_to_json(job.output),
                 "params": {
-                    "keyword": {k: v for k, v in job.params.items()},
+                    "keyword": {k: str(v) for k, v in job.params.items()},
                     "positional": [],
                 },
                 "benchmark": job.benchmark,
