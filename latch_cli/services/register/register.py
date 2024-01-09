@@ -172,10 +172,8 @@ def _print_reg_resp(resp, image):
         sys.exit(1)
     elif not "Successfully registered file" in resp["stdout"]:
         click.secho(
-            (
-                f"\nVersion ({version}) already exists."
-                " Make sure that you've saved any changes you made."
-            ),
+            f"\nVersion ({version}) already exists."
+            " Make sure that you've saved any changes you made.",
             fg="red",
             bold=True,
         )
@@ -202,29 +200,30 @@ def _build_and_serialize(
 ):
     assert ctx.pkg_root is not None
 
-    jit_wf = None
+    sm_jit_wf = None
+    nf_wf = None
+
     if ctx.workflow_type == WorkflowType.snakemake:
         assert ctx.snakefile is not None
         assert ctx.version is not None
 
-        from ...snakemake.serialize import generate_jit_register_code
-        from ...snakemake.workflow import build_jit_register_wrapper
+        from ...extras.snakemake.serialize import generate_jit_register_code
+        from ...extras.snakemake.workflow import build_jit_register_wrapper
 
-        jit_wf = build_jit_register_wrapper(cache_tasks)
+        sm_jit_wf = build_jit_register_wrapper(cache_tasks)
         generate_jit_register_code(
-            jit_wf,
+            sm_jit_wf,
             ctx.pkg_root,
             ctx.snakefile,
             ctx.version,
             image_name,
             current_workspace(),
         )
-
     elif ctx.workflow_type == WorkflowType.nextflow:
         assert ctx.nf_script is not None
         assert ctx.version is not None
 
-        from ...nextflow.workflow import build_nf_wf, generate_nf_entrypoint
+        from ...extras.nextflow.workflow import build_nf_wf, generate_nf_entrypoint
 
         nf_wf = build_nf_wf(ctx.pkg_root, ctx.nf_script)
         generate_nf_entrypoint(nf_wf, ctx.pkg_root, ctx.nf_script)
@@ -235,17 +234,17 @@ def _build_and_serialize(
     )
 
     if ctx.workflow_type == WorkflowType.snakemake:
-        assert jit_wf is not None
+        assert sm_jit_wf is not None
         assert ctx.dkr_repo is not None
 
-        from ...snakemake.serialize import serialize_jit_register_workflow
+        from ...extras.snakemake.serialize import serialize_jit_register_workflow
 
-        serialize_jit_register_workflow(jit_wf, tmp_dir, image_name, ctx.dkr_repo)
+        serialize_jit_register_workflow(sm_jit_wf, tmp_dir, image_name, ctx.dkr_repo)
     elif ctx.workflow_type == WorkflowType.nextflow:
         assert nf_wf is not None
         assert ctx.dkr_repo is not None
 
-        from ...nextflow.serialize import serialize_nf
+        from ...extras.nextflow.serialize import serialize_nf
 
         serialize_nf(nf_wf, tmp_dir, image_name, ctx.dkr_repo)
     else:
@@ -376,21 +375,17 @@ def register(
             "N/A",
         )
         click.echo(
-            " ".join(
-                [
-                    click.style("Target workspace:", fg="bright_blue"),
-                    ws_name,
-                    f"({current_workspace()})",
-                ]
-            )
+            " ".join([
+                click.style("Target workspace:", fg="bright_blue"),
+                ws_name,
+                f"({current_workspace()})",
+            ])
         )
         click.echo(
-            " ".join(
-                [
-                    click.style("Workflow root:", fg="bright_blue"),
-                    str(ctx.default_container.pkg_dir),
-                ]
-            )
+            " ".join([
+                click.style("Workflow root:", fg="bright_blue"),
+                str(ctx.default_container.pkg_dir),
+            ])
         )
 
         if use_new_centromere:
@@ -408,12 +403,10 @@ def register(
         scp = None
 
         click.echo(
-            " ".join(
-                [
-                    click.style("Docker Image:", fg="bright_blue"),
-                    ctx.default_container.image_name,
-                ]
-            )
+            " ".join([
+                click.style("Docker Image:", fg="bright_blue"),
+                ctx.default_container.image_name,
+            ])
         )
         click.echo()
 
@@ -540,10 +533,8 @@ def register(
                         fg="red",
                     )
                     click.secho(
-                        (
-                            "If the workflow is not visible in latch console, contact"
-                            " support."
-                        ),
+                        "If the workflow is not visible in latch console, contact"
+                        " support.",
                         fg="red",
                     )
                     break
@@ -553,10 +544,8 @@ def register(
             if len(wf_infos) > 0:
                 if len(wf_infos) > 1:
                     click.secho(
-                        (
-                            f"Workflow {ctx.workflow_name}:{ctx.version} is not unique."
-                            " The link below might be wrong."
-                        ),
+                        f"Workflow {ctx.workflow_name}:{ctx.version} is not unique."
+                        " The link below might be wrong.",
                         fg="yellow",
                     )
 
