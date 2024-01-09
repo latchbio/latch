@@ -197,7 +197,7 @@ def read_bytes(num_bytes: int) -> bytes:
 T = TypeVar("T")
 
 
-class SelectOption(Generic[T], TypedDict):
+class SelectOption(TypedDict, Generic[T]):
     display_name: str
     value: T
 
@@ -311,7 +311,8 @@ def select_tui(
                 start_index=start_index,
                 max_per_page=max_per_page,
             )
-    except KeyboardInterrupt: ...
+    except KeyboardInterrupt:
+        ...
     finally:
         clear(num_lines_rendered)
         reveal_cursor()
