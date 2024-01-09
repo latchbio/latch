@@ -2,7 +2,9 @@ import os
 import sys
 import termios
 import tty
-from typing import Any, Callable, Generic, List, Optional, Tuple, TypedDict, TypeVar
+from typing import Any, Callable, Generic, List, Optional, Tuple, TypeVar
+
+from typing_extensions import TypedDict
 
 from latch_cli.click_utils import AnsiCodes
 
