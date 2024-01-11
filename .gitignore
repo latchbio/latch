@@ -19,3 +19,4 @@ docs/build
 scratch.py
 /scratch
 .latch_report.tar.gz
+/credentials
