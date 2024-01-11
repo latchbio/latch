@@ -890,13 +890,13 @@ def build_jit_register_wrapper(cache_tasks: bool = False) -> JITRegisterWorkflow
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
         requests={
-            "cpu": "500m",
-            "memory": "1Gi",
+            "cpu": "100m",
+            "memory": "200Mi",
             "ephemeral-storage": "50Gi",
         },
         limits={
-            "cpu": "1",
-            "memory": "2Gi",
+            "cpu": "200m",
+            "memory": "400Mi",
             "ephemeral-storage": "100Gi",
         },
     )
@@ -904,6 +904,9 @@ def build_jit_register_wrapper(cache_tasks: bool = False) -> JITRegisterWorkflow
 
     task_config = Pod(
         pod_spec=V1PodSpec(
+            node_selector={
+                "node_group_name": "prion-jit-tasks",
+            },
             containers=[primary_container],
             tolerations=[
                 V1Toleration(effect="NoSchedule", key="ng", value="jit-tasks")
