@@ -55,10 +55,17 @@ from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralMap, Sc
 from flytekitplugins.pod.task import (
     _PRIMARY_CONTAINER_NAME_FIELD,
     Pod,
+    PodFunctionTask,
     _sanitize_resource_name,
 )
 from kubernetes.client import ApiClient
-from kubernetes.client.models import V1Container, V1EnvVar, V1ResourceRequirements
+from kubernetes.client.models import (
+    V1Container,
+    V1EnvVar,
+    V1PodSpec,
+    V1ResourceRequirements,
+    V1Toleration,
+)
 from snakemake.dag import DAG
 from snakemake.jobs import GroupJob, Job
 from typing_extensions import TypeAlias, TypedDict
@@ -879,16 +886,47 @@ def build_jit_register_wrapper(cache_tasks: bool = False) -> JITRegisterWorkflow
     task_interface = Interface(
         python_interface.inputs, python_interface.outputs, docstring=None
     )
-    task = PythonAutoContainerTask[T](
-        name=f"{wrapper_wf.name}_task",
-        task_type="python-task",
-        interface=task_interface,
-        task_config=None,
+
+    primary_container = V1Container(name="primary")
+    resources = V1ResourceRequirements(
+        requests={
+            "cpu": "100m",
+            "memory": "200Mi",
+            "ephemeral-storage": "50Gi",
+        },
+        limits={
+            "cpu": "200m",
+            "memory": "400Mi",
+            "ephemeral-storage": "100Gi",
+        },
+    )
+    primary_container.resources = resources
+
+    task_config = Pod(
+        pod_spec=V1PodSpec(
+            node_selector={
+                "node_group_name": "prion-jit-tasks",
+            },
+            containers=[primary_container],
+            tolerations=[
+                V1Toleration(effect="NoSchedule", key="ng", value="jit-tasks")
+            ],
+        ),
+        primary_container_name="primary",
+    )
+
+    task = PodFunctionTask(
+        task_config=task_config,
+        task_function=task_fn_placeholder,
         task_resolver=JITRegisterWorkflowResolver(),
     )
+    # use custom task name and interface instead of the one generated from the fn_placeholder
+    task._name = f"{wrapper_wf.name}_task"
+    task._python_interface = task_interface
 
     typed_interface = transform_interface_to_typed_interface(python_interface)
     assert typed_interface is not None
+    task._interface = typed_interface
 
     task_bindings: List[literals_models.Binding] = []
     for k in python_interface.inputs:
