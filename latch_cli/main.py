@@ -36,7 +36,7 @@ T = TypeVar("T")
 
 
 def requires_login(f: Callable[P, T]) -> Callable[P, T]:
-    def decorated(*args, **kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs):
         try:
             get_auth_header()
         except AuthenticationError as e:
