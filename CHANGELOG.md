@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.38.0 - 2023-01-13
+
+### Added
+
+* The `latch exec` command to spawn a shell inside a running task.
+
 ## 2.37.1 - 2023-01-08
 
 ### Added
