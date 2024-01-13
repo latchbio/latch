@@ -2,7 +2,11 @@ import os
 import sys
 import termios
 import tty
-from typing import Callable, List, Optional, Tuple
+from typing import Any, Callable, Generic, List, Optional, Tuple, TypeVar
+
+from typing_extensions import TypedDict
+
+from latch_cli.click_utils import AnsiCodes
 
 
 def buffered_print() -> Tuple[Callable, Callable]:
@@ -192,7 +196,17 @@ def read_bytes(num_bytes: int) -> bytes:
     return result
 
 
-def select_tui(title: str, options: List[str], clear_terminal: bool = True):
+T = TypeVar("T")
+
+
+class SelectOption(TypedDict, Generic[T]):
+    display_name: str
+    value: T
+
+
+def select_tui(
+    title: str, options: List[SelectOption[T]], clear_terminal: bool = True
+) -> Optional[T]:
     """
     Renders a terminal UI that allows users to select one of the options
     listed in `options`
@@ -224,11 +238,11 @@ def select_tui(title: str, options: List[str], clear_terminal: bool = True):
         for i in range(start_index, start_index + max_per_page):
             if i >= len(options):
                 break
-            name = options[i]
+            name = options[i]["display_name"]
             if i == curr_selected:
-                color = "\x1b[38;5;39m"
-                bold = "\x1b[1m"
-                reset = "\x1b[0m"
+                color = AnsiCodes.color
+                bold = AnsiCodes.bold
+                reset = AnsiCodes.full_reset
 
                 prefix = indent[:-2] + "> "
 
@@ -274,7 +288,7 @@ def select_tui(title: str, options: List[str], clear_terminal: bool = True):
         while True:
             b = read_bytes(1)
             if b == b"\r":
-                return options[curr_selected]
+                return options[curr_selected]["value"]
             elif b == b"\x1b":
                 b = read_bytes(2)
                 if b == b"[A":  # Up Arrow
@@ -299,7 +313,8 @@ def select_tui(title: str, options: List[str], clear_terminal: bool = True):
                 start_index=start_index,
                 max_per_page=max_per_page,
             )
-    except KeyboardInterrupt: ...
+    except KeyboardInterrupt:
+        ...
     finally:
         clear(num_lines_rendered)
         reveal_cursor()

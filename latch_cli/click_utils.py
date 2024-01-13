@@ -101,13 +101,14 @@ def patch():
     click.UsageError.show = colored_usage_error_show
 
 
-def bold(s: str) -> str:
-    return f"{AnsiCodes.bold}{s}{AnsiCodes.reset}"
-
-
 class AnsiCodes:
+    full_reset = "\x1b[0m"
+
+    color = "\x1b[38;5;39m"
+    reset_color = "\x1b[39m"
+
     bold = "\x1b[1m"
-    reset = "\x1b[22m"
+    reset_bold = "\x1b[22m"
 
     underline = "\x1b[4m"
     no_underline = "\x1b[24m"
@@ -116,3 +117,15 @@ class AnsiCodes:
     url_href = "\x1b]8;;"
     url_name = "\x1b\\"
     url_end = "\x1b]8;;\x1b\\"
+
+
+def bold(s: str) -> str:
+    return f"{AnsiCodes.bold}{s}{AnsiCodes.reset_bold}"
+
+
+def underline(s: str) -> str:
+    return f"{AnsiCodes.underline}{s}{AnsiCodes.no_underline}"
+
+
+def color(s: str, *, color: str = AnsiCodes.color):
+    return f"{color}{s}{AnsiCodes.reset_color}"

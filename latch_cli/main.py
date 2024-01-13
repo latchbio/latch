@@ -642,16 +642,25 @@ def touch(remote_file: str):
 
 
 @main.command("exec")
-@click.argument("task_name", nargs=1, type=str)
+@click.option(
+    "--execution-id", "-e", type=str, help="Optional execution ID to inspect."
+)
+@click.option("--egn-id", "-g", type=str, help="Optional task execution ID to inspect.")
+@click.option(
+    "--container-index",
+    "-c",
+    type=int,
+    help="Optional container index to inspect (only used for Map Tasks)",
+)
 @requires_login
-def execute(task_name: str):
+def execute(
+    execution_id: Optional[str], egn_id: Optional[str], container_index: Optional[int]
+):
     """Drops the user into an interactive shell from within a task."""
-    crash_handler.message = f"Unable to exec into {task_name}"
-    crash_handler.pkg_root = str(Path.cwd())
 
-    from latch_cli.services.execute import execute
+    from latch_cli.services.execute.main import exec
 
-    execute(task_name)
+    exec(execution_id=execution_id, egn_id=egn_id, container_index=container_index)
 
 
 @main.command("preview")
