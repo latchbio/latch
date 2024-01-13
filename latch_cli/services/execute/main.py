@@ -1,11 +1,12 @@
 import asyncio
+import base64
 import json
 import os
 import signal
 import sys
 import termios
 import tty
-from typing import Literal, Optional, Tuple, TypedDict, Union
+from typing import Generic, Literal, Optional, Tuple, TypedDict, TypeVar, Union
 from urllib.parse import urljoin, urlparse
 
 import websockets.client as websockets
@@ -69,21 +70,28 @@ async def shutdown_on_close(ws: websockets.WebSocketClientProtocol, task: asynci
     task.cancel()
 
 
-async def send_stdin(
+async def pipe_to_remote_stdin(
     ws: websockets.WebSocketClientProtocol, reader: asyncio.StreamReader
 ):
     while True:
-        message = await reader.read(1)
+        message = await reader.read(99999)
+        if message == b"":
+            return
 
-        await ws.send(json.dumps({"stream": "stdin", "data": message.decode("utf-8")}))
+        await ws.send(
+            json.dumps({
+                "stream": "stdin",
+                "data": base64.b64encode(message).decode("ascii"),
+            })
+        )
 
 
-async def write_stdout(
+async def pipe_from_remote_stdout(
     ws: websockets.WebSocketClientProtocol, writer: asyncio.StreamWriter
 ):
     async for output in ws:
         if isinstance(output, bytes):
-            output = output.decode("utf-8")
+            output = output.decode()
 
         try:
             res = json.loads(output)
@@ -91,21 +99,19 @@ async def write_stdout(
             if res["stream"] == "close":
                 break
 
-            writer.write(res["data"].encode())
+            writer.write(base64.b64decode(res["data"].encode("ascii")))
         except (json.JSONDecodeError, KeyError) as e:
             # todo(ayush) error surfacing
             break
 
-    await ws.close()
 
-
-async def handle_resize(resize_event_queue: asyncio.Queue[Tuple[int, int]]):
+async def handle_resize(resize_event_queue: asyncio.Queue):
     await resize_event_queue.put(os.get_terminal_size())
 
 
 async def propagate_resize_events(
     ws: websockets.WebSocketClientProtocol,
-    resize_event_queue: asyncio.Queue[Tuple[int, int]],
+    resize_event_queue: asyncio.Queue,
 ):
     while True:
         cols, rows = await resize_event_queue.get()
@@ -124,25 +130,25 @@ async def propagate_resize_events(
 async def connect(egn_info: EGNNode, container_info: Optional[ContainerNode]):
     loop = asyncio.get_event_loop()
 
-    resize_event_queue: asyncio.Queue[tuple[int, int]] = asyncio.Queue()
-    await resize_event_queue.put(os.get_terminal_size())
+    resize_queue: asyncio.Queue = asyncio.Queue()
+    await resize_queue.put(os.get_terminal_size())
 
     loop.add_signal_handler(
         signal.SIGWINCH,
-        lambda: asyncio.create_task(handle_resize(resize_event_queue)),
+        lambda: asyncio.create_task(handle_resize(resize_queue)),
     )
 
-    reader, writer = await get_stdio_streams()
+    local_stdin, local_stdout = await get_stdio_streams()
 
     async with websockets.connect(
-        urlparse(urljoin("http://localhost:5000", "/workflows/cli/shell"))
-        ._replace(scheme="ws")
+        urlparse(urljoin(NUCLEUS_URL, "/workflows/cli/shell"))
+        ._replace(scheme="wss")
         .geturl(),
         close_timeout=0,
         extra_headers={"Authorization": get_auth_header()},
     ) as ws:
         request = {
-            "egn_id": f'{egn_info["id"]}',
+            "egn_id": egn_info["id"],
             "container_index": (
                 container_info["index"] if container_info is not None else None
             ),
@@ -150,14 +156,20 @@ async def connect(egn_info: EGNNode, container_info: Optional[ContainerNode]):
 
         await ws.send(json.dumps(request))
 
-        io_task = asyncio.gather(
-            send_stdin(ws, reader),
-            write_stdout(ws, writer),
-            propagate_resize_events(ws, resize_event_queue),
-        )
-
+        # ayush: can't use TaskGroups bc only supported on >= 3.11
         try:
-            await asyncio.gather(io_task, shutdown_on_close(ws, io_task))
+            _, pending = await asyncio.wait(
+                [
+                    asyncio.create_task(pipe_from_remote_stdout(ws, local_stdout)),
+                    asyncio.create_task(pipe_to_remote_stdin(ws, local_stdin)),
+                    asyncio.create_task(propagate_resize_events(ws, resize_queue)),
+                ],
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+
+            for unfinished in pending:
+                unfinished.cancel()
+
         except asyncio.CancelledError:
             pass
 

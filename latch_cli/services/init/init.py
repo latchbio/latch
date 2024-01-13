@@ -357,7 +357,7 @@ def init(
         ):
             return False
 
-    base_image_type = BaseImageOptions.__members__[base_image_type_str]
+    base_image_type = BaseImageOptions[base_image_type_str]
 
     if template_func == "Empty workflow":
         base_image_type = select_tui(
