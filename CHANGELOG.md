@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.38.0 - 2023-01-15
+
+### Added
+
+* The `--open` option to `latch register`, which if passed in, will open the workflow in the browser after successful registration
+
 ## 2.38.0 - 2023-01-13
 
 ### Added

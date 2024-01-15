@@ -243,7 +243,7 @@ class _CentromereCtx:
 
                 # todo(kenny): support per container task and custom workflow
                 # name for snakemake
-                self.workflow_name = metadata._snakemake_metadata.name
+                self.workflow_name = f"{metadata._snakemake_metadata.name}_jit_register"
 
             else:
                 assert nf_script is not None

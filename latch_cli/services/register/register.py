@@ -4,6 +4,7 @@ import shutil
 import sys
 import tempfile
 import time
+import webbrowser
 from pathlib import Path
 from typing import Iterable, List, Optional
 
@@ -283,12 +284,13 @@ def _recursive_list(directory: Path) -> List[Path]:
 
 def register(
     pkg_root: str,
+    *,
     disable_auto_version: bool = False,
     remote: bool = False,
+    open: bool = False,
     skip_confirmation: bool = False,
     snakefile: Optional[Path] = None,
     nf_script: Optional[Path] = None,
-    *,
     progress_plain: bool = False,
     cache_tasks: bool = False,
     use_new_centromere: bool = False,
@@ -550,4 +552,8 @@ def register(
                     )
 
                 wf_id = wf_infos[0]["id"]
-                click.secho(f"https://console.latch.bio/workflows/{wf_id}", fg="green")
+                url = f"https://console.latch.bio/workflows/{wf_id}"
+                click.secho(url, fg="green")
+
+                if open:
+                    webbrowser.open(url)
