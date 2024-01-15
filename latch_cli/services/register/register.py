@@ -4,6 +4,7 @@ import shutil
 import sys
 import tempfile
 import time
+import webbrowser
 from pathlib import Path
 from typing import Iterable, List, Optional
 
@@ -266,11 +267,12 @@ def _recursive_list(directory: Path) -> List[Path]:
 
 def register(
     pkg_root: str,
+    *,
     disable_auto_version: bool = False,
     remote: bool = False,
+    open: bool = False,
     skip_confirmation: bool = False,
     snakefile: Optional[Path] = None,
-    *,
     progress_plain: bool = False,
     cache_tasks: bool = False,
     use_new_centromere: bool = False,
@@ -356,21 +358,17 @@ def register(
             "N/A",
         )
         click.echo(
-            " ".join(
-                [
-                    click.style("Target workspace:", fg="bright_blue"),
-                    ws_name,
-                    f"({current_workspace()})",
-                ]
-            )
+            " ".join([
+                click.style("Target workspace:", fg="bright_blue"),
+                ws_name,
+                f"({current_workspace()})",
+            ])
         )
         click.echo(
-            " ".join(
-                [
-                    click.style("Workflow root:", fg="bright_blue"),
-                    str(ctx.default_container.pkg_dir),
-                ]
-            )
+            " ".join([
+                click.style("Workflow root:", fg="bright_blue"),
+                str(ctx.default_container.pkg_dir),
+            ])
         )
 
         if use_new_centromere:
@@ -388,12 +386,10 @@ def register(
         scp = None
 
         click.echo(
-            " ".join(
-                [
-                    click.style("Docker Image:", fg="bright_blue"),
-                    ctx.default_container.image_name,
-                ]
-            )
+            " ".join([
+                click.style("Docker Image:", fg="bright_blue"),
+                ctx.default_container.image_name,
+            ])
         )
         click.echo()
 
@@ -538,4 +534,8 @@ def register(
                     )
 
                 wf_id = wf_infos[0]["id"]
-                click.secho(f"https://console.latch.bio/workflows/{wf_id}", fg="green")
+                url = f"https://console.latch.bio/workflows/{wf_id}"
+                click.secho(url, fg="green")
+
+                if open:
+                    webbrowser.open(url)

@@ -161,6 +161,14 @@ def dockerfile(pkg_root: str, snakemake: bool = False):
     help="Skip the confirmation dialog.",
 )
 @click.option(
+    "--open",
+    "-o",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Open the registered workflow in the browser.",
+)
+@click.option(
     "--snakefile",
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     default=None,
@@ -184,6 +192,7 @@ def register(
     remote: bool,
     docker_progress: str,
     yes: bool,
+    open: bool,
     snakefile: Optional[Path],
     cache_tasks: bool,
 ):
@@ -204,6 +213,7 @@ def register(
         disable_auto_version=disable_auto_version,
         remote=remote,
         skip_confirmation=yes,
+        open=open,
         snakefile=snakefile,
         progress_plain=(docker_progress == "auto" and not sys.stdout.isatty())
         or docker_progress == "plain",
