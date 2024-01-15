@@ -1,7 +1,48 @@
-[tool.poetry.dev-dependencies]
-black = "^23.9.1"
-isort = "^5.12.0"
-ruff = "^0.0.261"
+[tool.poetry]
+name = "latch"
+version = "2.38.0"
+description = "The Latch SDK"
+documentation = "https://docs.latch.bio"
+authors = ["ayushkamat <ayush@latch.bio>", "kennyworkman <kenny@latch.bio>"]
+license = "CC0 1.0"
+readme = "README.md"
+packages = [{ include = "latch" }, { include = "latch_cli" }]
+
+[tool.poetry.scripts]
+latch = "latch_cli.main:main"
+
+[tool.poetry.dependencies]
+python = ">=3.8,<3.12"
+kubernetes = "24.2.0"
+pyjwt = "^0.2.0"
+requests = "^2.28.1"
+click = "^8.0.0"
+docker = "^5.0.0"
+paramiko = "^3.4.0"
+scp = "^0.14.5"
+boto3 = "^1.34.18"
+tqdm = "^4.66.1"
+lytekit = "0.15.3"
+lytekitplugins-pods = "0.6.2"
+typing-extensions = "^4.9.0"
+apscheduler = "^3.10.4"
+gql = "3.4.0"
+graphql-core = "3.2.3"
+latch-sdk-gql = "0.0.6"
+latch-sdk-config = "0.0.4"
+requests-toolbelt = "0.10.1"
+python-dateutil = "^2.8.2"
+# for old latch develop, to be removed
+aioconsole = "^0.7.0"
+asyncssh = "^2.14.2"
+websockets = "^12.0"
+watchfiles = "^0.21.0"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.12.1"
+isort = "^5.13.2"
+ruff = "^0.1.13"
+rich = "^13.7.0"
 
 [tool.pyright]
 pythonVersion = "3.8"
