@@ -390,9 +390,7 @@ def generate_dockerfile(
             block.write_block(f)
 
         f.write("# Copy workflow data (use .dockerignore to skip files)\n")
-
-        # this will only copy the snakemake entrypoint (if it exists) due to .dockerignore
-        f.write("copy . .latch/* /root/\n\n")
+        f.write("copy . /root/\n\n")
 
         for block in commands:
             if block.order != DockerCmdBlockOrder.postcopy:

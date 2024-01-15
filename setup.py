@@ -13,7 +13,7 @@ if cur_ver < (3, 8) or cur_ver > (3, 11):
 
 setup(
     name="latch",
-    version="v2.37.0",
+    version="v2.38.0",
     author_email="kenny@latch.bio",
     description="The Latch SDK",
     packages=find_packages(),
@@ -51,7 +51,7 @@ setup(
         "watchfiles==0.19.0",
     ],
     extras_require={
-        "snakemake": ["snakemake>=7.18.0, <7.30.2"],
+        "snakemake": ["snakemake>=7.18.0, <7.30.2", "pulp >=2.0, <2.8"],
         "pandas": ["pandas>=2.0.0"],
     },
     classifiers=[

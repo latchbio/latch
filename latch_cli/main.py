@@ -232,6 +232,14 @@ def register(
     help="Image to use for develop session.",
 )
 @click.option(
+    "-s",
+    "--snakemake",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Start a develop session for a Snakemake workflow.",
+)
+@click.option(
     "--size",
     "-s",
     type=EnumChoice(TaskSize, case_sensitive=False),
@@ -239,7 +247,11 @@ def register(
 )
 @requires_login
 def local_development(
-    pkg_root: Path, yes: bool, image: Optional[str], size: Optional[TaskSize]
+    pkg_root: Path,
+    yes: bool,
+    image: Optional[str],
+    snakemake: bool,
+    size: Optional[TaskSize],
 ):
     """Develop workflows "locally"
 
@@ -258,7 +270,7 @@ def local_development(
     else:
         from latch_cli.services.local_dev_old import local_development
 
-        local_development(pkg_root.resolve())
+        local_development(pkg_root.resolve(), snakemake)
 
 
 @main.command("login")
@@ -633,16 +645,25 @@ def touch(remote_file: str):
 
 
 @main.command("exec")
-@click.argument("task_name", nargs=1, type=str)
+@click.option(
+    "--execution-id", "-e", type=str, help="Optional execution ID to inspect."
+)
+@click.option("--egn-id", "-g", type=str, help="Optional task execution ID to inspect.")
+@click.option(
+    "--container-index",
+    "-c",
+    type=int,
+    help="Optional container index to inspect (only used for Map Tasks)",
+)
 @requires_login
-def execute(task_name: str):
+def execute(
+    execution_id: Optional[str], egn_id: Optional[str], container_index: Optional[int]
+):
     """Drops the user into an interactive shell from within a task."""
-    crash_handler.message = f"Unable to exec into {task_name}"
-    crash_handler.pkg_root = str(Path.cwd())
 
-    from latch_cli.services.execute import execute
+    from latch_cli.services.execute.main import exec
 
-    execute(task_name)
+    exec(execution_id=execution_id, egn_id=egn_id, container_index=container_index)
 
 
 @main.command("preview")
