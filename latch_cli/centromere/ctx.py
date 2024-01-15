@@ -232,7 +232,7 @@ class _CentromereCtx:
 
                 # todo(kenny): support per container task and custom workflow
                 # name for snakemake
-                self.workflow_name = metadata._snakemake_metadata.name
+                self.workflow_name = f"{metadata._snakemake_metadata.name}_jit_register"
 
             version_file = self.pkg_root / "version"
             try:
