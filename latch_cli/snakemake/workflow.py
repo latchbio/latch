@@ -860,8 +860,9 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         for j in self._dag.targetjobs:
             for depen, files in self._dag.dependencies[j].items():
                 for f in files:
-                    if variable_name_for_file(f) == out_var:
-                        return depen.jobid, variable_name_for_value(f, depen.output)
+                    var_name = variable_name_for_value(f, depen.output)
+                    if var_name == out_var:
+                        return depen.jobid, var_name
 
         raise RuntimeError(f"could not find upstream node for output: {out_var}")
 
