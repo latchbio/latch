@@ -1312,6 +1312,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             "-s",
             snakefile_path_in_container,
             *(["--use-conda"] if need_conda else []),
+            "--use-singularity",
             "--target-jobs",
             *jobs_cli_args(jobs),
             "--allowed-rules",

@@ -4,9 +4,11 @@ import sys
 from itertools import chain
 from textwrap import dedent
 from typing import Dict, Set
+from urllib.parse import urlparse
 
 import snakemake
 import snakemake.workflow
+from snakemake.deployment import singularity
 from snakemake.parser import (
     INDENT,
     Benchmark,
@@ -290,6 +292,56 @@ def get_wildcards(self, requested_output, wildcards_dict=None):
 
 
 RRule.get_wildcards = get_wildcards
+
+
+def get_docker_cmd(
+    img_path,
+    cmd,
+    args="",
+    quiet=False,
+    envvars=None,
+    shell_executable=None,
+    container_workdir=None,
+    is_python_script=False,
+):
+    if shell_executable is None:
+        shell_executable = "sh"
+    else:
+        # Ensure to just use the name of the executable, not a path,
+        # because we cannot be sure where it is located in the container.
+        shell_executable = os.path.split(shell_executable)[-1]
+
+    docker_cmd = "docker run"
+    if envvars:
+        docker_cmd += " " + " ".join(f"-e {k}={v}" for k, v in envvars.items())
+
+    # support for containers currently only works with relative input and output paths
+    # this preserves the behavior before the monkey path
+    docker_cmd += " -v .:/latch"
+
+    docker_cmd += " {} {} {} -c 'cd /latch; {}'".format(
+        args, img_path, shell_executable, cmd.replace("'", r"'\''")
+    )
+
+    print(docker_cmd)
+    return docker_cmd
+
+
+@property
+def docker_path(self):
+    parsed = urlparse(self.url)
+    if parsed.scheme != "" and parsed.scheme != "docker":
+        print("Only docker images are supported.")
+        sys.exit(1)
+    return parsed.netloc + parsed.path
+
+
+# Monkey-patch snakemake to use docker container runtime instead of singularity
+# because singularity does not work inside sysbox.
+singularity.Image.pull = lambda self, dry_run: None
+singularity.Image.path = docker_path
+singularity.shellcmd = get_docker_cmd
+
 
 # Run snakemake
 snakemake.main()
