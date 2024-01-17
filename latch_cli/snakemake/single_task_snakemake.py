@@ -1,10 +1,12 @@
 import json
 import os
+import shlex
 import sys
 from itertools import chain
+from pathlib import Path
 from textwrap import dedent
 from typing import Dict, Set
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 
 import snakemake
 import snakemake.workflow
@@ -295,39 +297,55 @@ RRule.get_wildcards = get_wildcards
 
 
 def get_docker_cmd(
-    img_path,
-    cmd,
-    args="",
-    quiet=False,
-    envvars=None,
-    shell_executable=None,
-    container_workdir=None,
-    is_python_script=False,
+    img_path: str,
+    cmd: str,
+    args: str = "",
+    quiet: bool = False,
+    envvars: Dict[str, str] = None,
+    shell_executable: str = None,
+    container_workdir: str = None,
+    is_python_script: bool = False,
 ):
     if shell_executable is None:
         shell_executable = "sh"
     else:
         # Ensure to just use the name of the executable, not a path,
         # because we cannot be sure where it is located in the container.
-        shell_executable = os.path.split(shell_executable)[-1]
+        shell_executable = Path(shell_executable).name
 
-    docker_cmd = "docker run"
-    if envvars:
-        docker_cmd += " " + " ".join(f"-e {k}={v}" for k, v in envvars.items())
+    cmd = cmd.replace("'", r"'\''")
 
-    workdir = container_workdir or "/latch"
-    docker_cmd += " -w {}".format(workdir)
+    workdir = container_workdir if container_workdir is not None else "/latch"
 
-    # support for containers currently only works with relative input and output paths
-    # this preserves the behavior before the monkey path
-    docker_cmd += " -v .:{}".format(workdir)
+    docker_cmd = ["docker", "run"]
+    if envvars is not None:
+        for k, v in envvars.items():
+            docker_cmd.extend(["--env", f"{k}={v}"])
 
-    docker_cmd += " {} {} {} -c '{}'".format(
-        args, img_path, shell_executable, cmd.replace("'", r"'\''")
+    # support for containers currently only works with relative input and output
+    # paths. This preserves the behavior before the monkey path
+    docker_cmd.extend(
+        [
+            "--workdir",
+            f"{workdir}",
+            "--mount",
+            f'type=bind,src=.,"target={workdir}"',
+        ]
     )
 
-    print(docker_cmd)
-    return docker_cmd
+    if args != "":
+        docker_cmd.extend(shlex.split(args))
+
+    docker_cmd.extend(
+        [
+            img_path,
+            shell_executable,
+            "-c",
+            cmd,
+        ]
+    )
+
+    return shlex.join(docker_cmd)
 
 
 @property
@@ -335,7 +353,8 @@ def docker_path(self):
     parsed = urlparse(self.url)
     if parsed.scheme != "" and parsed.scheme != "docker":
         raise ValueError("Only docker images are supported")
-    return parsed.netloc + parsed.path
+    path = urlunparse(parsed._replace(scheme=""))
+    return path[2:] if path.startswith("//") else path
 
 
 # Monkey-patch snakemake to use docker container runtime instead of singularity
