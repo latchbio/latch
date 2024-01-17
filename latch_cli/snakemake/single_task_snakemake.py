@@ -5,7 +5,7 @@ import sys
 from itertools import chain
 from pathlib import Path
 from textwrap import dedent
-from typing import Dict, Set
+from typing import Dict, Optional, Set
 from urllib.parse import urlparse, urlunparse
 
 import snakemake
@@ -301,11 +301,11 @@ def get_docker_cmd(
     cmd: str,
     args: str = "",
     quiet: bool = False,
-    envvars: Dict[str, str] = None,
-    shell_executable: str = None,
-    container_workdir: str = None,
+    envvars: Optional[Dict[str, str]] = None,
+    shell_executable: Optional[str] = None,
+    container_workdir: Optional[str] = None,
     is_python_script: bool = False,
-):
+) -> str:
     if shell_executable is None:
         shell_executable = "sh"
     else:
@@ -314,6 +314,8 @@ def get_docker_cmd(
         shell_executable = Path(shell_executable).name
 
     workdir = container_workdir if container_workdir is not None else "/latch"
+    if '"' in workdir:
+        raise ValueError("container_workdir cannot contain double quotes")
 
     docker_cmd = ["docker", "run"]
     if envvars is not None:
@@ -325,7 +327,7 @@ def get_docker_cmd(
     docker_cmd.extend(
         [
             "--workdir",
-            f"{workdir}",
+            workdir,
             "--mount",
             f'type=bind,src=.,"target={workdir}"',
         ]
@@ -339,7 +341,7 @@ def get_docker_cmd(
             img_path,
             shell_executable,
             "-c",
-            cmd.replace("'", '"'),
+            cmd,
         ]
     )
 
