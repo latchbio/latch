@@ -313,8 +313,6 @@ def get_docker_cmd(
         # because we cannot be sure where it is located in the container.
         shell_executable = Path(shell_executable).name
 
-    cmd = cmd.replace("'", r"'\''")
-
     workdir = container_workdir if container_workdir is not None else "/latch"
 
     docker_cmd = ["docker", "run"]
@@ -341,7 +339,7 @@ def get_docker_cmd(
             img_path,
             shell_executable,
             "-c",
-            cmd,
+            cmd.replace("'", '"'),
         ]
     )
 
