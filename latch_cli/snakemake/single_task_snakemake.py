@@ -315,11 +315,14 @@ def get_docker_cmd(
     if envvars:
         docker_cmd += " " + " ".join(f"-e {k}={v}" for k, v in envvars.items())
 
+    workdir = container_workdir or "/latch"
+    docker_cmd += " -w {}".format(workdir)
+
     # support for containers currently only works with relative input and output paths
     # this preserves the behavior before the monkey path
-    docker_cmd += " -v .:/latch"
+    docker_cmd += " -v .:{}".format(workdir)
 
-    docker_cmd += " {} {} {} -c 'cd /latch; {}'".format(
+    docker_cmd += " {} {} {} -c '{}'".format(
         args, img_path, shell_executable, cmd.replace("'", r"'\''")
     )
 
@@ -331,8 +334,7 @@ def get_docker_cmd(
 def docker_path(self):
     parsed = urlparse(self.url)
     if parsed.scheme != "" and parsed.scheme != "docker":
-        print("Only docker images are supported.")
-        sys.exit(1)
+        raise ValueError("Only docker images are supported")
     return parsed.netloc + parsed.path
 
 
