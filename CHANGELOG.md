@@ -16,11 +16,30 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.38.0 - 2023-01-15
+## 2.38.2 - 2023-01-17
+
+### Added
+
+* Snakemake
+  + support for per-task containers in Snakemake workflow using the `container` directive
+
+### Fixed
+
+* Snakemake
+  + add `_jit_register` suffix when resolving Snakemake workflow name for `latch develop`
+  + use `variable_name_for_value` instead of `variable_name_for_file` when resolving upstream jobs for target files
+
+## 2.38.1 - 2023-01-15
 
 ### Added
 
 * The `--open` option to `latch register`, which if passed in, will open the workflow in the browser after successful registration
+
+### Fixed
+
+* Snakemake
+  + remove `.latch` directory copy from Dockerfile generation to avoid unexpected file overrides
+  + limit pulp package version to < 2.8 to fix snakemake import failure
 
 ## 2.38.0 - 2023-01-13
 
