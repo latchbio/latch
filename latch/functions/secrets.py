@@ -27,9 +27,9 @@ def get_secret(secret_name: str):
     resp = post(
         url=config.api.user.get_secret,
         json={
-            "execution_token": execution_token,
             "name": secret_name,
         },
+        headers={"Authorization": f"Latch-Execution-Token {execution_token}"},
     )
 
     if resp.status_code != 200:
