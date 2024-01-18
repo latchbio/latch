@@ -25,6 +25,8 @@ from snakemake.rules import Rule
 from snakemake.workflow import Workflow, WorkflowError
 from typing_extensions import Self
 
+from latch.types.metadata import DockerMetadata
+
 from ..services.register.utils import import_module_by_path
 from .serialize_utils import (
     EntityCache,
@@ -210,7 +212,6 @@ def extract_snakemake_workflow(
     local_to_remote_path_mapping: Optional[Dict[str, str]] = None,
     non_blob_parameters: Optional[Dict[str, Any]] = None,
     cache_tasks: bool = False,
-    docker_login: bool = False,
 ) -> SnakemakeWorkflow:
     extractor = snakemake_workflow_extractor(pkg_root, snakefile, non_blob_parameters)
     with extractor:
@@ -221,7 +222,6 @@ def extract_snakemake_workflow(
             jit_exec_display_name,
             local_to_remote_path_mapping,
             cache_tasks,
-            docker_login,
         )
         wf.compile()
 

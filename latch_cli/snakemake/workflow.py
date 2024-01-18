@@ -74,6 +74,7 @@ import latch.types.metadata as metadata
 from latch.resources.tasks import custom_task
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
+from latch.types.metadata import DockerMetadata
 from latch_cli.snakemake.config.utils import type_repr
 
 from ..utils import identifier_suffix_from_str
@@ -314,9 +315,8 @@ def interface_to_parameters(
 class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
     out_parameter_name = "o0"  # must be "o0"
 
-    def __init__(self, cache_tasks: bool = False, docker_login: bool = False):
+    def __init__(self, cache_tasks: bool = False):
         self.cache_tasks = cache_tasks
-        self.docker_login = docker_login
 
         assert metadata._snakemake_metadata is not None
 
@@ -527,7 +527,15 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             print(f"JIT Workflow Version: {{jit_wf_version}}")
             print(f"JIT Execution Display Name: {{jit_exec_display_name}}")
 
-            wf = extract_snakemake_workflow(pkg_root, snakefile, jit_wf_version, jit_exec_display_name, local_to_remote_path_mapping, non_blob_parameters, {self.cache_tasks}, {self.docker_login})
+            wf = extract_snakemake_workflow(
+                pkg_root,
+                snakefile,
+                jit_wf_version,
+                jit_exec_display_name,
+                local_to_remote_path_mapping,
+                non_blob_parameters,
+                {self.cache_tasks},
+            )
             wf_name = wf.name
             generate_snakemake_entrypoint(wf, pkg_root, snakefile, {repr(remote_output_url)}, non_blob_parameters)
 
@@ -640,7 +648,6 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         jit_exec_display_name: str,
         local_to_remote_path_mapping: Optional[Dict[str, str]] = None,
         cache_tasks: bool = False,
-        docker_login: bool = False,
     ):
         assert metadata._snakemake_metadata is not None
         name = metadata._snakemake_metadata.name
@@ -661,7 +668,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         self._input_parameters = None
         self._dag = dag
         self._cache_tasks = cache_tasks
-        self._docker_login = docker_login
+        self._docker_metadata = metadata._snakemake_metadata.docker_metadata
         self.snakemake_tasks: List[SnakemakeJobTask] = []
 
         workflow_metadata = WorkflowMetadata(
@@ -875,10 +882,8 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
 
 
-def build_jit_register_wrapper(
-    cache_tasks: bool = False, docker_login: bool = False
-) -> JITRegisterWorkflow:
-    wrapper_wf = JITRegisterWorkflow(cache_tasks, docker_login)
+def build_jit_register_wrapper(cache_tasks: bool = False) -> JITRegisterWorkflow:
+    wrapper_wf = JITRegisterWorkflow(cache_tasks)
     out_parameter_name = wrapper_wf.out_parameter_name
 
     python_interface = wrapper_wf.python_interface
@@ -1068,9 +1073,6 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
         self._python_outputs = outputs
         self._target_file_for_input_param = target_file_for_input_param
         self._target_file_for_output_param = target_file_for_output_param
-        self._docker_login = (
-            self.wf._docker_login and self.job.container_img_url is not None
-        )
 
         self._task_function = task_fn_placeholder
 
@@ -1397,15 +1399,18 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             1,
         )
 
-        if self._docker_login:
+        if (
+            self.wf._docker_metadata is not None
+            and self.job.container_img_url is not None
+        ):
             code_block += reindent(
                 rf"""
 
                 print("\n\n\nLogging into Docker\n")
                 from latch.functions.secrets import get_secret
+                docker_usr = {self.wf._docker_metadata.username}
                 try:
-                    docker_usr = get_secret("DOCKER_USERNAME")
-                    docker_pwd = get_secret("DOCKER_PASSWORD")
+                    docker_pwd = get_secret({self.wf._docker_metadata.secret_name})
                 except ValueError as e:
                     print("Failed to get Docker credentials:", e)
                     sys.exit(1)

@@ -521,10 +521,17 @@ class LatchMetadata:
         ).strip("\n ")
 
 
+class DockerMetadata:
+    def __init__(self, username: str, secret_name: str):
+        self.username = username
+        self.secret_name = secret_name
+
+
 @dataclass
 class SnakemakeMetadata(LatchMetadata):
     output_dir: Optional[LatchDir] = None
     name: Optional[str] = None
+    docker_metadata: Optional[DockerMetadata] = None
     parameters: Dict[str, SnakemakeParameter] = field(default_factory=dict)
 
     def __post_init__(self):
