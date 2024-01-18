@@ -29,7 +29,6 @@ from flytekit.configuration import SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import TaskMetadata
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
-from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
 from flytekit.core.node import Node
@@ -38,7 +37,6 @@ from flytekit.core.python_auto_container import (
     DefaultTaskResolver,
     PythonAutoContainerTask,
 )
-from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import (
     WorkflowBase,
     WorkflowFailurePolicy,
@@ -74,9 +72,11 @@ import latch.types.metadata as metadata
 from latch.resources.tasks import custom_task
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
-from latch_cli.snakemake.config.utils import type_repr
 
-from ..utils import identifier_suffix_from_str
+from ...utils import identifier_suffix_from_str
+from ..common.serialize import interface_to_parameters
+from ..common.utils import reindent
+from .config.utils import type_repr
 
 SnakemakeInputVal: TypeAlias = snakemake.io._IOFile
 
@@ -93,13 +93,6 @@ def jobs_cli_args(
 
 
 T = TypeVar("T")
-
-
-# todo(maximsmol): use a stateful writer that keeps track of indent level
-def reindent(x: str, level: int) -> str:
-    if x[0] == "\n":
-        x = x[1:]
-    return textwrap.indent(textwrap.dedent(x), "    " * level)
 
 
 @dataclass
@@ -259,56 +252,6 @@ def binding_from_python(
         expected_literal_type, t_value, t_value_type
     )
     return literals_models.Binding(var=var_name, binding=binding_data)
-
-
-def transform_type(
-    x: Type, description: Optional[str] = None
-) -> interface_models.Variable:
-    return interface_models.Variable(
-        type=TypeEngine.to_literal_type(x), description=description
-    )
-
-
-def transform_types_in_variable_map(
-    variable_map: Dict[str, Type],
-    descriptions: Dict[str, str] = {},
-) -> Dict[str, interface_models.Variable]:
-    res = {}
-    if variable_map:
-        for k, v in variable_map.items():
-            res[k] = transform_type(v, descriptions.get(k, k))
-    return res
-
-
-def interface_to_parameters(
-    interface: Optional[Interface],
-) -> interface_models.ParameterMap:
-    if interface is None or interface.inputs_with_defaults is None:
-        return interface_models.ParameterMap({})
-
-    if interface.docstring is None:
-        inputs_vars = transform_types_in_variable_map(interface.inputs)
-    else:
-        inputs_vars = transform_types_in_variable_map(
-            interface.inputs, interface.docstring.input_descriptions
-        )
-
-    params: Dict[str, interface_models.Parameter] = {}
-    for k, v in inputs_vars.items():
-        val, default = interface.inputs_with_defaults[k]
-        required = default is None
-        default_lv = None
-
-        ctx = FlyteContextManager.current_context()
-        if default is not None:
-            default_lv = TypeEngine.to_literal(
-                ctx, default, python_type=interface.inputs[k], expected=v.type
-            )
-
-        params[k] = interface_models.Parameter(
-            var=v, default=default_lv, required=required
-        )
-    return interface_models.ParameterMap(params)
 
 
 class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):

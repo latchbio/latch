@@ -6,10 +6,10 @@ import yaml
 
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
-from latch_cli.snakemake.workflow import reindent
-from latch_cli.utils import identifier_from_str
 
-from ..serialize_utils import best_effort_display_name
+from ....utils import identifier_from_str
+from ...common.utils import reindent
+from ..utils import best_effort_display_name
 from .utils import JSONValue, get_preamble, parse_type, parse_value, type_repr
 
 T = TypeVar("T")

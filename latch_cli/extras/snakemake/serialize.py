@@ -25,14 +25,15 @@ from snakemake.rules import Rule
 from snakemake.workflow import Workflow, WorkflowError
 from typing_extensions import Self
 
-from ...services.register.utils import import_module_by_path
-from .serialize_utils import (
+from ..common.serialize import (
     EntityCache,
     get_serializable_launch_plan,
     get_serializable_workflow,
+    interface_to_parameters,
+    serialize,
 )
 from .utils import load_snakemake_metadata
-from .workflow import JITRegisterWorkflow, SnakemakeWorkflow, interface_to_parameters
+from .workflow import JITRegisterWorkflow, SnakemakeWorkflow
 
 RegistrableEntity = Union[
     task_models.TaskSpec,
@@ -294,39 +295,7 @@ def serialize_jit_register_workflow(
     image_name: str,
     dkr_repo: str,
 ):
-    image_name_no_version, version = image_name.split(":")
-    default_img = Image(
-        name=image_name,
-        fqn=f"{dkr_repo}/{image_name_no_version}",
-        tag=version,
-    )
-    settings = SerializationSettings(
-        image_config=ImageConfig(default_image=default_img, images=[default_img]),
-    )
-
-    registrable_entity_cache: EntityCache = {}
-
-    get_serializable_workflow(jit_wf, settings, registrable_entity_cache)
-
-    parameter_map = interface_to_parameters(jit_wf.python_interface)
-    lp = LaunchPlan(
-        name=jit_wf.name,
-        workflow=jit_wf,
-        parameters=parameter_map,
-        fixed_inputs=literals_models.LiteralMap(literals={}),
-    )
-    admin_lp = get_serializable_launch_plan(lp, settings, registrable_entity_cache)
-
-    registrable_entities = [
-        x.to_flyte_idl()
-        for x in list(
-            filter(should_register_with_admin, list(registrable_entity_cache.values()))
-        )
-        + [admin_lp]
-    ]
-
-    click.secho("\nSerializing workflow entities", bold=True)
-    persist_registrable_entities(registrable_entities, output_dir)
+    return serialize(jit_wf, output_dir, image_name, dkr_repo)
 
 
 def snakefile_path_in_container(snakefile: Path, pkg_root: Path) -> str:
@@ -360,7 +329,7 @@ def generate_snakemake_entrypoint(
         from latch.types.file import LatchFile
 
         from latch_cli.utils import get_parameter_json_value, urljoins, check_exists_and_rename
-        from latch_cli.snakemake.serialize_utils import update_mapping
+        from latch_cli.extras.snakemake.utils import update_mapping
 
         sys.stdout.reconfigure(line_buffering=True)
         sys.stderr.reconfigure(line_buffering=True)

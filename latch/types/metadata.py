@@ -417,6 +417,15 @@ class SnakemakeFileParameter(SnakemakeParameter[Union[LatchFile, LatchDir]]):
 
 
 @dataclass
+class NextflowParameter(Generic[T], LatchParameter):
+    type: Optional[Type[T]] = None
+    """
+    The python type of the parameter.
+    """
+    default: Optional[T] = None
+
+
+@dataclass
 class LatchMetadata:
     """Class for organizing workflow metadata
 
@@ -541,7 +550,7 @@ _snakemake_metadata: Optional[SnakemakeMetadata] = None
 @dataclass
 class NextflowMetadata(LatchMetadata):
     name: Optional[str] = None
-    parameters: Dict[str, SnakemakeParameter] = field(default_factory=dict)
+    parameters: Dict[str, NextflowParameter] = field(default_factory=dict)
 
     def __post_init__(self):
         if self.name is None:
@@ -551,5 +560,4 @@ class NextflowMetadata(LatchMetadata):
         _nextflow_metadata = self
 
 
-_snakemake_metadata: Optional[SnakemakeMetadata] = None
 _nextflow_metadata: Optional[NextflowMetadata] = None

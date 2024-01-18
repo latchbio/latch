@@ -425,7 +425,9 @@ def register(
             remote_dir_client = None
             if snakefile is None and nf_script is None:
                 remote_dir_client = ctx.ssh_client
+
             td: str = stack.enter_context(MaybeRemoteDir(remote_dir_client))
+
             _build_and_serialize(
                 ctx,
                 ctx.default_container.image_name,

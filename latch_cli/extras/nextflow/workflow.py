@@ -37,13 +37,9 @@ from latch.types import metadata
 from latch.types.metadata import ParameterType
 from latch_cli.extras.snakemake.workflow import binding_from_python
 
+from ..common.utils import reindent
+
 T = TypeVar("T")
-
-
-def reindent(x: str, level: int) -> str:
-    if x[0] == "\n":
-        x = x[1:]
-    return textwrap.indent(textwrap.dedent(x), "    " * level)
 
 
 class VertexType(Enum):
@@ -54,15 +50,15 @@ class VertexType(Enum):
 
 class NextflowInputParamType(Enum):
     default = "default"
-    val = "val"
+    literal = "literal"
     path = "path"
 
 
 class NextflowOutputParamType(Enum):
-    stdoutparam = "stdoutparam"
-    valueoutparam = "valueoutparam"
-    tupleoutparam = "tupleoutparam"
-    fileoutparam = "fileoutparam"
+    stdout = "stdout"
+    literal = "literal"
+    tuple = "tuple"  # todo(ayush): eliminate
+    file = "file"
 
 
 NextflowParamType = Union[NextflowInputParamType, NextflowOutputParamType]
@@ -71,25 +67,26 @@ NextflowParamType = Union[NextflowInputParamType, NextflowOutputParamType]
 @dataclass
 class NextflowParam:
     name: str
-    paramType: NextflowParamType
+    type: NextflowParamType
 
 
 @dataclass
 class NextflowDAGVertex:
     id: int
-    label: Union[None, str]
+    label: Optional[str]  # todo(ayush): do these need to be optional
     vertex_type: VertexType
-    input_params: Union[None, List[NextflowParam]]
-    output_params: Union[None, List[NextflowParam]]
-    code: Union[None, str]
+    input_params: Optional[List[NextflowParam]]  # empty list zero state instead
+    output_params: Optional[List[NextflowParam]]
+    code: Optional[str]
 
 
 @dataclass
 class NextflowDAGEdge:
     id: int
-    to_idx: Union[None, int]
-    from_idx: Union[None, int]
-    label: Union[None, str]
+    # same here, it makes no sense for an edge not to have endpoints lol
+    to_idx: Optional[int]
+    from_idx: Optional[int]
+    label: Optional[str]
     connection: Tuple[int, int]
 
 
@@ -101,19 +98,26 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
         dependent_edges_by_start: Dict[int, NextflowDAGEdge],
         dependent_edges_by_end: Dict[int, NextflowDAGEdge],
     ):
-        parameter_metadata = metadata._nextflow_metadata.parameters
-        display_name = metadata._nextflow_metadata.display_name
-        name = metadata._nextflow_metadata.name
+        # todo(ayush): consolidate w/ snakemake
+
+        assert metadata._nextflow_metadata is not None
 
         docstring = Docstring(
-            f"{display_name}\n\nSample Description\n\n"
+            f"{metadata._nextflow_metadata.display_name}\n\nSample Description\n\n"
             + str(metadata._nextflow_metadata)
         )
         python_interface = Interface(
-            {k: (v.type, v.default) for k, v in parameter_metadata.items()},
+            {
+                k: (v.type, v.default)
+                for k, v in metadata._nextflow_metadata.parameters.items()
+                if v.type is not None and v.default is not None
+            },
             {},
             docstring=docstring,
         )
+
+        name = metadata._nextflow_metadata.name
+        assert name is not None
 
         super().__init__(
             name=name,
@@ -123,9 +127,10 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
             workflow_metadata_defaults=WorkflowMetadataDefaults(False),
             python_interface=python_interface,
         )
-        self.nextflow_tasks = []
+
+        self.nextflow_tasks: List[NextflowTask] = []
+
         self.build_from_nextflow_dag(
-            name,
             vertices,
             dependent_vertices,
             dependent_edges_by_start,
@@ -135,7 +140,6 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
     def build_from_nextflow_dag(
         self,
-        name: str,
         vertices: Dict[int, NextflowDAGVertex],
         dependent_vertices: Dict[int, List[int]],
         dependent_edges_by_start: Dict[int, NextflowDAGEdge],
@@ -150,38 +154,32 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
             flyte_entity=None,
         )
 
-        def create_bindings(
-            python_inputs: Dict[str, Type], node: Node
-        ) -> List[literals_models.Binding]:
-            interface_inputs = transform_variable_map(python_inputs)
+        interface_inputs = transform_variable_map(python_interface.inputs)
 
-            task_bindings = []
-            for k in python_inputs:
-                var = interface_inputs[k]
-                promise_to_bind = Promise(
-                    var=k,
-                    val=NodeOutput(node=global_start_node, var=k),
+        task_bindings = []
+        for k in python_interface.inputs:
+            var = interface_inputs[k]
+            promise_to_bind = Promise(
+                var=k,
+                val=NodeOutput(node=global_start_node, var=k),
+            )
+            task_bindings.append(
+                binding_from_python(
+                    var_name=k,
+                    expected_literal_type=var.type,
+                    t_value=promise_to_bind,
+                    t_value_type=interface_inputs[k],
                 )
-                task_bindings.append(
-                    binding_from_python(
-                        var_name=k,
-                        expected_literal_type=var.type,
-                        t_value=promise_to_bind,
-                        t_value_type=interface_inputs[k],
-                    )
-                )
-            return task_bindings
+            )
 
         task_interface = Interface(python_interface.inputs, None, docstring=None)
-
+        # todo(ayush): need to add execute method here
         main_task = NextflowMainTask(interface=task_interface)
+
         main_node = Node(
             id="main",
             metadata=main_task.construct_node_metadata(),
-            bindings=sorted(
-                create_bindings(python_interface.inputs, global_start_node),
-                key=lambda b: b.var,
-            ),
+            bindings=sorted(task_bindings, key=lambda x: x.var),
             upstream_nodes=[],
             flyte_entity=main_task,
         )
@@ -1126,9 +1124,9 @@ def build_nf_wf(pkg_root: Path, nf_script: Path):
         def format_param_name(name: str, t: NextflowParamType):
             if name == "-":
                 return "stdout"
-            if t in (NextflowInputParamType.path, NextflowOutputParamType.fileoutparam):
+            if t in (NextflowInputParamType.path, NextflowOutputParamType.file):
                 return Path(name).stem
-            if t == NextflowOutputParamType.tupleoutparam:
+            if t == NextflowOutputParamType.tuple:
                 return name.replace("<", "_").replace(">", "_")
             return name
 
@@ -1137,7 +1135,7 @@ def build_nf_wf(pkg_root: Path, nf_script: Path):
             for x in vertex_content["inputParams"]:
                 t = NextflowInputParamType(x["type"])
                 input_params.append(
-                    NextflowParam(name=format_param_name(x["name"], t), paramType=t)
+                    NextflowParam(name=format_param_name(x["name"], t), type=t)
                 )
 
         output_params = []
@@ -1145,7 +1143,7 @@ def build_nf_wf(pkg_root: Path, nf_script: Path):
             for x in vertex_content["outputParams"]:
                 t = NextflowOutputParamType(x["type"])
                 output_params.append(
-                    NextflowParam(name=format_param_name(x["name"], t), paramType=t)
+                    NextflowParam(name=format_param_name(x["name"], t), type=t)
                 )
 
         vertex = NextflowDAGVertex(
