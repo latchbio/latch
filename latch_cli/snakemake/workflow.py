@@ -74,7 +74,6 @@ import latch.types.metadata as metadata
 from latch.resources.tasks import custom_task
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
-from latch.types.metadata import DockerMetadata
 from latch_cli.snakemake.config.utils import type_repr
 
 from ..utils import identifier_suffix_from_str

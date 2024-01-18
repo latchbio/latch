@@ -25,8 +25,6 @@ from snakemake.rules import Rule
 from snakemake.workflow import Workflow, WorkflowError
 from typing_extensions import Self
 
-from latch.types.metadata import DockerMetadata
-
 from ..services.register.utils import import_module_by_path
 from .serialize_utils import (
     EntityCache,
