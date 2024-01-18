@@ -198,6 +198,7 @@ def _build_and_serialize(
     *,
     progress_plain: bool = False,
     cache_tasks: bool = False,
+    docker_login: bool = False,
 ):
     assert ctx.pkg_root is not None
 
@@ -209,7 +210,7 @@ def _build_and_serialize(
         from ...snakemake.serialize import generate_jit_register_code
         from ...snakemake.workflow import build_jit_register_wrapper
 
-        jit_wf = build_jit_register_wrapper(cache_tasks)
+        jit_wf = build_jit_register_wrapper(cache_tasks, docker_login)
         generate_jit_register_code(
             jit_wf,
             ctx.pkg_root,
@@ -275,6 +276,7 @@ def register(
     snakefile: Optional[Path] = None,
     progress_plain: bool = False,
     cache_tasks: bool = False,
+    docker_login: bool = False,
     use_new_centromere: bool = False,
 ):
     """Registers a workflow, defined as python code, with Latch.
@@ -358,17 +360,21 @@ def register(
             "N/A",
         )
         click.echo(
-            " ".join([
-                click.style("Target workspace:", fg="bright_blue"),
-                ws_name,
-                f"({current_workspace()})",
-            ])
+            " ".join(
+                [
+                    click.style("Target workspace:", fg="bright_blue"),
+                    ws_name,
+                    f"({current_workspace()})",
+                ]
+            )
         )
         click.echo(
-            " ".join([
-                click.style("Workflow root:", fg="bright_blue"),
-                str(ctx.default_container.pkg_dir),
-            ])
+            " ".join(
+                [
+                    click.style("Workflow root:", fg="bright_blue"),
+                    str(ctx.default_container.pkg_dir),
+                ]
+            )
         )
 
         if use_new_centromere:
@@ -386,10 +392,12 @@ def register(
         scp = None
 
         click.echo(
-            " ".join([
-                click.style("Docker Image:", fg="bright_blue"),
-                ctx.default_container.image_name,
-            ])
+            " ".join(
+                [
+                    click.style("Docker Image:", fg="bright_blue"),
+                    ctx.default_container.image_name,
+                ]
+            )
         )
         click.echo()
 
@@ -416,6 +424,7 @@ def register(
                 dockerfile=ctx.default_container.dockerfile,
                 progress_plain=progress_plain,
                 cache_tasks=cache_tasks,
+                docker_login=docker_login,
             )
 
             if remote and snakefile is None:

@@ -185,6 +185,16 @@ def dockerfile(pkg_root: str, snakemake: bool = False):
         " provided."
     ),
 )
+@click.option(
+    "--requires-docker-login",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help=(
+        "Whether or not to use Latch Secrets to login to private docker registry."
+        " Ignored if --snakefile is not provided."
+    ),
+)
 @requires_login
 def register(
     pkg_root: str,
@@ -195,6 +205,7 @@ def register(
     open: bool,
     snakefile: Optional[Path],
     cache_tasks: bool,
+    requires_docker_login: bool,
 ):
     """Register local workflow code to Latch.
 
@@ -219,6 +230,7 @@ def register(
         or docker_progress == "plain",
         use_new_centromere=use_new_centromere,
         cache_tasks=cache_tasks,
+        docker_login=requires_docker_login,
     )
 
 

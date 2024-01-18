@@ -314,8 +314,9 @@ def interface_to_parameters(
 class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
     out_parameter_name = "o0"  # must be "o0"
 
-    def __init__(self, cache_tasks: bool = False):
+    def __init__(self, cache_tasks: bool = False, docker_login: bool = False):
         self.cache_tasks = cache_tasks
+        self.docker_login = docker_login
 
         assert metadata._snakemake_metadata is not None
 
@@ -526,7 +527,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             print(f"JIT Workflow Version: {{jit_wf_version}}")
             print(f"JIT Execution Display Name: {{jit_exec_display_name}}")
 
-            wf = extract_snakemake_workflow(pkg_root, snakefile, jit_wf_version, jit_exec_display_name, local_to_remote_path_mapping, non_blob_parameters, {self.cache_tasks})
+            wf = extract_snakemake_workflow(pkg_root, snakefile, jit_wf_version, jit_exec_display_name, local_to_remote_path_mapping, non_blob_parameters, {self.cache_tasks}, {self.docker_login})
             wf_name = wf.name
             generate_snakemake_entrypoint(wf, pkg_root, snakefile, {repr(remote_output_url)}, non_blob_parameters)
 
@@ -639,6 +640,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         jit_exec_display_name: str,
         local_to_remote_path_mapping: Optional[Dict[str, str]] = None,
         cache_tasks: bool = False,
+        docker_login: bool = False,
     ):
         assert metadata._snakemake_metadata is not None
         name = metadata._snakemake_metadata.name
@@ -659,6 +661,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         self._input_parameters = None
         self._dag = dag
         self._cache_tasks = cache_tasks
+        self._docker_login = docker_login
         self.snakemake_tasks: List[SnakemakeJobTask] = []
 
         workflow_metadata = WorkflowMetadata(
@@ -872,8 +875,10 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
 
 
-def build_jit_register_wrapper(cache_tasks: bool = False) -> JITRegisterWorkflow:
-    wrapper_wf = JITRegisterWorkflow(cache_tasks)
+def build_jit_register_wrapper(
+    cache_tasks: bool = False, docker_login: bool = False
+) -> JITRegisterWorkflow:
+    wrapper_wf = JITRegisterWorkflow(cache_tasks, docker_login)
     out_parameter_name = wrapper_wf.out_parameter_name
 
     python_interface = wrapper_wf.python_interface
@@ -1063,6 +1068,9 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
         self._python_outputs = outputs
         self._target_file_for_input_param = target_file_for_input_param
         self._target_file_for_output_param = target_file_for_output_param
+        self._docker_login = (
+            self.wf._docker_login and self.job.container_img_url is not None
+        )
 
         self._task_function = task_fn_placeholder
 
@@ -1385,6 +1393,45 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
                 except Exception:
                     traceback.print_exc()
             lp.upload(compiled, "latch:///.snakemake_latch/workflows/{self.wf.name}/compiled_tasks/{self.name}.py")
+            """,
+            1,
+        )
+
+        if self._docker_login:
+            code_block += reindent(
+                rf"""
+
+                print("\n\n\nLogging into Docker\n")
+                from latch.functions.secrets import get_secret
+                try:
+                    docker_usr = get_secret("DOCKER_USERNAME")
+                    docker_pwd = get_secret("DOCKER_PASSWORD")
+                except ValueError as e:
+                    print("Failed to get Docker credentials:", e)
+                    sys.exit(1)
+
+                try:
+                    subprocess.run(
+                        [
+                            "docker",
+                            "login",
+                            "--username",
+                            docker_usr,
+                            "--password",
+                            docker_pwd,
+                        ],
+                        check=True,
+                    )
+                except CalledProcessError as e:
+                    print("Failed to login to Docker")
+                except Exception:
+                    traceback.print_exc()
+                """,
+                1,
+            )
+
+        code_block += reindent(
+            rf"""
 
             print("\n\n\nRunning snakemake task\n")
             try:
