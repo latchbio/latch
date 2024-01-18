@@ -838,33 +838,35 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 node_id += 1
 
         bindings: List[literals_models.Binding] = []
-        for i, out in enumerate(self.interface.outputs.keys()):
-            upstream_id, upstream_var = self.find_upstream_node_matching_output_var(out)
-            promise_to_bind = Promise(
-                var=out,
-                val=NodeOutput(node=node_map[upstream_id], var=upstream_var),
-            )
-            t = self.python_interface.outputs[out]
-            b = binding_from_python(
-                out,
-                self.interface.outputs[out].type,
-                promise_to_bind,
-                t,
-            )
-            bindings.append(b)
+        for target in self._dag.targetjobs:
+            for out_file in target.input:
+                out_param_name = variable_name_for_value(out_file, target.input)
+                upstream_id, upstream_var = self.find_upstream_node_matching_file(
+                    target, out_file
+                )
+                promise_to_bind = Promise(
+                    var=out_param_name,
+                    val=NodeOutput(node=node_map[upstream_id], var=upstream_var),
+                )
+                t = self.python_interface.outputs[out_param_name]
+                b = binding_from_python(
+                    out_param_name,
+                    self.interface.outputs[out_param_name].type,
+                    promise_to_bind,
+                    t,
+                )
+                bindings.append(b)
 
         self._nodes = list(node_map.values())
         self._output_bindings = bindings
 
-    def find_upstream_node_matching_output_var(self, out_var: str):
-        for j in self._dag.targetjobs:
-            for depen, files in self._dag.dependencies[j].items():
-                for f in files:
-                    var_name = variable_name_for_value(f, depen.output)
-                    if var_name == out_var:
-                        return depen.jobid, var_name
+    def find_upstream_node_matching_file(self, job: snakemake.jobs.Job, out_file: str):
+        for depen, files in self._dag.dependencies[job].items():
+            for f in files:
+                if f == out_file:
+                    return depen.jobid, variable_name_for_value(f, depen.output)
 
-        raise RuntimeError(f"could not find upstream node for output: {out_var}")
+        raise RuntimeError(f"could not find upstream node for output file: {out_file}")
 
     def execute(self, **kwargs):
         return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
