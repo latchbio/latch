@@ -565,7 +565,7 @@ class SnakemakeMetadata(LatchMetadata):
     """
     Credentials configuration for private docker repositories
     """
-    env_config: Optional[EnvironmentConfig] = None
+    env_config: EnvironmentConfig = EnvironmentConfig()
     """
     Environment configuration for spawning Snakemake tasks
     """
