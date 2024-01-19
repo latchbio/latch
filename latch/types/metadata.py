@@ -521,6 +521,7 @@ class LatchMetadata:
         ).strip("\n ")
 
 
+@dataclass
 class DockerMetadata:
     def __init__(self, username: str, secret_name: str):
         self.username = username
