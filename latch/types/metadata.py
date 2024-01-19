@@ -523,9 +523,8 @@ class LatchMetadata:
 
 @dataclass
 class DockerMetadata:
-    def __init__(self, username: str, secret_name: str):
-        self.username = username
-        self.secret_name = secret_name
+    username: str
+    secret_name: str
 
 
 @dataclass
