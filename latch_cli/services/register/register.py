@@ -377,17 +377,21 @@ def register(
             "N/A",
         )
         click.echo(
-            " ".join([
-                click.style("Target workspace:", fg="bright_blue"),
-                ws_name,
-                f"({current_workspace()})",
-            ])
+            " ".join(
+                [
+                    click.style("Target workspace:", fg="bright_blue"),
+                    ws_name,
+                    f"({current_workspace()})",
+                ]
+            )
         )
         click.echo(
-            " ".join([
-                click.style("Workflow root:", fg="bright_blue"),
-                str(ctx.default_container.pkg_dir),
-            ])
+            " ".join(
+                [
+                    click.style("Workflow root:", fg="bright_blue"),
+                    str(ctx.default_container.pkg_dir),
+                ]
+            )
         )
 
         if use_new_centromere:
@@ -405,10 +409,12 @@ def register(
         scp = None
 
         click.echo(
-            " ".join([
-                click.style("Docker Image:", fg="bright_blue"),
-                ctx.default_container.image_name,
-            ])
+            " ".join(
+                [
+                    click.style("Docker Image:", fg="bright_blue"),
+                    ctx.default_container.image_name,
+                ]
+            )
         )
         click.echo()
 

@@ -445,7 +445,15 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             print(f"JIT Workflow Version: {{jit_wf_version}}")
             print(f"JIT Execution Display Name: {{jit_exec_display_name}}")
 
-            wf = extract_snakemake_workflow(pkg_root, snakefile, jit_wf_version, jit_exec_display_name, local_to_remote_path_mapping, non_blob_parameters, {self.cache_tasks})
+            wf = extract_snakemake_workflow(
+                pkg_root,
+                snakefile,
+                jit_wf_version,
+                jit_exec_display_name,
+                local_to_remote_path_mapping,
+                non_blob_parameters,
+                {self.cache_tasks},
+            )
             wf_name = wf.name
             generate_snakemake_entrypoint(wf, pkg_root, snakefile, {repr(remote_output_url)}, non_blob_parameters)
 
@@ -578,6 +586,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         self._input_parameters = None
         self._dag = dag
         self._cache_tasks = cache_tasks
+        self._docker_metadata = metadata._snakemake_metadata.docker_metadata
         self.snakemake_tasks: List[SnakemakeJobTask] = []
 
         workflow_metadata = WorkflowMetadata(
@@ -757,32 +766,35 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 node_id += 1
 
         bindings: List[literals_models.Binding] = []
-        for i, out in enumerate(self.interface.outputs.keys()):
-            upstream_id, upstream_var = self.find_upstream_node_matching_output_var(out)
-            promise_to_bind = Promise(
-                var=out,
-                val=NodeOutput(node=node_map[upstream_id], var=upstream_var),
-            )
-            t = self.python_interface.outputs[out]
-            b = binding_from_python(
-                out,
-                self.interface.outputs[out].type,
-                promise_to_bind,
-                t,
-            )
-            bindings.append(b)
+        for target in self._dag.targetjobs:
+            for out_file in target.input:
+                out_param_name = variable_name_for_value(out_file, target.input)
+                upstream_id, upstream_var = self.find_upstream_node_matching_file(
+                    target, out_file
+                )
+                promise_to_bind = Promise(
+                    var=out_param_name,
+                    val=NodeOutput(node=node_map[upstream_id], var=upstream_var),
+                )
+                t = self.python_interface.outputs[out_param_name]
+                b = binding_from_python(
+                    out_param_name,
+                    self.interface.outputs[out_param_name].type,
+                    promise_to_bind,
+                    t,
+                )
+                bindings.append(b)
 
         self._nodes = list(node_map.values())
         self._output_bindings = bindings
 
-    def find_upstream_node_matching_output_var(self, out_var: str):
-        for j in self._dag.targetjobs:
-            for depen, files in self._dag.dependencies[j].items():
-                for f in files:
-                    if variable_name_for_file(f) == out_var:
-                        return depen.jobid, variable_name_for_value(f, depen.output)
+    def find_upstream_node_matching_file(self, job: snakemake.jobs.Job, out_file: str):
+        for depen, files in self._dag.dependencies[job].items():
+            for f in files:
+                if f == out_file:
+                    return depen.jobid, variable_name_for_value(f, depen.output)
 
-        raise RuntimeError(f"could not find upstream node for output: {out_var}")
+        raise RuntimeError(f"could not find upstream node for output file: {out_file}")
 
     def execute(self, **kwargs):
         return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
@@ -1230,6 +1242,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             "-s",
             snakefile_path_in_container,
             *(["--use-conda"] if need_conda else []),
+            "--use-singularity",
             "--target-jobs",
             *jobs_cli_args(jobs),
             "--allowed-rules",
@@ -1300,6 +1313,48 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
                 except Exception:
                     traceback.print_exc()
             lp.upload(compiled, "latch:///.snakemake_latch/workflows/{self.wf.name}/compiled_tasks/{self.name}.py")
+            """,
+            1,
+        )
+
+        if (
+            self.wf._docker_metadata is not None
+            and self.job.container_img_url is not None
+        ):
+            code_block += reindent(
+                rf"""
+
+                print("\n\n\nLogging into Docker\n")
+                from latch.functions.secrets import get_secret
+                docker_usr = "{self.wf._docker_metadata.username}"
+                try:
+                    docker_pwd = get_secret("{self.wf._docker_metadata.secret_name}")
+                except ValueError as e:
+                    print("Failed to get Docker credentials:", e)
+                    sys.exit(1)
+
+                try:
+                    subprocess.run(
+                        [
+                            "docker",
+                            "login",
+                            "--username",
+                            docker_usr,
+                            "--password",
+                            docker_pwd,
+                        ],
+                        check=True,
+                    )
+                except CalledProcessError as e:
+                    print("Failed to login to Docker")
+                except Exception:
+                    traceback.print_exc()
+                """,
+                1,
+            )
+
+        code_block += reindent(
+            rf"""
 
             print("\n\n\nRunning snakemake task\n")
             try:

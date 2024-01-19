@@ -1,12 +1,16 @@
 import json
 import os
+import shlex
 import sys
 from itertools import chain
+from pathlib import Path
 from textwrap import dedent
-from typing import Dict, Set
+from typing import Dict, Optional, Set
+from urllib.parse import urlparse, urlunparse
 
 import snakemake
 import snakemake.workflow
+from snakemake.deployment import singularity
 from snakemake.parser import (
     INDENT,
     Benchmark,
@@ -290,6 +294,75 @@ def get_wildcards(self, requested_output, wildcards_dict=None):
 
 
 RRule.get_wildcards = get_wildcards
+
+
+def get_docker_cmd(
+    img_path: str,
+    cmd: str,
+    args: str = "",
+    quiet: bool = False,
+    envvars: Optional[Dict[str, str]] = None,
+    shell_executable: Optional[str] = None,
+    container_workdir: Optional[str] = None,
+    is_python_script: bool = False,
+) -> str:
+    if shell_executable is None:
+        shell_executable = "sh"
+    else:
+        # Ensure to just use the name of the executable, not a path,
+        # because we cannot be sure where it is located in the container.
+        shell_executable = Path(shell_executable).name
+
+    workdir = container_workdir if container_workdir is not None else "/latch"
+    if '"' in workdir:
+        raise ValueError("container_workdir cannot contain double quotes")
+
+    docker_cmd = ["docker", "run"]
+    if envvars is not None:
+        for k, v in envvars.items():
+            docker_cmd.extend(["--env", f"{k}={v}"])
+
+    # support for containers currently only works with relative input and output
+    # paths. This preserves the behavior before the monkey path
+    docker_cmd.extend(
+        [
+            "--workdir",
+            workdir,
+            "--mount",
+            f'type=bind,src=.,"target={workdir}"',
+        ]
+    )
+
+    if args != "":
+        docker_cmd.extend(shlex.split(args))
+
+    docker_cmd.extend(
+        [
+            img_path,
+            shell_executable,
+            "-c",
+            cmd,
+        ]
+    )
+
+    return shlex.join(docker_cmd)
+
+
+@property
+def docker_path(self):
+    parsed = urlparse(self.url)
+    if parsed.scheme != "" and parsed.scheme != "docker":
+        raise ValueError("Only docker images are supported")
+    path = urlunparse(parsed._replace(scheme=""))
+    return path[2:] if path.startswith("//") else path
+
+
+# Monkey-patch snakemake to use docker container runtime instead of singularity
+# because singularity does not work inside sysbox.
+singularity.Image.pull = lambda self, dry_run: None
+singularity.Image.path = docker_path
+singularity.shellcmd = get_docker_cmd
+
 
 # Run snakemake
 snakemake.main()

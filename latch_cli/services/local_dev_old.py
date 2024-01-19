@@ -42,7 +42,7 @@ def _get_workflow_name(pkg_root: Path, snakemake: bool) -> str:
         if metadata._snakemake_metadata is None:
             click.secho(f"Unable to find latch_metadata in {pkg_root}.", fg="red")
             raise click.exceptions.Exit(1)
-        return metadata._snakemake_metadata.name
+        return f"{metadata._snakemake_metadata.name}_jit_register"
     else:
         from flytekit.core.context_manager import FlyteEntities
         from flytekit.core.workflow import PythonFunctionWorkflow

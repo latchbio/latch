@@ -529,9 +529,16 @@ class LatchMetadata:
 
 
 @dataclass
+class DockerMetadata:
+    username: str
+    secret_name: str
+
+
+@dataclass
 class SnakemakeMetadata(LatchMetadata):
     output_dir: Optional[LatchDir] = None
     name: Optional[str] = None
+    docker_metadata: Optional[DockerMetadata] = None
     parameters: Dict[str, SnakemakeParameter] = field(default_factory=dict)
 
     def __post_init__(self):
