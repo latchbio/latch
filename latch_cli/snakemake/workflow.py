@@ -672,9 +672,9 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
             metadata._snakemake_metadata.env_config is not None
             and metadata._snakemake_metadata.env_config.use_conda
         )
-        self._use_containers = (
+        self._use_container = (
             metadata._snakemake_metadata.env_config is not None
-            and metadata._snakemake_metadata.env_config.use_containers
+            and metadata._snakemake_metadata.env_config.use_container
         )
         self.snakemake_tasks: List[SnakemakeJobTask] = []
 
@@ -1329,7 +1329,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             "-s",
             snakefile_path_in_container,
             *(["--use-conda"] if self.wf._use_conda else []),
-            *(["--use-singularity"] if self.wf._use_containers else []),
+            *(["--use-singularity"] if self.wf._use_container else []),
             "--target-jobs",
             *jobs_cli_args(jobs),
             "--allowed-rules",

@@ -543,7 +543,7 @@ class EnvironmentConfig:
     """
     Use Snakemake `conda` directive to spawn tasks in conda environments
     """
-    use_containers: bool = True
+    use_container: bool = True
     """
     Use Snakemake `container` directive to spawn tasks in Docker containers
     """
