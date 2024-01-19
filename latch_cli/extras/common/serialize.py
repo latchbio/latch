@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Type, Union, get_args
+from typing import Any, Dict, Optional, Type, Union, get_args
 
 import click
 from flytekit import LaunchPlan
@@ -8,6 +8,7 @@ from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.interface import Interface
 from flytekit.core.node import Node
+from flytekit.core.promise import Promise
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.utils import _dnsify
 from flytekit.core.workflow import WorkflowBase
@@ -16,6 +17,7 @@ from flytekit.models import interface as interface_models
 from flytekit.models import launch_plan as launch_plan_models
 from flytekit.models import literals as literals_models
 from flytekit.models import task as task_models
+from flytekit.models import types as type_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.core import identifier as identifier_model
 from flytekit.models.core import workflow as workflow_model
@@ -318,3 +320,25 @@ def serialize(
 
     click.secho("\nSerializing workflow entities", bold=True)
     persist_registrable_entities(registrable_entities, output_dir)
+
+
+def binding_data_from_python(
+    expected_literal_type: type_models.LiteralType,
+    t_value: Any,
+    t_value_type: Optional[Type] = None,
+) -> Optional[literals_models.BindingData]:
+    if isinstance(t_value, Promise):
+        if not t_value.is_ready:
+            return literals_models.BindingData(promise=t_value.ref)
+
+
+def binding_from_python(
+    var_name: str,
+    expected_literal_type: type_models.LiteralType,
+    t_value: Any,
+    t_value_type: Type,
+) -> literals_models.Binding:
+    binding_data = binding_data_from_python(
+        expected_literal_type, t_value, t_value_type
+    )
+    return literals_models.Binding(var=var_name, binding=binding_data)

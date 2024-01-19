@@ -38,56 +38,13 @@ from latch.types.metadata import ParameterType
 from latch_cli.extras.snakemake.workflow import binding_from_python
 
 from ..common.utils import reindent
-
-T = TypeVar("T")
-
-
-class VertexType(Enum):
-    process = "process"
-    operator = "operator"
-    origin = "origin"
-
-
-class NextflowInputParamType(Enum):
-    default = "default"
-    literal = "literal"
-    path = "path"
-
-
-class NextflowOutputParamType(Enum):
-    stdout = "stdout"
-    literal = "literal"
-    tuple = "tuple"  # todo(ayush): eliminate
-    file = "file"
-
-
-NextflowParamType = Union[NextflowInputParamType, NextflowOutputParamType]
-
-
-@dataclass
-class NextflowParam:
-    name: str
-    type: NextflowParamType
-
-
-@dataclass
-class NextflowDAGVertex:
-    id: int
-    label: Optional[str]  # todo(ayush): do these need to be optional
-    vertex_type: VertexType
-    input_params: Optional[List[NextflowParam]]  # empty list zero state instead
-    output_params: Optional[List[NextflowParam]]
-    code: Optional[str]
-
-
-@dataclass
-class NextflowDAGEdge:
-    id: int
-    # same here, it makes no sense for an edge not to have endpoints lol
-    to_idx: Optional[int]
-    from_idx: Optional[int]
-    label: Optional[str]
-    connection: Tuple[int, int]
+from .types import (
+    NextflowDAGEdge,
+    NextflowDAGVertex,
+    NextflowInputParamType,
+    NextflowOutputParamType,
+    NextflowParamType,
+)
 
 
 class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
@@ -1100,6 +1057,10 @@ def build_nf_wf(pkg_root: Path, nf_script: Path):
                 "run",
                 str(nf_script),
                 "-latchJIT",
+                "--input",
+                str(pkg_root / "assets" / "samplesheet.csv"),
+                "--outdir",
+                str(pkg_root),
             ],
             check=True,
         )
@@ -1115,41 +1076,32 @@ def build_nf_wf(pkg_root: Path, nf_script: Path):
 
     vertices: Dict[int, NextflowDAGVertex] = {}
     dependent_vertices: Dict[int, List[int]] = {}
-    for vertex_json in vertices_json:
-        vertex_content = vertex_json["content"]
+    for v in vertices_json:
+        content = v["content"]
         code = None
-        if "source" in vertex_content:
-            code = vertex_content["source"]
-
-        def format_param_name(name: str, t: NextflowParamType):
-            if name == "-":
-                return "stdout"
-            if t in (NextflowInputParamType.path, NextflowOutputParamType.file):
-                return Path(name).stem
-            if t == NextflowOutputParamType.tuple:
-                return name.replace("<", "_").replace(">", "_")
-            return name
+        if "source" in content:
+            code = content["source"]
 
         input_params = []
-        if vertex_content["inputParams"]:
-            for x in vertex_content["inputParams"]:
+        if content["inputParams"]:
+            for x in content["inputParams"]:
                 t = NextflowInputParamType(x["type"])
                 input_params.append(
                     NextflowParam(name=format_param_name(x["name"], t), type=t)
                 )
 
         output_params = []
-        if vertex_content["outputParams"]:
-            for x in vertex_content["outputParams"]:
+        if content["outputParams"]:
+            for x in content["outputParams"]:
                 t = NextflowOutputParamType(x["type"])
                 output_params.append(
                     NextflowParam(name=format_param_name(x["name"], t), type=t)
                 )
 
         vertex = NextflowDAGVertex(
-            id=vertex_content["id"],
-            label=vertex_content["label"],
-            vertex_type=VertexType(vertex_content["type"].lower()),
+            id=content["id"],
+            label=content["label"],
+            vertex_type=VertexType(content["type"].lower()),
             input_params=input_params,
             output_params=output_params,
             code=code,

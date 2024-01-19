@@ -44,10 +44,8 @@ from flytekit.core.workflow import (
     WorkflowMetadataDefaults,
 )
 from flytekit.exceptions import scopes as exception_scopes
-from flytekit.models import interface as interface_models
 from flytekit.models import literals as literals_models
 from flytekit.models import task as _task_models
-from flytekit.models import types as type_models
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralMap, Scalar
 from flytekitplugins.pod.task import (
@@ -74,7 +72,7 @@ from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
 
 from ...utils import identifier_suffix_from_str
-from ..common.serialize import interface_to_parameters
+from ..common.serialize import binding_from_python, interface_to_parameters
 from ..common.utils import reindent
 from .config.utils import type_repr
 
@@ -230,28 +228,6 @@ def snakemake_dag_to_interface(
         LiteralMap(literals=literals),
         return_files,
     )
-
-
-def binding_data_from_python(
-    expected_literal_type: type_models.LiteralType,
-    t_value: typing.Any,
-    t_value_type: Optional[Type] = None,
-) -> Optional[literals_models.BindingData]:
-    if isinstance(t_value, Promise):
-        if not t_value.is_ready:
-            return literals_models.BindingData(promise=t_value.ref)
-
-
-def binding_from_python(
-    var_name: str,
-    expected_literal_type: type_models.LiteralType,
-    t_value: typing.Any,
-    t_value_type: Type,
-) -> literals_models.Binding:
-    binding_data = binding_data_from_python(
-        expected_literal_type, t_value, t_value_type
-    )
-    return literals_models.Binding(var=var_name, binding=binding_data)
 
 
 class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
