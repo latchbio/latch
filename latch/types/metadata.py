@@ -523,16 +523,56 @@ class LatchMetadata:
 
 @dataclass
 class DockerMetadata:
+    """Class describing credentials for private docker repositories"""
+
     username: str
+    """
+    The account username for the private repository
+    """
     secret_name: str
+    """
+    The name of the Latch Secret that contains the password for the private repository
+    """
+
+
+@dataclass
+class EnvironmentConfig:
+    """Class describing environment for spawning Snakemake tasks"""
+
+    use_conda: bool = True
+    """
+    Use Snakemake `conda` directive to spawn tasks in conda environments
+    """
+    use_containers: bool = True
+    """
+    Use Snakemake `container` directive to spawn tasks in Docker containers
+    """
 
 
 @dataclass
 class SnakemakeMetadata(LatchMetadata):
+    """Class for organizing Snakemake workflow metadata"""
+
     output_dir: Optional[LatchDir] = None
+    """
+    Directory for snakemake workflow outputs
+    """
     name: Optional[str] = None
+    """
+    Name of the workflow
+    """
     docker_metadata: Optional[DockerMetadata] = None
+    """
+    Credentials configuration for private docker repositories
+    """
+    env_config: Optional[EnvironmentConfig] = None
+    """
+    Environment configuration for spawning Snakemake tasks
+    """
     parameters: Dict[str, SnakemakeParameter] = field(default_factory=dict)
+    """
+    A dictionary mapping parameter names (strings) to `SnakemakeParameter` objects
+    """
 
     def __post_init__(self):
         if self.name is None:

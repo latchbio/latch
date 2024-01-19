@@ -668,6 +668,14 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         self._dag = dag
         self._cache_tasks = cache_tasks
         self._docker_metadata = metadata._snakemake_metadata.docker_metadata
+        self._use_conda = (
+            metadata._snakemake_metadata.env_config is not None
+            and metadata._snakemake_metadata.env_config.use_conda
+        )
+        self._use_containers = (
+            metadata._snakemake_metadata.env_config is not None
+            and metadata._snakemake_metadata.env_config.use_containers
+        )
         self.snakemake_tasks: List[SnakemakeJobTask] = []
 
         workflow_metadata = WorkflowMetadata(
@@ -1311,8 +1319,6 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
         if isinstance(self.job, GroupJob):
             jobs = self.job.jobs
 
-        need_conda = any(x.conda_env is not None for x in jobs)
-
         if non_blob_parameters is not None:
             for param, val in non_blob_parameters.items():
                 self.job.rule.workflow.globals["config"][param] = val
@@ -1322,8 +1328,8 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             "latch_cli.snakemake.single_task_snakemake",
             "-s",
             snakefile_path_in_container,
-            *(["--use-conda"] if need_conda else []),
-            "--use-singularity",
+            *(["--use-conda"] if self.wf._use_conda else []),
+            *(["--use-singularity"] if self.wf._use_containers else []),
             "--target-jobs",
             *jobs_cli_args(jobs),
             "--allowed-rules",
