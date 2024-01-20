@@ -37,7 +37,7 @@ SnakemakeMetadata(
 )
 ```
 
-If there is no `env_config` defined, Snakemake tasks on Latch will use both containers and conda environments by default.
+If there is no `env_config` defined, Snakemake tasks on Latch will NOT use containers or conda environments by default.
 
 ## Using Private Container Registries
 
