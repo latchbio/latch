@@ -539,11 +539,11 @@ class DockerMetadata:
 class EnvironmentConfig:
     """Class describing environment for spawning Snakemake tasks"""
 
-    use_conda: bool = True
+    use_conda: bool = False
     """
     Use Snakemake `conda` directive to spawn tasks in conda environments
     """
-    use_container: bool = True
+    use_container: bool = False
     """
     Use Snakemake `container` directive to spawn tasks in Docker containers
     """
