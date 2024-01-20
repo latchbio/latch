@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Type, Union, get_args
+from typing import Any, Dict, Optional, Type, TypeVar, Union, get_args
 
 import click
 from flytekit import LaunchPlan

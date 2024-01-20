@@ -2,13 +2,15 @@ import importlib
 import json
 import os
 import subprocess
+import sys
 import textwrap
 from contextlib import contextmanager
-from dataclasses import dataclass, fields
+from dataclasses import asdict, dataclass, fields
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union, get_args
 
+import click
 from flytekit.configuration import SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
@@ -34,17 +36,19 @@ from flytekitplugins.pod.task import Pod
 
 from latch.resources.tasks import custom_task
 from latch.types import metadata
-from latch.types.metadata import ParameterType
-from latch_cli.extras.snakemake.workflow import binding_from_python
+from latch.types.metadata import ParameterType, _IsDataclass
 
+from ..common.serialize import binding_from_python
 from ..common.utils import reindent
 from .types import (
     NextflowDAGEdge,
     NextflowDAGVertex,
     NextflowInputParamType,
     NextflowOutputParamType,
-    NextflowParamType,
+    NextflowParam,
+    VertexType,
 )
+from .utils import format_param_name
 
 
 class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
@@ -52,8 +56,8 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
         self,
         vertices: Dict[int, NextflowDAGVertex],
         dependent_vertices: Dict[int, List[int]],
-        dependent_edges_by_start: Dict[int, NextflowDAGEdge],
-        dependent_edges_by_end: Dict[int, NextflowDAGEdge],
+        dependent_edges_by_start: Dict[int, List[NextflowDAGEdge]],
+        dependent_edges_by_end: Dict[int, List[NextflowDAGEdge]],
     ):
         # todo(ayush): consolidate w/ snakemake
 
@@ -99,8 +103,8 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
         self,
         vertices: Dict[int, NextflowDAGVertex],
         dependent_vertices: Dict[int, List[int]],
-        dependent_edges_by_start: Dict[int, NextflowDAGEdge],
-        dependent_edges_by_end: Dict[int, NextflowDAGEdge],
+        dependent_edges_by_start: Dict[int, List[NextflowDAGEdge]],
+        dependent_edges_by_end: Dict[int, List[NextflowDAGEdge]],
         python_interface: Interface,
     ):
         global_start_node = Node(
@@ -141,7 +145,7 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
             flyte_entity=main_task,
         )
 
-        node_map: Dict[str, Node] = {}
+        node_map: Dict[int, Node] = {}
         extra_nodes: List[Node] = [main_node]
         main_node_outputs: Dict[str, Type[ParameterType]] = {}
         for vertex_id in sorted(dependent_vertices.keys()):
@@ -155,6 +159,9 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 depen_vertex = vertices.get(edge.connection[0])
 
                 if edge.to_idx is None:
+                    print(edge)
+                    continue
+
                     raise ValueError(
                         f"Channel {edge} connecting {depen_vertex} and"
                         f" {vertex} with no output index value is not allowed."
@@ -167,15 +174,21 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 ):
                     if vertex.id not in main_task.main_target_ids:
                         main_task.main_target_ids.append(vertex.id)
+
                     main_out_param_name = f"v{vertex.id}_c{edge.to_idx}"
                     node_output = NodeOutput(node=main_node, var=main_out_param_name)
+
                     main_node_outputs[main_out_param_name] = List[str]
                 else:
                     if edge.from_idx is None:
+                        print(edge)
+                        continue
+
                         raise ValueError(
                             f"Channel {edge} connecting {depen_vertex} and"
                             f" {vertex} with no input index value is not allowed."
                         )
+
                     source_param = f"c{edge.from_idx}"
                     node_output = NodeOutput(
                         node=node_map[depen_vertex.id],
@@ -237,7 +250,9 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 # todo: maybe validate dataclass fields are contiguous sequences of
                 # integers starting at 0
 
-                def parse_dataclass(x: List[dataclass]) -> (dataclass, int):
+                def parse_dataclass(
+                    x: List[_IsDataclass],
+                ) -> Tuple[Type[_IsDataclass], int]:
                     d = get_args(x)[0]
                     return d, len(fields(d))
 
@@ -335,6 +350,8 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
             else:
                 raise ValueError(f"Unsupported vertex type for {repr(vertex)}")
+
+        sys.exit(1)
 
         self._nodes = list(node_map.values()) + extra_nodes
 
@@ -1078,22 +1095,25 @@ def build_nf_wf(pkg_root: Path, nf_script: Path):
     dependent_vertices: Dict[int, List[int]] = {}
     for v in vertices_json:
         content = v["content"]
-        code = None
+
+        code: Optional[str] = None
         if "source" in content:
             code = content["source"]
 
-        input_params = []
-        if content["inputParams"]:
+        input_params: List[NextflowParam] = []
+        if content["inputParams"] is not None:
             for x in content["inputParams"]:
                 t = NextflowInputParamType(x["type"])
+
                 input_params.append(
                     NextflowParam(name=format_param_name(x["name"], t), type=t)
                 )
 
-        output_params = []
-        if content["outputParams"]:
+        output_params: List[NextflowParam] = []
+        if content["outputParams"] is not None:
             for x in content["outputParams"]:
                 t = NextflowOutputParamType(x["type"])
+
                 output_params.append(
                     NextflowParam(name=format_param_name(x["name"], t), type=t)
                 )
@@ -1106,12 +1126,12 @@ def build_nf_wf(pkg_root: Path, nf_script: Path):
             output_params=output_params,
             code=code,
         )
+
         vertices[vertex.id] = vertex
         dependent_vertices[vertex.id] = []
 
-    edges: Dict[int, NextflowDAGEdge] = {}
-    dependent_edges_by_start: Dict[int, NextflowDAGEdge] = {}
-    dependent_edges_by_end: Dict[int, NextflowDAGEdge] = {}
+    dependent_edges_by_start: Dict[int, List[NextflowDAGEdge]] = {}
+    dependent_edges_by_end: Dict[int, List[NextflowDAGEdge]] = {}
     for i in vertices.keys():
         dependent_edges_by_start[i] = []
         dependent_edges_by_end[i] = []
@@ -1126,11 +1146,11 @@ def build_nf_wf(pkg_root: Path, nf_script: Path):
             label=edge_content["label"],
             connection=edge_content["connection"],
         )
-        edges[edge.id] = edge
-        if edge.connection[0]:
+
+        if edge.connection[0] is not None:
             dependent_edges_by_start[edge.connection[0]].append(edge)
 
-        if edge.connection[1]:
+        if edge.connection[1] is not None:
             dependent_edges_by_end[edge.connection[1]].append(edge)
 
         from_vertex, to_vertex = edge.connection
