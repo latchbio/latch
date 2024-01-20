@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.38.4 - 2023-01-20
+
+### Added
+
+* Snakemake
+  + update defaults for conda + containers to `False`
+
 ## 2.38.3 - 2023-01-19
 
 ### Added
@@ -23,7 +30,7 @@ Types of changes
 * Snakemake
   + support for pulling images from private container registries
   + add config field for running tasks in conda and container environments
- 
+
 ### Fixed
 
 * Snakemake
