@@ -380,6 +380,8 @@ ParameterType: TypeAlias = Union[
     Type[Enum],
     Type[_IsDataclass],
     Type[List["ParameterType"]],
+    Type[LatchFile],
+    Type[LatchDir],
 ]
 
 
@@ -394,16 +396,7 @@ class SnakemakeParameter(LatchParameter):
 
 
 @dataclass
-class SnakemakeFileParameter(SnakemakeParameter):
-    type: Optional[
-        Union[
-            Type[LatchFile],
-            Type[LatchDir],
-        ]
-    ] = None
-    """
-    The python type of the parameter.
-    """
+class SnakemakeFileMetadata:
     path: Optional[Path] = None
     """
     The path where the file passed to this parameter will be copied.
@@ -549,6 +542,9 @@ class EnvironmentConfig:
     """
 
 
+FileMetadata: TypeAlias = Dict[str, Union[SnakemakeFileMetadata, "FileMetadata"]]
+
+
 @dataclass
 class SnakemakeMetadata(LatchMetadata):
     """Class for organizing Snakemake workflow metadata"""
@@ -572,6 +568,10 @@ class SnakemakeMetadata(LatchMetadata):
     parameters: Dict[str, SnakemakeParameter] = field(default_factory=dict)
     """
     A dictionary mapping parameter names (strings) to `SnakemakeParameter` objects
+    """
+    file_metadata: FileMetadata = field(default_factory=dict)
+    """
+    A dictionary mapping parameter names to `SnakemakeFileMetadata` objects
     """
 
     def __post_init__(self):
