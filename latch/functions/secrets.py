@@ -40,9 +40,9 @@ def get_secret(secret_name: str):
 
 def _get_secret_local(secret_name: str):
     resp = post(
-        url=config.api.user.get_secret_local,
+        url=config.api.user.get_secret,
         json={
-            "ws_account_id": current_workspace(),
+            "ws_id": current_workspace(),
             "name": secret_name,
         },
         headers={"Authorization": f"Bearer {retrieve_or_login()}"},
