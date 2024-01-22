@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.38.5 - 2023-01-22
+
+### Fixed
+
+* Broken default in snakemake metadata which prevented registration of any workflow
+
 ## 2.38.4 - 2023-01-20
 
 ### Added
