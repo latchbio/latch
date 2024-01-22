@@ -1,6 +1,7 @@
 import os
+from urllib.parse import urljoin
 
-from latch_sdk_config.latch import config
+from latch_sdk_config.latch import NUCLEUS_URL
 
 from latch_cli.tinyrequests import post
 from latch_cli.utils import current_workspace, get_auth_header, retrieve_or_login
@@ -22,7 +23,7 @@ def get_secret(secret_name: str):
     """
 
     resp = post(
-        url=config.api.user.get_secret,
+        url=urljoin(NUCLEUS_URL, "/api/secrets/get-new"),
         json={
             "name": secret_name,
             "ws_id": current_workspace(),
