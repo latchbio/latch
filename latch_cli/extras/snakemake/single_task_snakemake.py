@@ -324,26 +324,22 @@ def get_docker_cmd(
 
     # support for containers currently only works with relative input and output
     # paths. This preserves the behavior before the monkey path
-    docker_cmd.extend(
-        [
-            "--workdir",
-            workdir,
-            "--mount",
-            f'type=bind,src=.,"target={workdir}"',
-        ]
-    )
+    docker_cmd.extend([
+        "--workdir",
+        workdir,
+        "--mount",
+        f'type=bind,src=.,"target={workdir}"',
+    ])
 
     if args != "":
         docker_cmd.extend(shlex.split(args))
 
-    docker_cmd.extend(
-        [
-            img_path,
-            shell_executable,
-            "-c",
-            cmd,
-        ]
-    )
+    docker_cmd.extend([
+        img_path,
+        shell_executable,
+        "-c",
+        cmd,
+    ])
 
     return shlex.join(docker_cmd)
 
