@@ -99,7 +99,12 @@ class SnakemakeWorkflowExtractor(Workflow):
         snakefile: Path,
         non_blob_parameters: Optional[Dict[str, Any]] = None,
     ):
-        super().__init__(snakefile=snakefile, overwrite_config=non_blob_parameters)
+        # Snakemake workflows defaults the `cores` field to 1. This causes
+        # the `threads` parameter to always be capped at 1. Setting cores to None
+        # prevents `threads` from being capped.
+        super().__init__(
+            snakefile=snakefile, overwrite_config=non_blob_parameters, cores=None
+        )
 
         self.pkg_root = pkg_root
         self._old_cwd = ""

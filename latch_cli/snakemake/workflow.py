@@ -1226,28 +1226,10 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
         for out_name, out_type in self._python_outputs.items():
             target_path = self._target_file_for_output_param[out_name]
 
-            print_outs.append(
-                reindent(
-                    rf"""
-                    print(f'  {out_name}={{file_name_and_size(Path("{target_path}"))}}')
-                    """,
-                    1,
-                )
-            )
-
+            remote_path = None
             if not self._is_target:
-                remote_path = f"latch:///.snakemake_latch/workflows/{self.wf.name}/task_outputs/{self.wf.jit_wf_version}/{self.wf.jit_exec_display_name}/{self.name}/{out_name}"
-                results.append(
-                    reindent(
-                        rf"""
-                        {out_name}={out_type.__name__}({repr(target_path)}, {repr(remote_path)})
-                        """,
-                        2,
-                    ).rstrip()
-                )
-                continue
-
-            if remote_output_url is None:
+                remote_path = f"/.snakemake_latch/workflows/{self.wf.name}/task_outputs/{self.wf.jit_wf_version}/{self.wf.jit_exec_display_name}/{self.name}/{target_path}"
+            elif remote_output_url is None:
                 remote_path = Path("/Snakemake Outputs") / self.wf.name / target_path
             else:
                 remote_path = Path(urlparse(remote_output_url).path) / target_path
@@ -1255,10 +1237,19 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             results.append(
                 reindent(
                     rf"""
-                    {out_name}={out_type.__name__}("{target_path}", "latch://{remote_path}")
+                    {out_name}={out_type.__name__}({repr(target_path)}, "latch://{remote_path}")
                     """,
                     2,
                 ).rstrip()
+            )
+
+            print_outs.append(
+                reindent(
+                    rf"""
+                    print(f'  {out_name}={{file_name_and_size(Path("{target_path}"))}} -> latch://{remote_path}')
+                    """,
+                    1,
+                )
             )
 
         print_out_str = "\n".join(print_outs)
@@ -1376,7 +1367,17 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             remote_path = Path(urlparse(remote_output_url).path)
 
         log_files = self.job.log if self.job.log is not None else []
-        output_files = self.job.output if self.job.output is not None else []
+        # for debugging purposes, we upload outputs to LData even if
+        # they are not target files or used in a downstream rule
+        result_files = set([
+            self._target_file_for_output_param[out_name]
+            for out_name, _ in self._python_outputs.items()
+        ])
+        unused_outputs = (
+            [out for out in self.job.output if out not in result_files]
+            if self.job.output is not None
+            else []
+        )
 
         code_block += reindent(
             rf"""
@@ -1503,13 +1504,13 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
 
                         print("    Done")
 
-                    print("Uploading outputs:")
-                    for x in {repr(output_files)}:
+                    print("Uploading intermediate outputs:")
+                    for x in {repr(unused_outputs)}:
                         local = Path(x)
                         remote = f"latch://{remote_path}/{{str(local).removeprefix('/')}}"
 
                         if not local.exists():
-                            print("  Does not exist")
+                            print(f"  {{x}}: Does not exist")
                             continue
 
                         print(f"  {{file_name_and_size(local)}} -> {{remote}}")
