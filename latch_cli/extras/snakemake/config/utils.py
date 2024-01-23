@@ -8,6 +8,8 @@ from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
 from latch_cli.utils import identifier_from_str
 
+from ...common.utils import is_primitive_type, is_primitive_value, type_repr
+
 JSONValue: TypeAlias = Union[int, str, bool, float, None, List["JSONValue"], "JSONDict"]
 JSONDict: TypeAlias = Dict[str, "JSONValue"]
 
@@ -162,42 +164,6 @@ def parse_value(t: Type, v: JSONValue):
         ret[sanitized] = parse_value(fs[sanitized].type, x)
 
     return t(**ret)
-
-
-def is_primitive_type(
-    typ: Type,
-) -> TypeGuard[Union[Type[None], Type[str], Type[bool], Type[int], Type[float]]]:
-    return typ in {Type[None], str, bool, int, float}
-
-
-def is_primitive_value(val: object) -> TypeGuard[Union[None, str, bool, int, float]]:
-    return is_primitive_type(type(val))
-
-
-def type_repr(t: Type, *, add_namespace: bool = False) -> str:
-    if is_primitive_type(t) or t is LatchFile or t is LatchDir:
-        return t.__name__
-
-    if get_origin(t) is None:
-        return f"{'latch_metadata.' if add_namespace else ''}{t.__name__}"
-
-    if get_origin(t) is list:
-        args = get_args(t)
-        if len(args) > 0:
-            return f"typing.List[{type_repr(args[0], add_namespace=add_namespace)}]"
-
-        return "typing.List"
-
-    if get_origin(t) is Union:
-        args = get_args(t)
-
-        assert len(args) > 0
-
-        return (
-            f"typing.Union[{', '.join([type_repr(arg, add_namespace=add_namespace) for arg in args])}]"
-        )
-
-    return t.__name__
 
 
 def dataclass_repr(typ: Type) -> str:

@@ -23,6 +23,7 @@ class NextflowOutputParamType(Enum):
     valueoutparam = "valueoutparam"
     tupleoutparam = "tupleoutparam"
     fileoutparam = "fileoutparam"
+    envoutparam = "envoutparam"
 
 
 NextflowParamType = Union[NextflowInputParamType, NextflowOutputParamType]

@@ -79,7 +79,7 @@ def main():
             fg="yellow",
         )
 
-    crash_handler.init()
+    # crash_handler.init()
 
 
 @main.command("dockerfile")

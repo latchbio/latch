@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from dataclasses import asdict, dataclass, fields
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union, get_args
+from typing import Any, Dict, List, Optional, Tuple, Type, get_args
 
 import click
 from flytekit.configuration import SerializationSettings
@@ -39,7 +39,7 @@ from latch.types import metadata
 from latch.types.metadata import ParameterType, _IsDataclass
 
 from ..common.serialize import binding_from_python
-from ..common.utils import reindent
+from ..common.utils import reindent, type_repr
 from .types import (
     NextflowDAGEdge,
     NextflowDAGVertex,
@@ -159,9 +159,6 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 depen_vertex = vertices.get(edge.connection[0])
 
                 if edge.to_idx is None:
-                    print(edge)
-                    continue
-
                     raise ValueError(
                         f"Channel {edge} connecting {depen_vertex} and"
                         f" {vertex} with no output index value is not allowed."
@@ -181,9 +178,6 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     main_node_outputs[main_out_param_name] = List[str]
                 else:
                     if edge.from_idx is None:
-                        print(edge)
-                        continue
-
                         raise ValueError(
                             f"Channel {edge} connecting {depen_vertex} and"
                             f" {vertex} with no input index value is not allowed."
@@ -350,8 +344,6 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
             else:
                 raise ValueError(f"Unsupported vertex type for {repr(vertex)}")
-
-        sys.exit(1)
 
         self._nodes = list(node_map.values()) + extra_nodes
 
@@ -813,11 +805,6 @@ class NextflowOperatorTask(NextflowTask):
     def get_fn_interface(self):
         res = ""
 
-        def type_repr(t):
-            if get_args(t):
-                return f"{t.__name__}[{','.join([x.__name__ for x in get_args(t)])}]"
-            return t.__name__
-
         outputs_str = "None:"
         if len(self._python_outputs.items()) > 0:
             output_fields = "\n".join(
@@ -949,11 +936,6 @@ class NextflowMainTask(PythonAutoContainerTask[Pod]):
     def get_fn_interface(self):
         res = ""
 
-        def type_repr(t):
-            if get_args(t):
-                return f"{t.__name__}[{','.join([x.__name__ for x in get_args(t)])}]"
-            return t.__name__
-
         outputs_str = "None:"
         if len(self._python_outputs.items()) > 0:
             output_fields = "\n".join(
@@ -1070,14 +1052,20 @@ def build_nf_wf(pkg_root: Path, nf_script: Path):
     try:
         subprocess.run(
             [
-                str(pkg_root / ".latch/bin/latch-nextflow"),
+                str(pkg_root / ".latch/bin/nextflow"),
                 "run",
                 str(nf_script),
+                "-with-dag",
                 "-latchJIT",
                 "--input",
                 str(pkg_root / "assets" / "samplesheet.csv"),
                 "--outdir",
                 str(pkg_root),
+                "--run_amp_screening",
+                "--amp_skip_hmmsearch",
+                "--run_arg_screening",
+                "--run_bgc_screening",
+                "--bgc_skip_hmmsearch",
             ],
             check=True,
         )
