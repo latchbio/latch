@@ -1,6 +1,12 @@
+import sys
+from dataclasses import fields
+from pathlib import Path
 from typing import Any, Dict, Optional, Type, TypeVar, Union, get_args
 
 import click
+from flyteidl.admin.launch_plan_pb2 import LaunchPlan as _idl_admin_LaunchPlan
+from flyteidl.admin.task_pb2 import TaskSpec as _idl_admin_TaskSpec
+from flyteidl.admin.workflow_pb2 import WorkflowSpec as _idl_admin_WorkflowSpec
 from flytekit import LaunchPlan
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core import constants as common_constants
@@ -23,6 +29,7 @@ from flytekit.models.core import identifier as identifier_model
 from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.workflow import TaskNodeOverrides
 from flytekit.tools.serialize_helpers import persist_registrable_entities
+from google.protobuf.json_format import MessageToJson
 from typing_extensions import TypeAlias
 
 FlyteLocalEntity: TypeAlias = Union[
@@ -286,6 +293,8 @@ def serialize(
     output_dir: str,
     image_name: str,
     dkr_repo: str,
+    *,
+    write_spec: bool = False,
 ):
     image_name_no_version, version = image_name.split(":")
     default_img = Image(
@@ -317,6 +326,31 @@ def serialize(
         )
         + [admin_lp]
     ]
+
+    if not write_spec:
+        return
+
+    spec_dir = Path("spec")
+    spec_dir.mkdir(parents=True, exist_ok=True)
+
+    for idx, entity in enumerate(registrable_entities):
+        cur = spec_dir
+
+        if isinstance(entity, _idl_admin_TaskSpec):
+            cur = cur / "tasks" / f"{entity.template.id.name}_{idx}.json"
+        elif isinstance(entity, _idl_admin_WorkflowSpec):
+            cur = cur / "wfs" / f"{entity.template.id.name}_{idx}.json"
+        elif isinstance(entity, _idl_admin_LaunchPlan):
+            cur = cur / "lps" / f"{entity.id.name}_{idx}.json"
+        else:
+            click.secho(
+                f"Entity is incorrect formatted {entity} - type {type(entity)}",
+                fg="red",
+            )
+            sys.exit(-1)
+
+        cur.parent.mkdir(parents=True, exist_ok=True)
+        cur.write_text(MessageToJson(entity))
 
     click.secho("\nSerializing workflow entities", bold=True)
     persist_registrable_entities(registrable_entities, output_dir)

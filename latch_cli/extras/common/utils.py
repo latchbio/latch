@@ -47,6 +47,4 @@ def type_repr(t: Type, *, add_namespace: bool = False) -> str:
             f"typing.Union[{', '.join([type_repr(arg, add_namespace=add_namespace) for arg in args])}]"
         )
 
-    print(t)
-
-    return t.__name__
+    return getattr(t, "__name__", repr(t))

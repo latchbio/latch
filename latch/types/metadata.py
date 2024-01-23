@@ -15,6 +15,7 @@ from typing import (
     Type,
     TypeVar,
     Union,
+    runtime_checkable,
 )
 
 import yaml

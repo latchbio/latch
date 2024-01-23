@@ -264,6 +264,9 @@ LatchOutputDir = Annotated[
         {"output": True},
     ),
 ]
+
+LatchOutputDir.__name__ = "LatchOutputDir"
+
 """A LatchDir tagged as the output of some workflow.
 
 The Latch Console uses this metadata to avoid checking for existence of the

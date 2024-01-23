@@ -5,10 +5,10 @@ import subprocess
 import sys
 import textwrap
 from contextlib import contextmanager
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, dataclass, fields, is_dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Type, get_args
+from typing import Any, Dict, List, Optional, Tuple, Type, Union, get_args, get_origin
 
 import click
 from flytekit.configuration import SerializationSettings
@@ -37,6 +37,7 @@ from flytekitplugins.pod.task import Pod
 from latch.resources.tasks import custom_task
 from latch.types import metadata
 from latch.types.metadata import ParameterType, _IsDataclass
+from latch_cli.utils import identifier_from_str
 
 from ..common.serialize import binding_from_python
 from ..common.utils import reindent, type_repr
@@ -157,13 +158,7 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
             bindings: List[literals_models.Binding] = []
             for edge in dependent_edges_by_end[vertex.id]:
                 depen_vertex = vertices.get(edge.connection[0])
-
-                if edge.to_idx is None:
-                    raise ValueError(
-                        f"Channel {edge} connecting {depen_vertex} and"
-                        f" {vertex} with no output index value is not allowed."
-                    )
-                param_name = f"c{edge.to_idx}"
+                param_name = f"c{edge.from_idx}"
 
                 if (
                     depen_vertex is None
@@ -177,13 +172,7 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
                     main_node_outputs[main_out_param_name] = List[str]
                 else:
-                    if edge.from_idx is None:
-                        raise ValueError(
-                            f"Channel {edge} connecting {depen_vertex} and"
-                            f" {vertex} with no input index value is not allowed."
-                        )
-
-                    source_param = f"c{edge.from_idx}"
+                    source_param = f"c{edge.to_idx}"
                     node_output = NodeOutput(
                         node=node_map[depen_vertex.id],
                         var=source_param,
@@ -206,11 +195,11 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     upstream_nodes.append(node_map[depen_vertex.id])
 
             python_inputs = {
-                f"c{e.to_idx}": List[str]
+                f"c{e.from_idx}": List[str]
                 for e in dependent_edges_by_end.get(vertex.id, [])
             }
             python_outputs = {
-                f"c{e.from_idx}": List[str]
+                f"c{e.to_idx}": List[str]
                 for e in dependent_edges_by_start.get(vertex.id, [])
             }
 
@@ -218,7 +207,7 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 pre_adapter_task = NextflowProcessPreAdapterTask(
                     inputs=python_inputs,
                     id=f"{vertex.id}_pre",
-                    name=f"pre_adapter_{vertex.label}",
+                    name=f"pre_adapter_{identifier_from_str(vertex.label)}",
                     wf=self,
                 )
                 self.nextflow_tasks.append(pre_adapter_task)
@@ -235,7 +224,7 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 post_adapter_task = NextflowProcessPostAdapterTask(
                     outputs=python_outputs,
                     id=f"{vertex.id}_post",
-                    name=f"post_adapter_{vertex.label}",
+                    name=f"post_adapter_{identifier_from_str(vertex.label)}",
                     wf=self,
                 )
 
@@ -245,10 +234,17 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 # integers starting at 0
 
                 def parse_dataclass(
-                    x: List[_IsDataclass],
-                ) -> Tuple[Type[_IsDataclass], int]:
+                    x: Union[List[Type[_IsDataclass]], None],
+                ) -> Tuple[Union[Type[_IsDataclass], None], int]:
+                    if get_origin(x) is not list:
+                        return None, 0
+
                     d = get_args(x)[0]
-                    return d, len(fields(d))
+
+                    if is_dataclass(d):
+                        return d, len(fields(d))
+
+                    return d, 0
 
                 input_dataclass, num_inputs = parse_dataclass(
                     pre_adapter_task._python_outputs["default"]
@@ -263,7 +259,7 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     num_inputs=num_inputs,
                     num_outputs=num_outputs,
                     id=vertex.id,
-                    name=vertex.label,
+                    name=identifier_from_str(vertex.label),
                     code=vertex.code,
                     wf=self,
                 )
@@ -420,7 +416,7 @@ class MapContainerTask(PythonAutoContainerTask[Pod]):
         self.container_task = container_task
 
         inputs = container_task.python_interface.inputs.copy()
-        outputs = container_task.python_interface.inputs.copy()
+        outputs = container_task.python_interface.outputs.copy()
 
         assert len(inputs) <= 1
         assert len(outputs) <= 1
@@ -497,6 +493,7 @@ class NextflowProcessMappedTask(NextflowTask):
         wf: NextflowWorkflow,
     ):
         super().__init__(inputs, outputs, id, name, wf)
+
         self.code = code
         self.process_name = name
         assert len(self._python_inputs) == 1 and len(self._python_outputs) == 1
@@ -523,8 +520,8 @@ class NextflowProcessMappedTask(NextflowTask):
                 @map_task
                 @task(cache=True)
                 def {self.name}(
-                    {inputs[0]}: {inputs[1].__name__}
-                ) -> {output_t.__name__}:
+                    {inputs[0]}: {getattr(inputs[1], "__name__", None)}
+                ) -> {getattr(output_t, "__name__", None)}:
                 """,
             0,
         ).replace("__params__", params_str)
@@ -533,11 +530,16 @@ class NextflowProcessMappedTask(NextflowTask):
     def get_fn_return_stmt(self):
         results: List[str] = []
 
-        for i in range(self.num_outputs):
+        res_type = list(self._python_outputs.values())[0]
+
+        if res_type is None:
+            return "    return None"
+
+        for field in fields(res_type):
             results.append(
                 reindent(
                     rf"""
-                    c{i}=out_channels.get(f"c{i}", "")
+                    {field.name}=out_channels.get(f"{field.name}", "")
                     """,
                     2,
                 ).rstrip()
@@ -547,7 +549,7 @@ class NextflowProcessMappedTask(NextflowTask):
 
         return reindent(
             rf"""
-                    return {list(self._python_outputs.values())[0].__name__}(
+                    return {res_type.__name__}(
                 __return_str__
                     )
             """,
@@ -557,7 +559,7 @@ class NextflowProcessMappedTask(NextflowTask):
     def get_fn_code(self, nf_path_in_container: str):
         code_block = self.get_fn_interface()
 
-        run_task_entrypoint = [".latch/bin/latch-nextflow", "run", nf_path_in_container]
+        run_task_entrypoint = [".latch/bin/nextflow", "run", nf_path_in_container]
 
         code_block += reindent(
             rf"""
@@ -582,8 +584,6 @@ class NextflowProcessMappedTask(NextflowTask):
 
             out_channels = {{}}
             vals = Path(".latch/process-out.txt").read_text().strip().split("\n")
-
-            assert len(fields({list(self._python_outputs.values())[0].__name__})) == len(vals)
 
             for i, val in enumerate(vals):
                 out_channels[f"c{{i}}"] = val
@@ -617,22 +617,16 @@ def dataclass_code_from_python_params(
     params: Dict[str, Type[ParameterType]], name: str
 ):
     output_fields = "\n".join(
-        reindent(
-            rf"""
-                {param}: str
-                """,
-            1,
-        ).rstrip()
-        for param, t in params.items()
+        reindent(f"{param}: str", 1).rstrip() for param, t in params.items()
     )
 
     return reindent(
         rf"""
-            @dataclass
-            class Res_{name}():
-            __output_fields__
+        @dataclass
+        class Res_{name}:
+        __output_fields__
 
-            """,
+        """,
         0,
     ).replace("__output_fields__", output_fields)
 
@@ -645,11 +639,17 @@ class NextflowProcessPreAdapterTask(NextflowTask):
         name: str,
         wf: NextflowWorkflow,
     ):
-        self.dataclass_code = dataclass_code_from_python_params(inputs, id)
         self.num_params = len(inputs)
 
-        exec(self.dataclass_code, globals())
-        outputs = {"default": List[globals()[f"Res_{id}"]]}
+        if len(inputs) > 0:
+            self.dataclass_code = dataclass_code_from_python_params(inputs, id)
+            exec(self.dataclass_code, globals())
+
+            outputs = {"default": List[globals()[f"Res_{id}"]]}
+        else:
+            self.dataclass_code = ""
+
+            outputs = {"default": List[None]}
 
         super().__init__(inputs, outputs, id, name, wf)
         self.process_name = name
@@ -669,7 +669,7 @@ class NextflowProcessPreAdapterTask(NextflowTask):
 
         res += self.dataclass_code
 
-        outputs_str = f"List[Res_{self.id}]:"
+        output_typ = self._python_outputs["default"]
 
         res += (
             reindent(
@@ -678,11 +678,11 @@ class NextflowProcessPreAdapterTask(NextflowTask):
                 @task(cache=True)
                 def {self.name}(
                 __params__
-                ) -> __outputs__
+                ) -> __outputs__:
                 """,
                 0,
             )
-            .replace("__outputs__", outputs_str)
+            .replace("__outputs__", type_repr(output_typ))
             .replace("__params__", params_str)
         )
 
@@ -697,12 +697,20 @@ class NextflowProcessPreAdapterTask(NextflowTask):
         assignment_str = ",".join([f"c{i}=x[{i}]" for i in range(self.num_params)])
         variables = ",".join([f"c{i}" for i in range(self.num_params)])
 
-        code_block += reindent(
-            rf"""
-            result = [Res_{self.id}({assignment_str}) for x in zip({variables})]
-            """,
-            1,
-        )
+        if len(self._python_inputs) == 0:
+            code_block += reindent(
+                f"""
+                result = None
+                """,
+                1,
+            )
+        else:
+            code_block += reindent(
+                rf"""
+                result = [Res_{self.id}({assignment_str}) for x in zip({variables})]
+                """,
+                1,
+            )
 
         code_block += self.get_fn_return_stmt()
         return code_block
@@ -717,8 +725,8 @@ class NextflowProcessPostAdapterTask(NextflowTask):
         wf: NextflowWorkflow,
     ):
         self.dataclass_code = dataclass_code_from_python_params(outputs, id)
-
         exec(self.dataclass_code, globals())
+
         inputs = {"default": List[globals()[f"Res_{id}"]]}
         super().__init__(inputs, outputs, id, name, wf)
         self.process_name = name
@@ -880,7 +888,7 @@ class NextflowOperatorTask(NextflowTask):
         code_block = self.get_fn_interface()
 
         run_task_entrypoint = [
-            ".latch/bin/latch-nextflow",
+            ".latch/bin/nextflow",
             "run",
             nf_path_in_container,
             "-latchTarget",
@@ -1011,7 +1019,7 @@ class NextflowMainTask(PythonAutoContainerTask[Pod]):
         code_block = self.get_fn_interface()
 
         run_task_entrypoint = [
-            ".latch/bin/latch-nextflow",
+            ".latch/bin/nextflow",
             "run",
             nf_path_in_container,
         ]
@@ -1129,8 +1137,8 @@ def build_nf_wf(pkg_root: Path, nf_script: Path):
 
         edge = NextflowDAGEdge(
             id=edge_content["id"],
-            to_idx=edge_content["inIdx"],
-            from_idx=edge_content["outIdx"],
+            to_idx=edge_content["outIdx"],
+            from_idx=edge_content["inIdx"],
             label=edge_content["label"],
             connection=edge_content["connection"],
         )
@@ -1166,6 +1174,7 @@ def generate_nf_entrypoint(
         import shutil
         import subprocess
         from subprocess import CalledProcessError
+        import typing
         from typing import NamedTuple, Dict, List
         import stat
         import sys
@@ -1180,7 +1189,7 @@ def generate_nf_entrypoint(
 
         from latch.resources.tasks import custom_task
         from latch.resources.map_tasks import map_task
-        from latch.types.directory import LatchDir
+        from latch.types.directory import LatchDir, LatchOutputDir
         from latch.types.file import LatchFile
 
         from latch_cli.utils import get_parameter_json_value, urljoins, check_exists_and_rename
@@ -1188,6 +1197,7 @@ def generate_nf_entrypoint(
         sys.stdout.reconfigure(line_buffering=True)
         sys.stderr.reconfigure(line_buffering=True)
 
+        NoneType = type(None)
 
         channel_pattern = r"channel(\d+)\.txt"
 
@@ -1196,6 +1206,7 @@ def generate_nf_entrypoint(
             if match:
                 return match.group(1)
             raise ValueError(f"Malformed file name for parameter output: {fname}")
+
     """).lstrip()
 
     entrypoint_code_block += wf.main_task.get_fn_code(
