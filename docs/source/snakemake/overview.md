@@ -14,3 +14,10 @@ rules in an ["extension"](https://snakemake.readthedocs.io/en/stable/snakefiles/
 1. Define [metadata and input file parameters](./metadata.md) for your workflow
 2. Build a [container](./environments.md) with all runtime dependencies
 3. Ensure your `Snakefile` is compatible with [cloud execution](./cloud.md)
+
+## Next Steps
+
+- Go through one of our [tutorials](./tutorials/quickstart.md).
+- Learn more about the lifecycle of a Snakemake workflow on Latch by reading our [manual](../lifecycle.md).
+- Learn about how to modify Snakemake workflows to be cloud-compatible [here](../cloud.md).
+- Visit the repository of [public examples](https://github.com/latchbio/latch-snakemake-examples) of Snakemake workflows on Latch.

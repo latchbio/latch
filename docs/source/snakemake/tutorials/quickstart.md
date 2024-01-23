@@ -49,7 +49,7 @@ You can automatically generate the `latch_metadata.py` file from an existing `co
 latch generate-metadata config.yaml
 ```
 
-To learn more about the `generate-metadata` command, see: [Metadata](./metadata.md)
+To learn more about the `generate-metadata` command, see: [Metadata](../metadata.md)
 
 This command will create `latch_metadata` in your workflow directory:
 
@@ -145,7 +145,7 @@ generated_parameters = {
 
 ## Step 3: Define Workflow Environment
 
-In order to execute Snakemake workflows in a cloud environment, we must define a single Docker container to run each task in. This container must contain both the runtime dependencies for the Snakemake tasks as well as Latch specific dependencies (such as the Latch SDK). To learn more about managing task dependencies, read about [Environments](./environments.md).
+In order to execute Snakemake workflows in a cloud environment, we must define a single Docker container to run each task in. This container must contain both the runtime dependencies for the Snakemake tasks as well as Latch specific dependencies (such as the Latch SDK). To learn more about managing task dependencies, read about [Environments](../environments.md).
 
 Fortunately, the Latch SDK provides a convenient command to generate a Dockerfile with the required Latch dependencies. Run the following in your workflow directory:
 
@@ -218,7 +218,7 @@ latch register . --snakefile Snakefile
 
 During registration, a workflow image is built and uploaded and the `snakemake_jit_entrypoint.py` file is generated. Once the registration finishes, the `stdout` provides a link to your workflow on Latch.
 
-![Snakemake workflow interface on Latch](../assets/snakemake/tutorial.png)
+![Snakemake workflow interface on Latch](../../assets/snakemake/tutorial.png)
 
 ## Step 5: Upload Data and Run the workflow
 
@@ -226,15 +226,12 @@ Before running the workflow, we need to upload our input data to [Latch Data](ht
 
 Once you have uploaded the data and selected the appropriate input parameters, click `Launch Workflow`. You should now see the workflow task executing.
 
-![JIT task execution](../assets/snakemake/jit-task.png)
+![JIT task execution](../../assets/snakemake/jit-task.png)
 
-Snakemake support currently uses JIT (Just-In-Time) registration. This means that once the single-task workflow above completes, it will produce a second workflow, which will run the actual Snakemake jobs. To learn more about about the lifecycle of a Snakemake workflow on Latch read [here](./lifecycle.md).
+Snakemake support currently uses JIT (Just-In-Time) registration. This means that once the single-task workflow above completes, it will produce a second workflow, which will run the actual Snakemake jobs. To learn more about about the lifecycle of a Snakemake workflow on Latch read [here](../lifecycle.md).
 
 Once the workflow finishes running, results will be deposited to under the `output_dir` folder, as defined in your `latch_metadata.py` file.
 
-## Next Steps
+---
 
-- Learn more about the lifecycle of a Snakemake workflow on Latch by reading our [manual](../snakemake/lifecycle.md).
-- Learn about how to modify Snakemake workflows to be cloud-compatible [here](../snakemake/cloud.md).
-- Visit [troubleshooting](../snakemake/troubleshooting.md) to diagnose and find solutions to common issues.
-- Visit the repository of [public examples](https://github.com/latchbio/latch-snakemake-examples) of Snakemake workflows on Latch.
+All done! By now you have a pretty good idea of how to upload simple Snakemake workflows onto Latch. To get familiar with workflows with more complex configurations and environments, we reccommend going through our [Advanced Snakemake Tutorial](./advanced.md).
