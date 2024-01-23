@@ -23,7 +23,7 @@ The runtime workflow will spawn a task per each Snakemake job. This means that t
 When a task executes it will:
 
 1. Download all input files that are explicitly defined in the rule
-2. Execute the snakemake task
+2. Execute the Snakemake task
 3. Upload outputs/logs/benchmarks to Latch Data
 
 ### Limitations
