@@ -23,7 +23,7 @@ def get_secret(secret_name: str):
     """
 
     resp = post(
-        url=urljoin(NUCLEUS_URL, "/api/secrets/get-new"),
+        url=urljoin(NUCLEUS_URL, "/secrets/get-new"),
         json={
             "name": secret_name,
             "ws_id": current_workspace(),
