@@ -35,7 +35,9 @@ your_workflow_name_jit_register_task(
 You can execute the script in your `latch develop` session like so:
 
 ```console
-$ python3 scripts/dry_run.py
+$ /usr/local/bin/python3 scripts/dry_run.py
 ```
 
-**Note**: If you are using `conda`, your shell may activate the conda base environment by default. To ensure that you are running in the exact same envioronment as the JIT task, either run `conda deactivate` once you enter the shell or disable conda's environment auto activation in your Dockerfile: `RUN conda config --set auto_activate_base false`
+**Note**: If you are running into an `ImportError`, be sure to use the verison of python in which the Latch SDK was installed.
+
+**Note**: If you are using `conda`, your shell may activate the conda base environment by default. To ensure that you are running in the exact same environment as the JIT task, either run `conda deactivate` once you enter the shell or disable conda's environment auto activation in your Dockerfile: `RUN conda config --set auto_activate_base false`

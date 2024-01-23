@@ -28,13 +28,14 @@ cd snakemake-tutorial
 The workflow generated contains what is typically seen in a Snakemake workflow, such as python scripts and a Snakefile.
 
 ```
-snakemake-wf
+snakemake-tutorial
 ├── Snakefile
-├── environment.yaml
 ├── config.yaml
+├── data
+│   └── ...
+├── environment.yaml
 ├── scripts
 │   └── plot-quals.py
-├── data
 ├── .dockerignore
 ```
 
@@ -52,16 +53,19 @@ To learn more about the `generate-metadata` command, see: [Metadata](./metadata.
 
 This command will create `latch_metadata` in your workflow directory:
 
-```console
-snakemake-wf
+```
+snakemake-tutorial
 ├── Snakefile
-├── environment.yaml
 ├── config.yaml
-├── scripts
-│   └── plot-quals.py
+├── data
+│   └── ...
+├── environment.yaml
 ├── latch_metadata
 │   └── __init__.py
 │   └── parameters.py
+├── scripts
+│   └── plot-quals.py
+├── .dockerignore
 ```
 
 Let's inspect the generated files:
@@ -115,7 +119,7 @@ generated_parameters = {
 }
 ```
 
-The file contains two file parameters of type `LatchDir`, which is a pointer to a directory hosted on Latch Data. When we register this workflow, these parameters will be exposed to the user on the Latch UI before they execute the workflow. Then, the workflow orchestrator will download these directories to the local machine before executing the task.
+This file contains two file parameters of type `LatchDir`, which is a pointer to a directory hosted on Latch Data. When we register this workflow, these parameters will be exposed to the user on the Latch UI. Upon execution, the workflow orchestrator will download these directories to the local machine before executing the task.
 
 How does the orchestrator know which local path to download the remote files to? For each `SnakemakeFileParameter` parameter, we can use the `path` keyword to specify the local path where files will be copied before the Snakemake workflow is run. Add the local path to the file parameters as follows:
 
@@ -188,7 +192,7 @@ run mamba env create \
 env PATH=/opt/conda/envs/workflow/bin:$PATH
 ```
 
-Since we had an `environment.yaml` file in our root directory, the `latch dockerfile` command will automatically create a conda environment from the environment definition. This gaurantees that we have all necessary runtime dependencies (`bwa`, `samtools`, etc...) installed in the container when running our tasks.
+The `latch dockerfile` command will detect the existence of an `environment.yaml` file and create a conda environment from that file. This guarantees that we have all necessary runtime dependencies (`bwa`, `samtools`, etc...) installed in the container when running our tasks. If your workflow doesn't have an `environment.yaml` file you will need to manually install packages in the Dockerfile.
 
 ```
 # Copy workflow data (use .dockerignore to skip files)
@@ -212,7 +216,7 @@ latch login
 latch register . --snakefile Snakefile
 ```
 
-During registration, a workflow image is built and the `snakemake_jit_entrypoint.py` file is generated. Once the registration finishes, the `stdout` provides a link to your workflow on Latch.
+During registration, a workflow image is built and uploaded and the `snakemake_jit_entrypoint.py` file is generated. Once the registration finishes, the `stdout` provides a link to your workflow on Latch.
 
 ![Snakemake workflow interface on Latch](../assets/snakemake/tutorial.png)
 
@@ -224,7 +228,7 @@ Once you have uploaded the data and selected the appropriate input parameters, c
 
 ![JIT task execution](../assets/snakemake/jit-task.png)
 
-Snakemake support currently uses JIT (Just-In-Time) registration. This means that once the JIT task above completes, it will produce a second workflow, which will run the actual Snakemake jobs. To learn more about about the lifecycle of a Snakemake workflow on Latch read [here](./lifecycle.md).
+Snakemake support currently uses JIT (Just-In-Time) registration. This means that once the single-task workflow above completes, it will produce a second workflow, which will run the actual Snakemake jobs. To learn more about about the lifecycle of a Snakemake workflow on Latch read [here](./lifecycle.md).
 
 Once the workflow finishes running, results will be deposited to under the `output_dir` folder, as defined in your `latch_metadata.py` file.
 

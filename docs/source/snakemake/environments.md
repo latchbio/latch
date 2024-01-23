@@ -1,6 +1,6 @@
 # Environments
 
-When registering a Snakemake workflow on latch, we need to build a single container image which contains all your runtime dependencies as well as the Latch packages. By default, all tasks (included the JIT step) will run inside this container.
+When registering a Snakemake workflow on Latch, we need to build a single container image which contains all your runtime dependencies as well as the Latch packages. By default, all tasks (included the JIT step) will run inside this container.
 
 To generate a Dockerfile with all the Latch specific dependencies, run the following command from inside your workflow directory:
 
@@ -49,7 +49,7 @@ SnakemakeMetadata(
 )
 ```
 
-Note: If there is no `env_config` defined, Snakemake tasks on Latch will NOT use containers or conda environments by default.
+**Note**: If there is no `env_config` defined, Snakemake tasks on Latch will NOT use containers or conda environments by default.
 
 ## Using Private Container Registries
 
