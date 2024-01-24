@@ -108,11 +108,13 @@ def parse_type(
             parse_type(
                 x,
                 name,
-                infer_files=False,  # todo(ayush): enable recursive file inference
+                infer_files=infer_files,
             )
             for x in v
         )
-        return List[Union[parsed_types]]
+        if len(set(parsed_types)) > 1:
+            raise ValueError("all types in a list must be the same")
+        return List[parsed_types[0]]
 
     assert isinstance(v, dict)
 
@@ -124,7 +126,7 @@ def parse_type(
         fields[identifier_from_str(k)] = parse_type(
             x,
             k,
-            infer_files=False,  # todo(ayush): enable recursive file inference
+            infer_files=infer_files,
         )
 
     return make_dataclass(identifier_from_str(name), fields.items())
