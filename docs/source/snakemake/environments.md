@@ -1,20 +1,20 @@
 # Environments
 
-When registering a Snakemake workflow on Latch, we need to build a single container image which contains all your runtime dependencies as well as the Latch packages. By default, all tasks (included the JIT step) will run inside this container.
+When registering a Snakemake workflow on Latch, we need to build a single container image containing all your runtime dependencies and the Latch packages. By default, all tasks (including the JIT step) will run inside this container.
 
-To generate a Dockerfile with all the Latch specific dependencies, run the following command from inside your workflow directory:
+To generate a Dockerfile with all the Latch-specific dependencies, run the following command from inside your workflow directory:
 
 ```console
 latch dockerfile . --snakemake
 ```
 
-Be sure to inspect the resulting Dockerfile and add any runtime dependencies that are required for your workflow.
+Inspect the resulting Dockerfile and add any runtime dependencies required for your workflow.
 
 ## Configuring Task Environments
 
-Sometimes it is preferrable to use isolated environments for each Snakemake rule using the `container` and `conda` [Snakemake directives](https://snakemake.readthedocs.io/en/stable/snakefiles/deployment.html#running-jobs-in-containers) instead of building one large image.
+Sometimes, it is preferable to use isolated environments for each Snakemake rule using the `container` and `conda` [Snakemake directives](https://snakemake.readthedocs.io/en/stable/snakefiles/deployment.html#running-jobs-in-containers) instead of building one large image.
 
-Typically, when using these directives, we must pass the `--use-conda` and `--use-singularity` flags to the `snakemake` command in order to configure which environment to activate. Similarly, to configure your environment on Latch, add the `env_config` field to your workflow's `SnakemakeMetadata` object. For example,
+Typically, when using these directives, we must pass the `--use-conda` and `--use-singularity` flags to the `snakemake` command to configure which environment to activate. Similarly, to configure your environment on Latch, add the `env_config` field to your workflow's `SnakemakeMetadata` object. For example,
 
 ```
 # latch_metadata.py
@@ -49,14 +49,14 @@ SnakemakeMetadata(
 )
 ```
 
-**Note**: If there is no `env_config` defined, Snakemake tasks on Latch will NOT use containers or conda environments by default.
+**Note**: If no `env_config` is defined, Snakemake tasks on Latch will NOT use containers or conda environments by default.
 
 ## Using Private Container Registries
 
-When executing Snakemake workflows in containers, it is possible that the container images will exist in a private registry that the Latch cloud does not have access to. Downloading images from private registries at runtime requires two steps:
+When executing Snakemake workflows in containers, the container images may exist in a private registry that the Latch cloud cannot access. Downloading images from private registries at runtime requires two steps:
 
-1. Upload the password / access token of your private container registry to the Latch platform. See [Storing and using Secrets](../basics/adding_secrets.md).
-2. Add the `docker_metadata` field to your workflow's `SnakemakeMetadata` object so that the workflow engine knows where to pull your credentials from. For example:
+1. Upload your private container registry's password/access token to the Latch platform. See [Storing and using Secrets](../basics/adding_secrets.md).
+2. Add the `docker_metadata` field to your workflow's `SnakemakeMetadata` object so the workflow engine knows where to pull your credentials. For example:
 
 ```
 # latch_metadata.py
