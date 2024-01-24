@@ -7,17 +7,19 @@ To construct a graphical interface from a snakemake workflow, the file parameter
 The `latch_metadata.py` file holds these parameter definitions, along with any styling or cosmetic modifications the developer wishes to make to each parameter.
 
 To generate a `latch_metadata.py` file, type:
+
 ```console
 latch generate-metadata <path_to_config.yaml>
 ```
 
-The command automatically parses the existing `config.yaml` file in the Snakemake repository, and create a Python parameters file.
+The command automatically parses the existing `config.yaml` file in the Snakemake repository, and creates a Python parameters file.
 
 #### Examples
 
 Below is an example `config.yaml` file from the [rna-seq-star-deseq2 workflow](https://github.com/snakemake-workflows/rna-seq-star-deseq2) from Snakemake workflow catalog.
 
 `config.yaml`
+
 ```yaml
 # path or URL to sample sheet (TSV format, columns: sample, condition, ...)
 samples: config/samples.tsv
@@ -25,7 +27,6 @@ samples: config/samples.tsv
 # Units are technical replicates (e.g. lanes, or resequencing of the same biological
 # sample).
 units: config/units.tsv
-
 
 ref:
   # Ensembl species name
@@ -84,7 +85,6 @@ diffexp:
   # model: ~jointly_handled + treatment_1 + treatment_2
   model: ""
 
-
 params:
   cutadapt-pe: ""
   cutadapt-se: ""
@@ -92,6 +92,7 @@ params:
 ```
 
 The Python `latch_metadata.py` generated from the Latch command:
+
 ```python
 from dataclasses import dataclass
 import typing
