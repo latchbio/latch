@@ -7,7 +7,7 @@ import yaml
 
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
-from latch_cli.snakemake.workflow import reindent
+from latch_cli.snakemake.utils import reindent
 from latch_cli.utils import identifier_from_str
 
 from ..serialize_utils import best_effort_display_name

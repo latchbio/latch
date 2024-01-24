@@ -2,7 +2,6 @@ import hashlib
 import importlib
 import json
 import sys
-import textwrap
 import typing
 from dataclasses import dataclass
 from pathlib import Path
@@ -75,6 +74,7 @@ from latch.resources.tasks import custom_task
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
 from latch_cli.snakemake.config.utils import type_repr
+from latch_cli.snakemake.utils import reindent
 
 from ..utils import identifier_suffix_from_str
 
@@ -93,13 +93,6 @@ def jobs_cli_args(
 
 
 T = TypeVar("T")
-
-
-# todo(maximsmol): use a stateful writer that keeps track of indent level
-def reindent(x: str, level: int) -> str:
-    if x[0] == "\n":
-        x = x[1:]
-    return textwrap.indent(textwrap.dedent(x), "    " * level)
 
 
 @dataclass
