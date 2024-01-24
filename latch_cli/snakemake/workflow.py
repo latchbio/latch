@@ -3,7 +3,7 @@ import importlib
 import json
 import sys
 import typing
-from dataclasses import dataclass
+from dataclasses import dataclass, fields, is_dataclass
 from pathlib import Path
 from textwrap import dedent
 from typing import (
@@ -73,10 +73,11 @@ import latch.types.metadata as metadata
 from latch.resources.tasks import custom_task
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
-from latch_cli.snakemake.config.utils import type_repr
+from latch.types.metadata import FileMetadata, SnakemakeFileParameter
+from latch_cli.snakemake.config.utils import is_list_type, is_primitive_type, type_repr
 from latch_cli.snakemake.utils import reindent
 
-from ..utils import identifier_suffix_from_str
+from ..utils import identifier_from_str, identifier_suffix_from_str
 
 SnakemakeInputVal: TypeAlias = snakemake.io._IOFile
 
@@ -315,6 +316,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         parameter_metadata = metadata._snakemake_metadata.parameters
         display_name = metadata._snakemake_metadata.display_name
         name = metadata._snakemake_metadata.name
+        self.file_metadata = metadata._snakemake_metadata.file_metadata
 
         docstring = Docstring(
             f"{display_name}\n\nSample Description\n\n"
@@ -380,6 +382,132 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             1,
         )
 
+    def get_file_download_code(
+        self, t: Type, param: str, path: str, download: bool
+    ) -> str:
+        param_name = identifier_from_str(param)
+
+        code_block = ""
+        touch_str = f"{param}._create_imposters()"
+        if download:
+            touch_str = (
+                f'print(f"Downloading {param}: {{{param}.remote_path}}");'
+                f" Path({param}).resolve()"
+            )
+
+        code_block += reindent(
+            rf"""
+            {param_name}_dst_p = Path("{path}")
+
+            {touch_str}
+            {param_name}_p = Path({param}.path)
+            print(f"  {{file_name_and_size({param_name}_p)}}")
+            """,
+            0,
+        )
+
+        if t is LatchDir:
+            code_block += reindent(
+                rf"""
+                for x in {param_name}_p.iterdir():
+                    print(f"    {{file_name_and_size(x)}}")
+                """,
+                0,
+            )
+
+        code_block += reindent(
+            rf"""
+            print(f"Moving {param} to {{{param_name}_dst_p}}")
+
+            update_mapping({param_name}_p, {param_name}_dst_p, {param}.remote_path, local_to_remote_path_mapping)
+            check_exists_and_rename(
+                {param_name}_p,
+                {param_name}_dst_p
+            )
+
+            """,
+            0,
+        )
+
+        return code_block
+
+    def get_param_download_code(
+        self, t: Type, param: str, file_meta: FileMetadata
+    ) -> str:
+        # support workflows that use the legacy SnakemakeFileParameter
+        param_meta = self.parameter_metadata.get(param)
+        if isinstance(param_meta, SnakemakeFileParameter):
+            if t not in (LatchFile, LatchDir):
+                return ""
+            return self.get_file_download_code(
+                param, t, param_meta.path, param_meta.download
+            )
+
+        if is_primitive_type(t):
+            return ""
+
+        meta = file_meta.get(param)
+        if meta is None:
+            click.secho(
+                f"Parameter {param} does not have a corresponding `file_metadata`"
+                " entry.",
+                err=True,
+                fg="red",
+            )
+            raise click.exceptions.Exit(1)
+
+        if t in (LatchFile, LatchDir):
+            return self.get_file_download_code(t, param, meta.path, meta.download)
+
+        code_blocks: List[str] = []
+        if is_list_type(t):
+            for i, m in enumerate(meta):
+                code_blocks.append(
+                    self.get_param_download_code(
+                        t.__args__[0],
+                        f"{param}[{i}]",
+                        {f"{param}[{i}]": m},
+                    )
+                )
+        else:
+            assert is_dataclass(t)
+            for field in fields(t):
+                code_blocks.append(
+                    self.get_param_download_code(
+                        field.type,
+                        f"{param}.{field.name}",
+                        {f"{param}.{field.name}": meta[field.name]},
+                    )
+                )
+
+        return reindent(
+            f"""\
+            __code__\n""",
+            0,
+        ).replace("__code__", "\n".join(code_blocks))
+
+    def get_update_config_code(self, t: Type, param: str) -> str:
+        param_meta = self.parameter_metadata[param]
+        file_meta = self.file_metadata[param]
+
+        if not getattr(param_meta, "config", True):
+            return
+
+        # create file path mapping
+        # use file path mapping to override file paths in config recursively
+        val_str = f""
+
+        return reindent(
+            rf"""
+            file_path_mapping = None
+            json_val = get_parameter_json_value({param}, file_path_mapping)
+            print(f"Saving parameter value {param} = {{{val_str}}}")
+            non_blob_parameters[{repr(param)}] = {val_str}
+
+            """,
+            0,
+        )
+
     def get_fn_code(
         self,
         snakefile_path: str,
@@ -394,74 +522,19 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             r"""
             non_blob_parameters = {}
             local_to_remote_path_mapping = {}
+
             """,
             1,
         )
 
         for param, t in self.python_interface.inputs.items():
-            param_meta = self.parameter_metadata[param]
-
-            if t in (LatchFile, LatchDir):
-                assert isinstance(param_meta, metadata.SnakemakeFileParameter)
-
-                touch_str = f"{param}._create_imposters()"
-                if param_meta.download:
-                    touch_str = (
-                        f'print(f"Downloading {param}: {{{param}.remote_path}}");'
-                        f" Path({param}).resolve()"
-                    )
-
-                code_block += reindent(
-                    rf"""
-                    {param}_dst_p = Path("{param_meta.path}")
-
-                    {touch_str}
-                    {param}_p = Path({param}.path)
-                    print(f"  {{file_name_and_size({param}_p)}}")
-
-                    """,
-                    1,
-                )
-
-                if t is LatchDir:
-                    code_block += reindent(
-                        rf"""
-                        for x in {param}_p.iterdir():
-                            print(f"    {{file_name_and_size(x)}}")
-
-                        """,
-                        1,
-                    )
-
-                code_block += reindent(
-                    rf"""
-                    print(f"Moving {param} to {{{param}_dst_p}}")
-
-                    update_mapping({param}_p, {param}_dst_p, {param}.remote_path, local_to_remote_path_mapping)
-                    check_exists_and_rename(
-                        {param}_p,
-                        {param}_dst_p
-                    )
-
-                    """,
-                    1,
-                )
-
-            if not getattr(param_meta, "config", True):
-                continue
-
-            val_str = f"get_parameter_json_value({param})"
-            if hasattr(param_meta, "path"):
-                val_str = repr(str(param_meta.path))
-
-            code_block += reindent(
-                rf"""
-                print(f"Saving parameter value {param} = {{{val_str}}}")
-                non_blob_parameters[{repr(param)}] = {val_str}
-
-                """,
-                1,
+            print(
+                reindent(self.get_param_download_code(t, param, self.file_metadata), 1)
             )
+            break
+            code_block += reindent(self.get_update_config_code(t, param), 1)
+
+        # print(code_block)
 
         code_block += reindent(
             rf"""

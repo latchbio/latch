@@ -14,6 +14,7 @@ from ..serialize_utils import best_effort_display_name
 from .utils import (
     JSONValue,
     get_preamble,
+    is_list_type,
     is_primitive_type,
     parse_type,
     parse_value,
@@ -86,7 +87,7 @@ def file_metadata_str(typ: Type, value: JSONValue, level: int = 0):
             level,
         )
 
-    if isinstance(value, list):
+    if is_list_type(typ):
         metadata: List[str] = [
             file_metadata_str(typ.__args__[0], val, level + 1)
             for i, val in enumerate(value)

@@ -181,6 +181,10 @@ def is_primitive_value(val: object) -> TypeGuard[Union[None, str, bool, int, flo
     return is_primitive_type(type(val))
 
 
+def is_list_type(typ: Type) -> TypeGuard[Type[List]]:
+    return get_origin(typ) is list
+
+
 def type_repr(t: Type, *, add_namespace: bool = False) -> str:
     if is_primitive_type(t) or t is LatchFile or t is LatchDir:
         return t.__name__

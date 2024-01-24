@@ -219,6 +219,8 @@ def _build_and_serialize(
             current_workspace(),
         )
 
+        sys.exit(0)
+
     image_build_logs = build_image(ctx, image_name, context_path, dockerfile)
     print_and_write_build_logs(
         image_build_logs, image_name, ctx.pkg_root, progress_plain=progress_plain

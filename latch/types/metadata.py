@@ -395,6 +395,32 @@ class SnakemakeParameter(LatchParameter):
     default: Optional[Any] = None
 
 
+# DEPRECATED: use `file_metadata` keyword in `SnakemakeMetadata` instead
+@dataclass
+class SnakemakeFileParameter(SnakemakeParameter):
+    type: Optional[
+        Union[
+            Type[LatchFile],
+            Type[LatchDir],
+        ]
+    ] = None
+    """
+    The python type of the parameter.
+    """
+    path: Optional[Path] = None
+    """
+    The path where the file passed to this parameter will be copied.
+    """
+    config: bool = False
+    """
+    Whether or not the file path is exposed in the Snakemake config
+    """
+    download: bool = False
+    """
+    Whether or not the file is downloaded in the JIT step
+    """
+
+
 @dataclass
 class SnakemakeFileMetadata:
     path: Optional[Path] = None
