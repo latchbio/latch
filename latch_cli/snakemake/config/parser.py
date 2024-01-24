@@ -65,14 +65,14 @@ def parse_config(
     parsed: Dict[str, Type] = {}
     for k, v in res.items():
         typ = parse_type(v, k, infer_files=infer_files)
-        val = parse_value(typ, v)
+        val, default = parse_value(typ, v)
 
-        parsed[k] = (typ, val)
+        parsed[k] = (typ, (val, default))
 
     return parsed
 
 
-def generate_file_metadata_str(typ: Type, value: JSONValue, level: int = 0):
+def file_metadata_str(typ: Type, value: JSONValue, level: int = 0):
     if is_primitive_type(typ):
         return " None,\n"
 
@@ -80,7 +80,7 @@ def generate_file_metadata_str(typ: Type, value: JSONValue, level: int = 0):
         return reindent(
             f"""\
             SnakemakeFileMetadata(
-                path=None, # TODO: add local path here
+                path={repr(value)},
                 config=True,
             ),\n""",
             level,
@@ -88,7 +88,7 @@ def generate_file_metadata_str(typ: Type, value: JSONValue, level: int = 0):
 
     if isinstance(value, list):
         metadata: List[str] = [
-            generate_file_metadata_str(typ.__args__[0], val, level + 1)
+            file_metadata_str(typ.__args__[0], val, level + 1)
             for i, val in enumerate(value)
         ]
         return reindent(
@@ -102,7 +102,7 @@ def generate_file_metadata_str(typ: Type, value: JSONValue, level: int = 0):
 
     metadata: List[str] = []
     for field in fields(typ):
-        metadata_str = generate_file_metadata_str(
+        metadata_str = file_metadata_str(
             field.type, value.__getattribute__(field.name), level
         )
 
@@ -131,7 +131,7 @@ def generate_metadata(
     params: List[str] = []
     file_metadata: List[str] = []
 
-    for k, (typ, default) in parsed.items():
+    for k, (typ, (val, default)) in parsed.items():
         preambles.append(get_preamble(typ))
 
         param_str = reindent(
@@ -147,12 +147,16 @@ def generate_metadata(
         if generate_defaults and default is not None:
             default_str = f"    default={repr(default)},\n"
 
+        default_str = ""
+        if generate_defaults and default is not None:
+            default = f"    default={repr(default)},\n"
+
         param_str = param_str.replace("__default__", default_str)
 
         param_str = reindent(param_str, 1)
         params.append(param_str)
 
-        metadata_str = generate_file_metadata_str(typ, default)
+        metadata_str = file_metadata_str(typ, val)
         metadata_str = f"{repr(identifier_from_str(k))}: {metadata_str}"
         file_metadata.append(reindent(metadata_str, 1))
 
@@ -243,8 +247,8 @@ def generate_metadata(
             }
 
             file_metadata = {
-            __file_metadata__
-            }
+            __file_metadata__}
+
             """,
             0,
         )
