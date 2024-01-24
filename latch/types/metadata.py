@@ -23,7 +23,7 @@ from typing_extensions import TypeAlias
 
 from latch_cli.utils import identifier_suffix_from_str
 
-from .directory import LatchDir
+from .directory import LatchDir, LatchOutputDir
 from .file import LatchFile
 
 
@@ -424,6 +424,22 @@ class NextflowParameter(Generic[T], LatchParameter):
     The python type of the parameter.
     """
     default: Optional[T] = None
+
+
+@dataclass
+class NextflowFileParameter(NextflowParameter[Union[LatchFile, LatchDir]]):
+    path: Optional[Path] = None
+    """
+    The path where the file passed to this parameter will be copied.
+    """
+    download: bool = True
+    """
+    Whether to download the file/directory into every task
+    """
+
+    def __post_init__(self):
+        if self.type is LatchOutputDir:
+            self.download = False
 
 
 @dataclass

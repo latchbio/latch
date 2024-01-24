@@ -4,8 +4,9 @@ import os
 import subprocess
 import sys
 import textwrap
+import typing
 from contextlib import contextmanager
-from dataclasses import asdict, dataclass, fields, is_dataclass
+from dataclasses import asdict, dataclass, fields, is_dataclass, make_dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type, Union, get_args, get_origin
@@ -36,7 +37,7 @@ from flytekitplugins.pod.task import Pod
 
 from latch.resources.tasks import custom_task
 from latch.types import metadata
-from latch.types.metadata import ParameterType, _IsDataclass
+from latch.types.metadata import NextflowFileParameter, ParameterType, _IsDataclass
 from latch_cli.utils import identifier_from_str
 
 from ..common.serialize import binding_from_python
@@ -70,13 +71,25 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
         )
         python_interface = Interface(
             {
-                k: (v.type, v.default)
+                k: (v.type, v.default) if v.default is not None else v.type
                 for k, v in metadata._nextflow_metadata.parameters.items()
-                if v.type is not None and v.default is not None
+                if v.type is not None
             },
             {},
             docstring=docstring,
         )
+
+        self.flags_to_params = {
+            f"--{k}": v.path
+            for k, v in metadata._nextflow_metadata.parameters.items()
+            if isinstance(v, NextflowFileParameter)
+        }
+
+        self.downloadable_params = {
+            k: str(v.path)
+            for k, v in metadata._nextflow_metadata.parameters.items()
+            if isinstance(v, NextflowFileParameter) and v.download
+        }
 
         name = metadata._nextflow_metadata.name
         assert name is not None
@@ -118,14 +131,14 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         interface_inputs = transform_variable_map(python_interface.inputs)
 
-        task_bindings = []
+        main_task_bindings = []
         for k in python_interface.inputs:
             var = interface_inputs[k]
             promise_to_bind = Promise(
                 var=k,
                 val=NodeOutput(node=global_start_node, var=k),
             )
-            task_bindings.append(
+            main_task_bindings.append(
                 binding_from_python(
                     var_name=k,
                     expected_literal_type=var.type,
@@ -134,17 +147,31 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 )
             )
 
-        task_interface = Interface(python_interface.inputs, None, docstring=None)
-        # todo(ayush): need to add execute method here
-        main_task = NextflowMainTask(interface=task_interface)
+        main_task_interface = Interface(python_interface.inputs, None, docstring=None)
 
+        main_task = NextflowMainTask(interface=main_task_interface, wf=self)
         main_node = Node(
             id="main",
             metadata=main_task.construct_node_metadata(),
-            bindings=sorted(task_bindings, key=lambda x: x.var),
+            bindings=sorted(main_task_bindings, key=lambda x: x.var),
             upstream_nodes=[],
             flyte_entity=main_task,
         )
+
+        # wf input files that need to be downloaded into every task
+        global_wf_inputs = {f"wf_{k}": v for k, v in python_interface.inputs.items()}
+        global_wf_input_bindings = [
+            binding_from_python(
+                var_name=f"wf_{k}",
+                expected_literal_type=interface_inputs[k].type,
+                t_value=Promise(
+                    var=k,
+                    val=NodeOutput(node=global_start_node, var=k),
+                ),
+                t_value_type=interface_inputs[k],
+            )
+            for k, v in python_interface.inputs.items()
+        ]
 
         node_map: Dict[int, Node] = {}
         extra_nodes: List[Node] = [main_node]
@@ -154,7 +181,7 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
             if vertex.vertex_type == VertexType.origin:
                 continue
 
-            upstream_nodes = []
+            upstream_nodes = [global_start_node]
             bindings: List[literals_models.Binding] = []
             for edge in dependent_edges_by_end[vertex.id]:
                 depen_vertex = vertices.get(edge.connection[0])
@@ -198,6 +225,9 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 f"c{e.from_idx}": List[str]
                 for e in dependent_edges_by_end.get(vertex.id, [])
             }
+            python_inputs = {**python_inputs, **global_wf_inputs}
+            bindings = [*bindings, *global_wf_input_bindings]
+
             python_outputs = {
                 f"c{e.to_idx}": List[str]
                 for e in dependent_edges_by_start.get(vertex.id, [])
@@ -241,10 +271,17 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
                     d = get_args(x)[0]
 
-                    if is_dataclass(d):
-                        return d, len(fields(d))
+                    if not is_dataclass(d):
+                        return d, 0
 
-                    return d, 0
+                    num_fields = 0
+                    for f in fields(d):
+                        if f.name.startswith("wf_"):
+                            continue
+
+                        num_fields += 1
+
+                    return d, num_fields
 
                 input_dataclass, num_inputs = parse_dataclass(
                     pre_adapter_task._python_outputs["default"]
@@ -559,7 +596,31 @@ class NextflowProcessMappedTask(NextflowTask):
     def get_fn_code(self, nf_path_in_container: str):
         code_block = self.get_fn_interface()
 
-        run_task_entrypoint = [".latch/bin/nextflow", "run", nf_path_in_container]
+        run_task_entrypoint = [
+            ".latch/bin/nextflow",
+            "run",
+            nf_path_in_container,
+            "-profile",
+            "mamba",
+        ]
+
+        for flag, val in self.wf.flags_to_params.items():
+            run_task_entrypoint.extend([flag, str(val)])
+
+        for k, v in self.wf.downloadable_params.items():
+            code_block += reindent(
+                f"""
+                {k}_p = Path(default.wf_{k}).resolve()
+                {k}_dest_p = Path({repr(v)}).resolve()
+
+                check_exists_and_rename(
+                    {k}_p,
+                    {k}_dest_p
+                )
+
+                """,
+                1,
+            )
 
         code_block += reindent(
             rf"""
@@ -613,17 +674,25 @@ class NextflowProcessTask(MapContainerTask):
         super().__init__(mapped)
 
 
+def dataclass_from_python_params(
+    params: Dict[str, Type[ParameterType]], name: str
+) -> Type[_IsDataclass]:
+    return make_dataclass(cls_name=f"Res_{name}", fields=list(params.items()))
+
+
 def dataclass_code_from_python_params(
     params: Dict[str, Type[ParameterType]], name: str
 ):
+    cls = dataclass_from_python_params(params, name)
+
     output_fields = "\n".join(
-        reindent(f"{param}: str", 1).rstrip() for param, t in params.items()
+        reindent(f"{f.name}: {type_repr(f.type)}", 1) for f in fields(cls)
     )
 
     return reindent(
         rf"""
         @dataclass
-        class Res_{name}:
+        class {cls.__name__}:
         __output_fields__
 
         """,
@@ -642,13 +711,10 @@ class NextflowProcessPreAdapterTask(NextflowTask):
         self.num_params = len(inputs)
 
         if len(inputs) > 0:
-            self.dataclass_code = dataclass_code_from_python_params(inputs, id)
-            exec(self.dataclass_code, globals())
+            self.dataclass = dataclass_from_python_params(inputs, id)
 
-            outputs = {"default": List[globals()[f"Res_{id}"]]}
+            outputs = {"default": List[self.dataclass]}
         else:
-            self.dataclass_code = ""
-
             outputs = {"default": List[None]}
 
         super().__init__(inputs, outputs, id, name, wf)
@@ -660,14 +726,15 @@ class NextflowProcessPreAdapterTask(NextflowTask):
         params_str = ",\n".join(
             reindent(
                 rf"""
-                {param}: List[str]
+                {param}: {type_repr(List[t])}
                 """,
                 1,
             ).rstrip()
             for param, t in self._python_inputs.items()
         )
 
-        res += self.dataclass_code
+        if len(self._python_inputs) > 0:
+            res += dataclass_code_from_python_params(self._python_inputs, self.id)
 
         output_typ = self._python_outputs["default"]
 
@@ -694,8 +761,11 @@ class NextflowProcessPreAdapterTask(NextflowTask):
     def get_fn_code(self, nf_path_in_container: str):
         code_block = self.get_fn_interface()
 
-        assignment_str = ",".join([f"c{i}=x[{i}]" for i in range(self.num_params)])
-        variables = ",".join([f"c{i}" for i in range(self.num_params)])
+        fs = fields(self.dataclass)
+        assignment_str = ", ".join(
+            [f"{field.name}=x[{i}]" for i, field in enumerate(fs)]
+        )
+        variables = ", ".join([f"{field.name}" for field in fs])
 
         if len(self._python_inputs) == 0:
             code_block += reindent(
@@ -737,7 +807,7 @@ class NextflowProcessPostAdapterTask(NextflowTask):
         output_fields = "\n".join(
             reindent(
                 rf"""
-                {param}: List[str]
+                {param}:  {type_repr(List[t])}
                 """,
                 1,
             ).rstrip()
@@ -892,7 +962,27 @@ class NextflowOperatorTask(NextflowTask):
             "run",
             nf_path_in_container,
             "-latchTarget",
+            "-profile",
+            "mamba",
         ]
+
+        for flag, val in self.wf.flags_to_params.items():
+            run_task_entrypoint.extend([flag, str(val)])
+
+        for k, v in self.wf.downloadable_params.items():
+            code_block += reindent(
+                f"""
+                {k}_p = Path(wf_{k}).resolve()
+                {k}_dest_p = Path({repr(v)}).resolve()
+
+                check_exists_and_rename(
+                    {k}_p,
+                    {k}_dest_p
+                )
+
+                """,
+                1,
+            )
 
         code_block += reindent(
             rf"""
@@ -930,9 +1020,11 @@ class NextflowOperatorTask(NextflowTask):
 
 
 class NextflowMainTask(PythonAutoContainerTask[Pod]):
-    def __init__(self, interface: Interface):
+    def __init__(self, interface: Interface, wf: NextflowWorkflow):
         self._python_inputs = interface.inputs
         self.main_target_ids = []
+        self.wf = wf
+
         super().__init__(
             name="main",
             task_type="python-task",
@@ -1022,7 +1114,27 @@ class NextflowMainTask(PythonAutoContainerTask[Pod]):
             ".latch/bin/nextflow",
             "run",
             nf_path_in_container,
+            "-profile",
+            "mamba",
         ]
+
+        for flag, val in self.wf.flags_to_params.items():
+            run_task_entrypoint.extend([flag, str(val)])
+
+        for k, v in self.wf.downloadable_params.items():
+            code_block += reindent(
+                f"""
+                {k}_p = Path({k}).resolve()
+                {k}_dest_p = Path({repr(v)}).resolve()
+
+                check_exists_and_rename(
+                    {k}_p,
+                    {k}_dest_p
+                )
+
+                """,
+                1,
+            )
 
         code_block += reindent(
             rf"""
@@ -1197,7 +1309,7 @@ def generate_nf_entrypoint(
         sys.stdout.reconfigure(line_buffering=True)
         sys.stderr.reconfigure(line_buffering=True)
 
-        NoneType = type(None)
+        NoneType = None
 
         channel_pattern = r"channel(\d+)\.txt"
 
