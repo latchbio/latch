@@ -652,6 +652,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         name = metadata._snakemake_metadata.name
         self.jit_wf_version = jit_wf_version
         self.jit_exec_display_name = jit_exec_display_name
+        self.cores = metadata._snakemake_metadata.cores
 
         assert name is not None
 
@@ -1365,7 +1366,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             "--local-groupid",
             str(self.job.jobid),
             "--cores",
-            str(self.job.threads),
+            str(self.wf.cores),
         ]
         if not self.job.is_group():
             snakemake_args.append("--force-use-threads")
