@@ -161,6 +161,7 @@ snakemake/overview.md
 snakemake/tutorial.md
 snakemake/metadata.md
 snakemake/environments.md
+snakemake/resources.md
 snakemake/cloud.md
 snakemake/lifecycle.md
 snakemake/debugging.md

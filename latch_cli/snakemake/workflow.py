@@ -652,6 +652,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         name = metadata._snakemake_metadata.name
         self.jit_wf_version = jit_wf_version
         self.jit_exec_display_name = jit_exec_display_name
+        self.cores = metadata._snakemake_metadata.cores
 
         assert name is not None
 
@@ -1059,6 +1060,10 @@ def named_list_to_json(xs: snakemake.io.Namedlist) -> NamedListJson:
     return {"positional": unnamed, "keyword": named}
 
 
+def _mb_to_gib(mb: int) -> int:
+    return mb * 1000 * 1000 // 1024 // 1024 // 1024
+
+
 class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
     def __init__(
         self,
@@ -1086,8 +1091,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
         limits = self.job.resources
         cores = limits.get("cpus", 4)
 
-        # convert MB to GiB
-        mem = limits.get("mem_mb", 8589) * 1000 * 1000 // 1024 // 1024 // 1024
+        mem = _mb_to_gib(limits.get("mem_mb", 8589))
 
         super().__init__(
             task_type="sidecar",
@@ -1328,7 +1332,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             "--local-groupid",
             str(self.job.jobid),
             "--cores",
-            str(self.job.threads),
+            str(self.wf.cores),
         ]
         if not self.job.is_group():
             snakemake_args.append("--force-use-threads")
