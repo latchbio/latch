@@ -397,6 +397,9 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             1,
         )
 
+    def _blob_param_path(self, blob_params: List[Union[str, int]]) -> str:
+        return "][".join(map(repr, blob_params))
+
     def get_file_download_code(
         self,
         t: Type,
@@ -454,7 +457,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             code_block += reindent(
                 rf"""
                 print(f"Saving parameter value {param} = {str(path)}")
-                {blob_params} = {repr(str(path))}
+                non_blob_parameters[{self._blob_param_path(blob_params)}] = {repr(str(path))}
 
                 """,
                 0,
@@ -466,23 +469,17 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         self,
         t: Type,
         param: str,
-        field_name: str,
         file_meta: FileMetadata,
-        blob_params: str,
+        blob_params: List[Union[str, int]],
     ) -> str:
         param_meta = self.parameter_metadata.get(param)
 
         # support workflows that use the legacy SnakemakeFileParameter
         if isinstance(param_meta, SnakemakeFileParameter):
-            if t not in (LatchFile, LatchDir):
-                return reindent(
-                    rf"""
-                    print(f"Saving parameter value {param} = get_parameter_json_value({param})")
-                    {blob_params}[{repr(param)}] = get_parameter_json_value({param})
-
-                    """,
-                    0,
-                )
+            assert t in (
+                LatchFile,
+                LatchDir,
+            ), "SnakemakeFileParameter must have type LatchFile or LatchDir"
 
             code_block = ""
             code_block += self.get_file_download_code(
@@ -494,16 +491,13 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 blob_params,
             )
 
-            if not param_meta.config:
-                return code_block
-
             return code_block
 
         if file_meta is None or file_meta.get(param) is None or is_primitive_type(t):
             return reindent(
                 rf"""
                 print(f"Saving parameter value {param} = get_parameter_json_value({param})")
-                {blob_params} = get_parameter_json_value({param})
+                non_blob_parameters[{self._blob_param_path(blob_params)}] = get_parameter_json_value({param})
 
                 """,
                 0,
@@ -531,30 +525,34 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     0,
                 )
             )
-            code_blocks.append(f"{blob_params} = [None for _ in range({len(meta)})]\n")
+            code_blocks.append(
+                f"non_blob_parameters[{self._blob_param_path(blob_params)}] = [None for"
+                f" _ in range({len(meta)})]\n"
+            )
+
             for i, m in enumerate(meta):
                 sub_param = f"{param}[{i}]"
                 code_blocks.append(
                     self.get_param_code(
                         t.__args__[0],
                         sub_param,
-                        field_name,
                         {sub_param: m},
-                        f"{blob_params}[{i}]",
+                        blob_params + [i],
                     )
                 )
         else:
             assert is_dataclass(t)
-            code_blocks.append(f"{blob_params} = {{}}\n")
+            code_blocks.append(
+                f"non_blob_parameters[{self._blob_param_path(blob_params)}] = {{}}\n"
+            )
             for field in fields(t):
                 sub_param = f"{param}.{field.name}"
                 code_blocks.append(
                     self.get_param_code(
                         field.type,
                         sub_param,
-                        field.name,
                         {sub_param: meta.get(field.name)},
-                        f"{blob_params}[{repr(field.name)}]",
+                        blob_params + [field.name],
                     )
                 )
 
@@ -585,13 +583,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         for param, t in self.python_interface.inputs.items():
             code_block += reindent(
-                self.get_param_code(
-                    t,
-                    param,
-                    param,
-                    self.file_metadata,
-                    f"non_blob_parameters[{repr(param)}]",
-                ),
+                self.get_param_code(t, param, self.file_metadata, [param]),
                 1,
             )
 
