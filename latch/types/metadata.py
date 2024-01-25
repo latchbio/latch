@@ -395,9 +395,12 @@ class SnakemakeParameter(LatchParameter):
     default: Optional[Any] = None
 
 
-# DEPRECATED: use `file_metadata` keyword in `SnakemakeMetadata` instead
 @dataclass
 class SnakemakeFileParameter(SnakemakeParameter):
+    """
+    Deprecated: use `file_metadata` keyword in `SnakemakeMetadata` instead
+    """
+
     type: Optional[
         Union[
             Type[LatchFile],
@@ -425,15 +428,15 @@ class SnakemakeFileParameter(SnakemakeParameter):
 class SnakemakeFileMetadata:
     path: Optional[Path] = None
     """
-    The path where the file passed to this parameter will be copied.
+    The path where the file passed to this parameter will be copied
     """
     config: bool = False
     """
-    Whether or not the file path is exposed in the Snakemake config
+    If `True`, expose the file in the Snakemake config
     """
     download: bool = False
     """
-    Whether or not the file is downloaded in the JIT step
+    If `True`, download the file in the JIT step
     """
 
 

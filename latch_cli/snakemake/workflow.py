@@ -419,28 +419,21 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 f" Path({param}).resolve()"
             )
 
-        code_block += reindent(
-            rf"""
+        code_block += dedent(rf"""
             {param_name}_dst_p = Path("{path}")
 
             {touch_str}
             {param_name}_p = Path({param}.path)
             print(f"  {{file_name_and_size({param_name}_p)}}")
-            """,
-            0,
-        )
+            """)
 
         if t is LatchDir:
-            code_block += reindent(
-                rf"""
+            code_block += dedent(rf"""
                 for x in {param_name}_p.iterdir():
                     print(f"    {{file_name_and_size(x)}}")
-                """,
-                0,
-            )
+                """)
 
-        code_block += reindent(
-            rf"""
+        code_block += dedent(rf"""
             print(f"Moving {param} to {{{param_name}_dst_p}}")
 
             update_mapping({param_name}_p, {param_name}_dst_p, {param}.remote_path, local_to_remote_path_mapping)
@@ -449,19 +442,14 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 {param_name}_dst_p
             )
 
-            """,
-            0,
-        )
+            """)
 
         if config:
-            code_block += reindent(
-                rf"""
+            code_block += dedent(rf"""
                 print(f"Saving parameter value {param} = {str(path)}")
                 non_blob_parameters[{self._blob_param_path(blob_params)}] = {repr(str(path))}
 
-                """,
-                0,
-            )
+                """)
 
         return code_block
 
@@ -494,14 +482,11 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             return code_block
 
         if file_meta is None or file_meta.get(param) is None or is_primitive_type(t):
-            return reindent(
-                rf"""
+            return dedent(rf"""
                 print(f"Saving parameter value {param} = get_parameter_json_value({param})")
                 non_blob_parameters[{self._blob_param_path(blob_params)}] = get_parameter_json_value({param})
 
-                """,
-                0,
-            )
+                """)
 
         meta = file_meta.get(param)
         if t in (LatchFile, LatchDir):
@@ -516,15 +501,10 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         code_blocks: List[str] = []
         if is_list_type(t):
-            code_blocks.append(
-                reindent(
-                    f"""
+            code_blocks.append(dedent(f"""
                     if len({param}) != {len(meta)}:
                         raise ValueError("The size of input files list must be equal to the number of `SnakemakeFileMetadata` objects provided in latch_metadata")
-                    """,
-                    0,
-                )
-            )
+                    """))
             code_blocks.append(
                 f"non_blob_parameters[{self._blob_param_path(blob_params)}] = [None for"
                 f" _ in range({len(meta)})]\n"
@@ -556,11 +536,8 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     )
                 )
 
-        return reindent(
-            f"""\
-            __code__\n""",
-            0,
-        ).replace("__code__", "\n".join(code_blocks))
+        return dedent(f"""\
+            __code__\n""").replace("__code__", "\n".join(code_blocks))
 
     def get_fn_code(
         self,
