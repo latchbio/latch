@@ -37,7 +37,7 @@ from flytekit.core.python_auto_container import (
     DefaultTaskResolver,
     PythonAutoContainerTask,
 )
-from flytekit.core.type_engine import TypeEngine
+from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.core.workflow import (
     WorkflowBase,
     WorkflowFailurePolicy,
@@ -295,9 +295,24 @@ def interface_to_parameters(
 
         ctx = FlyteContextManager.current_context()
         if default is not None:
-            default_lv = TypeEngine.to_literal(
-                ctx, default, python_type=interface.inputs[k], expected=v.type
-            )
+            try:
+                default_lv = TypeEngine.to_literal(
+                    ctx, default, python_type=interface.inputs[k], expected=v.type
+                )
+            except TypeTransformerFailedError as e:
+                if "Python value cannot be None" in str(e):
+                    click.secho(
+                        reindent(
+                            f"""
+                            Default for parameter "{k}" cannot contain None fields. Please remove
+                            default value for this parameter or set it to a non-None value.
+                            """,
+                            0,
+                        ),
+                        fg="red",
+                    )
+                    raise click.exceptions.Exit(1)
+                raise e
 
         params[k] = interface_models.Parameter(
             var=v, default=default_lv, required=required
@@ -471,7 +486,12 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
             code_block = ""
             code_block += self.get_file_download_code(
-                param, t, param_meta.path, param_meta.download, param_meta.config
+                t,
+                param,
+                param_meta.path,
+                param_meta.download,
+                param_meta.config,
+                blob_params,
             )
 
             if not param_meta.config:
@@ -505,7 +525,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             code_blocks.append(
                 reindent(
                     f"""
-                    if len({param}) > {len(meta)}:
+                    if len({param}) != {len(meta)}:
                         raise ValueError("The size of input files list must be equal to the number of `SnakemakeFileMetadata` objects provided in latch_metadata")
                     """,
                     0,
