@@ -383,7 +383,13 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         )
 
     def get_file_download_code(
-        self, t: Type, param: str, path: str, download: bool
+        self,
+        t: Type,
+        param: str,
+        path: Path,
+        download: bool,
+        config: bool,
+        blob_params: str,
     ) -> str:
         param_name = identifier_from_str(param)
 
@@ -429,54 +435,95 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             0,
         )
 
+        if config:
+            code_block += reindent(
+                rf"""
+                print(f"Saving parameter value {param} = {str(path)}")
+                {blob_params} = {repr(str(path))}
+
+                """,
+                0,
+            )
+
         return code_block
 
-    def get_param_download_code(
-        self, t: Type, param: str, file_meta: FileMetadata
+    def get_param_code(
+        self,
+        t: Type,
+        param: str,
+        field_name: str,
+        file_meta: FileMetadata,
+        blob_params: str,
     ) -> str:
-        # support workflows that use the legacy SnakemakeFileParameter
         param_meta = self.parameter_metadata.get(param)
+
+        # support workflows that use the legacy SnakemakeFileParameter
         if isinstance(param_meta, SnakemakeFileParameter):
             if t not in (LatchFile, LatchDir):
-                return ""
-            return self.get_file_download_code(
-                param, t, param_meta.path, param_meta.download
+                return reindent(
+                    rf"""
+                    print(f"Saving parameter value {param} = get_parameter_json_value({param})")
+                    {blob_params}[{repr(param)}] = get_parameter_json_value({param})
+
+                    """,
+                    0,
+                )
+
+            code_block = ""
+            code_block += self.get_file_download_code(
+                param, t, param_meta.path, param_meta.download, param_meta.config
             )
 
-        if is_primitive_type(t):
-            return ""
+            if not param_meta.config:
+                return code_block
+
+            return code_block
+
+        if file_meta is None or file_meta.get(param) is None or is_primitive_type(t):
+            return reindent(
+                rf"""
+                print(f"Saving parameter value {param} = get_parameter_json_value({param})")
+                {blob_params} = get_parameter_json_value({param})
+
+                """,
+                0,
+            )
 
         meta = file_meta.get(param)
-        if meta is None:
-            click.secho(
-                f"Parameter {param} does not have a corresponding `file_metadata`"
-                " entry.",
-                err=True,
-                fg="red",
-            )
-            raise click.exceptions.Exit(1)
-
         if t in (LatchFile, LatchDir):
-            return self.get_file_download_code(t, param, meta.path, meta.download)
+            return self.get_file_download_code(
+                t,
+                param,
+                meta.path,
+                meta.download,
+                meta.config,
+                blob_params,
+            )
 
         code_blocks: List[str] = []
         if is_list_type(t):
             for i, m in enumerate(meta):
+                sub_param = f"{param}[{i}]"
                 code_blocks.append(
-                    self.get_param_download_code(
+                    self.get_param_code(
                         t.__args__[0],
-                        f"{param}[{i}]",
-                        {f"{param}[{i}]": m},
+                        sub_param,
+                        field_name,
+                        {sub_param: m},
+                        f"{blob_params}[{i}]",
                     )
                 )
         else:
             assert is_dataclass(t)
             for field in fields(t):
+                sub_param = f"{param}.{field.name}"
                 code_blocks.append(
-                    self.get_param_download_code(
+                    self.get_param_code(
                         field.type,
-                        f"{param}.{field.name}",
-                        {f"{param}.{field.name}": meta[field.name]},
+                        sub_param,
+                        field.name,
+                        {sub_param: meta.get(field.name)},
+                        f"{blob_params}[{repr(field.name)}]",
                     )
                 )
 
@@ -485,28 +532,6 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             __code__\n""",
             0,
         ).replace("__code__", "\n".join(code_blocks))
-
-    def get_update_config_code(self, t: Type, param: str) -> str:
-        param_meta = self.parameter_metadata[param]
-        file_meta = self.file_metadata[param]
-
-        if not getattr(param_meta, "config", True):
-            return
-
-        # create file path mapping
-        # use file path mapping to override file paths in config recursively
-        val_str = f""
-
-        return reindent(
-            rf"""
-            file_path_mapping = None
-            json_val = get_parameter_json_value({param}, file_path_mapping)
-            print(f"Saving parameter value {param} = {{{val_str}}}")
-            non_blob_parameters[{repr(param)}] = {val_str}
-
-            """,
-            0,
-        )
 
     def get_fn_code(
         self,
@@ -519,22 +544,27 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         code_block = self.get_fn_interface(fn_name=task_name)
 
         code_block += reindent(
-            r"""
-            non_blob_parameters = {}
-            local_to_remote_path_mapping = {}
+            rf"""
+            non_blob_parameters = {{}}
+            local_to_remote_path_mapping = {{}}
 
             """,
             1,
         )
 
         for param, t in self.python_interface.inputs.items():
-            print(
-                reindent(self.get_param_download_code(t, param, self.file_metadata), 1)
+            code_block += reindent(
+                self.get_param_code(
+                    t,
+                    param,
+                    param,
+                    self.file_metadata,
+                    f"non_blob_parameters[{repr(param)}]",
+                ),
+                1,
             )
-            break
-            code_block += reindent(self.get_update_config_code(t, param), 1)
 
-        # print(code_block)
+        print(code_block)
 
         code_block += reindent(
             rf"""

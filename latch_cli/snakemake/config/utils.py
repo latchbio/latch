@@ -115,7 +115,7 @@ def parse_type(
             for x in v
         )
         if len(set(parsed_types)) > 1:
-            raise ValueError("all types in a list must be the same")
+            raise ValueError("all types in List must be same")
         return List[parsed_types[0]]
 
     assert isinstance(v, dict)
