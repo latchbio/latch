@@ -1094,7 +1094,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             click.secho(
                 dedent("""
                     GPU tasks within container images are not yet supported. To resolve,
-                    use conda for all GPU tasks and OR add all dependencies to your main
+                    use conda for all GPU tasks OR add all dependencies to your main
                     Dockerfile.
                     """),
                 fg="red",
