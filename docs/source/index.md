@@ -157,11 +157,12 @@ cli/mv
 :hidden:
 :maxdepth: 2
 :caption: Snakemake Integration
+snakemake/overview.md
 snakemake/tutorial.md
-snakemake/lifecycle.md
 snakemake/metadata.md
 snakemake/environments.md
 snakemake/cloud.md
+snakemake/lifecycle.md
 snakemake/debugging.md
 snakemake/troubleshooting.md
 ```

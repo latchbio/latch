@@ -6,10 +6,10 @@ When a Snakemake workflow is executed on Latch, each generated job is run in a s
 
 Therefore, it may be necessary to adapt your Snakefile to address issues arising from this execution method, which were not encountered during local execution:
 
-* Add missing rule inputs that are implicitly fulfilled when executing locally. 
-* Make sure shared code does not rely on input files. This is any code that is not under a rule, and so gets executed by every task
-* Add `resources` directives if tasks run out of memory or disk space
-* Optimize data transfer by merging tasks that have 1-to-1 dependencies
+- Add missing rule inputs that are implicitly fulfilled when executing locally.
+- Make sure shared code does not rely on input files. This is any code that is not under a rule, and so gets executed by every task
+- Add `resources` directives if tasks run out of memory or disk space
+- Optimize data transfer by merging tasks that have 1-to-1 dependencies
 
 Here, we will walk through examples of each of the cases outlined above.
 
@@ -23,8 +23,8 @@ A typical example is if the index files for biological data are not explicitly s
 
 In the example below, there are two Snakefile rules:
 
-* `delly_s`: The rule runs Delly to call SVs and outputs an unfiltered BCF file, followed by quality filtering using `bcftools` filter to retain only the SV calls that pass certain filters. Finally, it indexes the BCF file.
-* `delly_merge`: This rule merges or concatenates BCF files containing SV calls from the delly_s rule, producing a single VCF file. The rule requires the index file to be available for each corresponding BAM file.
+- `delly_s`: The rule runs Delly to call SVs and outputs an unfiltered BCF file, followed by quality filtering using `bcftools` filter to retain only the SV calls that pass certain filters. Finally, it indexes the BCF file.
+- `delly_merge`: This rule merges or concatenates BCF files containing SV calls from the delly_s rule, producing a single VCF file. The rule requires the index file to be available for each corresponding BAM file.
 
 ```python
 rule delly_s:  # single-sample analysis
@@ -353,6 +353,7 @@ rule kraken:
     ...
     resources:
         mem_mb=128000
+        cpus=8
     ...
 ```
 
@@ -364,13 +365,13 @@ To optimize performance and minimize costs, it is recommended to consolidate the
 
 #### Example
 
-* Inefficient example with multiple rules processing the same BAM file:
+- Inefficient example with multiple rules processing the same BAM file:
 
 ```python
 rule all:
     input:
         "results/final_variants.vcf"
-        
+
 rule mark_duplicates:
     input:
         "data/sample.bam"
