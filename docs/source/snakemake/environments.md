@@ -32,20 +32,7 @@ SnakemakeMetadata(
       use_conda=True,
       use_container=True,
     ),
-    parameters={
-        "samples" : SnakemakeFileParameter(
-                display_name="Sample Input Directory",
-                description="A directory full of FastQ files",
-                type=LatchDir,
-                path=Path("data/samples"),
-        ),
-        "ref_genome" : SnakemakeFileParameter(
-                display_name="Indexed Reference Genome",
-                description="A directory with a reference Fasta file and the 6 index files produced from `bwa index`",
-                type=LatchDir,
-                path=Path("genome"),
-        ),
-    },
+    ...
 )
 ```
 
@@ -70,24 +57,15 @@ SnakemakeMetadata(
     author=LatchAuthor(
             name="latchbio",
     ),
+    env_config=EnvironmentConfig(
+      use_conda=False,
+      use_container=True,
+    ),
     docker_metadata=DockerMetadata(
       username="user0",
       secret_name="LATCH_SECRET_NAME",
     ),
-    parameters={
-        "samples" : SnakemakeFileParameter(
-                display_name="Sample Input Directory",
-                description="A directory full of FastQ files",
-                type=LatchDir,
-                path=Path("data/samples"),
-        ),
-        "ref_genome" : SnakemakeFileParameter(
-                display_name="Indexed Reference Genome",
-                description="A directory with a reference Fasta file and the 6 index files produced from `bwa index`",
-                type=LatchDir,
-                path=Path("genome"),
-        ),
-    },
+    ...
 )
 ```
 
