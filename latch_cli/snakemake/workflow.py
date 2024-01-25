@@ -575,8 +575,6 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 1,
             )
 
-        print(code_block)
-
         code_block += reindent(
             rf"""
             image_name = "{image_name}"

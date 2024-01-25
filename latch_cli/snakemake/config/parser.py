@@ -150,10 +150,6 @@ def generate_metadata(
         if generate_defaults and default is not None:
             default_str = f"    default={repr(default)},\n"
 
-        default_str = ""
-        if generate_defaults and default is not None:
-            default = f"    default={repr(default)},\n"
-
         param_str = param_str.replace("__default__", default_str)
 
         param_str = reindent(param_str, 1)
