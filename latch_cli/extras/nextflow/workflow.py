@@ -16,8 +16,17 @@ from flytekit.configuration import SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.constants import SdkTaskType
+from flytekit.core.context_manager import (
+    ExecutionState,
+    FlyteContext,
+    FlyteContextManager,
+)
 from flytekit.core.docstring import Docstring
-from flytekit.core.interface import Interface, transform_variable_map
+from flytekit.core.interface import (
+    Interface,
+    transform_interface_to_list_interface,
+    transform_variable_map,
+)
 from flytekit.core.node import Node
 from flytekit.core.promise import NodeOutput, Promise
 from flytekit.core.python_auto_container import (
@@ -32,8 +41,23 @@ from flytekit.core.workflow import (
 )
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.models import literals as literals_models
+from flytekit.models import task as _task_models
+from flytekit.models.array_job import ArrayJob
 from flytekit.models.interface import Variable
-from flytekitplugins.pod.task import Pod
+from flytekit.models.task import Container, K8sPod, Sql
+from flytekitplugins.pod.task import (
+    _PRIMARY_CONTAINER_NAME_FIELD,
+    Pod,
+    _sanitize_resource_name,
+)
+from kubernetes.client import ApiClient
+from kubernetes.client.models import (
+    V1Container,
+    V1EnvVar,
+    V1PodSpec,
+    V1ResourceRequirements,
+    V1Toleration,
+)
 
 from latch.resources.tasks import custom_task
 from latch.types import metadata
@@ -301,9 +325,11 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     wf=self,
                 )
 
-                process_node = Node(
+                mapped_process_task = MapContainerTask(process_task)
+
+                mapped_process_node = Node(
                     id=f"n{vertex.id}",
-                    metadata=process_task.construct_node_metadata(),
+                    metadata=mapped_process_task.construct_node_metadata(),
                     bindings=[
                         literals_models.Binding(
                             var="default",
@@ -319,14 +345,14 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
                         )
                     ],
                     upstream_nodes=[pre_adapter_node],
-                    flyte_entity=process_task,
+                    flyte_entity=mapped_process_task,
                 )
 
                 # adapter tasks are ordered before process task because of
                 # dependent types defined in code generated from adapters
 
-                extra_nodes.append(process_node)
-                self.nextflow_tasks.append(process_task)
+                extra_nodes.append(mapped_process_node)
+                self.nextflow_tasks.append(mapped_process_task)
 
                 post_adapter_node = Node(
                     id=f"n{vertex.id}-post-adapter",
@@ -338,14 +364,14 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
                                 promise=Promise(
                                     var="default",
                                     val=NodeOutput(
-                                        node=process_node,
+                                        node=mapped_process_node,
                                         var="default",
                                     ),
                                 ).ref
                             ),
                         )
                     ],
-                    upstream_nodes=[process_node],
+                    upstream_nodes=[mapped_process_node],
                     flyte_entity=post_adapter_task,
                 )
 
@@ -407,16 +433,80 @@ class NextflowTask(PythonAutoContainerTask[Pod]):
         self._python_inputs = inputs
         self._python_outputs = outputs
 
+        self.channel_inputs = {k: v for k, v in inputs.items() if k.startswith("c")}
+
         # TODO
         cores = 4
         mem = 8589 * 1000 * 1000 // 1024 // 1024 // 1024
 
         super().__init__(
-            task_type="python-task",
+            task_type=SdkTaskType.SIDECAR_TASK,
+            task_type_version=2,
             name=name,
             interface=interface,
             task_config=custom_task(cpu=cores, memory=mem).keywords["task_config"],
             task_resolver=NextflowTaskResolver(),
+        )
+
+    def _serialize_pod_spec(self, settings: SerializationSettings) -> Dict[str, Any]:
+        containers = self.task_config.pod_spec.containers
+        primary_exists = False
+        for container in containers:
+            if container.name == self.task_config.primary_container_name:
+                primary_exists = True
+                break
+        if not primary_exists:
+            # insert a placeholder primary container if it is not defined in the pod spec.
+            containers.append(V1Container(name=self.task_config.primary_container_name))
+
+        final_containers = []
+        def_container = super().get_container(settings)
+        for container in containers:
+            # In the case of the primary container, we overwrite specific container attributes with the default values
+            # used in the regular Python task.
+            if container.name == self.task_config.primary_container_name:
+                container.image = def_container.image
+                # Spawn entrypoint as child process so it can receive signals
+                container.command = def_container.args
+                container.args = []
+
+                limits, requests = {}, {}
+                for resource in def_container.resources.limits:
+                    limits[_sanitize_resource_name(resource)] = resource.value
+                for resource in def_container.resources.requests:
+                    requests[_sanitize_resource_name(resource)] = resource.value
+
+                resource_requirements = V1ResourceRequirements(
+                    limits=limits, requests=requests
+                )
+                if len(limits) > 0 or len(requests) > 0:
+                    # Important! Only copy over resource requirements if they are non-empty.
+                    container.resources = resource_requirements
+
+                container.env = [
+                    V1EnvVar(name=key, value=val)
+                    for key, val in def_container.env.items()
+                ]
+
+            final_containers.append(container)
+
+        self.task_config._pod_spec.containers = final_containers
+
+        return ApiClient().sanitize_for_serialization(self.task_config.pod_spec)
+
+    def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
+        return {_PRIMARY_CONTAINER_NAME_FIELD: self.task_config.primary_container_name}
+
+    def get_container(self, settings: SerializationSettings) -> None:
+        return None
+
+    def get_k8s_pod(self, settings: SerializationSettings) -> _task_models.K8sPod:
+        return _task_models.K8sPod(
+            pod_spec=self._serialize_pod_spec(settings),
+            metadata=_task_models.K8sObjectMetadata(
+                labels=self.task_config.labels,
+                annotations=self.task_config.annotations,
+            ),
         )
 
 
@@ -451,24 +541,15 @@ class MapContainerTask(PythonAutoContainerTask[Pod]):
         self._max_concurrency = concurrency
         self._min_success_ratio = min_success_ratio
         self.container_task = container_task
-
-        inputs = container_task.python_interface.inputs.copy()
-        outputs = container_task.python_interface.outputs.copy()
-
-        assert len(inputs) <= 1
-        assert len(outputs) <= 1
-
-        k, v = next(iter(inputs.items()))
-        list_inputs = {k: List[v]}
-        k, v = next(iter(outputs.items()))
-        list_outputs = {k: List[v]}
+        collection_interface = transform_interface_to_list_interface(
+            container_task.python_interface
+        )
 
         super().__init__(
             name=name,
-            interface=Interface(
-                inputs=list_inputs, outputs=list_outputs, docstring=None
-            ),
+            interface=collection_interface,
             task_type=SdkTaskType.CONTAINER_ARRAY_TASK,
+            task_type_version=1,
             task_config=None,
             task_resolver=NextflowTaskResolver(),
         )
@@ -487,21 +568,53 @@ class MapContainerTask(PythonAutoContainerTask[Pod]):
             "--prev-checkpoint",
             "{{.prevCheckpointPrefix}}",
             "--resolver",
-            self.task_resolver.location,
+            self.container_task.task_resolver.location,
             "--",
-            *self.task_resolver.loader_args(settings, self.container_task),
+            *self.container_task.task_resolver.loader_args(
+                settings, self.container_task
+            ),
         ]
+
+    def get_container(self, settings: SerializationSettings) -> Container:
+        with self.prepare_target():
+            return self.container_task.get_container(settings)
+
+    def get_k8s_pod(self, settings: SerializationSettings) -> K8sPod:
+        with self.prepare_target():
+            return self.container_task.get_k8s_pod(settings)
+
+    def get_sql(self, settings: SerializationSettings) -> Sql:
+        with self.prepare_target():
+            return self.container_task.get_sql(settings)
+
+    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
+        return ArrayJob(
+            parallelism=self._max_concurrency, min_success_ratio=self._min_success_ratio
+        ).to_dict()
+
+    def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
+        return self.container_task.get_config(settings)
+
+    def execute(self, **kwargs) -> Any:
+        ctx = FlyteContextManager.current_context()
+        if (
+            ctx.execution_state
+            and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
+        ):
+            return self._execute_map_task(ctx, **kwargs)
+
+        return self._raw_execute(**kwargs)
 
     @contextmanager
     def prepare_target(self):
         """
         Alters the underlying run_task command to modify it for map task execution and then resets it after.
         """
-        self._run_task.set_command_fn(self.get_command)
+        self.container_task.set_command_fn(self.get_command)
         try:
             yield
         finally:
-            self._run_task.reset_command_fn()
+            self.container_task.reset_command_fn()
 
     @staticmethod
     def _compute_array_job_index() -> int:
@@ -516,8 +629,63 @@ class MapContainerTask(PythonAutoContainerTask[Pod]):
     def get_type_for_output_var(self, k: str, v: Any) -> Optional[Type[Any]]:
         return self.interface.outputs[k]
 
+    def get_fn_interface(self):
+        assert isinstance(self.container_task, NextflowProcessTask)
+        return self.container_task.get_fn_interface()
 
-class NextflowProcessMappedTask(NextflowTask):
+    def get_fn_return_stmt(self):
+        assert isinstance(self.container_task, NextflowProcessTask)
+        return self.container_task.get_fn_return_stmt()
+
+    def get_fn_code(self, nf_path_in_container: str):
+        assert isinstance(self.container_task, NextflowProcessTask)
+        return self.container_task.get_fn_code(nf_path_in_container)
+
+    def _execute_map_task(self, ctx: FlyteContext, **kwargs) -> Any:
+        """
+        This is called during ExecutionState.Mode.TASK_EXECUTION executions, that is executions orchestrated by the
+        Flyte platform. Individual instances of the map task, aka array task jobs are passed the full set of inputs but
+        only produce a single output based on the map task (array task) instance. The array plugin handler will actually
+        create a collection from these individual outputs as the final map task output value.
+        """
+        task_index = self._compute_array_job_index()
+        map_task_inputs = {}
+        for k in self.interface.inputs.keys():
+            map_task_inputs[k] = kwargs[k][task_index]
+        return exception_scopes.user_entry_point(self.container_task.execute)(
+            **map_task_inputs
+        )
+
+    def _raw_execute(self, **kwargs) -> Any:
+        """
+        This is called during locally run executions. Unlike array task execution on the Flyte platform, _raw_execute
+        produces the full output collection.
+        """
+        outputs_expected = True
+        if not self.interface.outputs:
+            outputs_expected = False
+        outputs = []
+
+        any_input_key = (
+            list(self.container_task.interface.inputs.keys())[0]
+            if self.container_task.interface.inputs.items() is not None
+            else None
+        )
+
+        for i in range(len(kwargs[any_input_key])):
+            single_instance_inputs = {}
+            for k in self.interface.inputs.keys():
+                single_instance_inputs[k] = kwargs[k][i]
+            o = exception_scopes.user_entry_point(self.container_task.execute)(
+                **single_instance_inputs
+            )
+            if outputs_expected:
+                outputs.append(o)
+
+        return outputs
+
+
+class NextflowProcessTask(NextflowTask):
     def __init__(
         self,
         inputs: Dict[str, Type[ParameterType]],
@@ -533,36 +701,26 @@ class NextflowProcessMappedTask(NextflowTask):
 
         self.code = code
         self.process_name = name
+
         assert len(self._python_inputs) == 1 and len(self._python_outputs) == 1
 
         self.num_inputs = num_inputs
         self.num_outputs = num_outputs
 
     def get_fn_interface(self):
-        res = ""
-        params_str = ",\n".join(
-            reindent(
-                rf"""
-                """,
-                1,
-            ).rstrip()
-            for param, t in self._python_interface.inputs.items()
-        )
-
         inputs = list(self._python_inputs.items())[0]
         output_t = list(self._python_outputs.values())[0]
-        res += reindent(
+
+        return reindent(
             rf"""
                 task = custom_task(cpu=-1, memory=-1) # these limits are a lie and are ignored when generating the task spec
-                @map_task
                 @task(cache=True)
                 def {self.name}(
                     {inputs[0]}: {getattr(inputs[1], "__name__", None)}
                 ) -> {getattr(output_t, "__name__", None)}:
                 """,
             0,
-        ).replace("__params__", params_str)
-        return res
+        )
 
     def get_fn_return_stmt(self):
         results: List[str] = []
@@ -597,7 +755,7 @@ class NextflowProcessMappedTask(NextflowTask):
         code_block = self.get_fn_interface()
 
         run_task_entrypoint = [
-            ".latch/bin/nextflow",
+            "/root/nextflow",
             "run",
             nf_path_in_container,
             "-profile",
@@ -656,24 +814,6 @@ class NextflowProcessMappedTask(NextflowTask):
         return code_block
 
 
-class NextflowProcessTask(MapContainerTask):
-    def __init__(
-        self,
-        inputs: Dict[str, Type[ParameterType]],
-        outputs: Dict[str, Type[ParameterType]],
-        num_inputs: int,
-        num_outputs: int,
-        id: int,
-        name: str,
-        code: str,
-        wf: NextflowWorkflow,
-    ):
-        mapped = NextflowProcessMappedTask(
-            inputs, outputs, num_inputs, num_outputs, id, name, code, wf
-        )
-        super().__init__(mapped)
-
-
 def dataclass_from_python_params(
     params: Dict[str, Type[ParameterType]], name: str
 ) -> Type[_IsDataclass]:
@@ -726,7 +866,7 @@ class NextflowProcessPreAdapterTask(NextflowTask):
         params_str = ",\n".join(
             reindent(
                 rf"""
-                {param}: {type_repr(List[t])}
+                {param}: {type_repr(List[t]) if param.startswith("c") else type_repr(t)}
                 """,
                 1,
             ).rstrip()
@@ -762,19 +902,28 @@ class NextflowProcessPreAdapterTask(NextflowTask):
         code_block = self.get_fn_interface()
 
         fs = fields(self.dataclass)
-        assignment_str = ", ".join(
-            [f"{field.name}=x[{i}]" for i, field in enumerate(fs)]
-        )
-        variables = ", ".join([f"{field.name}" for field in fs])
 
-        if len(self._python_inputs) == 0:
+        channel_fields = [f for f in fs if f.name.startswith("c")]
+        if len(channel_fields) == 0:
             code_block += reindent(
                 f"""
-                result = None
+                result = []
                 """,
                 1,
             )
         else:
+            assignment_str = ", ".join(
+                [f"{field.name}=x[{i}]" for i, field in enumerate(fs)]
+            )
+            variables = ", ".join([
+                (
+                    f"{field.name}"
+                    if field.name.startswith("c")
+                    else f"repeat({field.name})"
+                )
+                for field in fs
+            ])
+
             code_block += reindent(
                 rf"""
                 result = [Res_{self.id}({assignment_str}) for x in zip({variables})]
@@ -958,10 +1107,9 @@ class NextflowOperatorTask(NextflowTask):
         code_block = self.get_fn_interface()
 
         run_task_entrypoint = [
-            ".latch/bin/nextflow",
+            "/root/nextflow",
             "run",
             nf_path_in_container,
-            "-latchTarget",
             "-profile",
             "mamba",
         ]
@@ -987,7 +1135,7 @@ class NextflowOperatorTask(NextflowTask):
         code_block += reindent(
             rf"""
 
-            channel_vals = [{','.join([x for x in self._python_inputs])}]
+            channel_vals = [{','.join([x for x in self.channel_inputs])}]
 
             print(f"\n\n\nRunning nextflow task: {run_task_entrypoint}\n")
             try:
@@ -1019,18 +1167,16 @@ class NextflowOperatorTask(NextflowTask):
         return code_block
 
 
-class NextflowMainTask(PythonAutoContainerTask[Pod]):
+class NextflowMainTask(NextflowTask):
     def __init__(self, interface: Interface, wf: NextflowWorkflow):
-        self._python_inputs = interface.inputs
         self.main_target_ids = []
-        self.wf = wf
 
         super().__init__(
             name="main",
-            task_type="python-task",
-            interface=interface,
-            task_config=None,
-            task_resolver=NextflowTaskResolver(),
+            id=0,
+            inputs=interface.inputs,
+            outputs=interface.outputs,
+            wf=wf,
         )
 
     def get_fn_interface(self):
@@ -1111,7 +1257,7 @@ class NextflowMainTask(PythonAutoContainerTask[Pod]):
         code_block = self.get_fn_interface()
 
         run_task_entrypoint = [
-            ".latch/bin/nextflow",
+            "/root/nextflow",
             "run",
             nf_path_in_container,
             "-profile",
@@ -1152,7 +1298,6 @@ class NextflowMainTask(PythonAutoContainerTask[Pod]):
                 print("\n\n\n[!] Failed\n\n\n")
                 raise e
 
-
             out_channels = {{}}
             files = list(glob.glob(".latch/*/channel*.txt"))
             for file in files:
@@ -1160,6 +1305,7 @@ class NextflowMainTask(PythonAutoContainerTask[Pod]):
                 vals = Path(file).read_text().strip().split("\n")
                 v_id = Path(file).parent.name
                 out_channels[f"v{{v_id}}_c{{idx}}"] = vals
+
             """,
             1,
         )
@@ -1181,11 +1327,11 @@ def build_nf_wf(pkg_root: Path, nf_script: Path):
                 str(pkg_root / "assets" / "samplesheet.csv"),
                 "--outdir",
                 str(pkg_root),
-                "--run_amp_screening",
-                "--amp_skip_hmmsearch",
-                "--run_arg_screening",
-                "--run_bgc_screening",
-                "--bgc_skip_hmmsearch",
+                # "--run_amp_screening",
+                # "--amp_skip_hmmsearch",
+                # "--run_arg_screening",
+                # "--run_bgc_screening",
+                # "--bgc_skip_hmmsearch",
             ],
             check=True,
         )
@@ -1295,6 +1441,7 @@ def generate_nf_entrypoint(
         import json
         from dataclasses import is_dataclass, asdict
         from enum import Enum
+        from itertools import repeat
 
         from flytekit.extras.persistence import LatchPersistence
         import traceback
@@ -1326,15 +1473,9 @@ def generate_nf_entrypoint(
     )
 
     for task in wf.nextflow_tasks:
-        if isinstance(task, NextflowProcessTask):
-            entrypoint_code_block += (
-                task.container_task.get_fn_code(nf_path_in_container(nf_path, pkg_root))
-                + "\n\n"
-            )
-        else:
-            entrypoint_code_block += (
-                task.get_fn_code(nf_path_in_container(nf_path, pkg_root)) + "\n\n"
-            )
+        entrypoint_code_block += (
+            task.get_fn_code(nf_path_in_container(nf_path, pkg_root)) + "\n\n"
+        )
 
     entrypoint = pkg_root / ".latch/nf_entrypoint.py"
     entrypoint.write_text(entrypoint_code_block + "\n")
