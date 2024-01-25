@@ -89,12 +89,18 @@ def file_metadata_str(typ: Type, value: JSONValue, level: int = 0):
 
     metadata: List[str] = []
     if is_list_type(typ):
+        template = """
+        [
+        __metadata__],\n"""
         for val in value:
             metadata_str = file_metadata_str(typ.__args__[0], val, level + 1)
             if metadata_str is None:
                 continue
             metadata.append(metadata_str)
     else:
+        template = """
+        {
+        __metadata__},\n"""
         assert is_dataclass(typ)
         for field in fields(typ):
             metadata_str = file_metadata_str(
@@ -109,9 +115,7 @@ def file_metadata_str(typ: Type, value: JSONValue, level: int = 0):
         return None
 
     return reindent(
-        f"""\
-        {{
-        __metadata__}},\n""",
+        template,
         level,
     ).replace("__metadata__", "".join(metadata), level + 1)
 

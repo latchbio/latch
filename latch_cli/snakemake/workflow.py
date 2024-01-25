@@ -502,6 +502,16 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         code_blocks: List[str] = []
         if is_list_type(t):
+            code_blocks.append(
+                reindent(
+                    f"""
+                    if len({param}) > {len(meta)}:
+                        raise ValueError("The size of input files list must be equal to the number of `SnakemakeFileMetadata` objects provided in latch_metadata")
+                    """,
+                    0,
+                )
+            )
+            code_blocks.append(f"{blob_params} = [None for _ in range({len(meta)})]\n")
             for i, m in enumerate(meta):
                 sub_param = f"{param}[{i}]"
                 code_blocks.append(
@@ -515,6 +525,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 )
         else:
             assert is_dataclass(t)
+            code_blocks.append(f"{blob_params} = {{}}\n")
             for field in fields(t):
                 sub_param = f"{param}.{field.name}"
                 code_blocks.append(
