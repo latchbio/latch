@@ -75,7 +75,7 @@ def parse_config(
 
 def file_metadata_str(typ: Type, value: JSONValue, level: int = 0):
     if is_primitive_type(typ):
-        return " None,\n"
+        return None
 
     if typ in {LatchFile, LatchDir}:
         return reindent(
@@ -87,28 +87,26 @@ def file_metadata_str(typ: Type, value: JSONValue, level: int = 0):
             level,
         )
 
-    if is_list_type(typ):
-        metadata: List[str] = [
-            file_metadata_str(typ.__args__[0], val, level + 1)
-            for i, val in enumerate(value)
-        ]
-        return reindent(
-            f"""\
-            [
-            __metadata__],\n""",
-            level,
-        ).replace("__metadata__", "".join(metadata))
-
-    assert is_dataclass(typ)
-
     metadata: List[str] = []
-    for field in fields(typ):
-        metadata_str = file_metadata_str(
-            field.type, value.__getattribute__(field.name), level
-        )
+    if is_list_type(typ):
+        for val in value:
+            metadata_str = file_metadata_str(typ.__args__[0], val, level + 1)
+            if metadata_str is None:
+                continue
+            metadata.append(metadata_str)
+    else:
+        assert is_dataclass(typ)
+        for field in fields(typ):
+            metadata_str = file_metadata_str(
+                field.type, value.__getattribute__(field.name), level
+            )
+            if metadata_str is None:
+                continue
+            metadata_str = f"{repr(identifier_from_str(field.name))}: {metadata_str}"
+            metadata.append(reindent(metadata_str, level + 1))
 
-        metadata_str = f"{repr(identifier_from_str(field.name))}: {metadata_str}"
-        metadata.append(reindent(metadata_str, level + 1))
+    if len(metadata) == 0:
+        return None
 
     return reindent(
         f"""\
@@ -158,6 +156,8 @@ def generate_metadata(
         params.append(param_str)
 
         metadata_str = file_metadata_str(typ, val)
+        if metadata_str is None:
+            continue
         metadata_str = f"{repr(identifier_from_str(k))}: {metadata_str}"
         file_metadata.append(reindent(metadata_str, 1))
 
