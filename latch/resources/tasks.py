@@ -230,7 +230,6 @@ on it.
      - True
 """
 
-
 large_task = functools.partial(task, task_config=_get_large_pod())
 """This task will get scheduled on a large node.
 

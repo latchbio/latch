@@ -2,9 +2,7 @@
 
 ## CPU
 
-By default, all Snakemake jobs will run on a machine with 4 cpus available.
-
-To modify the number of cpus allocated to the job, modify the `resources` directive of the Snakefile rule as follows:
+By default, all Snakemake jobs will run on a machine with 4 CPUs available. To modify the number of CPUs allocated to the job, use the `resources` directive of the Snakefile rule as follows:
 
 ```python
 rule <rule_name>:
@@ -36,9 +34,7 @@ SnakemakeMetadata(
 
 ## Memory
 
-By default, all Snakemake jobs will run on a machine with 8 GB of RAM.
-
-To modify the amount of memory allocated to the job, modify the `resources` directive of the Snakefile rule. For example, to allocate 32 GB of RAM to a task:
+By default, all Snakemake jobs will run on a machine with 8 GB of RAM. To modify the amount of memory allocated to the job, use the `resources` directive of the Snakefile rule. For example, to allocate 32 GB of RAM to a task:
 
 ```python
 rule <rule_name>:
@@ -47,3 +43,32 @@ rule <rule_name>:
         mem_mb=34360
     ...
 ```
+
+## GPU
+
+To run a Snakemake job on a GPU instance, modify the `resources` directive of the Snakefile rule. For example:
+
+```python
+rule <rule_name>:
+    ...
+    resources:
+        nvidia_gpu=1
+    ...
+```
+
+GPU tasks will execute as either a `small_gpu_task` or `large_gpu_task` as defined [here](https://docs.latch.bio/basics/defining_cloud_resources.html#prespecified-task-resource). To request a large GPU instance, add CPU and memory requirements as follows:
+
+```python
+rule <rule_name>:
+    ...
+    resources:
+        nvidia_gpu=1
+        cpus=8
+        mem_mb=33286
+    ...
+```
+
+Limitations:
+
+1. Using the `container` directive inside GPU instances is currently not supported. Use conda or add runtime dependencies to your Dockerfile to use GPUs.
+2. Multi-GPU instances are currently not supported. The JIT workflow will fail if more than 1 GPU is requested.

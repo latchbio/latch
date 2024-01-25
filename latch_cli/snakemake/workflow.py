@@ -71,7 +71,7 @@ from snakemake.jobs import GroupJob, Job
 from typing_extensions import TypeAlias, TypedDict
 
 import latch.types.metadata as metadata
-from latch.resources.tasks import custom_task
+from latch.resources.tasks import _get_large_gpu_pod, _get_small_gpu_pod, custom_task
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
 from latch_cli.snakemake.config.utils import type_repr
@@ -1086,16 +1086,47 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
 
         limits = self.job.resources
         cores = limits.get("cpus", 4)
-
         # convert MB to GiB
         mem = limits.get("mem_mb", 8589) * 1000 * 1000 // 1024 // 1024 // 1024
+        gpu = limits.get("nvidia_gpu", 0)
+
+        self._uses_gpu = gpu > 0
+        if self._uses_gpu and self.job.container_img_url is not None:
+            click.secho(
+                dedent("""
+                    GPU tasks within container images are not yet supported. To resolve,
+                    use conda for all GPU tasks OR add all dependencies to your main
+                    Dockerfile.
+                    """),
+                fg="red",
+            )
+            raise click.exceptions.Exit(1)
+
+        task_config = None
+        if not self._uses_gpu:
+            task_config = custom_task(cpu=cores, memory=mem).keywords["task_config"]
+        else:
+            if gpu == 1 and cores <= 7 and mem <= 30:
+                task_config = _get_small_gpu_pod()
+            elif gpu == 1 and cores <= 31 and mem <= 120:
+                task_config = _get_large_gpu_pod()
+            else:
+                click.secho(
+                    dedent(f"""
+                        GPU task resource limit is too high.
+                        request: gpu={gpu}, cores={cores}, RAM={mem} GiB
+                        max:     gpu=1, cores=31, RAM=120 GiB)",
+                        """),
+                    fg="red",
+                )
+                raise click.exceptions.Exit(1)
 
         super().__init__(
             task_type="sidecar",
             task_type_version=2,
             name=name,
             interface=interface,
-            task_config=custom_task(cpu=cores, memory=mem).keywords["task_config"],
+            task_config=task_config,
             task_resolver=SnakemakeJobTaskResolver(),
         )
 
@@ -1322,6 +1353,12 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             snakefile_path_in_container,
             *(["--use-conda"] if self.wf._use_conda else []),
             *(["--use-singularity"] if self.wf._use_container else []),
+            # we use docker instead of singularity, so these are docker run arguments
+            *(
+                ["--singularity-args", "--gpus all"]
+                if self.wf._use_container and self._uses_gpu
+                else []
+            ),
             "--target-jobs",
             *jobs_cli_args(jobs),
             "--allowed-rules",
