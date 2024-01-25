@@ -1060,10 +1060,6 @@ def named_list_to_json(xs: snakemake.io.Namedlist) -> NamedListJson:
     return {"positional": unnamed, "keyword": named}
 
 
-def _mb_to_gib(mb: int) -> int:
-    return mb * 1000 * 1000 // 1024 // 1024 // 1024
-
-
 class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
     def __init__(
         self,
@@ -1091,7 +1087,8 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
         limits = self.job.resources
         cores = limits.get("cpus", 4)
 
-        mem = _mb_to_gib(limits.get("mem_mb", 8589))
+        # convert MB to GiB
+        mem = limits.get("mem_mb", 8589) * 1000 * 1000 // 1024 // 1024 // 1024
 
         super().__init__(
             task_type="sidecar",
