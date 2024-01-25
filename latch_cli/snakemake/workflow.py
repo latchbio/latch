@@ -71,7 +71,7 @@ from snakemake.jobs import GroupJob, Job
 from typing_extensions import TypeAlias, TypedDict
 
 import latch.types.metadata as metadata
-from latch.resources.tasks import _get_small_gpu_pod, custom_task
+from latch.resources.tasks import _get_large_gpu_pod, _get_small_gpu_pod, custom_task
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
 from latch_cli.snakemake.config.utils import type_repr
@@ -1084,8 +1084,12 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
         self._task_function = task_fn_placeholder
 
         limits = self.job.resources
+        cores = limits.get("cpus", 4)
+        # convert MB to GiB
+        mem = limits.get("mem_mb", 8589) * 1000 * 1000 // 1024 // 1024 // 1024
+        gpu = limits.get("nvidia_gpu", 0)
 
-        self._uses_gpu = limits.get("nvidia_gpu") is not None
+        self._uses_gpu = gpu > 0
         if self._uses_gpu and self.job.container_img_url is not None:
             click.secho(
                 dedent("""
@@ -1097,18 +1101,24 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             )
             raise click.exceptions.Exit(1)
 
+        task_config = None
         if not self._uses_gpu:
-            cores = limits.get("cpus", 4)
-            # convert MB to GiB
-            mem = limits.get("mem_mb", 8589) * 1000 * 1000 // 1024 // 1024 // 1024
             task_config = custom_task(cpu=cores, memory=mem).keywords["task_config"]
         else:
-            if limits.get("nvidia_gpu") > 1:
+            if gpu == 1 and cores <= 7 and mem <= 30:
+                task_config = _get_small_gpu_pod()
+            elif gpu == 1 and cores <= 31 and mem <= 120:
+                task_config = _get_large_gpu_pod()
+            else:
                 click.secho(
-                    "Multi-GPU tasks are not supported. Set nvidia_gpu=1", fg="red"
+                    dedent(f"""
+                        GPU task resource limit is too high.
+                        request: gpu={gpu}, cores={cores}, RAM={mem} GiB
+                        max:     gpu=1, cores=31, RAM=120 GiB)",
+                        """),
+                    fg="red",
                 )
                 raise click.exceptions.Exit(1)
-            task_config = _get_small_gpu_pod()
 
         super().__init__(
             task_type="sidecar",
