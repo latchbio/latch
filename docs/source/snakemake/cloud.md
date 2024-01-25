@@ -8,7 +8,6 @@ Therefore, it may be necessary to adapt your Snakefile to address issues arising
 
 - Add missing rule inputs that are implicitly fulfilled when executing locally.
 - Make sure shared code does not rely on input files. This is any code that is not under a rule, and so gets executed by every task
-- Add `resources` directives if tasks run out of memory or disk space
 - Optimize data transfer by merging tasks that have 1-to-1 dependencies
 
 Here, we will walk through examples of each of the cases outlined above.
@@ -310,51 +309,6 @@ rule all:
   input:
     expand("fastqc/{sample}.html", sample=get_samples_data()["samples"]),
     expand("reports/{name}.txt", name=get_samples_data()["names"]),
-```
-
-## Add `resources` directives
-
-It is common for a Snakefile rule to run into out-of-memory errors.
-
-#### Example
-
-The following workflow failed because Kraken2 requires at least 256GB of RAM to run.
-
-```python
-rule kraken:
-    input:
-        reads = lambda wildcards: get_samples()["sample_reads"][wildcards.samp],
-    output:
-        krak = join(outdir, "classification/{samp}.krak"),
-        krak_report = join(outdir, "classification/{samp}.krak.report")
-    params:
-        db = config['database'],
-        paired_string = get_paired_string(),
-        confidence_threshold = confidence_threshold
-    threads: 16
-    resources:
-        mem_mb=128000,
-    singularity: "docker://quay.io/biocontainers/kraken2:2.1.2--pl5262h7d875b9_0"
-    shell: """
-        s5cmd cp 's3://latch-public/test-data/4034/kraken_test/db/*' {params.db} &&\
-
-        time kraken2 --db {params.db} --threads 16 --output {output.krak} \
-        --report {output.krak_report} {params.paired_string} {input.reads} \
-        --confidence {params.confidence_threshold} --use-names
-        """
-```
-
-### Solution
-
-Modify the `resources` directive of the Snakefile rule.
-
-```python
-rule kraken:
-    ...
-    resources:
-        mem_mb=128000
-        cpus=8
-    ...
 ```
 
 ## Optimize data transfer

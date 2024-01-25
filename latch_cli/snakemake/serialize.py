@@ -25,6 +25,8 @@ from snakemake.rules import Rule
 from snakemake.workflow import Workflow, WorkflowError
 from typing_extensions import Self
 
+import latch.types.metadata as metadata
+
 from ..services.register.utils import import_module_by_path
 from .serialize_utils import (
     EntityCache,
@@ -69,8 +71,6 @@ def get_snakemake_metadata_example(name: str) -> str:
 
 
 def ensure_snakemake_metadata_exists():
-    import latch.types.metadata as metadata
-
     if metadata._snakemake_metadata is None:
         click.secho(
             dedent("""
@@ -99,11 +99,10 @@ class SnakemakeWorkflowExtractor(Workflow):
         snakefile: Path,
         non_blob_parameters: Optional[Dict[str, Any]] = None,
     ):
-        # Snakemake workflows defaults the `cores` field to 1. This causes
-        # the `threads` parameter to always be capped at 1. Setting cores to None
-        # prevents `threads` from being capped.
+        assert metadata._snakemake_metadata is not None
+        cores = metadata._snakemake_metadata.cores
         super().__init__(
-            snakefile=snakefile, overwrite_config=non_blob_parameters, cores=None
+            snakefile=snakefile, overwrite_config=non_blob_parameters, cores=cores
         )
 
         self.pkg_root = pkg_root

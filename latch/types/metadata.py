@@ -602,6 +602,10 @@ class SnakemakeMetadata(LatchMetadata):
     """
     A dictionary mapping parameter names to `SnakemakeFileMetadata` objects
     """
+    cores: int = 4
+    """
+    Number of cores to use for Snakemake tasks (equivalent of Snakemake's `--cores` flag)
+    """
 
     def __post_init__(self):
         if self.name is None:
