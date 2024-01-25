@@ -152,7 +152,8 @@ def parse_value(t: Type, v: JSONValue):
 
         sub_type = get_args(t)[0]
         res = [parse_value(sub_type, x) for x in v]
-        return [x[0] for x in res], [x[1] for x in res]
+        val, defaults = [x[0] for x in res], [x[1] for x in res]
+        return val, None if any([x is None for x in defaults]) else defaults
 
     assert isinstance(v, dict), v
     assert is_dataclass(t), t
@@ -161,14 +162,18 @@ def parse_value(t: Type, v: JSONValue):
     defaults = {}
     fs = {identifier_from_str(f.name): f for f in fields(t)}
 
+    ignore_default = False
     for k, x in v.items():
         sanitized = identifier_from_str(k)
         assert sanitized in fs, sanitized
         val, default = parse_value(fs[sanitized].type, x)
         ret[sanitized] = val
+        # flytekit fails if any fields in default object are None
+        if default is None:
+            ignore_default = True
         defaults[sanitized] = default
 
-    return t(**ret), t(**defaults)
+    return t(**ret), t(**defaults) if not ignore_default else None
 
 
 def is_primitive_type(
