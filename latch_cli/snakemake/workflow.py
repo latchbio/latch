@@ -445,7 +445,9 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         param_path: List[Union[str, int]],
     ) -> str:
         if get_origin(t) is Annotated:
-            t = get_args(t)[0]
+            args = get_args(t)
+            assert len(args) > 0
+            return self.get_param_code(args[0], param, file_meta, param_path)
 
         param_meta = self.parameter_metadata.get(param)
         # support workflows that use the legacy SnakemakeFileParameter
@@ -487,12 +489,23 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         code_blocks: List[str] = []
         if is_list_type(t):
-            sub_typ = get_args(t)[0]
+            args = get_args(t)
+            if len(args) == 0:
+                click.secho(
+                    dedent(f"""
+                    Generic Lists are not supported - please specify a subtype, e.g."
+                    List[LatchFile]",
+                    """),
+                    fg="red",
+                )
+                raise click.exceptions.Exit(1)
+
+            sub_typ = args[0]
             if sub_typ in (LatchFile, LatchDir):
                 click.secho(
                     dedent(f"""
                     Failed to parse {param}. Lists containing LatchFile or LatchDir
-                    are not supported.
+                    are not yet supported.
                     """),
                     fg="red",
                 )

@@ -76,7 +76,9 @@ def parse_config(
 
 def file_metadata_str(typ: Type, value: JSONValue, level: int = 0) -> str:
     if get_origin(typ) is Annotated:
-        typ = get_args(typ)[0]
+        args = get_args(typ)
+        assert len(args) > 0
+        return file_metadata_str(args[0], value, level)
 
     if is_primitive_type(typ):
         return ""
@@ -97,11 +99,8 @@ def file_metadata_str(typ: Type, value: JSONValue, level: int = 0) -> str:
         [
         __metadata__],\n"""
 
-        if len(get_args(typ)) == 0:
-            raise ValueError(
-                "Generic Lists are not supported - please specify a subtype, e.g."
-                " List[LatchFile]",
-            )
+        args = get_args(typ)
+        assert len(args) > 0
         for val in value:
             metadata_str = file_metadata_str(get_args(typ)[0], val, level + 1)
             if metadata_str == "":
