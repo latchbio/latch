@@ -428,7 +428,7 @@ class SnakemakeFileParameter(SnakemakeParameter):
 class SnakemakeFileMetadata:
     path: Optional[Path] = None
     """
-    The path where the file passed to this parameter will be copied
+    The local path where the file passed to this parameter will be copied
     """
     config: bool = False
     """

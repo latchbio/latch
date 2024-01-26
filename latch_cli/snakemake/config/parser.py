@@ -1,6 +1,6 @@
 from dataclasses import fields, is_dataclass
 from pathlib import Path
-from typing import Dict, List, Tuple, Type, TypeVar
+from typing import Dict, List, Tuple, Type, TypeVar, get_args
 
 import click
 import yaml
@@ -73,9 +73,9 @@ def parse_config(
     return parsed
 
 
-def file_metadata_str(typ: Type, value: JSONValue, level: int = 0):
+def file_metadata_str(typ: Type, value: JSONValue, level: int = 0) -> str:
     if is_primitive_type(typ):
-        return None
+        return ""
 
     if typ in {LatchFile, LatchDir}:
         return reindent(
@@ -92,27 +92,34 @@ def file_metadata_str(typ: Type, value: JSONValue, level: int = 0):
         template = """
         [
         __metadata__],\n"""
+
+        if len(get_args(typ)) == 0:
+            raise ValueError(
+                "Generic Lists are not supported - please specify a subtype, e.g."
+                " List[LatchFile]",
+            )
         for val in value:
-            metadata_str = file_metadata_str(typ.__args__[0], val, level + 1)
-            if metadata_str is None:
+            metadata_str = file_metadata_str(get_args(typ)[0], val, level + 1)
+            if metadata_str == "":
                 continue
             metadata.append(metadata_str)
     else:
         template = """
         {
         __metadata__},\n"""
+
         assert is_dataclass(typ)
         for field in fields(typ):
             metadata_str = file_metadata_str(
-                field.type, value.__getattribute__(field.name), level
+                field.type, getattr(value, field.name), level
             )
-            if metadata_str is None:
+            if metadata_str == "":
                 continue
             metadata_str = f"{repr(identifier_from_str(field.name))}: {metadata_str}"
             metadata.append(reindent(metadata_str, level + 1))
 
     if len(metadata) == 0:
-        return None
+        return ""
 
     return reindent(
         template,
@@ -156,7 +163,7 @@ def generate_metadata(
         params.append(param_str)
 
         metadata_str = file_metadata_str(typ, val)
-        if metadata_str is None:
+        if metadata_str == "":
             continue
         metadata_str = f"{repr(identifier_from_str(k))}: {metadata_str}"
         file_metadata.append(reindent(metadata_str, 1))

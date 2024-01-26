@@ -397,8 +397,8 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             1,
         )
 
-    def _blob_param_path(self, blob_params: List[Union[str, int]]) -> str:
-        return "][".join(map(repr, blob_params))
+    def _param_path_str(self, param_path: List[Union[str, int]]) -> str:
+        return "][".join(map(repr, param_path))
 
     def get_file_download_code(
         self,
@@ -407,7 +407,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         path: Path,
         download: bool,
         config: bool,
-        blob_params: str,
+        param_path: str,
     ) -> str:
         param_name = identifier_from_str(param)
 
@@ -428,10 +428,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             """)
 
         if t is LatchDir:
-            code_block += dedent(rf"""
-                for x in {param_name}_p.iterdir():
-                    print(f"    {{file_name_and_size(x)}}")
-                """)
+            code_block += "{param_name}_p.iterdir()"
 
         code_block += dedent(rf"""
             print(f"Moving {param} to {{{param_name}_dst_p}}")
@@ -447,7 +444,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         if config:
             code_block += dedent(rf"""
                 print(f"Saving parameter value {param} = {str(path)}")
-                non_blob_parameters[{self._blob_param_path(blob_params)}] = {repr(str(path))}
+                overwrite_config[{self._param_path_str(param_path)}] = {repr(str(path))}
 
                 """)
 
@@ -458,7 +455,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         t: Type,
         param: str,
         file_meta: FileMetadata,
-        blob_params: List[Union[str, int]],
+        param_path: List[Union[str, int]],
     ) -> str:
         param_meta = self.parameter_metadata.get(param)
 
@@ -476,7 +473,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 param_meta.path,
                 param_meta.download,
                 param_meta.config,
-                blob_params,
+                param_path,
             )
 
             return code_block
@@ -484,7 +481,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         if file_meta is None or file_meta.get(param) is None or is_primitive_type(t):
             return dedent(rf"""
                 print(f"Saving parameter value {param} = get_parameter_json_value({param})")
-                non_blob_parameters[{self._blob_param_path(blob_params)}] = get_parameter_json_value({param})
+                overwrite_config[{self._param_path_str(param_path)}] = get_parameter_json_value({param})
 
                 """)
 
@@ -496,7 +493,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 meta.path,
                 meta.download,
                 meta.config,
-                blob_params,
+                param_path,
             )
 
         code_blocks: List[str] = []
@@ -506,7 +503,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                         raise ValueError("The size of input files list must be equal to the number of `SnakemakeFileMetadata` objects provided in latch_metadata")
                     """))
             code_blocks.append(
-                f"non_blob_parameters[{self._blob_param_path(blob_params)}] = [None for"
+                f"overwrite_config[{self._param_path_str(param_path)}] = [None for"
                 f" _ in range({len(meta)})]\n"
             )
 
@@ -517,13 +514,13 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                         t.__args__[0],
                         sub_param,
                         {sub_param: m},
-                        blob_params + [i],
+                        [*param_path, i],
                     )
                 )
         else:
             assert is_dataclass(t)
             code_blocks.append(
-                f"non_blob_parameters[{self._blob_param_path(blob_params)}] = {{}}\n"
+                f"overwrite_config[{self._param_path_str(param_path)}] = {{}}\n"
             )
             for field in fields(t):
                 sub_param = f"{param}.{field.name}"
@@ -532,12 +529,11 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                         field.type,
                         sub_param,
                         {sub_param: meta.get(field.name)},
-                        blob_params + [field.name],
+                        param_path + [field.name],
                     )
                 )
 
-        return dedent(f"""\
-            __code__\n""").replace("__code__", "\n".join(code_blocks))
+        return "\n".join(code_blocks)
 
     def get_fn_code(
         self,
@@ -551,7 +547,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         code_block += reindent(
             rf"""
-            non_blob_parameters = {{}}
+            overwrite_config = {{}}
             local_to_remote_path_mapping = {{}}
 
             """,
@@ -626,11 +622,11 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 jit_wf_version,
                 jit_exec_display_name,
                 local_to_remote_path_mapping,
-                non_blob_parameters,
+                overwrite_config,
                 {self.cache_tasks},
             )
             wf_name = wf.name
-            generate_snakemake_entrypoint(wf, pkg_root, snakefile, {repr(remote_output_url)}, non_blob_parameters)
+            generate_snakemake_entrypoint(wf, pkg_root, snakefile, {repr(remote_output_url)}, overwrite_config)
 
             entrypoint_remote = f"latch:///.snakemake_latch/workflows/{{wf_name}}/{{jit_wf_version}}/{{jit_exec_display_name}}/entrypoint.py"
             lp.upload("latch_entrypoint.py", entrypoint_remote)
@@ -1401,7 +1397,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
         self,
         snakefile_path_in_container: str,
         remote_output_url: Optional[str] = None,
-        non_blob_parameters: Optional[Dict[str, str]] = None,
+        overwrite_config: Optional[Dict[str, str]] = None,
     ):
         code_block = self.get_fn_interface()
 
@@ -1436,8 +1432,8 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
         if isinstance(self.job, GroupJob):
             jobs = self.job.jobs
 
-        if non_blob_parameters is not None:
-            for param, val in non_blob_parameters.items():
+        if overwrite_config is not None:
+            for param, val in overwrite_config.items():
                 self.job.rule.workflow.globals["config"][param] = val
 
         snakemake_args = [
@@ -1477,7 +1473,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
         snakemake_data = {
             "rules": {},
             "outputs": self.job.output,
-            "non_blob_parameters": non_blob_parameters,
+            "overwrite_config": overwrite_config,
         }
 
         for job in jobs:
