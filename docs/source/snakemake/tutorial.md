@@ -49,7 +49,7 @@ You can automatically generate the required metadata files from an existing `con
 latch generate-metadata config.yaml
 ```
 
-To learn more about the `generate-metadata` command, see [Metadata](./metadata.md)](./metadata.md)
+To learn more about the `generate-metadata` command, see [Metadata](./metadata.md)
 
 This command will create a `latch_metadata` folder in your workflow directory:
 
@@ -75,7 +75,7 @@ Let's inspect the generated files:
 from latch.types.metadata import SnakemakeMetadata, LatchAuthor
 from latch.types.directory import LatchDir
 
-from .parameters import generated_parameters
+from .parameters import generated_parameters, file_metadata
 
 SnakemakeMetadata(
     output_dir=LatchDir("latch:///your_output_directory"),
@@ -85,35 +85,47 @@ SnakemakeMetadata(
     ),
     # Add more parameters
     parameters=generated_parameters,
+    file_metadata=file_metadata,
 )
 ```
 
 The `latch_metadata/__init__.py` file instantiates a `SnakemakeMetadata` object, which contains the Latch-specific metadata displayed on the Latch Console when executing a workflow. Feel free to update the `output_dir`, `display_name`, or `author` fields.
 
-The `SnakemakeMetadata` object also contains a `parameters` field specifying the workflow's input parameters.
+The `SnakemakeMetadata` object also contains `parameters` and `file_metadata` fields specifying the workflow's input parameters.
 
 ```python
 # latch_metadata/parameters.py
 from dataclasses import dataclass
 import typing
 
-from latch.types.metadata import SnakemakeParameter, SnakemakeFileParameter
+from latch.types.metadata import SnakemakeParameter, SnakemakeFileParameter, SnakemakeFileMetadata
 from latch.types.file import LatchFile
 from latch.types.directory import LatchDir
 
+
+
 # Import these into your `__init__.py` file:
 #
-# from .parameters import generated_parameters
+# from .parameters import generated_parameters, file_metadata
 
 generated_parameters = {
-    'samples': SnakemakeFileParameter(
+    'samples': SnakemakeParameter(
         display_name='Samples',
         type=LatchDir,
-        config=True,
     ),
-    'ref_genome': SnakemakeFileParameter(
+    'ref_genome': SnakemakeParameter(
         display_name='Ref Genome',
         type=LatchDir,
+    ),
+}
+
+file_metadata = {
+    'samples': SnakemakeFileMetadata(
+        path='data/samples/',
+        config=True,
+    ),
+    'ref_genome': SnakemakeFileMetadata(
+        path='genome/',
         config=True,
     ),
 }
@@ -121,27 +133,7 @@ generated_parameters = {
 
 This file contains two file parameters of type `LatchDir` (which is a pointer to a directory hosted on Latch Data). When we register this workflow, these parameters will be exposed to the user on the Latch UI. Upon execution, the workflow orchestrator will download these directories to the local machine before executing the task.
 
-How does the orchestrator know which local path to download the remote files? For each `SnakemakeFileParameter` parameter, we can use the `path` keyword to specify the local path where files will be copied before the Snakemake job runs. Add the local path to the file parameters as follows:
-
-```python
-# latch_metadata/parameters.py
-from pathlib import Path # added
-...
-generated_parameters = {
-    'samples': SnakemakeFileParameter(
-        display_name='Samples',
-        type=LatchDir,
-        config=True,
-        path=Path('data/samples') # added
-    ),
-    'ref_genome': SnakemakeFileParameter(
-        display_name='Ref Genome',
-        type=LatchDir,
-        config=True,
-        path=Path('genome') # added
-    ),
-}
-```
+How does the orchestrator know which local path to download the remote files? For each `SnakemakeParameter` of type `LatchFile` or `LatchDir`, we use `SnakemakeFileMetadata` object to specify the local path to copy files to before the Snakemake job runs.
 
 ## Step 3: Define Workflow Environment
 
@@ -207,7 +199,7 @@ copy .latch/snakemake_jit_entrypoint.py /root/snakemake_jit_entrypoint.py
 
 Copy the auto-generated Snakemake entry point file into the container. This Python file will be executed when the workflow runs. For now, you don't need to be familiar with the contents of this file.
 
-## Step 4: Upload the workflow to Latch
+## Step 4: Upload the Workflow to Latch
 
 Finally, type the following commands to log in to your account and register the workflow to Latch:
 
@@ -220,7 +212,7 @@ During registration, a workflow image is built and uploaded, and the `snakemake_
 
 ![Snakemake workflow interface on Latch](../assets/snakemake/tutorial.png)
 
-## Step 5: Upload Data and Run the workflow
+## Step 5: Upload Data and Run the Workflow
 
 Before running the workflow, we must upload our input data to [Latch Data](https://console.latch.bio/data). The skeleton code contains some sample data under the `data`/` directory, which you can use for testing.
 
