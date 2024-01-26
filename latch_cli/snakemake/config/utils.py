@@ -2,7 +2,8 @@ from dataclasses import asdict, fields, is_dataclass, make_dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional, Type, Union, get_args, get_origin
 
-from typing_extensions import TypeAlias, TypeGuard, TypeVar
+from flytekit.core.annotation import FlyteAnnotation
+from typing_extensions import Annotated, TypeAlias, TypeGuard, TypeVar
 
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
@@ -115,8 +116,14 @@ def parse_type(
             for x in v
         )
         if len(set(parsed_types)) > 1:
-            raise ValueError("all types in List must be same")
-        return List[parsed_types[0]]
+            raise ValueError(
+                "Generic Lists are not supported - please ensure that all elements in a"
+                " list are of the same type",
+            )
+        typ = parsed_types[0]
+        if typ in {LatchFile, LatchDir}:
+            return Annotated[List[typ], FlyteAnnotation({"size": len(v)})]
+        return List[typ]
 
     assert isinstance(v, dict)
 
@@ -148,7 +155,9 @@ def parse_value(t: Type, v: JSONValue):
         return v, v
 
     if isinstance(v, list):
-        assert get_origin(t) is list
+        assert get_origin(t) is list or get_origin(t) is Annotated
+        if get_origin(t) is Annotated:
+            t = get_args(t)[0]
 
         sub_type = get_args(t)[0]
         res = [parse_value(sub_type, x) for x in v]
@@ -191,7 +200,7 @@ def is_list_type(typ: Type) -> TypeGuard[Type[List]]:
 
 
 def type_repr(t: Type, *, add_namespace: bool = False) -> str:
-    if is_primitive_type(t) or t is LatchFile or t is LatchDir:
+    if is_primitive_type(t) or t in {LatchFile, LatchDir}:
         return t.__name__
 
     if get_origin(t) is None:
@@ -213,6 +222,14 @@ def type_repr(t: Type, *, add_namespace: bool = False) -> str:
             f"typing.Union[{', '.join([type_repr(arg, add_namespace=add_namespace) for arg in args])}]"
         )
 
+    if get_origin(t) is Annotated:
+        args = get_args(t)
+        assert isinstance(args[1], FlyteAnnotation)
+        return (
+            f"typing_extensions.Annotated[{type_repr(args[0], add_namespace=add_namespace)},"
+            f" FlyteAnnotation({repr(args[1].data)})]"
+        )
+
     return t.__name__
 
 
@@ -227,6 +244,9 @@ def dataclass_repr(typ: Type) -> str:
 
 
 def get_preamble(typ: Type) -> str:
+    if get_origin(typ) is Annotated:
+        typ = get_args(typ)[0]
+
     if is_primitive_type(typ) or typ in {LatchFile, LatchDir}:
         return ""
 

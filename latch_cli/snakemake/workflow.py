@@ -17,6 +17,8 @@ from typing import (
     Type,
     TypeVar,
     Union,
+    get_args,
+    get_origin,
 )
 from urllib.parse import urlparse
 
@@ -67,7 +69,7 @@ from kubernetes.client.models import (
 )
 from snakemake.dag import DAG
 from snakemake.jobs import GroupJob, Job
-from typing_extensions import TypeAlias, TypedDict
+from typing_extensions import Annotated, TypeAlias, TypedDict
 
 import latch.types.metadata as metadata
 from latch.resources.tasks import _get_large_gpu_pod, _get_small_gpu_pod, custom_task
@@ -413,7 +415,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             """)
 
         if t is LatchDir:
-            code_block += "{param_name}_p.iterdir()"
+            code_block += f"{param_name}_p.iterdir()"
 
         code_block += dedent(rf"""
             print(f"Moving {param} to {{{param_name}_dst_p}}")
@@ -442,8 +444,10 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         file_meta: FileMetadata,
         param_path: List[Union[str, int]],
     ) -> str:
-        param_meta = self.parameter_metadata.get(param)
+        if get_origin(t) is Annotated:
+            t = get_args(t)[0]
 
+        param_meta = self.parameter_metadata.get(param)
         # support workflows that use the legacy SnakemakeFileParameter
         if isinstance(param_meta, SnakemakeFileParameter):
             assert t in (
@@ -483,10 +487,17 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         code_blocks: List[str] = []
         if is_list_type(t):
-            code_blocks.append(dedent(f"""
-                    if len({param}) != {len(meta)}:
-                        raise ValueError("The size of input files list must be equal to the number of `SnakemakeFileMetadata` objects provided in latch_metadata")
-                    """))
+            sub_typ = get_args(t)[0]
+            if sub_typ in (LatchFile, LatchDir):
+                click.secho(
+                    dedent(f"""
+                    Failed to parse {param}. Lists containing LatchFile or LatchDir
+                    are not supported.
+                    """),
+                    fg="red",
+                )
+                raise click.exceptions.Exit(1)
+
             code_blocks.append(
                 f"overwrite_config[{self._param_path_str(param_path)}] = [None for"
                 f" _ in range({len(meta)})]\n"
@@ -496,7 +507,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 sub_param = f"{param}[{i}]"
                 code_blocks.append(
                     self.get_param_code(
-                        t.__args__[0],
+                        sub_typ,
                         sub_param,
                         {sub_param: m},
                         [*param_path, i],

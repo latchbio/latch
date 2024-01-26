@@ -1,9 +1,10 @@
 from dataclasses import fields, is_dataclass
 from pathlib import Path
-from typing import Dict, List, Tuple, Type, TypeVar, get_args
+from typing import Dict, List, Tuple, Type, TypeVar, get_args, get_origin
 
 import click
 import yaml
+from typing_extensions import Annotated
 
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
@@ -74,6 +75,9 @@ def parse_config(
 
 
 def file_metadata_str(typ: Type, value: JSONValue, level: int = 0) -> str:
+    if get_origin(typ) is Annotated:
+        typ = get_args(typ)[0]
+
     if is_primitive_type(typ):
         return ""
 
@@ -234,6 +238,9 @@ def generate_metadata(
             r"""
             from dataclasses import dataclass
             import typing
+            import typing_extensions
+
+            from flytekit.core.annotation import FlyteAnnotation
 
             from latch.types.metadata import SnakemakeParameter, SnakemakeFileParameter, SnakemakeFileMetadata
             from latch.types.file import LatchFile
