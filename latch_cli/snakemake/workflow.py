@@ -295,24 +295,9 @@ def interface_to_parameters(
 
         ctx = FlyteContextManager.current_context()
         if default is not None:
-            try:
-                default_lv = TypeEngine.to_literal(
-                    ctx, default, python_type=interface.inputs[k], expected=v.type
-                )
-            except TypeTransformerFailedError as e:
-                if "Python value cannot be None" in str(e):
-                    click.secho(
-                        reindent(
-                            f"""
-                            Default for parameter "{k}" cannot contain None fields. Please remove
-                            default value for this parameter or set it to a non-None value.
-                            """,
-                            0,
-                        ),
-                        fg="red",
-                    )
-                    raise click.exceptions.Exit(1)
-                raise e
+            default_lv = TypeEngine.to_literal(
+                ctx, default, python_type=interface.inputs[k], expected=v.type
+            )
 
         params[k] = interface_models.Parameter(
             var=v, default=default_lv, required=required

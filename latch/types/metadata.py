@@ -1,13 +1,26 @@
 import re
-from dataclasses import Field, asdict, dataclass, field
+from dataclasses import Field, asdict, dataclass, field, fields, is_dataclass
 from enum import Enum
 from pathlib import Path
 from textwrap import indent
-from typing import Any, ClassVar, Dict, List, Optional, Protocol, Tuple, Type, Union
+from typing import (
+    Any,
+    ClassVar,
+    Dict,
+    List,
+    Optional,
+    Protocol,
+    Tuple,
+    Type,
+    Union,
+    get_args,
+)
 
+import click
 import yaml
 from typing_extensions import TypeAlias
 
+from latch_cli.snakemake.config.utils import is_list_type, is_primitive_type
 from latch_cli.utils import identifier_suffix_from_str
 
 from .directory import LatchDir
@@ -607,7 +620,44 @@ class SnakemakeMetadata(LatchMetadata):
     Number of cores to use for Snakemake tasks (equivalent of Snakemake's `--cores` flag)
     """
 
+    def validate(self):
+        def _contains_none_fields(t: Type, param: Any) -> bool:
+            if is_primitive_type(t) or t in {LatchFile, LatchDir}:
+                return param is None
+
+            if is_list_type(t):
+                if len(get_args(t)) == 0:
+                    raise ValueError(
+                        "Generic Lists are not supported - please specify a subtype,"
+                        " e.g. List[LatchFile]",
+                    )
+                list_typ = get_args(t)[0]
+                for val in param:
+                    if _contains_none_fields(list_typ, val):
+                        return True
+                return False
+
+            assert is_dataclass(t)
+            for field in fields(t):
+                if _contains_none_fields(field.type, getattr(param, field.name)):
+                    return True
+            return False
+
+        for name, param in self.parameters.items():
+            if param.default is None:
+                continue
+            if _contains_none_fields(param.type, param.default):
+                click.secho(
+                    " Non-None default parameters cannot contain None fields. Please"
+                    " remove default or set all fields to a non-None value for"
+                    f" parameter: {name}.  ",
+                    fg="red",
+                )
+                raise click.exceptions.Exit(1)
+
     def __post_init__(self):
+        self.validate()
+
         if self.name is None:
             self.name = (
                 f"snakemake_{identifier_suffix_from_str(self.display_name.lower())}"
