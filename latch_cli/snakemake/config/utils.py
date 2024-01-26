@@ -1,7 +1,9 @@
 from dataclasses import asdict, fields, is_dataclass, make_dataclass
 from enum import Enum
+from textwrap import dedent
 from typing import Any, Dict, List, Optional, Type, Union, get_args, get_origin
 
+import click
 from flytekit.core.annotation import FlyteAnnotation
 from typing_extensions import Annotated, TypeAlias, TypeGuard, TypeVar
 
@@ -122,7 +124,16 @@ def parse_type(
             )
         typ = parsed_types[0]
         if typ in {LatchFile, LatchDir}:
-            return Annotated[List[typ], FlyteAnnotation({"size": len(v)})]
+            click.secho(
+                dedent(f"""
+                Failed to parse {name}. Lists containing LatchFile or LatchDir
+                are not supported.
+                """),
+                fg="red",
+            )
+            raise click.exceptions.Exit(1)
+            # TODO: (rahul) add back once console PR is merged
+            # return Annotated[List[typ], FlyteAnnotation({"size": len(v)})]
         return List[typ]
 
     assert isinstance(v, dict)
