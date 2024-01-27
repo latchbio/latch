@@ -1,8 +1,20 @@
 # Environments
 
-## Configuring Conda and Container Environments
+When registering a Snakemake workflow on Latch, we need to build a single container image containing all your runtime dependencies and the Latch packages. By default, all tasks (including the JIT step) will run inside this container.
 
-Latch's Snakemake integration supports the use of both the `conda` and `container` directives in your Snakefile. To configure which environment to run tasks in (which is typically done through the use of `--use-conda` and `--use-singularity`), add the `env_config` field to your workflow's `SnakemakeMetadata` object. For example,
+To generate a Dockerfile with all the Latch-specific dependencies, run the following command from inside your workflow directory:
+
+```console
+latch dockerfile . --snakemake
+```
+
+Inspect the resulting Dockerfile and add any runtime dependencies required for your workflow.
+
+## Configuring Task Environments
+
+Sometimes, it is preferable to use isolated environments for each Snakemake rule using the `container` and `conda` [Snakemake directives](https://snakemake.readthedocs.io/en/stable/snakefiles/deployment.html#running-jobs-in-containers) instead of building one large image.
+
+Typically, when using these directives, we must pass the `--use-conda` and `--use-singularity` flags to the `snakemake` command to configure which environment to activate. Similarly, to configure your environment on Latch, add the `env_config` field to your workflow's `SnakemakeMetadata` object. For example,
 
 ```
 # latch_metadata.py
@@ -20,31 +32,18 @@ SnakemakeMetadata(
       use_conda=True,
       use_container=True,
     ),
-    parameters={
-        "samples" : SnakemakeFileParameter(
-                display_name="Sample Input Directory",
-                description="A directory full of FastQ files",
-                type=LatchDir,
-                path=Path("data/samples"),
-        ),
-        "ref_genome" : SnakemakeFileParameter(
-                display_name="Indexed Reference Genome",
-                description="A directory with a reference Fasta file and the 6 index files produced from `bwa index`",
-                type=LatchDir,
-                path=Path("genome"),
-        ),
-    },
+    ...
 )
 ```
 
-If there is no `env_config` defined, Snakemake tasks on Latch will NOT use containers or conda environments by default.
+**Note**: If no `env_config` is defined, Snakemake tasks on Latch will NOT use containers or conda environments by default.
 
 ## Using Private Container Registries
 
-When executing Snakemake workflows in containers, it is possible that the container images will exist in a private registry that the Latch cloud does not have access to. Downloading images from private registries at runtime requires two steps:
+When executing Snakemake workflows in containers, the container images may exist in a private registry that the Latch cloud cannot access. Downloading images from private registries at runtime requires two steps:
 
-1. Upload the password / access token of your private container registry to the Latch platform. See [Storing and using Secrets](../basics/adding_secrets.md).
-2. Add the `docker_metadata` field to your workflow's `SnakemakeMetadata` object so that the workflow engine knows where to pull your credentials from. For example:
+1. Upload your private container registry's password/access token to the Latch platform. See [Storing and using Secrets](../basics/adding_secrets.md).
+2. Add the `docker_metadata` field to your workflow's `SnakemakeMetadata` object so the workflow engine knows where to pull your credentials. For example:
 
 ```
 # latch_metadata.py
@@ -58,24 +57,15 @@ SnakemakeMetadata(
     author=LatchAuthor(
             name="latchbio",
     ),
+    env_config=EnvironmentConfig(
+      use_conda=False,
+      use_container=True,
+    ),
     docker_metadata=DockerMetadata(
       username="user0",
       secret_name="LATCH_SECRET_NAME",
     ),
-    parameters={
-        "samples" : SnakemakeFileParameter(
-                display_name="Sample Input Directory",
-                description="A directory full of FastQ files",
-                type=LatchDir,
-                path=Path("data/samples"),
-        ),
-        "ref_genome" : SnakemakeFileParameter(
-                display_name="Indexed Reference Genome",
-                description="A directory with a reference Fasta file and the 6 index files produced from `bwa index`",
-                type=LatchDir,
-                path=Path("genome"),
-        ),
-    },
+    ...
 )
 ```
 

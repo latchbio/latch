@@ -25,6 +25,8 @@ from snakemake.rules import Rule
 from snakemake.workflow import Workflow, WorkflowError
 from typing_extensions import Self
 
+import latch.types.metadata as metadata
+
 from ..common.serialize import (
     EntityCache,
     get_serializable_launch_plan,
@@ -70,8 +72,6 @@ def get_snakemake_metadata_example(name: str) -> str:
 
 
 def ensure_snakemake_metadata_exists():
-    import latch.types.metadata as metadata
-
     if metadata._snakemake_metadata is None:
         click.secho(
             dedent("""
@@ -98,15 +98,19 @@ class SnakemakeWorkflowExtractor(Workflow):
         self,
         pkg_root: Path,
         snakefile: Path,
-        non_blob_parameters: Optional[Dict[str, Any]] = None,
+        overwrite_config: Optional[Dict[str, Any]] = None,
     ):
-        super().__init__(snakefile=snakefile, overwrite_config=non_blob_parameters)
+        assert metadata._snakemake_metadata is not None
+        cores = metadata._snakemake_metadata.cores
+        super().__init__(
+            snakefile=snakefile, overwrite_config=overwrite_config, cores=cores
+        )
 
         self.pkg_root = pkg_root
         self._old_cwd = ""
 
-        if non_blob_parameters is not None:
-            print(f"Config: {json.dumps(non_blob_parameters, indent=2)}")
+        if overwrite_config is not None:
+            print(f"Config: {json.dumps(overwrite_config, indent=2)}")
 
     def extract_dag(self):
         targets: List[str] = (
@@ -182,7 +186,7 @@ class SnakemakeWorkflowExtractor(Workflow):
 def snakemake_workflow_extractor(
     pkg_root: Path,
     snakefile: Path,
-    non_blob_parameters: Optional[Dict[str, Any]] = None,
+    overwrite_config: Optional[Dict[str, Any]] = None,
 ) -> SnakemakeWorkflowExtractor:
     snakefile = snakefile.resolve()
 
@@ -191,7 +195,7 @@ def snakemake_workflow_extractor(
     extractor = SnakemakeWorkflowExtractor(
         pkg_root=pkg_root,
         snakefile=snakefile,
-        non_blob_parameters=non_blob_parameters,
+        overwrite_config=overwrite_config,
     )
     with extractor:
         extractor.include(
@@ -209,10 +213,10 @@ def extract_snakemake_workflow(
     jit_wf_version: str,
     jit_exec_display_name: str,
     local_to_remote_path_mapping: Optional[Dict[str, str]] = None,
-    non_blob_parameters: Optional[Dict[str, Any]] = None,
+    overwrite_config: Optional[Dict[str, Any]] = None,
     cache_tasks: bool = False,
 ) -> SnakemakeWorkflow:
-    extractor = snakemake_workflow_extractor(pkg_root, snakefile, non_blob_parameters)
+    extractor = snakemake_workflow_extractor(pkg_root, snakefile, overwrite_config)
     with extractor:
         dag = extractor.extract_dag()
         wf = SnakemakeWorkflow(
@@ -307,7 +311,7 @@ def generate_snakemake_entrypoint(
     pkg_root: Path,
     snakefile: Path,
     remote_output_url: Optional[str] = None,
-    non_blob_parameters: Optional[Dict[str, str]] = None,
+    overwrite_config: Optional[Dict[str, str]] = None,
 ):
     entrypoint_code_block = textwrap.dedent(r"""
         import os
@@ -357,7 +361,7 @@ def generate_snakemake_entrypoint(
         task.get_fn_code(
             snakefile_path_in_container(snakefile, pkg_root),
             remote_output_url,
-            non_blob_parameters,
+            overwrite_config,
         )
         for task in wf.snakemake_tasks
     )

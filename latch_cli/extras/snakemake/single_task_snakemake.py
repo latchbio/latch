@@ -43,13 +43,13 @@ data = json.loads(os.environ["LATCH_SNAKEMAKE_DATA"])
 rules = data["rules"]
 outputs = data["outputs"]
 
-non_blob_parameters = data.get("non_blob_parameters", {})
+overwrite_config = data.get("overwrite_config", {})
 
 old_workflow_init = WWorkflow.__init__
 
 
 def new_init(self: WWorkflow, *args, **kwargs):
-    kwargs["overwrite_config"] = non_blob_parameters
+    kwargs["overwrite_config"] = overwrite_config
     old_workflow_init(self, *args, **kwargs)
 
 

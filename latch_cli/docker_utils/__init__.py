@@ -225,6 +225,7 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
                 comment="Set conda PATH",
                 commands=[
                     "env PATH=/opt/conda/bin:$PATH",
+                    "RUN conda config --set auto_activate_base false",
                 ],
                 order=DockerCmdBlockOrder.precopy,
             ),

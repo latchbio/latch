@@ -1,9 +1,10 @@
 import os
+from urllib.parse import urljoin
 
-from latch_sdk_config.latch import config
+from latch_sdk_config.latch import NUCLEUS_URL
 
 from latch_cli.tinyrequests import post
-from latch_cli.utils import current_workspace, retrieve_or_login
+from latch_cli.utils import current_workspace, get_auth_header, retrieve_or_login
 
 
 def get_secret(secret_name: str):
@@ -20,32 +21,14 @@ def get_secret(secret_name: str):
         >>> get_secret("test-secret")
         "test-value-123"
     """
-    execution_token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
-    if execution_token is None:
-        return _get_secret_local(secret_name)
 
     resp = post(
-        url=config.api.user.get_secret,
+        url=urljoin(NUCLEUS_URL, "/secrets/get-new"),
         json={
-            "execution_token": execution_token,
             "name": secret_name,
+            "ws_id": current_workspace(),
         },
-    )
-
-    if resp.status_code != 200:
-        raise ValueError(resp.json()["error"])
-
-    return resp.json()["secret"]
-
-
-def _get_secret_local(secret_name: str):
-    resp = post(
-        url=config.api.user.get_secret_local,
-        json={
-            "ws_account_id": current_workspace(),
-            "name": secret_name,
-        },
-        headers={"Authorization": f"Bearer {retrieve_or_login()}"},
+        headers={"Authorization": get_auth_header()},
     )
 
     if resp.status_code != 200:

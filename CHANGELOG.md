@@ -16,6 +16,16 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.38.6 - 2023-01-26
+
+### Added
+
+* Snakemake
+  + support for config files with nested file paths
+  + GPU support for non-container tasks
+  + Add `cores` field to SnakemakeMetadata object
+
+
 ## 2.38.5 - 2023-01-22
 
 ### Fixed

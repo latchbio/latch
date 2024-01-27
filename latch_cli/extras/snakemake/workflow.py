@@ -2,9 +2,8 @@ import hashlib
 import importlib
 import json
 import sys
-import textwrap
 import typing
-from dataclasses import dataclass
+from dataclasses import dataclass, fields, is_dataclass
 from pathlib import Path
 from textwrap import dedent
 from typing import (
@@ -18,6 +17,8 @@ from typing import (
     Type,
     TypeVar,
     Union,
+    get_args,
+    get_origin,
 )
 from urllib.parse import urlparse
 
@@ -37,6 +38,7 @@ from flytekit.core.python_auto_container import (
     DefaultTaskResolver,
     PythonAutoContainerTask,
 )
+from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.core.workflow import (
     WorkflowBase,
     WorkflowFailurePolicy,
@@ -64,17 +66,18 @@ from kubernetes.client.models import (
 )
 from snakemake.dag import DAG
 from snakemake.jobs import GroupJob, Job
-from typing_extensions import TypeAlias, TypedDict
+from typing_extensions import Annotated, TypeAlias, TypedDict
 
 import latch.types.metadata as metadata
-from latch.resources.tasks import custom_task
+from latch.resources.tasks import _get_large_gpu_pod, _get_small_gpu_pod, custom_task
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
+from latch.types.metadata import FileMetadata, SnakemakeFileParameter
 
-from ...utils import identifier_suffix_from_str
+from ...utils import identifier_from_str, identifier_suffix_from_str
 from ..common.serialize import binding_from_python, interface_to_parameters
 from ..common.utils import reindent
-from .config.utils import type_repr
+from .config.utils import is_list_type, is_primitive_type, type_repr
 
 SnakemakeInputVal: TypeAlias = snakemake.io._IOFile
 
@@ -241,6 +244,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         parameter_metadata = metadata._snakemake_metadata.parameters
         display_name = metadata._snakemake_metadata.display_name
         name = metadata._snakemake_metadata.name
+        self.file_metadata = metadata._snakemake_metadata.file_metadata
 
         docstring = Docstring(
             f"{display_name}\n\nSample Description\n\n"
@@ -306,6 +310,168 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             1,
         )
 
+    def _param_path_str(self, param_path: List[Union[str, int]]) -> str:
+        return "][".join(map(repr, param_path))
+
+    def get_file_download_code(
+        self,
+        t: Type,
+        param: str,
+        path: Path,
+        download: bool,
+        config: bool,
+        param_path: str,
+    ) -> str:
+        code_block = ""
+        code_block += f"if {param} is not None:\n"
+
+        param_name = identifier_from_str(param)
+        touch_str = f"{param}._create_imposters()"
+        if download:
+            touch_str = (
+                f'print(f"Downloading {param}: {{{param}.remote_path}}");'
+                f" Path({param}).resolve()"
+            )
+
+        code_block += reindent(
+            rf"""
+            {param_name}_dst_p = Path("{path}")
+
+            {touch_str}
+            {param_name}_p = Path({param}.path)
+            print(f"  {{file_name_and_size({param_name}_p)}}")
+            """,
+            1,
+        )
+
+        if t is LatchDir:
+            code_block += f"    {param_name}_p.iterdir()\n"
+
+        code_block += reindent(
+            rf"""
+            print(f"Moving {param} to {{{param_name}_dst_p}}")
+
+            update_mapping({param_name}_p, {param_name}_dst_p, {param}.remote_path, local_to_remote_path_mapping)
+            check_exists_and_rename(
+                {param_name}_p,
+                {param_name}_dst_p
+            )
+
+            """,
+            1,
+        )
+
+        if config:
+            code_block += reindent(
+                rf"""
+                print(f"Saving parameter value {param} = {str(path)}")
+                overwrite_config[{self._param_path_str(param_path)}] = {repr(str(path))}
+                """,
+                1,
+            )
+
+        return code_block
+
+    def get_param_code(
+        self,
+        t: Type,
+        param: str,
+        file_meta: FileMetadata,
+        param_path: List[Union[str, int]],
+    ) -> str:
+        param_meta = self.parameter_metadata.get(param)
+        # support workflows that use the legacy SnakemakeFileParameter
+        if isinstance(param_meta, SnakemakeFileParameter):
+            assert t in (
+                LatchFile,
+                LatchDir,
+            ), "SnakemakeFileParameter must have type LatchFile or LatchDir"
+
+            code_block = ""
+            code_block += self.get_file_download_code(
+                t,
+                param,
+                param_meta.path,
+                param_meta.download,
+                param_meta.config,
+                param_path,
+            )
+
+            return code_block
+
+        if file_meta is None or file_meta.get(param) is None or is_primitive_type(t):
+            return dedent(rf"""
+                print(f"Saving parameter value {param} = get_parameter_json_value({param})")
+                overwrite_config[{self._param_path_str(param_path)}] = get_parameter_json_value({param})
+                """)
+
+        if get_origin(t) is Annotated:
+            args = get_args(t)
+            assert len(args) > 0
+            return self.get_param_code(args[0], param, file_meta, param_path)
+
+        if get_origin(t) is Union:
+            args = get_args(t)
+            return self.get_param_code(args[0], param, file_meta, param_path)
+
+        meta = file_meta.get(param)
+        if t in (LatchFile, LatchDir):
+            return self.get_file_download_code(
+                t,
+                param,
+                meta.path,
+                meta.download,
+                meta.config,
+                param_path,
+            )
+
+        code_blocks: List[str] = []
+        if is_list_type(t):
+            args = get_args(t)
+            if len(args) == 0:
+                click.secho(
+                    dedent(f"""
+                    Generic Lists are not supported - please specify a subtype, e.g."
+                    List[LatchFile]",
+                    """),
+                    fg="red",
+                )
+                raise click.exceptions.Exit(1)
+
+            sub_typ = args[0]
+            code_blocks.append(
+                f"overwrite_config[{self._param_path_str(param_path)}] = [None for"
+                f" _ in range({len(meta)})]\n"
+            )
+
+            for i, m in enumerate(meta):
+                sub_param = f"{param}[{i}]"
+                code_blocks.append(
+                    self.get_param_code(
+                        sub_typ,
+                        sub_param,
+                        {sub_param: m},
+                        [*param_path, i],
+                    )
+                )
+        else:
+            assert is_dataclass(t)
+            code_blocks.append(
+                f"overwrite_config[{self._param_path_str(param_path)}] = {{}}"
+            )
+            for field in fields(t):
+                sub_param = f"{param}.{field.name}"
+                code_blocks.append(
+                    self.get_param_code(
+                        field.type,
+                        sub_param,
+                        {sub_param: meta.get(field.name)},
+                        param_path + [field.name],
+                    )
+                )
+
+        return "\n".join(code_blocks)
+
     def get_fn_code(
         self,
         snakefile_path: str,
@@ -317,75 +483,17 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         code_block = self.get_fn_interface(fn_name=task_name)
 
         code_block += reindent(
-            r"""
-            non_blob_parameters = {}
-            local_to_remote_path_mapping = {}
+            rf"""
+            overwrite_config = {{}}
+            local_to_remote_path_mapping = {{}}
+
             """,
             1,
         )
 
         for param, t in self.python_interface.inputs.items():
-            param_meta = self.parameter_metadata[param]
-
-            if t in (LatchFile, LatchDir):
-                assert isinstance(param_meta, metadata.SnakemakeFileParameter)
-
-                touch_str = f"{param}._create_imposters()"
-                if param_meta.download:
-                    touch_str = (
-                        f'print(f"Downloading {param}: {{{param}.remote_path}}");'
-                        f" Path({param}).resolve()"
-                    )
-
-                code_block += reindent(
-                    rf"""
-                    {param}_dst_p = Path("{param_meta.path}")
-
-                    {touch_str}
-                    {param}_p = Path({param}.path)
-                    print(f"  {{file_name_and_size({param}_p)}}")
-
-                    """,
-                    1,
-                )
-
-                if t is LatchDir:
-                    code_block += reindent(
-                        rf"""
-                        for x in {param}_p.iterdir():
-                            print(f"    {{file_name_and_size(x)}}")
-
-                        """,
-                        1,
-                    )
-
-                code_block += reindent(
-                    rf"""
-                    print(f"Moving {param} to {{{param}_dst_p}}")
-
-                    update_mapping({param}_p, {param}_dst_p, {param}.remote_path, local_to_remote_path_mapping)
-                    check_exists_and_rename(
-                        {param}_p,
-                        {param}_dst_p
-                    )
-
-                    """,
-                    1,
-                )
-
-            if not getattr(param_meta, "config", True):
-                continue
-
-            val_str = f"get_parameter_json_value({param})"
-            if hasattr(param_meta, "path"):
-                val_str = repr(str(param_meta.path))
-
             code_block += reindent(
-                rf"""
-                print(f"Saving parameter value {param} = {{{val_str}}}")
-                non_blob_parameters[{repr(param)}] = {val_str}
-
-                """,
+                self.get_param_code(t, param, self.file_metadata, [param]),
                 1,
             )
 
@@ -451,11 +559,11 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 jit_wf_version,
                 jit_exec_display_name,
                 local_to_remote_path_mapping,
-                non_blob_parameters,
+                overwrite_config,
                 {self.cache_tasks},
             )
             wf_name = wf.name
-            generate_snakemake_entrypoint(wf, pkg_root, snakefile, {repr(remote_output_url)}, non_blob_parameters)
+            generate_snakemake_entrypoint(wf, pkg_root, snakefile, {repr(remote_output_url)}, overwrite_config)
 
             entrypoint_remote = f"latch:///.snakemake_latch/workflows/{{wf_name}}/{{jit_wf_version}}/{{jit_exec_display_name}}/entrypoint.py"
             lp.upload("latch_entrypoint.py", entrypoint_remote)
@@ -571,6 +679,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         name = metadata._snakemake_metadata.name
         self.jit_wf_version = jit_wf_version
         self.jit_exec_display_name = jit_exec_display_name
+        self.cores = metadata._snakemake_metadata.cores
 
         assert name is not None
 
@@ -1004,16 +1113,47 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
 
         limits = self.job.resources
         cores = limits.get("cpus", 4)
-
         # convert MB to GiB
         mem = limits.get("mem_mb", 8589) * 1000 * 1000 // 1024 // 1024 // 1024
+        gpu = limits.get("nvidia_gpu", 0)
+
+        self._uses_gpu = gpu > 0
+        if self._uses_gpu and self.job.container_img_url is not None:
+            click.secho(
+                dedent("""
+                    GPU tasks within container images are not yet supported. To resolve,
+                    use conda for all GPU tasks OR add all dependencies to your main
+                    Dockerfile.
+                    """),
+                fg="red",
+            )
+            raise click.exceptions.Exit(1)
+
+        task_config = None
+        if not self._uses_gpu:
+            task_config = custom_task(cpu=cores, memory=mem).keywords["task_config"]
+        else:
+            if gpu == 1 and cores <= 7 and mem <= 30:
+                task_config = _get_small_gpu_pod()
+            elif gpu == 1 and cores <= 31 and mem <= 120:
+                task_config = _get_large_gpu_pod()
+            else:
+                click.secho(
+                    dedent(f"""
+                        GPU task resource limit is too high.
+                        request: gpu={gpu}, cores={cores}, RAM={mem} GiB
+                        max:     gpu=1, cores=31, RAM=120 GiB)",
+                        """),
+                    fg="red",
+                )
+                raise click.exceptions.Exit(1)
 
         super().__init__(
             task_type="sidecar",
             task_type_version=2,
             name=name,
             interface=interface,
-            task_config=custom_task(cpu=cores, memory=mem).keywords["task_config"],
+            task_config=task_config,
             task_resolver=SnakemakeJobTaskResolver(),
         )
 
@@ -1145,28 +1285,10 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
         for out_name, out_type in self._python_outputs.items():
             target_path = self._target_file_for_output_param[out_name]
 
-            print_outs.append(
-                reindent(
-                    rf"""
-                    print(f'  {out_name}={{file_name_and_size(Path("{target_path}"))}}')
-                    """,
-                    1,
-                )
-            )
-
+            remote_path = None
             if not self._is_target:
-                remote_path = f"latch:///.snakemake_latch/workflows/{self.wf.name}/task_outputs/{self.wf.jit_wf_version}/{self.wf.jit_exec_display_name}/{self.name}/{out_name}"
-                results.append(
-                    reindent(
-                        rf"""
-                        {out_name}={out_type.__name__}({repr(target_path)}, {repr(remote_path)})
-                        """,
-                        2,
-                    ).rstrip()
-                )
-                continue
-
-            if remote_output_url is None:
+                remote_path = f"/.snakemake_latch/workflows/{self.wf.name}/task_outputs/{self.wf.jit_wf_version}/{self.wf.jit_exec_display_name}/{self.name}/{target_path}"
+            elif remote_output_url is None:
                 remote_path = Path("/Snakemake Outputs") / self.wf.name / target_path
             else:
                 remote_path = Path(urlparse(remote_output_url).path) / target_path
@@ -1174,10 +1296,19 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             results.append(
                 reindent(
                     rf"""
-                    {out_name}={out_type.__name__}("{target_path}", "latch://{remote_path}")
+                    {out_name}={out_type.__name__}({repr(target_path)}, "latch://{remote_path}")
                     """,
                     2,
                 ).rstrip()
+            )
+
+            print_outs.append(
+                reindent(
+                    rf"""
+                    print(f'  {out_name}={{file_name_and_size(Path("{target_path}"))}} -> latch://{remote_path}')
+                    """,
+                    1,
+                )
             )
 
         print_out_str = "\n".join(print_outs)
@@ -1203,7 +1334,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
         self,
         snakefile_path_in_container: str,
         remote_output_url: Optional[str] = None,
-        non_blob_parameters: Optional[Dict[str, str]] = None,
+        overwrite_config: Optional[Dict[str, str]] = None,
     ):
         code_block = self.get_fn_interface()
 
@@ -1238,8 +1369,8 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
         if isinstance(self.job, GroupJob):
             jobs = self.job.jobs
 
-        if non_blob_parameters is not None:
-            for param, val in non_blob_parameters.items():
+        if overwrite_config is not None:
+            for param, val in overwrite_config.items():
                 self.job.rule.workflow.globals["config"][param] = val
 
         snakemake_args = [
@@ -1249,6 +1380,12 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             snakefile_path_in_container,
             *(["--use-conda"] if self.wf._use_conda else []),
             *(["--use-singularity"] if self.wf._use_container else []),
+            # we use docker instead of singularity, so these are docker run arguments
+            *(
+                ["--singularity-args", "--gpus all"]
+                if self.wf._use_container and self._uses_gpu
+                else []
+            ),
             "--target-jobs",
             *jobs_cli_args(jobs),
             "--allowed-rules",
@@ -1256,7 +1393,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             "--local-groupid",
             str(self.job.jobid),
             "--cores",
-            str(self.job.threads),
+            str(self.wf.cores),
         ]
         if not self.job.is_group():
             snakemake_args.append("--force-use-threads")
@@ -1273,7 +1410,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
         snakemake_data = {
             "rules": {},
             "outputs": self.job.output,
-            "non_blob_parameters": non_blob_parameters,
+            "overwrite_config": overwrite_config,
         }
 
         for job in jobs:
@@ -1295,7 +1432,17 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             remote_path = Path(urlparse(remote_output_url).path)
 
         log_files = self.job.log if self.job.log is not None else []
-        output_files = self.job.output if self.job.output is not None else []
+        # for debugging purposes, we upload outputs to LData even if
+        # they are not target files or used in a downstream rule
+        result_files = set([
+            self._target_file_for_output_param[out_name]
+            for out_name, _ in self._python_outputs.items()
+        ])
+        unused_outputs = (
+            [out for out in self.job.output if out not in result_files]
+            if self.job.output is not None
+            else []
+        )
 
         code_block += reindent(
             rf"""
@@ -1422,13 +1569,13 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
 
                         print("    Done")
 
-                    print("Uploading outputs:")
-                    for x in {repr(output_files)}:
+                    print("Uploading intermediate outputs:")
+                    for x in {repr(unused_outputs)}:
                         local = Path(x)
                         remote = f"latch://{remote_path}/{{str(local).removeprefix('/')}}"
 
                         if not local.exists():
-                            print("  Does not exist")
+                            print(f"  {{x}}: Does not exist")
                             continue
 
                         print(f"  {{file_name_and_size(local)}} -> {{remote}}")

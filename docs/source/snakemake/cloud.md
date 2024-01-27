@@ -6,10 +6,9 @@ When a Snakemake workflow is executed on Latch, each generated job is run in a s
 
 Therefore, it may be necessary to adapt your Snakefile to address issues arising from this execution method, which were not encountered during local execution:
 
-* Add missing rule inputs that are implicitly fulfilled when executing locally. 
-* Make sure shared code does not rely on input files. This is any code that is not under a rule, and so gets executed by every task
-* Add `resources` directives if tasks run out of memory or disk space
-* Optimize data transfer by merging tasks that have 1-to-1 dependencies
+- Add missing rule inputs that are implicitly fulfilled when executing locally.
+- Make sure shared code does not rely on input files. This is any code that is not under a rule, and so gets executed by every task
+- Optimize data transfer by merging tasks that have 1-to-1 dependencies
 
 Here, we will walk through examples of each of the cases outlined above.
 
@@ -23,8 +22,8 @@ A typical example is if the index files for biological data are not explicitly s
 
 In the example below, there are two Snakefile rules:
 
-* `delly_s`: The rule runs Delly to call SVs and outputs an unfiltered BCF file, followed by quality filtering using `bcftools` filter to retain only the SV calls that pass certain filters. Finally, it indexes the BCF file.
-* `delly_merge`: This rule merges or concatenates BCF files containing SV calls from the delly_s rule, producing a single VCF file. The rule requires the index file to be available for each corresponding BAM file.
+- `delly_s`: The rule runs Delly to call SVs and outputs an unfiltered BCF file, followed by quality filtering using `bcftools` filter to retain only the SV calls that pass certain filters. Finally, it indexes the BCF file.
+- `delly_merge`: This rule merges or concatenates BCF files containing SV calls from the delly_s rule, producing a single VCF file. The rule requires the index file to be available for each corresponding BAM file.
 
 ```python
 rule delly_s:  # single-sample analysis
@@ -312,50 +311,6 @@ rule all:
     expand("reports/{name}.txt", name=get_samples_data()["names"]),
 ```
 
-## Add `resources` directives
-
-It is common for a Snakefile rule to run into out-of-memory errors.
-
-#### Example
-
-The following workflow failed because Kraken2 requires at least 256GB of RAM to run.
-
-```python
-rule kraken:
-    input:
-        reads = lambda wildcards: get_samples()["sample_reads"][wildcards.samp],
-    output:
-        krak = join(outdir, "classification/{samp}.krak"),
-        krak_report = join(outdir, "classification/{samp}.krak.report")
-    params:
-        db = config['database'],
-        paired_string = get_paired_string(),
-        confidence_threshold = confidence_threshold
-    threads: 16
-    resources:
-        mem_mb=128000,
-    singularity: "docker://quay.io/biocontainers/kraken2:2.1.2--pl5262h7d875b9_0"
-    shell: """
-        s5cmd cp 's3://latch-public/test-data/4034/kraken_test/db/*' {params.db} &&\
-
-        time kraken2 --db {params.db} --threads 16 --output {output.krak} \
-        --report {output.krak_report} {params.paired_string} {input.reads} \
-        --confidence {params.confidence_threshold} --use-names
-        """
-```
-
-### Solution
-
-Modify the `resources` directive of the Snakefile rule.
-
-```python
-rule kraken:
-    ...
-    resources:
-        mem_mb=128000
-    ...
-```
-
 ## Optimize data transfer
 
 In a Snakemake workflow, each rule is executed on a separate, isolated machine. As a result, all input files specified for a rule are downloaded to the machine every time the rule is run. Frequent downloading of the same input files across multiple rules can lead to increased workflow runtime and higher costs, especially if the data files are large.
@@ -364,13 +319,13 @@ To optimize performance and minimize costs, it is recommended to consolidate the
 
 #### Example
 
-* Inefficient example with multiple rules processing the same BAM file:
+- Inefficient example with multiple rules processing the same BAM file:
 
 ```python
 rule all:
     input:
         "results/final_variants.vcf"
-        
+
 rule mark_duplicates:
     input:
         "data/sample.bam"

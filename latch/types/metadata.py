@@ -18,6 +18,7 @@ from typing import (
     runtime_checkable,
 )
 
+import click
 import yaml
 from typing_extensions import TypeAlias
 
@@ -385,7 +386,16 @@ class _IsDataclass(Protocol):
 
 
 ParameterType: TypeAlias = Union[
-    None, int, float, str, bool, Enum, _IsDataclass, List["ParameterType"]
+    None,
+    int,
+    float,
+    str,
+    bool,
+    LatchFile,
+    LatchDir,
+    Enum,
+    _IsDataclass,
+    List["ParameterType"],
 ]
 
 
@@ -403,6 +413,19 @@ class SnakemakeParameter(Generic[T], LatchParameter):
 
 @dataclass
 class SnakemakeFileParameter(SnakemakeParameter[Union[LatchFile, LatchDir]]):
+    """
+    Deprecated: use `file_metadata` keyword in `SnakemakeMetadata` instead
+    """
+
+    type: Optional[
+        Union[
+            Type[LatchFile],
+            Type[LatchDir],
+        ]
+    ] = None
+    """
+    The python type of the parameter.
+    """
     path: Optional[Path] = None
     """
     The path where the file passed to this parameter will be copied.
@@ -414,6 +437,22 @@ class SnakemakeFileParameter(SnakemakeParameter[Union[LatchFile, LatchDir]]):
     download: bool = False
     """
     Whether or not the file is downloaded in the JIT step
+    """
+
+
+@dataclass
+class SnakemakeFileMetadata:
+    path: Path
+    """
+    The local path where the file passed to this parameter will be copied
+    """
+    config: bool = False
+    """
+    If `True`, expose the file in the Snakemake config
+    """
+    download: bool = False
+    """
+    If `True`, download the file in the JIT step
     """
 
 
@@ -573,6 +612,9 @@ class EnvironmentConfig:
     """
 
 
+FileMetadata: TypeAlias = Dict[str, Union[SnakemakeFileMetadata, "FileMetadata"]]
+
+
 @dataclass
 class SnakemakeMetadata(LatchMetadata):
     """Class for organizing Snakemake workflow metadata"""
@@ -597,8 +639,30 @@ class SnakemakeMetadata(LatchMetadata):
     """
     A dictionary mapping parameter names (strings) to `SnakemakeParameter` objects
     """
+    file_metadata: FileMetadata = field(default_factory=dict)
+    """
+    A dictionary mapping parameter names to `SnakemakeFileMetadata` objects
+    """
+    cores: int = 4
+    """
+    Number of cores to use for Snakemake tasks (equivalent of Snakemake's `--cores` flag)
+    """
+
+    def validate(self):
+        from latch_cli.extras.snakemake.config.utils import validate_snakemake_type
+
+        for name, param in self.parameters.items():
+            if param.default is None:
+                continue
+            try:
+                validate_snakemake_type(name, param.type, param.default)
+            except ValueError as e:
+                click.secho(e, fg="red")
+                raise click.exceptions.Exit(1)
 
     def __post_init__(self):
+        self.validate()
+
         if self.name is None:
             self.name = (
                 f"snakemake_{identifier_suffix_from_str(self.display_name.lower())}"
