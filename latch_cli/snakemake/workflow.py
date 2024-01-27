@@ -396,9 +396,10 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         config: bool,
         param_path: str,
     ) -> str:
-        param_name = identifier_from_str(param)
-
         code_block = ""
+        code_block += f"if {param} is not None:\n"
+
+        param_name = identifier_from_str(param)
         touch_str = f"{param}._create_imposters()"
         if download:
             touch_str = (
@@ -406,18 +407,22 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 f" Path({param}).resolve()"
             )
 
-        code_block += dedent(rf"""
+        code_block += reindent(
+            rf"""
             {param_name}_dst_p = Path("{path}")
 
             {touch_str}
             {param_name}_p = Path({param}.path)
             print(f"  {{file_name_and_size({param_name}_p)}}")
-            """)
+            """,
+            1,
+        )
 
         if t is LatchDir:
-            code_block += f"{param_name}_p.iterdir()"
+            code_block += f"    {param_name}_p.iterdir()\n"
 
-        code_block += dedent(rf"""
+        code_block += reindent(
+            rf"""
             print(f"Moving {param} to {{{param_name}_dst_p}}")
 
             update_mapping({param_name}_p, {param_name}_dst_p, {param}.remote_path, local_to_remote_path_mapping)
@@ -426,14 +431,18 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 {param_name}_dst_p
             )
 
-            """)
+            """,
+            1,
+        )
 
         if config:
-            code_block += dedent(rf"""
+            code_block += reindent(
+                rf"""
                 print(f"Saving parameter value {param} = {str(path)}")
                 overwrite_config[{self._param_path_str(param_path)}] = {repr(str(path))}
-
-                """)
+                """,
+                1,
+            )
 
         return code_block
 
@@ -444,11 +453,6 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         file_meta: FileMetadata,
         param_path: List[Union[str, int]],
     ) -> str:
-        if get_origin(t) is Annotated:
-            args = get_args(t)
-            assert len(args) > 0
-            return self.get_param_code(args[0], param, file_meta, param_path)
-
         param_meta = self.parameter_metadata.get(param)
         # support workflows that use the legacy SnakemakeFileParameter
         if isinstance(param_meta, SnakemakeFileParameter):
@@ -473,8 +477,16 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             return dedent(rf"""
                 print(f"Saving parameter value {param} = get_parameter_json_value({param})")
                 overwrite_config[{self._param_path_str(param_path)}] = get_parameter_json_value({param})
-
                 """)
+
+        if get_origin(t) is Annotated:
+            args = get_args(t)
+            assert len(args) > 0
+            return self.get_param_code(args[0], param, file_meta, param_path)
+
+        if get_origin(t) is Union:
+            args = get_args(t)
+            return self.get_param_code(args[0], param, file_meta, param_path)
 
         meta = file_meta.get(param)
         if t in (LatchFile, LatchDir):
@@ -529,7 +541,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         else:
             assert is_dataclass(t)
             code_blocks.append(
-                f"overwrite_config[{self._param_path_str(param_path)}] = {{}}\n"
+                f"overwrite_config[{self._param_path_str(param_path)}] = {{}}"
             )
             for field in fields(t):
                 sub_param = f"{param}.{field.name}"

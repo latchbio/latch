@@ -178,8 +178,7 @@ def parse_value(t: Type, v: JSONValue):
 
         sub_type = args[0]
         res = [parse_value(sub_type, x) for x in v]
-        val, defaults = [x[0] for x in res], [x[1] for x in res]
-        return val, None if any([x is None for x in defaults]) else defaults
+        return [x[0] for x in res], [x[1] for x in res]
 
     assert isinstance(v, dict), v
     assert is_dataclass(t), t
@@ -188,18 +187,14 @@ def parse_value(t: Type, v: JSONValue):
     defaults = {}
     fs = {identifier_from_str(f.name): f for f in fields(t)}
 
-    ignore_default = False
     for k, x in v.items():
         sanitized = identifier_from_str(k)
         assert sanitized in fs, sanitized
         val, default = parse_value(fs[sanitized].type, x)
         ret[sanitized] = val
-        # flytekit fails if any fields in default object are None
-        if default is None:
-            ignore_default = True
         defaults[sanitized] = default
 
-    return t(**ret), t(**defaults) if not ignore_default else None
+    return t(**ret), t(**defaults)
 
 
 def is_primitive_type(
@@ -278,3 +273,52 @@ def get_preamble(typ: Type) -> str:
     preamble = "".join([get_preamble(f.type) for f in fields(typ)])
 
     return "".join([preamble, dataclass_repr(typ)])
+
+
+def validate_snakemake_type(name: str, t: Type, param: Any) -> None:
+    if t is type(None):
+        return param is None
+
+    elif is_primitive_type(t) or t in {LatchFile, LatchDir}:
+        if param is None:
+            raise ValueError(
+                f"Parameter {name} of type {t} cannot be None. Either specify a"
+                " non-None default value or use the Optional type"
+            )
+        if not isinstance(param, t):
+            raise ValueError(f"Parameter {name} must be of type {t}, not {type(param)}")
+
+    elif get_origin(t) is Union:
+        args = get_args(t)
+        # only Optional types supported
+        if len(args) != 2 or args[1] is not type(None):
+            raise ValueError(
+                f"Failed to parse input param {param}. Union types other than"
+                " Optional are not yet supported in Snakemake workflows."
+            )
+        if param is None:
+            return
+        validate_snakemake_type(name, args[0], param)
+
+    elif get_origin(t) is Annotated:
+        args = get_args(t)
+        assert len(args) > 0
+        validate_snakemake_type(name, args[0], param)
+
+    elif is_list_type(t):
+        args = get_args(t)
+        if len(args) == 0:
+            raise ValueError(
+                "Generic Lists are not supported - please specify a subtype,"
+                " e.g. List[LatchFile]",
+            )
+        list_typ = args[0]
+        for i, val in enumerate(param):
+            validate_snakemake_type(f"{name}[{i}]", list_typ, val)
+
+    else:
+        assert is_dataclass(t)
+        for field in fields(t):
+            validate_snakemake_type(
+                f"{name}.{field.name}", field.type, getattr(param, field.name)
+            )
