@@ -251,7 +251,7 @@ def get_preamble(typ: Type) -> str:
     if get_origin(typ) is Annotated:
         args = get_args(typ)
         assert len(args) > 0
-        return get_preamble(args[0], typ)
+        return get_preamble(args[0])
 
     if is_primitive_type(typ) or typ in {LatchFile, LatchDir}:
         return ""
