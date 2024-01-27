@@ -1,3 +1,4 @@
+import textwrap
 from pathlib import Path
 from typing import Optional
 
@@ -16,3 +17,10 @@ def load_snakemake_metadata(pkg_root: Path) -> Optional[Path]:
         import_module_by_path(old_meta)
 
         return old_meta
+
+
+# todo(maximsmol): use a stateful writer that keeps track of indent level
+def reindent(x: str, level: int) -> str:
+    if x[0] == "\n":
+        x = x[1:]
+    return textwrap.indent(textwrap.dedent(x), "    " * level)

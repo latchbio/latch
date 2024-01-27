@@ -5,9 +5,11 @@ from pathlib import Path
 from textwrap import indent
 from typing import Any, ClassVar, Dict, List, Optional, Protocol, Tuple, Type, Union
 
+import click
 import yaml
 from typing_extensions import TypeAlias
 
+from latch_cli.snakemake.config.utils import validate_snakemake_type
 from latch_cli.utils import identifier_suffix_from_str
 
 from .directory import LatchDir
@@ -380,6 +382,8 @@ ParameterType: TypeAlias = Union[
     Type[Enum],
     Type[_IsDataclass],
     Type[List["ParameterType"]],
+    Type[LatchFile],
+    Type[LatchDir],
 ]
 
 
@@ -395,6 +399,10 @@ class SnakemakeParameter(LatchParameter):
 
 @dataclass
 class SnakemakeFileParameter(SnakemakeParameter):
+    """
+    Deprecated: use `file_metadata` keyword in `SnakemakeMetadata` instead
+    """
+
     type: Optional[
         Union[
             Type[LatchFile],
@@ -415,6 +423,22 @@ class SnakemakeFileParameter(SnakemakeParameter):
     download: bool = False
     """
     Whether or not the file is downloaded in the JIT step
+    """
+
+
+@dataclass
+class SnakemakeFileMetadata:
+    path: Path
+    """
+    The local path where the file passed to this parameter will be copied
+    """
+    config: bool = False
+    """
+    If `True`, expose the file in the Snakemake config
+    """
+    download: bool = False
+    """
+    If `True`, download the file in the JIT step
     """
 
 
@@ -549,6 +573,9 @@ class EnvironmentConfig:
     """
 
 
+FileMetadata: TypeAlias = Dict[str, Union[SnakemakeFileMetadata, "FileMetadata"]]
+
+
 @dataclass
 class SnakemakeMetadata(LatchMetadata):
     """Class for organizing Snakemake workflow metadata"""
@@ -573,12 +600,29 @@ class SnakemakeMetadata(LatchMetadata):
     """
     A dictionary mapping parameter names (strings) to `SnakemakeParameter` objects
     """
+    file_metadata: FileMetadata = field(default_factory=dict)
+    """
+    A dictionary mapping parameter names to `SnakemakeFileMetadata` objects
+    """
     cores: int = 4
     """
     Number of cores to use for Snakemake tasks (equivalent of Snakemake's `--cores` flag)
     """
 
+    def validate(self):
+
+        for name, param in self.parameters.items():
+            if param.default is None:
+                continue
+            try:
+                validate_snakemake_type(name, param.type, param.default)
+            except ValueError as e:
+                click.secho(e, fg="red")
+                raise click.exceptions.Exit(1)
+
     def __post_init__(self):
+        self.validate()
+
         if self.name is None:
             self.name = (
                 f"snakemake_{identifier_suffix_from_str(self.display_name.lower())}"
