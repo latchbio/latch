@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Optional, Tuple, TypeVar, Union
 
@@ -9,6 +9,7 @@ class VertexType(Enum):
     process = "process"
     operator = "operator"
     origin = "origin"
+    node = "node"
 
 
 class NextflowInputParamType(Enum):
@@ -42,7 +43,7 @@ class NextflowDAGVertex:
     vertex_type: VertexType
     input_params: Optional[List[NextflowParam]]  # empty list zero state instead
     output_params: Optional[List[NextflowParam]]
-    code: Optional[str]
+    code: Optional[str] = field(repr=False)
 
 
 @dataclass

@@ -397,7 +397,7 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
                 node_map[vertex.id] = node
 
-            elif vertex.vertex_type == VertexType.origin:
+            elif vertex.vertex_type in {VertexType.origin, VertexType.node}:
                 # generic channel
                 ...
 
@@ -1280,7 +1280,6 @@ class NextflowMainTask(NextflowTask):
                     {k}_p,
                     {k}_dest_p
                 )
-
                 """,
                 1,
             )
@@ -1302,12 +1301,16 @@ class NextflowMainTask(NextflowTask):
                 raise e
 
             out_channels = {{}}
-            files = list(glob.glob(".latch/*/channel*.txt"))
+            files = list(glob.glob(".latch_compiled_channels/*/channel*.txt"))
             for file in files:
                 idx = parse_channel_file(file)
                 vals = Path(file).read_text().strip().split("\n")
                 v_id = Path(file).parent.name
                 out_channels[f"v{{v_id}}_c{{idx}}"] = vals
+
+
+            import json
+            print(json.dumps(out_channels, indent=2))
 
             """,
             1,
@@ -1393,6 +1396,7 @@ def build_nf_wf(pkg_root: Path, nf_script: Path):
         dependent_edges_by_start[i] = []
         dependent_edges_by_end[i] = []
 
+    edges = []
     for edge_json in edges_json:
         edge_content = edge_json["content"]
 
@@ -1404,6 +1408,8 @@ def build_nf_wf(pkg_root: Path, nf_script: Path):
             connection=edge_content["connection"],
         )
 
+        edges.append(edge)
+
         if edge.connection[0] is not None:
             dependent_edges_by_start[edge.connection[0]].append(edge)
 
@@ -1413,6 +1419,14 @@ def build_nf_wf(pkg_root: Path, nf_script: Path):
         from_vertex, to_vertex = edge.connection
         if to_vertex is not None:
             dependent_vertices[to_vertex].append(from_vertex)
+
+    print("Vertices:")
+    for v in vertices.values():
+        print(f"  {v}")
+
+    print("Edges:")
+    for e in edges:
+        print(f"  {e}")
 
     return NextflowWorkflow(
         vertices, dependent_vertices, dependent_edges_by_start, dependent_edges_by_end
