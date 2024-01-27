@@ -5,6 +5,7 @@ from pathlib import Path
 from textwrap import indent
 from typing import Any, ClassVar, Dict, List, Optional, Protocol, Tuple, Type, Union
 
+import click
 import yaml
 from typing_extensions import TypeAlias
 
@@ -427,7 +428,7 @@ class SnakemakeFileParameter(SnakemakeParameter):
 
 @dataclass
 class SnakemakeFileMetadata:
-    path: Path = None
+    path: Path
     """
     The local path where the file passed to this parameter will be copied
     """
@@ -613,7 +614,11 @@ class SnakemakeMetadata(LatchMetadata):
         for name, param in self.parameters.items():
             if param.default is None:
                 continue
-            validate_snakemake_type(name, param.type, param.default)
+            try:
+                validate_snakemake_type(name, param.type, param.default)
+            except ValueError as e:
+                click.secho(e, fg="red")
+                raise click.exceptions.Exit(1)
 
     def __post_init__(self):
         self.validate()
