@@ -124,16 +124,7 @@ def parse_type(
             )
         typ = parsed_types[0]
         if typ in {LatchFile, LatchDir}:
-            click.secho(
-                dedent(f"""
-                Failed to parse {name}. Lists containing LatchFile or LatchDir
-                are not supported.
-                """),
-                fg="red",
-            )
-            raise click.exceptions.Exit(1)
-            # todo(rahul) add back once console PR is merged
-            # return Annotated[List[typ], FlyteAnnotation({"size": len(v)})]
+            return Annotated[List[typ], FlyteAnnotation({"size": len(v)})]
         return List[typ]
 
     assert isinstance(v, dict)
@@ -260,7 +251,7 @@ def get_preamble(typ: Type) -> str:
     if get_origin(typ) is Annotated:
         args = get_args(typ)
         assert len(args) > 0
-        return get_preamble(args[0], typ)
+        return get_preamble(args[0])
 
     if is_primitive_type(typ) or typ in {LatchFile, LatchDir}:
         return ""
