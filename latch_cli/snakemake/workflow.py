@@ -513,16 +513,6 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 raise click.exceptions.Exit(1)
 
             sub_typ = args[0]
-            if sub_typ in (LatchFile, LatchDir):
-                click.secho(
-                    dedent(f"""
-                    Failed to parse {param}. Lists containing LatchFile or LatchDir
-                    are not yet supported.
-                    """),
-                    fg="red",
-                )
-                raise click.exceptions.Exit(1)
-
             code_blocks.append(
                 f"overwrite_config[{self._param_path_str(param_path)}] = [None for"
                 f" _ in range({len(meta)})]\n"

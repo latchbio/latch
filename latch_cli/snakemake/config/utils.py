@@ -124,16 +124,7 @@ def parse_type(
             )
         typ = parsed_types[0]
         if typ in {LatchFile, LatchDir}:
-            click.secho(
-                dedent(f"""
-                Failed to parse {name}. Lists containing LatchFile or LatchDir
-                are not supported.
-                """),
-                fg="red",
-            )
-            raise click.exceptions.Exit(1)
-            # todo(rahul) add back once console PR is merged
-            # return Annotated[List[typ], FlyteAnnotation({"size": len(v)})]
+            return Annotated[List[typ], FlyteAnnotation({"size": len(v)})]
         return List[typ]
 
     assert isinstance(v, dict)
