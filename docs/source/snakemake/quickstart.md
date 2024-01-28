@@ -61,7 +61,7 @@ To register a Snakemake workflow to Latch, type:
 latch register . --snakefile Snakefile
 ```
 
-To learn more about what happens when you register a Snakemake workflow on Latch, click [here](./lifecycle.md).
+We highly recommend reading about the [Snakemake Execution Lifecycle](./lifecycle.md) on Latch to understand what happens after registering and executing your workflow.
 
 ### Next Steps
 
