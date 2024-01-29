@@ -67,7 +67,14 @@ def parse_config(
 
     parsed: Dict[str, Type] = {}
     for k, v in res.items():
-        typ = parse_type(v, k, infer_files=infer_files)
+        try:
+            typ = parse_type(v, k, infer_files=infer_files)
+        except ValueError as e:
+            click.secho(
+                f"WARNING: Skipping parameter {k}. Failed to parse type: {e}.",
+                fg="yellow",
+            )
+            continue
         val, default = parse_value(typ, v)
 
         parsed[k] = (typ, (val, default))

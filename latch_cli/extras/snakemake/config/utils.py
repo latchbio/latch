@@ -119,10 +119,11 @@ def parse_type(
             )
             for x in v
         )
-        if len(set(parsed_types)) > 1:
+
+        if len(set(parsed_types)) != 1:
             raise ValueError(
-                "Generic Lists are not supported - please ensure that all elements in a"
-                " list are of the same type",
+                "Generic Lists are not supported - please"
+                f" ensure that all elements in {name} are of the same type",
             )
         typ = parsed_types[0]
         if typ in {LatchFile, LatchDir}:

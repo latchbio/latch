@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.38.7 - 2023-01-26
+
+### Fixed
+
+* Snakemake
+  + warn instead of error when config parameter type cannot be parsed in generate-metadata command
+
 ## 2.38.6 - 2023-01-26
 
 ### Added
