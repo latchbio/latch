@@ -1345,6 +1345,8 @@ def build_nf_wf(pkg_root: Path, nf_script: Path):
         print("\n\n\n[!] Failed\n\n\n")
         raise e
 
+    sys.exit(1)
+
     with open(pkg_root / ".latch/nextflowDAG.json") as f:
         dag = json.load(f)
 
@@ -1468,12 +1470,12 @@ def generate_nf_entrypoint(
         from latch.types.directory import LatchDir, LatchOutputDir
         from latch.types.file import LatchFile
 
+        from latch_cli.extras.nextflow.parameters import upload_files, download_files
+
         from latch_cli.utils import get_parameter_json_value, urljoins, check_exists_and_rename
 
         sys.stdout.reconfigure(line_buffering=True)
         sys.stderr.reconfigure(line_buffering=True)
-
-        NoneType = None
 
         channel_pattern = r"channel(\d+)\.txt"
 

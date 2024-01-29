@@ -12,11 +12,11 @@ from latch_sdk_config.latch import config as latch_config
 from latch_cli import tinyrequests
 from latch_cli.constants import Units
 from latch_cli.services.cp.config import CPConfig, Progress
-from latch_cli.services.cp.ldata_utils import LDataNodeType, get_node_data
 from latch_cli.services.cp.manager import CPStateManager
 from latch_cli.services.cp.progress import ProgressBars, get_free_index
 from latch_cli.services.cp.utils import get_max_workers, human_readable_time
 from latch_cli.utils import get_auth_header, with_si_suffix
+from latch_cli.utils.ldata import LDataNodeType, get_node_data
 from latch_cli.utils.path import normalize_path
 
 
