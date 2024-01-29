@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.38.8 - 2023-01-26
+
+### Fixed
+
+* Snakemake
+  + fix bug in `ruleorder` directive caused by `block_content` monkey patch returning None
+
 ## 2.38.7 - 2023-01-26
 
 ### Fixed
