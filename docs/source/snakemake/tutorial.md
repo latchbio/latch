@@ -1,20 +1,10 @@
-# Quickstart
+# Tutorial
 
 In this guide, we will walk through how to upload a simple Snakemake workflow to Latch.
 
 The example used here comes from the [short tutorial in Snakemake's documentation](https://snakemake.readthedocs.io/en/stable/tutorial/short.html).
 
-## Prerequisites
-
-- Register for an account and log into the [Latch Console](https://console.latch.bio)
-- Install a compatible version of Python. The Latch SDK is currently only supported for Python >=3.8 and <=3.11
-- Install the [Latch SDK](https://github.com/latchbio/latch#installation) with [Snakemake](https://snakemake.readthedocs.io/en/stable/getting_started/installation.html) support. We recommend installing Latch SDK in a fresh environment for best behavior:
-
-```console
-python3 -m venv env
-source env/bin/activate
-pip install "latch[snakemake]"
-```
+Before starting, please complete the [Prerequisites](./quickstart.md#Prerequisites).
 
 ## Step 1: Clone the example Snakemake workflow
 
@@ -102,12 +92,6 @@ from latch.types.metadata import SnakemakeParameter, SnakemakeFileParameter, Sna
 from latch.types.file import LatchFile
 from latch.types.directory import LatchDir
 
-
-
-# Import these into your `__init__.py` file:
-#
-# from .parameters import generated_parameters, file_metadata
-
 generated_parameters = {
     'samples': SnakemakeParameter(
         display_name='Samples',
@@ -145,23 +129,20 @@ Fortunately, the Latch SDK provides a convenient command to generate a Dockerfil
 latch dockerfile . --snakemake
 ```
 
-Let's analyze the resulting `Dockerfile`:
+After running the above command, you should see the following `Dockerfile` in your root directory. Let's analyze each relevant section of the generated `Dockerfile`:
 
 ```Docker
+### SECTION 1 ###
+
 from 812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:fe0b-main
 
 ...
 
-# Latch SDK
-# DO NOT REMOVE
 run pip install "latch[snakemake]"==<version>
 run mkdir /opt/latch
-```
 
-Use the Latch base image and install the Latch SDK with Snakemake support. These steps are required to execute workflows on the Latch cloud.
+### SECTION 2 ###
 
-```Docker
-# Install Mambaforge
 run apt-get update --yes && \
  apt-get install --yes curl && \
  curl \
@@ -169,35 +150,33 @@ run apt-get update --yes && \
  --fail \
  --remote-name \
  https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Linux-x86_64.sh && \
- `# Docs for -b and -p flags: https://docs.anaconda.com/anaconda/install/silent-mode/#linux-macos` \
  bash Mambaforge-Linux-x86_64.sh -b -p /opt/conda -u && \
  rm Mambaforge-Linux-x86_64.sh
 
-# Set conda PATH
 env PATH=/opt/conda/bin:$PATH
 
-# Build conda environment
 copy environment.yaml /opt/latch/environment.yaml
 run mamba env create \
  --file /opt/latch/environment.yaml \
  --name workflow
 env PATH=/opt/conda/envs/workflow/bin:$PATH
-```
 
-The `latch dockerfile` command will detect the existence of an `environment.yaml` file and create a conda environment from that file. This guarantees that all necessary runtime dependencies (`bwa`, `samtools`, etc.) are installed in the container when running our tasks. If your workflow doesn't have an `environment.yaml` file, you must manually install packages in the Dockerfile.
+### SECTION 3 ###
 
-```
-# Copy workflow data (use .dockerignore to skip files)
 copy . /root/
-```
 
-Copy the source code into the container. Use .dockerignore to avoid copying any large data files that you do not want in your container.
+### SECTION 4 ###
 
-```
 copy .latch/snakemake_jit_entrypoint.py /root/snakemake_jit_entrypoint.py
 ```
 
-Copy the auto-generated Snakemake entry point file into the container. This Python file will be executed when the workflow runs. For now, you don't need to be familiar with the contents of this file.
+1. The Dockerfile uses the Latch base image and installs the Latch SDK with Snakemake support. These steps are required to execute workflows on the Latch cloud.
+
+2. This section installs the runtime dependencies (`bwa`, `samtools`, etc.) required for the workflow to execute. The `latch dockerfile` command will detect the existence of an `environment.yaml` file in the root directory and create a conda environment from that file. If your workflow doesn't have an `environment.yaml` file, you must manually install packages in the Dockerfile.
+
+3. Section 3 copies the source code into the container. Use `.dockerignore` to avoid copying any large data files that you do not want in your container.
+
+4. Copy the auto-generated Snakemake entry point file into the container. This Python file will be executed when the workflow runs. For now, you don't need to be familiar with the contents of this file.
 
 ## Step 4: Upload the Workflow to Latch
 
@@ -222,7 +201,7 @@ Once you have uploaded the data and selected the appropriate input parameters, c
 
 Snakemake support currently uses JIT (Just-In-Time) registration. This means that once the single-task workflow above is complete, it will produce a second workflow, which runs the actual Snakemake jobs. To learn more about the lifecycle of a Snakemake workflow on Latch, click [here](./lifecycle.md).
 
-Once the workflow finishes running, results will be deposited under the `output_dir` folder, as defined in your `latch_metadata.py` file.
+Once the workflow finishes running, results will be deposited under the `output_dir` folder, as defined in your Latch Metadata.
 
 ## Next Steps
 

@@ -1,15 +1,20 @@
-# Lifecycle of a Snakemake Execution on Latch
+# Snakemake Execution Lifecycle
 
-Snakemake support is currently based on JIT (Just-In-Time) registration. This means that the workflow produced by `latch register` will register a second workflow, which will run the pipeline tasks. This is because the actual structure of the workflow cannot be specified until parameter values are provided.
+There are two stages to every Snakemake execution:
+
+1. Just-In-Time compilation: generates the workflow DAG from the Snakefile and input parameters
+2. Runtime: execution of the workflow tasks generated during the JIT step.
 
 ### JIT Workflow
 
 The first ("JIT") workflow does the following:
 
-1. Download all input files
+1. Create empty input files; this enables the JIT task to mock the file structure at runtime without using unnecessary network bandwidth from downloading the entire file
 2. Import the Snakefile, calculate the dependency graph, and determine which jobs need to be run
 3. Generate a Latch SDK workflow Python script for the second ("runtime") workflow and register it
 4. Run the runtime workflow using the same inputs
+
+![JIT task execution](../assets/snakemake/jit-task-with-logs.jpg)
 
 Debugging:
 
@@ -25,6 +30,8 @@ When a task executes, it will:
 1. Download all input files that are defined in the rule
 2. Execute the Snakemake task
 3. Upload outputs/logs/benchmarks to Latch Data
+
+![Runtime execution](../assets/snakemake/snakemake-execution.jpg)
 
 ### Limitations
 

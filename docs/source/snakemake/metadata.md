@@ -4,6 +4,8 @@ The Snakemake framework was designed to allow developers to both define and exec
 
 To construct a graphical interface from a Snakemake workflow, the file parameters need to be explicitly identified and defined so that they can be presented to scientists through a web application.
 
+## Generating Latch Metadata
+
 The `latch_metadata` folder holds these parameter definitions.
 
 To generate Latch metadata from a config file, type:
@@ -12,11 +14,28 @@ To generate Latch metadata from a config file, type:
 latch generate-metadata <path_to_config.yaml>
 ```
 
-The command automatically parses the existing `config.yaml` file in the Snakemake repository and creates a Python parameters file. After running the command, inspect the generated files to verify that the parameter types and file paths are what the workflow expects.
+The command automatically parses the existing `config.yaml` file in the Snakemake repository to create a `SnakemakeMetadata` object. Below is an explanation of the most relevant fields:
+
+#### output_dir
+
+A `LatchDir` object that points to the location in Latch Data where the Snakemake outputs will be stored after the workflow has finished executing.
+
+#### parameters
+
+Input parameters to the workflow. The Latch Console will expose these parameters to scientists before they execute the workflow.
+
+#### file_metadata
+
+Every input parameter of type `LatchFile` or `LatchDir` must have a corresponding `SnakemakeFileMetadata` in the `file_metadata` field. The `SnakemakeFileMetadata` object provides important metadata about the file to the workflow, such as:
+
+1. `path`: The local path inside the container where the workflow engine will copy Latch Data files/directories before the job executes
+2. `config`: If `True`, exposes the local file path in the Snakemake config
+3. `download`: If `True`, downloads the file in the JIT step instead of creating an empty file.
+   **Note**: To limit network consumption, only files, such as configuration files, used by the Snakefile at compilation time should set this field to `True`.
 
 ## Example
 
-Below is an example `config.yaml` file and corresponding latch metadata.
+Below is an example `config.yaml` file and corresponding latch metadata after running `latch generate-metadata`
 
 `config.yaml`
 
@@ -113,10 +132,6 @@ file_metadata = {
     ),
 }
 ```
-
-The `parameters` field contains all input parameters the Latch Console will expose to scientists before executing the workflow.
-
-The `file_metadata` field specifies metadata about the input files as a `SnakemakeFileMetadata` object. Every input parameter of type `LatchFile` or `LatchDir` must have a corresponding `SnakemakeFileMetadata` in the `file_metadata` field.
 
 After registering the above workflow to Latch, you will see an interface like the one below:
 

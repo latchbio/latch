@@ -12,9 +12,13 @@ Inspect the resulting Dockerfile and add any runtime dependencies required for y
 
 ## Configuring Task Environments
 
-Sometimes, it is preferable to use isolated environments for each Snakemake rule using the `container` and `conda` [Snakemake directives](https://snakemake.readthedocs.io/en/stable/snakefiles/deployment.html#running-jobs-in-containers) instead of building one large image.
+Sometimes, it is preferable to use isolated environments for each Snakemake rule using the `container` and `conda` [Snakemake directives](https://snakemake.readthedocs.io/en/stable/snakefiles/deployment.html#running-jobs-in-containers) instead of building one large image. When using the `container` directive, the Latch workflow will:
 
-Typically, when using these directives, we must pass the `--use-conda` and `--use-singularity` flags to the `snakemake` command to configure which environment to activate. Similarly, to configure your environment on Latch, add the `env_config` field to your workflow's `SnakemakeMetadata` object. For example,
+1. Launch the workflow container.
+2. Execute Latch-specific commands to setup the Snakemake job.
+3. Pull the user-specified image and execute the Snakemake job in a sub-container of the workflow container.
+
+To configure your environment on Latch, add the `env_config` field to your workflow's `SnakemakeMetadata` object (this field is similar to the `--use-conda` and `--use-singularity` flags in Snakemake). For example:
 
 ```
 # latch_metadata.py
@@ -29,7 +33,7 @@ SnakemakeMetadata(
             name="latchbio",
     ),
     env_config=EnvironmentConfig(
-      use_conda=True,
+      use_conda=False,
       use_container=True,
     ),
     ...
