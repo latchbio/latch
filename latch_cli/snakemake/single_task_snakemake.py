@@ -231,12 +231,17 @@ def block_content_with_print_compilation(self, token):
         yield token.string, token
 
 
+def empty_generator(self, token):
+    return
+    yield
+
+
 Input.block_content = skipping_block_content
 Output.block_content = skipping_block_content
 Params.block_content = skipping_block_content
 Benchmark.block_content = skipping_block_content
 Log.block_content = skipping_block_content
-Ruleorder.block_content = lambda self, token: None
+Ruleorder.block_content = empty_generator
 Include.block_content = block_content_with_print_compilation
 
 
