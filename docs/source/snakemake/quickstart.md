@@ -22,11 +22,11 @@ $ source env/bin/activate
 $ pip install "latch[snakemake]"
 ```
 
-- Verify the Latch SDK version >= 2.38.6
+- Verify the Latch SDK version >= 2.38.8
 
 ```console
 $ latch --version
-latch, version 2.38.6
+latch, version 2.38.8
 ```
 
 ### Step 1: Generate Metadata
