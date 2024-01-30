@@ -176,7 +176,7 @@ def register_serialized_pkg(
             headers=headers,
             files=serialize_files,
         )
-
+        response.raise_for_status()
         return response.json()
 
 
