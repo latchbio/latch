@@ -28,7 +28,7 @@ SnakemakeMetadata(
         name="Your Name",
     ),
     parameters=generated_parameters,
-    cores=8, # added
+    cores=8, # updated
 )
 ```
 

@@ -209,7 +209,7 @@ def generate_metadata(
         metadata_path.write_text(
             reindent(
                 r"""
-                from latch.types.metadata import SnakemakeMetadata, LatchAuthor
+                from latch.types.metadata import SnakemakeMetadata, LatchAuthor, EnvironmentConfig
                 from latch.types.directory import LatchDir
 
                 from .parameters import generated_parameters, file_metadata
@@ -220,14 +220,21 @@ def generate_metadata(
                     author=LatchAuthor(
                         name="Your Name",
                     ),
+                    env_config=EnvironmentConfig(
+                        use_conda=False,
+                        use_container=False,
+                    ),
+                    cores=4,
                     # Add more parameters
                     parameters=generated_parameters,
                     file_metadata=file_metadata,
+
                 )
                 """,
                 0,
             )
         )
+        click.secho("Generated `latch_metadata/__init__.py`.", fg="green")
 
     params_path = metadata_root / Path("parameters.py")
     if (
@@ -272,3 +279,4 @@ def generate_metadata(
         .replace("__params__", "\n".join(params))
         .replace("__file_metadata__", "".join(file_metadata))
     )
+    click.secho("Generated `latch_metadata/parameters.py`.", fg="green")
