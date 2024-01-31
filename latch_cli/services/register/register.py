@@ -248,6 +248,8 @@ def _build_and_serialize(
         from ...extras.nextflow.serialize import serialize_nf
 
         serialize_nf(nf_wf, tmp_dir, image_name, ctx.dkr_repo)
+
+        sys.exit(1)
     else:
         serialize_logs, container_id = serialize_pkg_in_container(
             ctx, image_name, tmp_dir

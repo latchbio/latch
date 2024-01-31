@@ -1345,8 +1345,6 @@ def build_nf_wf(pkg_root: Path, nf_script: Path):
         print("\n\n\n[!] Failed\n\n\n")
         raise e
 
-    sys.exit(1)
-
     with open(pkg_root / ".latch/nextflowDAG.json") as f:
         dag = json.load(f)
 
