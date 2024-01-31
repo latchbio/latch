@@ -1,4 +1,10 @@
-# Snakemake Execution Lifecycle
+# Overview
+
+Latch's Snakemake integration allows developers to build graphical interfaces to expose their Snakemake workflows to wet lab teams. It also provides managed cloud infrastructure for executing the workflow's jobs.
+
+A primary goal for the Snakemake integration is to allow developers to register existing Snakemake projects with minimal added boilerplate and modifications to code.
+
+## Snakemake Execution on Latch
 
 There are two stages to every Snakemake execution:
 
@@ -12,14 +18,9 @@ The first ("JIT") workflow does the following:
 1. Create empty input files; this enables the JIT task to mock the file structure at runtime without using unnecessary network bandwidth from downloading the entire file
 2. Import the Snakefile, calculate the dependency graph, and determine which jobs need to be run
 3. Generate a Latch SDK workflow Python script for the second ("runtime") workflow and register it
-4. Run the runtime workflow using the same inputs
+4. Run the runtime workflow
 
 ![JIT task execution](../assets/snakemake/jit-task-with-logs.jpg)
-
-Debugging:
-
-- The generated runtime workflow entrypoint is uploaded to `latch:///.snakemake_latch/workflows/<workflow_name>/entrypoint.py`
-- Internal workflow specifications are uploaded to `latch:///.snakemake_latch/workflows/<workflow_name>/spec`
 
 ### Runtime Workflow
 
@@ -33,7 +34,7 @@ When a task executes, it will:
 
 ![Runtime execution](../assets/snakemake/snakemake-execution.jpg)
 
-### Limitations
+## Limitations
 
 1. The workflow will execute the first rule defined in the Snakefile (matching standard Snakemake behavior). There is no way to change the default rule other than by moving the desired rule up in the file
 1. Rules only download their inputs, which can be a subset of the input files. If the Snakefile tries to read input files outside of the ones explicitly defined in the rule, it will usually fail at runtime
