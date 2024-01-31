@@ -39,8 +39,6 @@ You can automatically generate the required metadata files from an existing `con
 latch generate-metadata config.yaml
 ```
 
-To learn more about the `generate-metadata` command, see [Metadata](./metadata.md)
-
 This command will create a `latch_metadata` folder in your workflow directory:
 
 ```
@@ -121,7 +119,7 @@ How does the orchestrator know which local path to download the remote files? Fo
 
 ## Step 3: Define Workflow Environment
 
-To execute Snakemake workflows in a cloud environment, we must define a single Docker container to run each task in. This container must contain both the runtime dependencies for the Snakemake tasks and Latch-specific dependencies (such as the Latch SDK). To learn more about managing task dependencies, read about [Environments](./environments.md).
+To execute Snakemake workflows in a cloud environment, we must define a single Docker container to run each task in. This container must contain both the runtime dependencies for the Snakemake tasks and Latch-specific dependencies (such as the Latch SDK).
 
 Fortunately, the Latch SDK provides a convenient command to generate a Dockerfile with the required Latch dependencies. Run the following in your workflow directory:
 
@@ -199,13 +197,12 @@ Once you have uploaded the data and selected the appropriate input parameters, c
 
 ![JIT task execution](../assets/snakemake/jit-task.png)
 
-Snakemake support currently uses JIT (Just-In-Time) registration. This means that once the single-task workflow above is complete, it will produce a second workflow, which runs the actual Snakemake jobs. To learn more about the lifecycle of a Snakemake workflow on Latch, click [here](./lifecycle.md).
+Snakemake support currently uses JIT (Just-In-Time) registration. This means that once the single-task workflow above is complete, it will produce a second workflow, which runs the actual Snakemake jobs. To learn more about the lifecycle of a Snakemake workflow on Latch, click [here](./overview.md).
 
 Once the workflow finishes running, results will be deposited under the `output_dir` folder, as defined in your Latch Metadata.
 
 ## Next Steps
 
-- Learn more about the lifecycle of a Snakemake workflow on Latch by reading our [manual](../snakemake/lifecycle.md).
 - Learn about how to modify Snakemake workflows to be cloud-compatible [here](../snakemake/cloud.md).
 - Visit [troubleshooting](../snakemake/troubleshooting.md) to diagnose and find solutions to common issues.
 - Visit the repository of [public examples](https://github.com/latchbio/latch-snakemake-examples) of Snakemake workflows on Latch.
