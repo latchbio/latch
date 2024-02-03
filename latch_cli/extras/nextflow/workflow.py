@@ -1152,6 +1152,11 @@ class NextflowConditionalTask(NextflowOperatorTask):
 
 
 def build_nf_wf(pkg_root: Path, nf_script: Path) -> NextflowWorkflow:
+    # clear out old dags from previous registers
+    old_dag_files = map(Path, glob.glob(".latch/*.dag.json"))
+    for f in old_dag_files:
+        f.unlink()
+
     try:
         subprocess.run(
             [
