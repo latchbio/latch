@@ -327,6 +327,9 @@ def serialize(
         + [admin_lp]
     ]
 
+    click.secho("\nSerializing workflow entities", bold=True)
+    persist_registrable_entities(registrable_entities, output_dir)
+
     if not write_spec:
         return
 
@@ -351,9 +354,6 @@ def serialize(
 
         cur.parent.mkdir(parents=True, exist_ok=True)
         cur.write_text(MessageToJson(entity))
-
-    click.secho("\nSerializing workflow entities", bold=True)
-    persist_registrable_entities(registrable_entities, output_dir)
 
 
 def binding_data_from_python(
