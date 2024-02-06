@@ -361,7 +361,7 @@ def custom_memory_optimized_task(cpu: int, memory: int):
     return functools.partial(task, task_config=task_config)
 
 
-def custom_task(cpu: int, memory: int, *, storage_gib: int = 500):
+def custom_task(cpu: int, memory: int, *, storage_gib: int = 500, **kwargs):
     """Returns a custom task configuration requesting
     the specified CPU/RAM allocations
 
@@ -461,4 +461,4 @@ def custom_task(cpu: int, memory: int, *, storage_gib: int = 500):
                 " 4949 GiB)"
             )
 
-    return functools.partial(task, task_config=task_config)
+    return functools.partial(task, task_config=task_config, **kwargs)
