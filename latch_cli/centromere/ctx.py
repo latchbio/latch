@@ -6,7 +6,7 @@ import traceback
 from dataclasses import dataclass
 from pathlib import Path
 from textwrap import dedent
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, cast
 
 import click
 import docker
@@ -55,7 +55,7 @@ class _CentromereCtx:
     dkr_repo: Optional[str] = None
     dkr_client: Optional[docker.APIClient] = None
     ssh_client: Optional[paramiko.SSHClient] = None
-    pkg_root: Optional[Path] = None  # root
+    pkg_root: Path  # root
     disable_auto_version: bool = False
     image_full = None
     version = None
@@ -91,13 +91,13 @@ class _CentromereCtx:
         self.use_new_centromere = use_new_centromere
         self.remote = remote
         self.disable_auto_version = disable_auto_version
+        self.pkg_root = pkg_root.resolve()
 
         try:
             self.token = retrieve_or_login()
             self.account_id = current_workspace()
 
             self.dkr_repo = config.dkr_repo
-            self.pkg_root = pkg_root.resolve()
 
             if snakefile and nf_script:
                 raise ValueError(
@@ -115,6 +115,7 @@ class _CentromereCtx:
                 self.workflow_type = WorkflowType.latchbiosdk
 
             self.container_map: Dict[str, _Container] = {}
+
             if self.workflow_type == WorkflowType.latchbiosdk:
                 _import_flyte_objects([self.pkg_root])
                 for entity in FlyteEntities.entities:
@@ -122,36 +123,40 @@ class _CentromereCtx:
                         self.workflow_name = entity.name
 
                     if isinstance(entity, PythonTask):
-                        if (
-                            hasattr(entity, "dockerfile_path")
-                            and entity.dockerfile_path is not None
-                        ):
+                        dockerfile_path: Optional[Path] = getattr(
+                            entity, "dockerfile_path", None
+                        )
+
+                        if dockerfile_path is not None:
                             self.container_map[entity.name] = _Container(
-                                dockerfile=entity.dockerfile_path,
+                                dockerfile=dockerfile_path,
                                 image_name=self.task_image_name(entity.name),
-                                pkg_dir=entity.dockerfile_path.parent,
+                                pkg_dir=dockerfile_path.parent,
                             )
+
                 if not hasattr(self, "workflow_name"):
                     click.secho(
                         dedent("""
-                                     Unable to locate workflow code. If you
-                                     are a registering a Snakemake project,
-                                     make sure to pass the Snakefile path with
-                                     the --snakefile flag."""),
+                        Unable to locate workflow code.
+
+                        If you are a registering a Snakemake/Nextflow project, make sure to pass the appropriate
+                        script with either the --snakefile or --nf-script flag.
+                        """),
                         fg="red",
                     )
                     raise click.exceptions.Exit(1)
+
             elif self.workflow_type == WorkflowType.snakemake:
                 assert snakefile is not None
 
                 import latch.types.metadata as metadata
 
-                from ..services.register.utils import import_module_by_path
-                from ..snakemake.serialize import (
+                from ..extras.snakemake.serialize import (
                     get_snakemake_metadata_example,
                     snakemake_workflow_extractor,
                 )
-                from ..snakemake.utils import load_snakemake_metadata
+                from ..extras.snakemake.utils import load_snakemake_metadata
+                from ..services.register.utils import import_module_by_path
 
                 meta_file = load_snakemake_metadata(pkg_root)
                 if meta_file is not None:
@@ -166,18 +171,17 @@ class _CentromereCtx:
                     except (ImportError, FileNotFoundError):
                         traceback.print_exc()
                         click.secho(
-                            "\n\n\n"
-                            + "The above error occured when reading "
-                            + "the Snakefile to extract workflow metadata.",
+                            "\n\n\nThe above error occurred when reading the Snakefile"
+                            " to extract workflow metadata.",
                             bold=True,
                             fg="red",
                         )
                         click.secho(
-                            "\nIt is possible to avoid including the Snakefile"
-                            " prior to registration by providing a"
-                            " `latch_metadata.py` file in the workflow root.\nThis"
-                            " way it is not necessary to install dependencies or"
-                            " ensure that Snakemake inputs locally.",
+                            "\nIt is possible to avoid including the Snakefile prior to"
+                            " registration by providing a `latch_metadata.py` file in"
+                            " the workflow root.\nThis way it is not necessary to"
+                            " install dependencies or ensure that Snakemake inputs"
+                            " locally.",
                             fg="red",
                         )
                         click.secho("\nExample ", fg="red", nl=False)
@@ -228,7 +232,8 @@ class _CentromereCtx:
 
                                 if res is not None and res != 0:
                                     click.secho("Failed to open file", fg="red")
-                        sys.exit(1)
+
+                        raise click.exceptions.Exit(1)
 
                 if metadata._snakemake_metadata is None:
                     click.secho(
@@ -260,14 +265,16 @@ class _CentromereCtx:
                 if metadata._nextflow_metadata is None:
                     click.secho(
                         dedent(
-                            """Make sure a `latch_metadata.py` file exists in the
-                        nextflow project root.""",
+                            "Make sure a `latch_metadata` package exists in the"
+                            " nextflow project root.",
                         ),
                         fg="red",
                     )
                     raise click.exceptions.Exit(1)
 
                 self.workflow_name = metadata._nextflow_metadata.name
+
+            assert self.workflow_name is not None
 
             version_file = self.pkg_root / "version"
             try:
@@ -287,7 +294,7 @@ class _CentromereCtx:
                 if os.environ.get("LATCH_NEW_VERSION_ALWAYS") is not None:
                     self.version = f"{self.version}-{int(time.monotonic())}"
 
-                click.echo(f"  {self.version}\n")
+            click.echo()
 
             if self.nucleus_check_version(self.version, self.workflow_name):
                 click.secho(
@@ -362,6 +369,8 @@ class _CentromereCtx:
             account_id = self.account_id
 
         from ..utils import identifier_suffix_from_str
+
+        assert self.workflow_name is not None
 
         wf_name = identifier_suffix_from_str(self.workflow_name).lower()
         wf_name = docker_image_name_illegal_pat.sub("_", wf_name)

@@ -64,6 +64,7 @@ from latch.resources.tasks import custom_task
 from latch.types import metadata
 from latch.types.metadata import NextflowFileParameter, ParameterType, _IsDataclass
 
+from ...click_utils import italic
 from ...menus import select_tui
 from ...utils import identifier_from_str
 from ..common.serialize import binding_from_python
@@ -1290,16 +1291,33 @@ def build_nf_wf(pkg_root: Path, nf_script: Path) -> NextflowWorkflow:
     try:
         subprocess.run(
             [
-                str(pkg_root / ".latch/bin/nextflow"),
+                str(pkg_root / ".latch" / "bin" / "nextflow"),
+                "-quiet",
                 "run",
                 str(nf_script),
                 "-latchRegister",
             ],
+            env={
+                "NXF_HOME": str(pkg_root / ".latch" / ".nextflow"),
+                "NXF_DISABLE_CHECK_LATEST": "true",
+                "NXF_LOG_FILE": "/dev/null",
+            },
             check=True,
         )
-    except Exception as e:
-        print("\n\n\n[!] Failed\n\n\n")
-        raise e
+    except subprocess.CalledProcessError as e:
+        click.secho(
+            reindent(
+                f"""\
+                An error occurred while parsing your NF script ({italic(nf_script)})
+                Check your script for typos.
+
+                Contact support@latch.bio for help if the issue persists.
+                """,
+                0,
+            ),
+            fg="red",
+        )
+        raise click.exceptions.Exit(1) from e
 
     dags: Dict[str, DAG] = {}
 
@@ -1350,7 +1368,8 @@ def generate_nf_entrypoint(
     pkg_root: Path,
     nf_path: Path,
 ):
-    entrypoint_code_block = textwrap.dedent(r"""
+    entrypoint_code_block = reindent(
+        r"""
         import os
         from pathlib import Path
         from dataclasses import dataclass, fields
@@ -1383,7 +1402,9 @@ def generate_nf_entrypoint(
         sys.stdout.reconfigure(line_buffering=True)
         sys.stderr.reconfigure(line_buffering=True)
 
-    """).lstrip()
+        """,
+        0,
+    )
 
     # entrypoint_code_block += wf.main_task.get_fn_code(
     #     nf_path_in_container(nf_path, pkg_root)

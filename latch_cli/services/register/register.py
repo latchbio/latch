@@ -11,6 +11,7 @@ from typing import Iterable, List, Optional
 import click
 import gql
 import latch_sdk_gql.execute as l_gql
+from flytekit.core.workflow import WorkflowBase
 from scp import SCPClient
 
 from ...centromere.ctx import _CentromereCtx
@@ -197,37 +198,10 @@ def _build_and_serialize(
     dockerfile: Optional[Path] = None,
     *,
     progress_plain: bool = False,
-    cache_tasks: bool = False,
+    sm_jit_wf: Optional[WorkflowBase] = None,
+    nf_wf: Optional[WorkflowBase] = None,
 ):
     assert ctx.pkg_root is not None
-
-    sm_jit_wf = None
-    nf_wf = None
-
-    if ctx.workflow_type == WorkflowType.snakemake:
-        assert ctx.snakefile is not None
-        assert ctx.version is not None
-
-        from ...extras.snakemake.serialize import generate_jit_register_code
-        from ...extras.snakemake.workflow import build_jit_register_wrapper
-
-        sm_jit_wf = build_jit_register_wrapper(cache_tasks)
-        generate_jit_register_code(
-            sm_jit_wf,
-            ctx.pkg_root,
-            ctx.snakefile,
-            ctx.version,
-            image_name,
-            current_workspace(),
-        )
-    elif ctx.workflow_type == WorkflowType.nextflow:
-        assert ctx.nf_script is not None
-        assert ctx.version is not None
-
-        from ...extras.nextflow.workflow import build_nf_wf, generate_nf_entrypoint
-
-        nf_wf = build_nf_wf(ctx.pkg_root, ctx.nf_script)
-        generate_nf_entrypoint(nf_wf, ctx.pkg_root, ctx.nf_script)
 
     image_build_logs = build_image(ctx, image_name, context_path, dockerfile)
     print_and_write_build_logs(
@@ -235,17 +209,21 @@ def _build_and_serialize(
     )
 
     if ctx.workflow_type == WorkflowType.snakemake:
-        assert sm_jit_wf is not None
-        assert ctx.dkr_repo is not None
+        from ...extras.snakemake.serialize import (
+            JITRegisterWorkflow,
+            serialize_jit_register_workflow,
+        )
 
-        from ...extras.snakemake.serialize import serialize_jit_register_workflow
+        assert sm_jit_wf is not None and isinstance(sm_jit_wf, JITRegisterWorkflow)
+        assert ctx.dkr_repo is not None
 
         serialize_jit_register_workflow(sm_jit_wf, tmp_dir, image_name, ctx.dkr_repo)
     elif ctx.workflow_type == WorkflowType.nextflow:
-        assert nf_wf is not None
-        assert ctx.dkr_repo is not None
-
         from ...extras.nextflow.serialize import serialize_nf
+        from ...extras.nextflow.workflow import NextflowWorkflow
+
+        assert nf_wf is not None and isinstance(nf_wf, NextflowWorkflow)
+        assert ctx.dkr_repo is not None
 
         serialize_nf(nf_wf, tmp_dir, image_name, ctx.dkr_repo)
     else:
@@ -390,8 +368,31 @@ def register(
             ])
         )
 
+        click.echo()
+
+        click.echo(
+            " ".join([
+                click.style("Workflow type:", fg="bright_blue"),
+                ctx.workflow_type.value,
+            ])
+        )
+        if ctx.workflow_type == WorkflowType.snakemake:
+            click.echo(
+                " ".join(
+                    [click.style("Snakefile:", fg="bright_blue"), str(ctx.snakefile)]
+                )
+            )
+        elif ctx.workflow_type == WorkflowType.nextflow:
+            click.echo(
+                " ".join(
+                    [click.style("NF script:", fg="bright_blue"), str(ctx.nf_script)]
+                )
+            )
+
+        click.echo()
+
         if use_new_centromere:
-            click.secho("Using experimental registration server.", fg="yellow")
+            click.secho("Using experimental registration server", fg="yellow")
 
         if not skip_confirmation:
             if not click.confirm("Start registration?"):
@@ -399,6 +400,39 @@ def register(
                 return
         else:
             click.secho("Skipping confirmation because of --yes", bold=True)
+
+        click.echo()
+
+        sm_jit_wf = None
+        nf_wf = None
+        if ctx.workflow_type == WorkflowType.snakemake:
+            assert ctx.snakefile is not None
+            assert ctx.version is not None
+
+            from ...extras.snakemake.serialize import generate_jit_register_code
+            from ...extras.snakemake.workflow import build_jit_register_wrapper
+
+            click.echo("Generating Snakemake entrypoint")
+
+            sm_jit_wf = build_jit_register_wrapper(cache_tasks)
+            generate_jit_register_code(
+                sm_jit_wf,
+                ctx.pkg_root,
+                ctx.snakefile,
+                ctx.version,
+                ctx.default_container.image_name,
+                current_workspace(),
+            )
+        elif ctx.workflow_type == WorkflowType.nextflow:
+            assert ctx.nf_script is not None
+            assert ctx.version is not None
+
+            from ...extras.nextflow.workflow import build_nf_wf, generate_nf_entrypoint
+
+            click.echo("Generating Nextflow entrypoint")
+
+            nf_wf = build_nf_wf(ctx.pkg_root, ctx.nf_script)
+            generate_nf_entrypoint(nf_wf, ctx.pkg_root, ctx.nf_script)
 
         click.secho("\nInitializing registration", bold=True)
         transport = None
@@ -435,7 +469,8 @@ def register(
                 td,
                 dockerfile=ctx.default_container.dockerfile,
                 progress_plain=progress_plain,
-                cache_tasks=cache_tasks,
+                sm_jit_wf=sm_jit_wf,
+                nf_wf=nf_wf,
             )
 
             if remote and snakefile is None and nf_script is None:

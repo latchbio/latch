@@ -109,9 +109,11 @@ def dockerfile(pkg_root: str, snakemake: bool = False):
         f"Dockerfile already exists at `{dest}`. Overwrite?"
     ):
         return
+
     workflow_type = WorkflowType.latchbiosdk
     if snakemake is True:
         workflow_type = WorkflowType.snakemake
+
     generate_dockerfile(source, dest, wf_type=workflow_type)
 
     click.secho(f"Successfully generated dockerfile `{dest}`", fg="green")

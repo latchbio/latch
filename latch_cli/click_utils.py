@@ -110,6 +110,9 @@ class AnsiCodes:
     bold = "\x1b[1m"
     reset_bold = "\x1b[22m"
 
+    italic = "\x1b[3m"
+    reset_italic = "\x1b[23m"
+
     underline = "\x1b[4m"
     no_underline = "\x1b[24m"
 
@@ -119,13 +122,17 @@ class AnsiCodes:
     url_end = "\x1b]8;;\x1b\\"
 
 
-def bold(s: str) -> str:
+def italic(s: object) -> str:
+    return f"{AnsiCodes.italic}{s}{AnsiCodes.reset_italic}"
+
+
+def bold(s: object) -> str:
     return f"{AnsiCodes.bold}{s}{AnsiCodes.reset_bold}"
 
 
-def underline(s: str) -> str:
+def underline(s: object) -> str:
     return f"{AnsiCodes.underline}{s}{AnsiCodes.no_underline}"
 
 
-def color(s: str, *, color: str = AnsiCodes.color):
+def color(s: object, *, color: str = AnsiCodes.color):
     return f"{color}{s}{AnsiCodes.reset_color}"

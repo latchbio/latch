@@ -5,6 +5,7 @@ import os
 import shutil
 import stat
 import subprocess
+import sys
 import urllib.parse
 from dataclasses import asdict, is_dataclass
 from datetime import datetime, timedelta
@@ -198,7 +199,7 @@ def hash_directory(dir_path: Path) -> str:
 
                 if l == "":
                     continue
-                if l[0] == "#":
+                if l[0] in {"#"}:
                     continue
 
                 exclude.append(l)
@@ -222,21 +223,9 @@ def hash_directory(dir_path: Path) -> str:
 
         file_size = p_stat.st_size
         if not stat.S_ISREG(p_stat.st_mode):
-            click.secho(
-                f"{p.relative_to(dir_path.resolve())} is not a regular file."
-                " Ignoring contents",
-                fg="yellow",
-                bold=True,
-            )
             continue
 
         if file_size > latch_constants.file_max_size:
-            click.secho(
-                f"{p.relative_to(dir_path.resolve())} is too large"
-                f" ({with_si_suffix(file_size)}) to checksum. Ignoring contents",
-                fg="yellow",
-                bold=True,
-            )
             continue
 
         m.update(p.read_bytes())
@@ -404,10 +393,10 @@ class TemporarySSHCredentials:
         self.cleanup()
 
 
-class WorkflowType(Enum):
-    latchbiosdk = "latchbiosdk"
-    snakemake = "snakemake"
-    nextflow = "nextflow"
+class WorkflowType(str, Enum):
+    latchbiosdk = "LatchBio SDK"
+    snakemake = "Snakemake"
+    nextflow = "Nextflow"
 
 
 def identifier_suffix_from_str(x: str) -> str:
