@@ -1,5 +1,7 @@
+import os
 import re
 import sys
+import time
 import traceback
 from dataclasses import dataclass
 from pathlib import Path
@@ -220,8 +222,6 @@ class _CentromereCtx:
                                 elif system == "Darwin":
                                     res = subprocess.run(["open", new_meta]).returncode
                                 elif system == "Windows":
-                                    import os
-
                                     res = os.system(str(new_meta.resolve()))
                                 else:
                                     res = None
@@ -283,6 +283,10 @@ class _CentromereCtx:
             if not self.disable_auto_version:
                 hash = hash_directory(self.pkg_root)
                 self.version = f"{self.version}-{hash[:6]}"
+
+                if os.environ.get("LATCH_NEW_VERSION_ALWAYS") is not None:
+                    self.version = f"{self.version}-{int(time.monotonic())}"
+
                 click.echo(f"  {self.version}\n")
 
             if self.nucleus_check_version(self.version, self.workflow_name):

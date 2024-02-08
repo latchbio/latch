@@ -8,4 +8,4 @@ def serialize_nf(
     image_name: str,
     dkr_repo: str,
 ):
-    serialize(nf_wf, output_dir, image_name, dkr_repo)
+    serialize(nf_wf, output_dir, image_name, dkr_repo, write_spec=True)

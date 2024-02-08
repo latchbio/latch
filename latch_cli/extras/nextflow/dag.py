@@ -4,7 +4,8 @@ except ImportError:
     from functools import lru_cache as cache
 
 import json
-from dataclasses import dataclass, field
+import sys
+from dataclasses import asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple, TypedDict
@@ -28,6 +29,11 @@ class Vertex:
     id: str
     label: str
     type: VertexType
+    statement: str
+    ret: List[str] = field(hash=False)
+    outputNames: List[str] = field(hash=False)
+    module: str
+    unaliased: str
 
 
 @dataclass(frozen=True)
@@ -42,7 +48,11 @@ class _VertexContentJson(TypedDict):
     id: str
     label: str
     type: VertexType
-    processMeta: Optional[Dict]
+    statement: str
+    ret: List[str]
+    outputNames: List[str]
+    module: str
+    unaliased: str
 
 
 class _VertexJson(TypedDict):
@@ -80,13 +90,8 @@ class DAG:
         vertices: List[Vertex] = []
         for v in payload["vertices"]:
             c = v["content"]
-            vertices.append(
-                Vertex(
-                    id=c["id"],
-                    label=identifier_from_str(c["label"])[:128],
-                    type=c["type"],
-                )
-            )
+            c["label"] = identifier_from_str(c["label"])[:128]
+            vertices.append(Vertex(**c))
 
         edges: List[Edge] = []
         edge_set: Set[Tuple[str, str]] = set()
@@ -98,7 +103,8 @@ class DAG:
                 # disallow multiple edges
                 continue
 
-            edges.append(Edge(**c))
+            edge = Edge(**c)
+            edges.append(edge)
             edge_set.add(t)
 
         return cls(vertices, edges)
@@ -120,14 +126,14 @@ class DAG:
         return self._vertices_by_id()[e.dest]
 
     @cache
-    def ancestors(self) -> Dict[Vertex, List[Vertex]]:
-        res: Dict[Vertex, List[Vertex]] = {}
+    def ancestors(self) -> Dict[Vertex, List[Tuple[Vertex, Edge]]]:
+        res: Dict[Vertex, List[Tuple[Vertex, Edge]]] = {}
         for v in self.vertices:
             res[v] = []
 
         by_id = self._vertices_by_id()
         for edge in self.edges:
-            res[by_id[edge.dest]].append(by_id[edge.src])
+            res[by_id[edge.dest]].append((by_id[edge.src], edge))
 
         return res
 
@@ -144,14 +150,14 @@ class DAG:
         return res
 
     @cache
-    def descendants(self) -> Dict[Vertex, List[Vertex]]:
-        res: Dict[Vertex, List[Vertex]] = {}
+    def descendants(self) -> Dict[Vertex, List[Tuple[Vertex, Edge]]]:
+        res: Dict[Vertex, List[Tuple[Vertex, Edge]]] = {}
         for v in self.vertices:
             res[v] = []
 
         by_id = self._vertices_by_id()
         for edge in self.edges:
-            res[by_id[edge.src]].append(by_id[edge.dest])
+            res[by_id[edge.src]].append((by_id[edge.dest], edge))
 
         return res
 
@@ -214,13 +220,10 @@ class DAG:
 
             sub_dag = dags[v.label]
             for sub_v in sub_dag.vertices:
-                new_vertices.append(
-                    Vertex(
-                        id="_".join([v.id, sub_v.id]),
-                        label=sub_v.label,
-                        type=sub_v.type,
-                    )
-                )
+                args = asdict(sub_v)
+                args["id"] = "_".join([v.id, sub_v.id])
+
+                new_vertices.append(Vertex(**args))
 
             for sub_e in sub_dag.edges:
                 new_edges.append(
@@ -228,6 +231,7 @@ class DAG:
                         label=sub_e.label,
                         src="_".join([v.id, sub_e.src]),
                         dest="_".join([v.id, sub_e.dest]),
+                        branch=sub_e.branch,
                     )
                 )
 
@@ -254,6 +258,7 @@ class DAG:
                             label=e.label,
                             src=src,
                             dest=dest,
+                            branch=e.branch,
                         )
                     )
 
@@ -285,7 +290,7 @@ class DAG:
         return res
 
     def _toposort_helper(self, cur: Vertex, res: List[Vertex]):
-        for x in self.ancestors()[cur]:
+        for x, _ in self.ancestors()[cur]:
             self._toposort_helper(x, res)
 
         res.append(cur)

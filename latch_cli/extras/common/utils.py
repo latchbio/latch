@@ -1,4 +1,5 @@
 import textwrap
+import types
 from typing import Type, Union, get_args, get_origin
 
 from typing_extensions import TypeGuard
@@ -25,6 +26,9 @@ def is_primitive_value(val: object) -> TypeGuard[Union[None, str, bool, int, flo
 
 
 def type_repr(t: Type, *, add_namespace: bool = False) -> str:
+    if getattr(t, "__name__", None) == "NoneType":
+        return "None"
+
     if is_primitive_type(t) or t is LatchFile or t is LatchDir:
         return t.__name__
 
