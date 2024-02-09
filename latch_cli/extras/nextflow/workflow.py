@@ -12,6 +12,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type, Union, get_args, get_origin
 
+import boto3
 import click
 from flytekit.configuration import SerializationSettings
 from flytekit.core import constants as _common_constants
@@ -63,6 +64,7 @@ from kubernetes.client.models import (
 from latch.resources.tasks import custom_task
 from latch.types import metadata
 from latch.types.metadata import NextflowFileParameter, ParameterType, _IsDataclass
+from latch_cli import tinyrequests
 
 from ...click_utils import italic
 from ...menus import select_tui
@@ -1283,8 +1285,34 @@ class NextflowConditionalTask(NextflowOperatorTask):
 
 
 def build_nf_wf(pkg_root: Path, nf_script: Path) -> NextflowWorkflow:
+    nf_executable = pkg_root / ".latch" / "bin" / "nextflow"
+    nf_jars = pkg_root / ".latch" / ".nextflow"
+
+    if not nf_executable.exists():
+        click.secho("  Downloading Nextflow executable", dim=True)
+
+        res = tinyrequests.get(
+            "https://latch-public.s3.us-west-2.amazonaws.com/nextflow"
+        )
+        nf_executable.parent.mkdir(parents=True, exist_ok=True)
+
+        nf_executable.write_bytes(res.content)
+        nf_executable.chmod(0o700)
+
+    if not nf_jars.exists():
+        click.secho("  Downloading Nextflow compiled binaries", dim=True)
+
+        s3_resource = boto3.resource("s3")
+        bucket = s3_resource.Bucket("latch-public")
+
+        for obj in bucket.objects.filter(Prefix=".nextflow/"):
+            obj_path = pkg_root / ".latch" / obj.key
+            obj_path.parent.mkdir(parents=True, exist_ok=True)
+
+            bucket.download_file(obj.key, str(obj_path))
+
     # clear out old dags from previous registers
-    old_dag_files = map(Path, glob.glob(".latch/*.dag.json"))
+    old_dag_files = map(Path, glob.glob(str(pkg_root / ".latch" / "*.dag.json")))
     for f in old_dag_files:
         f.unlink()
 
