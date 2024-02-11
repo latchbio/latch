@@ -219,8 +219,8 @@ def _build_and_serialize(
 
         serialize_jit_register_workflow(sm_jit_wf, tmp_dir, image_name, ctx.dkr_repo)
     elif ctx.workflow_type == WorkflowType.nextflow:
+        from ...extras.nextflow.build import NextflowWorkflow
         from ...extras.nextflow.serialize import serialize_nf
-        from ...extras.nextflow.workflow import NextflowWorkflow
 
         assert nf_wf is not None and isinstance(nf_wf, NextflowWorkflow)
         assert ctx.dkr_repo is not None
@@ -427,7 +427,7 @@ def register(
             assert ctx.nf_script is not None
             assert ctx.version is not None
 
-            from ...extras.nextflow.workflow import build_nf_wf, generate_nf_entrypoint
+            from ...extras.nextflow.build import build_nf_wf, generate_nf_entrypoint
 
             click.echo("Generating Nextflow entrypoint")
 

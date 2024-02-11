@@ -1,0 +1,405 @@
+import glob
+import os
+import subprocess
+from pathlib import Path
+from typing import Dict, List, Optional
+
+import boto3
+import click
+from flytekit.core import constants as _common_constants
+from flytekit.core.interface import transform_variable_map
+from flytekit.core.node import Node
+from flytekit.core.promise import NodeOutput, Promise
+from flytekit.models import literals as literals_models
+
+from latch_cli import tinyrequests
+
+from ...click_utils import italic
+from ...menus import select_tui
+from ...utils import identifier_from_str
+from ..common.serialize import binding_from_python
+from ..common.utils import reindent
+from .dag import DAG, VertexType
+from .tasks.adapters import (
+    NextflowProcessPostAdapterTask,
+    NextflowProcessPreAdapterTask,
+)
+from .tasks.conditional import NextflowConditionalTask
+from .tasks.map import MapContainerTask
+from .tasks.operator import NextflowOperatorTask
+from .tasks.process import NextflowProcessTask
+from .workflow import NextflowWorkflow
+
+
+def build_from_nextflow_dag(wf: NextflowWorkflow):
+    global_start_node = Node(
+        id=_common_constants.GLOBAL_INPUT_NODE_ID,
+        metadata=None,
+        bindings=[],
+        upstream_nodes=[],
+        flyte_entity=None,
+    )
+
+    interface_inputs = transform_variable_map(wf.python_interface.inputs)
+
+    # wf input files that need to be downloaded into every task
+    global_wf_inputs = {f"wf_{k}": v for k, v in wf.python_interface.inputs.items()}
+    global_wf_input_bindings = [
+        binding_from_python(
+            var_name=f"wf_{k}",
+            expected_literal_type=interface_inputs[k].type,
+            t_value=Promise(
+                var=k,
+                val=NodeOutput(node=global_start_node, var=k),
+            ),
+            t_value_type=interface_inputs[k],
+        )
+        for k in wf.python_interface.inputs.keys()
+    ]
+
+    node_map: Dict[str, Node] = {}
+    extra_nodes: List[Node] = []
+
+    for vertex in wf.dag.toposorted():
+        upstream_nodes = [global_start_node]
+
+        task_inputs = {**global_wf_inputs}
+
+        if len(vertex.outputNames) > 0:
+            task_outputs = {o: Optional[str] for o in vertex.outputNames}
+        else:
+            task_outputs = {"res": Optional[str]}
+
+        task_bindings: List[literals_models.Binding] = [*global_wf_input_bindings]
+        branches: Dict[str, bool] = {}
+        for dep, edge in wf.dag.ancestors()[vertex]:
+            if dep.type == VertexType.Conditional:
+                param_name = f"condition_{dep.id}"
+                task_inputs[param_name] = Optional[bool]
+
+                assert edge.branch is not None
+
+                branches[param_name] = edge.branch
+
+                node = NodeOutput(node=node_map[dep.id], var=f"condition")
+            else:
+                param_name = f"channel_{dep.id}"
+                var = "res"
+
+                for o in dep.outputNames:
+                    if edge.label.endswith(o):
+                        param_name = var = o
+                        break
+
+                task_inputs[param_name] = Optional[str]
+
+                node = NodeOutput(node=node_map[dep.id], var=var)
+
+            task_bindings.append(
+                literals_models.Binding(
+                    var=param_name,
+                    binding=literals_models.BindingData(
+                        promise=Promise(var=param_name, val=node).ref
+                    ),
+                )
+            )
+
+            upstream_nodes.append(node_map[dep.id])
+
+        if vertex.type == VertexType.Process:
+            pre_adapter_task = NextflowProcessPreAdapterTask(
+                inputs=task_inputs,
+                id=f"{vertex.id}_pre",
+                name=f"pre_adapter_{identifier_from_str(vertex.label)}",
+                branches=branches,
+                wf=wf,
+            )
+            wf.nextflow_tasks.append(pre_adapter_task)
+
+            pre_adapter_node = Node(
+                id=f"n{vertex.id}-pre-adapter",
+                metadata=pre_adapter_task.construct_node_metadata(),
+                bindings=sorted(task_bindings, key=lambda b: b.var),
+                upstream_nodes=upstream_nodes,
+                flyte_entity=pre_adapter_task,
+            )
+            extra_nodes.append(pre_adapter_node)
+
+            post_adapter_task = NextflowProcessPostAdapterTask(
+                outputs=task_outputs,
+                id=f"{vertex.id}_post",
+                name=f"post_adapter_{identifier_from_str(vertex.label)}",
+                wf=wf,
+            )
+
+            wf.nextflow_tasks.append(post_adapter_task)
+
+            process_task = NextflowProcessTask(
+                inputs={"default": pre_adapter_task.dataclass},
+                outputs={"o0": post_adapter_task.dataclass},
+                id=vertex.id,
+                name=identifier_from_str(vertex.label),
+                statement=vertex.statement,
+                ret=vertex.ret,
+                wf=wf,
+            )
+
+            wf.nextflow_tasks.append(process_task)
+
+            mapped_process_task = MapContainerTask(process_task)
+            mapped_process_node = Node(
+                id=f"n{vertex.id}",
+                metadata=mapped_process_task.construct_node_metadata(),
+                bindings=[
+                    literals_models.Binding(
+                        var="default",
+                        binding=literals_models.BindingData(
+                            promise=Promise(
+                                var="default",
+                                val=NodeOutput(
+                                    node=pre_adapter_node,
+                                    var="default",
+                                ),
+                            ).ref
+                        ),
+                    )
+                ],
+                upstream_nodes=[pre_adapter_node],
+                flyte_entity=mapped_process_task,
+            )
+
+            extra_nodes.append(mapped_process_node)
+
+            post_adapter_node = Node(
+                id=f"n{vertex.id}-post-adapter",
+                metadata=post_adapter_task.construct_node_metadata(),
+                bindings=[
+                    literals_models.Binding(
+                        var="default",
+                        binding=literals_models.BindingData(
+                            promise=Promise(
+                                var="default",
+                                val=NodeOutput(
+                                    node=mapped_process_node,
+                                    var="o0",
+                                ),
+                            ).ref
+                        ),
+                    )
+                ],
+                upstream_nodes=[mapped_process_node],
+                flyte_entity=post_adapter_task,
+            )
+
+            node_map[vertex.id] = post_adapter_node
+
+        elif vertex.type in VertexType.Conditional:
+            conditional_task = NextflowConditionalTask(
+                task_inputs,
+                vertex.id,
+                f"conditional_{vertex.label}",
+                vertex.statement,
+                vertex.ret,
+                branches,
+                wf,
+            )
+            wf.nextflow_tasks.append(conditional_task)
+
+            node = Node(
+                id=f"n{vertex.id}",
+                metadata=conditional_task.construct_node_metadata(),
+                bindings=task_bindings,
+                upstream_nodes=upstream_nodes,
+                flyte_entity=conditional_task,
+            )
+
+            node_map[vertex.id] = node
+
+        else:
+            operator_task = NextflowOperatorTask(
+                inputs=task_inputs,
+                outputs=task_outputs,
+                name=vertex.label,
+                id=vertex.id,
+                statement=vertex.statement,
+                ret=vertex.ret,
+                branches=branches,
+                wf=wf,
+            )
+            wf.nextflow_tasks.append(operator_task)
+
+            node = Node(
+                id=f"n{vertex.id}",
+                metadata=operator_task.construct_node_metadata(),
+                bindings=task_bindings,
+                upstream_nodes=upstream_nodes,
+                flyte_entity=operator_task,
+            )
+
+            node_map[vertex.id] = node
+
+    wf._nodes = list(node_map.values()) + extra_nodes
+
+
+def ensure_nf_dependencies(pkg_root: Path):
+    nf_executable = pkg_root / ".latch" / "bin" / "nextflow"
+    nf_jars = pkg_root / ".latch" / ".nextflow"
+
+    if not nf_executable.exists():
+        click.secho("  Downloading Nextflow executable", dim=True, italic=True)
+
+        res = tinyrequests.get(
+            "https://latch-public.s3.us-west-2.amazonaws.com/nextflow"
+        )
+        nf_executable.parent.mkdir(parents=True, exist_ok=True)
+
+        nf_executable.write_bytes(res.content)
+        nf_executable.chmod(0o700)
+
+    if not nf_jars.exists():
+        click.secho("  Downloading Nextflow compiled binaries", dim=True, italic=True)
+
+        s3_resource = boto3.resource("s3")
+        bucket = s3_resource.Bucket("latch-public")
+
+        for obj in bucket.objects.filter(Prefix=".nextflow/"):
+            obj_path = pkg_root / ".latch" / obj.key
+            obj_path.parent.mkdir(parents=True, exist_ok=True)
+
+            bucket.download_file(obj.key, str(obj_path))
+
+
+def build_nf_wf(pkg_root: Path, nf_script: Path) -> NextflowWorkflow:
+    ensure_nf_dependencies(pkg_root)
+
+    # clear out old dags from previous registers
+    old_dag_files = map(Path, glob.glob(str(pkg_root / ".latch" / "*.dag.json")))
+    for f in old_dag_files:
+        f.unlink()
+
+    try:
+        subprocess.run(
+            [
+                str(pkg_root / ".latch" / "bin" / "nextflow"),
+                "-quiet",
+                "run",
+                str(nf_script.resolve()),
+                "-latchRegister",
+            ],
+            env={
+                **os.environ,
+                # read NF binaries from `.latch/.nextflow` instead of system
+                # "NXF_HOME": str(pkg_root / ".latch" / ".nextflow"),
+                # don't display version mismatch warning
+                "NXF_DISABLE_CHECK_LATEST": "true",
+                # don't emit .nextflow.log files
+                # "NXF_LOG_FILE": "/dev/null",
+            },
+            check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        click.secho(
+            reindent(
+                f"""
+                An error occurred while parsing your NF script ({italic(nf_script)})
+                Check your script for typos.
+
+                Contact support@latch.bio for help if the issue persists.\
+                """,
+                0,
+            ),
+            fg="red",
+        )
+        raise click.exceptions.Exit(1) from e
+
+    dags: Dict[str, DAG] = {}
+
+    dag_files = map(Path, glob.glob(".latch/*.dag.json"))
+    for dag in dag_files:
+        wf_name = dag.name.rsplit(".", 2)[0]
+
+        dags[wf_name] = DAG.from_path(dag)
+
+    resolved = DAG.resolve_subworkflows(dags)
+
+    if len(resolved) == 0:
+        click.secho("No Nextflow workflows found in this project. Aborting.", fg="red")
+
+        raise click.exceptions.Exit(1)
+
+    dag = list(resolved.values())[0]
+
+    if len(resolved) > 1:
+        dag = select_tui(
+            "We found multiple independent workflows in this Nextflow project. Which"
+            " would you like to register?",
+            [
+                {
+                    "display_name": (
+                        f"{k} (Anonymous Workflow)" if k == "mainWorkflow" else k
+                    ),
+                    "value": v,
+                }
+                for k, v in resolved.items()
+            ],
+        )
+
+        if dag is None:
+            click.echo("No workflow selected. Aborting.")
+
+            raise click.exceptions.Exit(0)
+
+    wf = NextflowWorkflow(dag)
+
+    build_from_nextflow_dag(wf)
+
+    return wf
+
+
+def generate_nf_entrypoint(
+    wf: NextflowWorkflow,
+    pkg_root: Path,
+    nf_script: Path,
+):
+    preamble = reindent(
+        r"""
+        import glob
+        import json
+        import os
+        import re
+        import shutil
+        import stat
+        import subprocess
+        import sys
+        import traceback
+        import typing
+        from dataclasses import asdict, dataclass, fields, is_dataclass
+        from enum import Enum
+        from itertools import chain, repeat
+        from pathlib import Path
+        from subprocess import CalledProcessError
+        from typing import Dict, List, NamedTuple
+
+        from flytekit.extras.persistence import LatchPersistence
+        from latch_cli.extras.nextflow.file_persistence import download_files, upload_files
+        from latch_cli.utils import check_exists_and_rename, get_parameter_json_value, urljoins
+
+        from latch.resources.tasks import custom_task
+        from latch.types.directory import LatchDir, LatchOutputDir
+        from latch.types.file import LatchFile
+
+        sys.stdout.reconfigure(line_buffering=True)
+        sys.stderr.reconfigure(line_buffering=True)
+
+        """,
+        0,
+    )
+
+    nf_script_path_in_container = nf_script.resolve().relative_to(pkg_root.resolve())
+
+    entrypoint_code = [preamble]
+    for task in wf.nextflow_tasks:
+        entrypoint_code.append(task.get_fn_code(nf_script_path_in_container))
+
+    entrypoint = pkg_root / ".latch" / "nf_entrypoint.py"
+    entrypoint.write_text("\n\n".join(entrypoint_code))

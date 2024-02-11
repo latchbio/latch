@@ -679,10 +679,14 @@ _snakemake_metadata: Optional[SnakemakeMetadata] = None
 class NextflowMetadata(LatchMetadata):
     name: Optional[str] = None
     parameters: Dict[str, NextflowParameter] = field(default_factory=dict)
+    output_directory: Optional[LatchDir] = None
 
     def __post_init__(self):
         if self.name is None:
             self.name = f"nf_{identifier_suffix_from_str(self.display_name.lower())}"
+
+        if self.output_directory is None:
+            self.output_directory = LatchDir("latch:///Nextflow Outputs/")
 
         global _nextflow_metadata
         _nextflow_metadata = self

@@ -1,8 +1,11 @@
+import os
 from pathlib import Path
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 
 import click
+import gql
 from flytekit.extras.persistence import LatchPersistence
+from latch_sdk_gql.execute import execute
 from typing_extensions import TypeAlias
 
 from latch.types.directory import LatchDir
@@ -37,7 +40,8 @@ def _extract_paths(parameter: JSONValue, res: List[Path]):
 
     if k == "path":
         assert isinstance(v, str)
-        res.append(Path(v))
+
+        res.append(Path(v).resolve())
     elif k == "list":
         assert isinstance(v, List)
 
@@ -55,15 +59,42 @@ def _extract_paths(parameter: JSONValue, res: List[Path]):
             _extract_paths(x["value"], res)
 
 
-def download_files(params: List[JSONValue], outdir: LatchDir):
-    paths = []
-    for param in params:
-        _extract_paths(param, paths)
+def _get_execution_name() -> Optional[str]:
+    token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", None)
+    if token is None:
+        return None
+
+    res = execute(
+        gql.gql("""
+        query executionCreatorsByToken($token: String!) {
+            executionCreatorByToken(token: $token) {
+                flytedbId
+                info {
+                    displayName
+                }
+            }
+        }
+        """),
+        {"token": token},
+    )["executionCreatorByToken"]
+
+    return res["info"]["displayName"]
+
+
+def download_files(channels: List[List[JSONValue]], outdir: LatchDir):
+    paths: List[Path] = []
+    for channel in channels:
+        for param in channel:
+            _extract_paths(param, paths)
 
     remote = outdir.remote_path
     assert remote is not None
 
-    remote_to_local = {urljoins(remote, local): local for local in paths}
+    exec_name = _get_execution_name()
+    if exec_name is not None:
+        remote = urljoins(remote, exec_name)
+
+    remote_to_local = {urljoins(remote, str(local)[1:]): local for local in paths}
     node_data = get_node_data(*remote_to_local, allow_resolve_to_parent=True)
 
     lp = LatchPersistence()
@@ -80,6 +111,9 @@ def download_files(params: List[JSONValue], outdir: LatchDir):
             raise PathNotFoundError()
 
         click.echo(f"Downloading {remote} -> {local}. ", nl=False)
+
+        local.parent.mkdir(parents=True, exist_ok=True)
+
         if data.type == LDataNodeType.obj:
             lp.download(remote, local)
         else:
@@ -88,15 +122,20 @@ def download_files(params: List[JSONValue], outdir: LatchDir):
         click.echo("Done.")
 
 
-def upload_files(params: List[JSONValue], outdir: LatchDir):
-    paths = []
-    for param in params:
-        _extract_paths(param, paths)
+def upload_files(channels: Dict[str, List[JSONValue]], outdir: LatchDir):
+    paths: List[Path] = []
+    for channel in channels.values():
+        for param in channel:
+            _extract_paths(param, paths)
 
     remote = outdir.remote_path
     assert remote is not None
 
-    local_to_remote = {local: urljoins(remote, local) for local in paths}
+    exec_name = _get_execution_name()
+    if exec_name is not None:
+        remote = urljoins(remote, exec_name)
+
+    local_to_remote = {local: urljoins(remote, str(local)[1:]) for local in paths}
 
     lp = LatchPersistence()
     for local in paths:
@@ -110,7 +149,12 @@ def upload_files(params: List[JSONValue], outdir: LatchDir):
             raise PathNotFoundError()
 
         remote = local_to_remote[local]
+
+        click.echo(f"Uploading {local} -> {remote}. ", nl=False)
+
         if p.is_file():
             lp.upload(local, remote)
         else:
             lp.upload_directory(local, remote)
+
+        click.echo("Done.")
