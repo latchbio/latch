@@ -222,11 +222,13 @@ def type_repr(t: Type, *, add_namespace: bool = False) -> str:
     if get_origin(t) is Union:
         args = get_args(t)
 
-        assert len(args) > 0
+        if len(args) != 2 or args[1] is not type(None):
+            raise ValueError(
+                "Union types other than Optional are not yet supported in Snakemake"
+                " workflows."
+            )
 
-        return (
-            f"typing.Union[{', '.join([type_repr(arg, add_namespace=add_namespace) for arg in args])}]"
-        )
+        return f"typing.Optional[{type_repr(args[0], add_namespace=add_namespace)}]"
 
     if get_origin(t) is Annotated:
         args = get_args(t)
