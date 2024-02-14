@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.38.9 - 2023-02-14
+
+### Added
+
+* Snakemake
+  + add support for optional input parameters
+
 ## 2.38.8 - 2023-01-26
 
 ### Fixed
