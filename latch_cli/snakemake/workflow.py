@@ -462,8 +462,9 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         if file_meta is None or file_meta.get(param) is None or is_primitive_type(t):
             return dedent(f"""
-                print(f"Saving parameter value {param} = get_parameter_json_value({param})")
-                overwrite_config[{self._param_path_str(param_path)}] = get_parameter_json_value({param})
+                if {param} is not None:
+                    print(f"Saving parameter value {param} = get_parameter_json_value({param})")
+                    overwrite_config[{self._param_path_str(param_path)}] = get_parameter_json_value({param})
                 """)
 
         if get_origin(t) is Annotated:
