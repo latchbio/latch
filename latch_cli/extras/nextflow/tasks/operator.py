@@ -65,7 +65,6 @@ class NextflowOperatorTask(NextflowBaseTask):
         res += (
             reindent(
                 rf"""
-                task = custom_task(cpu=-1, memory=-1) # these limits are a lie and are ignored when generating the task spec
                 @task(cache=True)
                 def {self.name}(
                 __params__
@@ -76,11 +75,12 @@ class NextflowOperatorTask(NextflowBaseTask):
             .replace("__params__", params_str)
             .replace("__outputs__", outputs_str)
         )
+
         return res
 
     def get_fn_return_stmt(self):
         results: List[str] = []
-        for out_name, out_type in self._python_outputs.items():
+        for out_name in self._python_outputs.keys():
             results.append(
                 reindent(
                     rf"""

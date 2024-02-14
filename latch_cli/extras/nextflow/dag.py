@@ -5,6 +5,7 @@ except ImportError:
 
 import json
 import sys
+import textwrap
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -22,6 +23,7 @@ class VertexType(str, Enum):
     Conditional = "Conditional"
     Generator = "Generator"
     Input = "Input"
+    Output = "Output"
 
 
 @dataclass(frozen=True)
@@ -90,7 +92,7 @@ class DAG:
         vertices: List[Vertex] = []
         for v in payload["vertices"]:
             c = v["content"]
-            c["label"] = identifier_from_str(c["label"])[:128]
+            c["label"] = textwrap.shorten(identifier_from_str(c["label"]), 128)
             vertices.append(Vertex(**c))
 
         edges: List[Edge] = []
@@ -289,17 +291,22 @@ class DAG:
 
         return res
 
-    def _toposort_helper(self, cur: Vertex, res: List[Vertex]):
+    def _toposort_helper(self, cur: Vertex, res: List[Vertex], visited: Set[Vertex]):
         for x, _ in self.ancestors()[cur]:
-            self._toposort_helper(x, res)
+            if x in visited:
+                continue
 
+            self._toposort_helper(x, res, visited)
+
+        visited.add(cur)
         res.append(cur)
 
     @cache
     def toposorted(self) -> List[Vertex]:
         res = []
+        visited = set()
 
         for sink in self.sink_vertices:
-            self._toposort_helper(sink, res)
+            self._toposort_helper(sink, res, visited)
 
         return res

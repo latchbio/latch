@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import List
 
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
@@ -18,7 +19,7 @@ from .dag import DAG
 
 
 class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
-    def __init__(self, dag: DAG):
+    def __init__(self, nf_script: Path, dag: DAG):
         assert metadata._nextflow_metadata is not None
         assert metadata._nextflow_metadata.output_directory is not None
 
@@ -66,6 +67,7 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
         self.nextflow_tasks: List[NextflowBaseTask] = []
 
         self.dag = dag
+        self.nf_script = nf_script
 
     def execute(self, **kwargs):
         return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)

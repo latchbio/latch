@@ -1,6 +1,7 @@
 import glob
 import os
 import subprocess
+import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -13,6 +14,8 @@ from flytekit.core.promise import NodeOutput, Promise
 from flytekit.models import literals as literals_models
 
 from latch_cli import tinyrequests
+from latch_cli.extras.nextflow.tasks.input import NextflowInputTask
+from latch_cli.extras.nextflow.tasks.output import NextflowOutputTask
 
 from ...click_utils import italic
 from ...menus import select_tui
@@ -31,6 +34,10 @@ from .tasks.process import NextflowProcessTask
 from .workflow import NextflowWorkflow
 
 
+def get_node_name(vertex_id: str) -> str:
+    return f"n{vertex_id}"
+
+
 def build_from_nextflow_dag(wf: NextflowWorkflow):
     global_start_node = Node(
         id=_common_constants.GLOBAL_INPUT_NODE_ID,
@@ -42,7 +49,6 @@ def build_from_nextflow_dag(wf: NextflowWorkflow):
 
     interface_inputs = transform_variable_map(wf.python_interface.inputs)
 
-    # wf input files that need to be downloaded into every task
     global_wf_inputs = {f"wf_{k}": v for k, v in wf.python_interface.inputs.items()}
     global_wf_input_bindings = [
         binding_from_python(
@@ -106,6 +112,8 @@ def build_from_nextflow_dag(wf: NextflowWorkflow):
 
             upstream_nodes.append(node_map[dep.id])
 
+        node_name = get_node_name(vertex.id)
+
         if vertex.type == VertexType.Process:
             pre_adapter_task = NextflowProcessPreAdapterTask(
                 inputs=task_inputs,
@@ -117,7 +125,7 @@ def build_from_nextflow_dag(wf: NextflowWorkflow):
             wf.nextflow_tasks.append(pre_adapter_task)
 
             pre_adapter_node = Node(
-                id=f"n{vertex.id}-pre-adapter",
+                id=f"{node_name}preadapter",
                 metadata=pre_adapter_task.construct_node_metadata(),
                 bindings=sorted(task_bindings, key=lambda b: b.var),
                 upstream_nodes=upstream_nodes,
@@ -141,6 +149,9 @@ def build_from_nextflow_dag(wf: NextflowWorkflow):
                 name=identifier_from_str(vertex.label),
                 statement=vertex.statement,
                 ret=vertex.ret,
+                import_path=Path(vertex.module),
+                process_name=vertex.label,
+                unaliased=vertex.unaliased,
                 wf=wf,
             )
 
@@ -148,7 +159,7 @@ def build_from_nextflow_dag(wf: NextflowWorkflow):
 
             mapped_process_task = MapContainerTask(process_task)
             mapped_process_node = Node(
-                id=f"n{vertex.id}",
+                id=node_name,
                 metadata=mapped_process_task.construct_node_metadata(),
                 bindings=[
                     literals_models.Binding(
@@ -171,7 +182,7 @@ def build_from_nextflow_dag(wf: NextflowWorkflow):
             extra_nodes.append(mapped_process_node)
 
             post_adapter_node = Node(
-                id=f"n{vertex.id}-post-adapter",
+                id=f"{node_name}postadapter",
                 metadata=post_adapter_task.construct_node_metadata(),
                 bindings=[
                     literals_models.Binding(
@@ -206,11 +217,57 @@ def build_from_nextflow_dag(wf: NextflowWorkflow):
             wf.nextflow_tasks.append(conditional_task)
 
             node = Node(
-                id=f"n{vertex.id}",
+                id=node_name,
                 metadata=conditional_task.construct_node_metadata(),
                 bindings=task_bindings,
                 upstream_nodes=upstream_nodes,
                 flyte_entity=conditional_task,
+            )
+
+            node_map[vertex.id] = node
+
+        elif vertex.type == VertexType.Input:
+            input_task = NextflowInputTask(
+                inputs=task_inputs,
+                outputs=task_outputs,
+                name=vertex.label,
+                id=vertex.id,
+                statement=vertex.statement,
+                ret=vertex.ret,
+                branches=branches,
+                wf=wf,
+            )
+            wf.nextflow_tasks.append(input_task)
+
+            node = Node(
+                id=node_name,
+                metadata=input_task.construct_node_metadata(),
+                bindings=task_bindings,
+                upstream_nodes=upstream_nodes,
+                flyte_entity=input_task,
+            )
+
+            node_map[vertex.id] = node
+
+        elif vertex.type == VertexType.Output:
+            output_task = NextflowOutputTask(
+                inputs=task_inputs,
+                outputs=task_outputs,
+                name=vertex.label,
+                id=vertex.id,
+                statement=vertex.statement,
+                ret=vertex.ret,
+                branches=branches,
+                wf=wf,
+            )
+            wf.nextflow_tasks.append(output_task)
+
+            node = Node(
+                id=node_name,
+                metadata=output_task.construct_node_metadata(),
+                bindings=task_bindings,
+                upstream_nodes=upstream_nodes,
+                flyte_entity=output_task,
             )
 
             node_map[vertex.id] = node
@@ -229,7 +286,7 @@ def build_from_nextflow_dag(wf: NextflowWorkflow):
             wf.nextflow_tasks.append(operator_task)
 
             node = Node(
-                id=f"n{vertex.id}",
+                id=node_name,
                 metadata=operator_task.construct_node_metadata(),
                 bindings=task_bindings,
                 upstream_nodes=upstream_nodes,
@@ -289,11 +346,11 @@ def build_nf_wf(pkg_root: Path, nf_script: Path) -> NextflowWorkflow:
             env={
                 **os.environ,
                 # read NF binaries from `.latch/.nextflow` instead of system
-                # "NXF_HOME": str(pkg_root / ".latch" / ".nextflow"),
+                "NXF_HOME": str(pkg_root / ".latch" / ".nextflow"),
                 # don't display version mismatch warning
                 "NXF_DISABLE_CHECK_LATEST": "true",
                 # don't emit .nextflow.log files
-                # "NXF_LOG_FILE": "/dev/null",
+                "NXF_LOG_FILE": "/dev/null",
             },
             check=True,
         )
@@ -315,41 +372,32 @@ def build_nf_wf(pkg_root: Path, nf_script: Path) -> NextflowWorkflow:
     dags: Dict[str, DAG] = {}
 
     dag_files = map(Path, glob.glob(".latch/*.dag.json"))
+    main_dag: Optional[DAG] = None
     for dag in dag_files:
         wf_name = dag.name.rsplit(".", 2)[0]
 
         dags[wf_name] = DAG.from_path(dag)
+        if wf_name == "mainWorkflow":
+            main_dag = dags[wf_name]
 
-    resolved = DAG.resolve_subworkflows(dags)
-
-    if len(resolved) == 0:
+    if len(dags) == 0:
         click.secho("No Nextflow workflows found in this project. Aborting.", fg="red")
 
         raise click.exceptions.Exit(1)
 
-    dag = list(resolved.values())[0]
-
-    if len(resolved) > 1:
-        dag = select_tui(
-            "We found multiple independent workflows in this Nextflow project. Which"
+    if main_dag is None:
+        main_dag = select_tui(
+            "We found multiple target workflows in this Nextflow project. Which"
             " would you like to register?",
-            [
-                {
-                    "display_name": (
-                        f"{k} (Anonymous Workflow)" if k == "mainWorkflow" else k
-                    ),
-                    "value": v,
-                }
-                for k, v in resolved.items()
-            ],
+            [{"display_name": k, "value": v} for k, v in dags.items()],
         )
 
-        if dag is None:
+        if main_dag is None:
             click.echo("No workflow selected. Aborting.")
 
             raise click.exceptions.Exit(0)
 
-    wf = NextflowWorkflow(dag)
+    wf = NextflowWorkflow(nf_script, main_dag)
 
     build_from_nextflow_dag(wf)
 
@@ -390,6 +438,8 @@ def generate_nf_entrypoint(
 
         sys.stdout.reconfigure(line_buffering=True)
         sys.stderr.reconfigure(line_buffering=True)
+
+        task = custom_task(cpu=-1, memory=-1) # these limits are a lie and are ignored when generating the task spec
 
         """,
         0,

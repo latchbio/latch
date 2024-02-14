@@ -1,7 +1,7 @@
 import typing
 from dataclasses import dataclass, fields, make_dataclass
 from pathlib import Path
-from typing import Dict, List, Mapping, Type
+from typing import Dict, List, Mapping, Type, Union, get_args, get_origin
 
 from latch.types.metadata import ParameterType, _IsDataclass
 
@@ -10,10 +10,29 @@ from ..workflow import NextflowWorkflow
 from .base import NextflowBaseTask
 
 
+#
 def dataclass_from_python_params(
-    params: Mapping[str, Type[ParameterType]], name: str
+    params: Mapping[str, Type[ParameterType]],
+    name: str,
+    *,
+    unwrap_optionals: bool = True,
 ) -> Type[_IsDataclass]:
-    return make_dataclass(cls_name=f"Dataclass_{name}", fields=list(params.items()))
+    fields = []
+    for n, typ in params.items():
+        if not unwrap_optionals or not (get_origin(typ) is Union):
+            fields.append((n, typ))
+            continue
+
+        args = []
+        for arg in get_args(typ):
+            if arg is type(None):
+                continue
+
+            args.append(arg)
+
+        fields.append((n, Union[*args]))
+
+    return make_dataclass(cls_name=f"Dataclass_{name}", fields=fields)
 
 
 def get_dataclass_code(cls: Type[_IsDataclass]) -> str:
@@ -76,7 +95,6 @@ class NextflowProcessPreAdapterTask(NextflowBaseTask):
 
         res += reindent(
             rf"""
-                task = custom_task(cpu=-1, memory=-1) # these limits are a lie and are ignored when generating the task spec
                 @task(cache=True)
                 def {self.name}(
                 __params__
@@ -178,7 +196,6 @@ class NextflowProcessPostAdapterTask(NextflowBaseTask):
 
         res += reindent(
             rf"""
-            task = custom_task(cpu=-1, memory=-1) # these limits are a lie and are ignored when generating the task spec
             @task(cache=True)
             def {self.name}(
                 default: List[Dataclass_{self.id}]

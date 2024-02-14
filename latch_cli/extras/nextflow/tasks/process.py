@@ -5,7 +5,7 @@ from typing import List, Mapping, Type
 
 from latch.types.metadata import ParameterType
 
-from ...common.utils import reindent
+from ...common.utils import reindent, type_repr
 from ..workflow import NextflowWorkflow
 from .base import NextflowBaseTask
 
@@ -19,8 +19,13 @@ class NextflowProcessTask(NextflowBaseTask):
         name: str,
         statement: str,
         ret: List[str],
+        import_path: Path,
+        process_name: str,
+        unaliased: str,
         wf: NextflowWorkflow,
     ):
+        super().__init__(inputs, outputs, id, name, {}, wf)
+
         self.wf_inputs = {}
         self.conditional_inputs = {}
         self.channel_inputs = {}
@@ -40,20 +45,20 @@ class NextflowProcessTask(NextflowBaseTask):
 
         self.statement = statement
         self.ret = ret
-
-        super().__init__(inputs, outputs, id, name, {}, wf)
+        self.import_path = import_path
+        self.process_name = process_name
+        self.unaliased = unaliased
 
     def get_fn_interface(self):
-        inputs = list(self._python_inputs.items())[0]
+        input_name, input_t = list(self._python_inputs.items())[0]
         output_t = list(self._python_outputs.values())[0]
 
         return reindent(
             rf"""
-                task = custom_task(cpu=-1, memory=-1) # these limits are a lie and are ignored when generating the task spec
                 @task(cache=True)
                 def {self.name}(
-                    {inputs[0]}: {getattr(inputs[1], "__name__", None)}
-                ) -> {getattr(output_t, "__name__", None)}:
+                    {input_name}: {type_repr(input_t)}
+                ) -> {type_repr(output_t)}:
                 """,
             0,
         )
@@ -119,6 +124,20 @@ class NextflowProcessTask(NextflowBaseTask):
                 1,
             )
 
+        include_str = ""
+        if self.import_path.resolve() != self.wf.nf_script.resolve():
+            include_meta = {}
+            stem = str(
+                self.import_path.resolve().relative_to(
+                    self.wf.nf_script.parent.resolve()
+                )
+            )
+            include_meta["path"] = f"./{stem}"
+            include_meta["alias"] = self.process_name
+            include_meta["name"] = self.unaliased
+
+            include_str = json.dumps(include_meta)
+
         code_block += reindent(
             rf"""
 
@@ -130,6 +149,7 @@ class NextflowProcessTask(NextflowBaseTask):
                 [{','.join([f"str(default.{x})" if x.startswith("wf_") else repr(x) for x in run_task_entrypoint])}],
                 env={{
                     **os.environ,
+                    "LATCH_INCLUDE_META": {repr(include_str)},
                     "LATCH_EXPRESSION": {repr(self.statement)},
                     "LATCH_RETURN": {repr(json.dumps(self.ret))},
                     "LATCH_PARAM_VALS": json.dumps(channel_vals),

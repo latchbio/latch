@@ -42,9 +42,9 @@ class NextflowBaseTask(PythonAutoContainerTask[Pod]):
         self._python_inputs = inputs
         self._python_outputs = outputs
 
-        self.wf_inputs = {}
-        self.conditional_inputs = {}
-        self.channel_inputs = {}
+        self.wf_inputs: Dict[str, Type] = {}
+        self.conditional_inputs: Dict[str, Type] = {}
+        self.channel_inputs: Dict[str, Type] = {}
 
         for k, v in inputs.items():
             if k.startswith("wf_"):
