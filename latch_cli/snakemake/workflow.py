@@ -440,6 +440,14 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         file_meta: FileMetadata,
         param_path: List[Union[str, int]],
     ) -> str:
+        if get_origin(t) is Union:
+            args = get_args(t)
+            assert len(args) > 0
+            code_block = f"if {param} is not None:\n"
+            return code_block + reindent(
+                self.get_param_code(args[0], param, file_meta, param_path), 1
+            )
+
         param_meta = self.parameter_metadata.get(param)
         # support workflows that use the legacy SnakemakeFileParameter
         if isinstance(param_meta, SnakemakeFileParameter):
@@ -471,15 +479,6 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             args = get_args(t)
             assert len(args) > 0
             return self.get_param_code(args[0], param, file_meta, param_path)
-
-        if get_origin(t) is Union:
-            args = get_args(t)
-            assert len(args) > 0
-            # only Optional Union type is supported
-            code_block = f"if {param} is not None:\n"
-            return code_block + reindent(
-                self.get_param_code(args[0], param, file_meta, param_path), 1
-            )
 
         meta = file_meta.get(param)
         if t in (LatchFile, LatchDir):
