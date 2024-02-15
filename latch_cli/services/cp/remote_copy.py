@@ -93,7 +93,7 @@ def remote_copy(
         elif msg.startswith("Refusing to copy already in-transit node"):
             click.echo(get_path_error(src, "copy already in progress.", acc_id))
             raise click.exceptions.Exit(1) from e
-        elif msg == "Conflicting object in destination":
+        elif msg == "Conflicting node in destination":
             click.echo(get_path_error(dest, "object exists at path.", acc_id))
             raise click.exceptions.Exit(1) from e
 

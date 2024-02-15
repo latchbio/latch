@@ -120,7 +120,7 @@ class NextflowOperatorTask(NextflowBaseTask):
             code_block += reindent(
                 f"""
                 if wf_{k} is not None:
-                    {k}_p = Path(default.wf_{k}).resolve()
+                    {k}_p = Path(wf_{k}).resolve()
                     {k}_dest_p = Path({repr(v)}).resolve()
 
                     check_exists_and_rename(
@@ -129,12 +129,11 @@ class NextflowOperatorTask(NextflowBaseTask):
                     )
 
                 """,
-                1,
+                2,
             )
 
         code_block += reindent(
             rf"""
-
                 channel_vals = [{", ".join([f"json.loads({x})" for x in self.channel_inputs])}]
 
                 download_files(channel_vals, LatchDir({repr(self.wf.output_directory.remote_path)}))

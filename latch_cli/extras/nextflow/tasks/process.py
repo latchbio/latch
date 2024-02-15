@@ -111,7 +111,7 @@ class NextflowProcessTask(NextflowBaseTask):
         for k, v in self.wf.downloadable_params.items():
             code_block += reindent(
                 f"""
-                if wf_{k} is not None:
+                if default.wf_{k} is not None:
                     {k}_p = Path(default.wf_{k}).resolve()
                     {k}_dest_p = Path({repr(v)}).resolve()
 
@@ -162,6 +162,8 @@ class NextflowProcessTask(NextflowBaseTask):
 
             for file in files:
                 out_channels[file.stem] = file.read_text()
+
+            print(out_channels)
 
             upload_files({{k: json.loads(v) for k, v in out_channels.items()}}, LatchDir({repr(self.wf.output_directory.remote_path)}))
 

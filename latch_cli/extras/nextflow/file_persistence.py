@@ -1,4 +1,5 @@
 import os
+import shutil
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
@@ -158,3 +159,23 @@ def upload_files(channels: Dict[str, List[JSONValue]], outdir: LatchDir):
             lp.upload_directory(local, remote)
 
         click.echo("Done.")
+
+
+def stage_for_output(channels: List[List[JSONValue]]) -> Dict[str, List[JSONValue]]:
+    old: List[Path] = []
+    for channel in channels:
+        for param in channel:
+            _extract_paths(param, old)
+
+    new = []
+    for local_path in old:
+        new_path = Path("/root/outputs") / local_path.name
+
+        if local_path.is_dir():
+            shutil.copytree(local_path, new_path)
+        else:
+            shutil.copy(local_path, new_path)
+
+        new.append({"path": str(new_path)})
+
+    return {"output": new}

@@ -93,7 +93,8 @@ def build_from_nextflow_dag(wf: NextflowWorkflow):
                 var = "res"
 
                 for o in dep.outputNames:
-                    if edge.label.endswith(o):
+                    parts = edge.label.split(".")
+                    if parts[-1] == o:
                         param_name = var = o
                         break
 
@@ -419,6 +420,7 @@ def generate_nf_entrypoint(
         import stat
         import subprocess
         import sys
+        import time
         import traceback
         import typing
         from dataclasses import asdict, dataclass, fields, is_dataclass
@@ -429,7 +431,7 @@ def generate_nf_entrypoint(
         from typing import Dict, List, NamedTuple
 
         from flytekit.extras.persistence import LatchPersistence
-        from latch_cli.extras.nextflow.file_persistence import download_files, upload_files
+        from latch_cli.extras.nextflow.file_persistence import download_files, stage_for_output, upload_files
         from latch_cli.utils import check_exists_and_rename, get_parameter_json_value, urljoins
 
         from latch.resources.tasks import custom_task
