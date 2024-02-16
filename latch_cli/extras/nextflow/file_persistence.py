@@ -182,10 +182,5 @@ def stage_for_output(channels: List[List[JSONValue]], outdir: LatchDir):
 
     for local_path in old:
         new_path = Path("/root/outputs") / local_path.name
-
-        if local_path.is_dir():
-            shutil.copytree(local_path, new_path)
-        else:
-            shutil.copy(local_path, new_path)
-
+        os.renames(local_path, new_path)
         _upload(new_path, urljoins(remote, "output", new_path.name))
