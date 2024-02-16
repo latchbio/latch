@@ -24,6 +24,9 @@ JSONValue: TypeAlias = Union[
 ]
 
 
+lp = LatchPersistence()
+
+
 class PathNotFoundError(RuntimeError): ...
 
 
@@ -123,6 +126,26 @@ def download_files(channels: List[List[JSONValue]], outdir: LatchDir):
         click.echo("Done.")
 
 
+def _upload(local: Path, remote: str):
+    p = Path(local).resolve()
+    if not p.exists():
+        click.secho(
+            f"Nextflow process expects a file/directory to be at {local},"
+            " but no file was found. Aborting.",
+            fg="red",
+        )
+        raise PathNotFoundError()
+
+    click.echo(f"Uploading {local} -> {remote}. ", nl=False)
+
+    if p.is_file():
+        lp.upload(local, remote)
+    else:
+        lp.upload_directory(local, remote)
+
+    click.echo("Done.")
+
+
 def upload_files(channels: Dict[str, List[JSONValue]], outdir: LatchDir):
     paths: List[Path] = []
     for channel in channels.values():
@@ -138,36 +161,25 @@ def upload_files(channels: Dict[str, List[JSONValue]], outdir: LatchDir):
 
     local_to_remote = {local: urljoins(remote, str(local)[1:]) for local in paths}
 
-    lp = LatchPersistence()
     for local in paths:
-        p = Path(local).resolve()
-        if not p.exists():
-            click.secho(
-                f"Nextflow process expects a file/directory to be at {local},"
-                " but no file was found. Aborting.",
-                fg="red",
-            )
-            raise PathNotFoundError()
-
-        remote = local_to_remote[local]
-
-        click.echo(f"Uploading {local} -> {remote}. ", nl=False)
-
-        if p.is_file():
-            lp.upload(local, remote)
-        else:
-            lp.upload_directory(local, remote)
-
-        click.echo("Done.")
+        _upload(local, local_to_remote[local])
 
 
-def stage_for_output(channels: List[List[JSONValue]]) -> Dict[str, List[JSONValue]]:
+def stage_for_output(channels: List[List[JSONValue]], outdir: LatchDir):
+    download_files(channels, outdir)
+
     old: List[Path] = []
     for channel in channels:
         for param in channel:
             _extract_paths(param, old)
 
-    new = []
+    remote = outdir.remote_path
+    assert remote is not None
+
+    exec_name = _get_execution_name()
+    if exec_name is not None:
+        remote = urljoins(remote, exec_name)
+
     for local_path in old:
         new_path = Path("/root/outputs") / local_path.name
 
@@ -176,6 +188,4 @@ def stage_for_output(channels: List[List[JSONValue]]) -> Dict[str, List[JSONValu
         else:
             shutil.copy(local_path, new_path)
 
-        new.append({"path": str(new_path)})
-
-    return {"output": new}
+        _upload(new_path, urljoins(remote, "output", new_path.name))

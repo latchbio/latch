@@ -87,9 +87,7 @@ class NextflowOutputTask(NextflowOperatorTask):
             if cond:
                 channel_vals = [{", ".join([f"json.loads({x})" for x in self.channel_inputs])}]
 
-                download_files(channel_vals, LatchDir({repr(self.wf.output_directory.remote_path)}))
-                staged = stage_for_output(channel_vals)
-                upload_files(staged, LatchDir({repr(self.wf.output_directory.remote_path)}))
+                stage_for_output(channel_vals, LatchDir({repr(self.wf.output_directory.remote_path)}))
 
             """,
             1,
