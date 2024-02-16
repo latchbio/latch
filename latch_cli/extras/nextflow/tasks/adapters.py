@@ -30,7 +30,7 @@ def dataclass_from_python_params(
 
             args.append(arg)
 
-        fields.append((n, Union[*args]))
+        fields.append((n, Union[tuple(args)]))
 
     return make_dataclass(cls_name=f"Dataclass_{name}", fields=fields)
 
