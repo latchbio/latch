@@ -49,6 +49,7 @@ class NodeData:
     id: str
     name: str
     type: LDataNodeType
+    removed: bool
     is_parent: bool
 
 
@@ -83,6 +84,7 @@ def get_node_data(
                         id
                         name
                         type
+                        removed
                     }
                 }
             }
@@ -141,6 +143,7 @@ def get_node_data(
                 id=final_link_target["id"],
                 name=final_link_target["name"],
                 type=LDataNodeType(final_link_target["type"].lower()),
+                removed=final_link_target["removed"],
                 is_parent=is_parent,
             )
         except (TypeError, ValueError) as e:
