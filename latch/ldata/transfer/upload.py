@@ -16,13 +16,18 @@ import click
 from latch_sdk_config.latch import config as latch_config
 from typing_extensions import TypeAlias
 
+from latch.ldata.node import LDataNodeType, get_node_data
+from latch.ldata.transfer.manager import TransferStateManager
+from latch.ldata.transfer.progress import Progress, ProgressBars
+from latch.ldata.transfer.throttle import Throttle
+from latch.ldata.transfer.utils import (
+    LDataNodeType,
+    get_max_workers,
+    get_node_data,
+    human_readable_time,
+)
 from latch_cli import tinyrequests
 from latch_cli.constants import latch_constants, units
-from latch_cli.services.cp.config import CPConfig, Progress
-from latch_cli.services.cp.ldata_utils import LDataNodeType, get_node_data
-from latch_cli.services.cp.manager import CPStateManager
-from latch_cli.services.cp.progress import ProgressBars
-from latch_cli.services.cp.throttle import Throttle
 from latch_cli.services.cp.utils import get_max_workers, human_readable_time
 from latch_cli.utils import get_auth_header, urljoins, with_si_suffix
 from latch_cli.utils.path import normalize_path
@@ -52,17 +57,22 @@ class UploadJob:
 def upload(
     src: str,  # pathlib.Path strips trailing slashes but we want to keep them here as they determine cp behavior
     dest: str,
-    config: CPConfig,
+    progress: Progress = Progress.tasks,
+    verbose: bool = False,
 ):
     src_path = Path(src)
     if not src_path.exists():
         click.secho(f"Could not find {src_path}: no such file or directory.", fg="red")
         raise click.exceptions.Exit(1)
 
-    if config.progress != Progress.none:
+    if progress != Progress.none:
         click.secho(f"Uploading {src_path.name}", fg="blue")
 
-    node_data = get_node_data(dest, allow_resolve_to_parent=True)
+    try:
+        node_data = get_node_data(dest, allow_resolve_to_parent=True)
+    except FileNotFoundError as e:
+        click.echo(str(e))
+        raise click.exceptions.Exit(1) from e
     dest_data = node_data.data[dest]
 
     normalized = normalize_path(dest)
@@ -82,13 +92,13 @@ def upload(
             click.secho(f"{normalized} is not a directory.", fg="red")
             raise click.exceptions.Exit(1)
 
-    if config.progress == Progress.none:
+    if progress == Progress.none:
         num_bars = 0
         show_total_progress = False
     elif not src_path.is_dir():
         num_bars = 1
         show_total_progress = False
-    elif config.progress == Progress.total:
+    elif progress == Progress.total:
         num_bars = 0
         show_total_progress = True
     else:
@@ -96,7 +106,7 @@ def upload(
         show_total_progress = True
 
     with ProcessPoolExecutor(max_workers=get_max_workers()) as exec:
-        with CPStateManager() as man:
+        with TransferStateManager() as man:
             parts_by_src: "PartsBySrcType" = man.dict()
             upload_info_by_src: "UploadInfoBySrcType" = man.dict()
 
@@ -134,7 +144,7 @@ def upload(
                 with closing(
                     man.ProgressBars(
                         0,
-                        show_total_progress=(config.progress != Progress.none),
+                        show_total_progress=(progress != Progress.none),
                     )
                 ) as url_generation_bar:
                     url_generation_bar.set_total(num_files, "Generating URLs")
@@ -169,7 +179,7 @@ def upload(
                     man.ProgressBars(
                         min(num_bars, num_files),
                         show_total_progress=show_total_progress,
-                        verbose=config.verbose,
+                        verbose=verbose,
                     )
                 ) as chunk_upload_bars:
                     chunk_upload_bars.set_total(num_files, "Uploading Files")
@@ -209,7 +219,7 @@ def upload(
 
                     wait(chunk_futs)
 
-                if config.progress != Progress.none:
+                if progress != Progress.none:
                     print("\x1b[0GFinalizing uploads...")
             else:
                 if dest_exists and dest_is_dir:
@@ -223,7 +233,7 @@ def upload(
                     man.ProgressBars(
                         num_bars,
                         show_total_progress=show_total_progress,
-                        verbose=config.verbose,
+                        verbose=verbose,
                     )
                 ) as progress_bars:
                     pbar_index = progress_bars.get_free_task_bar_index()
@@ -260,7 +270,7 @@ def upload(
 
     end = time.monotonic()
     total_time = end - start
-    if config.progress != Progress.none:
+    if progress != Progress.none:
         click.clear()
         click.echo(
             f"""{click.style("Upload Complete", fg="green")}

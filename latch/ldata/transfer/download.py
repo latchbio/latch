@@ -9,13 +9,12 @@ from typing import Dict, List, Set, TypedDict
 import click
 from latch_sdk_config.latch import config as latch_config
 
+from latch.ldata.node import LDataNodeType, get_node_data
+from latch.ldata.transfer.manager import TransferStateManager
+from latch.ldata.transfer.progress import Progress, ProgressBars, get_free_index
+from latch.ldata.transfer.utils import get_max_workers, human_readable_time
 from latch_cli import tinyrequests
 from latch_cli.constants import Units
-from latch_cli.services.cp.config import CPConfig, Progress
-from latch_cli.services.cp.ldata_utils import LDataNodeType, get_node_data
-from latch_cli.services.cp.manager import CPStateManager
-from latch_cli.services.cp.progress import ProgressBars, get_free_index
-from latch_cli.services.cp.utils import get_max_workers, human_readable_time
 from latch_cli.utils import get_auth_header, with_si_suffix
 from latch_cli.utils.path import normalize_path
 
@@ -35,9 +34,7 @@ class DownloadJob:
 
 
 def download(
-    src: str,
-    dest: Path,
-    config: CPConfig,
+    src: str, dest: Path, progress: Progress = Progress.tasks, verbose: bool = False
 ):
     if not dest.parent.exists():
         click.secho(
@@ -48,7 +45,11 @@ def download(
         raise click.exceptions.Exit(1)
 
     normalized = normalize_path(src)
-    data = get_node_data(src)
+    try:
+        data = get_node_data(src)
+    except FileNotFoundError as e:
+        click.echo(str(e))
+        raise click.exceptions.Exit(1) from e
 
     node_data = data.data[src]
     click.secho(f"Downloading {node_data.name}", fg="blue")
@@ -127,23 +128,23 @@ def download(
 
         num_files = len(confirmed_jobs)
 
-        if config.progress == Progress.none:
+        if progress == Progress.none:
             num_bars = 0
             show_total_progress = False
-        if config.progress == Progress.total:
+        if progress == Progress.total:
             num_bars = 0
             show_total_progress = True
         else:
             num_bars = min(get_max_workers(), num_files)
             show_total_progress = True
 
-        with CPStateManager() as manager:
+        with TransferStateManager() as manager:
             progress_bars: ProgressBars
             with closing(
                 manager.ProgressBars(
                     num_bars,
                     show_total_progress=show_total_progress,
-                    verbose=config.verbose,
+                    verbose=verbose,
                 )
             ) as progress_bars:
                 progress_bars.set_total(num_files, "Copying Files")
@@ -169,18 +170,18 @@ def download(
         if dest.exists() and dest.is_dir():
             dest = dest / node_data.name
 
-        if config.progress == Progress.none:
+        if progress == Progress.none:
             num_bars = 0
         else:
             num_bars = 1
 
-        with CPStateManager() as manager:
+        with TransferStateManager() as manager:
             progress_bars: ProgressBars
             with closing(
                 manager.ProgressBars(
                     num_bars,
                     show_total_progress=False,
-                    verbose=config.verbose,
+                    verbose=verbose,
                 )
             ) as progress_bars:
                 start = time.monotonic()
