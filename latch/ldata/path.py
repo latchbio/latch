@@ -1,10 +1,9 @@
-import io
 from pathlib import Path
 from typing import Generator, Optional, Union
 from urllib.parse import urljoin
+from uuid import uuid4
 
 import gql
-from gql.transport.exceptions import TransportQueryError
 from latch_sdk_config.latch import NUCLEUS_URL
 from latch_sdk_gql.execute import execute
 
@@ -16,11 +15,11 @@ from latch.ldata.node import (
     get_node_metadata,
     get_node_perms,
 )
-from latch.ldata.transfer import download, upload
-from latch.types.json import JsonValue
+from latch.ldata.transfer import download, remote_copy, upload
+from latch.ldata.transfer.progress import Progress
 from latch_cli.tinyrequests import post
 from latch_cli.utils import get_auth_header, urljoins
-from latch_cli.utils.path import get_name_from_path, get_path_error, is_remote_path
+from latch_cli.utils.path import is_remote_path
 
 
 class LPath:
@@ -53,7 +52,11 @@ class LPath:
         return get_node_data(self.path).data[self.path].type
 
     def is_dir(self) -> bool:
-        return self.type is LDataNodeType.dir
+        return self.type in {
+            LDataNodeType.dir,
+            LDataNodeType.account_root,
+            LDataNodeType.mount,
+        }
 
     @property
     def size(self) -> float:
@@ -66,6 +69,8 @@ class LPath:
         return metadata.content_type
 
     def iterdir(self) -> Generator[Path, None, None]:
+        if not self.is_dir():
+            raise ValueError(f"Not a directory: {self.path}")
         data = execute(
             gql.gql("""
             query LDataChildren($argPath: String!) {
@@ -103,124 +108,21 @@ class LPath:
         )
 
     def copy(self, dst: Union["LPath", str]) -> None:
-        dst = str(dst)
-        node_data = get_node_data(self.path, dst, allow_resolve_to_parent=True)
+        remote_copy(self.path, str(dst))
 
-        src_data = node_data.data[self.path]
-        dst_data = node_data.data[dst]
-        acc_id = node_data.acc_id
+    def upload(self, src: Path, progress=Progress.tasks, verbose=False) -> None:
+        upload(src, self.path, progress, verbose)
 
-        path_by_id = {v.id: k for k, v in node_data.data.items()}
+    def download(
+        self, dst: Optional[Path] = None, progress=Progress.tasks, verbose=False
+    ) -> Path:
+        if dst is None:
+            dir = Path(".") / "downloads" / str(uuid4())
+            dir.mkdir(parents=True, exist_ok=True)
+            dst = dir / self.name
 
-        if src_data.is_parent:
-            raise FileNotFoundError(get_path_error(self.path, "not found", acc_id))
-
-        new_name = None
-        if dst_data.is_parent:
-            new_name = get_name_from_path(dst)
-        elif dst_data.type in {LDataNodeType.obj, LDataNodeType.link}:
-            raise FileExistsError(
-                get_path_error(dst, "object already exists at path.", acc_id)
-            )
-
-        try:
-            execute(
-                gql.gql("""
-                mutation Copy(
-                    $argSrcNode: BigInt!
-                    $argDstParent: BigInt!
-                    $argNewName: String
-                ) {
-                    ldataCopy(
-                        input: {
-                            argSrcNode: $argSrcNode
-                            argDstParent: $argDstParent
-                            argNewName: $argNewName
-                        }
-                    ) {
-                        clientMutationId
-                    }
-                }"""),
-                {
-                    "argSrcNode": src_data.id,
-                    "argDstParent": dst_data.id,
-                    "argNewName": new_name,
-                },
-            )
-        except TransportQueryError as e:
-            if e.errors is None or len(e.errors) == 0:
-                raise e
-
-            msg: str = e.errors[0]["message"]
-
-            if msg.startswith("Permission denied on node"):
-                node_id = msg.rsplit(" ", 1)[1]
-                path = path_by_id[node_id]
-
-                raise ValueError(get_path_error(path, "permission denied.", acc_id))
-            elif msg == "Refusing to make node its own parent":
-                raise ValueError(
-                    get_path_error(dst, f"is a parent of {self.path}.", acc_id)
-                )
-            elif msg == "Refusing to parent node to an object node":
-                raise ValueError(get_path_error(dst, f"object exists at path.", acc_id))
-            elif msg == "Refusing to move a share link (or into a share link)":
-                raise ValueError(
-                    get_path_error(
-                        self.path if src_data.type is LDataNodeType.link else dst,
-                        f"is a share link.",
-                        acc_id,
-                    )
-                )
-            elif msg.startswith("Refusing to copy account root"):
-                raise ValueError(
-                    get_path_error(self.path, "is an account root.", acc_id)
-                )
-            elif msg.startswith("Refusing to copy removed node"):
-                raise ValueError(get_path_error(self.path, "not found.", acc_id))
-            elif msg.startswith("Refusing to copy already in-transit node"):
-                raise ValueError(
-                    get_path_error(self.path, "copy already in progress.", acc_id)
-                )
-            elif msg == "Conflicting object in destination":
-                raise ValueError(get_path_error(dst, "object exists at path.", acc_id))
-
-            raise ValueError(get_path_error(self.path, str(e), acc_id))
-
-    def download(self, dst: Optional[Union[Path, io.IOBase]]) -> Optional[Path]:
-        # todo: perform different actions depending on dst type
-        return download(
-            self.path,
-            dst,
-        )
-
-    def read_bytes(self) -> bytes:
-        # todo: implement
-        pass
-
-    def read_text(self) -> str:
-        # todo: implement
-        pass
-
-    def read_json(self) -> JsonValue:
-        # todo: implement
-        pass
-
-    def read_chunks(self, chunk_size: int) -> Generator[bytes, None, None]:
-        # todo: implement
-        pass
-
-    def read_lines(self):
-        # todo: implement
-        pass
-
-    def read_at(self, offset: int, amount: int) -> bytes:
-        # todo: implement
-        pass
-
-    def upload(self, src: Union[Path, io.IOBase, bytes, JsonValue]) -> str:
-        # todo: implement
-        pass
+        download(self.path, dst, progress, verbose, confirm_overwrite=False)
+        return dst
 
     @property
     def perms(self) -> LDataPerms:
@@ -264,5 +166,6 @@ class LPath:
 
 
 if __name__ == "__main__":
-    # add tests here
-    pass
+    # tests
+    file_path = LPath("latch://24030.account/test_dir/B.txt")
+    file_path.share_with("rahuljaydesai@gmail.com", PermLevel.VIEWER)

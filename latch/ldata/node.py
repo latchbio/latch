@@ -2,11 +2,6 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, List, TypedDict
 
-try:
-    from functools import cache
-except ImportError:
-    from functools import lru_cache as cache
-
 import gql
 import graphql.language as l
 from latch_sdk_gql.execute import execute
@@ -179,7 +174,7 @@ def get_node_metadata(node_id: str) -> NodeMetadata:
 
     return NodeMetadata(
         id=node_id,
-        size=data["ldataObjectMeta"]["contentSize"],
+        size=int(data["ldataObjectMeta"]["contentSize"]),
         content_type=data["ldataObjectMeta"]["contentType"],
     )
 

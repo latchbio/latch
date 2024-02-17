@@ -6,6 +6,7 @@ import time
 from concurrent.futures import Future, ProcessPoolExecutor, as_completed, wait
 from contextlib import closing
 from dataclasses import dataclass
+from http.client import HTTPException
 from json import JSONDecodeError
 from multiprocessing.managers import DictProxy, ListProxy
 from pathlib import Path
@@ -20,15 +21,9 @@ from latch.ldata.node import LDataNodeType, get_node_data
 from latch.ldata.transfer.manager import TransferStateManager
 from latch.ldata.transfer.progress import Progress, ProgressBars
 from latch.ldata.transfer.throttle import Throttle
-from latch.ldata.transfer.utils import (
-    LDataNodeType,
-    get_max_workers,
-    get_node_data,
-    human_readable_time,
-)
+from latch.ldata.transfer.utils import get_max_workers, human_readable_time
 from latch_cli import tinyrequests
 from latch_cli.constants import latch_constants, units
-from latch_cli.services.cp.utils import get_max_workers, human_readable_time
 from latch_cli.utils import get_auth_header, urljoins, with_si_suffix
 from latch_cli.utils.path import normalize_path
 
@@ -57,22 +52,17 @@ class UploadJob:
 def upload(
     src: str,  # pathlib.Path strips trailing slashes but we want to keep them here as they determine cp behavior
     dest: str,
-    progress: Progress = Progress.tasks,
-    verbose: bool = False,
-):
+    progress: Progress,
+    verbose: bool,
+) -> None:
     src_path = Path(src)
     if not src_path.exists():
-        click.secho(f"Could not find {src_path}: no such file or directory.", fg="red")
-        raise click.exceptions.Exit(1)
+        raise ValueError(f"Could not find {src_path}: no such file or directory.")
 
     if progress != Progress.none:
         click.secho(f"Uploading {src_path.name}", fg="blue")
 
-    try:
-        node_data = get_node_data(dest, allow_resolve_to_parent=True)
-    except FileNotFoundError as e:
-        click.echo(str(e))
-        raise click.exceptions.Exit(1) from e
+    node_data = get_node_data(dest, allow_resolve_to_parent=True)
     dest_data = node_data.data[dest]
 
     normalized = normalize_path(dest)
@@ -86,11 +76,9 @@ def upload(
 
     if not dest_is_dir:
         if not dest_exists:  # path is latch:///a/b/file_1/file_2
-            click.secho(f"No such file or directory: {dest}", fg="red")
-            raise click.exceptions.Exit(1)
+            raise ValueError(f"No such file or directory: {dest}")
         if src_path.is_dir():
-            click.secho(f"{normalized} is not a directory.", fg="red")
-            raise click.exceptions.Exit(1)
+            raise ValueError(f"{normalized} is not a directory.")
 
     if progress == Progress.none:
         num_bars = 0
@@ -271,7 +259,6 @@ def upload(
     end = time.monotonic()
     total_time = end - start
     if progress != Progress.none:
-        click.clear()
         click.echo(
             f"""{click.style("Upload Complete", fg="green")}
 
@@ -301,9 +288,7 @@ def start_upload(
     latency_q: Optional["LatencyQueueType"] = None,
 ) -> Optional[StartUploadReturnType]:
     if not src.exists():
-        raise click.exceptions.Exit(
-            click.style(f"Could not find {src}: no such file or link", fg="red")
-        )
+        raise ValueError(f"Could not find {src}: no such file or link")
 
     if src.is_symlink():
         src = src.resolve()
@@ -321,12 +306,9 @@ def start_upload(
 
     file_size = src.stat().st_size
     if file_size > latch_constants.maximum_upload_size:
-        raise click.exceptions.Exit(
-            click.style(
-                f"File is {with_si_suffix(file_size)} which exceeds the maximum"
-                " upload size (5TiB)",
-                fg="red",
-            )
+        raise ValueError(
+            f"File is {with_si_suffix(file_size)} which exceeds the maximum"
+            " upload size (5TiB)",
         )
 
     part_count = min(
@@ -380,12 +362,7 @@ def start_upload(
             **data, part_count=part_count, part_size=part_size, src=src, dest=dest
         )
 
-    raise click.exceptions.Exit(
-        click.style(
-            f"Unable to generate upload URL for {src}",
-            fg="red",
-        )
-    )
+    raise RuntimeError(f"Unable to generate upload URL for {src}")
 
 
 @dataclass(frozen=True)
@@ -414,8 +391,8 @@ def upload_file_chunk(
 
     res = tinyrequests.put(url, data=data)
     if res.status_code != 200:
-        raise click.exceptions.Exit(
-            click.style(f"Failed to upload part {part_index} of {src}", fg="red")
+        raise HTTPException(
+            f"Failed to upload part {part_index} of {src}: {res.status_code}"
         )
 
     ret = CompletedPart(
@@ -473,11 +450,7 @@ def end_upload(
     )
 
     if res.status_code != 200:
-        raise click.exceptions.Exit(
-            click.style(
-                f"Unable to complete file upload: {res.json()['error']}", fg="red"
-            )
-        )
+        raise HTTPException(f"Unable to complete file upload: {res.json()['error']}")
 
     if progress_bars is not None:
         progress_bars.update_total_progress(1)

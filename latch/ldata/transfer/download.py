@@ -2,8 +2,10 @@ import time
 from concurrent.futures import ProcessPoolExecutor
 from contextlib import closing
 from dataclasses import dataclass
+from http.client import HTTPException
 from itertools import repeat
 from pathlib import Path
+from textwrap import dedent
 from typing import Dict, List, Set, TypedDict
 
 import click
@@ -34,25 +36,24 @@ class DownloadJob:
 
 
 def download(
-    src: str, dest: Path, progress: Progress = Progress.tasks, verbose: bool = False
-):
+    src: str,
+    dest: Path,
+    progress: Progress,
+    verbose: bool,
+    confirm_overwrite: bool = True,
+) -> None:
     if not dest.parent.exists():
-        click.secho(
+        raise ValueError(
             f"Invalid copy destination {dest}. Parent directory {dest.parent} does not"
-            " exist.",
-            fg="red",
+            " exist."
         )
-        raise click.exceptions.Exit(1)
 
     normalized = normalize_path(src)
-    try:
-        data = get_node_data(src)
-    except FileNotFoundError as e:
-        click.echo(str(e))
-        raise click.exceptions.Exit(1) from e
+    data = get_node_data(src)
 
     node_data = data.data[src]
-    click.secho(f"Downloading {node_data.name}", fg="blue")
+    if progress != Progress.none:
+        click.secho(f"Downloading {node_data.name}", fg="blue")
 
     can_have_children = node_data.type in {
         LDataNodeType.account_root,
@@ -70,14 +71,11 @@ def download(
         headers={"Authorization": get_auth_header()},
         json={"path": normalized},
     )
-
     if res.status_code != 200:
-        click.secho(
+        raise HTTPException(
             f"failed to fetch presigned url(s) for path {src} with code"
-            f" {res.status_code}: {res.json()['error']}",
-            fg="red",
+            f" {res.status_code}: {res.json()['error']}"
         )
-        raise click.exceptions.Exit(1)
 
     json_data = res.json()
     if can_have_children:
@@ -89,11 +87,9 @@ def download(
         try:
             dest.mkdir(exist_ok=True)
         except FileNotFoundError as e:
-            click.secho(f"No such download destination {dest}", fg="red")
-            raise click.exceptions.Exit(1) from e
+            raise ValueError(f"No such download destination {dest}")
         except (FileExistsError, NotADirectoryError) as e:
-            click.secho(f"Download destination {dest} is not a directory", fg="red")
-            raise click.exceptions.Exit(1) from e
+            raise ValueError(f"Download destination {dest} is not a directory")
 
         unconfirmed_jobs: List[DownloadJob] = []
         confirmed_jobs: List[DownloadJob] = []
@@ -116,7 +112,7 @@ def download(
                 job.dest.parent.mkdir(parents=True, exist_ok=True)
                 confirmed_jobs.append(job)
             except FileExistsError:
-                if click.confirm(
+                if confirm_overwrite and click.confirm(
                     f"A file already exists at {job.dest.parent}. Overwrite?",
                     default=False,
                 ):
@@ -124,6 +120,9 @@ def download(
                     job.dest.parent.mkdir(parents=True, exist_ok=True)
                     confirmed_jobs.append(job)
                 else:
+                    click.secho(
+                        f"Skipping {job.dest.parent}, file already exists", fg="yellow"
+                    )
                     rejected_jobs.add(job.dest.parent)
 
         num_files = len(confirmed_jobs)
@@ -193,12 +192,10 @@ def download(
 
     total_time = end - start
 
-    click.echo(
-        f"""{click.style("Download Complete", fg="green")}
-
-{click.style("Time Elapsed: ", fg="blue")}{human_readable_time(total_time)}
-{click.style("Files Downloaded: ", fg="blue")}{num_files} ({with_si_suffix(total_bytes)})"""
-    )
+    click.echo(dedent(f"""{click.style("Download Complete", fg="green")}
+            {click.style("Time Elapsed: ", fg="blue")}{human_readable_time(total_time)}
+            {click.style("Files Downloaded: ", fg="blue")}{num_files} ({with_si_suffix(total_bytes)})
+            """))
 
 
 # dest will always be a path which includes the copied file as its leaf
