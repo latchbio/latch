@@ -10,7 +10,7 @@ import dateutil.parser as dp
 import gql
 from latch_sdk_gql.execute import execute
 
-from latch.ldata.transfer.utils import LDataNodeType
+from latch.ldata.node import LDataNodeType
 from latch_cli.click_utils import bold
 from latch_cli.utils import with_si_suffix
 from latch_cli.utils.path import normalize_path

@@ -11,7 +11,7 @@ import gql
 from gql.transport.exceptions import TransportQueryError
 from latch_sdk_gql.execute import JsonValue, execute
 
-import latch_cli.services.cp.upload as upl
+import latch.ldata.transfer.upload as upl
 
 
 def upload_file(src: Path, dest: str):
