@@ -1,9 +1,19 @@
 from pathlib import Path
-from typing import Generator, Optional, Union
+from typing import Generator, Optional, Type, Union
 from urllib.parse import urljoin
 from uuid import uuid4
 
 import gql
+from flytekit import (
+    Blob,
+    BlobMetadata,
+    BlobType,
+    FlyteContext,
+    Literal,
+    LiteralType,
+    Scalar,
+)
+from flytekit.extend import TypeEngine, TypeTransformer
 from latch_sdk_config.latch import NUCLEUS_URL
 from latch_sdk_gql.execute import execute
 
@@ -165,7 +175,46 @@ class LPath:
         return LPath(f"{Path(self.path) / other}")
 
 
-if __name__ == "__main__":
-    # tests
-    file_path = LPath("latch://24030.account/test_dir/B.txt")
-    file_path.share_with("rahuljaydesai@gmail.com", PermLevel.VIEWER)
+class LPathTransformer(TypeTransformer[LPath]):
+    def __init__(self):
+        super(LPathTransformer, self).__init__(name="lpath-transformer", t=LPath)
+
+    def get_literal_type(self, t: Type[LPath]) -> LiteralType:
+        return LiteralType(
+            blob=BlobType(
+                # this is sus, but there is no way to check if the LPath is a file or dir
+                format="binary",
+                dimensionality=BlobType.BlobDimensionality.SINGLE,
+            )
+        )
+
+    def to_literal(
+        self,
+        ctx: FlyteContext,
+        python_val: LPath,
+        python_type: Type[LPath],
+        expected: LiteralType,
+    ) -> Literal:
+        dimensionality = (
+            BlobType.BlobDimensionality.MULTIPART
+            if python_val.is_dir()
+            else BlobType.BlobDimensionality.SINGLE
+        )
+        return Literal(
+            scalar=Scalar(
+                blob=Blob(
+                    uri=python_val.path,
+                    metadata=BlobMetadata(
+                        format="binary", dimensionality=dimensionality
+                    ),
+                )
+            )
+        )
+
+    def to_python_value(
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[LPath]
+    ):
+        return LPath(path=lv.scalar.blob.uri)
+
+
+TypeEngine.register(LPathTransformer())
