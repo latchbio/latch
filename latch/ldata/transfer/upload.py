@@ -17,8 +17,8 @@ import click
 from latch_sdk_config.latch import config as latch_config
 from typing_extensions import TypeAlias
 
-from latch.ldata.node import LDataNodeType, get_node_data
 from latch.ldata.transfer.manager import TransferStateManager
+from latch.ldata.transfer.node import LDataNodeType, get_node_data
 from latch.ldata.transfer.progress import Progress, ProgressBars
 from latch.ldata.transfer.throttle import Throttle
 from latch.ldata.transfer.utils import get_max_workers, human_readable_time

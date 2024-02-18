@@ -6,10 +6,11 @@ import gql
 import graphql.language as l
 from latch_sdk_gql.execute import execute
 from latch_sdk_gql.utils import _name_node, _parse_selection
+from typing_extensions import TypeAlias
 
 from latch_cli.utils.path import get_path_error, normalize_path
 
-AccId = int
+AccId: TypeAlias = int
 
 
 class LDataNodeType(str, Enum):
@@ -20,10 +21,17 @@ class LDataNodeType(str, Enum):
     link = "link"
 
 
+class LDataObjectMeta(TypedDict):
+    contentSize: str
+    contentType: str
+
+
 class FinalLinkTargetPayload(TypedDict):
     id: str
     type: str
     name: str
+    removed: bool
+    ldataObjectMeta: LDataObjectMeta
 
 
 class LdataNodePayload(TypedDict):
@@ -44,7 +52,6 @@ class NodeData:
     id: str
     name: str
     type: LDataNodeType
-    removed: bool
     is_parent: bool
 
 
@@ -79,7 +86,6 @@ def get_node_data(
                         id
                         name
                         type
-                        removed
                     }
                 }
             }
@@ -138,100 +144,9 @@ def get_node_data(
                 id=final_link_target["id"],
                 name=final_link_target["name"],
                 type=LDataNodeType(final_link_target["type"].lower()),
-                removed=final_link_target["removed"],
                 is_parent=is_parent,
             )
         except (TypeError, ValueError) as e:
             raise FileNotFoundError(get_path_error(remote_path, "not found", acc_id))
 
     return GetNodeDataResult(acc_id, ret)
-
-
-@dataclass(frozen=True)
-class NodeMetadata:
-    id: str
-    size: int
-    content_type: str
-
-
-def get_node_metadata(node_id: str) -> NodeMetadata:
-    data = execute(
-        gql.gql("""
-        query NodeMetadataQuery($id: BigInt!) {
-            ldataNode(id: $id) {
-                removed
-                ldataObjectMeta {
-                    contentSize
-                    contentType
-                }
-            }
-        }
-        """),
-        variables={"id": node_id},
-    )["ldataNode"]
-    if data is None or data["removed"]:
-        raise FileNotFoundError
-
-    return NodeMetadata(
-        id=node_id,
-        size=int(data["ldataObjectMeta"]["contentSize"]),
-        content_type=data["ldataObjectMeta"]["contentType"],
-    )
-
-
-class PermLevel(str, Enum):
-    NONE = "none"
-    VIEWER = "viewer"
-    MEMBER = "member"
-    ADMIN = "admin"
-    OWNER = "owner"
-
-
-@dataclass(frozen=True)
-class LDataPerms:
-    id: str
-    shared: bool
-    share_invites: Dict[str, PermLevel]
-    share_perms: Dict[AccId, PermLevel]
-
-
-def get_node_perms(node_id: str) -> LDataPerms:
-    data = execute(
-        gql.gql("""
-        query NodePermissionsQuery($id: BigInt!) {
-            ldataNode(id: $id) {
-                id
-                removed
-                ldataSharePermissionsByObjectId {
-                    nodes {
-                        receiverId
-                        level
-                    }
-                }
-                ldataShareInvitesByObjectId {
-                    nodes {
-                        receiverEmail
-                        level
-                    }
-                }
-                shared
-            }
-        }
-        """),
-        variables={"id": node_id},
-    )["ldataNode"]
-    if data is None or data["removed"]:
-        raise FileNotFoundError
-
-    return LDataPerms(
-        id=node_id,
-        shared=data["shared"],
-        share_invites={
-            node["reveiverEmail"]: node["level"]
-            for node in data["ldataShareInvitesByObjectId"]["nodes"]
-        },
-        share_perms={
-            int(node["receiverId"]): node["level"]
-            for node in data["ldataSharePermissionsByObjectId"]["nodes"]
-        },
-    )

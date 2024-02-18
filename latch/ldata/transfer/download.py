@@ -11,8 +11,8 @@ from typing import Dict, List, Set, TypedDict
 import click
 from latch_sdk_config.latch import config as latch_config
 
-from latch.ldata.node import LDataNodeType, get_node_data
 from latch.ldata.transfer.manager import TransferStateManager
+from latch.ldata.transfer.node import LDataNodeType, get_node_data
 from latch.ldata.transfer.progress import Progress, ProgressBars, get_free_index
 from latch.ldata.transfer.utils import get_max_workers, human_readable_time
 from latch_cli import tinyrequests
@@ -192,10 +192,11 @@ def download(
 
     total_time = end - start
 
-    click.echo(dedent(f"""{click.style("Download Complete", fg="green")}
-            {click.style("Time Elapsed: ", fg="blue")}{human_readable_time(total_time)}
-            {click.style("Files Downloaded: ", fg="blue")}{num_files} ({with_si_suffix(total_bytes)})
-            """))
+    if progress != Progress.none:
+        click.echo(dedent(f"""{click.style("Download Complete", fg="green")}
+                {click.style("Time Elapsed: ", fg="blue")}{human_readable_time(total_time)}
+                {click.style("Files Downloaded: ", fg="blue")}{num_files} ({with_si_suffix(total_bytes)})
+                """))
 
 
 # dest will always be a path which includes the copied file as its leaf
