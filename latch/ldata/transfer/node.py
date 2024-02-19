@@ -1,49 +1,40 @@
 from dataclasses import dataclass
-from enum import Enum
 from typing import Dict, List, TypedDict
 
-import gql
 import graphql.language as l
 from latch_sdk_gql.execute import execute
 from latch_sdk_gql.utils import _name_node, _parse_selection
 from typing_extensions import TypeAlias
 
+from latch.ldata.path import LDataNodeType
 from latch_cli.utils.path import get_path_error, normalize_path
 
 AccId: TypeAlias = int
 
 
-class LDataNodeType(str, Enum):
-    account_root = "account_root"
-    dir = "dir"
-    obj = "obj"
-    mount = "mount"
-    link = "link"
-
-
-class LDataObjectMeta(TypedDict):
+class _LDataObjectMeta(TypedDict):
     contentSize: str
     contentType: str
 
 
-class FinalLinkTargetPayload(TypedDict):
+class _FinalLinkTargetPayload(TypedDict):
     id: str
     type: str
     name: str
     removed: bool
-    ldataObjectMeta: LDataObjectMeta
+    ldataObjectMeta: _LDataObjectMeta
 
 
-class LdataNodePayload(TypedDict):
-    finalLinkTarget: FinalLinkTargetPayload
+class _LdataNodePayload(TypedDict):
+    finalLinkTarget: _FinalLinkTargetPayload
 
 
-class LdataResolvePathToNodePayload(TypedDict):
+class _LdataResolvePathToNodePayload(TypedDict):
     path: str
-    ldataNode: LdataNodePayload
+    ldataNode: _LdataNodePayload
 
 
-class AccountInfoCurrentPayload(TypedDict):
+class _AccountInfoCurrentPayload(TypedDict):
     id: str
 
 
@@ -56,14 +47,14 @@ class NodeData:
 
 
 @dataclass(frozen=True)
-class GetNodeDataResult:
+class _GetNodeDataResult:
     acc_id: str
     data: Dict[str, NodeData]
 
 
-def get_node_data(
+def _get_node_data(
     *remote_paths: str, allow_resolve_to_parent: bool = False
-) -> GetNodeDataResult:
+) -> _GetNodeDataResult:
     normalized: Dict[str, str] = {}
 
     acc_sel = _parse_selection("""
@@ -121,12 +112,12 @@ def get_node_data(
 
     res = execute(doc)
 
-    acc_info: AccountInfoCurrentPayload = res["accountInfoCurrent"]
+    acc_info: _AccountInfoCurrentPayload = res["accountInfoCurrent"]
     acc_id = acc_info["id"]
 
     ret: Dict[str, NodeData] = {}
     for i, remote_path in enumerate(remote_paths):
-        node: LdataResolvePathToNodePayload = res[f"q{i}"]
+        node: _LdataResolvePathToNodePayload = res[f"q{i}"]
 
         try:
             final_link_target = node["ldataNode"]["finalLinkTarget"]
@@ -149,4 +140,4 @@ def get_node_data(
         except (TypeError, ValueError) as e:
             raise FileNotFoundError(get_path_error(remote_path, "not found", acc_id))
 
-    return GetNodeDataResult(acc_id, ret)
+    return _GetNodeDataResult(acc_id, ret)

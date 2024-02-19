@@ -2,7 +2,7 @@ import os
 from typing import List
 
 
-def get_max_workers() -> int:
+def _get_max_workers() -> int:
     try:
         max_workers = len(os.sched_getaffinity(0)) * 4
     except AttributeError:
@@ -15,7 +15,7 @@ def get_max_workers() -> int:
     return min(max_workers, 16)
 
 
-def human_readable_time(t_seconds: float) -> str:
+def _human_readable_time(t_seconds: float) -> str:
     s = t_seconds % 60
     m = (t_seconds // 60) % 60
     h = t_seconds // 60 // 60

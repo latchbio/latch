@@ -11,17 +11,18 @@ from json import JSONDecodeError
 from multiprocessing.managers import DictProxy, ListProxy
 from pathlib import Path
 from queue import Queue
+from textwrap import dedent
 from typing import TYPE_CHECKING, List, Optional, TypedDict
 
-import click
 from latch_sdk_config.latch import config as latch_config
 from typing_extensions import TypeAlias
 
-from latch.ldata.transfer.manager import TransferStateManager
-from latch.ldata.transfer.node import LDataNodeType, get_node_data
-from latch.ldata.transfer.progress import Progress, ProgressBars
-from latch.ldata.transfer.throttle import Throttle
-from latch.ldata.transfer.utils import get_max_workers, human_readable_time
+from latch.ldata.path import LDataNodeType
+from latch.ldata.transfer.manager import _TransferStateManager
+from latch.ldata.transfer.node import _get_node_data
+from latch.ldata.transfer.progress import Progress, _ProgressBars
+from latch.ldata.transfer.throttle import _Throttle
+from latch.ldata.transfer.utils import _get_max_workers, _human_readable_time
 from latch_cli import tinyrequests
 from latch_cli.constants import latch_constants, units
 from latch_cli.utils import get_auth_header, urljoins, with_si_suffix
@@ -30,26 +31,26 @@ from latch_cli.utils.path import normalize_path
 if TYPE_CHECKING:
     PathQueueType: TypeAlias = "Queue[Optional[Path]]"
     LatencyQueueType: TypeAlias = "Queue[Optional[float]]"
-    PartsBySrcType: TypeAlias = DictProxy[Path, ListProxy["CompletedPart"]]
-    UploadInfoBySrcType: TypeAlias = DictProxy[Path, "StartUploadReturnType"]
+    PartsBySrcType: TypeAlias = DictProxy[Path, ListProxy["_CompletedPart"]]
+    UploadInfoBySrcType: TypeAlias = DictProxy[Path, "_StartUploadReturnType"]
 
 
-class EmptyUploadData(TypedDict):
+class _EmptyUploadData(TypedDict):
     version_id: str
 
 
-class StartUploadData(TypedDict):
+class _StartUploadData(TypedDict):
     upload_id: str
     urls: List[str]
 
 
 @dataclass(frozen=True)
-class UploadJob:
+class _UploadJob:
     src: Path
     dest: str
 
 
-def upload(
+def _upload(
     src: str,  # pathlib.Path strips trailing slashes but we want to keep them here as they determine cp behavior
     dest: str,
     progress: Progress,
@@ -59,10 +60,10 @@ def upload(
     if not src_path.exists():
         raise ValueError(f"Could not find {src_path}: no such file or directory.")
 
-    if progress != Progress.none:
-        click.secho(f"Uploading {src_path.name}", fg="blue")
+    if verbose:
+        print(f"Uploading {src_path.name}")
 
-    node_data = get_node_data(dest, allow_resolve_to_parent=True)
+    node_data = _get_node_data(dest, allow_resolve_to_parent=True)
     dest_data = node_data.data[dest]
 
     normalized = normalize_path(dest)
@@ -86,27 +87,24 @@ def upload(
     elif not src_path.is_dir():
         num_bars = 1
         show_total_progress = False
-    elif progress == Progress.total:
-        num_bars = 0
-        show_total_progress = True
     else:
-        num_bars = get_max_workers()
+        num_bars = _get_max_workers()
         show_total_progress = True
 
-    with ProcessPoolExecutor(max_workers=get_max_workers()) as exec:
-        with TransferStateManager() as man:
+    with ProcessPoolExecutor(max_workers=_get_max_workers()) as exec:
+        with _TransferStateManager() as man:
             parts_by_src: "PartsBySrcType" = man.dict()
             upload_info_by_src: "UploadInfoBySrcType" = man.dict()
 
-            throttle: Throttle = man.Throttle()
+            throttle: _Throttle = man.Throttle()
             latency_q: "LatencyQueueType" = man.Queue()
-            throttle_listener = exec.submit(throttler, throttle, latency_q)
+            throttle_listener = exec.submit(_throttler, throttle, latency_q)
 
             if src_path.is_dir():
                 if dest_exists and not src.endswith("/"):
                     normalized = urljoins(normalized, src_path.name)
 
-                jobs: List[UploadJob] = []
+                jobs: List[_UploadJob] = []
                 total_bytes = 0
 
                 for dir_path, _, file_names in os.walk(src_path, followlinks=True):
@@ -115,7 +113,7 @@ def upload(
 
                         parts_by_src[rel_path] = man.list()
                         jobs.append(
-                            UploadJob(
+                            _UploadJob(
                                 rel_path,
                                 urljoins(
                                     normalized,
@@ -128,7 +126,7 @@ def upload(
 
                 num_files = len(jobs)
 
-                url_generation_bar: ProgressBars
+                url_generation_bar: _ProgressBars
                 with closing(
                     man.ProgressBars(
                         0,
@@ -137,15 +135,15 @@ def upload(
                 ) as url_generation_bar:
                     url_generation_bar.set_total(num_files, "Generating URLs")
 
-                    start_upload_futs: List[Future[Optional[StartUploadReturnType]]] = (
-                        []
-                    )
+                    start_upload_futs: List[
+                        Future[Optional[_StartUploadReturnType]]
+                    ] = []
 
                     start = time.monotonic()
                     for job in jobs:
                         start_upload_futs.append(
                             exec.submit(
-                                start_upload,
+                                _start_upload,
                                 job.src,
                                 job.dest,
                                 url_generation_bar,
@@ -162,7 +160,7 @@ def upload(
                     latency_q.put(None)
                     wait([throttle_listener])
 
-                chunk_upload_bars: ProgressBars
+                chunk_upload_bars: _ProgressBars
                 with closing(
                     man.ProgressBars(
                         min(num_bars, num_files),
@@ -173,7 +171,7 @@ def upload(
                     chunk_upload_bars.set_total(num_files, "Uploading Files")
 
                     # todo(ayush): async-ify
-                    chunk_futs: List[Future[CompletedPart]] = []
+                    chunk_futs: List[Future[_CompletedPart]] = []
                     for data in start_upload_futs:
                         res = data.result()
 
@@ -192,7 +190,7 @@ def upload(
                         for part_index, url in enumerate(res.urls):
                             chunk_futs.append(
                                 exec.submit(
-                                    upload_file_chunk,
+                                    _upload_file_chunk,
                                     src=res.src,
                                     url=url,
                                     part_index=part_index,
@@ -207,7 +205,7 @@ def upload(
 
                     wait(chunk_futs)
 
-                if progress != Progress.none:
+                if verbose:
                     print("\x1b[0GFinalizing uploads...")
             else:
                 if dest_exists and dest_is_dir:
@@ -216,7 +214,7 @@ def upload(
                 num_files = 1
                 total_bytes = src_path.stat().st_size
 
-                progress_bars: ProgressBars
+                progress_bars: _ProgressBars
                 with closing(
                     man.ProgressBars(
                         num_bars,
@@ -227,18 +225,18 @@ def upload(
                     pbar_index = progress_bars.get_free_task_bar_index()
 
                     start = time.monotonic()
-                    res = start_upload(src_path, normalized)
+                    res = _start_upload(src_path, normalized)
 
                     if res is not None:
                         progress_bars.set(
                             pbar_index, res.src.stat().st_size, res.src.name
                         )
 
-                        chunk_futs: List[Future[CompletedPart]] = []
+                        chunk_futs: List[Future[_CompletedPart]] = []
                         for part_index, url in enumerate(res.urls):
                             chunk_futs.append(
                                 exec.submit(
-                                    upload_file_chunk,
+                                    _upload_file_chunk,
                                     src_path,
                                     url,
                                     part_index,
@@ -250,7 +248,7 @@ def upload(
 
                         wait(chunk_futs)
 
-                        end_upload(
+                        _end_upload(
                             normalized,
                             res.upload_id,
                             [fut.result() for fut in chunk_futs],
@@ -258,17 +256,16 @@ def upload(
 
     end = time.monotonic()
     total_time = end - start
-    if progress != Progress.none:
-        click.echo(
-            f"""{click.style("Upload Complete", fg="green")}
-
-{click.style("Time Elapsed: ", fg="blue")}{human_readable_time(total_time)}
-{click.style("Files Uploaded: ", fg="blue")}{num_files} ({with_si_suffix(total_bytes)})"""
-        )
+    if verbose:
+        print(dedent(f"""
+            Upload Complete
+            Time Elapsed: {_human_readable_time(total_time)}
+            Files Uploaded: {num_files} ({with_si_suffix(total_bytes)})
+            """))
 
 
 @dataclass(frozen=True)
-class StartUploadReturnType:
+class _StartUploadReturnType:
     upload_id: str
     urls: List[str]
     part_count: int
@@ -280,13 +277,13 @@ class StartUploadReturnType:
 MAX_RETRIES = 5
 
 
-def start_upload(
+def _start_upload(
     src: Path,
     dest: str,
-    progress_bars: Optional[ProgressBars] = None,
-    throttle: Optional[Throttle] = None,
+    progress_bars: Optional[_ProgressBars] = None,
+    throttle: Optional[_Throttle] = None,
     latency_q: Optional["LatencyQueueType"] = None,
-) -> Optional[StartUploadReturnType]:
+) -> Optional[_StartUploadReturnType]:
     if not src.exists():
         raise ValueError(f"Could not find {src}: no such file or link")
 
@@ -356,9 +353,9 @@ def start_upload(
         if "version_id" in json_data["data"]:
             return  # file is empty, so no need to upload any content
 
-        data: StartUploadData = json_data["data"]
+        data: _StartUploadData = json_data["data"]
 
-        return StartUploadReturnType(
+        return _StartUploadReturnType(
             **data, part_count=part_count, part_size=part_size, src=src, dest=dest
         )
 
@@ -366,23 +363,23 @@ def start_upload(
 
 
 @dataclass(frozen=True)
-class CompletedPart:
+class _CompletedPart:
     src: Path
     etag: str
     part_number: int
 
 
-def upload_file_chunk(
+def _upload_file_chunk(
     src: Path,
     url: str,
     part_index: int,
     part_size: int,
-    progress_bars: Optional[ProgressBars] = None,
+    progress_bars: Optional[_ProgressBars] = None,
     pbar_index: Optional[int] = None,
     parts_by_source: Optional["PartsBySrcType"] = None,
     upload_id: Optional[str] = None,
     dest: Optional[str] = None,
-) -> CompletedPart:
+) -> _CompletedPart:
     time.sleep(0.1 * random.random())
 
     with open(src, "rb") as f:
@@ -395,7 +392,7 @@ def upload_file_chunk(
             f"Failed to upload part {part_index} of {src}: {res.status_code}"
         )
 
-    ret = CompletedPart(
+    ret = _CompletedPart(
         src=src,
         etag=res.headers["ETag"],
         part_number=part_index + 1,
@@ -418,7 +415,7 @@ def upload_file_chunk(
                 and parts_by_source is not None
                 and upload_id is not None
             ):
-                end_upload(
+                _end_upload(
                     dest=dest,
                     upload_id=upload_id,
                     parts=list(parts_by_source[src]),
@@ -427,11 +424,11 @@ def upload_file_chunk(
     return ret
 
 
-def end_upload(
+def _end_upload(
     dest: str,
     upload_id: str,
-    parts: List[CompletedPart],
-    progress_bars: Optional[ProgressBars] = None,
+    parts: List[_CompletedPart],
+    progress_bars: Optional[_ProgressBars] = None,
 ):
     res = tinyrequests.post(
         latch_config.api.data.end_upload,
@@ -456,7 +453,7 @@ def end_upload(
         progress_bars.update_total_progress(1)
 
 
-def throttler(t: Throttle, q: "LatencyQueueType"):
+def _throttler(t: _Throttle, q: "LatencyQueueType"):
     ema = 0
 
     # todo(ayush): these params were tuned via naive grid search uploading a

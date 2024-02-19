@@ -11,7 +11,7 @@ from packaging.version import parse as parse_version
 from typing_extensions import ParamSpec
 
 import latch_cli.click_utils
-from latch.ldata.transfer.progress import Progress
+from latch.ldata.transfer import Progress
 from latch_cli.click_utils import EnumChoice
 from latch_cli.exceptions.handler import CrashHandler
 from latch_cli.services.cp.autocomplete import complete as cp_complete

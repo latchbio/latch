@@ -1,5 +1,6 @@
 import re
 from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
 from typing import Generator, Optional, Type
 
@@ -16,14 +17,22 @@ from flytekit import (
 from flytekit.extend import TypeEngine, TypeTransformer
 from latch_sdk_gql.execute import execute
 
-from latch.ldata.transfer.download import download
-from latch.ldata.transfer.node import LDataNodeType
+from latch.ldata.transfer.download import _download
 from latch.ldata.transfer.progress import Progress
-from latch.ldata.transfer.remote_copy import remote_copy
-from latch.ldata.transfer.upload import upload
+from latch.ldata.transfer.remote_copy import _remote_copy
+from latch.ldata.transfer.upload import _upload
 from latch_cli.utils import urljoins
 
 node_id_regex = re.compile(r"^latch://(?P<id>[0-9]+)\.node$")
+
+
+class LDataNodeType(str, Enum):
+    account_root = "account_root"
+    dir = "dir"
+    obj = "obj"
+    mount = "mount"
+    link = "link"
+
 
 dir_types = {
     LDataNodeType.dir,
@@ -183,10 +192,10 @@ class LPath:
         )
 
     def copy(self, dst: "LPath") -> None:
-        remote_copy(self.path, dst.path)
+        _remote_copy(self.path, dst.path)
 
     def upload(self, src: Path, *, show_progress_bar: bool = False) -> None:
-        upload(
+        _upload(
             src,
             self.path,
             progress=Progress.tasks if show_progress_bar else Progress.none,
@@ -202,7 +211,7 @@ class LPath:
             dir.mkdir(parents=True, exist_ok=True)
             dst = dir / self.name()
 
-        download(
+        _download(
             self.path,
             dst,
             progress=Progress.tasks if show_progress_bar else Progress.none,

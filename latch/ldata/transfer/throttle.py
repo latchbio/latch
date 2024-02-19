@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class Throttle:
+class _Throttle:
     delay: float = 0
 
     def get_delay(self):

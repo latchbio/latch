@@ -1,14 +1,14 @@
 from multiprocessing.managers import SyncManager
 from typing import Type
 
-from .progress import ProgressBars
-from .throttle import Throttle
+from .progress import _ProgressBars
+from .throttle import _Throttle
 
 
-class TransferStateManager(SyncManager):
-    ProgressBars: Type[ProgressBars]
-    Throttle: Type[Throttle]
+class _TransferStateManager(SyncManager):
+    ProgressBars: Type[_ProgressBars]
+    Throttle: Type[_Throttle]
 
 
-TransferStateManager.register("ProgressBars", ProgressBars)
-TransferStateManager.register("Throttle", Throttle)
+_TransferStateManager.register("ProgressBars", _ProgressBars)
+_TransferStateManager.register("Throttle", _Throttle)

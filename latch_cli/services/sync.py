@@ -15,7 +15,7 @@ import latch.ldata.transfer.upload as upl
 
 
 def upload_file(src: Path, dest: str):
-    start = upl.start_upload(src, dest)
+    start = upl._start_upload(src, dest)
     if start is None:
         return
 
@@ -30,7 +30,7 @@ def upload_file(src: Path, dest: str):
             )
         )
 
-    upl.end_upload(dest, start.upload_id, parts)
+    upl._end_upload(dest, start.upload_id, parts)
 
 
 def check_src(p: Path, *, indent: str = "") -> Optional[Tuple[Path, os.stat_result]]:

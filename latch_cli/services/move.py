@@ -5,7 +5,8 @@ import gql
 from gql.transport.exceptions import TransportQueryError
 from latch_sdk_gql.execute import execute
 
-from latch.ldata.transfer.node import LDataNodeType, get_node_data
+from latch.ldata.path import LDataNodeType
+from latch.ldata.transfer.node import _get_node_data
 from latch_cli.services.cp.glob import expand_pattern
 from latch_cli.utils.path import get_name_from_path, get_path_error, is_remote_path
 
@@ -34,7 +35,7 @@ def move(
         raise click.exceptions.Exit(0)
 
     try:
-        node_data = get_node_data(*srcs, dest, allow_resolve_to_parent=True)
+        node_data = _get_node_data(*srcs, dest, allow_resolve_to_parent=True)
     except FileNotFoundError as e:
         click.echo(str(e))
         raise click.exceptions.Exit(1) from e
