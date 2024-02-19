@@ -11,7 +11,7 @@ from typing import Dict, List, Set, TypedDict
 import click
 from latch_sdk_config.latch import config as latch_config
 
-from latch.ldata.path import LDataNodeType
+from latch.ldata.transfer.node import LDataNodeType
 from latch_cli import tinyrequests
 from latch_cli.constants import Units
 from latch_cli.utils import get_auth_header, with_si_suffix

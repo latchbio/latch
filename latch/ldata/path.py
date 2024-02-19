@@ -1,8 +1,7 @@
 import re
 from dataclasses import dataclass, field
-from enum import Enum
 from pathlib import Path
-from typing import Generator, Optional, Type
+from typing import Generator, Optional, Type, Union
 
 import gql
 from flytekit import (
@@ -17,21 +16,15 @@ from flytekit import (
 from flytekit.extend import TypeEngine, TypeTransformer
 from latch_sdk_gql.execute import execute
 
-from latch.ldata.transfer.download import _download
+from latch.ldata.transfer.node import LDataNodeType
 from latch.ldata.transfer.progress import Progress
-from latch.ldata.transfer.remote_copy import _remote_copy
-from latch.ldata.transfer.upload import _upload
 from latch_cli.utils import urljoins
 
+from .transfer.download import _download
+from .transfer.remote_copy import _remote_copy
+from .transfer.upload import _upload
+
 node_id_regex = re.compile(r"^latch://(?P<id>[0-9]+)\.node$")
-
-
-class LDataNodeType(str, Enum):
-    account_root = "account_root"
-    dir = "dir"
-    obj = "obj"
-    mount = "mount"
-    link = "link"
 
 
 dir_types = {
@@ -55,6 +48,7 @@ class _Cache:
 
 @dataclass
 class LPath:
+
     _cache: _Cache = field(
         default_factory=lambda: _Cache(),
         init=False,
@@ -65,13 +59,15 @@ class LPath:
 
     path: str
 
-    def __init__(self, path: str):
+    def __init__(self, path: Union[str, "LPath"]):
+        if isinstance(path, LPath):
+            path = path.path
         if not path.startswith("latch://"):
             raise ValueError(f"Invalid LPath: {path} is not a Latch path")
         self.path = path
         self._download_idx = 0
 
-    def load(self):
+    def load(self) -> None:
         """(Re-)populate this LPath's instance's cache.
 
         Future calls to most getters will return immediately without making a network request.
@@ -81,7 +77,7 @@ class LPath:
         data = execute(
             gql.gql("""
             query GetNodeData($path: String!) {
-                ldataResolvePathToNode(path: {}) {
+                ldataResolvePathToNode(path: $path) {
                     path
                     ldataNode {
                         finalLinkTarget {
@@ -100,19 +96,31 @@ class LPath:
             {"path": self.path},
         )["ldataResolvePathToNode"]
 
+        if data is None or data["ldataNode"] is None:
+            raise FileNotFoundError(f"No such Latch file or directory: {self.path}")
+
         self._cache.path = self.path
 
         final_link_target = data["ldataNode"]["finalLinkTarget"]
         self._cache.node_id = final_link_target["id"]
         self._cache.name = final_link_target["name"]
         self._cache.type = LDataNodeType(final_link_target["type"].lower())
-        self._cache.size = int(final_link_target["ldataObjectMeta"]["contentSize"])
-        self._cache.content_type = final_link_target["ldataObjectMeta"]["contentType"]
+
+        meta = final_link_target["ldataObjectMeta"]
+        if meta is not None:
+            self._cache.size = (
+                -1
+                if meta["contentSize"] is None
+                else int(final_link_target["ldataObjectMeta"]["contentSize"])
+            )
+            self._cache.content_type = final_link_target["ldataObjectMeta"][
+                "contentType"
+            ]
 
     def node_id(self, *, load_if_missing: bool = True) -> str:
         match = node_id_regex.match(self.path)
         if match:
-            self._node_id = match.group("id")
+            return match.group("id")
 
         if self._cache.node_id is None or self._cache.path != self.path:
             if not load_if_missing:
@@ -191,8 +199,8 @@ class LPath:
             {"nodeId": self.node_id},
         )
 
-    def copy(self, dst: "LPath") -> None:
-        _remote_copy(self.path, dst.path)
+    def copy(self, dst: "LPath", *, verbose: bool = False) -> None:
+        _remote_copy(self.path, dst.path, verbose=verbose)
 
     def upload(self, src: Path, *, show_progress_bar: bool = False) -> None:
         _upload(

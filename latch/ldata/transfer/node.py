@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from enum import Enum
 from typing import Dict, List, TypedDict
 
 import graphql.language as l
@@ -6,10 +7,17 @@ from latch_sdk_gql.execute import execute
 from latch_sdk_gql.utils import _name_node, _parse_selection
 from typing_extensions import TypeAlias
 
-from latch.ldata.path import LDataNodeType
 from latch_cli.utils.path import get_path_error, normalize_path
 
 AccId: TypeAlias = int
+
+
+class LDataNodeType(str, Enum):
+    account_root = "account_root"
+    dir = "dir"
+    obj = "obj"
+    mount = "mount"
+    link = "link"
 
 
 class _LDataObjectMeta(TypedDict):

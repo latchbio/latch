@@ -4,8 +4,8 @@ from typing import List
 
 import click
 
-from latch.ldata.transfer import _Progress
 from latch.ldata.transfer.download import _download
+from latch.ldata.transfer.progress import Progress
 from latch.ldata.transfer.remote_copy import _remote_copy
 from latch.ldata.transfer.upload import _upload
 from latch_cli.services.cp.glob import expand_pattern
@@ -17,7 +17,7 @@ def cp(
     srcs: List[str],
     dest: str,
     *,
-    progress: _Progress,
+    progress: Progress,
     verbose: bool,
     expand_globs: bool,
 ):
@@ -41,9 +41,9 @@ def cp(
                 _upload(src, dest, progress=progress, verbose=verbose)
             elif src_remote and dest_remote:
                 if expand_globs:
-                    [_remote_copy(p, dest) for p in expand_pattern(src)]
+                    [_remote_copy(p, dest, verbose=True) for p in expand_pattern(src)]
                 else:
-                    _remote_copy(src, dest)
+                    _remote_copy(src, dest, verbose=True)
             else:
                 raise ValueError(
                     dedent(f"""

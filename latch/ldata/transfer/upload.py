@@ -17,16 +17,16 @@ from typing import TYPE_CHECKING, List, Optional, TypedDict
 from latch_sdk_config.latch import config as latch_config
 from typing_extensions import TypeAlias
 
-from latch.ldata.path import LDataNodeType
-from latch.ldata.transfer.manager import _TransferStateManager
-from latch.ldata.transfer.node import _get_node_data
-from latch.ldata.transfer.progress import Progress, _ProgressBars
-from latch.ldata.transfer.throttle import _Throttle
-from latch.ldata.transfer.utils import _get_max_workers, _human_readable_time
 from latch_cli import tinyrequests
 from latch_cli.constants import latch_constants, units
 from latch_cli.utils import get_auth_header, urljoins, with_si_suffix
 from latch_cli.utils.path import normalize_path
+
+from .manager import _TransferStateManager
+from .node import LDataNodeType, _get_node_data
+from .progress import Progress, _ProgressBars
+from .throttle import _Throttle
+from .utils import _get_max_workers, _human_readable_time
 
 if TYPE_CHECKING:
     PathQueueType: TypeAlias = "Queue[Optional[Path]]"

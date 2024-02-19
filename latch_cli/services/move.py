@@ -5,8 +5,7 @@ import gql
 from gql.transport.exceptions import TransportQueryError
 from latch_sdk_gql.execute import execute
 
-from latch.ldata.path import LDataNodeType
-from latch.ldata.transfer.node import _get_node_data
+from latch.ldata.transfer.node import LDataNodeType, _get_node_data
 from latch_cli.services.cp.glob import expand_pattern
 from latch_cli.utils.path import get_name_from_path, get_path_error, is_remote_path
 
