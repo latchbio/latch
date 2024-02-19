@@ -2,7 +2,6 @@ import time
 from concurrent.futures import ProcessPoolExecutor
 from contextlib import closing
 from dataclasses import dataclass
-from http.client import HTTPException
 from itertools import repeat
 from pathlib import Path
 from textwrap import dedent
@@ -46,7 +45,7 @@ def _download(
 ) -> None:
     if not dest.parent.exists():
         raise ValueError(
-            f"Invalid copy destination {dest}. Parent directory {dest.parent} does not"
+            f"invalid copy destination {dest}. Parent directory {dest.parent} does not"
             " exist."
         )
 
@@ -73,11 +72,15 @@ def _download(
         headers={"Authorization": get_auth_header()},
         json={"path": normalized},
     )
+
     if res.status_code != 200:
-        raise HTTPException(
-            f"failed to fetch presigned url(s) for path {src} with code"
-            f" {res.status_code}: {res.json()['error']}"
-        )
+        err = res.json()["error"]
+        msg = f"failed to fetch presigned url(s) for path {src}"
+        if res.status_code == 400:
+            raise ValueError(f"{msg}: download request invalid: {err}")
+        if res.status_code == 401:
+            raise RuntimeError(f"authorization token invalid: {err}")
+        raise RuntimeError(f"{msg} with code {res.status_code}: {res.json()['error']}")
 
     json_data = res.json()
     if can_have_children:

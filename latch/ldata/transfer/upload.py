@@ -54,7 +54,7 @@ def _upload(
 ) -> None:
     src_path = Path(src)
     if not src_path.exists():
-        raise ValueError(f"Could not find {src_path}: no such file or directory.")
+        raise ValueError(f"could not find {src_path}: no such file or directory.")
 
     if verbose:
         print(f"Uploading {src_path.name}")
@@ -73,7 +73,7 @@ def _upload(
 
     if not dest_is_dir:
         if not dest_exists:  # path is latch:///a/b/file_1/file_2
-            raise ValueError(f"No such file or directory: {dest}")
+            raise ValueError(f"no such file or directory: {dest}")
         if src_path.is_dir():
             raise ValueError(f"{normalized} is not a directory.")
 
@@ -281,7 +281,7 @@ def _start_upload(
     latency_q: Optional["LatencyQueueType"] = None,
 ) -> Optional[_StartUploadReturnType]:
     if not src.exists():
-        raise ValueError(f"Could not find {src}: no such file or link")
+        raise ValueError(f"could not find {src}: no such file or link")
 
     if src.is_symlink():
         src = src.resolve()
@@ -300,7 +300,7 @@ def _start_upload(
     file_size = src.stat().st_size
     if file_size > latch_constants.maximum_upload_size:
         raise ValueError(
-            f"File is {with_si_suffix(file_size)} which exceeds the maximum"
+            f"file is {with_si_suffix(file_size)} which exceeds the maximum"
             " upload size (5TiB)",
         )
 
@@ -355,7 +355,7 @@ def _start_upload(
             **data, part_count=part_count, part_size=part_size, src=src, dest=dest
         )
 
-    raise RuntimeError(f"Unable to generate upload URL for {src}")
+    raise RuntimeError(f"unable to generate upload URL for {src}")
 
 
 @dataclass(frozen=True)
@@ -385,7 +385,7 @@ def _upload_file_chunk(
     res = tinyrequests.put(url, data=data)
     if res.status_code != 200:
         raise HTTPException(
-            f"Failed to upload part {part_index} of {src}: {res.status_code}"
+            f"failed to upload part {part_index} of {src}: {res.status_code}"
         )
 
     ret = _CompletedPart(
@@ -443,7 +443,14 @@ def _end_upload(
     )
 
     if res.status_code != 200:
-        raise HTTPException(f"Unable to complete file upload: {res.json()['error']}")
+        err = res.json()["error"]
+        if res.status_code == 400:
+            raise ValueError(f"upload request invalid: {err}")
+        if res.status_code == 401:
+            raise RuntimeError(f"authorization failed: {err}")
+        raise RuntimeError(
+            f"end upload request failed with code {res.status_code}: {err}"
+        )
 
     if progress_bars is not None:
         progress_bars.update_total_progress(1)
