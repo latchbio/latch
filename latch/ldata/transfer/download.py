@@ -130,7 +130,7 @@ def _download(
         if progress == Progress.none:
             num_bars = 0
             show_total_progress = False
-        if progress == Progress.total:
+        elif progress == Progress.total:
             num_bars = 0
             show_total_progress = True
         else:

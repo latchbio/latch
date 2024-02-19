@@ -1,3 +1,4 @@
+import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -50,8 +51,6 @@ class _Cache:
 class LPath:
 
     _cache: _Cache = field(
-        default_factory=lambda: _Cache(),
-        init=False,
         repr=False,
         hash=False,
         compare=False,
@@ -65,6 +64,7 @@ class LPath:
         if not path.startswith("latch://"):
             raise ValueError(f"Invalid LPath: {path} is not a Latch path")
         self.path = path
+        self._cache = _Cache()
         self._download_idx = 0
 
     def load(self) -> None:
@@ -204,7 +204,7 @@ class LPath:
 
     def upload(self, src: Path, *, show_progress_bar: bool = False) -> None:
         _upload(
-            src,
+            os.fspath(src),
             self.path,
             progress=Progress.tasks if show_progress_bar else Progress.none,
             verbose=show_progress_bar,
@@ -235,17 +235,18 @@ class LPath:
 
 
 class LPathTransformer(TypeTransformer[LPath]):
+    _TYPE_INFO = BlobType(
+        # there is no way to know if the LPath is a file or directory ahead to time,
+        # so just set dimensionality to SINGLE
+        format="binary",
+        dimensionality=BlobType.BlobDimensionality.SINGLE,
+    )
+
     def __init__(self):
         super(LPathTransformer, self).__init__(name="lpath-transformer", t=LPath)
 
     def get_literal_type(self, t: Type[LPath]) -> LiteralType:
-        return LiteralType(
-            blob=BlobType(
-                # this is sus, but there is no way to check if the LPath is a file or dir
-                format="binary",
-                dimensionality=BlobType.BlobDimensionality.SINGLE,
-            )
-        )
+        return LiteralType(blob=self._TYPE_INFO)
 
     def to_literal(
         self,
@@ -254,18 +255,10 @@ class LPathTransformer(TypeTransformer[LPath]):
         python_type: Type[LPath],
         expected: LiteralType,
     ) -> Literal:
-        dimensionality = (
-            BlobType.BlobDimensionality.MULTIPART
-            if python_val.is_dir()
-            else BlobType.BlobDimensionality.SINGLE
-        )
         return Literal(
             scalar=Scalar(
                 blob=Blob(
-                    uri=python_val.path,
-                    metadata=BlobMetadata(
-                        format="binary", dimensionality=dimensionality
-                    ),
+                    uri=python_val.path, metadata=BlobMetadata(type=self._TYPE_INFO)
                 )
             )
         )

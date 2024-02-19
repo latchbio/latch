@@ -35,10 +35,6 @@ if TYPE_CHECKING:
     UploadInfoBySrcType: TypeAlias = DictProxy[Path, "_StartUploadReturnType"]
 
 
-class _EmptyUploadData(TypedDict):
-    version_id: str
-
-
 class _StartUploadData(TypedDict):
     upload_id: str
     urls: List[str]
