@@ -10,33 +10,33 @@ from typing import Dict, List, Set, TypedDict
 import click
 from latch_sdk_config.latch import config as latch_config
 
-from latch.ldata.transfer.node import LDataNodeType
+from latch.ldata.type import LDataNodeType
 from latch_cli import tinyrequests
 from latch_cli.constants import Units
 from latch_cli.utils import get_auth_header, with_si_suffix
 from latch_cli.utils.path import normalize_path
 
-from .manager import _TransferStateManager
-from .node import _get_node_data
-from .progress import Progress, _get_free_index, _ProgressBars
-from .utils import _get_max_workers, _human_readable_time
+from .manager import TransferStateManager
+from .node import get_node_data
+from .progress import Progress, ProgressBars, get_free_index
+from .utils import get_max_workers, human_readable_time
 
 
-class _GetSignedUrlData(TypedDict):
+class GetSignedUrlData(TypedDict):
     url: str
 
 
-class _GetSignedUrlsRecursiveData(TypedDict):
+class GetSignedUrlsRecursiveData(TypedDict):
     urls: Dict[str, str]
 
 
 @dataclass(frozen=True, unsafe_hash=True)
-class _DownloadJob:
+class DownloadJob:
     signed_url: str
     dest: Path
 
 
-def _download(
+def download(
     src: str,
     dest: Path,
     progress: Progress,
@@ -50,7 +50,7 @@ def _download(
         )
 
     normalized = normalize_path(src)
-    data = _get_node_data(src)
+    data = get_node_data(src)
 
     node_data = data.data[src]
     if progress != Progress.none:
@@ -84,7 +84,7 @@ def _download(
 
     json_data = res.json()
     if can_have_children:
-        dir_data: _GetSignedUrlsRecursiveData = json_data["data"]
+        dir_data: GetSignedUrlsRecursiveData = json_data["data"]
 
         if dest.exists() and not normalized.endswith("/"):
             dest = dest / node_data.name
@@ -96,12 +96,12 @@ def _download(
         except (FileExistsError, NotADirectoryError) as e:
             raise ValueError(f"Download destination {dest} is not a directory")
 
-        unconfirmed_jobs: List[_DownloadJob] = []
-        confirmed_jobs: List[_DownloadJob] = []
+        unconfirmed_jobs: List[DownloadJob] = []
+        confirmed_jobs: List[DownloadJob] = []
         rejected_jobs: Set[Path] = set()
 
         for rel_path, url in dir_data["urls"].items():
-            unconfirmed_jobs.append(_DownloadJob(url, dest / rel_path))
+            unconfirmed_jobs.append(DownloadJob(url, dest / rel_path))
 
         for job in unconfirmed_jobs:
             reject_job = False
@@ -139,11 +139,11 @@ def _download(
             num_bars = 0
             show_total_progress = True
         else:
-            num_bars = min(_get_max_workers(), num_files)
+            num_bars = min(get_max_workers(), num_files)
             show_total_progress = True
 
-        with _TransferStateManager() as manager:
-            progress_bars: _ProgressBars
+        with TransferStateManager() as manager:
+            progress_bars: ProgressBars
             with closing(
                 manager.ProgressBars(
                     num_bars,
@@ -156,10 +156,10 @@ def _download(
                 start = time.monotonic()
 
                 # todo(ayush): benchmark this against asyncio
-                with ProcessPoolExecutor(max_workers=_get_max_workers()) as executor:
+                with ProcessPoolExecutor(max_workers=get_max_workers()) as executor:
                     total_bytes = sum(
                         executor.map(
-                            _download_file,
+                            download_file,
                             confirmed_jobs,
                             repeat(progress_bars),
                         )
@@ -167,7 +167,7 @@ def _download(
 
                 end = time.monotonic()
     else:
-        file_data: _GetSignedUrlData = json_data["data"]
+        file_data: GetSignedUrlData = json_data["data"]
 
         num_files = 1
 
@@ -179,8 +179,8 @@ def _download(
         else:
             num_bars = 1
 
-        with _TransferStateManager() as manager:
-            progress_bars: _ProgressBars
+        with TransferStateManager() as manager:
+            progress_bars: ProgressBars
             with closing(
                 manager.ProgressBars(
                     num_bars,
@@ -189,8 +189,8 @@ def _download(
                 )
             ) as progress_bars:
                 start = time.monotonic()
-                total_bytes = _download_file(
-                    _DownloadJob(file_data["url"], dest),
+                total_bytes = download_file(
+                    DownloadJob(file_data["url"], dest),
                     progress_bars,
                 )
                 end = time.monotonic()
@@ -200,16 +200,16 @@ def _download(
     if progress != Progress.none:
         click.echo(dedent(f"""
 			{click.style("Download Complete", fg="green")}
-			{click.style("Time Elapsed: ", fg="blue")}{_human_readable_time(total_time)}
+			{click.style("Time Elapsed: ", fg="blue")}{human_readable_time(total_time)}
 			{click.style("Files Downloaded: ", fg="blue")}{num_files} ({with_si_suffix(total_bytes)})
 			"""))
 
 
 # dest will always be a path which includes the copied file as its leaf
 # e.g. download_file("a/b.txt", Path("c/d.txt")) will copy the content of 'b.txt' into 'd.txt'
-def _download_file(
-    job: _DownloadJob,
-    progress_bars: _ProgressBars,
+def download_file(
+    job: DownloadJob,
+    progress_bars: ProgressBars,
 ) -> int:
     # todo(ayush): benchmark parallelized downloads using the range header
     with open(job.dest, "wb") as f:
@@ -218,7 +218,7 @@ def _download_file(
         total_bytes = res.headers.get("Content-Length")
         assert total_bytes is not None, "Must have a content-length header"
 
-        with _get_free_index(progress_bars) as pbar_index:
+        with get_free_index(progress_bars) as pbar_index:
             progress_bars.set(
                 index=pbar_index, total=int(total_bytes), desc=job.dest.name
             )
@@ -235,7 +235,7 @@ def _download_file(
                 progress_bars.update_total_progress(1)
                 progress_bars.write(
                     f"Downloaded {job.dest.name} ({with_si_suffix(int(total_bytes))})"
-                    f" in {_human_readable_time(end - start)}"
+                    f" in {human_readable_time(end - start)}"
                 )
 
         return int(total_bytes)

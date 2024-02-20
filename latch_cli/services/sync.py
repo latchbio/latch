@@ -11,18 +11,18 @@ import gql
 from gql.transport.exceptions import TransportQueryError
 from latch_sdk_gql.execute import JsonValue, execute
 
-import latch.ldata.transfer.upload as upl
+import latch.ldata._transfer.upload as _upl
 
 
 def upload_file(src: Path, dest: str):
-    start = upl._start_upload(src, dest)
+    start = _upl.start_upload(src, dest)
     if start is None:
         return
 
-    parts: List[upl.CompletedPart] = []
+    parts: List[_upl.CompletedPart] = []
     for idx, url in enumerate(start.urls):
         parts.append(
-            upl.upload_file_chunk(
+            _upl.upload_file_chunk(
                 src,
                 url,
                 idx,
@@ -30,7 +30,7 @@ def upload_file(src: Path, dest: str):
             )
         )
 
-    upl._end_upload(dest, start.upload_id, parts)
+    _upl.end_upload(dest, start.upload_id, parts)
 
 
 def check_src(p: Path, *, indent: str = "") -> Optional[Tuple[Path, os.stat_result]]:

@@ -5,13 +5,14 @@ import gql
 from gql.transport.exceptions import TransportQueryError
 from latch_sdk_gql.execute import execute
 
+from latch.ldata.type import LDataNodeType
 from latch_cli.utils.path import get_name_from_path, get_path_error
 
-from .node import LDataNodeType, _get_node_data
+from .node import get_node_data
 
 
-def _remote_copy(src: str, dst: str, *, show_summary: bool = False) -> None:
-    node_data = _get_node_data(src, dst, allow_resolve_to_parent=True)
+def remote_copy(src: str, dst: str, *, show_summary: bool = False) -> None:
+    node_data = get_node_data(src, dst, allow_resolve_to_parent=True)
 
     src_data = node_data.data[src]
     dst_data = node_data.data[dst]

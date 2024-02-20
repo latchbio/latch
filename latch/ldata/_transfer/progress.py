@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 import tqdm
 
 
-def _get_progress_bar():
+def get_progress_bar():
     return tqdm.tqdm(
         total=0,
         leave=False,
@@ -22,7 +22,7 @@ class Progress(Enum):
     tasks = "tasks"
 
 
-class _ProgressBars:
+class ProgressBars:
     def __init__(
         self,
         num_task_bars: int,
@@ -31,7 +31,7 @@ class _ProgressBars:
         verbose: bool = False,
     ):
         if show_total_progress:
-            self.total_bar = _get_progress_bar()
+            self.total_bar = get_progress_bar()
             self.total_bar.desc = "Copying Files"
             self.total_bar.colour = "green"
             self.total_bar.unit = ""
@@ -43,7 +43,7 @@ class _ProgressBars:
         self.verbose = verbose
 
         self.task_bars: List[tqdm.tqdm] = [
-            _get_progress_bar() for _ in range(num_task_bars)
+            get_progress_bar() for _ in range(num_task_bars)
         ]
         self.free_indices = {i for i in range(num_task_bars)}
         self.task_bar_sema = BoundedSemaphore(num_task_bars)
@@ -135,7 +135,7 @@ class _ProgressBars:
 
 
 @contextmanager
-def _get_free_index(progress_bars: _ProgressBars):
+def get_free_index(progress_bars: ProgressBars):
     try:
         pbar_index = progress_bars.get_free_task_bar_index()
         yield pbar_index

@@ -4,10 +4,10 @@ from typing import List
 
 import click
 
-from latch.ldata.transfer.download import _download
-from latch.ldata.transfer.progress import Progress
-from latch.ldata.transfer.remote_copy import _remote_copy
-from latch.ldata.transfer.upload import _upload
+from latch.ldata._transfer.download import download as _download
+from latch.ldata._transfer.progress import Progress
+from latch.ldata._transfer.remote_copy import remote_copy as _remote_copy
+from latch.ldata._transfer.upload import upload as _upload
 from latch_cli.services.cp.glob import expand_pattern
 from latch_cli.utils.path import is_remote_path
 

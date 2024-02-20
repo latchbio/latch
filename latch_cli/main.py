@@ -11,7 +11,7 @@ from packaging.version import parse as parse_version
 from typing_extensions import ParamSpec
 
 import latch_cli.click_utils
-from latch.ldata.transfer.progress import Progress
+from latch.ldata._transfer.progress import Progress as _Progress
 from latch_cli.click_utils import EnumChoice
 from latch_cli.exceptions.handler import CrashHandler
 from latch_cli.services.cp.autocomplete import complete as cp_complete
@@ -356,7 +356,7 @@ def init(
 @click.option(
     "--progress",
     help="Type of progress information to show while copying",
-    type=EnumChoice(Progress, case_sensitive=False),
+    type=EnumChoice(_Progress, case_sensitive=False),
     default="tasks",
     show_default=True,
 )
@@ -380,7 +380,7 @@ def init(
 def cp(
     src: List[str],
     dest: str,
-    progress: Progress,
+    progress: _Progress,
     verbose: bool,
     no_glob: bool,
 ):
