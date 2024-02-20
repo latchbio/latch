@@ -299,6 +299,10 @@ class LatchParameter:
     Whether this parameter should be given a column in the batch
     table at the top of the workflow inputs
     """
+    is_dir: bool = False
+    """
+    Whether or not this parameter should accept only directories in UI
+    """
     appearance_type: LatchAppearance = LatchAppearanceEnum.line
     """
     Whether the parameter should be rendered as a line or paragraph
@@ -356,6 +360,8 @@ class LatchParameter:
             appearance_dict["comment"] = self.comment
         if self.detail is not None:
             appearance_dict["detail"] = self.detail
+
+        appearance_dict["file_type"] = "DIR" if self.is_dir else "FILE"
 
         parameter_dict["appearance"] = appearance_dict
 
