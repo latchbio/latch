@@ -41,9 +41,12 @@ def cp(
                 _upload(src, dest, progress=progress, verbose=verbose)
             elif src_remote and dest_remote:
                 if expand_globs:
-                    [_remote_copy(p, dest, verbose=True) for p in expand_pattern(src)]
+                    [
+                        _remote_copy(p, dest, show_summary=True)
+                        for p in expand_pattern(src)
+                    ]
                 else:
-                    _remote_copy(src, dest, verbose=True)
+                    _remote_copy(src, dest, show_summary=True)
             else:
                 raise ValueError(
                     dedent(f"""

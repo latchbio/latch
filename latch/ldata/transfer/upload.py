@@ -14,6 +14,7 @@ from queue import Queue
 from textwrap import dedent
 from typing import TYPE_CHECKING, List, Optional, TypedDict
 
+import click
 from latch_sdk_config.latch import config as latch_config
 from typing_extensions import TypeAlias
 
@@ -56,8 +57,8 @@ def _upload(
     if not src_path.exists():
         raise ValueError(f"could not find {src_path}: no such file or directory.")
 
-    if verbose:
-        print(f"Uploading {src_path.name}")
+    if progress != Progress.none:
+        click.secho(f"Uploading {src_path.name}", fg="blue")
 
     node_data = _get_node_data(dest, allow_resolve_to_parent=True)
     dest_data = node_data.data[dest]
@@ -201,7 +202,7 @@ def _upload(
 
                     wait(chunk_futs)
 
-                if verbose:
+                if progress != Progress.none:
                     print("\x1b[0GFinalizing uploads...")
             else:
                 if dest_exists and dest_is_dir:
@@ -252,11 +253,11 @@ def _upload(
 
     end = time.monotonic()
     total_time = end - start
-    if verbose:
-        print(dedent(f"""
-            Upload Complete
-            Time Elapsed: {_human_readable_time(total_time)}
-            Files Uploaded: {num_files} ({with_si_suffix(total_bytes)})
+    if progress != Progress.none:
+        click.echo(dedent(f"""
+            {click.style("Upload Complete", fg="green")}
+            {click.style("Time Elapsed: ", fg="blue")}{_human_readable_time(total_time)}
+            {click.style("Files Uploaded: ", fg="blue")}{num_files} ({with_si_suffix(total_bytes)})
             """))
 
 

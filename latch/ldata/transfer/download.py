@@ -53,8 +53,8 @@ def _download(
     data = _get_node_data(src)
 
     node_data = data.data[src]
-    if verbose:
-        print(f"Downloading {node_data.name}")
+    if progress != Progress.none:
+        click.secho(f"Downloading {node_data.name}", fg="blue")
 
     can_have_children = node_data.type in {
         LDataNodeType.account_root,
@@ -125,7 +125,9 @@ def _download(
                     job.dest.parent.mkdir(parents=True, exist_ok=True)
                     confirmed_jobs.append(job)
                 else:
-                    print(f"Skipping {job.dest.parent}, file already exists")
+                    click.secho(
+                        f"Skipping {job.dest.parent}, file already exists", fg="yellow"
+                    )
                     rejected_jobs.add(job.dest.parent)
 
         num_files = len(confirmed_jobs)
@@ -195,12 +197,12 @@ def _download(
 
     total_time = end - start
 
-    if verbose:
-        print(dedent(f"""
-				Download Complete
-				Time Elapsed: {_human_readable_time(total_time)}
-				Files Downloaded: {num_files} ({with_si_suffix(total_bytes)})
-				"""))
+    if progress != Progress.none:
+        click.echo(dedent(f"""
+			{click.style("Download Complete", fg="green")}
+			{click.style("Time Elapsed: ", fg="blue")}{_human_readable_time(total_time)}
+			{click.style("Files Downloaded: ", fg="blue")}{num_files} ({with_si_suffix(total_bytes)})
+			"""))
 
 
 # dest will always be a path which includes the copied file as its leaf

@@ -1,5 +1,6 @@
 from textwrap import dedent
 
+import click
 import gql
 from gql.transport.exceptions import TransportQueryError
 from latch_sdk_gql.execute import execute
@@ -9,7 +10,7 @@ from latch_cli.utils.path import get_name_from_path, get_path_error
 from .node import LDataNodeType, _get_node_data
 
 
-def _remote_copy(src: str, dst: str, *, verbose: bool = False) -> None:
+def _remote_copy(src: str, dst: str, *, show_summary: bool = False) -> None:
     node_data = _get_node_data(src, dst, allow_resolve_to_parent=True)
 
     src_data = node_data.data[src]
@@ -87,7 +88,8 @@ def _remote_copy(src: str, dst: str, *, verbose: bool = False) -> None:
 
         raise ValueError(get_path_error(src, str(e), acc_id))
 
-    print(dedent(f"""
-        Copy Requested.
-        Source: {(src)}
-        Destination: {(dst)}"""))
+    if show_summary:
+        click.echo(dedent(f"""
+            {click.style("Copy Requested.", fg="green")}
+            {click.style("Source: ", fg="blue")}{(src)}
+            {click.style("Destination: ", fg="blue")}{(dst)}"""))
