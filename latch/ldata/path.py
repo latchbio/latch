@@ -47,7 +47,10 @@ class _Cache:
     content_type: Optional[str] = None
 
 
-@dataclass
+download_idx = 0
+
+
+@dataclass(frozen=True)
 class LPath:
 
     _cache: _Cache = field(
@@ -58,19 +61,11 @@ class LPath:
         compare=False,
     )
 
-    _download_idx: int = field(
-        default=0,
-        init=False,
-        repr=False,
-        hash=False,
-        compare=False,
-    )
-
     path: str
 
     def __post_init__(self):
         if isinstance(self.path, LPath):
-            self.path = self.path.path
+            raise ValueError("LPath cannot be initialized with another LPath")
         if not self.path.startswith("latch://"):
             raise ValueError(f"Invalid LPath: {self.path} is not a Latch path")
 
@@ -125,37 +120,27 @@ class LPath:
         if match:
             return match.group("id")
 
-        if self._cache.node_id is None or self._cache.path != self.path:
-            if not load_if_missing:
-                return None
+        if self._cache.node_id is None and load_if_missing:
             self.load_metadata()
         return self._cache.node_id
 
     def name(self, *, load_if_missing: bool = True) -> Optional[str]:
-        if self._cache.name is None or self._cache.path != self.path:
-            if not load_if_missing:
-                return None
+        if self._cache.name is None and load_if_missing:
             self.load_metadata()
         return self._cache.name
 
     def type(self, *, load_if_missing: bool = True) -> Optional[LDataNodeType]:
-        if self._cache.type is None or self._cache.path != self.path:
-            if not load_if_missing:
-                return None
+        if self._cache.type is None and load_if_missing:
             self.load_metadata()
         return self._cache.type
 
     def size(self, *, load_if_missing: bool = True) -> Optional[int]:
-        if self._cache.size is None or self._cache.path != self.path:
-            if not load_if_missing:
-                return None
+        if self._cache.size is None and load_if_missing:
             self.load_metadata()
         return self._cache.size
 
     def content_type(self, *, load_if_missing: bool = True) -> Optional[str]:
-        if self._cache.content_type is None or self._cache.path != self.path:
-            if not load_if_missing:
-                return None
+        if self._cache.content_type is None and load_if_missing:
             self.load_metadata()
         return self._cache.content_type
 
@@ -227,10 +212,11 @@ class LPath:
         self, dst: Optional[Path] = None, *, show_progress_bar: bool = False
     ) -> Path:
         if dst is None:
-            dir = Path.home() / "lpath" / str(self._download_idx)
-            self._download_idx += 1
+            global download_idx
+            dir = Path.home() / "lpath"
             dir.mkdir(parents=True, exist_ok=True)
-            dst = dir / self.name()
+            dst = dir / f"{download_idx}_{self.name()}"
+            download_idx += 1
 
         _download(
             self.path,
