@@ -1,4 +1,4 @@
-from typing import Dict, List, Mapping, Type
+from typing import Dict, List, Mapping, Optional, Type
 
 from latch.types.metadata import ParameterType
 
@@ -19,7 +19,14 @@ class NextflowConditionalTask(NextflowOperatorTask):
         wf: NextflowWorkflow,
     ):
         super().__init__(
-            inputs, {"condition": bool}, id, name, statement, ret, branches, wf
+            inputs,
+            {"condition": Optional[bool]},
+            id,
+            name,
+            statement,
+            ret,
+            branches,
+            wf,
         )
 
     def get_fn_return_stmt(self):
@@ -38,9 +45,12 @@ class NextflowConditionalTask(NextflowOperatorTask):
 
         return reindent(
             rf"""
-                return Res{self.name}(
-            __return_str__
-                )
+            res = out_channels.get({repr(out_name)})
+
+            if res is not None:
+                res = json.loads(res)[0]["boolean"]
+
+            return Res{self.name}(condition=res)
             """,
-            0,
+            1,
         ).replace("__return_str__", return_str)

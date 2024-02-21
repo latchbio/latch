@@ -8,7 +8,7 @@ from ..workflow import NextflowWorkflow
 from .operator import NextflowOperatorTask
 
 
-class NextflowInputTask(NextflowOperatorTask):
+class NextflowMergeTask(NextflowOperatorTask):
     def __init__(
         self,
         inputs: Mapping[str, Type[ParameterType]],
@@ -18,9 +18,40 @@ class NextflowInputTask(NextflowOperatorTask):
         branches: Dict[str, bool],
         wf: NextflowWorkflow,
     ):
-        super().__init__(inputs, outputs, id, name, "", [], branches, wf)
+        super().__init__(
+            inputs,
+            outputs,
+            id,
+            name,
+            "",
+            [],
+            branches,
+            wf,
+        )
 
-        assert len(self.channel_inputs) == 1, self.name
+    def get_fn_conditions(self):
+        res: List[str] = []
+        for k in self.conditional_inputs.keys():
+            res.append(f"({k} == {self.branches[k]})")
+
+        if len(res) == 0:
+            return reindent(
+                f"""\
+                cond = True
+
+                if cond:
+                """,
+                1,
+            )
+
+        return reindent(
+            f"""\
+            cond = ({' and '.join(res)})
+
+            if cond:
+            """,
+            1,
+        )
 
     def get_fn_return_stmt(self):
         results: List[str] = []
@@ -42,11 +73,11 @@ class NextflowInputTask(NextflowOperatorTask):
         code_block = self.get_fn_interface()
         code_block += self.get_fn_conditions()
 
-        channel_input = self.channel_inputs.popitem()[0]
+        expr = " or ".join(channel_input for channel_input in self.channel_inputs)
 
         code_block += reindent(
             rf"""
-                res = {channel_input}
+                res = {expr}
             else:
                 print("TASK SKIPPED")
                 res = None

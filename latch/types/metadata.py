@@ -6,6 +6,7 @@ from textwrap import indent
 from typing import (
     Any,
     ClassVar,
+    Collection,
     Dict,
     Generic,
     List,
@@ -395,7 +396,7 @@ ParameterType: TypeAlias = Union[
     LatchDir,
     Enum,
     _IsDataclass,
-    List["ParameterType"],
+    Collection["ParameterType"],
 ]
 
 

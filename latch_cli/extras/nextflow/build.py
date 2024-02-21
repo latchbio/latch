@@ -14,8 +14,6 @@ from flytekit.core.promise import NodeOutput, Promise
 from flytekit.models import literals as literals_models
 
 from latch_cli import tinyrequests
-from latch_cli.extras.nextflow.tasks.input import NextflowInputTask
-from latch_cli.extras.nextflow.tasks.output import NextflowOutputTask
 
 from ...click_utils import italic
 from ...menus import select_tui
@@ -28,8 +26,11 @@ from .tasks.adapters import (
     NextflowProcessPreAdapterTask,
 )
 from .tasks.conditional import NextflowConditionalTask
+from .tasks.input import NextflowInputTask
 from .tasks.map import MapContainerTask
+from .tasks.merge import NextflowMergeTask
 from .tasks.operator import NextflowOperatorTask
+from .tasks.output import NextflowOutputTask
 from .tasks.process import NextflowProcessTask
 from .workflow import NextflowWorkflow
 
@@ -233,8 +234,6 @@ def build_from_nextflow_dag(wf: NextflowWorkflow):
                 outputs=task_outputs,
                 name=vertex.label,
                 id=vertex.id,
-                statement=vertex.statement,
-                ret=vertex.ret,
                 branches=branches,
                 wf=wf,
             )
@@ -269,6 +268,28 @@ def build_from_nextflow_dag(wf: NextflowWorkflow):
                 bindings=task_bindings,
                 upstream_nodes=upstream_nodes,
                 flyte_entity=output_task,
+            )
+
+            node_map[vertex.id] = node
+
+        elif vertex.type == VertexType.Merge:
+            merge_task = NextflowMergeTask(
+                inputs=task_inputs,
+                outputs=task_outputs,
+                name=vertex.label,
+                id=vertex.id,
+                branches=branches,
+                wf=wf,
+            )
+
+            wf.nextflow_tasks.append(merge_task)
+
+            node = Node(
+                id=node_name,
+                metadata=merge_task.construct_node_metadata(),
+                bindings=task_bindings,
+                upstream_nodes=upstream_nodes,
+                flyte_entity=merge_task,
             )
 
             node_map[vertex.id] = node
@@ -347,11 +368,11 @@ def build_nf_wf(pkg_root: Path, nf_script: Path) -> NextflowWorkflow:
             env={
                 **os.environ,
                 # read NF binaries from `.latch/.nextflow` instead of system
-                "NXF_HOME": str(pkg_root / ".latch" / ".nextflow"),
+                # "NXF_HOME": str(pkg_root / ".latch" / ".nextflow"),
                 # don't display version mismatch warning
                 "NXF_DISABLE_CHECK_LATEST": "true",
                 # don't emit .nextflow.log files
-                "NXF_LOG_FILE": "/dev/null",
+                # "NXF_LOG_FILE": "/dev/null",
             },
             check=True,
         )

@@ -10,7 +10,6 @@ from ..workflow import NextflowWorkflow
 from .base import NextflowBaseTask
 
 
-#
 def dataclass_from_python_params(
     params: Mapping[str, Type[ParameterType]],
     name: str,
@@ -148,6 +147,7 @@ class NextflowProcessPreAdapterTask(NextflowBaseTask):
         code_block += reindent(
             rf"""
             else:
+                print("TASK SKIPPED")
                 result = []
 
             """,

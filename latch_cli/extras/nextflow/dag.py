@@ -20,8 +20,9 @@ class VertexType(str, Enum):
     Process = "Process"
     Operator = "Operator"
     SubWorkflow = "SubWorkflow"
-    Conditional = "Conditional"
     Generator = "Generator"
+    Conditional = "Conditional"
+    Merge = "Merge"
     Input = "Input"
     Output = "Output"
 

@@ -158,6 +158,7 @@ class NextflowOperatorTask(NextflowBaseTask):
                 upload_files({{k: json.loads(v) for k, v in out_channels.items()}}, LatchDir({repr(self.wf.output_directory.remote_path)}))
 
             else:
+                print("TASK SKIPPED")
                 out_channels = {{__skip__}}
 
             """,
