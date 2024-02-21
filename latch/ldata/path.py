@@ -1,7 +1,7 @@
+import atexit
 import os
 import re
 import shutil
-import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterator, Optional, Type
@@ -37,6 +37,8 @@ _dir_types = {
     LDataNodeType.account_root,
     LDataNodeType.mount,
 }
+
+_download_idx = 0
 
 
 @dataclass
@@ -204,9 +206,21 @@ class LPath:
         )
 
     def copy_to(self, dst: "LPath", *, show_summary: bool = False) -> None:
+        """Copy the file at this instance's path to the given destination.
+
+        Args:
+        dst: The destination LPath.
+        show_summary: Whether to print a summary of the copy operation.
+        """
         _remote_copy(self.path, dst.path, show_summary=show_summary)
 
     def upload_from(self, src: Path, *, show_progress_bar: bool = False) -> None:
+        """Upload the file at the given source to this instance's path.
+
+        Args:
+        src: The source path.
+        show_progress_bar: Whether to show a progress bar during the upload.
+        """
         _upload(
             os.fspath(src),
             self.path,
@@ -217,24 +231,28 @@ class LPath:
     def download(
         self, dst: Optional[Path] = None, *, show_progress_bar: bool = False
     ) -> Path:
-        temp_dir = None
-        try:
-            if dst is None:
-                temp_dir = Path(tempfile.mkdtemp())
-                dst = temp_dir / self.name()
+        """Download the file at this instance's path to the given destination.
 
-            _download(
-                self.path,
-                dst,
-                progress=_Progress.tasks if show_progress_bar else _Progress.none,
-                verbose=False,
-                confirm_overwrite=False,
-            )
-        except Exception as e:
-            if temp_dir is not None:
-                shutil.rmtree(temp_dir)
-            raise e
+        Args:
+        dst: The destination path. If None, a temporary directory is created and the file is
+            downloaded there. The temprary directory is deleted when the program exits.
+        show_progress_bar: Whether to show a progress bar during the download.
+        """
+        if dst is None:
+            global _download_idx
+            tmp_dir = Path.home() / ".latch" / "lpath" / str(_download_idx)
+            _download_idx += 1
+            tmp_dir.mkdir(parents=True, exist_ok=True)
+            atexit.register(lambda p: shutil.rmtree(p), tmp_dir)
+            dst = tmp_dir / self.name()
 
+        _download(
+            self.path,
+            dst,
+            progress=_Progress.tasks if show_progress_bar else _Progress.none,
+            verbose=False,
+            confirm_overwrite=False,
+        )
         return dst
 
     def __truediv__(self, other: object) -> "LPath":
