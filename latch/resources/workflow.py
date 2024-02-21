@@ -28,18 +28,14 @@ def workflow(
         if metadata is None:
             metadata = LatchMetadata(f.__name__, LatchAuthor())
             metadata.parameters = {
-                param: LatchParameter(
-                    display_name=best_effort_display_name(param),
-                    batch_table_column=True,
-                )
+                param: LatchParameter(display_name=best_effort_display_name(param))
                 for param in wf_params
             }
 
         for wf_param in wf_params:
             if wf_param not in metadata.parameters:
                 metadata.parameters[wf_param] = LatchParameter(
-                    display_name=best_effort_display_name(wf_param),
-                    batch_table_column=True,
+                    display_name=best_effort_display_name(wf_param)
                 )
 
         in_meta_not_in_wf = []
