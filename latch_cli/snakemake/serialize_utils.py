@@ -223,10 +223,3 @@ def update_mapping(cur: Path, stem: Path, remote: str, mapping: Dict[str, str]):
 
     for p in cur.iterdir():
         update_mapping(p, stem / p.name, urljoins(remote, p.name), mapping)
-
-
-underscores = re.compile(r"_+")
-
-
-def best_effort_display_name(x: str) -> str:
-    return underscores.sub(" ", x).title().strip()
