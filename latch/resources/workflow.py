@@ -45,47 +45,28 @@ def workflow(
             metadata = LatchMetadata(f.__name__, LatchAuthor())
             metadata.parameters = _generate_params(wf_params)
 
-        in_meta_not_in_wf = []
-        not_in_meta_in_wf = []
+        for wf_param in wf_params:
+            if wf_param not in metadata.parameters:
+                metadata.parameters[wf_param] = LatchParameter(display_name=wf_param)
 
+        in_meta_not_in_wf = []
         for meta_param in metadata.parameters:
             if meta_param not in wf_params:
                 in_meta_not_in_wf.append(meta_param)
-
-        for wf_param in wf_params:
-            if wf_param not in metadata.parameters:
-                not_in_meta_in_wf.append(wf_param)
-
-        if len(in_meta_not_in_wf) > 0 or len(not_in_meta_in_wf) > 0:
+        if len(in_meta_not_in_wf) > 0:
             error_str = (
                 "Inconsistency detected between parameters in your `LatchMetadata`"
                 " object and parameters in your workflow signature.\n\n"
+                "The following parameters appear in your `LatchMetadata` object"
+                " but not in your workflow signature:\n\n"
             )
-
-            if len(in_meta_not_in_wf) > 0:
-                error_str += (
-                    "The following parameters appear in your `LatchMetadata` object"
-                    " but not in your workflow signature:\n\n"
-                )
-                for meta_param in in_meta_not_in_wf:
-                    error_str += f"    \x1b[1m{meta_param}\x1b[22m\n"
-                error_str += "\n"
-
-            if len(not_in_meta_in_wf) > 0:
-                error_str += (
-                    "The following parameters appear in your workflow signature but"
-                    " not in your `LatchMetadata` object:\n\n"
-                )
-                for meta_param in not_in_meta_in_wf:
-                    error_str += f"    \x1b[1m{meta_param}\x1b[22m\n"
-                error_str += "\n"
-
+            for meta_param in in_meta_not_in_wf:
+                error_str += f"    \x1b[1m{meta_param}\x1b[22m\n"
             error_str += (
-                "Please resolve these inconsistencies and ensure that your"
+                "\nPlease resolve these inconsistencies and ensure that your"
                 " `LatchMetadata` object and workflow signature have the same"
                 " parameters."
             )
-
             raise ValueError(error_str)
 
         for name, meta_param in metadata.parameters.items():
