@@ -1,7 +1,7 @@
 import re
 from typing import List
 
-from latch_cli.services.cp.ldata_utils import _get_immediate_children_of_node
+from latch_cli.services.cp.utils import _get_immediate_children_of_node
 from latch_cli.utils import urljoins
 
 

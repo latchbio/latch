@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from enum import Enum
 from multiprocessing import BoundedSemaphore
 from typing import Dict, List, Optional
 
@@ -13,6 +14,12 @@ def get_progress_bar():
         unit="B",
         unit_scale=True,
     )
+
+
+class Progress(Enum):
+    none = "none"
+    total = "total"
+    tasks = "tasks"
 
 
 class ProgressBars:

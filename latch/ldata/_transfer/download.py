@@ -4,20 +4,22 @@ from contextlib import closing
 from dataclasses import dataclass
 from itertools import repeat
 from pathlib import Path
+from textwrap import dedent
 from typing import Dict, List, Set, TypedDict
 
 import click
 from latch_sdk_config.latch import config as latch_config
 
+from latch.ldata.type import LDataNodeType
 from latch_cli import tinyrequests
 from latch_cli.constants import Units
-from latch_cli.services.cp.config import CPConfig, Progress
-from latch_cli.services.cp.ldata_utils import LDataNodeType, get_node_data
-from latch_cli.services.cp.manager import CPStateManager
-from latch_cli.services.cp.progress import ProgressBars, get_free_index
-from latch_cli.services.cp.utils import get_max_workers, human_readable_time
 from latch_cli.utils import get_auth_header, with_si_suffix
 from latch_cli.utils.path import normalize_path
+
+from .manager import TransferStateManager
+from .node import get_node_data
+from .progress import Progress, ProgressBars, get_free_index
+from .utils import get_max_workers, human_readable_time
 
 
 class GetSignedUrlData(TypedDict):
@@ -37,21 +39,22 @@ class DownloadJob:
 def download(
     src: str,
     dest: Path,
-    config: CPConfig,
-):
+    progress: Progress,
+    verbose: bool,
+    confirm_overwrite: bool = True,
+) -> None:
     if not dest.parent.exists():
-        click.secho(
-            f"Invalid copy destination {dest}. Parent directory {dest.parent} does not"
-            " exist.",
-            fg="red",
+        raise ValueError(
+            f"invalid copy destination {dest}. Parent directory {dest.parent} does not"
+            " exist."
         )
-        raise click.exceptions.Exit(1)
 
     normalized = normalize_path(src)
     data = get_node_data(src)
 
     node_data = data.data[src]
-    click.secho(f"Downloading {node_data.name}", fg="blue")
+    if progress != Progress.none:
+        click.secho(f"Downloading {node_data.name}", fg="blue")
 
     can_have_children = node_data.type in {
         LDataNodeType.account_root,
@@ -71,12 +74,13 @@ def download(
     )
 
     if res.status_code != 200:
-        click.secho(
-            f"failed to fetch presigned url(s) for path {src} with code"
-            f" {res.status_code}: {res.json()['error']}",
-            fg="red",
-        )
-        raise click.exceptions.Exit(1)
+        err = res.json()["error"]
+        msg = f"failed to fetch presigned url(s) for path {src}"
+        if res.status_code == 400:
+            raise ValueError(f"{msg}: download request invalid: {err}")
+        if res.status_code == 401:
+            raise RuntimeError(f"authorization token invalid: {err}")
+        raise RuntimeError(f"{msg} with code {res.status_code}: {res.json()['error']}")
 
     json_data = res.json()
     if can_have_children:
@@ -88,11 +92,9 @@ def download(
         try:
             dest.mkdir(exist_ok=True)
         except FileNotFoundError as e:
-            click.secho(f"No such download destination {dest}", fg="red")
-            raise click.exceptions.Exit(1) from e
+            raise ValueError(f"No such download destination {dest}")
         except (FileExistsError, NotADirectoryError) as e:
-            click.secho(f"Download destination {dest} is not a directory", fg="red")
-            raise click.exceptions.Exit(1) from e
+            raise ValueError(f"Download destination {dest} is not a directory")
 
         unconfirmed_jobs: List[DownloadJob] = []
         confirmed_jobs: List[DownloadJob] = []
@@ -115,7 +117,7 @@ def download(
                 job.dest.parent.mkdir(parents=True, exist_ok=True)
                 confirmed_jobs.append(job)
             except FileExistsError:
-                if click.confirm(
+                if confirm_overwrite and click.confirm(
                     f"A file already exists at {job.dest.parent}. Overwrite?",
                     default=False,
                 ):
@@ -123,27 +125,30 @@ def download(
                     job.dest.parent.mkdir(parents=True, exist_ok=True)
                     confirmed_jobs.append(job)
                 else:
+                    click.secho(
+                        f"Skipping {job.dest.parent}, file already exists", fg="yellow"
+                    )
                     rejected_jobs.add(job.dest.parent)
 
         num_files = len(confirmed_jobs)
 
-        if config.progress == Progress.none:
+        if progress == Progress.none:
             num_bars = 0
             show_total_progress = False
-        if config.progress == Progress.total:
+        elif progress == Progress.total:
             num_bars = 0
             show_total_progress = True
         else:
             num_bars = min(get_max_workers(), num_files)
             show_total_progress = True
 
-        with CPStateManager() as manager:
+        with TransferStateManager() as manager:
             progress_bars: ProgressBars
             with closing(
                 manager.ProgressBars(
                     num_bars,
                     show_total_progress=show_total_progress,
-                    verbose=config.verbose,
+                    verbose=verbose,
                 )
             ) as progress_bars:
                 progress_bars.set_total(num_files, "Copying Files")
@@ -169,18 +174,18 @@ def download(
         if dest.exists() and dest.is_dir():
             dest = dest / node_data.name
 
-        if config.progress == Progress.none:
+        if progress == Progress.none:
             num_bars = 0
         else:
             num_bars = 1
 
-        with CPStateManager() as manager:
+        with TransferStateManager() as manager:
             progress_bars: ProgressBars
             with closing(
                 manager.ProgressBars(
                     num_bars,
                     show_total_progress=False,
-                    verbose=config.verbose,
+                    verbose=verbose,
                 )
             ) as progress_bars:
                 start = time.monotonic()
@@ -192,12 +197,12 @@ def download(
 
     total_time = end - start
 
-    click.echo(
-        f"""{click.style("Download Complete", fg="green")}
-
-{click.style("Time Elapsed: ", fg="blue")}{human_readable_time(total_time)}
-{click.style("Files Downloaded: ", fg="blue")}{num_files} ({with_si_suffix(total_bytes)})"""
-    )
+    if progress != Progress.none:
+        click.echo(dedent(f"""
+			{click.style("Download Complete", fg="green")}
+			{click.style("Time Elapsed: ", fg="blue")}{human_readable_time(total_time)}
+			{click.style("Files Downloaded: ", fg="blue")}{num_files} ({with_si_suffix(total_bytes)})
+			"""))
 
 
 # dest will always be a path which includes the copied file as its leaf
