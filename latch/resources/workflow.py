@@ -1,7 +1,7 @@
 import inspect
 from dataclasses import is_dataclass
 from textwrap import dedent
-from typing import Callable, Dict, Optional, Union, get_args, get_origin
+from typing import Callable, Union, get_args, get_origin
 
 import click
 from flytekit import workflow as _workflow
@@ -11,7 +11,7 @@ from latch.types.metadata import LatchAuthor, LatchMetadata, LatchParameter
 from latch_cli.utils import best_effort_display_name
 
 
-def _generate_metadata(f: Callable) -> Dict[str, LatchParameter]:
+def _generate_metadata(f: Callable) -> LatchMetadata:
     signature = inspect.signature(f)
     metadata = LatchMetadata(f.__name__, LatchAuthor())
     metadata.parameters = {
