@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.39.0 - 2023-02-21
+
+### Added
+
+* add `LPath` implementation
+* add support for registering workflows without Latch metadata
+
 ## 2.38.9 - 2023-02-14
 
 ### Added
