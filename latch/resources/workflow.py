@@ -36,7 +36,7 @@ def workflow(
 ) -> Union[PythonFunctionWorkflow, Callable]:
     if isinstance(metadata, Callable):
         f = metadata
-        if "__metadata__:" not in f.__doc__:
+        if f.__doc__ is None or "__metadata__:" not in f.__doc__:
             metadata = _generate_metadata(f)
             _inject_metadata(f, metadata)
         return _workflow(f)
