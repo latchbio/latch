@@ -6,36 +6,36 @@ import time
 from concurrent.futures import Future, ProcessPoolExecutor, as_completed, wait
 from contextlib import closing
 from dataclasses import dataclass
+from http.client import HTTPException
 from json import JSONDecodeError
 from multiprocessing.managers import DictProxy, ListProxy
 from pathlib import Path
 from queue import Queue
+from textwrap import dedent
 from typing import TYPE_CHECKING, List, Optional, TypedDict
 
 import click
 from latch_sdk_config.latch import config as latch_config
 from typing_extensions import TypeAlias
 
+from latch.ldata.type import LDataNodeType
 from latch_cli import tinyrequests
 from latch_cli.constants import latch_constants, units
-from latch_cli.services.cp.config import CPConfig, Progress
-from latch_cli.services.cp.manager import CPStateManager
-from latch_cli.services.cp.progress import ProgressBars
-from latch_cli.services.cp.throttle import Throttle
-from latch_cli.services.cp.utils import get_max_workers, human_readable_time
 from latch_cli.utils import get_auth_header, urljoins, with_si_suffix
 from latch_cli.utils.ldata import LDataNodeType, get_node_data
 from latch_cli.utils.path import normalize_path
+
+from .manager import TransferStateManager
+from .node import get_node_data
+from .progress import Progress, ProgressBars
+from .throttle import Throttle
+from .utils import get_max_workers, human_readable_time
 
 if TYPE_CHECKING:
     PathQueueType: TypeAlias = "Queue[Optional[Path]]"
     LatencyQueueType: TypeAlias = "Queue[Optional[float]]"
     PartsBySrcType: TypeAlias = DictProxy[Path, ListProxy["CompletedPart"]]
     UploadInfoBySrcType: TypeAlias = DictProxy[Path, "StartUploadReturnType"]
-
-
-class EmptyUploadData(TypedDict):
-    version_id: str
 
 
 class StartUploadData(TypedDict):
@@ -52,14 +52,14 @@ class UploadJob:
 def upload(
     src: str,  # pathlib.Path strips trailing slashes but we want to keep them here as they determine cp behavior
     dest: str,
-    config: CPConfig,
-):
+    progress: Progress,
+    verbose: bool,
+) -> None:
     src_path = Path(src)
     if not src_path.exists():
-        click.secho(f"Could not find {src_path}: no such file or directory.", fg="red")
-        raise click.exceptions.Exit(1)
+        raise ValueError(f"could not find {src_path}: no such file or directory.")
 
-    if config.progress != Progress.none:
+    if progress != Progress.none:
         click.secho(f"Uploading {src_path.name}", fg="blue")
 
     node_data = get_node_data(dest, allow_resolve_to_parent=True)
@@ -76,27 +76,22 @@ def upload(
 
     if not dest_is_dir:
         if not dest_exists:  # path is latch:///a/b/file_1/file_2
-            click.secho(f"No such file or directory: {dest}", fg="red")
-            raise click.exceptions.Exit(1)
+            raise ValueError(f"no such file or directory: {dest}")
         if src_path.is_dir():
-            click.secho(f"{normalized} is not a directory.", fg="red")
-            raise click.exceptions.Exit(1)
+            raise ValueError(f"{normalized} is not a directory.")
 
-    if config.progress == Progress.none:
+    if progress == Progress.none:
         num_bars = 0
         show_total_progress = False
     elif not src_path.is_dir():
         num_bars = 1
         show_total_progress = False
-    elif config.progress == Progress.total:
-        num_bars = 0
-        show_total_progress = True
     else:
         num_bars = get_max_workers()
         show_total_progress = True
 
     with ProcessPoolExecutor(max_workers=get_max_workers()) as exec:
-        with CPStateManager() as man:
+        with TransferStateManager() as man:
             parts_by_src: "PartsBySrcType" = man.dict()
             upload_info_by_src: "UploadInfoBySrcType" = man.dict()
 
@@ -134,7 +129,7 @@ def upload(
                 with closing(
                     man.ProgressBars(
                         0,
-                        show_total_progress=(config.progress != Progress.none),
+                        show_total_progress=(progress != Progress.none),
                     )
                 ) as url_generation_bar:
                     url_generation_bar.set_total(num_files, "Generating URLs")
@@ -169,7 +164,7 @@ def upload(
                     man.ProgressBars(
                         min(num_bars, num_files),
                         show_total_progress=show_total_progress,
-                        verbose=config.verbose,
+                        verbose=verbose,
                     )
                 ) as chunk_upload_bars:
                     chunk_upload_bars.set_total(num_files, "Uploading Files")
@@ -209,7 +204,7 @@ def upload(
 
                     wait(chunk_futs)
 
-                if config.progress != Progress.none:
+                if progress != Progress.none:
                     print("\x1b[0GFinalizing uploads...")
             else:
                 if dest_exists and dest_is_dir:
@@ -223,7 +218,7 @@ def upload(
                     man.ProgressBars(
                         num_bars,
                         show_total_progress=show_total_progress,
-                        verbose=config.verbose,
+                        verbose=verbose,
                     )
                 ) as progress_bars:
                     pbar_index = progress_bars.get_free_task_bar_index()
@@ -260,14 +255,12 @@ def upload(
 
     end = time.monotonic()
     total_time = end - start
-    if config.progress != Progress.none:
-        click.clear()
-        click.echo(
-            f"""{click.style("Upload Complete", fg="green")}
-
-{click.style("Time Elapsed: ", fg="blue")}{human_readable_time(total_time)}
-{click.style("Files Uploaded: ", fg="blue")}{num_files} ({with_si_suffix(total_bytes)})"""
-        )
+    if progress != Progress.none:
+        click.echo(dedent(f"""
+            {click.style("Upload Complete", fg="green")}
+            {click.style("Time Elapsed: ", fg="blue")}{human_readable_time(total_time)}
+            {click.style("Files Uploaded: ", fg="blue")}{num_files} ({with_si_suffix(total_bytes)})
+            """))
 
 
 @dataclass(frozen=True)
@@ -291,9 +284,7 @@ def start_upload(
     latency_q: Optional["LatencyQueueType"] = None,
 ) -> Optional[StartUploadReturnType]:
     if not src.exists():
-        raise click.exceptions.Exit(
-            click.style(f"Could not find {src}: no such file or link", fg="red")
-        )
+        raise ValueError(f"could not find {src}: no such file or link")
 
     if src.is_symlink():
         src = src.resolve()
@@ -311,12 +302,9 @@ def start_upload(
 
     file_size = src.stat().st_size
     if file_size > latch_constants.maximum_upload_size:
-        raise click.exceptions.Exit(
-            click.style(
-                f"File is {with_si_suffix(file_size)} which exceeds the maximum"
-                " upload size (5TiB)",
-                fg="red",
-            )
+        raise ValueError(
+            f"file is {with_si_suffix(file_size)} which exceeds the maximum"
+            " upload size (5TiB)",
         )
 
     part_count = min(
@@ -370,12 +358,7 @@ def start_upload(
             **data, part_count=part_count, part_size=part_size, src=src, dest=dest
         )
 
-    raise click.exceptions.Exit(
-        click.style(
-            f"Unable to generate upload URL for {src}",
-            fg="red",
-        )
-    )
+    raise RuntimeError(f"unable to generate upload URL for {src}")
 
 
 @dataclass(frozen=True)
@@ -404,8 +387,8 @@ def upload_file_chunk(
 
     res = tinyrequests.put(url, data=data)
     if res.status_code != 200:
-        raise click.exceptions.Exit(
-            click.style(f"Failed to upload part {part_index} of {src}", fg="red")
+        raise HTTPException(
+            f"failed to upload part {part_index} of {src}: {res.status_code}"
         )
 
     ret = CompletedPart(
@@ -463,10 +446,13 @@ def end_upload(
     )
 
     if res.status_code != 200:
-        raise click.exceptions.Exit(
-            click.style(
-                f"Unable to complete file upload: {res.json()['error']}", fg="red"
-            )
+        err = res.json()["error"]
+        if res.status_code == 400:
+            raise ValueError(f"upload request invalid: {err}")
+        if res.status_code == 401:
+            raise RuntimeError(f"authorization failed: {err}")
+        raise RuntimeError(
+            f"end upload request failed with code {res.status_code}: {err}"
         )
 
     if progress_bars is not None:

@@ -5,10 +5,10 @@ from .progress import ProgressBars
 from .throttle import Throttle
 
 
-class CPStateManager(SyncManager):
+class TransferStateManager(SyncManager):
     ProgressBars: Type[ProgressBars]
     Throttle: Type[Throttle]
 
 
-CPStateManager.register("ProgressBars", ProgressBars)
-CPStateManager.register("Throttle", Throttle)
+TransferStateManager.register("ProgressBars", ProgressBars)
+TransferStateManager.register("Throttle", Throttle)

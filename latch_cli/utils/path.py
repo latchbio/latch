@@ -6,7 +6,6 @@ from urllib.parse import urlparse
 import click
 from latch_sdk_config.user import user_config
 
-from latch_cli.services.cp.exceptions import PathResolutionError
 from latch_cli.utils import get_auth_header
 
 latch_url_regex = re.compile(r"^(latch)?://")
