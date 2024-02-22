@@ -146,6 +146,7 @@ tutorials/overview
 tutorials/rnaseq
 tutorials/metamage
 tutorials/registry_import
+tutorials/benchling.md
 
 ```
 
