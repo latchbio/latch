@@ -4,8 +4,6 @@ from typing import List
 from latch_cli.services.cp.utils import _get_immediate_children_of_node
 from latch_cli.utils import urljoins
 
-from .utils import _get_immediate_children_of_node
-
 
 def expand_pattern(remote_path: str) -> List[str]:
     parent, pattern = tuple(remote_path.rsplit("/", 1))
