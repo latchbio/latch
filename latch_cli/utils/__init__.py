@@ -2,6 +2,7 @@
 
 import hashlib
 import os
+import re
 import shutil
 import stat
 import subprocess
@@ -453,3 +454,10 @@ def check_exists_and_rename(old: Path, new: Path):
 
     for sub in old.iterdir():
         check_exists_and_rename(sub, new / sub.name)
+
+
+underscores = re.compile(r"_+")
+
+
+def best_effort_display_name(x: str) -> str:
+    return underscores.sub(" ", x).title().strip()
