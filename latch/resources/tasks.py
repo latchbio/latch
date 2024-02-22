@@ -69,8 +69,7 @@ def _task_with_config(task_config: Pod):
         ] = PythonFunctionTask.ExecutionBehavior.DEFAULT,
         dockerfile: Optional[Path] = None,
         task_resolver: Optional[TaskResolverMixin] = None,
-    ) -> Callable[P, T]:
-        ...
+    ) -> Callable[P, T]: ...
 
     @overload
     def task(
@@ -93,8 +92,7 @@ def _task_with_config(task_config: Pod):
         ] = PythonFunctionTask.ExecutionBehavior.DEFAULT,
         dockerfile: Optional[Path] = None,
         task_resolver: Optional[TaskResolverMixin] = None,
-    ) -> Callable[[Callable[P, T]], Callable[P, T]]:
-        ...
+    ) -> Callable[[Callable[P, T]], Callable[P, T]]: ...
 
     def task(
         _task_function: Optional[Callable[P, T]] = None,
