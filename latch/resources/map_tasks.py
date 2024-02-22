@@ -40,13 +40,18 @@ Intended Use: ::
         return coalesced
 """
 
-from typing import Callable, List
+from typing import Callable, List, Protocol
 
 from flytekit.core.map_task import map_task as flyte_map_task
 from typing_extensions import TypeVar
 
-T = TypeVar("T")
-S = TypeVar("S")
+T = TypeVar("T", contravariant=True)
+S = TypeVar("S", covariant=True)
+
+
+# Necessary bc Callable[[T], S] is stupid and assumes the arg must be positional
+class MapTaskCallable(Protocol[T, S]):
+    def __call__(self, *args: T, **kwargs: T) -> S: ...
 
 
 def map_task(
@@ -54,5 +59,5 @@ def map_task(
     concurrency: int = 0,
     min_success_rate: float = 1,
     **kwargs,
-) -> Callable[[List[T]], S]:
+) -> MapTaskCallable[List[T], List[S]]:
     return flyte_map_task(f, concurrency, min_success_rate, **kwargs)

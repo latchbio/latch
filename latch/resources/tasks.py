@@ -51,7 +51,6 @@ def _task_with_config(task_config: Pod):
     @overload
     def task(
         _task_function: Callable[P, T],
-        *,
         cache: bool = False,
         cache_serialize: bool = False,
         cache_version: str = "",
@@ -74,7 +73,6 @@ def _task_with_config(task_config: Pod):
     @overload
     def task(
         _task_function: Literal[None] = None,
-        *,
         cache: bool = False,
         cache_serialize: bool = False,
         cache_version: str = "",
@@ -96,7 +94,6 @@ def _task_with_config(task_config: Pod):
 
     def task(
         _task_function: Optional[Callable[P, T]] = None,
-        *,
         cache: bool = False,
         cache_serialize: bool = False,
         cache_version: str = "",
