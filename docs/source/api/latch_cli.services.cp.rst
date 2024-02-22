@@ -4,6 +4,14 @@ latch\_cli.services.cp package
 Submodules
 ----------
 
+latch\_cli.services.cp.autocomplete module
+------------------------------------------
+
+.. automodule:: latch_cli.services.cp.autocomplete
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 latch\_cli.services.cp.config module
 ------------------------------------
 
@@ -28,6 +36,14 @@ latch\_cli.services.cp.exceptions module
    :undoc-members:
    :show-inheritance:
 
+latch\_cli.services.cp.glob module
+----------------------------------
+
+.. automodule:: latch_cli.services.cp.glob
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 latch\_cli.services.cp.ldata\_utils module
 ------------------------------------------
 
@@ -44,10 +60,10 @@ latch\_cli.services.cp.main module
    :undoc-members:
    :show-inheritance:
 
-latch\_cli.services.cp.path\_utils module
------------------------------------------
+latch\_cli.services.cp.manager module
+-------------------------------------
 
-.. automodule:: latch_cli.services.cp.path_utils
+.. automodule:: latch_cli.services.cp.manager
    :members:
    :undoc-members:
    :show-inheritance:
@@ -64,6 +80,14 @@ latch\_cli.services.cp.remote\_copy module
 ------------------------------------------
 
 .. automodule:: latch_cli.services.cp.remote_copy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+latch\_cli.services.cp.throttle module
+--------------------------------------
+
+.. automodule:: latch_cli.services.cp.throttle
    :members:
    :undoc-members:
    :show-inheritance:

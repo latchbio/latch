@@ -8,7 +8,7 @@ _build:
   python3 setup.py sdist bdist_wheel
 
 _upload:
-  twine upload dist/*
+  twine upload dist/* -u __token__ -p $(<credentials/pypi_token)
 
 build: _clear _build
 
@@ -24,10 +24,12 @@ dev-requirements:
   pip-compile dev-requirements.in
 
 build-api-docs:
+  rm docs/source/api/*
   sphinx-apidoc \
     --force \
     -o docs/source/api/ . \
     'latch_cli/services/init/*/**' \
+    'latch_cli/snakemake' \
     'setup.py' \
     'tests/*'
 

@@ -1,99 +1,122 @@
-"""Service to register workflows."""
-
 import contextlib
-import os
 import re
 import shutil
+import sys
 import tempfile
+import time
+import webbrowser
 from pathlib import Path
-from typing import List, Optional
+from typing import Iterable, List, Optional
 
 import click
+import gql
+import latch_sdk_gql.execute as l_gql
 from scp import SCPClient
 
-from latch_cli.centromere.ctx import _CentromereCtx
-from latch_cli.centromere.utils import MaybeRemoteDir, _construct_ssh_client
-from latch_cli.services.register.constants import ANSI_REGEX, MAX_LINES
-from latch_cli.services.register.utils import (
-    _build_image,
-    _register_serialized_pkg,
-    _serialize_pkg_in_container,
-    _upload_image,
-)
-from latch_cli.utils import current_workspace
-
+from ...centromere.ctx import _CentromereCtx
+from ...centromere.utils import MaybeRemoteDir
+from ...utils import WorkflowType, current_workspace
 from ..workspace import _get_workspaces
+from .constants import ANSI_REGEX, MAX_LINES
+from .utils import (
+    DockerBuildLogItem,
+    build_image,
+    register_serialized_pkg,
+    serialize_pkg_in_container,
+    upload_image,
+)
 
 
-def _delete_lines(lines: List[str]):
+def _delete_lines(num: int):
     """Deletes the previous len(lines) lines, assuming cursor is on a
     new line just below the first line to be deleted"""
-    for _ in lines:
-        print("\x1b[1F\x1b[0G\x1b[2K", end="")
-    return []
+    for i in range(num):
+        click.echo("\x1b[1F\x1b[0G\x1b[2K", nl=False)
 
 
-def _print_window(curr_lines: List[str], line: str):
+def _print_window(cur_lines: List[str], line: str):
     """Prints the lines curr_lines[1:] and line, overwriting curr_lines
     in the process"""
     if line == "":
-        return curr_lines
-    elif len(curr_lines) >= MAX_LINES:
+        return cur_lines
+    elif len(cur_lines) >= MAX_LINES:
         line = ANSI_REGEX.sub("", line)
-        new_lines = curr_lines[len(curr_lines) - MAX_LINES + 1 :]
+        new_lines = cur_lines[len(cur_lines) - MAX_LINES + 1 :]
         new_lines.append(line)
-        _delete_lines(curr_lines)
+        _delete_lines(len(cur_lines))
         for s in new_lines:
-            print("\x1b[38;5;245m" + s + "\x1b[0m")
+            click.echo("\x1b[38;5;245m" + s + "\x1b[0m")
         return new_lines
     else:
-        print("\x1b[38;5;245m" + line + "\x1b[0m")
-        curr_lines.append(line)
-        return curr_lines
+        click.echo("\x1b[38;5;245m" + line + "\x1b[0m")
+        cur_lines.append(line)
+        return cur_lines
 
 
-def _print_and_save_build_logs(build_logs, image: str, pkg_root: Path):
-    print(f"Building Docker image for {image}")
+docker_build_step_pat = re.compile("^Step [0-9]+/[0-9]+ :")
 
-    logs_path = Path(pkg_root).joinpath(".logs").joinpath(image).resolve()
+
+def print_and_write_build_logs(
+    build_logs: Iterable[DockerBuildLogItem],
+    image: str,
+    pkg_root: Path,
+    *,
+    progress_plain: bool = False,
+):
+    click.secho(f"Building Docker image", bold=True)
+
+    logs_path = pkg_root / ".latch" / ".logs" / image
     logs_path.mkdir(parents=True, exist_ok=True)
-    with open(logs_path.joinpath("docker-build-logs.txt"), "w") as save_file:
-        r = re.compile("^Step [0-9]+/[0-9]+ :")
-        curr_lines = []
+
+    click.echo(f"  Writing log to {click.style(logs_path, italic=True)}\n")
+
+    with (logs_path / "docker-build-logs.txt").open("w") as save_file:
+        cur_lines: list[str] = []
+
         for x in build_logs:
             # for dockerfile parse errors
-            message: str = x.get("message")
+            message = x.get("message")
             if message is not None:
                 save_file.write(f"{message}\n")
                 raise ValueError(message)
 
-            lines: str = x.get("stream")
-            error: str = x.get("error")
+            lines = x.get("stream")
+            error = x.get("error")
             if error is not None:
                 save_file.write(f"{error}\n")
-                raise OSError(f"Error when building image ~ {error}")
-            if lines:
+                click.secho(f"Error when building image:\n{error}", fg="red", bold=True)
+                sys.exit(1)
+
+            if lines is not None:
                 save_file.write(f"{lines}\n")
-                for line in lines.split("\n"):
-                    curr_terminal_width = shutil.get_terminal_size()[0]
-                    if len(line) > curr_terminal_width:
-                        line = line[: curr_terminal_width - 3] + "..."
 
-                    if r.match(line):
-                        curr_lines = _delete_lines(curr_lines)
-                        print("\x1b[38;5;33m" + line + "\x1b[0m")
-                    else:
-                        curr_lines = _print_window(curr_lines, line)
-        _delete_lines(curr_lines)
+                if not progress_plain:
+                    for line in lines.split("\n"):
+                        curr_terminal_width = shutil.get_terminal_size()[0]
+
+                        if len(line) > curr_terminal_width:
+                            line = line[: curr_terminal_width - 3] + "..."
+
+                        if docker_build_step_pat.match(line):
+                            _delete_lines(len(cur_lines))
+                            cur_lines = []
+                            click.secho(line, fg="blue")
+                        else:
+                            cur_lines = _print_window(cur_lines, line)
+                else:
+                    click.echo(lines, nl=False)
+
+        if not progress_plain:
+            _delete_lines(len(cur_lines))
 
 
-def _print_upload_logs(upload_image_logs, image):
-    print(f"Uploading Docker image for {image}")
+def print_upload_logs(upload_image_logs, image):
+    click.secho(f"Uploading Docker image", bold=True)
     prog_map = {}
 
     def _pp_prog_map(prog_map, prev_lines):
         if prev_lines > 0:
-            print("\x1b[2K\x1b[1E" * prev_lines + f"\x1b[{prev_lines}F", end="")
+            click.echo("\x1b[2K\x1b[1E" * prev_lines + f"\x1b[{prev_lines}F", nl=False)
         prog_chunk = ""
         i = 0
         for id, prog in prog_map.items():
@@ -103,7 +126,7 @@ def _print_upload_logs(upload_image_logs, image):
             i += 1
         if prog_chunk == "":
             return 0
-        print(prog_chunk, end=f"\x1b[{i}A")
+        click.echo(prog_chunk + f"\x1b[{i}A", nl=False)
         return i
 
     prev_lines = 0
@@ -113,84 +136,145 @@ def _print_upload_logs(upload_image_logs, image):
             x.get("error") is not None
             and "denied: Your authorization token has expired." in x["error"]
         ):
-            raise OSError(f"Docker authorization for {image} is expired.")
+            click.secho(
+                f"\nDocker authorization token for {image} is expired.",
+                fg="red",
+                bold=True,
+            )
+            sys.exit(1)
+
         prog_map[x.get("id")] = x.get("progress")
         prev_lines = _pp_prog_map(prog_map, prev_lines)
 
 
 def _print_reg_resp(resp, image):
-    print(f"Registering {image} with LatchBio.")
+    click.secho(f"Registering workflow {image}", bold=True)
     version = image.split(":")[1]
 
     if not resp.get("success"):
-        error_str = f"Error registering {image}\n\n"
+        error_str = f"Failed:\n\n"
         if resp.get("stderr") is not None:
             for line in resp.get("stderr").split("\n"):
-                if line and not line.startswith('{"json"'):
-                    error_str += line + "\n"
+                if not line:
+                    continue
+
+                if line.startswith('{"json"'):
+                    continue
+
+                error_str += line + "\n"
+
         if "task with different structure already exists" in error_str:
-            error_str = f"This version ({version}) already exists."
-            " Make sure that you've saved any changes you made."
-        raise ValueError(error_str)
+            error_str = (
+                f"Version {version} already exists. Make sure that you've saved any"
+                " changes you made."
+            )
+
+        click.secho(f"\n{error_str}", fg="red", bold=True)
+        sys.exit(1)
     elif not "Successfully registered file" in resp["stdout"]:
-        raise ValueError(
-            f"This version ({version}) already exists."
-            " Make sure that you've saved any changes you made."
+        click.secho(
+            f"\nVersion ({version}) already exists."
+            " Make sure that you've saved any changes you made.",
+            fg="red",
+            bold=True,
         )
-    else:
-        print(resp.get("stdout"))
+        sys.exit(1)
+
+    click.echo(resp.get("stdout"))
 
 
-def _print_serialize_logs(serialize_logs, image):
-    print(f"Serializing workflow in {image}:")
+def print_serialize_logs(serialize_logs, image):
+    click.secho(f"\nSerializing workflow", bold=True)
     for x in serialize_logs:
-        print(x, end="")
+        click.echo(x, nl=False)
 
 
 def _build_and_serialize(
     ctx: _CentromereCtx,
     image_name: str,
     context_path: Path,
-    tmp_dir: Path,
+    tmp_dir: str,
     dockerfile: Optional[Path] = None,
+    *,
+    progress_plain: bool = False,
+    cache_tasks: bool = False,
 ):
-    """Encapsulates build, serialize, push flow needed for each dockerfile
+    assert ctx.pkg_root is not None
 
-    - Build image
-    - Serialize workflow in image
-    - Save proto files to passed temporary directory
-    - Push image
-    """
+    jit_wf = None
+    if ctx.workflow_type == WorkflowType.snakemake:
+        assert ctx.snakefile is not None
+        assert ctx.version is not None
 
-    build_logs = _build_image(ctx, image_name, context_path, dockerfile)
-    _print_and_save_build_logs(build_logs, image_name, ctx.pkg_root)
+        from ...snakemake.serialize import generate_jit_register_code
+        from ...snakemake.workflow import build_jit_register_wrapper
 
-    serialize_logs, container_id = _serialize_pkg_in_container(ctx, image_name, tmp_dir)
-    _print_serialize_logs(serialize_logs, image_name)
-    exit_status = ctx.dkr_client.wait(container_id)
-    if exit_status["StatusCode"] != 0:
-        raise ValueError(
-            f"Serialization exited with nonzero exit code: {exit_status['Error']}"
+        jit_wf = build_jit_register_wrapper(cache_tasks)
+        generate_jit_register_code(
+            jit_wf,
+            ctx.pkg_root,
+            ctx.snakefile,
+            ctx.version,
+            image_name,
+            current_workspace(),
         )
 
-    upload_image_logs = _upload_image(ctx, image_name)
-    _print_upload_logs(upload_image_logs, image_name)
+    image_build_logs = build_image(ctx, image_name, context_path, dockerfile)
+    print_and_write_build_logs(
+        image_build_logs, image_name, ctx.pkg_root, progress_plain=progress_plain
+    )
+
+    if ctx.workflow_type == WorkflowType.snakemake:
+        assert jit_wf is not None
+        assert ctx.dkr_repo is not None
+
+        from ...snakemake.serialize import serialize_jit_register_workflow
+
+        serialize_jit_register_workflow(jit_wf, tmp_dir, image_name, ctx.dkr_repo)
+    else:
+        serialize_logs, container_id = serialize_pkg_in_container(
+            ctx, image_name, tmp_dir
+        )
+        print_serialize_logs(serialize_logs, image_name)
+
+        assert ctx.dkr_client is not None
+        exit_status = ctx.dkr_client.wait(container_id)
+        if exit_status["StatusCode"] != 0:
+            click.secho("\nWorkflow failed to serialize", fg="red", bold=True)
+            sys.exit(1)
+
+        ctx.dkr_client.remove_container(container_id)
+
+    click.echo()
+    upload_image_logs = upload_image(ctx, image_name)
+    print_upload_logs(upload_image_logs, image_name)
 
 
 def _recursive_list(directory: Path) -> List[Path]:
-    files = []
-    for dirname, dirnames, fnames in os.walk(directory):
-        for filename in fnames + dirnames:
-            files.append(Path(dirname).resolve().joinpath(filename))
-    return files
+    res: List[Path] = []
+
+    stack: List[Path] = [directory]
+    while len(stack) > 0:
+        cur = stack.pop()
+        for x in cur.iterdir():
+            res.append(x)
+
+            if x.is_dir():
+                stack.append(x)
+
+    return res
 
 
 def register(
     pkg_root: str,
+    *,
     disable_auto_version: bool = False,
     remote: bool = False,
+    open: bool = False,
     skip_confirmation: bool = False,
-    *,
+    snakefile: Optional[Path] = None,
+    progress_plain: bool = False,
+    cache_tasks: bool = False,
     use_new_centromere: bool = False,
 ):
     """Registers a workflow, defined as python code, with Latch.
@@ -238,11 +322,18 @@ def register(
         https://docs.flyte.org/en/latest/concepts/registration.html
     """
 
-    pkg_root = Path(pkg_root).resolve()
+    if snakefile is not None:
+        try:
+            import snakemake
+        except ImportError as e:
+            click.secho("\n`snakemake` package is not installed.", fg="red", bold=True)
+            sys.exit(1)
+
     with _CentromereCtx(
-        pkg_root,
+        Path(pkg_root),
         disable_auto_version=disable_auto_version,
         remote=remote,
+        snakefile=snakefile,
         use_new_centromere=use_new_centromere,
     ) as ctx:
         assert ctx.workflow_name is not None, "Unable to determine workflow name"
@@ -267,13 +358,17 @@ def register(
             "N/A",
         )
         click.echo(
-            " ".join(
-                [
-                    click.style("Target workspace:", fg="bright_blue"),
-                    ws_name,
-                    f"({current_workspace()})",
-                ]
-            )
+            " ".join([
+                click.style("Target workspace:", fg="bright_blue"),
+                ws_name,
+                f"({current_workspace()})",
+            ])
+        )
+        click.echo(
+            " ".join([
+                click.style("Workflow root:", fg="bright_blue"),
+                str(ctx.default_container.pkg_dir),
+            ])
         )
 
         if use_new_centromere:
@@ -286,29 +381,52 @@ def register(
         else:
             click.secho("Skipping confirmation because of --yes", bold=True)
 
-        click.secho("Initializing registration", bold=True)
+        click.secho("\nInitializing registration", bold=True)
+        transport = None
+        scp = None
+
+        click.echo(
+            " ".join([
+                click.style("Docker Image:", fg="bright_blue"),
+                ctx.default_container.image_name,
+            ])
+        )
+        click.echo()
+
         if remote:
-            print("Connecting to remote server for docker build...")
+            click.secho("Connecting to remote server for docker build\n", bold=True)
+
+            assert ctx.ssh_client is not None
+            transport = ctx.ssh_client.get_transport()
+
+            assert transport is not None
+            scp = SCPClient(transport=transport, sanitize=lambda x: x)
 
         with contextlib.ExitStack() as stack:
-            td = stack.enter_context(MaybeRemoteDir(ctx.ssh_client))
+            # We serialize locally with snakemake projects
+            remote_dir_client = None
+            if snakefile is None:
+                remote_dir_client = ctx.ssh_client
+            td: str = stack.enter_context(MaybeRemoteDir(remote_dir_client))
             _build_and_serialize(
                 ctx,
                 ctx.default_container.image_name,
                 ctx.default_container.pkg_dir,
                 td,
                 dockerfile=ctx.default_container.dockerfile,
+                progress_plain=progress_plain,
+                cache_tasks=cache_tasks,
             )
-            protos = _recursive_list(td)
-            if remote:
-                local_td = stack.enter_context(tempfile.TemporaryDirectory())
-                scp = SCPClient(
-                    transport=ctx.ssh_client.get_transport(), sanitize=lambda x: x
-                )
-                scp.get(f"{td}/*", local_path=local_td, recursive=True)
-                protos = _recursive_list(local_td)
+
+            if remote and snakefile is None:
+                local_td = Path(stack.enter_context(tempfile.TemporaryDirectory()))
+
+                assert scp is not None
+                scp.get(f"{td}/*", local_path=str(local_td), recursive=True)
             else:
-                protos = _recursive_list(td)
+                local_td = Path(td)
+
+            protos = _recursive_list(local_td)
 
             for task_name, container in ctx.container_map.items():
                 task_td = stack.enter_context(MaybeRemoteDir(ctx.ssh_client))
@@ -316,22 +434,28 @@ def register(
                     _build_and_serialize(
                         ctx,
                         container.image_name,
-                        # always use root as build context
                         ctx.default_container.pkg_dir,
                         task_td,
                         dockerfile=container.dockerfile,
+                        progress_plain=progress_plain,
                     )
 
                     if remote:
-                        local_td = stack.enter_context(tempfile.TemporaryDirectory())
-                        scp = SCPClient(
-                            transport=ctx.ssh_client.get_transport(),
-                            sanitize=lambda x: x,
+                        local_task_td = Path(
+                            stack.enter_context(tempfile.TemporaryDirectory())
                         )
-                        scp.get(f"{task_td}/*", local_path=local_td, recursive=True)
+
+                        assert scp is not None
+                        scp.get(
+                            f"{task_td}/*", local_path=str(local_td), recursive=True
+                        )
+
                         new_protos = _recursive_list(local_td)
                     else:
-                        new_protos = _recursive_list(task_td)
+                        local_task_td = Path(task_td)
+
+                    new_protos = _recursive_list(local_task_td)
+
                     try:
                         split_task_name = task_name.split(".")
                         task_name = ".".join(
@@ -354,10 +478,64 @@ def register(
                         f"{container.dockerfile} given to {task_name} is invalid.",
                     ) from e
 
-            reg_resp = _register_serialized_pkg(ctx, protos)
+            reg_resp = register_serialized_pkg(
+                protos, ctx.token, ctx.version, current_workspace()
+            )
             _print_reg_resp(reg_resp, ctx.default_container.image_name)
 
-            click.secho(
-                "Successfully registered workflow. View @ console.latch.bio.",
-                fg="green",
-            )
+            click.secho("Successfully registered workflow.", fg="green", bold=True)
+
+            wf_infos = []
+            retries = 0
+
+            wf_name = ctx.workflow_name
+            while len(wf_infos) == 0:
+                wf_infos = l_gql.execute(
+                    gql.gql("""
+                    query workflowQuery($name: String, $ownerId: BigInt, $version: String) {
+                        workflowInfos(condition: { name: $name, ownerId: $ownerId, version: $version}) {
+                            nodes {
+                                id
+                            }
+                        }
+                    }
+                    """),
+                    {
+                        "name": wf_name,
+                        "version": ctx.version,
+                        "ownerId": current_workspace(),
+                    },
+                )["workflowInfos"]["nodes"]
+                time.sleep(1)
+
+                if retries >= 5:
+                    click.secho(
+                        "Failed to query workflow ID in 5 seconds.", fg="red", bold=True
+                    )
+                    click.secho(
+                        "This could be due to high demand or a bug in the platform.",
+                        fg="red",
+                    )
+                    click.secho(
+                        "If the workflow is not visible in latch console, contact"
+                        " support.",
+                        fg="red",
+                    )
+                    break
+
+                retries += 1
+
+            if len(wf_infos) > 0:
+                if len(wf_infos) > 1:
+                    click.secho(
+                        f"Workflow {ctx.workflow_name}:{ctx.version} is not unique."
+                        " The link below might be wrong.",
+                        fg="yellow",
+                    )
+
+                wf_id = wf_infos[0]["id"]
+                url = f"https://console.latch.bio/workflows/{wf_id}"
+                click.secho(url, fg="green")
+
+                if open:
+                    webbrowser.open(url)

@@ -8,7 +8,6 @@ Subpackages
    :maxdepth: 4
 
    latch.functions
-   latch.gql
    latch.registry
    latch.resources
    latch.types
@@ -21,6 +20,14 @@ latch.account module
 --------------------
 
 .. automodule:: latch.account
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+latch.executions module
+-----------------------
+
+.. automodule:: latch.executions
    :members:
    :undoc-members:
    :show-inheritance:

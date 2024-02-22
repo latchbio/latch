@@ -1,55 +1,159 @@
-import os
-from typing import List
+from typing import List, TypedDict
 
-from latch_sdk_config.user import user_config
+try:
+    from functools import cache
+except ImportError:
+    from functools import lru_cache as cache
 
-from latch_cli.services.cp.exceptions import AuthenticationError
-
-
-def get_max_workers() -> int:
-    try:
-        max_workers = len(os.sched_getaffinity(0)) * 4
-    except AttributeError:
-        cpu = os.cpu_count()
-        if cpu is not None:
-            max_workers = cpu * 4
-        else:
-            max_workers = 16
-
-    return min(max_workers, 16)
+import gql
+from latch_sdk_gql.execute import execute
 
 
-def get_auth_header() -> str:
-    sdk_token = user_config.token
-    execution_token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
-
-    if sdk_token is not None and sdk_token != "":
-        header = f"Latch-SDK-Token {sdk_token}"
-    elif execution_token is not None:
-        header = f"Latch-Execution-Token {execution_token}"
-    else:
-        raise AuthenticationError("Unable to find authentication credentials.")
-
-    return header
+class Child(TypedDict):
+    name: str
 
 
-def pluralize(singular: str, plural: str, selector: int) -> str:
-    if selector == 1:
-        return singular
-    return plural
+class ChildLdataTreeEdgesNode(TypedDict):
+    child: Child
 
 
-def human_readable_time(t_seconds: float) -> str:
-    s = t_seconds % 60
-    m = (t_seconds // 60) % 60
-    h = t_seconds // 60 // 60
+class ChildLdataTreeEdges(TypedDict):
+    nodes: List[ChildLdataTreeEdgesNode]
 
-    x: List[str] = []
-    if h > 0:
-        x.append(f"{int(h):d}h")
-    if m > 0:
-        x.append(f"{int(m):d}m")
-    if s > 0:
-        x.append(f"{s:.2f}s")
 
-    return " ".join(x)
+class LdataResolvePathData(TypedDict):
+    childLdataTreeEdges: ChildLdataTreeEdges
+
+
+@cache
+def _get_immediate_children_of_node(path: str) -> List[str]:
+    lrpd: LdataResolvePathData = execute(
+        gql.gql("""
+            query MyQuery($argPath: String!) {
+                ldataResolvePathData(argPath: $argPath) {
+                    childLdataTreeEdges(
+                        filter: {child: {removed: {equalTo: false}}}
+                    ) {
+                        nodes {
+                            child {
+                                name
+                            }
+                        }
+                    }
+                }
+            }
+        """),
+        {"argPath": path},
+    )["ldataResolvePathData"]
+
+    if lrpd is None:
+        return []
+
+    res: List[str] = []
+    for node in lrpd["childLdataTreeEdges"]["nodes"]:
+        res.append(node["child"]["name"])
+
+    return res
+
+
+class Team(TypedDict):
+    accountId: str
+
+
+class TeamMembersByUserIdNode(TypedDict):
+    team: Team
+
+
+class TeamMembersByUserId(TypedDict):
+    nodes: List[TeamMembersByUserIdNode]
+
+
+class TeamInfosByOwnerId(TypedDict):
+    nodes: List[Team]
+
+
+class UserInfoByAccountId(TypedDict):
+    defaultAccount: str
+    teamMembersByUserId: TeamMembersByUserId
+    teamInfosByOwnerId: TeamInfosByOwnerId
+
+
+class Bucket(TypedDict):
+    bucketName: str
+
+
+class LdataS3MountAccessProvensByGeneratedUsing(TypedDict):
+    nodes: List[Bucket]
+
+
+class LdataS3MountConfiguratorRolesByAccountIdNode(TypedDict):
+    ldataS3MountAccessProvensByGeneratedUsing: LdataS3MountAccessProvensByGeneratedUsing
+
+
+class LdataS3MountConfiguratorRolesByAccountId(TypedDict):
+    nodes: List[LdataS3MountConfiguratorRolesByAccountIdNode]
+
+
+class AccountInfoCurrent(TypedDict):
+    userInfoByAccountId: UserInfoByAccountId
+    ldataS3MountConfiguratorRolesByAccountId: LdataS3MountConfiguratorRolesByAccountId
+
+
+@cache
+def _get_known_domains_for_account() -> List[str]:
+    aic: AccountInfoCurrent = execute(gql.gql("""
+        query DomainCompletionQuery {
+            accountInfoCurrent {
+                userInfoByAccountId {
+                    defaultAccount
+                    teamMembersByUserId(
+                        filter: { team: { account: { removed: { equalTo: false } } } }
+                    ) {
+                        nodes {
+                            team {
+                                accountId
+                            }
+                        }
+                    }
+                    teamInfosByOwnerId(filter: { account: { removed: { equalTo: false } } }) {
+                        nodes {
+                            accountId
+                        }
+                    }
+                }
+                ldataS3MountConfiguratorRolesByAccountId {
+                    nodes {
+                        ldataS3MountAccessProvensByGeneratedUsing {
+                            nodes {
+                                bucketName
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    """))["accountInfoCurrent"]
+
+    ui = aic["userInfoByAccountId"]
+
+    res: List[str] = [""]  # "" is for latch:///
+
+    accs: List[int] = [int(ui["defaultAccount"])]
+    accs.extend(
+        int(tm["team"]["accountId"]) for tm in ui["teamMembersByUserId"]["nodes"]
+    )
+    accs.extend(int(ti["accountId"]) for ti in ui["teamInfosByOwnerId"]["nodes"])
+    accs.sort()
+    for x in accs:
+        res.append(f"{x}.account")
+        res.append(f"shared.{x}.account")
+
+    buckets = [
+        map["bucketName"]
+        for role in aic["ldataS3MountConfiguratorRolesByAccountId"]["nodes"]
+        for map in role["ldataS3MountAccessProvensByGeneratedUsing"]["nodes"]
+    ]
+    buckets.sort()
+    res.extend(f"{x}.mount" for x in buckets)
+
+    return res

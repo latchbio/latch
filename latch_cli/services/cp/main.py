@@ -1,15 +1,15 @@
-from glob import glob
 from pathlib import Path
+from textwrap import dedent
 from typing import List
 
 import click
 
-from latch_cli.services.cp.config import CPConfig, Progress
-from latch_cli.services.cp.download import download
+from latch.ldata._transfer.download import download as _download
+from latch.ldata._transfer.progress import Progress
+from latch.ldata._transfer.remote_copy import remote_copy as _remote_copy
+from latch.ldata._transfer.upload import upload as _upload
 from latch_cli.services.cp.glob import expand_pattern
-from latch_cli.services.cp.path_utils import is_remote_path
-from latch_cli.services.cp.remote_copy import remote_copy
-from latch_cli.services.cp.upload import upload
+from latch_cli.utils.path import is_remote_path
 
 
 # todo(ayush): come up with a better behavior scheme than unix cp
@@ -23,29 +23,39 @@ def cp(
 ):
     dest_remote = is_remote_path(dest)
 
-    config = CPConfig(
-        progress=progress,
-        verbose=verbose,
-    )
-
     for src in srcs:
         src_remote = is_remote_path(src)
 
-        if src_remote and not dest_remote:
-            if expand_globs:
-                [download(p, Path(dest), config) for p in expand_pattern(src)]
+        try:
+            if src_remote and not dest_remote:
+                if expand_globs:
+                    [
+                        _download(p, Path(dest), progress=progress, verbose=verbose)
+                        for p in expand_pattern(src)
+                    ]
+                else:
+                    _download(
+                        src, Path(dest), show_progress_bar=progress, verbose=verbose
+                    )
+            elif not src_remote and dest_remote:
+                _upload(src, dest, progress=progress, verbose=verbose)
+            elif src_remote and dest_remote:
+                if expand_globs:
+                    [
+                        _remote_copy(p, dest, show_summary=True)
+                        for p in expand_pattern(src)
+                    ]
+                else:
+                    _remote_copy(src, dest, show_summary=True)
             else:
-                download(src, Path(dest), config)
-        elif not src_remote and dest_remote:
-            upload(src, dest, config)
-        elif src_remote and dest_remote:
-            if expand_globs:
-                [remote_copy(p, dest) for p in expand_pattern(src)]
-            else:
-                remote_copy(src, dest)
-        else:
-            raise ValueError(
-                f"`latch cp` cannot be used for purely local file copying. Please make"
-                f" sure one or both of your paths is a remote path (beginning with"
-                f" `latch://`)"
-            )
+                raise ValueError(
+                    dedent(f"""
+                    `latch cp` cannot be used for purely local file copying.
+
+                    Please ensure at least one of your arguments is a remote path (beginning with `latch://`)
+                    """).strip("\n"),
+                    fg="red",
+                )
+        except Exception as e:
+            click.secho(str(e), fg="red")
+            raise click.exceptions.Exit(1) from e

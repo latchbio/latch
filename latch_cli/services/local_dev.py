@@ -12,8 +12,8 @@ import click
 from latch_sdk_config.latch import config
 
 from latch_cli.constants import latch_constants
+from latch_cli.menus import select_tui
 from latch_cli.tinyrequests import post
-from latch_cli.tui import select_tui
 from latch_cli.utils import (
     TemporarySSHCredentials,
     current_workspace,
@@ -138,15 +138,16 @@ def local_development(
         image = _get_latest_image(pkg_root)
 
     if size is None:
-        human_readable_size = select_tui(
+        size = select_tui(
             "Please select an instance size",
-            list(human_readable_task_sizes.keys()),
+            [
+                {"display_name": k, "value": v}
+                for k, v in human_readable_task_sizes.items()
+            ],
         )
-        if human_readable_size is None:
+        if size is None:
             click.echo("Session cancelled.")
             return
-
-        size = human_readable_task_sizes[human_readable_size]
 
     click.secho("Initiating local development session", fg="blue")
     click.echo(click.style("Selected image: ", fg="blue") + image)
@@ -158,8 +159,8 @@ def local_development(
         click.echo("Session cancelled.")
         return
 
-    key_path = pkg_root / latch_constants.pkg_ssh_key
-    jump_key_path = pkg_root / latch_constants.pkg_jump_key
+    key_path = pkg_root / ".latch/ssh_key"
+    jump_key_path = pkg_root / ".latch/jump_key"
     with TemporarySSHCredentials(key_path) as ssh:
         click.echo(
             "Starting local development session. This may take a few minutes for larger"

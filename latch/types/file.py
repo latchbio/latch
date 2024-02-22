@@ -1,5 +1,7 @@
+import os
 import re
 from os import PathLike
+from pathlib import Path
 from typing import Optional, Type, Union
 from urllib.parse import urlparse
 
@@ -12,10 +14,8 @@ from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
 from latch_sdk_gql.execute import execute
 from typing_extensions import Annotated
 
-from latch.types.utils import _is_valid_url
-from latch_cli.services.cp.path_utils import normalize_path
-
-is_absolute_node_path = re.compile(r"^(latch)?://\d+.node(/)?$")
+from latch.types.utils import format_path, is_absolute_node_path, is_valid_url
+from latch_cli.utils.path import normalize_path
 
 
 class LatchFile(FlyteFile):
@@ -73,7 +73,9 @@ class LatchFile(FlyteFile):
         else:
             self.path = str(path)
 
-        if _is_valid_url(self.path) and remote_path is None:
+        self._path_generated = False
+
+        if is_valid_url(self.path) and remote_path is None:
             self._remote_path = str(path)
         else:
             self._remote_path = None if remote_path is None else str(remote_path)
@@ -107,7 +109,8 @@ class LatchFile(FlyteFile):
                         if data is not None and data["name"] is not None:
                             local_path_hint = data["name"]
 
-                    self.path = ctx.file_access.get_random_local_path(local_path_hint)
+                    self._idempotent_set_path(local_path_hint)
+
                     return ctx.file_access.get_data(
                         self._remote_path,
                         self.path,
@@ -115,6 +118,24 @@ class LatchFile(FlyteFile):
                     )
 
             super().__init__(self.path, downloader, self._remote_path)
+
+    def _idempotent_set_path(self, hint: Optional[str] = None):
+        if self._path_generated:
+            return
+
+        ctx = FlyteContextManager.current_context()
+        if ctx is None:
+            return
+
+        self.path = ctx.file_access.get_random_local_path(hint)
+        self._path_generated = True
+
+    def _create_imposters(self):
+        self._idempotent_set_path()
+
+        p = Path(self.path)
+        p.parent.mkdir(exist_ok=True, parents=True)
+        p.touch(exist_ok=True)
 
     @property
     def local_path(self) -> str:
@@ -133,13 +154,17 @@ class LatchFile(FlyteFile):
 
     def __repr__(self):
         if self.remote_path is None:
-            return f'LatchFile("{self.local_path}")'
-        return f'LatchFile("{self.path}", remote_path="{self.remote_path}")'
+            return f"LatchFile({repr(format_path(self.local_path))})"
+
+        return (
+            f"LatchFile({repr(self.path)},"
+            f" remote_path={repr(format_path(self.remote_path))})"
+        )
 
     def __str__(self):
         if self.remote_path is None:
             return "LatchFile()"
-        return f'LatchFile("{self.remote_path}")'
+        return f"LatchFile({format_path(self.remote_path)})"
 
 
 LatchOutputFile = Annotated[

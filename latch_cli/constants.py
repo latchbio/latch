@@ -1,5 +1,3 @@
-"""Package-wide constants."""
-
 import re
 from dataclasses import dataclass
 from enum import Enum
@@ -36,8 +34,6 @@ class LatchConstants:
     maximum_upload_size = 5 * units.TiB
 
     pkg_name: str = "latch"
-    pkg_ssh_key: str = ".latch/ssh_key"
-    pkg_jump_key: str = ".latch/jump_key"
     pkg_config: str = ".latch/config"
 
     # todo(aidan): make this aware of the current working directory so that we do not remove useful context
@@ -69,3 +65,5 @@ class OAuth2Constants:
 
 
 oauth2_constants = OAuth2Constants()
+
+docker_image_name_illegal_pat = re.compile(r"[^a-z0-9]+")

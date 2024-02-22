@@ -86,8 +86,7 @@ class PKCE:
     def __enter__(self, *args):
         return self
 
-    def __exit__(self, *args):
-        ...
+    def __exit__(self, *args): ...
 
     def construct_challenge(self) -> Tuple[str, str]:
         """Construct verifier & challenge to verify a client's identity in PKCE.

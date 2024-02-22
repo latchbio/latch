@@ -4,7 +4,7 @@ import click
 from latch_sdk_config.latch import NUCLEUS_URL
 
 from .. import tinyrequests
-from .cp.utils import get_auth_header
+from ..utils import get_auth_header
 
 
 def stop_pod(pod_id: int) -> None:

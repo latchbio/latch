@@ -1,10 +1,19 @@
 import re
-from dataclasses import asdict, dataclass, field
+from dataclasses import Field, asdict, dataclass, field
 from enum import Enum
+from pathlib import Path
 from textwrap import indent
-from typing import Dict, List, Optional, Tuple
+from typing import Any, ClassVar, Dict, List, Optional, Protocol, Tuple, Type, Union
 
+import click
 import yaml
+from typing_extensions import TypeAlias
+
+from latch_cli.snakemake.config.utils import validate_snakemake_type
+from latch_cli.utils import identifier_suffix_from_str
+
+from .directory import LatchDir
+from .file import LatchFile
 
 
 @dataclass
@@ -27,9 +36,27 @@ class LatchRule:
             raise ValueError(f"Malformed regex {self.regex}: {e.msg}")
 
 
-class LatchAppearanceType(Enum):
+class LatchAppearanceEnum(Enum):
     line = "line"
     paragraph = "paragraph"
+
+
+@dataclass(frozen=True)
+class MultiselectOption:
+    name: str
+    value: object
+
+
+@dataclass(frozen=True)
+class Multiselect:
+    options: List[MultiselectOption] = field(default_factory=list)
+    allow_custom: bool = False
+
+
+# backwards compatibility
+LatchAppearanceType = LatchAppearanceEnum
+
+LatchAppearance: TypeAlias = Union[LatchAppearanceEnum, Multiselect]
 
 
 @dataclass
@@ -72,79 +99,83 @@ class Section(FlowBase):
 
     Example:
 
-    ![Example of a user interface for a workflow with a custom flow](../assets/flow-example/flow_example_1.png)
 
-    ![Example of a spoiler flow element](../assets/flow-example/flow_example_spoiler.png)
+    .. image:: ../assets/flow-example/flow_example_1.png
+        :alt: Example of a user interface for a workflow with a custom flow
 
-    The `LatchMedata` for the example above can be defined as follows:
+    .. image:: ../assets/flow-example/flow_example_spoiler.png
+        :alt: Example of a spoiler flow element
 
-    ```python
-    from latch.types import LatchMetadata, LatchParameter
-    from latch.types.metadata import FlowBase, Section, Text, Params, Fork, Spoiler
-    from latch import workflow
 
-    flow = [
-        Section(
-            "Samples",
-            Text(
-                "Sample provided has to include an identifier for the sample (Sample name)"
-                " and one or two files corresponding to the reads (single-end or paired-end, respectively)"
-            ),
-            Fork(
-                "sample_fork",
-                "Choose read type",
-                paired_end=ForkBranch("Paired-end", Params("paired_end")),
-                single_end=ForkBranch("Single-end", Params("single_end")),
-            ),
-        ),
-        Section(
-            "Quality threshold",
-            Text(
-                "Select the quality value in which a base is qualified."
-                "Quality value refers to a Phred quality score"
-            ),
-            Params("quality_threshold"),
-        ),
-        Spoiler(
-            "Output directory",
-            Text("Name of the output directory to send results to."),
-            Params("output_directory"),
-        ),
-    ]
+    The `LatchMetadata` for the example above can be defined as follows:
 
-    metadata = LatchMetadata(
-        display_name="fastp - Flow Tutorial",
-        author=LatchAuthor(
-            name="LatchBio",
-        ),
-        parameters={
-            "sample_fork": LatchParameter(),
-            "paired_end": LatchParameter(
-                display_name="Paired-end reads",
-                description="FASTQ files",
-                batch_table_column=True,
-            ),
-            "single_end": LatchParameter(
-                display_name="Single-end reads",
-                description="FASTQ files",
-                batch_table_column=True,
-            ),
-            "output_directory": LatchParameter(
-                display_name="Output directory",
-            ),
-        },
-        flow=flow,
-    )
+    .. code-block:: python
 
-    @workflow(metadata)
-    def fastp(
-        sample_fork: str,
-        paired_end: PairedEnd,
-        single_end: Optional[SingleEnd] = None,
-        output_directory: str = "fastp_results",
-    ) -> LatchDir:
-        ...
-    ```
+        from latch.types import LatchMetadata, LatchParameter
+        from latch.types.metadata import FlowBase, Section, Text, Params, Fork, Spoiler
+        from latch import workflow
+
+        flow = [
+            Section(
+                "Samples",
+                Text(
+                    "Sample provided has to include an identifier for the sample (Sample name)"
+                    " and one or two files corresponding to the reads (single-end or paired-end, respectively)"
+                ),
+                Fork(
+                    "sample_fork",
+                    "Choose read type",
+                    paired_end=ForkBranch("Paired-end", Params("paired_end")),
+                    single_end=ForkBranch("Single-end", Params("single_end")),
+                ),
+            ),
+            Section(
+                "Quality threshold",
+                Text(
+                    "Select the quality value in which a base is qualified."
+                    "Quality value refers to a Phred quality score"
+                ),
+                Params("quality_threshold"),
+            ),
+            Spoiler(
+                "Output directory",
+                Text("Name of the output directory to send results to."),
+                Params("output_directory"),
+            ),
+        ]
+
+        metadata = LatchMetadata(
+            display_name="fastp - Flow Tutorial",
+            author=LatchAuthor(
+                name="LatchBio",
+            ),
+            parameters={
+                "sample_fork": LatchParameter(),
+                "paired_end": LatchParameter(
+                    display_name="Paired-end reads",
+                    description="FASTQ files",
+                    batch_table_column=True,
+                ),
+                "single_end": LatchParameter(
+                    display_name="Single-end reads",
+                    description="FASTQ files",
+                    batch_table_column=True,
+                ),
+                "output_directory": LatchParameter(
+                    display_name="Output directory",
+                ),
+            },
+            flow=flow,
+        )
+
+        @workflow(metadata)
+        def fastp(
+            sample_fork: str,
+            paired_end: PairedEnd,
+            single_end: Optional[SingleEnd] = None,
+            output_directory: str = "fastp_results",
+        ) -> LatchDir:
+            ...
     """
 
     section: str
@@ -268,7 +299,15 @@ class LatchParameter:
     Whether this parameter should be given a column in the batch
     table at the top of the workflow inputs
     """
-    appearance_type: LatchAppearanceType = LatchAppearanceType.line
+    allow_dir: bool = True
+    """
+    Whether or not this parameter should accept directories in UI
+    """
+    allow_file: bool = True
+    """
+    Whether or not this parameter should accept files in UI.
+    """
+    appearance_type: LatchAppearance = LatchAppearanceEnum.line
     """
     Whether the parameter should be rendered as a line or paragraph
     (must be exactly one of either LatchAppearanceType.line or
@@ -294,7 +333,8 @@ class LatchParameter:
 
     @property
     def dict(self):
-        parameter_dict = {"display_name": self.display_name}
+        parameter_dict: Dict[str, Any] = {"display_name": self.display_name}
+
         if self.output:
             parameter_dict["output"] = True
         if self.batch_table_column:
@@ -302,7 +342,7 @@ class LatchParameter:
         if self.samplesheet:
             parameter_dict["samplesheet"] = True
 
-        temp_dict = {"hidden": self.hidden}
+        temp_dict: Dict[str, Any] = {"hidden": self.hidden}
         if self.section_title is not None:
             temp_dict["section_title"] = self.section_title
         if self._custom_ingestion is not None:
@@ -310,13 +350,27 @@ class LatchParameter:
 
         parameter_dict["_tmp"] = temp_dict
 
-        appearance_dict = {"type": self.appearance_type.value}
+        appearance_dict: Dict[str, Any]
+        if isinstance(self.appearance_type, LatchAppearanceEnum):
+            appearance_dict = {"type": self.appearance_type.value}
+        elif isinstance(self.appearance_type, Multiselect):
+            appearance_dict = {"multiselect": asdict(self.appearance_type)}
+        else:
+            appearance_dict = {}
+
         if self.placeholder is not None:
             appearance_dict["placeholder"] = self.placeholder
         if self.comment is not None:
             appearance_dict["comment"] = self.comment
         if self.detail is not None:
             appearance_dict["detail"] = self.detail
+
+        appearance_dict["file_type"] = (
+            "ANY"
+            if self.allow_file and self.allow_dir
+            else "FILE" if self.allow_file else "DIR" if self.allow_dir else "NONE"
+        )
+
         parameter_dict["appearance"] = appearance_dict
 
         if len(self.rules) > 0:
@@ -328,55 +382,130 @@ class LatchParameter:
         return {"__metadata__": parameter_dict}
 
 
+# https://stackoverflow.com/questions/54668000/type-hint-for-an-instance-of-a-non-specific-dataclass
+class _IsDataclass(Protocol):
+    __dataclass_fields__: ClassVar[Dict[str, Field]]
+
+
+ParameterType: TypeAlias = Union[
+    Type[None],
+    Type[int],
+    Type[float],
+    Type[str],
+    Type[bool],
+    Type[Enum],
+    Type[_IsDataclass],
+    Type[List["ParameterType"]],
+    Type[LatchFile],
+    Type[LatchDir],
+]
+
+
+@dataclass
+class SnakemakeParameter(LatchParameter):
+    type: Optional[ParameterType] = None
+    """
+    The python type of the parameter.
+    """
+    # todo(ayush): needs to be typed properly
+    default: Optional[Any] = None
+
+
+@dataclass
+class SnakemakeFileParameter(SnakemakeParameter):
+    """
+    Deprecated: use `file_metadata` keyword in `SnakemakeMetadata` instead
+    """
+
+    type: Optional[
+        Union[
+            Type[LatchFile],
+            Type[LatchDir],
+        ]
+    ] = None
+    """
+    The python type of the parameter.
+    """
+    path: Optional[Path] = None
+    """
+    The path where the file passed to this parameter will be copied.
+    """
+    config: bool = False
+    """
+    Whether or not the file path is exposed in the Snakemake config
+    """
+    download: bool = False
+    """
+    Whether or not the file is downloaded in the JIT step
+    """
+
+
+@dataclass
+class SnakemakeFileMetadata:
+    path: Path
+    """
+    The local path where the file passed to this parameter will be copied
+    """
+    config: bool = False
+    """
+    If `True`, expose the file in the Snakemake config
+    """
+    download: bool = False
+    """
+    If `True`, download the file in the JIT step
+    """
+
+
 @dataclass
 class LatchMetadata:
     """Class for organizing workflow metadata
 
     Example:
 
-    ```python
-    from latch.types import LatchMetadata, LatchAuthor, LatchRule, LatchAppearanceType
+    .. code-block:: python
 
-    metadata = LatchMetadata(
-        parameters={
-            "read1": LatchParameter(
-                display_name="Read 1",
-                description="Paired-end read 1 file to be assembled.",
-                hidden=True,
-                section_title="Sample Reads",
-                placeholder="Select a file",
-                comment="This is a comment",
-                output=False,
-                appearance_type=LatchAppearanceType.paragraph,
-                rules=[
-                    LatchRule(
-                        regex="(.fasta|.fa|.faa|.fas)$",
-                        message="Only .fasta, .fa, .fas, or .faa extensions are valid"
-                    )
-                ],
-                batch_table_column=True,  # Show this parameter in batched mode.
-                # The below parameters will be displayed on the side bar of the workflow
-                documentation="https://github.com/author/my_workflow/README.md",
-                author=LatchAuthor(
-                    name="Workflow Author",
-                    email="licensing@company.com",
-                    github="https://github.com/author",
+        from latch.types import LatchMetadata, LatchAuthor, LatchRule, LatchAppearanceType
+
+        metadata = LatchMetadata(
+            parameters={
+                "read1": LatchParameter(
+                    display_name="Read 1",
+                    description="Paired-end read 1 file to be assembled.",
+                    hidden=True,
+                    section_title="Sample Reads",
+                    placeholder="Select a file",
+                    comment="This is a comment",
+                    output=False,
+                    appearance_type=LatchAppearanceType.paragraph,
+                    rules=[
+                        LatchRule(
+                            regex="(.fasta|.fa|.faa|.fas)$",
+                            message="Only .fasta, .fa, .fas, or .faa extensions are valid"
+                        )
+                    ],
+                    batch_table_column=True,  # Show this parameter in batched mode.
+                    # The below parameters will be displayed on the side bar of the workflow
+                    documentation="https://github.com/author/my_workflow/README.md",
+                    author=LatchAuthor(
+                        name="Workflow Author",
+                        email="licensing@company.com",
+                        github="https://github.com/author",
+                    ),
+                    repository="https://github.com/author/my_workflow",
+                    license="MIT",
+                    # If the workflow is public, display it under the defined categories on Latch to be more easily discovered by users
+                    tags=["NGS", "MAG"],
                 ),
-                repository="https://github.com/author/my_workflow",
-                license="MIT",
-                # If the workflow is public, display it under the defined categories on Latch to be more easily discovered by users
-                tags=["NGS", "MAG"],
-            ),
-    )
+        )
 
-    @workflow(metadata)
-    def wf(read1: LatchFile):
-        ...
-    ```
+        @workflow(metadata)
+        def wf(read1: LatchFile):
+            ...
+
     """
 
     display_name: str
-    """The name of the workflow"""
+    """The human-readable name of the workflow"""
     author: LatchAuthor
     """ A `LatchAuthor` object that describes the author of the workflow"""
     documentation: Optional[str] = None
@@ -395,7 +524,7 @@ class LatchMetadata:
     no_standard_bulk_execution: bool = False
     """
     Disable the standard CSV-based bulk execution. Intended for workflows that
-    support an aleternative way of processing bulk data e.g. using a samplesheet
+    support an alternative way of processing bulk data e.g. using a samplesheet
     parameter
     """
     _non_standard: Dict[str, object] = field(default_factory=dict)
@@ -428,3 +557,93 @@ class LatchMetadata:
         return (
             metadata_yaml + "Args:\n" + indent(parameter_yaml, "  ", lambda _: True)
         ).strip("\n ")
+
+
+@dataclass
+class DockerMetadata:
+    """Class describing credentials for private docker repositories"""
+
+    username: str
+    """
+    The account username for the private repository
+    """
+    secret_name: str
+    """
+    The name of the Latch Secret that contains the password for the private repository
+    """
+
+
+@dataclass
+class EnvironmentConfig:
+    """Class describing environment for spawning Snakemake tasks"""
+
+    use_conda: bool = False
+    """
+    Use Snakemake `conda` directive to spawn tasks in conda environments
+    """
+    use_container: bool = False
+    """
+    Use Snakemake `container` directive to spawn tasks in Docker containers
+    """
+
+
+FileMetadata: TypeAlias = Dict[str, Union[SnakemakeFileMetadata, "FileMetadata"]]
+
+
+@dataclass
+class SnakemakeMetadata(LatchMetadata):
+    """Class for organizing Snakemake workflow metadata"""
+
+    output_dir: Optional[LatchDir] = None
+    """
+    Directory for snakemake workflow outputs
+    """
+    name: Optional[str] = None
+    """
+    Name of the workflow
+    """
+    docker_metadata: Optional[DockerMetadata] = None
+    """
+    Credentials configuration for private docker repositories
+    """
+    env_config: EnvironmentConfig = field(default_factory=EnvironmentConfig)
+    """
+    Environment configuration for spawning Snakemake tasks
+    """
+    parameters: Dict[str, SnakemakeParameter] = field(default_factory=dict)
+    """
+    A dictionary mapping parameter names (strings) to `SnakemakeParameter` objects
+    """
+    file_metadata: FileMetadata = field(default_factory=dict)
+    """
+    A dictionary mapping parameter names to `SnakemakeFileMetadata` objects
+    """
+    cores: int = 4
+    """
+    Number of cores to use for Snakemake tasks (equivalent of Snakemake's `--cores` flag)
+    """
+
+    def validate(self):
+
+        for name, param in self.parameters.items():
+            if param.default is None:
+                continue
+            try:
+                validate_snakemake_type(name, param.type, param.default)
+            except ValueError as e:
+                click.secho(e, fg="red")
+                raise click.exceptions.Exit(1)
+
+    def __post_init__(self):
+        self.validate()
+
+        if self.name is None:
+            self.name = (
+                f"snakemake_{identifier_suffix_from_str(self.display_name.lower())}"
+            )
+
+        global _snakemake_metadata
+        _snakemake_metadata = self
+
+
+_snakemake_metadata: Optional[SnakemakeMetadata] = None

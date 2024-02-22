@@ -6,9 +6,11 @@ from pathlib import Path
 from textwrap import dedent
 from typing import List
 
+import click
 import yaml
 
 from latch_cli.constants import latch_constants
+from latch_cli.utils import WorkflowType
 from latch_cli.workflow_config import LatchWorkflowConfig, create_and_write_config
 
 
@@ -30,71 +32,156 @@ class DockerCmdBlock:
         f.write("\n".join(self.commands) + "\n\n")
 
 
-def get_prologue(config: LatchWorkflowConfig) -> List[str]:
+def get_prologue(
+    config: LatchWorkflowConfig, wf_type: WorkflowType = WorkflowType.latchbiosdk
+) -> List[str]:
+    if wf_type == WorkflowType.snakemake:
+        library_name = '"latch[snakemake]"'
+    else:
+        library_name = "latch"
     return [
-        (
-            "# latch base image + dependencies for latch SDK --- removing these will"
-            " break the workflow"
-        ),
+        "# DO NOT CHANGE",
         f"from {config.base_image}",
-        f"run pip install latch=={config.latch_version}",
-        f"run mkdir /opt/latch",
+        "",
+        "workdir /tmp/docker-build/work/",
+        "",
+        dedent(r"""
+        shell [ \
+            "/usr/bin/env", "bash", \
+            "-o", "errexit", \
+            "-o", "pipefail", \
+            "-o", "nounset", \
+            "-o", "verbose", \
+            "-o", "errtrace", \
+            "-O", "inherit_errexit", \
+            "-O", "shift_verbose", \
+            "-c" \
+        ]
+        """).strip(),
+        "env TZ='Etc/UTC'",
+        "env LANG='en_US.UTF-8'",
+        "",
+        "arg DEBIAN_FRONTEND=noninteractive",
+        "",
+        "# Latch SDK",
+        "# DO NOT REMOVE",
+        f"run pip install {library_name}=={config.latch_version}",
+        "run mkdir /opt/latch",
     ]
 
 
-def get_epilogue() -> List[str]:
-    return [
-        (
-            "# latch internal tagging system + expected root directory --- changing"
-            " these lines will break the workflow"
-        ),
+def get_epilogue(wf_type: WorkflowType = WorkflowType.latchbiosdk) -> List[str]:
+    cmds: list[str] = []
+
+    if wf_type == WorkflowType.snakemake:
+        cmds += [
+            "",
+            "# Latch snakemake workflow entrypoint",
+            "# DO NOT CHANGE",
+            "copy .latch/snakemake_jit_entrypoint.py /root/snakemake_jit_entrypoint.py",
+        ]
+
+    cmds += [
+        "",
+        "# Latch workflow registration metadata",
+        "# DO NOT CHANGE",
         "arg tag",
+        "# DO NOT CHANGE",
         "env FLYTE_INTERNAL_IMAGE $tag",
+        "",
         "workdir /root",
     ]
+
+    return cmds
 
 
 def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
     commands: List[DockerCmdBlock] = []
 
     if (pkg_root / "system-requirements.txt").exists():
-        print("Adding system requirements installation phase")
+        click.echo(
+            " ".join([
+                click.style(f"system-requirements.txt:", bold=True),
+                "System dependencies installation phase",
+            ])
+        )
+
         commands.append(
             DockerCmdBlock(
-                comment="install system requirements",
+                comment="Install system dependencies",
                 commands=[
                     "copy system-requirements.txt /opt/latch/system-requirements.txt",
-                    (
-                        "run apt-get update --yes && xargs apt-get install --yes"
-                        " </opt/latch/system-requirements.txt"
-                    ),
+                    dedent(r"""
+                            run apt-get update --yes && \
+                                xargs apt-get install --yes \
+                                    < /opt/latch/system-requirements.txt
+                            """).strip(),
                 ],
                 order=DockerCmdBlockOrder.precopy,
             )
         )
 
     if (pkg_root / "environment.R").exists():
-        print("Adding R + R package installation phase")
-        commands.append(
+        click.echo(
+            " ".join([
+                click.style(f"environment.R:", bold=True),
+                "R dependencies installation phase",
+            ])
+        )
+
+        # todo(maximsmol): allow specifying R version
+        # todo(maximsmol): somehow promote using pak
+        commands += [
             DockerCmdBlock(
-                comment="install R requirements",
+                comment="Install rig the R installation manager",
                 commands=[
-                    dedent("""
-                        run apt-get update --yes && \\
-                            apt-get install --yes software-properties-common && \\
-                            add-apt-repository "deb http://cloud.r-project.org/bin/linux/debian buster-cran40/" && \\
-                            DEBIAN_FRONTEND=noninteractive apt-get install --yes r-base r-base-dev libxml2-dev libcurl4-openssl-dev libssl-dev wget
-                        """).strip(),
+                    dedent(r"""
+                            run \
+                                curl \
+                                    --location \
+                                    --fail \
+                                    --remote-name \
+                                    https://github.com/r-lib/rig/releases/download/latest/rig-linux-latest.tar.gz && \
+                                tar \
+                                    --extract \
+                                    --gunzip \
+                                    --file rig-linux-latest.tar.gz \
+                                    --directory /usr/local/ && \
+                                rm rig-linux-latest.tar.gz
+                            """).strip(),
+                ],
+                order=DockerCmdBlockOrder.precopy,
+            ),
+            DockerCmdBlock(
+                comment="Install R",
+                commands=[
+                    "run rig add release # Change to any R version",
+                ],
+                order=DockerCmdBlockOrder.precopy,
+            ),
+            DockerCmdBlock(
+                comment="Install R dependencies",
+                commands=[
                     "copy environment.R /opt/latch/environment.R",
                     "run Rscript /opt/latch/environment.R",
                 ],
                 order=DockerCmdBlockOrder.precopy,
-            )
+            ),
+        ]
+
+    conda_env_p = pkg_root / "environment.yml"
+    if not conda_env_p.exists():
+        conda_env_p = conda_env_p.with_suffix(".yaml")
+
+    if conda_env_p.exists():
+        click.echo(
+            " ".join([
+                click.style(f"{conda_env_p.name}:", bold=True),
+                "Conda dependencies installation phase",
+            ])
         )
 
-    if (pkg_root / "environment.yaml").exists():
-        print("Adding conda + conda environment installation phase")
-        with (pkg_root / "environment.yaml").open("rb") as f:
+        with conda_env_p.open("rb") as f:
             conda_env = yaml.safe_load(f)
 
         if "name" in conda_env:
@@ -102,62 +189,92 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
         else:
             env_name = "workflow"
 
+        # todo(maximsmol): install `curl` and other build deps ahead of time once (or in base image)
         commands += [
             DockerCmdBlock(
-                comment="set conda environment variables",
+                comment="Install Mambaforge",
                 commands=[
-                    "env CONDA_DIR /opt/conda",
-                    "env PATH=$CONDA_DIR/bin:$PATH",
+                    dedent(r"""
+                            run apt-get update --yes && \
+                                apt-get install --yes curl && \
+                                curl \
+                                    --location \
+                                    --fail \
+                                    --remote-name \
+                                    https://github.com/conda-forge/miniforge/releases/latest/download/Mambaforge-Linux-x86_64.sh && \
+                                `# Docs for -b and -p flags: https://docs.anaconda.com/anaconda/install/silent-mode/#linux-macos` \
+                                bash Mambaforge-Linux-x86_64.sh -b -p /opt/conda -u && \
+                                rm Mambaforge-Linux-x86_64.sh
+                            """).strip(),
                 ],
                 order=DockerCmdBlockOrder.precopy,
             ),
             DockerCmdBlock(
-                comment="install miniconda",
+                comment="Set conda PATH",
                 commands=[
-                    dedent("""
-                        run apt-get update --yes && \\
-                            apt-get install --yes curl && \\
-                            curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \\
-                            mkdir /root/.conda && \\
-                            # docs for -b and -p flags: https://docs.anaconda.com/anaconda/install/silent-mode/#linux-macos
-                            bash Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \\
-                            rm -f Miniconda3-latest-Linux-x86_64.sh
-                        """).strip(),
+                    "env PATH=/opt/conda/bin:$PATH",
+                    "RUN conda config --set auto_activate_base false",
                 ],
                 order=DockerCmdBlockOrder.precopy,
             ),
             DockerCmdBlock(
-                comment="build and configure conda environment",
+                comment="Build conda environment",
                 commands=[
-                    "copy environment.yaml /opt/latch/environment.yaml",
-                    (
-                        "run conda env create --file /opt/latch/environment.yaml"
-                        f" --name {env_name}"
-                    ),
-                    f"env PATH=$CONDA_DIR/envs/{env_name}/bin:$PATH",
+                    f"copy {conda_env_p.name} /opt/latch/environment.yaml",
+                    dedent(rf"""
+                            run mamba env create \
+                                --file /opt/latch/environment.yaml \
+                                --name {env_name}
+                            """).strip(),
+                    f"env PATH=/opt/conda/envs/{env_name}/bin:$PATH",
                 ],
                 order=DockerCmdBlockOrder.precopy,
             ),
         ]
 
+    has_setup_py = (pkg_root / "setup.py").exists()
+
+    has_buildable_pyproject = False
+    try:
+        with (pkg_root / "pyproject.toml").open("r") as f:
+            for line in f:
+                if not line.startswith("[build-system]"):
+                    continue
+
+                has_buildable_pyproject = True
+                break
+    except FileNotFoundError:
+        ...
+
     # from https://peps.python.org/pep-0518/ and https://peps.python.org/pep-0621/
-    if (pkg_root / "setup.py").exists() or (pkg_root / "pyproject.toml").exists():
-        print("Adding local package installation phase")
+    if has_setup_py or has_buildable_pyproject:
+        cause = "setup.py" if has_setup_py else "pyproject.toml"
+        click.echo(
+            " ".join([
+                click.style(f"{cause}:", bold=True),
+                "Python package installation phase",
+            ])
+        )
+
+        print()
         commands.append(
             DockerCmdBlock(
-                comment="add local package to python environment",
-                commands=["run pip install --editable /root/"],
+                comment="Install python package",
+                commands=["run pip install /root/"],
                 order=DockerCmdBlockOrder.postcopy,
             )
         )
 
     if (pkg_root / "requirements.txt").exists():
-        print("Adding python dependency installation phase")
+        click.echo(
+            " ".join([
+                click.style("requirements.txt:", bold=True),
+                "Python pip dependencies installation phase",
+            ])
+        )
         commands.append(
             DockerCmdBlock(
-                comment=(
-                    "add requirements from `requirements.txt` to python environment"
-                ),
+                comment="Install pip dependencies from `requirements.txt`",
                 commands=[
                     "copy requirements.txt /opt/latch/requirements.txt",
                     "run pip install --requirement /opt/latch/requirements.txt",
@@ -167,32 +284,40 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
         )
 
     if (pkg_root / ".env").exists():
-        print("Adding environment variable phase")
-        envs = []
+        click.echo(
+            " ".join([click.style(".env:", bold=True), "Environment variable setup"])
+        )
+        envs: list[str] = []
         for line in (pkg_root / ".env").read_text().splitlines():
+            line = line.strip()
+
+            if line == "":
+                continue
             if line.startswith("#"):
                 continue
-            if line.strip() == "":
-                continue
+
             envs.append(f"env {line}")
 
         commands.append(
             DockerCmdBlock(
-                comment="set environment variables",
+                comment="Set environment variables",
                 commands=envs,
-                order=DockerCmdBlockOrder.postcopy,
+                order=DockerCmdBlockOrder.precopy,
             )
         )
 
     return commands
 
 
-def generate_dockerfile(pkg_root: Path, outfile: Path) -> None:
+def generate_dockerfile(
+    pkg_root: Path, outfile: Path, *, wf_type: WorkflowType = WorkflowType.latchbiosdk
+) -> None:
     """Generate a best effort Dockerfile from files in the workflow directory.
 
     Args:
         pkg_root: A path to a workflow directory.
         outfile: The path to write the generated Dockerfile.
+        wf_type: The type of workflow (eg. snakemake) the Dockerfile is for
 
     Example:
 
@@ -203,37 +328,61 @@ def generate_dockerfile(pkg_root: Path, outfile: Path) -> None:
             #   └── ...
     """
 
-    print("Generating Dockerfile")
+    click.secho("Generating Dockerfile", bold=True)
     try:
         with (pkg_root / latch_constants.pkg_config).open("r") as f:
             config: LatchWorkflowConfig = LatchWorkflowConfig(**json.load(f))
-            print("  - base image:", config.base_image)
-            print("  - latch version:", config.latch_version)
-    except FileNotFoundError as e:
-        print(
-            "Could not find a .latch/config file in the supplied directory. Creating"
-            " configuration"
-        )
+    except FileNotFoundError:
+        click.secho("Creating a default configuration file")
+
         create_and_write_config(pkg_root)
         with (pkg_root / latch_constants.pkg_config).open("r") as f:
-            config: LatchWorkflowConfig = LatchWorkflowConfig(**json.load(f))
+            config = LatchWorkflowConfig(**json.load(f))
+
+    click.echo(
+        " ".join([
+            click.style("Base image:", fg="bright_blue"),
+            config.base_image,
+        ])
+    )
+    click.echo(
+        " ".join([
+            click.style("Latch SDK version:", fg="bright_blue"),
+            config.latch_version,
+        ])
+    )
+    click.echo()
 
     with outfile.open("w") as f:
-        f.write("\n".join(get_prologue(config)) + "\n\n")
+        f.write("\n".join(get_prologue(config, wf_type)) + "\n\n")
 
         commands = infer_commands(pkg_root)
+        if len(commands) > 0:
+            click.echo()
 
         for block in commands:
-            if block.order == DockerCmdBlockOrder.precopy:
-                block.write_block(f)
+            if block.order != DockerCmdBlockOrder.precopy:
+                continue
 
-        f.write("# copy all code from package (use .dockerignore to skip files)\n")
+            block.write_block(f)
+
+        f.write("# Copy workflow data (use .dockerignore to skip files)\n")
         f.write("copy . /root/\n\n")
 
         for block in commands:
-            if block.order == DockerCmdBlockOrder.postcopy:
-                block.write_block(f)
+            if block.order != DockerCmdBlockOrder.postcopy:
+                continue
 
-        f.write("\n".join(get_epilogue()) + "\n")
+            block.write_block(f)
 
-    print("Generated.")
+        f.write("\n".join(get_epilogue(wf_type)) + "\n")
+
+
+def get_default_dockerfile(pkg_root: Path, *, wf_type: WorkflowType):
+    default_dockerfile = pkg_root / "Dockerfile"
+
+    if not default_dockerfile.exists():
+        default_dockerfile = pkg_root / ".latch" / "Dockerfile"
+        generate_dockerfile(pkg_root, default_dockerfile, wf_type=wf_type)
+
+    return default_dockerfile
