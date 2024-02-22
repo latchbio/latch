@@ -32,7 +32,7 @@ def _inject_metadata(f: Callable, metadata: LatchMetadata) -> None:
 # so that when users call @workflow without any arguments or
 # parentheses, the workflow still serializes as expected
 def workflow(
-    metadata: Optional[Union[LatchMetadata, Callable]] = None
+    metadata: Union[LatchMetadata, Callable]
 ) -> Union[PythonFunctionWorkflow, Callable]:
     if isinstance(metadata, Callable):
         f = metadata
@@ -44,10 +44,6 @@ def workflow(
     def decorator(f: Callable):
         signature = inspect.signature(f)
         wf_params = signature.parameters
-
-        nonlocal metadata
-        if metadata is None:
-            metadata = _generate_metadata(f)
 
         for wf_param in wf_params:
             if wf_param not in metadata.parameters:
