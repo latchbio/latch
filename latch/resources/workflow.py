@@ -1,7 +1,7 @@
 import inspect
 from dataclasses import is_dataclass
 from textwrap import dedent
-from typing import Callable, Optional, Union, get_args, get_origin
+from typing import Callable, Dict, Optional, Union, get_args, get_origin
 
 import click
 from flytekit import workflow as _workflow
@@ -11,6 +11,23 @@ from latch.types.metadata import LatchAuthor, LatchMetadata, LatchParameter
 from latch_cli.utils import best_effort_display_name
 
 
+def _generate_metadata(f: Callable) -> Dict[str, LatchParameter]:
+    signature = inspect.signature(f)
+    metadata = LatchMetadata(f.__name__, LatchAuthor())
+    metadata.parameters = {
+        param: LatchParameter(display_name=best_effort_display_name(param))
+        for param in signature.parameters
+    }
+    return metadata
+
+
+def _inject_metadata(f: Callable, metadata: LatchMetadata) -> None:
+    if f.__doc__ is None:
+        f.__doc__ = f"{f.__name__}\n\nSample Description"
+    short_desc, long_desc = f.__doc__.split("\n", 1)
+    f.__doc__ = f"{short_desc}\n{dedent(long_desc)}\n\n" + str(metadata)
+
+
 # this weird Union thing is to ensure backwards compatibility,
 # so that when users call @workflow without any arguments or
 # parentheses, the workflow still serializes as expected
@@ -18,7 +35,11 @@ def workflow(
     metadata: Optional[Union[LatchMetadata, Callable]] = None
 ) -> Union[PythonFunctionWorkflow, Callable]:
     if isinstance(metadata, Callable):
-        return _workflow(metadata)
+        f = metadata
+        if "__metadata__:" not in f.__doc__:
+            metadata = _generate_metadata(f)
+            _inject_metadata(f, metadata)
+        return _workflow(f)
 
     def decorator(f: Callable):
         signature = inspect.signature(f)
@@ -26,11 +47,7 @@ def workflow(
 
         nonlocal metadata
         if metadata is None:
-            metadata = LatchMetadata(f.__name__, LatchAuthor())
-            metadata.parameters = {
-                param: LatchParameter(display_name=best_effort_display_name(param))
-                for param in wf_params
-            }
+            metadata = _generate_metadata(f)
 
         for wf_param in wf_params:
             if wf_param not in metadata.parameters:
@@ -74,15 +91,14 @@ def workflow(
                 and is_dataclass(args[0])
             )
             if not valid:
-                raise ValueError(
+                click.secho(
                     f"parameter marked as samplesheet is not valid: {name} "
-                    f"in workflow {f.__name__} must be a list of dataclasses"
+                    f"in workflow {f.__name__} must be a list of dataclasses",
+                    fg="red",
                 )
+                raise click.exceptions.Exit(1)
 
-        if f.__doc__ is None:
-            f.__doc__ = f"{f.__name__}\n\nSample Description"
-        short_desc, long_desc = f.__doc__.split("\n", 1)
-        f.__doc__ = f"{short_desc}\n{dedent(long_desc)}\n\n" + str(metadata)
+        _inject_metadata(f, metadata)
         return _workflow(f)
 
     return decorator
