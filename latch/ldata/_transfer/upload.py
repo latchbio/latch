@@ -22,7 +22,6 @@ from latch.ldata.type import LDataNodeType
 from latch_cli import tinyrequests
 from latch_cli.constants import latch_constants, units
 from latch_cli.utils import get_auth_header, urljoins, with_si_suffix
-from latch_cli.utils.ldata import LDataNodeType, get_node_data
 from latch_cli.utils.path import normalize_path
 
 from .manager import TransferStateManager

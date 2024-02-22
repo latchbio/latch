@@ -7,10 +7,7 @@ from typing import List
 import click
 import click.shell_completion as sc
 
-from latch_cli.utils.ldata import (
-    _get_immediate_children_of_node,
-    _get_known_domains_for_account,
-)
+from .utils import _get_immediate_children_of_node, _get_known_domains_for_account
 
 cache = lru_cache(maxsize=None)
 completion_type = re.compile(
