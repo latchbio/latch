@@ -213,7 +213,6 @@ def download_file(
 ) -> int:
     # todo(ayush): benchmark parallelized downloads using the range header
     with open(job.dest, "wb") as f:
-
         res = request_with_retry(
             HTTPMethod.get,
             job.signed_url,

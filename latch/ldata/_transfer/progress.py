@@ -133,8 +133,8 @@ class ProgressBars:
         for bar in self.task_bars:
             bar.close()
 
-        # go to next line
-        print()
+        # move cursor back to beginning of line
+        print("\r", end="")
 
 
 @contextmanager
