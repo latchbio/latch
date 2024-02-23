@@ -326,7 +326,7 @@ def build_from_nextflow_dag(wf: NextflowWorkflow):
 def ensure_nf_dependencies(pkg_root: Path):
     try:
         subprocess.run(["java", "--version"], check=True, capture_output=True)
-    except subprocess.CalledProcessError as e:
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
         click.secho(
             dedent("""\
             Java is not installed - this is a requirement to run Nextflow.
@@ -374,6 +374,7 @@ def ensure_nf_dependencies(pkg_root: Path):
             click.secho(progress_str, dim=True, italic=True, nl=False)
             click.echo(f"\x1b[{len(progress_str)}D", nl=False)
 
+        click.echo("\x1b[0K", nl=False)
         click.secho("Done. \x1b[?25h", italic=True)
 
 
