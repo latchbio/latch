@@ -1,6 +1,5 @@
 from textwrap import dedent
 
-import click
 import gql
 from gql.transport.exceptions import TransportQueryError
 from latch_sdk_gql.execute import execute
@@ -11,7 +10,7 @@ from latch_cli.utils.path import get_name_from_path, get_path_error
 from .node import get_node_data
 
 
-def remote_copy(src: str, dst: str, *, show_summary: bool = False) -> None:
+def remote_copy(src: str, dst: str) -> None:
     node_data = get_node_data(src, dst, allow_resolve_to_parent=True)
 
     src_data = node_data.data[src]
@@ -88,9 +87,3 @@ def remote_copy(src: str, dst: str, *, show_summary: bool = False) -> None:
             raise ValueError(get_path_error(dst, "object exists at path.", acc_id))
 
         raise ValueError(get_path_error(src, str(e), acc_id))
-
-    if show_summary:
-        click.echo(dedent(f"""
-            {click.style("Copy Requested.", fg="green")}
-            {click.style("Source: ", fg="blue")}{(src)}
-            {click.style("Destination: ", fg="blue")}{(dst)}"""))

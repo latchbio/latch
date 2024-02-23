@@ -1,5 +1,60 @@
 import os
-from typing import List
+import time
+from enum import Enum
+from typing import Any, Callable, Dict, List, Optional
+
+from latch_cli import tinyrequests
+
+
+class HTTPMethod(Enum):
+    post = "post"
+    put = "put"
+    get = "get"
+
+
+req_method_map: Dict[HTTPMethod, Callable] = {
+    HTTPMethod.get: tinyrequests.get,
+    HTTPMethod.post: tinyrequests.post,
+    HTTPMethod.put: tinyrequests.put,
+}
+
+
+def request_with_retry(
+    method: HTTPMethod,
+    url: str,
+    *,
+    headers: Optional[Dict[str, str]] = {},
+    data: Optional[Any] = None,
+    json: Optional[bytes] = None,
+    stream: bool = False,
+    num_retries: int = 3,
+) -> tinyrequests.TinyResponse:
+    """
+    Send HTTP request. Retry on 500s or ConnectionErrors.
+    Implements exponential backoff between retries
+    """
+    err = None
+    res = None
+
+    attempt = 0
+    while attempt < num_retries:
+        attempt += 1
+        try:
+            assert func in req_method_map
+            func = req_method_map.get(method)
+            if func is None:
+                return
+            res = func(url, headers=headers, data=data, json=json, stream=stream)
+            if res.status_code < 500:
+                return res
+        except ConnectionError as e:
+            err = e
+
+        time.sleep(2**attempt * 5)
+
+    if res is None:
+        raise err
+    return res
 
 
 def get_max_workers() -> int:
@@ -13,19 +68,3 @@ def get_max_workers() -> int:
             max_workers = 16
 
     return min(max_workers, 16)
-
-
-def human_readable_time(t_seconds: float) -> str:
-    s = t_seconds % 60
-    m = (t_seconds // 60) % 60
-    h = t_seconds // 60 // 60
-
-    x: List[str] = []
-    if h > 0:
-        x.append(f"{int(h):d}h")
-    if m > 0:
-        x.append(f"{int(m):d}m")
-    if s > 0:
-        x.append(f"{s:.2f}s")
-
-    return " ".join(x)

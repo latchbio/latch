@@ -14,21 +14,19 @@ from queue import Queue
 from textwrap import dedent
 from typing import TYPE_CHECKING, List, Optional, TypedDict
 
-import click
 from latch_sdk_config.latch import config as latch_config
 from typing_extensions import TypeAlias
 
 from latch.ldata.type import LDataNodeType
-from latch_cli import tinyrequests
 from latch_cli.constants import latch_constants, units
 from latch_cli.utils import get_auth_header, urljoins, with_si_suffix
 from latch_cli.utils.path import normalize_path
 
 from .manager import TransferStateManager
-from .node import get_node_data
+from .node import LatchPathNotFound, get_node_data
 from .progress import Progress, ProgressBars
 from .throttle import Throttle
-from .utils import get_max_workers, human_readable_time
+from .utils import HTTPMethod, get_max_workers, request_with_retry
 
 if TYPE_CHECKING:
     PathQueueType: TypeAlias = "Queue[Optional[Path]]"
@@ -48,32 +46,42 @@ class UploadJob:
     dest: str
 
 
+@dataclass(frozen=True)
+class _UploadResult:
+    num_files: int
+    total_bytes: int
+    total_time: int
+
+
 def upload(
     src: str,  # pathlib.Path strips trailing slashes but we want to keep them here as they determine cp behavior
     dest: str,
     progress: Progress,
     verbose: bool,
-) -> None:
+    create_parents: bool = False,
+) -> _UploadResult:
     src_path = Path(src)
     if not src_path.exists():
         raise ValueError(f"could not find {src_path}: no such file or directory.")
 
-    if progress != Progress.none:
-        click.secho(f"Uploading {src_path.name}", fg="blue")
-
-    node_data = get_node_data(dest, allow_resolve_to_parent=True)
-    dest_data = node_data.data[dest]
-
     normalized = normalize_path(dest)
 
-    dest_exists = not dest_data.is_parent
-    dest_is_dir = dest_data.type in {
+    try:
+        node_data = get_node_data(dest, allow_resolve_to_parent=True)
+        dest_data = node_data.data[dest]
+    except LatchPathNotFound as e:
+        if not create_parents:
+            raise e
+        dest_data = None
+
+    dest_exists = dest_data is not None and not dest_data.is_parent
+    dest_is_dir = dest_data is not None and dest_data.type in {
         LDataNodeType.account_root,
         LDataNodeType.mount,
         LDataNodeType.dir,
     }
 
-    if not dest_is_dir:
+    if dest_data is not None and not dest_is_dir:
         if not dest_exists:  # path is latch:///a/b/file_1/file_2
             raise ValueError(f"no such file or directory: {dest}")
         if src_path.is_dir():
@@ -254,12 +262,8 @@ def upload(
 
     end = time.monotonic()
     total_time = end - start
-    if progress != Progress.none:
-        click.echo(dedent(f"""
-            {click.style("Upload Complete", fg="green")}
-            {click.style("Time Elapsed: ", fg="blue")}{human_readable_time(total_time)}
-            {click.style("Files Uploaded: ", fg="blue")}{num_files} ({with_si_suffix(total_bytes)})
-            """))
+
+    return _UploadResult(num_files, total_bytes, total_time)
 
 
 @dataclass(frozen=True)
@@ -321,7 +325,8 @@ def start_upload(
             time.sleep(throttle.get_delay() * math.exp(retries * 1 / 2))
 
         start = time.monotonic()
-        res = tinyrequests.post(
+        res = request_with_retry(
+            HTTPMethod.post,
             latch_config.api.data.start_upload,
             headers={"Authorization": get_auth_header()},
             json={
@@ -384,7 +389,7 @@ def upload_file_chunk(
         f.seek(part_size * part_index)
         data = f.read(part_size)
 
-    res = tinyrequests.put(url, data=data)
+    res = request_with_retry(HTTPMethod.put, url, data=data)
     if res.status_code != 200:
         raise HTTPException(
             f"failed to upload part {part_index} of {src}: {res.status_code}"
@@ -428,7 +433,8 @@ def end_upload(
     parts: List[CompletedPart],
     progress_bars: Optional[ProgressBars] = None,
 ):
-    res = tinyrequests.post(
+    res = request_with_retry(
+        HTTPMethod.post,
         latch_config.api.data.end_upload,
         headers={"Authorization": get_auth_header()},
         json={

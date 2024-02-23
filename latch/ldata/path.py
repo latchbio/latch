@@ -205,14 +205,14 @@ class LPath:
             {"nodeId": self.node_id()},
         )
 
-    def copy_to(self, dst: "LPath", *, show_summary: bool = False) -> None:
+    def copy_to(self, dst: "LPath") -> None:
         """Copy the file at this instance's path to the given destination.
 
         Args:
         dst: The destination LPath.
         show_summary: Whether to print a summary of the copy operation.
         """
-        _remote_copy(self.path, dst.path, show_summary=show_summary)
+        _remote_copy(self.path, dst.path)
 
     def upload_from(self, src: Path, *, show_progress_bar: bool = False) -> None:
         """Upload the file at the given source to this instance's path.

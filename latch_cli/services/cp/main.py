@@ -9,7 +9,26 @@ from latch.ldata._transfer.progress import Progress
 from latch.ldata._transfer.remote_copy import remote_copy as _remote_copy
 from latch.ldata._transfer.upload import upload as _upload
 from latch_cli.services.cp.glob import expand_pattern
+from latch_cli.utils import human_readable_time, with_si_suffix
 from latch_cli.utils.path import is_remote_path
+
+
+def _copy_and_print(src: str, dst: str) -> None:
+    _remote_copy(src, dst)
+    click.echo(dedent(f"""
+        {click.style("Copy Requested.", fg="green")}
+        {click.style("Source: ", fg="blue")}{(src)}
+        {click.style("Destination: ", fg="blue")}{(dst)}"""))
+
+
+def _download_and_print(src: str, dst: Path, progress: Progress, verbose: bool) -> None:
+    res = _download(src, dst, progress, verbose)
+    if progress != Progress.none:
+        click.echo(dedent(f"""
+			{click.style("Download Complete", fg="green")}
+			{click.style("Time Elapsed: ", fg="blue")}{human_readable_time(res.total_time)}
+			{click.style("Files Downloaded: ", fg="blue")}{res.num_files} ({with_si_suffix(res.total_bytes)})
+			"""))
 
 
 # todo(ayush): come up with a better behavior scheme than unix cp
@@ -30,23 +49,26 @@ def cp(
             if src_remote and not dest_remote:
                 if expand_globs:
                     [
-                        _download(p, Path(dest), progress=progress, verbose=verbose)
+                        _download_and_print(p, Path(dest), progress, verbose)
                         for p in expand_pattern(src)
                     ]
                 else:
-                    _download(
-                        src, Path(dest), show_progress_bar=progress, verbose=verbose
-                    )
+                    _download_and_print(src, Path(dest), progress, verbose)
             elif not src_remote and dest_remote:
-                _upload(src, dest, progress=progress, verbose=verbose)
+                if progress != Progress.none:
+                    click.echo(f"Uploading {src}", fg="blue")
+                res = _upload(src, dest, progress=progress, verbose=verbose)
+                if progress != Progress.none:
+                    click.echo(dedent(f"""
+                        {click.style("Upload Complete", fg="green")}
+                        {click.style("Time Elapsed: ", fg="blue")}{human_readable_time(res.total_time)}
+                        {click.style("Files Uploaded: ", fg="blue")}{res.num_files} ({with_si_suffix(res.total_bytes)})
+                        """))
             elif src_remote and dest_remote:
                 if expand_globs:
-                    [
-                        _remote_copy(p, dest, show_summary=True)
-                        for p in expand_pattern(src)
-                    ]
+                    [_copy_and_print(p, dest) for p in expand_pattern(src)]
                 else:
-                    _remote_copy(src, dest, show_summary=True)
+                    _copy_and_print(src, dest)
             else:
                 raise ValueError(
                     dedent(f"""
