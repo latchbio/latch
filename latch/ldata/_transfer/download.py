@@ -7,12 +7,11 @@ from pathlib import Path
 from typing import Dict, List, Set, TypedDict
 
 import click
-
 from latch_sdk_config.latch import config as latch_config
 
 from latch.ldata.type import LDataNodeType
 from latch_cli.constants import Units
-from latch_cli.utils import get_auth_header, with_si_suffix, human_readable_time
+from latch_cli.utils import get_auth_header, human_readable_time, with_si_suffix
 from latch_cli.utils.path import normalize_path
 
 from .manager import TransferStateManager
@@ -34,6 +33,7 @@ class DownloadJob:
     signed_url: str
     dest: Path
 
+
 @dataclass(frozen=True)
 class _DownloadResult:
     num_files: int
@@ -52,8 +52,8 @@ def download(
     if not dest.parent.exists():
         if not create_parents:
             raise ValueError(
-                f"invalid copy destination {dest}. Parent directory {dest.parent} does not"
-                " exist."
+                f"invalid copy destination {dest}. Parent directory {dest.parent} does"
+                " not exist."
             )
         dest.parent.mkdir(parents=True)
 
@@ -132,9 +132,7 @@ def download(
                     job.dest.parent.mkdir(parents=True, exist_ok=True)
                     confirmed_jobs.append(job)
                 else:
-                    print(
-                        f"Skipping {job.dest.parent}, file already exists"
-                    )
+                    print(f"Skipping {job.dest.parent}, file already exists")
                     rejected_jobs.add(job.dest.parent)
 
         num_files = len(confirmed_jobs)
@@ -207,7 +205,6 @@ def download(
     return _DownloadResult(num_files, total_bytes, total_time)
 
 
-
 # dest will always be a path which includes the copied file as its leaf
 # e.g. download_file("a/b.txt", Path("c/d.txt")) will copy the content of 'b.txt' into 'd.txt'
 def download_file(
@@ -224,7 +221,8 @@ def download_file(
         )
         if res.status_code != 200:
             raise RuntimeError(
-                f"failed to download {job.dest.name}: {res.status_code}: {res.json()["error"]}"
+                f"failed to download {job.dest.name}: {res.status_code}:"
+                f" {res.json()['error']}"
             )
 
         total_bytes = res.headers.get("Content-Length")

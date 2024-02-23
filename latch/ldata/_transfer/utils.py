@@ -46,7 +46,7 @@ def request_with_retry(
         res = None
         attempt += 1
         try:
-            assert func in req_method_map
+            assert method in req_method_map
             func = req_method_map.get(method)
             res = func(url, headers=headers, data=data, json=json, stream=stream)
             if res.status_code < 500:
