@@ -24,7 +24,7 @@ def _copy_and_print(src: str, dst: str) -> None:
 
 def _download_and_print(src: str, dst: Path, progress: Progress, verbose: bool) -> None:
     if progress != Progress.none:
-        click.echo(f"Downloading {dst.name}", fg="blue")
+        click.secho(f"Downloading {dst.name}", fg="blue")
     res = _download(src, dst, progress, verbose)
     if progress != Progress.none:
         click.echo(dedent(f"""
@@ -59,7 +59,7 @@ def cp(
                     _download_and_print(src, Path(dest), progress, verbose)
             elif not src_remote and dest_remote:
                 if progress != Progress.none:
-                    click.echo(f"Uploading {src}", fg="blue")
+                    click.secho(f"Uploading {src}", fg="blue")
                 res = _upload(src, dest, progress=progress, verbose=verbose)
                 if progress != Progress.none:
                     click.echo(dedent(f"""
@@ -79,7 +79,6 @@ def cp(
 
                     Please ensure at least one of your arguments is a remote path (beginning with `latch://`)
                     """).strip("\n"),
-                    fg="red",
                 )
         except LatchPathError as e:
             click.secho(get_path_error(e.remote_path, e.message, e.acc_id), fg="red")
