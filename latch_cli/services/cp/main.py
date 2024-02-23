@@ -5,12 +5,13 @@ from typing import List
 import click
 
 from latch.ldata._transfer.download import download as _download
+from latch.ldata._transfer.node import LatchPathError
 from latch.ldata._transfer.progress import Progress
 from latch.ldata._transfer.remote_copy import remote_copy as _remote_copy
 from latch.ldata._transfer.upload import upload as _upload
 from latch_cli.services.cp.glob import expand_pattern
 from latch_cli.utils import human_readable_time, with_si_suffix
-from latch_cli.utils.path import is_remote_path
+from latch_cli.utils.path import get_path_error, is_remote_path
 
 
 def _copy_and_print(src: str, dst: str) -> None:
@@ -22,6 +23,8 @@ def _copy_and_print(src: str, dst: str) -> None:
 
 
 def _download_and_print(src: str, dst: Path, progress: Progress, verbose: bool) -> None:
+    if progress != Progress.none:
+        click.echo(f"Downloading {dst.name}", fg="blue")
     res = _download(src, dst, progress, verbose)
     if progress != Progress.none:
         click.echo(dedent(f"""
@@ -78,6 +81,9 @@ def cp(
                     """).strip("\n"),
                     fg="red",
                 )
+        except LatchPathError as e:
+            click.secho(get_path_error(e.remote_path, e.message, e.acc_id), fg="red")
+            raise click.exceptions.Exit(1) from e
         except Exception as e:
             click.secho(str(e), fg="red")
             raise click.exceptions.Exit(1) from e
