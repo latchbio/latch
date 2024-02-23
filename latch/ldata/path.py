@@ -86,7 +86,7 @@ class LPath:
         Always makes a network request.
         """
         data = query_with_retry(
-            """
+            gql.gql("""
             query GetNodeData($path: String!) {
                 ldataResolvePathToNode(path: $path) {
                     ldataNode {
@@ -102,7 +102,7 @@ class LPath:
                         }
                     }
                 }
-            }""",
+            }"""),
             {"path": self.path},
         )["ldataResolvePathToNode"]
 
@@ -163,7 +163,7 @@ class LPath:
         Always makes a network request.
         """
         data = query_with_retry(
-            """
+            gql.gql("""
             query LDataChildren($argPath: String!) {
                 ldataResolvePathData(argPath: $argPath) {
                     finalLinkTarget {
@@ -177,7 +177,7 @@ class LPath:
                         }
                     }
                 }
-            }""",
+            }"""),
             {"argPath": self.path},
         )["ldataResolvePathData"]
 
@@ -195,13 +195,13 @@ class LPath:
         Always makes a network request.
         """
         query_with_retry(
-            """
+            gql.gql("""
             mutation LDataRmr($nodeId: BigInt!) {
                 ldataRmr(input: { argNodeId: $nodeId }) {
                     clientMutationId
                 }
             }
-            """,
+            """),
             {"nodeId": self.node_id()},
         )
 
@@ -226,6 +226,7 @@ class LPath:
             self.path,
             progress=_Progress.tasks if show_progress_bar else _Progress.none,
             verbose=False,
+            create_parents=True,
         )
 
     def download(

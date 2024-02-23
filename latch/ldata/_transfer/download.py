@@ -6,9 +6,10 @@ from itertools import repeat
 from pathlib import Path
 from typing import Dict, List, Set, TypedDict
 
+import click
+
 from latch_sdk_config.latch import config as latch_config
 
-import click
 from latch.ldata.type import LDataNodeType
 from latch_cli.constants import Units
 from latch_cli.utils import get_auth_header, with_si_suffix, human_readable_time
@@ -35,9 +36,9 @@ class DownloadJob:
 
 @dataclass(frozen=True)
 class _DownloadResult:
-    total_bytes: int
-    total_time: float
     num_files: int
+    total_bytes: int
+    total_time: int
 
 
 def download(
@@ -203,7 +204,7 @@ def download(
 
     total_time = end - start
 
-    return _DownloadResult(total_bytes, total_time, num_files)
+    return _DownloadResult(num_files, total_bytes, total_time)
 
 
 

@@ -30,7 +30,7 @@ def remote_copy(src: str, dst: str) -> None:
 
     try:
         query_with_retry(
-            """
+            gql.gql("""
             mutation Copy(
                 $argSrcNode: BigInt!
                 $argDstParent: BigInt!
@@ -45,7 +45,7 @@ def remote_copy(src: str, dst: str) -> None:
                 ) {
                     clientMutationId
                 }
-            }""",
+            }"""),
             {
                 "argSrcNode": src_data.id,
                 "argDstParent": dst_data.id,

@@ -3,7 +3,7 @@ import time
 from enum import Enum
 from typing import Any, Callable, Dict, Optional
 
-import gql
+from gql.gql import DocumentNode
 from gql.transport.exceptions import TransportClosed, TransportServerError
 from latch_sdk_gql import JsonValue
 from latch_sdk_gql.execute import execute
@@ -62,7 +62,7 @@ def request_with_retry(
 
 
 def query_with_retry(
-    query: str,
+    document: DocumentNode,
     variables: Optional[Dict[str, JsonValue]] = None,
     *,
     num_retries: int = 3,
@@ -76,7 +76,7 @@ def query_with_retry(
         attempt += 1
         try:
             data = execute(
-                gql.gql(query),
+                document,
                 variables,
             )
             return data
