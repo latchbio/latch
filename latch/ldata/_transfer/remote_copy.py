@@ -2,12 +2,12 @@ from textwrap import dedent
 
 import gql
 from gql.transport.exceptions import TransportQueryError
-from latch_sdk_gql.execute import execute
 
 from latch.ldata.type import LDataNodeType
 from latch_cli.utils.path import get_name_from_path
 
 from .node import LatchPathError, get_node_data
+from .utils import query_with_retry
 
 
 def remote_copy(src: str, dst: str) -> None:
@@ -29,8 +29,8 @@ def remote_copy(src: str, dst: str) -> None:
         raise LatchPathError("object already exists at path", dst, acc_id)
 
     try:
-        execute(
-            gql.gql("""
+        query_with_retry(
+            """
             mutation Copy(
                 $argSrcNode: BigInt!
                 $argDstParent: BigInt!
@@ -45,7 +45,7 @@ def remote_copy(src: str, dst: str) -> None:
                 ) {
                     clientMutationId
                 }
-            }"""),
+            }""",
             {
                 "argSrcNode": src_data.id,
                 "argDstParent": dst_data.id,

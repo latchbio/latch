@@ -2,12 +2,13 @@ from dataclasses import dataclass
 from typing import Dict, List, TypedDict
 
 import graphql.language as l
-from latch_sdk_gql.execute import execute
 from latch_sdk_gql.utils import _name_node, _parse_selection
 from typing_extensions import TypeAlias
 
 from latch.ldata.type import LDataNodeType
 from latch_cli.utils.path import normalize_path
+
+from .utils import query_with_retry
 
 AccId: TypeAlias = int
 
@@ -121,7 +122,7 @@ def get_node_data(
     assert isinstance(query, l.OperationDefinitionNode)
     query.selection_set = sel_set
 
-    res = execute(doc)
+    res = query_with_retry(doc)
 
     acc_info: AccountInfoCurrentPayload = res["accountInfoCurrent"]
     acc_id = acc_info["id"]

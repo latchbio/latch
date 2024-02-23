@@ -60,8 +60,6 @@ def download(
     data = get_node_data(src)
 
     node_data = data.data[src]
-    if progress != Progress.none:
-        print(f"Downloading {node_data.name}")
 
     can_have_children = node_data.type in {
         LDataNodeType.account_root,

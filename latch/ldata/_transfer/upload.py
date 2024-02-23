@@ -23,7 +23,7 @@ from latch_cli.utils import get_auth_header, urljoins, with_si_suffix
 from latch_cli.utils.path import normalize_path
 
 from .manager import TransferStateManager
-from .node import LatchPathNotFound, get_node_data
+from .node import LatchPathError, get_node_data
 from .progress import Progress, ProgressBars
 from .throttle import Throttle
 from .utils import HTTPMethod, get_max_workers, request_with_retry
@@ -69,7 +69,7 @@ def upload(
     try:
         node_data = get_node_data(dest, allow_resolve_to_parent=True)
         dest_data = node_data.data[dest]
-    except LatchPathNotFound as e:
+    except LatchPathError as e:
         if not create_parents:
             raise e
         dest_data = None

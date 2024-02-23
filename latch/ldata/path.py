@@ -17,17 +17,17 @@ from flytekit import (
     Scalar,
 )
 from flytekit.extend import TypeEngine, TypeTransformer
-from latch_sdk_gql.execute import execute
 from typing_extensions import Self
 
 from latch.ldata.type import LDataNodeType
 from latch_cli.utils import urljoins
 
 from ._transfer.download import download as _download
-from ._transfer.node import LatchPathNotFound
+from ._transfer.node import LatchPathError
 from ._transfer.progress import Progress as _Progress
 from ._transfer.remote_copy import remote_copy as _remote_copy
 from ._transfer.upload import upload as _upload
+from ._transfer.utils import query_with_retry
 
 node_id_regex = re.compile(r"^latch://(?P<id>[0-9]+)\.node$")
 
@@ -85,8 +85,8 @@ class LPath:
 
         Always makes a network request.
         """
-        data = execute(
-            gql.gql("""
+        data = query_with_retry(
+            """
             query GetNodeData($path: String!) {
                 ldataResolvePathToNode(path: $path) {
                     ldataNode {
@@ -102,12 +102,12 @@ class LPath:
                         }
                     }
                 }
-            }"""),
+            }""",
             {"path": self.path},
         )["ldataResolvePathToNode"]
 
         if data is None or data["ldataNode"] is None:
-            raise LatchPathNotFound(f"no such Latch file or directory: {self.path}")
+            raise LatchPathError(f"no such Latch file or directory", self.path)
 
         self._cache.path = self.path
 
@@ -162,8 +162,8 @@ class LPath:
 
         Always makes a network request.
         """
-        data = execute(
-            gql.gql("""
+        data = query_with_retry(
+            """
             query LDataChildren($argPath: String!) {
                 ldataResolvePathData(argPath: $argPath) {
                     finalLinkTarget {
@@ -177,12 +177,12 @@ class LPath:
                         }
                     }
                 }
-            }"""),
+            }""",
             {"argPath": self.path},
         )["ldataResolvePathData"]
 
         if data is None:
-            raise LatchPathNotFound(f"no such Latch file or directory: {self.path}")
+            raise LatchPathError(f"no such Latch file or directory", {self.path})
         if data["finalLinkTarget"]["type"].lower() not in _dir_types:
             raise ValueError(f"not a directory: {self.path}")
 
@@ -194,14 +194,14 @@ class LPath:
 
         Always makes a network request.
         """
-        execute(
-            gql.gql("""
+        query_with_retry(
+            """
             mutation LDataRmr($nodeId: BigInt!) {
                 ldataRmr(input: { argNodeId: $nodeId }) {
                     clientMutationId
                 }
             }
-            """),
+            """,
             {"nodeId": self.node_id()},
         )
 
@@ -252,6 +252,7 @@ class LPath:
             progress=_Progress.tasks if show_progress_bar else _Progress.none,
             verbose=False,
             confirm_overwrite=False,
+            create_parents=True,
         )
         return dst
 
