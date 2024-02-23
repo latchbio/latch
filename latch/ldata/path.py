@@ -253,7 +253,6 @@ class LPath:
             progress=_Progress.tasks if show_progress_bar else _Progress.none,
             verbose=False,
             confirm_overwrite=False,
-            create_parents=True,
         )
         return dst
 

@@ -48,15 +48,12 @@ def download(
     progress: Progress,
     verbose: bool,
     confirm_overwrite: bool = True,
-    create_parents: bool = False,
 ) -> DownloadResult:
     if not dest.parent.exists():
-        if not create_parents:
-            raise ValueError(
-                f"invalid copy destination {dest}. Parent directory {dest.parent} does"
-                " not exist."
-            )
-        dest.parent.mkdir(parents=True)
+        raise ValueError(
+            f"invalid copy destination {dest}. Parent directory {dest.parent} does"
+            " not exist."
+        )
 
     normalized = normalize_path(src)
     data = get_node_data(src)
