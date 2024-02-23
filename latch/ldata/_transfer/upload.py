@@ -18,6 +18,7 @@ from latch_sdk_config.latch import config as latch_config
 from typing_extensions import TypeAlias
 
 from latch.ldata.type import LDataNodeType
+from latch_cli import tinyrequests
 from latch_cli.constants import latch_constants, units
 from latch_cli.utils import get_auth_header, urljoins, with_si_suffix
 from latch_cli.utils.path import normalize_path
@@ -26,7 +27,7 @@ from .manager import TransferStateManager
 from .node import LatchPathError, get_node_data
 from .progress import Progress, ProgressBars
 from .throttle import Throttle
-from .utils import HTTPMethod, get_max_workers, request_with_retry
+from .utils import get_max_workers
 
 if TYPE_CHECKING:
     PathQueueType: TypeAlias = "Queue[Optional[Path]]"
@@ -47,7 +48,7 @@ class UploadJob:
 
 
 @dataclass(frozen=True)
-class _UploadResult:
+class UploadResult:
     num_files: int
     total_bytes: int
     total_time: int
@@ -59,7 +60,7 @@ def upload(
     progress: Progress,
     verbose: bool,
     create_parents: bool = False,
-) -> _UploadResult:
+) -> UploadResult:
     src_path = Path(src)
     if not src_path.exists():
         raise ValueError(f"could not find {src_path}: no such file or directory.")
@@ -86,6 +87,12 @@ def upload(
             raise ValueError(f"no such file or directory: {dest}")
         if src_path.is_dir():
             raise ValueError(f"{normalized} is not a directory.")
+
+    if not dest_exists and dest.endswith("/"):
+        # path is latch:///a/b/ but b does not exist yet
+        if not create_parents:
+            raise ValueError(f"no such file or directory: {dest}")
+        normalized = urljoins(normalized, src_path.name)
 
     if progress == Progress.none:
         num_bars = 0
@@ -263,7 +270,7 @@ def upload(
     end = time.monotonic()
     total_time = end - start
 
-    return _UploadResult(num_files, total_bytes, total_time)
+    return UploadResult(num_files, total_bytes, total_time)
 
 
 @dataclass(frozen=True)
@@ -325,8 +332,7 @@ def start_upload(
             time.sleep(throttle.get_delay() * math.exp(retries * 1 / 2))
 
         start = time.monotonic()
-        res = request_with_retry(
-            HTTPMethod.post,
+        res = tinyrequests.post(
             latch_config.api.data.start_upload,
             headers={"Authorization": get_auth_header()},
             json={
@@ -389,7 +395,7 @@ def upload_file_chunk(
         f.seek(part_size * part_index)
         data = f.read(part_size)
 
-    res = request_with_retry(HTTPMethod.put, url, data=data)
+    res = tinyrequests.put(url, data=data)
     if res.status_code != 200:
         raise HTTPException(
             f"failed to upload part {part_index} of {src}: {res.status_code}"
@@ -433,8 +439,7 @@ def end_upload(
     parts: List[CompletedPart],
     progress_bars: Optional[ProgressBars] = None,
 ):
-    res = request_with_retry(
-        HTTPMethod.post,
+    res = tinyrequests.post(
         latch_config.api.data.end_upload,
         headers={"Authorization": get_auth_header()},
         json={

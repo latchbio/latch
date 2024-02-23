@@ -1,7 +1,6 @@
 import os
 import time
-from enum import Enum
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Dict, Optional
 
 from gql.gql import DocumentNode
 from gql.transport.exceptions import TransportClosed, TransportServerError
@@ -11,56 +10,7 @@ from latch_sdk_gql.execute import execute
 from latch_cli import tinyrequests
 
 
-class HTTPMethod(Enum):
-    post = "post"
-    put = "put"
-    get = "get"
-
-
-req_method_map: Dict[HTTPMethod, Callable] = {
-    HTTPMethod.get: tinyrequests.get,
-    HTTPMethod.post: tinyrequests.post,
-    HTTPMethod.put: tinyrequests.put,
-}
-
-
-def request_with_retry(
-    method: HTTPMethod,
-    url: str,
-    *,
-    headers: Optional[Dict[str, str]] = {},
-    data: Optional[Any] = None,
-    json: Optional[bytes] = None,
-    stream: bool = False,
-    num_retries: int = 3,
-) -> tinyrequests.TinyResponse:
-    """
-    Send HTTP request. Retry on 500s or ConnectionErrors.
-    Implements exponential backoff between retries.
-    """
-    err = None
-    res = None
-
-    attempt = 0
-    while attempt < num_retries:
-        res = None
-        attempt += 1
-        try:
-            assert method in req_method_map
-            func = req_method_map.get(method)
-            res = func(url, headers=headers, data=data, json=json, stream=stream)
-            if res.status_code < 500:
-                return res
-        except ConnectionError as e:
-            err = e
-
-        time.sleep(2**attempt * 3)
-
-    if res is None:
-        raise err
-    return res
-
-
+# todo(rahul): move this function into latch_sdk_gql.execute
 def query_with_retry(
     document: DocumentNode,
     variables: Optional[Dict[str, JsonValue]] = None,
@@ -75,15 +25,14 @@ def query_with_retry(
     while attempt < num_retries:
         attempt += 1
         try:
-            data = execute(
-                document,
-                variables,
-            )
+            data = execute(document, variables)
             return data
         except (TransportServerError, TransportClosed) as e:
             err = e
 
-        time.sleep(2**attempt * 3)
+        if attempt < num_retries:
+            # todo(rahul): tune the sleep interval based on the startup time of the vacuole
+            time.sleep(2**attempt * 5)
 
     raise err
 

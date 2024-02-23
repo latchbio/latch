@@ -10,6 +10,7 @@ import click
 from latch_sdk_config.latch import config as latch_config
 
 from latch.ldata.type import LDataNodeType
+from latch_cli import tinyrequests
 from latch_cli.constants import Units
 from latch_cli.utils import get_auth_header, human_readable_time, with_si_suffix
 from latch_cli.utils.path import normalize_path
@@ -17,7 +18,7 @@ from latch_cli.utils.path import normalize_path
 from .manager import TransferStateManager
 from .node import get_node_data
 from .progress import Progress, ProgressBars, get_free_index
-from .utils import HTTPMethod, get_max_workers, request_with_retry
+from .utils import get_max_workers
 
 
 class GetSignedUrlData(TypedDict):
@@ -35,7 +36,7 @@ class DownloadJob:
 
 
 @dataclass(frozen=True)
-class _DownloadResult:
+class DownloadResult:
     num_files: int
     total_bytes: int
     total_time: int
@@ -48,7 +49,7 @@ def download(
     verbose: bool,
     confirm_overwrite: bool = True,
     create_parents: bool = False,
-) -> _DownloadResult:
+) -> DownloadResult:
     if not dest.parent.exists():
         if not create_parents:
             raise ValueError(
@@ -73,8 +74,7 @@ def download(
     else:
         endpoint = latch_config.api.data.get_signed_url
 
-    res = request_with_retry(
-        HTTPMethod.post,
+    res = tinyrequests.post(
         endpoint,
         headers={"Authorization": get_auth_header()},
         json={"path": normalized},
@@ -202,7 +202,7 @@ def download(
 
     total_time = end - start
 
-    return _DownloadResult(num_files, total_bytes, total_time)
+    return DownloadResult(num_files, total_bytes, total_time)
 
 
 # dest will always be a path which includes the copied file as its leaf
@@ -213,11 +213,7 @@ def download_file(
 ) -> int:
     # todo(ayush): benchmark parallelized downloads using the range header
     with open(job.dest, "wb") as f:
-        res = request_with_retry(
-            HTTPMethod.get,
-            job.signed_url,
-            stream=True,
-        )
+        res = tinyrequests.get(job.signed_url, stream=True)
         if res.status_code != 200:
             raise RuntimeError(
                 f"failed to download {job.dest.name}: {res.status_code}:"

@@ -14,12 +14,13 @@ from latch_cli.utils import human_readable_time, with_si_suffix
 from latch_cli.utils.path import get_path_error, is_remote_path
 
 
-def _copy_and_print(src: str, dst: str) -> None:
+def _copy_and_print(src: str, dst: str, progress: Progress) -> None:
     _remote_copy(src, dst)
-    click.echo(dedent(f"""
-        {click.style("Copy Requested.", fg="green")}
-        {click.style("Source: ", fg="blue")}{(src)}
-        {click.style("Destination: ", fg="blue")}{(dst)}"""))
+    if progress != Progress.none:
+        click.echo(dedent(f"""
+            {click.style("Copy Requested.", fg="green")}
+            {click.style("Source: ", fg="blue")}{(src)}
+            {click.style("Destination: ", fg="blue")}{(dst)}"""))
 
 
 def _download_and_print(src: str, dst: Path, progress: Progress, verbose: bool) -> None:
@@ -69,9 +70,9 @@ def cp(
                         """))
             elif src_remote and dest_remote:
                 if expand_globs:
-                    [_copy_and_print(p, dest) for p in expand_pattern(src)]
+                    [_copy_and_print(p, dest, progress) for p in expand_pattern(src)]
                 else:
-                    _copy_and_print(src, dest)
+                    _copy_and_print(src, dest, progress)
             else:
                 raise ValueError(
                     dedent(f"""
