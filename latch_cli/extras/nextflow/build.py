@@ -3,6 +3,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from textwrap import dedent
 from typing import Dict, List, Optional
 
 import boto3
@@ -320,13 +321,26 @@ def build_from_nextflow_dag(wf: NextflowWorkflow):
     wf._nodes = list(node_map.values()) + extra_nodes
 
 
+# todo(ayush): add versioning system to nf download
+# todo(ayush): allow user to redownload nf anyway via cli option
 def ensure_nf_dependencies(pkg_root: Path):
+    try:
+        subprocess.run(["java", "--version"], check=True, capture_output=True)
+    except subprocess.CalledProcessError as e:
+        click.secho(
+            dedent("""\
+            Java is not installed - this is a requirement to run Nextflow.
+
+            Please install Java and try again.
+            """),
+            fg="red",
+        )
+        raise click.exceptions.Exit(1) from e
+
     nf_executable = pkg_root / ".latch" / "bin" / "nextflow"
     nf_jars = pkg_root / ".latch" / ".nextflow"
 
     if not nf_executable.exists():
-        click.secho("  Downloading Nextflow executable", dim=True, italic=True)
-
         res = tinyrequests.get(
             "https://latch-public.s3.us-west-2.amazonaws.com/nextflow"
         )
@@ -336,16 +350,31 @@ def ensure_nf_dependencies(pkg_root: Path):
         nf_executable.chmod(0o700)
 
     if not nf_jars.exists():
-        click.secho("  Downloading Nextflow compiled binaries", dim=True, italic=True)
+        click.secho(
+            "  Downloading Nextflow binaries: \x1b[?25l",
+            italic=True,
+            nl=False,
+        )
 
         s3_resource = boto3.resource("s3")
         bucket = s3_resource.Bucket("latch-public")
 
-        for obj in bucket.objects.filter(Prefix=".nextflow/"):
+        objects = list(bucket.objects.filter(Prefix=".nextflow/"))
+
+        # todo(ayush): parallelize
+        for i, obj in enumerate(objects):
             obj_path = pkg_root / ".latch" / obj.key
             obj_path.parent.mkdir(parents=True, exist_ok=True)
 
             bucket.download_file(obj.key, str(obj_path))
+
+            progress_str = f"{i + 1}/{len(objects)}"
+
+            click.echo("\x1b[0K", nl=False)
+            click.secho(progress_str, dim=True, italic=True, nl=False)
+            click.echo(f"\x1b[{len(progress_str)}D", nl=False)
+
+        click.secho("Done. \x1b[?25h", italic=True)
 
 
 def build_nf_wf(pkg_root: Path, nf_script: Path) -> NextflowWorkflow:
@@ -368,11 +397,11 @@ def build_nf_wf(pkg_root: Path, nf_script: Path) -> NextflowWorkflow:
             env={
                 **os.environ,
                 # read NF binaries from `.latch/.nextflow` instead of system
-                # "NXF_HOME": str(pkg_root / ".latch" / ".nextflow"),
+                "NXF_HOME": str(pkg_root / ".latch" / ".nextflow"),
                 # don't display version mismatch warning
                 "NXF_DISABLE_CHECK_LATEST": "true",
                 # don't emit .nextflow.log files
-                # "NXF_LOG_FILE": "/dev/null",
+                "NXF_LOG_FILE": "/dev/null",
             },
             check=True,
         )

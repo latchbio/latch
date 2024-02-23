@@ -102,9 +102,9 @@ class DAG:
             c = e["content"]
             t = (c["src"], c["dest"])
 
-            if t in edge_set:
-                # disallow multiple edges
-                continue
+            # if t in edge_set:
+            #     # disallow multiple edges
+            #     continue
 
             edge = Edge(**c)
             edges.append(edge)

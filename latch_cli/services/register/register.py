@@ -14,6 +14,8 @@ import latch_sdk_gql.execute as l_gql
 from flytekit.core.workflow import WorkflowBase
 from scp import SCPClient
 
+from latch_cli.click_utils import color
+
 from ...centromere.ctx import _CentromereCtx
 from ...centromere.utils import MaybeRemoteDir
 from ...utils import WorkflowType, current_workspace
@@ -55,6 +57,7 @@ def _print_window(cur_lines: List[str], line: str):
 
 
 docker_build_step_pat = re.compile("^Step [0-9]+/[0-9]+ :")
+whitespace_expr = re.compile(r"\s+")
 
 
 def print_and_write_build_logs(
@@ -92,7 +95,9 @@ def print_and_write_build_logs(
                 save_file.write(f"{lines}\n")
 
                 if not progress_plain:
-                    for line in lines.split("\n"):
+                    for l in lines.split("\n"):
+                        line = re.sub(whitespace_expr, " ", l)
+
                         curr_terminal_width = shutil.get_terminal_size()[0]
 
                         if len(line) > curr_terminal_width:
@@ -101,7 +106,7 @@ def print_and_write_build_logs(
                         if docker_build_step_pat.match(line):
                             _delete_lines(len(cur_lines))
                             cur_lines = []
-                            click.secho(line, fg="blue")
+                            click.secho(color(line))
                         else:
                             cur_lines = _print_window(cur_lines, line)
                 else:
@@ -337,12 +342,8 @@ def register(
         assert ctx.version is not None, "Unable to determine workflow version"
 
         # todo(maximsmol): we really want the workflow display name here
-        click.echo(
-            " ".join(
-                [click.style("Workflow name:", fg="bright_blue"), ctx.workflow_name]
-            )
-        )
-        click.echo(" ".join([click.style("Version:", fg="bright_blue"), ctx.version]))
+        click.echo(" ".join([color("Workflow name:"), ctx.workflow_name]))
+        click.echo(" ".join([color("Version:"), ctx.version]))
 
         workspaces = _get_workspaces()
         ws_name = next(
@@ -355,40 +356,23 @@ def register(
             "N/A",
         )
         click.echo(
-            " ".join([
-                click.style("Target workspace:", fg="bright_blue"),
-                ws_name,
-                f"({current_workspace()})",
-            ])
+            " ".join([color("Target workspace:"), ws_name, f"({current_workspace()})"])
         )
         click.echo(
-            " ".join([
-                click.style("Workflow root:", fg="bright_blue"),
-                str(ctx.default_container.pkg_dir),
-            ])
+            " ".join([color("Workflow root:"), str(ctx.default_container.pkg_dir)])
         )
 
         click.echo()
 
-        click.echo(
-            " ".join([
-                click.style("Workflow type:", fg="bright_blue"),
-                ctx.workflow_type.value,
-            ])
-        )
+        click.echo(" ".join([color("Workflow type:"), ctx.workflow_type.value]))
         if ctx.workflow_type == WorkflowType.snakemake:
-            click.echo(
-                " ".join(
-                    [click.style("Snakefile:", fg="bright_blue"), str(ctx.snakefile)]
-                )
-            )
+            click.echo(" ".join([color("Snakefile:"), str(ctx.snakefile)]))
         elif ctx.workflow_type == WorkflowType.nextflow:
-            click.echo(
-                " ".join(
-                    [click.style("NF script:", fg="bright_blue"), str(ctx.nf_script)]
-                )
-            )
+            click.echo(" ".join([color("NF script:"), str(ctx.nf_script)]))
 
+        click.echo()
+
+        click.echo(" ".join([color("Docker Image:"), ctx.default_container.image_name]))
         click.echo()
 
         if use_new_centromere:
@@ -429,7 +413,7 @@ def register(
 
             from ...extras.nextflow.build import build_nf_wf, generate_nf_entrypoint
 
-            click.echo("Generating Nextflow entrypoint")
+            click.secho("Generating Nextflow entrypoint", bold=True)
 
             nf_wf = build_nf_wf(ctx.pkg_root, ctx.nf_script)
             generate_nf_entrypoint(nf_wf, ctx.pkg_root, ctx.nf_script)
@@ -437,14 +421,6 @@ def register(
         click.secho("\nInitializing registration", bold=True)
         transport = None
         scp = None
-
-        click.echo(
-            " ".join([
-                click.style("Docker Image:", fg="bright_blue"),
-                ctx.default_container.image_name,
-            ])
-        )
-        click.echo()
 
         if remote:
             click.secho("Connecting to remote server for docker build\n", bold=True)

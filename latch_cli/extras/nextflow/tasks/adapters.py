@@ -18,6 +18,9 @@ def dataclass_from_python_params(
 ) -> Type[_IsDataclass]:
     fields = []
     for n, typ in params.items():
+        if n.startswith("condition_"):
+            continue
+
         if not unwrap_optionals or not (get_origin(typ) is Union):
             fields.append((n, typ))
             continue

@@ -9,9 +9,10 @@ from flytekit.extras.persistence import LatchPersistence
 from latch_sdk_gql.execute import execute
 from typing_extensions import TypeAlias
 
+from latch.ldata._transfer.node import get_node_data
+from latch.ldata.type import LDataNodeType
 from latch.types.directory import LatchDir
 from latch_cli.utils import urljoins
-from latch_cli.utils.ldata import LDataNodeType, get_node_data
 
 JSONValue: TypeAlias = Union[
     int,

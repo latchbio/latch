@@ -8,5 +8,6 @@ Dockerfile
 .latch_report.tar.gz
 
 !.latch/snakemake_jit_entrypoint.py
-!.latch/nf_entrypoint
-!.latch/bin/latch-nextflow
+!.latch/nf_entrypoint.py
+!.latch/bin/nextflow
+!.latch/.nextflow
