@@ -17,17 +17,17 @@ from flytekit import (
     Scalar,
 )
 from flytekit.extend import TypeEngine, TypeTransformer
-from latch_sdk_gql.execute import execute
 from typing_extensions import Self
 
 from latch.ldata.type import LDataNodeType
 from latch_cli.utils import urljoins
 
 from ._transfer.download import download as _download
-from ._transfer.node import LatchPathNotFound
+from ._transfer.node import LatchPathError
 from ._transfer.progress import Progress as _Progress
 from ._transfer.remote_copy import remote_copy as _remote_copy
 from ._transfer.upload import upload as _upload
+from ._transfer.utils import query_with_retry
 
 node_id_regex = re.compile(r"^latch://(?P<id>[0-9]+)\.node$")
 
@@ -85,7 +85,7 @@ class LPath:
 
         Always makes a network request.
         """
-        data = execute(
+        data = query_with_retry(
             gql.gql("""
             query GetNodeData($path: String!) {
                 ldataResolvePathToNode(path: $path) {
@@ -107,7 +107,7 @@ class LPath:
         )["ldataResolvePathToNode"]
 
         if data is None or data["ldataNode"] is None:
-            raise LatchPathNotFound(f"no such Latch file or directory: {self.path}")
+            raise LatchPathError(f"no such Latch file or directory", self.path)
 
         self._cache.path = self.path
 
@@ -162,7 +162,7 @@ class LPath:
 
         Always makes a network request.
         """
-        data = execute(
+        data = query_with_retry(
             gql.gql("""
             query LDataChildren($argPath: String!) {
                 ldataResolvePathData(argPath: $argPath) {
@@ -182,7 +182,7 @@ class LPath:
         )["ldataResolvePathData"]
 
         if data is None:
-            raise LatchPathNotFound(f"no such Latch file or directory: {self.path}")
+            raise LatchPathError(f"no such Latch file or directory", {self.path})
         if data["finalLinkTarget"]["type"].lower() not in _dir_types:
             raise ValueError(f"not a directory: {self.path}")
 
@@ -194,7 +194,7 @@ class LPath:
 
         Always makes a network request.
         """
-        execute(
+        query_with_retry(
             gql.gql("""
             mutation LDataRmr($nodeId: BigInt!) {
                 ldataRmr(input: { argNodeId: $nodeId }) {
@@ -205,14 +205,14 @@ class LPath:
             {"nodeId": self.node_id()},
         )
 
-    def copy_to(self, dst: "LPath", *, show_summary: bool = False) -> None:
+    def copy_to(self, dst: "LPath") -> None:
         """Copy the file at this instance's path to the given destination.
 
         Args:
         dst: The destination LPath.
         show_summary: Whether to print a summary of the copy operation.
         """
-        _remote_copy(self.path, dst.path, show_summary=show_summary)
+        _remote_copy(self.path, dst.path)
 
     def upload_from(self, src: Path, *, show_progress_bar: bool = False) -> None:
         """Upload the file at the given source to this instance's path.
@@ -226,6 +226,7 @@ class LPath:
             self.path,
             progress=_Progress.tasks if show_progress_bar else _Progress.none,
             verbose=False,
+            create_parents=True,
         )
 
     def download(

@@ -4,7 +4,6 @@ from contextlib import closing
 from dataclasses import dataclass
 from itertools import repeat
 from pathlib import Path
-from textwrap import dedent
 from typing import Dict, List, Set, TypedDict
 
 import click
@@ -13,13 +12,13 @@ from latch_sdk_config.latch import config as latch_config
 from latch.ldata.type import LDataNodeType
 from latch_cli import tinyrequests
 from latch_cli.constants import Units
-from latch_cli.utils import get_auth_header, with_si_suffix
+from latch_cli.utils import get_auth_header, human_readable_time, with_si_suffix
 from latch_cli.utils.path import normalize_path
 
 from .manager import TransferStateManager
 from .node import get_node_data
 from .progress import Progress, ProgressBars, get_free_index
-from .utils import get_max_workers, human_readable_time
+from .utils import get_max_workers
 
 
 class GetSignedUrlData(TypedDict):
@@ -36,25 +35,30 @@ class DownloadJob:
     dest: Path
 
 
+@dataclass(frozen=True)
+class DownloadResult:
+    num_files: int
+    total_bytes: int
+    total_time: int
+
+
 def download(
     src: str,
     dest: Path,
     progress: Progress,
     verbose: bool,
     confirm_overwrite: bool = True,
-) -> None:
+) -> DownloadResult:
     if not dest.parent.exists():
         raise ValueError(
-            f"invalid copy destination {dest}. Parent directory {dest.parent} does not"
-            " exist."
+            f"invalid copy destination {dest}. Parent directory {dest.parent} does"
+            " not exist."
         )
 
     normalized = normalize_path(src)
     data = get_node_data(src)
 
     node_data = data.data[src]
-    if progress != Progress.none:
-        click.secho(f"Downloading {node_data.name}", fg="blue")
 
     can_have_children = node_data.type in {
         LDataNodeType.account_root,
@@ -91,9 +95,9 @@ def download(
 
         try:
             dest.mkdir(exist_ok=True)
-        except FileNotFoundError as e:
+        except FileNotFoundError:
             raise ValueError(f"No such download destination {dest}")
-        except (FileExistsError, NotADirectoryError) as e:
+        except (FileExistsError, NotADirectoryError):
             raise ValueError(f"Download destination {dest} is not a directory")
 
         unconfirmed_jobs: List[DownloadJob] = []
@@ -125,9 +129,7 @@ def download(
                     job.dest.parent.mkdir(parents=True, exist_ok=True)
                     confirmed_jobs.append(job)
                 else:
-                    click.secho(
-                        f"Skipping {job.dest.parent}, file already exists", fg="yellow"
-                    )
+                    print(f"Skipping {job.dest.parent}, file already exists")
                     rejected_jobs.add(job.dest.parent)
 
         num_files = len(confirmed_jobs)
@@ -197,12 +199,7 @@ def download(
 
     total_time = end - start
 
-    if progress != Progress.none:
-        click.echo(dedent(f"""
-			{click.style("Download Complete", fg="green")}
-			{click.style("Time Elapsed: ", fg="blue")}{human_readable_time(total_time)}
-			{click.style("Files Downloaded: ", fg="blue")}{num_files} ({with_si_suffix(total_bytes)})
-			"""))
+    return DownloadResult(num_files, total_bytes, total_time)
 
 
 # dest will always be a path which includes the copied file as its leaf
@@ -214,6 +211,11 @@ def download_file(
     # todo(ayush): benchmark parallelized downloads using the range header
     with open(job.dest, "wb") as f:
         res = tinyrequests.get(job.signed_url, stream=True)
+        if res.status_code != 200:
+            raise RuntimeError(
+                f"failed to download {job.dest.name}: {res.status_code}:"
+                f" {res.json()['error']}"
+            )
 
         total_bytes = res.headers.get("Content-Length")
         assert total_bytes is not None, "Must have a content-length header"

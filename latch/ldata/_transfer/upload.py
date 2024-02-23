@@ -14,7 +14,6 @@ from queue import Queue
 from textwrap import dedent
 from typing import TYPE_CHECKING, List, Optional, TypedDict
 
-import click
 from latch_sdk_config.latch import config as latch_config
 from typing_extensions import TypeAlias
 
@@ -25,10 +24,10 @@ from latch_cli.utils import get_auth_header, urljoins, with_si_suffix
 from latch_cli.utils.path import normalize_path
 
 from .manager import TransferStateManager
-from .node import get_node_data
+from .node import LatchPathError, get_node_data
 from .progress import Progress, ProgressBars
 from .throttle import Throttle
-from .utils import get_max_workers, human_readable_time
+from .utils import get_max_workers
 
 if TYPE_CHECKING:
     PathQueueType: TypeAlias = "Queue[Optional[Path]]"
@@ -48,36 +47,52 @@ class UploadJob:
     dest: str
 
 
+@dataclass(frozen=True)
+class UploadResult:
+    num_files: int
+    total_bytes: int
+    total_time: int
+
+
 def upload(
     src: str,  # pathlib.Path strips trailing slashes but we want to keep them here as they determine cp behavior
     dest: str,
     progress: Progress,
     verbose: bool,
-) -> None:
+    create_parents: bool = False,
+) -> UploadResult:
     src_path = Path(src)
     if not src_path.exists():
         raise ValueError(f"could not find {src_path}: no such file or directory.")
 
-    if progress != Progress.none:
-        click.secho(f"Uploading {src_path.name}", fg="blue")
-
-    node_data = get_node_data(dest, allow_resolve_to_parent=True)
-    dest_data = node_data.data[dest]
-
     normalized = normalize_path(dest)
 
-    dest_exists = not dest_data.is_parent
-    dest_is_dir = dest_data.type in {
+    try:
+        node_data = get_node_data(dest, allow_resolve_to_parent=True)
+        dest_data = node_data.data[dest]
+    except LatchPathError as e:
+        if not create_parents:
+            raise e
+        dest_data = None
+
+    dest_exists = dest_data is not None and not dest_data.is_parent
+    dest_is_dir = dest_data is not None and dest_data.type in {
         LDataNodeType.account_root,
         LDataNodeType.mount,
         LDataNodeType.dir,
     }
 
-    if not dest_is_dir:
+    if dest_data is not None and not dest_is_dir:
         if not dest_exists:  # path is latch:///a/b/file_1/file_2
             raise ValueError(f"no such file or directory: {dest}")
         if src_path.is_dir():
             raise ValueError(f"{normalized} is not a directory.")
+
+    if not dest_exists and dest.endswith("/"):
+        # path is latch:///a/b/ but b does not exist yet
+        if not create_parents:
+            raise ValueError(f"no such file or directory: {dest}")
+        normalized = urljoins(normalized, src_path.name)
 
     if progress == Progress.none:
         num_bars = 0
@@ -254,12 +269,8 @@ def upload(
 
     end = time.monotonic()
     total_time = end - start
-    if progress != Progress.none:
-        click.echo(dedent(f"""
-            {click.style("Upload Complete", fg="green")}
-            {click.style("Time Elapsed: ", fg="blue")}{human_readable_time(total_time)}
-            {click.style("Files Uploaded: ", fg="blue")}{num_files} ({with_si_suffix(total_bytes)})
-            """))
+
+    return UploadResult(num_files, total_bytes, total_time)
 
 
 @dataclass(frozen=True)

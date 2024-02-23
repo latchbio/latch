@@ -180,6 +180,22 @@ def with_si_suffix(num, suffix="B", styled=False):
     return f"{num}{unit}{suffix}"
 
 
+def human_readable_time(t_seconds: float) -> str:
+    s = t_seconds % 60
+    m = (t_seconds // 60) % 60
+    h = t_seconds // 60 // 60
+
+    x: List[str] = []
+    if h > 0:
+        x.append(f"{int(h):d}h")
+    if m > 0:
+        x.append(f"{int(m):d}m")
+    if s > 0:
+        x.append(f"{s:.2f}s")
+
+    return " ".join(x)
+
+
 def hash_directory(dir_path: Path) -> str:
     # todo(maximsmol): store per-file hashes to show which files triggered a version change
     click.secho("Calculating workflow version based on file content hash", bold=True)

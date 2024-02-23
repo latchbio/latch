@@ -2,18 +2,26 @@ from dataclasses import dataclass
 from typing import Dict, List, TypedDict
 
 import graphql.language as l
-from latch_sdk_gql.execute import execute
 from latch_sdk_gql.utils import _name_node, _parse_selection
 from typing_extensions import TypeAlias
 
 from latch.ldata.type import LDataNodeType
-from latch_cli.utils.path import get_path_error, normalize_path
+from latch_cli.utils.path import normalize_path
+
+from .utils import query_with_retry
 
 AccId: TypeAlias = int
 
 
-class LatchPathNotFound(RuntimeError):
-    pass
+class LatchPathError(RuntimeError):
+    def __init__(self, message: str, remote_path: str = None, acc_id: str = None):
+        super().__init__(message)
+        self.message = message
+        self.remote_path = remote_path
+        self.acc_id = acc_id
+
+    def __str__(self) -> str:
+        return f"{self.remote_path}: {self.message}"
 
 
 class LDataObjectMeta(TypedDict):
@@ -114,7 +122,7 @@ def get_node_data(
     assert isinstance(query, l.OperationDefinitionNode)
     query.selection_set = sel_set
 
-    res = execute(doc)
+    res = query_with_retry(doc)
 
     acc_info: AccountInfoCurrentPayload = res["accountInfoCurrent"]
     acc_id = acc_info["id"]
@@ -141,7 +149,9 @@ def get_node_data(
                 type=LDataNodeType(final_link_target["type"].lower()),
                 is_parent=is_parent,
             )
-        except (TypeError, ValueError) as e:
-            raise LatchPathNotFound(get_path_error(remote_path, "not found", acc_id))
+        except (TypeError, ValueError):
+            raise LatchPathError(
+                f"no such Latch file or directory", remote_path, acc_id
+            )
 
     return GetNodeDataResult(acc_id, ret)
