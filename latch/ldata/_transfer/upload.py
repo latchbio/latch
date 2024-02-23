@@ -326,49 +326,44 @@ def start_upload(
         math.ceil(file_size / latch_constants.maximum_upload_parts),
     )
 
-    retries = 0
-    while retries < MAX_RETRIES:
-        if throttle is not None:
-            time.sleep(throttle.get_delay() * math.exp(retries * 1 / 2))
+    if throttle is not None:
+        time.sleep(throttle.get_delay())
 
-        start = time.monotonic()
-        res = tinyrequests.post(
-            latch_config.api.data.start_upload,
-            headers={"Authorization": get_auth_header()},
-            json={
-                "path": dest,
-                "content_type": content_type,
-                "part_count": part_count,
-            },
-        )
-        end = time.monotonic()
+    start = time.monotonic()
+    res = tinyrequests.post(
+        latch_config.api.data.start_upload,
+        headers={"Authorization": get_auth_header()},
+        json={
+            "path": dest,
+            "content_type": content_type,
+            "part_count": part_count,
+        },
+        num_retries=MAX_RETRIES,
+    )
+    end = time.monotonic()
 
-        if latency_q is not None:
-            latency_q.put(end - start)
+    if latency_q is not None:
+        latency_q.put(end - start)
 
-        try:
-            json_data = res.json()
-        except JSONDecodeError:
-            retries += 1
-            continue
+    json_data = res.json()
 
-        if res.status_code != 200:
-            retries += 1
-            continue
-
-        if progress_bars is not None:
-            progress_bars.update_total_progress(1)
-
-        if "version_id" in json_data["data"]:
-            return  # file is empty, so no need to upload any content
-
-        data: StartUploadData = json_data["data"]
-
-        return StartUploadReturnType(
-            **data, part_count=part_count, part_size=part_size, src=src, dest=dest
+    if res.status_code != 200:
+        print(res.json())
+        raise RuntimeError(
+            f"unable to generate upload URL for {src}: {json_data['error']}"
         )
 
-    raise RuntimeError(f"unable to generate upload URL for {src}")
+    if progress_bars is not None:
+        progress_bars.update_total_progress(1)
+
+    if "version_id" in json_data["data"]:
+        return  # file is empty, so no need to upload any content
+
+    data: StartUploadData = json_data["data"]
+
+    return StartUploadReturnType(
+        **data, part_count=part_count, part_size=part_size, src=src, dest=dest
+    )
 
 
 @dataclass(frozen=True)
