@@ -232,7 +232,7 @@ class LPath:
         dst: The destination LPath.
         show_summary: Whether to print a summary of the copy operation.
         """
-        _remote_copy(self.path, dst.path)
+        _remote_copy(self.path, dst.path, create_parents=True)
 
     def upload_from(self, src: Path, *, show_progress_bar: bool = False) -> None:
         """Upload the file at the given source to this instance's path.
