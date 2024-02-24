@@ -293,10 +293,8 @@ class LPath:
         return dst
 
     def __truediv__(self, other: object) -> "LPath":
-        if not isinstance(other, (LPath, str)):
+        if not isinstance(other, str):
             return NotImplemented
-        if isinstance(other, LPath):
-            other = other.path
         return LPath(urljoins(self.path, other))
 
 

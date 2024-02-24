@@ -58,7 +58,7 @@ def download(
     normalized = normalize_path(src)
     data = get_node_data(src)
 
-    assert src in data
+    assert src in data.data
     node_data = data.data[src]
     if not node_data.exists():
         raise LatchPathError("no such Latch file or directory", src)

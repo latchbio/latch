@@ -66,7 +66,7 @@ def upload(
     normalized = normalize_path(dest)
 
     node_data = get_node_data(dest)
-    assert dest in dest_data
+    assert dest in node_data.data
     dest_data = node_data.data[dest]
 
     if not (dest_data.exists() or dest_data.is_direct_parent()) and not create_parents:
