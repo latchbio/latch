@@ -74,8 +74,7 @@ def upload(
     if not (dest_data.exists() or dest_data.is_direct_parent()) and not create_parents:
         raise LatchPathError("no such Latch file or directory", dest)
 
-    # if dest does not exist, it resolved to a parent, which should be a directory
-    dest_is_dir = not dest_data.exists() or dest_data.type in {
+    dest_is_dir = dest_data.type in {
         LDataNodeType.account_root,
         LDataNodeType.mount,
         LDataNodeType.dir,

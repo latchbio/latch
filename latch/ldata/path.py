@@ -189,7 +189,8 @@ class LPath:
         for node in data["finalLinkTarget"]["childLdataTreeEdges"]["nodes"]:
             yield LPath(urljoins(self.path, node["child"]["name"]))
 
-    def mdirp(self) -> None:
+
+    def mkdirp(self) -> None:
         node = get_node_data(self.path).data[self.path]
         if node.exists():
             if node.type not in _dir_types:

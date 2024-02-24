@@ -45,6 +45,7 @@ def remote_copy(src: str, dst: str, create_parents: bool = False) -> None:
                         argSrcNode: $argSrcNode
                         argDstParent: $argDstParent
                         argNewName: $argNewName
+                        createDirs: true
                     }
                 ) {
                     clientMutationId

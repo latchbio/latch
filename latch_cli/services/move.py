@@ -55,11 +55,7 @@ def move(
             fg="red",
         )
         raise click.exceptions.Exit(1)
-    elif (
-        multi_src
-        and (dest_data.exists() or dest_data.is_direct_parent())
-        and dest_data.type in {LDataNodeType.obj, LDataNodeType.link}
-    ):
+    elif multi_src and dest_data.type in {LDataNodeType.obj, LDataNodeType.link}:
         click.secho(
             f"Remote destination {dest} is not a directory. Cannot move multiple source"
             " files to a destination that is not a directory.",
