@@ -21,7 +21,6 @@ from typing_extensions import Self
 
 from latch.ldata.type import LDataNodeType
 from latch_cli.utils import urljoins
-from latch_cli.utils.path import strip_domain
 
 from ._transfer.download import download as _download
 from ._transfer.node import LatchPathError, get_node_data

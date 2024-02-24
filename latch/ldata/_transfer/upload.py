@@ -71,7 +71,7 @@ def upload(
     assert dest in dest_data
     dest_data = node_data.data[dest]
 
-    if not create_parents and not (dest_data.exists() or dest_data.is_direct_parent()):
+    if not (dest_data.exists() or dest_data.is_direct_parent()) and not create_parents:
         raise LatchPathError("no such Latch file or directory", dest)
 
     # if dest does not exist, it resolved to a parent, which should be a directory
