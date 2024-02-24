@@ -3,10 +3,9 @@ from textwrap import dedent
 import gql
 from gql.transport.exceptions import TransportQueryError
 
-from latch.ldata.type import LDataNodeType
-from latch_cli.utils.path import get_name_from_path
+from latch.ldata.type import LatchPathError, LDataNodeType
 
-from .node import LatchPathError, get_node_data
+from .node import get_node_data
 from .utils import query_with_retry
 
 

@@ -5,10 +5,10 @@ from typing import List
 import click
 
 from latch.ldata._transfer.download import download as _download
-from latch.ldata._transfer.node import LatchPathError
 from latch.ldata._transfer.progress import Progress
 from latch.ldata._transfer.remote_copy import remote_copy as _remote_copy
 from latch.ldata._transfer.upload import upload as _upload
+from latch.ldata.type import LatchPathError
 from latch_cli.services.cp.glob import expand_pattern
 from latch_cli.utils import human_readable_time, with_si_suffix
 from latch_cli.utils.path import get_path_error, is_remote_path

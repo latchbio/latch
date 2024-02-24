@@ -19,11 +19,11 @@ from flytekit import (
 from flytekit.extend import TypeEngine, TypeTransformer
 from typing_extensions import Self
 
-from latch.ldata.type import LDataNodeType
+from latch.ldata.type import LatchPathError, LDataNodeType
 from latch_cli.utils import urljoins
 
 from ._transfer.download import download as _download
-from ._transfer.node import LatchPathError, get_node_data
+from ._transfer.node import get_node_data
 from ._transfer.progress import Progress as _Progress
 from ._transfer.remote_copy import remote_copy as _remote_copy
 from ._transfer.upload import upload as _upload
@@ -106,7 +106,11 @@ class LPath:
             {"path": self.path},
         )["ldataResolvePathToNode"]
 
-        if data is None or data["ldataNode"] is None:
+        if (
+            data is None
+            or data["ldataNode"] is None
+            or data["ldataNode"]["finalLinkTarget"]["removed"]
+        ):
             raise LatchPathError(f"no such Latch file or directory", self.path)
 
         self._cache.path = self.path
@@ -122,6 +126,14 @@ class LPath:
                 None if meta["contentSize"] is None else int(meta["contentSize"])
             )
             self._cache.content_type = meta["contentType"]
+
+    def _clear_cache(self):
+        self._cache.path = None
+        self._cache.node_id = None
+        self._cache.name = None
+        self._cache.type = None
+        self._cache.size = None
+        self._cache.content_type = None
 
     def node_id(self, *, load_if_missing: bool = True) -> Optional[str]:
         match = node_id_regex.match(self.path)
@@ -189,7 +201,6 @@ class LPath:
         for node in data["finalLinkTarget"]["childLdataTreeEdges"]["nodes"]:
             yield LPath(urljoins(self.path, node["child"]["name"]))
 
-
     def mkdirp(self) -> None:
         node = get_node_data(self.path).data[self.path]
         if node.exists():
@@ -208,9 +219,12 @@ class LPath:
             """),
             {"path": path},
         )
+        self._clear_cache()
 
     def rmr(self) -> None:
         """Recursively delete files at this instance's path.
+
+        Throws LatechPathError if the path does not exist.
 
         Always makes a network request.
         """
@@ -224,6 +238,7 @@ class LPath:
             """),
             {"nodeId": self.node_id()},
         )
+        self._clear_cache()
 
     def copy_to(self, dst: "LPath") -> None:
         """Copy the file at this instance's path to the given destination.
@@ -248,6 +263,7 @@ class LPath:
             verbose=False,
             create_parents=True,
         )
+        self._clear_cache()
 
     def download(
         self, dst: Optional[Path] = None, *, show_progress_bar: bool = False

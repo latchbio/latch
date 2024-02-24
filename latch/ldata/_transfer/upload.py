@@ -7,24 +7,22 @@ from concurrent.futures import Future, ProcessPoolExecutor, as_completed, wait
 from contextlib import closing
 from dataclasses import dataclass
 from http.client import HTTPException
-from json import JSONDecodeError
 from multiprocessing.managers import DictProxy, ListProxy
 from pathlib import Path
 from queue import Queue
-from textwrap import dedent
 from typing import TYPE_CHECKING, List, Optional, TypedDict
 
 from latch_sdk_config.latch import config as latch_config
 from typing_extensions import TypeAlias
 
-from latch.ldata.type import LDataNodeType
+from latch.ldata.type import LatchPathError, LDataNodeType
 from latch_cli import tinyrequests
 from latch_cli.constants import latch_constants, units
 from latch_cli.utils import get_auth_header, urljoins, with_si_suffix
 from latch_cli.utils.path import normalize_path
 
 from .manager import TransferStateManager
-from .node import LatchPathError, get_node_data
+from .node import get_node_data
 from .progress import Progress, ProgressBars
 from .throttle import Throttle
 from .utils import get_max_workers
