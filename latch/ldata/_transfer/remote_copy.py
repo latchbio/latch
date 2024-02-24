@@ -11,7 +11,7 @@ from .utils import query_with_retry
 
 
 def remote_copy(src: str, dst: str, create_parents: bool = False) -> None:
-    node_data = get_node_data(src, dst, allow_resolve_to_parent=True)
+    node_data = get_node_data(src, dst)
 
     src_data = node_data.data[src]
     dst_data = node_data.data[dst]
@@ -19,14 +19,18 @@ def remote_copy(src: str, dst: str, create_parents: bool = False) -> None:
 
     path_by_id = {v.id: k for k, v in node_data.data.items()}
 
-    if src_data.is_parent:
+    if not src_data.exists():
         raise LatchPathError("not found", src, acc_id)
 
-    new_name = None
-    if dst_data.is_parent:
-        new_name = get_name_from_path(dst)
-    elif dst_data.type in {LDataNodeType.obj, LDataNodeType.link}:
+    if dst_data.exists() and dst_data.type in {LDataNodeType.obj, LDataNodeType.link}:
         raise LatchPathError("object already exists at path", dst, acc_id)
+
+    # if the destination exists and is a directory, use the source name (new_name = None)
+    new_name = None
+    if not dst_data.exists():
+        if not dst_data.is_direct_parent() and not create_parents:
+            raise LatchPathError("no such Latch file or directory", dst, acc_id)
+        new_name = dst_data.remaining
 
     try:
         query_with_retry(

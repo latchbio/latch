@@ -16,7 +16,7 @@ from latch_cli.utils import get_auth_header, human_readable_time, with_si_suffix
 from latch_cli.utils.path import normalize_path
 
 from .manager import TransferStateManager
-from .node import get_node_data
+from .node import LatchPathError, get_node_data
 from .progress import Progress, ProgressBars, get_free_index
 from .utils import get_max_workers
 
@@ -58,7 +58,10 @@ def download(
     normalized = normalize_path(src)
     data = get_node_data(src)
 
+    assert src in data
     node_data = data.data[src]
+    if not node_data.exists():
+        raise LatchPathError("no such Latch file or directory", src)
 
     can_have_children = node_data.type in {
         LDataNodeType.account_root,

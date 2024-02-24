@@ -67,28 +67,27 @@ def upload(
 
     normalized = normalize_path(dest)
 
-    try:
-        node_data = get_node_data(dest, allow_resolve_to_parent=True)
-        dest_data = node_data.data[dest]
-    except LatchPathError as e:
-        if not create_parents:
-            raise e
-        dest_data = None
+    node_data = get_node_data(dest)
+    assert dest in dest_data
+    dest_data = node_data.data[dest]
 
-    dest_exists = dest_data is not None and not dest_data.is_parent
-    dest_is_dir = dest_data is not None and dest_data.type in {
+    if not create_parents and not (dest_data.exists() or dest_data.is_direct_parent()):
+        raise LatchPathError("no such Latch file or directory", dest)
+
+    # if dest does not exist, it resolved to a parent, which should be a directory
+    dest_is_dir = not dest_data.exists() or dest_data.type in {
         LDataNodeType.account_root,
         LDataNodeType.mount,
         LDataNodeType.dir,
     }
 
-    if dest_data is not None and not dest_is_dir:
-        if not dest_exists:  # path is latch:///a/b/file_1/file_2
+    if not dest_is_dir:
+        if not dest_data.exists():  # path is latch:///a/b/file_1/file_2
             raise ValueError(f"no such file or directory: {dest}")
         if src_path.is_dir():
             raise ValueError(f"{normalized} is not a directory.")
 
-    if not dest_exists and dest.endswith("/"):
+    if dest.endswith("/") and not dest_data.exists():
         # path is latch:///a/b/ but b does not exist yet
         if not create_parents:
             raise ValueError(f"no such file or directory: {dest}")
@@ -114,7 +113,7 @@ def upload(
             throttle_listener = exec.submit(throttler, throttle, latency_q)
 
             if src_path.is_dir():
-                if dest_exists and not src.endswith("/"):
+                if dest_data.exists() and not src.endswith("/"):
                     normalized = urljoins(normalized, src_path.name)
 
                 jobs: List[UploadJob] = []
@@ -221,7 +220,7 @@ def upload(
                 if progress != Progress.none:
                     print("\x1b[0GFinalizing uploads...")
             else:
-                if dest_exists and dest_is_dir:
+                if dest_data.exists() and dest_is_dir:
                     normalized = urljoins(normalized, src_path.name)
 
                 num_files = 1
@@ -348,10 +347,7 @@ def start_upload(
     json_data = res.json()
 
     if res.status_code != 200:
-        print(res.json())
-        raise RuntimeError(
-            f"unable to generate upload URL for {src}: {json_data['error']}"
-        )
+        raise RuntimeError(f"unable to start upload for {src}: {json_data['error']}")
 
     if progress_bars is not None:
         progress_bars.update_total_progress(1)

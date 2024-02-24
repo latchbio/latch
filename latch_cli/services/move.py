@@ -35,8 +35,8 @@ def move(
         raise click.exceptions.Exit(0)
 
     try:
-        node_data = _get_node_data(*srcs, dest, allow_resolve_to_parent=True)
-    except FileNotFoundError as e:
+        node_data = _get_node_data(*srcs, dest)
+    except Exception as e:
         click.echo(str(e))
         raise click.exceptions.Exit(1) from e
 
@@ -45,14 +45,21 @@ def move(
 
     multi_src = len(srcs) > 1
 
-    if multi_src and dest_data.is_parent:
+    if not (dest_data.exists() or dest_data.is_direct_parent()):
+        click.echo(get_path_error(dest, "not found", acc_id))
+        raise click.exceptions.Exit(1)
+    elif multi_src and not dest_data.exists():
         click.secho(
             f"Remote destination {dest} does not exist. Cannot move multiple source"
             " files to a destination that does not exist.",
             fg="red",
         )
         raise click.exceptions.Exit(1)
-    elif multi_src and dest_data.type in {LDataNodeType.obj, LDataNodeType.link}:
+    elif (
+        multi_src
+        and (dest_data.exists() or dest_data.is_direct_parent())
+        and dest_data.type in {LDataNodeType.obj, LDataNodeType.link}
+    ):
         click.secho(
             f"Remote destination {dest} is not a directory. Cannot move multiple source"
             " files to a destination that is not a directory.",
@@ -65,12 +72,12 @@ def move(
     for s in srcs:
         src_data = node_data.data[s]
 
-        if src_data.is_parent:
+        if not src_data.exists():
             click.echo(get_path_error(s, "not found", acc_id))
             raise click.exceptions.Exit(1)
 
         new_name = None
-        if dest_data.is_parent:
+        if dest_data.is_direct_parent():
             new_name = get_name_from_path(dest)
         elif dest_data.type in {LDataNodeType.obj, LDataNodeType.link}:
             click.echo(get_path_error(dest, "object already exists at path.", acc_id))

@@ -55,7 +55,13 @@ class NodeData:
     id: str
     name: str
     type: LDataNodeType
-    is_parent: bool
+    remaining: str
+
+    def is_direct_parent(self) -> bool:
+        return self.remaining is not None and "/" not in self.remaining
+
+    def exists(self) -> bool:
+        return self.remaining is None or self.remaining == ""
 
 
 @dataclass(frozen=True)
@@ -64,9 +70,7 @@ class GetNodeDataResult:
     data: Dict[str, NodeData]
 
 
-def get_node_data(
-    *remote_paths: str, allow_resolve_to_parent: bool = False
-) -> GetNodeDataResult:
+def get_node_data(*remote_paths: str) -> GetNodeDataResult:
     normalized: Dict[str, str] = {}
 
     acc_sel = _parse_selection("""
@@ -133,21 +137,11 @@ def get_node_data(
 
         try:
             final_link_target = node["ldataNode"]["finalLinkTarget"]
-            remaining = node["path"]
-
-            is_parent = remaining is not None and remaining != ""
-
-            if not allow_resolve_to_parent and is_parent:
-                raise ValueError("node does not exist")
-
-            if remaining is not None and "/" in remaining:
-                raise ValueError("node and parent does not exist")
-
             ret[remote_path] = NodeData(
                 id=final_link_target["id"],
                 name=final_link_target["name"],
                 type=LDataNodeType(final_link_target["type"].lower()),
-                is_parent=is_parent,
+                remaining=node["path"],
             )
         except (TypeError, ValueError):
             raise LatchPathError(
