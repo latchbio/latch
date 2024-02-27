@@ -600,8 +600,42 @@ def open_remote_file(remote_file: str):
 
 @main.command("rm")
 @click.argument("remote_path", nargs=1, type=str)
+<<<<<<< Updated upstream
+@click.option(
+    "--no-glob",
+    "-G",
+    help="Don't expand globs in remote paths",
+    is_flag=True,
+    default=False,
+    show_default=True,
+)
+@requires_login
+def rm(remote_path: str, no_glob: bool):
+=======
+<<<<<<< Updated upstream
 @requires_login
 def rm(remote_path: str):
+=======
+@click.option(
+    "-y",
+    "--yes",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Skip the confirmation dialog.",
+)
+@click.option(
+    "--no-glob",
+    "-G",
+    help="Don't expand globs in remote paths",
+    is_flag=True,
+    default=False,
+    show_default=True,
+)
+@requires_login
+def rm(remote_path: str, yes: bool, no_glob: bool):
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
     """Deletes a remote entity."""
     crash_handler.message = f"Unable to delete {remote_path}"
     crash_handler.pkg_root = str(Path.cwd())
@@ -611,8 +645,16 @@ def rm(remote_path: str):
     click.secho(
         f"Warning: `latch rm` is deprecated and will be removed soon.", fg="yellow"
     )
+<<<<<<< Updated upstream
+    rm(remote_path, no_glob=no_glob)
+=======
+<<<<<<< Updated upstream
     rm(remote_path)
+>>>>>>> Stashed changes
     click.secho(f"Successfully deleted {remote_path}.", fg="green")
+=======
+    rm(remote_path, skip_confirmation=yes, no_glob=no_glob)
+>>>>>>> Stashed changes
 
 
 @main.command("mkdir")
