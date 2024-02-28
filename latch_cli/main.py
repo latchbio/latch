@@ -111,8 +111,8 @@ def login(connection: Optional[str]):
     click.secho("Successfully logged into LatchBio.", fg="green")
 
 
-@main.command("workspace")
 @requires_login
+@main.command("workspace")
 def workspace():
     """Spawns an interactive terminal prompt allowing users to choose what workspace they want to work in."""
 
@@ -255,6 +255,7 @@ def generate_metadata(
     )
 
 
+@requires_login
 @main.command("develop")
 @click.argument("pkg_root", nargs=1, type=click.Path(exists=True, path_type=Path))
 @click.option(
@@ -279,7 +280,6 @@ def generate_metadata(
     type=bool,
     help="Start a develop session for a Snakemake workflow.",
 )
-@requires_login
 def local_development(
     pkg_root: Path,
     yes: bool,
@@ -309,6 +309,7 @@ def local_development(
         local_development(pkg_root.resolve(), snakemake)
 
 
+@requires_login
 @main.command("exec")
 @click.option(
     "--execution-id", "-e", type=str, help="Optional execution ID to inspect."
@@ -320,7 +321,6 @@ def local_development(
     type=int,
     help="Optional container index to inspect (only used for Map Tasks)",
 )
-@requires_login
 def execute(
     execution_id: Optional[str], egn_id: Optional[str], container_index: Optional[int]
 ):
@@ -331,6 +331,7 @@ def execute(
     exec(execution_id=execution_id, egn_id=egn_id, container_index=container_index)
 
 
+@requires_login
 @main.command("register")
 @click.argument("pkg_root", type=click.Path(exists=True, file_okay=False))
 @click.option(
@@ -394,7 +395,6 @@ def execute(
         " provided."
     ),
 )
-@requires_login
 def register(
     pkg_root: str,
     disable_auto_version: bool,
@@ -431,6 +431,7 @@ def register(
     )
 
 
+@requires_login
 @main.command("launch")
 @click.argument("params_file", nargs=1, type=click.Path(exists=True))
 @click.option(
@@ -438,7 +439,6 @@ def register(
     default=None,
     help="The version of the workflow to launch. Defaults to latest.",
 )
-@requires_login
 def launch(params_file: Path, version: Union[str, None] = None):
     """Launch a workflow using a python parameter map."""
 
@@ -457,6 +457,7 @@ def launch(params_file: Path, version: Union[str, None] = None):
     )
 
 
+@requires_login
 @main.command("get-params")
 @click.argument("wf_name", nargs=1)
 @click.option(
@@ -464,7 +465,6 @@ def launch(params_file: Path, version: Union[str, None] = None):
     default=None,
     help="The version of the workflow. Defaults to latest.",
 )
-@requires_login
 def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
     """Generate a python parameter map for a workflow."""
     crash_handler.message = "Unable to generate param map for workflow"
@@ -482,13 +482,13 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
     )
 
 
+@requires_login
 @main.command("get-wf")
 @click.option(
     "--name",
     default=None,
     help="The name of the workflow to list. Will display all versions",
 )
-@requires_login
 def get_wf(name: Union[str, None] = None):
     """List workflows."""
     crash_handler.message = "Unable to get workflows"
@@ -515,9 +515,9 @@ def get_wf(name: Union[str, None] = None):
         )
 
 
+@requires_login
 @main.command("preview")
 @click.argument("pkg_root", nargs=1, type=click.Path(exists=True, path_type=Path))
-@requires_login
 def preview(pkg_root: Path):
     """Creates a preview of your workflow interface."""
     crash_handler.message = f"Unable to preview inputs for {pkg_root}"
@@ -528,8 +528,8 @@ def preview(pkg_root: Path):
     preview(pkg_root)
 
 
-@main.command("get-executions")
 @requires_login
+@main.command("get-executions")
 def get_executions():
     """Spawns an interactive terminal UI that shows all executions in a given workspace"""
 
@@ -545,6 +545,7 @@ LDATA COMMANDS
 """
 
 
+@requires_login
 @main.command("cp")
 @click.argument("src", shell_complete=cp_complete, nargs=-1)
 @click.argument("dest", shell_complete=cp_complete, nargs=1)
@@ -571,7 +572,6 @@ LDATA COMMANDS
     default=False,
     show_default=True,
 )
-@requires_login
 def cp(
     src: List[str],
     dest: str,
@@ -595,6 +595,7 @@ def cp(
     )
 
 
+@requires_login
 @main.command("mv")
 @click.argument("src", shell_complete=remote_complete, nargs=1)
 @click.argument("dest", shell_complete=remote_complete, nargs=1)
@@ -606,7 +607,6 @@ def cp(
     default=False,
     show_default=True,
 )
-@requires_login
 def mv(src: str, dest: str, no_glob: bool):
     """Move remote files in LatchData."""
 
@@ -618,6 +618,7 @@ def mv(src: str, dest: str, no_glob: bool):
     move(src, dest, no_glob=no_glob)
 
 
+@requires_login
 @main.command("ls")
 @click.option(
     "--group-directories-first",
@@ -627,7 +628,6 @@ def mv(src: str, dest: str, no_glob: bool):
     default=False,
 )
 @click.argument("paths", nargs=-1, shell_complete=remote_complete)
-@requires_login
 def ls(paths: Tuple[str], group_directories_first: bool):
     """
     List the contents of a Latch Data directory
@@ -655,6 +655,7 @@ def ls(paths: Tuple[str], group_directories_first: bool):
             click.echo("")
 
 
+@requires_login
 @main.command("rmr")
 @click.argument("remote_path", nargs=1, type=str)
 @click.option(
@@ -673,7 +674,6 @@ def ls(paths: Tuple[str], group_directories_first: bool):
     default=False,
     show_default=True,
 )
-@requires_login
 def rm(remote_path: str, yes: bool, no_glob: bool):
     """Deletes a remote entity."""
     crash_handler.message = f"Unable to delete {remote_path}"
@@ -684,9 +684,9 @@ def rm(remote_path: str, yes: bool, no_glob: bool):
     rm(remote_path, skip_confirmation=yes, no_glob=no_glob)
 
 
+@requires_login
 @main.command("mkdirp")
 @click.argument("remote_directory", nargs=1, type=str)
-@requires_login
 def mkdir(remote_directory: str):
     """Creates a new remote directory."""
     crash_handler.message = f"Unable to create directory {remote_directory}"
@@ -697,6 +697,7 @@ def mkdir(remote_directory: str):
     mkdirp(remote_directory)
 
 
+@requires_login
 @main.command("sync")
 @click.argument("srcs", nargs=-1)
 @click.argument("dst", nargs=1)
@@ -714,7 +715,6 @@ def mkdir(remote_directory: str):
     is_flag=True,
     default=False,
 )
-@requires_login
 def sync(srcs: List[str], dst: str, delete: bool, ignore_unsyncable: bool):
     """
     Update the contents of a remote directory with local data.
@@ -787,6 +787,7 @@ def test_data(ctx: click.Context):
         click.secho(f"{ctx.get_help()}")
 
 
+@requires_login
 @test_data.command("upload")
 @click.argument("src_path", nargs=1, type=click.Path(exists=True))
 @click.option(
@@ -797,7 +798,6 @@ def test_data(ctx: click.Context):
     type=bool,
     help="Automatically overwrite any files without asking for confirmation.",
 )
-@requires_login
 def test_data_upload(src_path: str, dont_confirm_overwrite: bool):
     """Upload test data object."""
 
@@ -810,9 +810,9 @@ def test_data_upload(src_path: str, dont_confirm_overwrite: bool):
     click.secho(f"Successfully uploaded to {s3_url}", fg="green")
 
 
+@requires_login
 @test_data.command("remove")
 @click.argument("object_url", nargs=1, type=str)
-@requires_login
 def test_data_remove(object_url: str):
     """Remove test data object."""
 
@@ -825,8 +825,8 @@ def test_data_remove(object_url: str):
     click.secho(f"Successfully removed {object_url}", fg="green")
 
 
-@test_data.command("ls")
 @requires_login
+@test_data.command("ls")
 def test_data_ls():
     """List test data objects."""
 
