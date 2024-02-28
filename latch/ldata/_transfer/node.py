@@ -82,6 +82,7 @@ def get_node_data(*remote_paths: str) -> GetNodeDataResult:
                         id
                         name
                         type
+                        removed
                     }
                 }
             }
@@ -126,6 +127,10 @@ def get_node_data(*remote_paths: str) -> GetNodeDataResult:
 
         try:
             final_link_target = node["ldataNode"]["finalLinkTarget"]
+            if node["removed"]:
+                raise LatchPathError(
+                    f"no such Latch file or directory", remote_path, acc_id
+                )
             ret[remote_path] = NodeData(
                 id=final_link_target["id"],
                 name=final_link_target["name"],

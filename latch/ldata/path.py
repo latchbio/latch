@@ -208,7 +208,8 @@ class LPath:
                 raise ValueError(f"{self.path} exists and is not a directory")
             return
 
-        path = f"latch://{node.id}.node/{node.remaining}/"
+        path = f"latch://{node.id}.node/{node.remaining}"
+        path += "/" if not path.endswith("/") else ""
         query_with_retry(
             gql.gql("""
             mutation LDataMkdirP($path: String!) {
