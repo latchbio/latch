@@ -655,20 +655,6 @@ def ls(paths: Tuple[str], group_directories_first: bool):
             click.echo("")
 
 
-@main.command("open")
-@click.argument("remote_file", nargs=1, type=str)
-@requires_login
-def open_remote_file(remote_file: str):
-    """Open a remote file in the browser."""
-    crash_handler.message = f"Unable to open {remote_file}"
-    crash_handler.pkg_root = str(Path.cwd())
-
-    from latch_cli.services.open_file import open_file
-
-    open_file(remote_file)
-    click.secho(f"Successfully opened {remote_file}.", fg="green")
-
-
 @main.command("rm")
 @click.argument("remote_path", nargs=1, type=str)
 @click.option(
@@ -714,24 +700,6 @@ def mkdir(remote_directory: str):
     )
     mkdir(remote_directory)
     click.secho(f"Successfully created directory {remote_directory}.", fg="green")
-
-
-@main.command("touch")
-@click.argument("remote_file", nargs=1, type=str)
-@requires_login
-def touch(remote_file: str):
-    """Creates an empty text file."""
-    crash_handler.message = f"Unable to create {remote_file}"
-    crash_handler.pkg_root = str(Path.cwd())
-
-    from latch_cli.services.deprecated.touch import touch
-
-    click.secho(
-        "Warning: `latch touch` is deprecated and will be removed soon.",
-        fg="yellow",
-    )
-    touch(remote_file)
-    click.secho(f"Successfully touched {remote_file}.", fg="green")
 
 
 @main.command("sync")
