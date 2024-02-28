@@ -1,9 +1,9 @@
 import click
-import requests
-from latch_sdk_config.latch import config
+import gql
+from latch_sdk_gql.execute import execute
 
+from latch.ldata._transfer.node import get_node_data as _get_node_data
 from latch_cli.services.cp.glob import expand_pattern
-from latch_cli.utils import _normalize_remote_path, current_workspace, retrieve_or_login
 
 
 def rm(remote_path: str, skip_confirmation: bool = False, no_glob: bool = False):
@@ -35,8 +35,6 @@ def rm(remote_path: str, skip_confirmation: bool = False, no_glob: bool = False)
             Will throw an error, as this operation tries to remove a file
             that doesn't exist.
     """
-    token = retrieve_or_login()
-
     to_remove = [remote_path] if no_glob else expand_pattern(remote_path)
     if len(to_remove) == 0:
         click.echo(
@@ -50,13 +48,16 @@ def rm(remote_path: str, skip_confirmation: bool = False, no_glob: bool = False)
     ):
         return
 
+    node_data = _get_node_data(*to_remove).data
     for path in to_remove:
-        path = _normalize_remote_path(path)
-        print(path)
-        data = {"filename": path, "ws_account_id": current_workspace()}
-        headers = {"Authorization": f"Bearer {token}"}
-        response = requests.post(config.api.data.remove, headers=headers, json=data)
-        data = response.json()
-        if not data["success"]:
-            raise ValueError(data["error"]["data"]["message"])
+        execute(
+            gql.gql("""
+                mutation LatchCLIRmr($argNodeId: BigInt!) {
+                    ldataRmr(input: {argNodeId: $argNodeId}) {
+                        clientMutationId
+                    }
+                }
+            """),
+            {"argNodeId": node_data[path].id},
+        )
         click.secho(f"Successfully deleted {path}.", fg="green")

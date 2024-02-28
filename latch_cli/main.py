@@ -655,7 +655,7 @@ def ls(paths: Tuple[str], group_directories_first: bool):
             click.echo("")
 
 
-@main.command("rm")
+@main.command("rmr")
 @click.argument("remote_path", nargs=1, type=str)
 @click.option(
     "-y",
@@ -684,7 +684,7 @@ def rm(remote_path: str, yes: bool, no_glob: bool):
     rm(remote_path, skip_confirmation=yes, no_glob=no_glob)
 
 
-@main.command("mkdir")
+@main.command("mkdirp")
 @click.argument("remote_directory", nargs=1, type=str)
 @requires_login
 def mkdir(remote_directory: str):
@@ -692,10 +692,9 @@ def mkdir(remote_directory: str):
     crash_handler.message = f"Unable to create directory {remote_directory}"
     crash_handler.pkg_root = str(Path.cwd())
 
-    from latch_cli.services.mkdir import mkdir
+    from latch_cli.services.mkdir import mkdirp
 
-    mkdir(remote_directory)
-    click.secho(f"Successfully created directory {remote_directory}.", fg="green")
+    mkdirp(remote_directory)
 
 
 @main.command("sync")
@@ -718,7 +717,7 @@ def mkdir(remote_directory: str):
 @requires_login
 def sync(srcs: List[str], dst: str, delete: bool, ignore_unsyncable: bool):
     """
-    Update the contents of a remote directory with local data or vice versa.
+    Update the contents of a remote directory with local data.
     """
     from latch_cli.services.sync import sync
 

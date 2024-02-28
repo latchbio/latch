@@ -201,7 +201,7 @@ class LPath:
         for node in data["finalLinkTarget"]["childLdataTreeEdges"]["nodes"]:
             yield LPath(urljoins(self.path, node["child"]["name"]))
 
-    def mkdirp(self) -> str:
+    def mkdirp(self) -> None:
         node = _get_node_data(self.path, allow_resolve_to_parent=True).data[self.path]
         if node.exists():
             if node.type not in _dir_types:
@@ -221,7 +221,6 @@ class LPath:
             {"path": path},
         )
         self._clear_cache()
-        return path
 
     def rmr(self) -> None:
         """Recursively delete files at this instance's path.
