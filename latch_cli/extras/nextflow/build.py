@@ -386,6 +386,19 @@ def build_nf_wf(pkg_root: Path, nf_script: Path) -> NextflowWorkflow:
     for f in old_dag_files:
         f.unlink()
 
+    env = {
+        **os.environ,
+        # read NF binaries from `.latch/.nextflow` instead of system
+        "NXF_HOME": str(pkg_root / ".latch" / ".nextflow"),
+        # don't display version mismatch warning
+        "NXF_DISABLE_CHECK_LATEST": "true",
+        # don't emit .nextflow.log files
+        "NXF_LOG_FILE": "/dev/null",
+    }
+
+    if os.environ.get("LATCH_NEXTFLOW_DEV") is not None:
+        env = {**os.environ}
+
     try:
         subprocess.run(
             [
@@ -395,15 +408,7 @@ def build_nf_wf(pkg_root: Path, nf_script: Path) -> NextflowWorkflow:
                 str(nf_script.resolve()),
                 "-latchRegister",
             ],
-            env={
-                **os.environ,
-                # read NF binaries from `.latch/.nextflow` instead of system
-                "NXF_HOME": str(pkg_root / ".latch" / ".nextflow"),
-                # don't display version mismatch warning
-                "NXF_DISABLE_CHECK_LATEST": "true",
-                # don't emit .nextflow.log files
-                "NXF_LOG_FILE": "/dev/null",
-            },
+            env=env,
             check=True,
         )
     except subprocess.CalledProcessError as e:

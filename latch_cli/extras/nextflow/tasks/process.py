@@ -101,8 +101,6 @@ class NextflowProcessTask(NextflowBaseTask):
             "/root/nextflow",
             "run",
             str(nf_script_path_in_container),
-            "-profile",
-            "mamba",
         ]
 
         for flag, val in self.wf.flags_to_params.items():
