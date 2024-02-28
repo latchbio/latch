@@ -59,7 +59,9 @@ class GetNodeDataResult:
     data: Dict[str, NodeData]
 
 
-def get_node_data(*remote_paths: str) -> GetNodeDataResult:
+def get_node_data(
+    *remote_paths: str, allow_resolve_to_parent: bool = False
+) -> GetNodeDataResult:
     normalized: Dict[str, str] = {}
 
     acc_sel = _parse_selection("""
@@ -82,7 +84,6 @@ def get_node_data(*remote_paths: str) -> GetNodeDataResult:
                         id
                         name
                         type
-                        removed
                     }
                 }
             }
@@ -126,16 +127,20 @@ def get_node_data(*remote_paths: str) -> GetNodeDataResult:
         node: LdataResolvePathToNodePayload = res[f"q{i}"]
 
         try:
-            final_link_target = node["ldataNode"]["finalLinkTarget"]
-            if node["removed"]:
+            remaining = node["path"]
+            if (
+                remaining is not None and remaining != ""
+            ) and not allow_resolve_to_parent:
                 raise LatchPathError(
                     f"no such Latch file or directory", remote_path, acc_id
                 )
+
+            final_link_target = node["ldataNode"]["finalLinkTarget"]
             ret[remote_path] = NodeData(
                 id=final_link_target["id"],
                 name=final_link_target["name"],
                 type=LDataNodeType(final_link_target["type"].lower()),
-                remaining=node["path"],
+                remaining=remaining,
             )
         except (TypeError, ValueError):
             raise LatchPathError(

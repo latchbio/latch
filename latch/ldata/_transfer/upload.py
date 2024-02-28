@@ -65,7 +65,7 @@ def upload(
 
     normalized = normalize_path(dest)
 
-    node_data = get_node_data(dest)
+    node_data = get_node_data(dest, allow_resolve_to_parent=True)
     assert dest in node_data.data
     dest_data = node_data.data[dest]
 
