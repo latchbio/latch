@@ -246,19 +246,12 @@ def register(
     type=bool,
     help="Start a develop session for a Snakemake workflow.",
 )
-@click.option(
-    "--size",
-    "-s",
-    type=EnumChoice(TaskSize, case_sensitive=False),
-    help="Instance size to use for develop session.",
-)
 @requires_login
 def local_development(
     pkg_root: Path,
     yes: bool,
     image: Optional[str],
     snakemake: bool,
-    size: Optional[TaskSize],
 ):
     """Develop workflows "locally"
 
@@ -272,7 +265,10 @@ def local_development(
         from latch_cli.services.local_dev import local_development
 
         local_development(
-            pkg_root.resolve(), skip_confirm_dialog=yes, size=size, image=image
+            pkg_root.resolve(),
+            skip_confirm_dialog=yes,
+            size=TaskSize.small_task,
+            image=image,
         )
     else:
         from latch_cli.services.local_dev_old import local_development
