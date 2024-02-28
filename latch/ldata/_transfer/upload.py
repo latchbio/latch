@@ -105,16 +105,16 @@ def upload(
             parts_by_src: "PartsBySrcType" = man.dict()
             upload_info_by_src: "UploadInfoBySrcType" = man.dict()
 
-            throttle: Throttle = man.Throttle()
-            latency_q: "LatencyQueueType" = man.Queue()
-            throttle_listener = exec.submit(throttler, throttle, latency_q)
-
             if src_path.is_dir():
                 if dest_data.exists() and not src.endswith("/"):
                     normalized = urljoins(normalized, src_path.name)
 
                 jobs: List[UploadJob] = []
                 total_bytes = 0
+
+                throttle: Throttle = man.Throttle()
+                latency_q: "LatencyQueueType" = man.Queue()
+                throttle_listener = exec.submit(throttler, throttle, latency_q)
 
                 for dir_path, _, file_names in os.walk(src_path, followlinks=True):
                     for file_name in file_names:
