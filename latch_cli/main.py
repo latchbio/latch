@@ -600,19 +600,31 @@ def open_remote_file(remote_file: str):
 
 @main.command("rm")
 @click.argument("remote_path", nargs=1, type=str)
+@click.option(
+    "-y",
+    "--yes",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Skip the confirmation dialog.",
+)
+@click.option(
+    "--no-glob",
+    "-G",
+    help="Don't expand globs in remote paths",
+    is_flag=True,
+    default=False,
+    show_default=True,
+)
 @requires_login
-def rm(remote_path: str):
+def rm(remote_path: str, yes: bool, no_glob: bool):
     """Deletes a remote entity."""
     crash_handler.message = f"Unable to delete {remote_path}"
     crash_handler.pkg_root = str(Path.cwd())
 
     from latch_cli.services.deprecated.rm import rm
 
-    click.secho(
-        f"Warning: `latch rm` is deprecated and will be removed soon.", fg="yellow"
-    )
-    rm(remote_path)
-    click.secho(f"Successfully deleted {remote_path}.", fg="green")
+    rm(remote_path, skip_confirmation=yes, no_glob=no_glob)
 
 
 @main.command("mkdir")
