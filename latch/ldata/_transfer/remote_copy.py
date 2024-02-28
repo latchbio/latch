@@ -24,12 +24,12 @@ def remote_copy(src: str, dst: str, create_parents: bool = False) -> None:
     if dst_data.exists() and dst_data.type in {LDataNodeType.obj, LDataNodeType.link}:
         raise LatchPathError("object already exists at path", dst, acc_id)
 
-    # if the destination exists and is a directory, use the source name (new_name = None)
-    new_name = None
+    # if the destination exists and is a directory, use the source name
+    path = None
     if not dst_data.exists():
         if not dst_data.is_direct_parent() and not create_parents:
             raise LatchPathError("no such Latch file or directory", dst, acc_id)
-        new_name = dst_data.remaining
+        path = dst_data.remaining
 
     try:
         query_with_retry(
@@ -37,14 +37,13 @@ def remote_copy(src: str, dst: str, create_parents: bool = False) -> None:
             mutation Copy(
                 $argSrcNode: BigInt!
                 $argDstParent: BigInt!
-                $argNewName: String
+                $argPath: String
             ) {
-                ldataCopy(
+                ldataCopyPath(
                     input: {
                         argSrcNode: $argSrcNode
                         argDstParent: $argDstParent
-                        argNewName: $argNewName
-                        createDirs: true
+                        argPath: $argPath
                     }
                 ) {
                     clientMutationId
@@ -53,7 +52,7 @@ def remote_copy(src: str, dst: str, create_parents: bool = False) -> None:
             {
                 "argSrcNode": src_data.id,
                 "argDstParent": dst_data.id,
-                "argNewName": new_name,
+                "argPath": path,
             },
         )
     except TransportQueryError as e:
