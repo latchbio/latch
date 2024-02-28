@@ -9,7 +9,7 @@ from typing import Dict, List, Set, TypedDict
 import click
 from latch_sdk_config.latch import config as latch_config
 
-from latch.ldata.type import LDataNodeType
+from latch.ldata.type import LatchPathError, LDataNodeType
 from latch_cli import tinyrequests
 from latch_cli.constants import Units
 from latch_cli.utils import get_auth_header, human_readable_time, with_si_suffix
@@ -58,7 +58,10 @@ def download(
     normalized = normalize_path(src)
     data = get_node_data(src)
 
+    assert src in data.data
     node_data = data.data[src]
+    if not node_data.exists():
+        raise LatchPathError("no such Latch file or directory", src)
 
     can_have_children = node_data.type in {
         LDataNodeType.account_root,

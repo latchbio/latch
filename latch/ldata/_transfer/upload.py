@@ -7,24 +7,22 @@ from concurrent.futures import Future, ProcessPoolExecutor, as_completed, wait
 from contextlib import closing
 from dataclasses import dataclass
 from http.client import HTTPException
-from json import JSONDecodeError
 from multiprocessing.managers import DictProxy, ListProxy
 from pathlib import Path
 from queue import Queue
-from textwrap import dedent
 from typing import TYPE_CHECKING, List, Optional, TypedDict
 
 from latch_sdk_config.latch import config as latch_config
 from typing_extensions import TypeAlias
 
-from latch.ldata.type import LDataNodeType
+from latch.ldata.type import LatchPathError, LDataNodeType
 from latch_cli import tinyrequests
 from latch_cli.constants import latch_constants, units
 from latch_cli.utils import get_auth_header, urljoins, with_si_suffix
 from latch_cli.utils.path import normalize_path
 
 from .manager import TransferStateManager
-from .node import LatchPathError, get_node_data
+from .node import get_node_data
 from .progress import Progress, ProgressBars
 from .throttle import Throttle
 from .utils import get_max_workers
@@ -67,28 +65,26 @@ def upload(
 
     normalized = normalize_path(dest)
 
-    try:
-        node_data = get_node_data(dest, allow_resolve_to_parent=True)
-        dest_data = node_data.data[dest]
-    except LatchPathError as e:
-        if not create_parents:
-            raise e
-        dest_data = None
+    node_data = get_node_data(dest)
+    assert dest in node_data.data
+    dest_data = node_data.data[dest]
 
-    dest_exists = dest_data is not None and not dest_data.is_parent
-    dest_is_dir = dest_data is not None and dest_data.type in {
+    if not (dest_data.exists() or dest_data.is_direct_parent()) and not create_parents:
+        raise LatchPathError("no such Latch file or directory", dest)
+
+    dest_is_dir = dest_data.type in {
         LDataNodeType.account_root,
         LDataNodeType.mount,
         LDataNodeType.dir,
     }
 
-    if dest_data is not None and not dest_is_dir:
-        if not dest_exists:  # path is latch:///a/b/file_1/file_2
+    if not dest_is_dir:
+        if not dest_data.exists():  # path is latch:///a/b/file_1/file_2
             raise ValueError(f"no such file or directory: {dest}")
         if src_path.is_dir():
             raise ValueError(f"{normalized} is not a directory.")
 
-    if not dest_exists and dest.endswith("/"):
+    if dest.endswith("/") and not dest_data.exists():
         # path is latch:///a/b/ but b does not exist yet
         if not create_parents:
             raise ValueError(f"no such file or directory: {dest}")
@@ -114,7 +110,7 @@ def upload(
             throttle_listener = exec.submit(throttler, throttle, latency_q)
 
             if src_path.is_dir():
-                if dest_exists and not src.endswith("/"):
+                if dest_data.exists() and not src.endswith("/"):
                     normalized = urljoins(normalized, src_path.name)
 
                 jobs: List[UploadJob] = []
@@ -225,7 +221,7 @@ def upload(
                 if progress != Progress.none:
                     print("\x1b[0GFinalizing uploads...")
             else:
-                if dest_exists and dest_is_dir:
+                if dest_data.exists() and dest_is_dir:
                     normalized = urljoins(normalized, src_path.name)
 
                 num_files = 1
@@ -330,49 +326,41 @@ def start_upload(
         math.ceil(file_size / latch_constants.maximum_upload_parts),
     )
 
-    retries = 0
-    while retries < MAX_RETRIES:
-        if throttle is not None:
-            time.sleep(throttle.get_delay() * math.exp(retries * 1 / 2))
+    if throttle is not None:
+        time.sleep(throttle.get_delay())
 
-        start = time.monotonic()
-        res = tinyrequests.post(
-            latch_config.api.data.start_upload,
-            headers={"Authorization": get_auth_header()},
-            json={
-                "path": dest,
-                "content_type": content_type,
-                "part_count": part_count,
-            },
-        )
-        end = time.monotonic()
+    start = time.monotonic()
+    res = tinyrequests.post(
+        latch_config.api.data.start_upload,
+        headers={"Authorization": get_auth_header()},
+        json={
+            "path": dest,
+            "content_type": content_type,
+            "part_count": part_count,
+        },
+        num_retries=MAX_RETRIES,
+    )
+    end = time.monotonic()
 
-        if latency_q is not None:
-            latency_q.put(end - start)
+    if latency_q is not None:
+        latency_q.put(end - start)
 
-        try:
-            json_data = res.json()
-        except JSONDecodeError:
-            retries += 1
-            continue
+    json_data = res.json()
 
-        if res.status_code != 200:
-            retries += 1
-            continue
+    if res.status_code != 200:
+        raise RuntimeError(f"unable to start upload for {src}: {json_data['error']}")
 
-        if progress_bars is not None:
-            progress_bars.update_total_progress(1)
+    if progress_bars is not None:
+        progress_bars.update_total_progress(1)
 
-        if "version_id" in json_data["data"]:
-            return  # file is empty, so no need to upload any content
+    if "version_id" in json_data["data"]:
+        return  # file is empty, so no need to upload any content
 
-        data: StartUploadData = json_data["data"]
+    data: StartUploadData = json_data["data"]
 
-        return StartUploadReturnType(
-            **data, part_count=part_count, part_size=part_size, src=src, dest=dest
-        )
-
-    raise RuntimeError(f"unable to generate upload URL for {src}")
+    return StartUploadReturnType(
+        **data, part_count=part_count, part_size=part_size, src=src, dest=dest
+    )
 
 
 @dataclass(frozen=True)
