@@ -124,6 +124,12 @@ def upload(
                     for file_name in file_names:
                         rel_path = Path(dir_path) / file_name
 
+                        try:
+                            total_bytes += rel_path.stat().st_size
+                        except FileNotFoundError:
+                            print(f"WARNING: file {rel_path} not found, skipping...")
+                            continue
+
                         parts_by_src[rel_path] = man.list()
                         jobs.append(
                             UploadJob(
@@ -134,8 +140,6 @@ def upload(
                                 ),
                             )
                         )
-
-                        total_bytes += rel_path.stat().st_size
 
                 num_files = len(jobs)
 
