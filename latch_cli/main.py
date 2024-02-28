@@ -87,6 +87,99 @@ def main():
     crash_handler.init()
 
 
+"""
+LOGIN COMMANDS
+"""
+
+
+@main.command("login")
+@click.option(
+    "--connection",
+    type=str,
+    default=None,
+    help="Specific AuthO connection name e.g. for SSO.",
+)
+def login(connection: Optional[str]):
+    """Manually login to Latch."""
+
+    crash_handler.message = "Unable to log in"
+    crash_handler.pkg_root = str(Path.cwd())
+
+    from latch_cli.services.login import login
+
+    login(connection)
+    click.secho("Successfully logged into LatchBio.", fg="green")
+
+
+@main.command("workspace")
+@requires_login
+def workspace():
+    """Spawns an interactive terminal prompt allowing users to choose what workspace they want to work in."""
+
+    crash_handler.message = "Unable to fetch workspaces"
+    crash_handler.pkg_root = str(Path.cwd())
+
+    from latch_cli.services.workspace import workspace
+
+    workspace()
+
+
+"""
+WORKFLOW COMMANDS
+"""
+
+
+@main.command("init")
+@click.argument("pkg_name", nargs=1)
+@click.option(
+    "--template",
+    "-t",
+    type=click.Choice(
+        list(template_flag_to_option.keys()),
+        case_sensitive=False,
+    ),
+)
+@click.option(
+    "--dockerfile",
+    "-d",
+    help="Create a user editable Dockerfile for this workflow.",
+    is_flag=True,
+    default=False,
+)
+@click.option(
+    "--base-image",
+    "-b",
+    help="Which base image to use for the Dockerfile.",
+    type=click.Choice(
+        list(BaseImageOptions._member_names_),
+        case_sensitive=False,
+    ),
+    default="default",
+)
+def init(
+    pkg_name: str,
+    template: Optional[str] = None,
+    dockerfile: bool = False,
+    base_image: str = "default",
+):
+    """Initialize boilerplate for local workflow code."""
+
+    crash_handler.message = f"Unable to initialize {pkg_name}"
+    crash_handler.pkg_root = str(Path.cwd())
+
+    from latch_cli.services.init import init
+
+    created = init(pkg_name, template, dockerfile, base_image)
+    if created:
+        click.secho(f"Created a latch workflow in `{pkg_name}`", fg="green")
+        click.secho("Run", fg="green")
+        click.secho(f"\t$ latch register {pkg_name}", fg="green")
+        click.secho("To register the workflow with console.latch.bio.", fg="green")
+        return
+
+    click.secho("No workflow created.", fg="yellow")
+
+
 @main.command("dockerfile")
 @click.argument("pkg_root", type=click.Path(exists=True, file_okay=False))
 @click.option(
@@ -120,6 +213,122 @@ def dockerfile(pkg_root: str, snakemake: bool = False):
     generate_dockerfile(source, dest, wf_type=workflow_type)
 
     click.secho(f"Successfully generated dockerfile `{dest}`", fg="green")
+
+
+@main.command("generate-metadata")
+@click.argument("config_file", nargs=1, type=click.Path(exists=True, path_type=Path))
+@click.option(
+    "--yes",
+    "-y",
+    is_flag=True,
+    default=False,
+    help=(
+        "Overwrite an existing `latch_metadata/parameters.py` file without confirming."
+    ),
+)
+@click.option(
+    "--no-infer-files",
+    "-I",
+    is_flag=True,
+    default=False,
+    help="Don't parse strings with common file extensions as file parameters.",
+)
+@click.option(
+    "--no-defaults",
+    "-D",
+    is_flag=True,
+    default=False,
+    help="Don't generate defaults for parameters.",
+)
+def generate_metadata(
+    config_file: Path, yes: bool, no_infer_files: bool, no_defaults: bool
+):
+    """Generate a `latch_metadata.py` file from a Snakemake config file"""
+
+    from latch_cli.snakemake.config.parser import generate_metadata
+
+    generate_metadata(
+        config_file,
+        skip_confirmation=yes,
+        infer_files=not no_infer_files,
+        generate_defaults=not no_defaults,
+    )
+
+
+@main.command("develop")
+@click.argument("pkg_root", nargs=1, type=click.Path(exists=True, path_type=Path))
+@click.option(
+    "--yes",
+    "-y",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Skip the confirmation dialog.",
+)
+@click.option(
+    "--image",
+    "-i",
+    type=str,
+    help="Image to use for develop session.",
+)
+@click.option(
+    "-s",
+    "--snakemake",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Start a develop session for a Snakemake workflow.",
+)
+@requires_login
+def local_development(
+    pkg_root: Path,
+    yes: bool,
+    image: Optional[str],
+    snakemake: bool,
+):
+    """Develop workflows "locally"
+
+    Visit docs.latch.bio to learn more.
+    """
+
+    crash_handler.message = "Error during local development session"
+    crash_handler.pkg_root = str(pkg_root)
+
+    if os.environ.get("LATCH_DEVELOP_BETA") is not None:
+        from latch_cli.services.local_dev import local_development
+
+        local_development(
+            pkg_root.resolve(),
+            skip_confirm_dialog=yes,
+            size=TaskSize.small_task,
+            image=image,
+        )
+    else:
+        from latch_cli.services.local_dev_old import local_development
+
+        local_development(pkg_root.resolve(), snakemake)
+
+
+@main.command("exec")
+@click.option(
+    "--execution-id", "-e", type=str, help="Optional execution ID to inspect."
+)
+@click.option("--egn-id", "-g", type=str, help="Optional task execution ID to inspect.")
+@click.option(
+    "--container-index",
+    "-c",
+    type=int,
+    help="Optional container index to inspect (only used for Map Tasks)",
+)
+@requires_login
+def execute(
+    execution_id: Optional[str], egn_id: Optional[str], container_index: Optional[int]
+):
+    """Drops the user into an interactive shell from within a task."""
+
+    from latch_cli.services.execute.main import exec
+
+    exec(execution_id=execution_id, egn_id=egn_id, container_index=container_index)
 
 
 @main.command("register")
@@ -222,128 +431,118 @@ def register(
     )
 
 
-@main.command("develop")
-@click.argument("pkg_root", nargs=1, type=click.Path(exists=True, path_type=Path))
+@main.command("launch")
+@click.argument("params_file", nargs=1, type=click.Path(exists=True))
 @click.option(
-    "--yes",
-    "-y",
-    is_flag=True,
-    default=False,
-    type=bool,
-    help="Skip the confirmation dialog.",
-)
-@click.option(
-    "--image",
-    "-i",
-    type=str,
-    help="Image to use for develop session.",
-)
-@click.option(
-    "-s",
-    "--snakemake",
-    is_flag=True,
-    default=False,
-    type=bool,
-    help="Start a develop session for a Snakemake workflow.",
+    "--version",
+    default=None,
+    help="The version of the workflow to launch. Defaults to latest.",
 )
 @requires_login
-def local_development(
-    pkg_root: Path,
-    yes: bool,
-    image: Optional[str],
-    snakemake: bool,
-):
-    """Develop workflows "locally"
+def launch(params_file: Path, version: Union[str, None] = None):
+    """Launch a workflow using a python parameter map."""
 
-    Visit docs.latch.bio to learn more.
-    """
+    crash_handler.message = f"Unable to launch workflow"
+    crash_handler.pkg_root = str(Path.cwd())
 
-    crash_handler.message = "Error during local development session"
+    from latch_cli.services.launch import launch
+
+    wf_name = launch(params_file, version)
+    if version is None:
+        version = "latest"
+
+    click.secho(
+        f"Successfully launched workflow named {wf_name} with version {version}.",
+        fg="green",
+    )
+
+
+@main.command("get-params")
+@click.argument("wf_name", nargs=1)
+@click.option(
+    "--version",
+    default=None,
+    help="The version of the workflow. Defaults to latest.",
+)
+@requires_login
+def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
+    """Generate a python parameter map for a workflow."""
+    crash_handler.message = "Unable to generate param map for workflow"
+    crash_handler.pkg_root = str(Path.cwd())
+
+    from latch_cli.services.get_params import get_params
+
+    get_params(wf_name, version)
+    if version is None:
+        version = "latest"
+    click.secho(
+        f"Successfully generated python param map named {wf_name}.params.py with"
+        f" version {version}\n Run `latch launch {wf_name}.params.py` to launch it.",
+        fg="green",
+    )
+
+
+@main.command("get-wf")
+@click.option(
+    "--name",
+    default=None,
+    help="The name of the workflow to list. Will display all versions",
+)
+@requires_login
+def get_wf(name: Union[str, None] = None):
+    """List workflows."""
+    crash_handler.message = "Unable to get workflows"
+    crash_handler.pkg_root = str(Path.cwd())
+
+    from latch_cli.services.get import get_wf
+
+    wfs = get_wf(name)
+    id_padding, name_padding, version_padding = 0, 0, 0
+    for wf in wfs:
+        id, name, version = wf
+        id_len, name_len, version_len = len(str(id)), len(name), len(version)
+        id_padding = max(id_padding, id_len)
+        name_padding = max(name_padding, name_len)
+        version_padding = max(version_padding, version_len)
+
+    # TODO(ayush): make this much better
+    click.secho(
+        f"ID{id_padding * ' '}\tName{name_padding * ' '}\tVersion{version_padding * ' '}"
+    )
+    for wf in wfs:
+        click.secho(
+            f"{wf[0]}{(id_padding - len(str(wf[0]))) * ' '}\t{wf[1]}{(name_padding - len(wf[1])) * ' '}\t{wf[2]}{(version_padding - len(wf[2])) * ' '}"
+        )
+
+
+@main.command("preview")
+@click.argument("pkg_root", nargs=1, type=click.Path(exists=True, path_type=Path))
+@requires_login
+def preview(pkg_root: Path):
+    """Creates a preview of your workflow interface."""
+    crash_handler.message = f"Unable to preview inputs for {pkg_root}"
     crash_handler.pkg_root = str(pkg_root)
 
-    if os.environ.get("LATCH_DEVELOP_BETA") is not None:
-        from latch_cli.services.local_dev import local_development
+    from latch_cli.services.preview import preview
 
-        local_development(
-            pkg_root.resolve(),
-            skip_confirm_dialog=yes,
-            size=TaskSize.small_task,
-            image=image,
-        )
-    else:
-        from latch_cli.services.local_dev_old import local_development
-
-        local_development(pkg_root.resolve(), snakemake)
+    preview(pkg_root)
 
 
-@main.command("login")
-@click.option(
-    "--connection",
-    type=str,
-    default=None,
-    help="Specific AuthO connection name e.g. for SSO.",
-)
-def login(connection: Optional[str]):
-    """Manually login to Latch."""
+@main.command("get-executions")
+@requires_login
+def get_executions():
+    """Spawns an interactive terminal UI that shows all executions in a given workspace"""
 
-    crash_handler.message = "Unable to log in"
-    crash_handler.pkg_root = str(Path.cwd())
+    crash_handler.message = "Unable to fetch executions"
 
-    from latch_cli.services.login import login
+    from latch_cli.services.get_executions import get_executions
 
-    login(connection)
-    click.secho("Successfully logged into LatchBio.", fg="green")
+    get_executions()
 
 
-@main.command("init")
-@click.argument("pkg_name", nargs=1)
-@click.option(
-    "--template",
-    "-t",
-    type=click.Choice(
-        list(template_flag_to_option.keys()),
-        case_sensitive=False,
-    ),
-)
-@click.option(
-    "--dockerfile",
-    "-d",
-    help="Create a user editable Dockerfile for this workflow.",
-    is_flag=True,
-    default=False,
-)
-@click.option(
-    "--base-image",
-    "-b",
-    help="Which base image to use for the Dockerfile.",
-    type=click.Choice(
-        list(BaseImageOptions._member_names_),
-        case_sensitive=False,
-    ),
-    default="default",
-)
-def init(
-    pkg_name: str,
-    template: Optional[str] = None,
-    dockerfile: bool = False,
-    base_image: str = "default",
-):
-    """Initialize boilerplate for local workflow code."""
-
-    crash_handler.message = f"Unable to initialize {pkg_name}"
-    crash_handler.pkg_root = str(Path.cwd())
-
-    from latch_cli.services.init import init
-
-    created = init(pkg_name, template, dockerfile, base_image)
-    if created:
-        click.secho(f"Created a latch workflow in `{pkg_name}`", fg="green")
-        click.secho("Run", fg="green")
-        click.secho(f"\t$ latch register {pkg_name}", fg="green")
-        click.secho("To register the workflow with console.latch.bio.", fg="green")
-        return
-
-    click.secho("No workflow created.", fg="yellow")
+"""
+LDATA COMMANDS
+"""
 
 
 @main.command("cp")
@@ -456,130 +655,6 @@ def ls(paths: Tuple[str], group_directories_first: bool):
             click.echo("")
 
 
-@main.command("generate-metadata")
-@click.argument("config_file", nargs=1, type=click.Path(exists=True, path_type=Path))
-@click.option(
-    "--yes",
-    "-y",
-    is_flag=True,
-    default=False,
-    help=(
-        "Overwrite an existing `latch_metadata/parameters.py` file without confirming."
-    ),
-)
-@click.option(
-    "--no-infer-files",
-    "-I",
-    is_flag=True,
-    default=False,
-    help="Don't parse strings with common file extensions as file parameters.",
-)
-@click.option(
-    "--no-defaults",
-    "-D",
-    is_flag=True,
-    default=False,
-    help="Don't generate defaults for parameters.",
-)
-def generate_metadata(
-    config_file: Path, yes: bool, no_infer_files: bool, no_defaults: bool
-):
-    """Generate a `latch_metadata.py` file from a Snakemake config file"""
-
-    from latch_cli.snakemake.config.parser import generate_metadata
-
-    generate_metadata(
-        config_file,
-        skip_confirmation=yes,
-        infer_files=not no_infer_files,
-        generate_defaults=not no_defaults,
-    )
-
-
-@main.command("launch")
-@click.argument("params_file", nargs=1, type=click.Path(exists=True))
-@click.option(
-    "--version",
-    default=None,
-    help="The version of the workflow to launch. Defaults to latest.",
-)
-@requires_login
-def launch(params_file: Path, version: Union[str, None] = None):
-    """Launch a workflow using a python parameter map."""
-
-    crash_handler.message = f"Unable to launch workflow"
-    crash_handler.pkg_root = str(Path.cwd())
-
-    from latch_cli.services.launch import launch
-
-    wf_name = launch(params_file, version)
-    if version is None:
-        version = "latest"
-
-    click.secho(
-        f"Successfully launched workflow named {wf_name} with version {version}.",
-        fg="green",
-    )
-
-
-@main.command("get-params")
-@click.argument("wf_name", nargs=1)
-@click.option(
-    "--version",
-    default=None,
-    help="The version of the workflow. Defaults to latest.",
-)
-@requires_login
-def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
-    """Generate a python parameter map for a workflow."""
-    crash_handler.message = "Unable to generate param map for workflow"
-    crash_handler.pkg_root = str(Path.cwd())
-
-    from latch_cli.services.get_params import get_params
-
-    get_params(wf_name, version)
-    if version is None:
-        version = "latest"
-    click.secho(
-        f"Successfully generated python param map named {wf_name}.params.py with"
-        f" version {version}\n Run `latch launch {wf_name}.params.py` to launch it.",
-        fg="green",
-    )
-
-
-@main.command("get-wf")
-@click.option(
-    "--name",
-    default=None,
-    help="The name of the workflow to list. Will display all versions",
-)
-@requires_login
-def get_wf(name: Union[str, None] = None):
-    """List workflows."""
-    crash_handler.message = "Unable to get workflows"
-    crash_handler.pkg_root = str(Path.cwd())
-
-    from latch_cli.services.get import get_wf
-
-    wfs = get_wf(name)
-    id_padding, name_padding, version_padding = 0, 0, 0
-    for wf in wfs:
-        id, name, version = wf
-        id_len, name_len, version_len = len(str(id)), len(name), len(version)
-        id_padding = max(id_padding, id_len)
-        name_padding = max(name_padding, name_len)
-        version_padding = max(version_padding, version_len)
-
-    # TODO(ayush): make this much better
-    click.secho(
-        f"ID{id_padding * ' '}\tName{name_padding * ' '}\tVersion{version_padding * ' '}"
-    )
-    for wf in wfs:
-        click.secho(
-            f"{wf[0]}{(id_padding - len(str(wf[0]))) * ' '}\t{wf[1]}{(name_padding - len(wf[1])) * ' '}\t{wf[2]}{(version_padding - len(wf[2])) * ' '}"
-        )
-
-
 @main.command("open")
 @click.argument("remote_file", nargs=1, type=str)
 @requires_login
@@ -659,64 +734,43 @@ def touch(remote_file: str):
     click.secho(f"Successfully touched {remote_file}.", fg="green")
 
 
-@main.command("exec")
+@main.command("sync")
+@click.argument("srcs", nargs=-1)
+@click.argument("dst", nargs=1)
 @click.option(
-    "--execution-id", "-e", type=str, help="Optional execution ID to inspect."
+    "--delete",
+    help="Delete extraneous files from destination.",
+    is_flag=True,
+    default=False,
 )
-@click.option("--egn-id", "-g", type=str, help="Optional task execution ID to inspect.")
 @click.option(
-    "--container-index",
-    "-c",
-    type=int,
-    help="Optional container index to inspect (only used for Map Tasks)",
+    "--ignore-unsyncable",
+    help=(
+        "Synchronize even if some source paths do not exist or refer to special files."
+    ),
+    is_flag=True,
+    default=False,
 )
 @requires_login
-def execute(
-    execution_id: Optional[str], egn_id: Optional[str], container_index: Optional[int]
-):
-    """Drops the user into an interactive shell from within a task."""
+def sync(srcs: List[str], dst: str, delete: bool, ignore_unsyncable: bool):
+    """
+    Update the contents of a remote directory with local data or vice versa.
+    """
+    from latch_cli.services.sync import sync
 
-    from latch_cli.services.execute.main import exec
-
-    exec(execution_id=execution_id, egn_id=egn_id, container_index=container_index)
-
-
-@main.command("preview")
-@click.argument("pkg_root", nargs=1, type=click.Path(exists=True, path_type=Path))
-@requires_login
-def preview(pkg_root: Path):
-    """Creates a preview of your workflow interface."""
-    crash_handler.message = f"Unable to preview inputs for {pkg_root}"
-    crash_handler.pkg_root = str(pkg_root)
-
-    from latch_cli.services.preview import preview
-
-    preview(pkg_root)
+    # todo(maximsmol): remote -> local
+    # todo(maximsmol): remote -> remote
+    sync(
+        srcs,
+        dst,
+        delete=delete,
+        ignore_unsyncable=ignore_unsyncable,
+    )
 
 
-@main.command("workspace")
-@requires_login
-def workspace():
-    """Spawns an interactive terminal prompt allowing users to choose what workspace they want to work in."""
-
-    crash_handler.message = "Unable to fetch workspaces"
-    crash_handler.pkg_root = str(Path.cwd())
-
-    from latch_cli.services.workspace import workspace
-
-    workspace()
-
-
-@main.command("get-executions")
-@requires_login
-def get_executions():
-    """Spawns an interactive terminal UI that shows all executions in a given workspace"""
-
-    crash_handler.message = "Unable to fetch executions"
-
-    from latch_cli.services.get_executions import get_executions
-
-    get_executions()
+"""
+POD COMMANDS
+"""
 
 
 @main.group()
@@ -756,7 +810,9 @@ def stop_pod(pod_id: Optional[int] = None):
     stop_pod(pod_id)
 
 
-# Test data subcommands.
+"""
+TEST DATA COMMANDS
+"""
 
 
 @main.group(invoke_without_command=True)
@@ -820,37 +876,3 @@ def test_data_ls():
     click.secho("Listing your managed objects by full S3 path.\n", fg="green")
     for o in objects:
         print(f"\ts3://latch-public/{o}")
-
-
-@main.command("sync")
-@click.argument("srcs", nargs=-1)
-@click.argument("dst", nargs=1)
-@click.option(
-    "--delete",
-    help="Delete extraneous files from destination.",
-    is_flag=True,
-    default=False,
-)
-@click.option(
-    "--ignore-unsyncable",
-    help=(
-        "Synchronize even if some source paths do not exist or refer to special files."
-    ),
-    is_flag=True,
-    default=False,
-)
-@requires_login
-def sync(srcs: List[str], dst: str, delete: bool, ignore_unsyncable: bool):
-    """
-    Update the contents of a remote directory with local data or vice versa.
-    """
-    from latch_cli.services.sync import sync
-
-    # todo(maximsmol): remote -> local
-    # todo(maximsmol): remote -> remote
-    sync(
-        srcs,
-        dst,
-        delete=delete,
-        ignore_unsyncable=ignore_unsyncable,
-    )
