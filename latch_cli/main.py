@@ -679,7 +679,7 @@ def rm(remote_path: str, yes: bool, no_glob: bool):
     crash_handler.message = f"Unable to delete {remote_path}"
     crash_handler.pkg_root = str(Path.cwd())
 
-    from latch_cli.services.deprecated.rm import rm
+    from latch_cli.services.rm import rm
 
     rm(remote_path, skip_confirmation=yes, no_glob=no_glob)
 
@@ -692,12 +692,8 @@ def mkdir(remote_directory: str):
     crash_handler.message = f"Unable to create directory {remote_directory}"
     crash_handler.pkg_root = str(Path.cwd())
 
-    from latch_cli.services.deprecated.mkdir import mkdir
+    from latch_cli.services.mkdir import mkdir
 
-    click.secho(
-        "Warning: `latch mkdir` is deprecated and will be removed soon.",
-        fg="yellow",
-    )
     mkdir(remote_directory)
     click.secho(f"Successfully created directory {remote_directory}.", fg="green")
 
