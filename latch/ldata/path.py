@@ -23,7 +23,7 @@ from latch.ldata.type import LatchPathError, LDataNodeType
 from latch_cli.utils import urljoins
 
 from ._transfer.download import download as _download
-from ._transfer.node import get_node_data
+from ._transfer.node import get_node_data as _get_node_data
 from ._transfer.progress import Progress as _Progress
 from ._transfer.remote_copy import remote_copy as _remote_copy
 from ._transfer.upload import upload as _upload
@@ -89,12 +89,12 @@ class LPath:
             gql.gql("""
             query GetNodeData($path: String!) {
                 ldataResolvePathToNode(path: $path) {
+                    path
                     ldataNode {
                         finalLinkTarget {
                             id
                             name
                             type
-                            removed
                             ldataObjectMeta {
                                 contentSize
                                 contentType
@@ -109,7 +109,7 @@ class LPath:
         if (
             data is None
             or data["ldataNode"] is None
-            or data["ldataNode"]["finalLinkTarget"]["removed"]
+            or (data["path"] is not None and data["path"] != "")
         ):
             raise LatchPathError(f"no such Latch file or directory", self.path)
 
@@ -202,13 +202,14 @@ class LPath:
             yield LPath(urljoins(self.path, node["child"]["name"]))
 
     def mkdirp(self) -> None:
-        node = get_node_data(self.path).data[self.path]
+        node = _get_node_data(self.path, allow_resolve_to_parent=True).data[self.path]
         if node.exists():
             if node.type not in _dir_types:
                 raise ValueError(f"{self.path} exists and is not a directory")
             return
 
-        path = f"latch://{node.id}.node/{node.remaining}/"
+        path = f"latch://{node.id}.node/{node.remaining}"
+        path += "/" if not path.endswith("/") else ""
         query_with_retry(
             gql.gql("""
             mutation LDataMkdirP($path: String!) {
@@ -224,7 +225,7 @@ class LPath:
     def rmr(self) -> None:
         """Recursively delete files at this instance's path.
 
-        Throws LatechPathError if the path does not exist.
+        Throws LatchPathError if the path does not exist.
 
         Always makes a network request.
         """

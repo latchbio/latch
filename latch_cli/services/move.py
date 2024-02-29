@@ -35,7 +35,7 @@ def move(
         raise click.exceptions.Exit(0)
 
     try:
-        node_data = _get_node_data(*srcs, dest)
+        node_data = _get_node_data(*srcs, dest, allow_resolve_to_parent=True)
     except Exception as e:
         click.echo(str(e))
         raise click.exceptions.Exit(1) from e

@@ -10,7 +10,7 @@ from .utils import query_with_retry
 
 
 def remote_copy(src: str, dst: str, create_parents: bool = False) -> None:
-    node_data = get_node_data(src, dst)
+    node_data = get_node_data(src, dst, allow_resolve_to_parent=True)
 
     src_data = node_data.data[src]
     dst_data = node_data.data[dst]
