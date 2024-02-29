@@ -674,14 +674,22 @@ def ls(paths: Tuple[str], group_directories_first: bool):
     default=False,
     show_default=True,
 )
-def rm(remote_path: str, yes: bool, no_glob: bool):
+@click.option(
+    "--verbose",
+    "-v",
+    help="Print all files when deleting",
+    is_flag=True,
+    default=False,
+    show_default=True,
+)
+def rmr(remote_path: str, yes: bool, no_glob: bool, verbose: bool):
     """Deletes a remote entity."""
     crash_handler.message = f"Unable to delete {remote_path}"
     crash_handler.pkg_root = str(Path.cwd())
 
-    from latch_cli.services.rm import rm
+    from latch_cli.services.rm import rmr
 
-    rm(remote_path, skip_confirmation=yes, no_glob=no_glob)
+    rmr(remote_path, skip_confirmation=yes, no_glob=no_glob, verbose=verbose)
 
 
 @requires_login

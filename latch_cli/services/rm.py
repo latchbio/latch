@@ -6,7 +6,12 @@ from latch.ldata._transfer.node import get_node_data as _get_node_data
 from latch_cli.services.cp.glob import expand_pattern
 
 
-def rm(remote_path: str, skip_confirmation: bool = False, no_glob: bool = False):
+def rmr(
+    remote_path: str,
+    skip_confirmation: bool = False,
+    no_glob: bool = False,
+    verbose: bool = False,
+):
     """Deletes an entity on Latch
 
     Args:
@@ -42,10 +47,12 @@ def rm(remote_path: str, skip_confirmation: bool = False, no_glob: bool = False)
         )
         return
 
-    files = "\n".join(to_remove)
-    if not skip_confirmation and not click.confirm(
-        f"Remove the following files?\n{files}\n"
-    ):
+    msg = (
+        "Remove the following file(s)?\n" + "\n".join(to_remove)
+        if verbose
+        else f"Remove {len(to_remove)} file(s)?"
+    )
+    if not skip_confirmation and not click.confirm(msg):
         return
 
     node_data = _get_node_data(*to_remove).data
@@ -60,4 +67,5 @@ def rm(remote_path: str, skip_confirmation: bool = False, no_glob: bool = False)
             """),
             {"argNodeId": node_data[path].id},
         )
-        click.secho(f"Successfully deleted {path}.", fg="green")
+        if verbose:
+            click.secho(f"Successfully deleted {path}.", fg="green")
