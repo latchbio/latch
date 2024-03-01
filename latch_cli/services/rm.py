@@ -3,6 +3,7 @@ import gql
 from latch_sdk_gql.execute import execute
 
 from latch.ldata._transfer.node import get_node_data as _get_node_data
+from latch.ldata.path import LatchPathError
 from latch_cli.services.cp.glob import expand_pattern
 
 
@@ -50,12 +51,17 @@ def rmr(
     msg = (
         "Remove the following file(s)?\n" + "\n".join(to_remove)
         if verbose
-        else f"Remove {len(to_remove)} file(s)?"
+        else f"Remove {len(to_remove)} file/dir(s)?"
     )
     if not skip_confirmation and not click.confirm(msg):
         return
 
-    node_data = _get_node_data(*to_remove).data
+    try:
+        node_data = _get_node_data(*to_remove).data
+    except LatchPathError as e:
+        click.secho(str(e), fg="red")
+        raise click.exceptions.Exit(1) from e
+
     for path in to_remove:
         execute(
             gql.gql("""
