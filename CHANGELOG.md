@@ -16,6 +16,19 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.39.2 - 2023-03-01
+
+### Fixed
+
+* Fix bug `LPath` resolves to parent node if path does not exist
+
+### Deprecated
+
+* `latch mkdir` command (replaced with `latch mkdirp`)
+* `latch rm` command (replaced with `latch rmr`)
+* `latch touch`
+* `latch open`
+
 ## 2.39.1 - 2023-02-27
 
 ### Added
