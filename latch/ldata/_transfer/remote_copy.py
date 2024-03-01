@@ -1,17 +1,15 @@
 from textwrap import dedent
 
-import click
 import gql
 from gql.transport.exceptions import TransportQueryError
-from latch_sdk_gql.execute import execute
 
-from latch.ldata.type import LDataNodeType
-from latch_cli.utils.path import get_name_from_path, get_path_error
+from latch.ldata.type import LatchPathError, LDataNodeType
 
 from .node import get_node_data
+from .utils import query_with_retry
 
 
-def remote_copy(src: str, dst: str, *, show_summary: bool = False) -> None:
+def remote_copy(src: str, dst: str, create_parents: bool = False) -> None:
     node_data = get_node_data(src, dst, allow_resolve_to_parent=True)
 
     src_data = node_data.data[src]
@@ -20,30 +18,32 @@ def remote_copy(src: str, dst: str, *, show_summary: bool = False) -> None:
 
     path_by_id = {v.id: k for k, v in node_data.data.items()}
 
-    if src_data.is_parent:
-        raise FileNotFoundError(get_path_error(src, "not found", acc_id))
+    if not src_data.exists():
+        raise LatchPathError("not found", src, acc_id)
 
-    new_name = None
-    if dst_data.is_parent:
-        new_name = get_name_from_path(dst)
-    elif dst_data.type in {LDataNodeType.obj, LDataNodeType.link}:
-        raise FileExistsError(
-            get_path_error(dst, "object already exists at path.", acc_id)
-        )
+    if dst_data.exists() and dst_data.type in {LDataNodeType.obj, LDataNodeType.link}:
+        raise LatchPathError("object already exists at path", dst, acc_id)
+
+    # if the destination exists and is a directory, use the source name
+    path = None
+    if not dst_data.exists():
+        if not dst_data.is_direct_parent() and not create_parents:
+            raise LatchPathError("no such Latch file or directory", dst, acc_id)
+        path = dst_data.remaining
 
     try:
-        execute(
+        query_with_retry(
             gql.gql("""
             mutation Copy(
                 $argSrcNode: BigInt!
                 $argDstParent: BigInt!
-                $argNewName: String
+                $argPath: String
             ) {
-                ldataCopy(
+                ldataCopyPath(
                     input: {
                         argSrcNode: $argSrcNode
                         argDstParent: $argDstParent
-                        argNewName: $argNewName
+                        argPath: $argPath
                     }
                 ) {
                     clientMutationId
@@ -52,7 +52,7 @@ def remote_copy(src: str, dst: str, *, show_summary: bool = False) -> None:
             {
                 "argSrcNode": src_data.id,
                 "argDstParent": dst_data.id,
-                "argNewName": new_name,
+                "argPath": path,
             },
         )
     except TransportQueryError as e:
@@ -65,32 +65,24 @@ def remote_copy(src: str, dst: str, *, show_summary: bool = False) -> None:
             node_id = msg.rsplit(" ", 1)[1]
             path = path_by_id[node_id]
 
-            raise ValueError(get_path_error(path, "permission denied.", acc_id))
+            raise LatchPathError("permission denied", path, acc_id)
         elif msg == "Refusing to make node its own parent":
-            raise ValueError(get_path_error(dst, f"is a parent of {src}.", acc_id))
+            raise LatchPathError(f"is a parent of {src}", dst, acc_id)
         elif msg == "Refusing to parent node to an object node":
-            raise ValueError(get_path_error(dst, f"object exists at path.", acc_id))
+            raise LatchPathError(f"object exists at path", dst, acc_id)
         elif msg == "Refusing to move a share link (or into a share link)":
-            raise ValueError(
-                get_path_error(
-                    src if src_data.type is LDataNodeType.link else dst,
-                    f"is a share link.",
-                    acc_id,
-                )
+            raise LatchPathError(
+                "is a share link",
+                src if src_data.type is LDataNodeType.link else dst,
+                acc_id,
             )
         elif msg.startswith("Refusing to copy account root"):
-            raise ValueError(get_path_error(src, "is an account root.", acc_id))
+            raise LatchPathError("is an account root", src, acc_id)
         elif msg.startswith("Refusing to copy removed node"):
-            raise ValueError(get_path_error(src, "not found.", acc_id))
+            raise LatchPathError("not found", src, acc_id)
         elif msg.startswith("Refusing to copy already in-transit node"):
-            raise ValueError(get_path_error(src, "copy already in progress.", acc_id))
+            raise LatchPathError("copy already in progress", src, acc_id)
         elif msg == "Conflicting object in destination":
-            raise ValueError(get_path_error(dst, "object exists at path.", acc_id))
+            raise LatchPathError("object exists at path", dst, acc_id)
 
-        raise ValueError(get_path_error(src, str(e), acc_id))
-
-    if show_summary:
-        click.echo(dedent(f"""
-            {click.style("Copy Requested.", fg="green")}
-            {click.style("Source: ", fg="blue")}{(src)}
-            {click.style("Destination: ", fg="blue")}{(dst)}"""))
+        raise LatchPathError(str(e), src, acc_id)

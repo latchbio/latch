@@ -133,6 +133,9 @@ class ProgressBars:
         for bar in self.task_bars:
             bar.close()
 
+        # move cursor back to beginning of line
+        print("\r", end="")
+
 
 @contextmanager
 def get_free_index(progress_bars: ProgressBars):

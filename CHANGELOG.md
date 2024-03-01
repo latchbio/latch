@@ -16,6 +16,17 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.39.1 - 2023-02-27
+
+### Added
+
+* add `LPath` support for uploading and copying to non-existent directories
+* clear `LPath` cache after modification operations such as `rm` and `upload`
+
+### Fixed
+
+* skip symlinks that point to non-existent files when running `latch cp`
+
 ## 2.39.0 - 2023-02-21
 
 ### Added

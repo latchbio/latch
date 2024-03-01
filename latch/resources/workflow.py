@@ -1,7 +1,7 @@
 import inspect
 from dataclasses import is_dataclass
 from textwrap import dedent
-from typing import Callable, Union, get_args, get_origin
+from typing import Callable, Dict, Union, get_args, get_origin
 
 import click
 from flytekit import workflow as _workflow
@@ -45,11 +45,14 @@ def workflow(
         signature = inspect.signature(f)
         wf_params = signature.parameters
 
+        updated_params: Dict[str, LatchParameter] = {}
         for wf_param in wf_params:
-            if wf_param not in metadata.parameters:
-                metadata.parameters[wf_param] = LatchParameter(
-                    display_name=best_effort_display_name(wf_param)
-                )
+            updated_params[wf_param] = (
+                LatchParameter(display_name=best_effort_display_name(wf_param))
+                if wf_param not in metadata.parameters
+                else metadata.parameters[wf_param]
+            )
+        metadata.parameters = updated_params
 
         in_meta_not_in_wf = []
         for meta_param in metadata.parameters:

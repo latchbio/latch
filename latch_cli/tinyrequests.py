@@ -1,4 +1,5 @@
 import json as _json
+import time
 from http import HTTPStatus
 from http.client import HTTPException, HTTPResponse, HTTPSConnection
 from typing import Any, Dict, Optional
@@ -66,7 +67,7 @@ class TinyResponse:
             self._resp.close()
 
 
-def request(
+def _req(
     method: str,
     url: str,
     *,
@@ -101,6 +102,46 @@ def request(
     return TinyResponse(resp, url, stream=stream)
 
 
+def request(
+    method: str,
+    url: str,
+    *,
+    headers: Optional[Dict[str, str]] = {},
+    data: Optional[Any] = None,
+    json: Optional[bytes] = None,
+    stream: bool = False,
+    num_retries: int = 3,
+) -> TinyResponse:
+    """
+    Send HTTP request. Retry on 500s or ConnectionErrors.
+    Implements exponential backoff between retries.
+    """
+    err = None
+    res = None
+
+    attempt = 0
+    while attempt < num_retries:
+        res = None
+        attempt += 1
+        try:
+            res = _req(
+                method, url, headers=headers, data=data, json=json, stream=stream
+            )
+            if res.status_code < 500:
+                return res
+        except ConnectionError as e:
+            err = e
+
+        if attempt < num_retries:
+            # todo(rahul): tune the sleep interval based on the startup time of the server
+            # todo(rahul): change sleep interval based on which service we are calling
+            time.sleep(2**attempt * 5)
+
+    if res is None:
+        raise err
+    return res
+
+
 def get(
     url: str,
     *,
@@ -108,10 +149,19 @@ def get(
     data: Optional[bytes] = None,
     json: Optional[Any] = None,
     stream: bool = False,
+    num_retries: int = 3,
 ):
     assert data is None or json is None, "At most one of `data` and `json` can be set"
 
-    return request("GET", url, headers=headers, data=data, json=json, stream=stream)
+    return request(
+        "GET",
+        url,
+        headers=headers,
+        data=data,
+        json=json,
+        stream=stream,
+        num_retries=num_retries,
+    )
 
 
 def put(
@@ -121,10 +171,19 @@ def put(
     data: Optional[bytes] = None,
     json: Optional[Any] = None,
     stream: bool = False,
+    num_retries: int = 3,
 ):
     assert data is None or json is None, "At most one of `data` and `json` can be set"
 
-    return request("PUT", url, headers=headers, data=data, json=json, stream=stream)
+    return request(
+        "PUT",
+        url,
+        headers=headers,
+        data=data,
+        json=json,
+        stream=stream,
+        num_retries=num_retries,
+    )
 
 
 def post(
@@ -134,7 +193,16 @@ def post(
     data: Optional[bytes] = None,
     json: Optional[Any] = None,
     stream: bool = False,
+    num_retries: int = 3,
 ):
     assert data is None or json is None, "At most one of `data` and `json` can be set"
 
-    return request("POST", url, headers=headers, data=data, json=json, stream=stream)
+    return request(
+        "POST",
+        url,
+        headers=headers,
+        data=data,
+        json=json,
+        stream=stream,
+        num_retries=num_retries,
+    )

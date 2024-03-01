@@ -2,18 +2,15 @@ from dataclasses import dataclass
 from typing import Dict, List, TypedDict
 
 import graphql.language as l
-from latch_sdk_gql.execute import execute
 from latch_sdk_gql.utils import _name_node, _parse_selection
 from typing_extensions import TypeAlias
 
-from latch.ldata.type import LDataNodeType
-from latch_cli.utils.path import get_path_error, normalize_path
+from latch.ldata.type import LatchPathError, LDataNodeType
+from latch_cli.utils.path import normalize_path
+
+from .utils import query_with_retry
 
 AccId: TypeAlias = int
-
-
-class LatchPathNotFound(RuntimeError):
-    pass
 
 
 class LDataObjectMeta(TypedDict):
@@ -47,7 +44,13 @@ class NodeData:
     id: str
     name: str
     type: LDataNodeType
-    is_parent: bool
+    remaining: str
+
+    def is_direct_parent(self) -> bool:
+        return self.remaining is not None and "/" not in self.remaining
+
+    def exists(self) -> bool:
+        return self.remaining is None or self.remaining == ""
 
 
 @dataclass(frozen=True)
@@ -114,7 +117,7 @@ def get_node_data(
     assert isinstance(query, l.OperationDefinitionNode)
     query.selection_set = sel_set
 
-    res = execute(doc)
+    res = query_with_retry(doc)
 
     acc_info: AccountInfoCurrentPayload = res["accountInfoCurrent"]
     acc_id = acc_info["id"]
@@ -124,24 +127,24 @@ def get_node_data(
         node: LdataResolvePathToNodePayload = res[f"q{i}"]
 
         try:
-            final_link_target = node["ldataNode"]["finalLinkTarget"]
             remaining = node["path"]
+            if (
+                remaining is not None and remaining != ""
+            ) and not allow_resolve_to_parent:
+                raise LatchPathError(
+                    f"no such Latch file or directory", remote_path, acc_id
+                )
 
-            is_parent = remaining is not None and remaining != ""
-
-            if not allow_resolve_to_parent and is_parent:
-                raise ValueError("node does not exist")
-
-            if remaining is not None and "/" in remaining:
-                raise ValueError("node and parent does not exist")
-
+            final_link_target = node["ldataNode"]["finalLinkTarget"]
             ret[remote_path] = NodeData(
                 id=final_link_target["id"],
                 name=final_link_target["name"],
                 type=LDataNodeType(final_link_target["type"].lower()),
-                is_parent=is_parent,
+                remaining=remaining,
             )
-        except (TypeError, ValueError) as e:
-            raise LatchPathNotFound(get_path_error(remote_path, "not found", acc_id))
+        except (TypeError, ValueError):
+            raise LatchPathError(
+                f"no such Latch file or directory", remote_path, acc_id
+            )
 
     return GetNodeDataResult(acc_id, ret)
