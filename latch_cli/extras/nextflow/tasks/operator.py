@@ -130,34 +130,61 @@ class NextflowOperatorTask(NextflowBaseTask):
                 2,
             )
 
+        # todo(ayush): figure out how to make this work
+        # do_file_io = False
+        # for op_name in [
+        #     "collectFile",
+        #     "countFasta",
+        #     "countFastq",
+        #     "countJson",
+        #     "countLines",
+        #     "splitCsv",
+        #     "splitFasta",
+        #     "splitFastq",
+        #     "splitJson",
+        #     "splitText",
+        # ]:
+        #     if op_name in self.name:
+        #         do_file_io = True
+        #         break
+
+        # download_str = ""
+        # upload_str = ""
+        # if do_file_io:
+        #     download_str = rf"""download_files(channel_vals, LatchDir({repr(self.wf.output_directory.remote_path)}))"""
+        #     upload_str = rf"""upload_files({{k: json.loads(v) for k, v in out_channels.items()}}, LatchDir({repr(self.wf.output_directory.remote_path)}))"""
+
+        download_str = rf"""download_files(channel_vals, LatchDir({repr(self.wf.output_directory.remote_path)}))"""
+        upload_str = rf"""upload_files({{k: json.loads(v) for k, v in out_channels.items()}}, LatchDir({repr(self.wf.output_directory.remote_path)}))"""
+
         code_block += reindent(
             rf"""
-                channel_vals = [{", ".join([f"json.loads({x})" for x in self.channel_inputs])}]
+                    channel_vals = [{", ".join([f"json.loads({x})" for x in self.channel_inputs])}]
 
-                download_files(channel_vals, LatchDir({repr(self.wf.output_directory.remote_path)}))
+                    {download_str}
 
-                subprocess.run(
-                    [{', '.join([f"str({x})" if x.startswith("wf_") else repr(x) for x in run_task_entrypoint])}],
-                    env={{
-                        **os.environ,
-                        "LATCH_EXPRESSION": {repr(self.statement)},
-                        "LATCH_RETURN": {repr(json.dumps(self.ret))},
-                        "LATCH_PARAM_VALS": json.dumps(channel_vals),
-                    }},
-                    check=True,
-                )
+                    subprocess.run(
+                        [{', '.join([f"str({x})" if x.startswith("wf_") else repr(x) for x in run_task_entrypoint])}],
+                        env={{
+                            **os.environ,
+                            "LATCH_EXPRESSION": {repr(self.statement)},
+                            "LATCH_RETURN": {repr(json.dumps(self.ret))},
+                            "LATCH_PARAM_VALS": json.dumps(channel_vals),
+                        }},
+                        check=True,
+                    )
 
-                out_channels = {{}}
-                files = [Path(f) for f in glob.glob(".latch/task-outputs/*.json")]
+                    out_channels = {{}}
+                    files = [Path(f) for f in glob.glob(".latch/task-outputs/*.json")]
 
-                for file in files:
-                    out_channels[file.stem] = file.read_text()
+                    for file in files:
+                        out_channels[file.stem] = file.read_text()
 
-                upload_files({{k: json.loads(v) for k, v in out_channels.items()}}, LatchDir({repr(self.wf.output_directory.remote_path)}))
+                    {upload_str}
 
-            else:
-                print("TASK SKIPPED")
-                out_channels = {{__skip__}}
+                else:
+                    print("TASK SKIPPED")
+                    out_channels = {{__skip__}}
 
             """,
             1,

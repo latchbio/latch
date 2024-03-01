@@ -24,7 +24,7 @@ class NextflowProcessTask(NextflowBaseTask):
         unaliased: str,
         wf: NextflowWorkflow,
     ):
-        super().__init__(inputs, outputs, id, name, {}, wf)
+        super().__init__(inputs, outputs, id, name, {}, wf, cpu=16, memory=32)
 
         self.wf_inputs = {}
         self.conditional_inputs = {}

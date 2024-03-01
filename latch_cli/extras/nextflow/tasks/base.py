@@ -34,6 +34,9 @@ class NextflowBaseTask(PythonAutoContainerTask[Pod]):
         name: str,
         branches: Dict[str, bool],
         wf: NextflowWorkflow,
+        # todo(ayush): expose / infer these somehow
+        cpu: int = 4,
+        memory: int = 8,
     ):
         self.id = id
         self.wf = wf
@@ -56,16 +59,12 @@ class NextflowBaseTask(PythonAutoContainerTask[Pod]):
 
         self.branches = branches
 
-        # todo(ayush): expose / infer these somehow
-        cores = 4
-        mem = 7  # GiB
-
         super().__init__(
             task_type=SdkTaskType.SIDECAR_TASK,
             task_type_version=2,
             name=f"{name}_{id}",
             interface=interface,
-            task_config=custom_task(cpu=cores, memory=mem).keywords["task_config"],
+            task_config=custom_task(cpu=cpu, memory=memory).keywords["task_config"],
             task_resolver=NextflowBaseTaskResolver(),
         )
 

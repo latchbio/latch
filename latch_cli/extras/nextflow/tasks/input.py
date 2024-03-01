@@ -20,7 +20,11 @@ class NextflowInputTask(NextflowOperatorTask):
     ):
         super().__init__(inputs, outputs, id, name, "", [], branches, wf)
 
-        assert len(self.channel_inputs) == 1, self.name
+        assert len(self.channel_inputs) == 1, (
+            self.channel_inputs,
+            self.conditional_inputs,
+            self.wf_inputs,
+        )
 
     def get_fn_return_stmt(self):
         results: List[str] = []

@@ -2,6 +2,7 @@ import glob
 import os
 import subprocess
 import sys
+from collections import OrderedDict
 from pathlib import Path
 from textwrap import dedent
 from typing import Dict, List, Optional
@@ -71,10 +72,10 @@ def build_from_nextflow_dag(wf: NextflowWorkflow):
     for vertex in wf.dag.toposorted():
         upstream_nodes = [global_start_node]
 
-        task_inputs = {**global_wf_inputs}
+        task_inputs = OrderedDict({**global_wf_inputs})
 
         if len(vertex.outputNames) > 0:
-            task_outputs = {o: Optional[str] for o in vertex.outputNames}
+            task_outputs = OrderedDict({o: Optional[str] for o in vertex.outputNames})
         else:
             task_outputs = {"res": Optional[str]}
 

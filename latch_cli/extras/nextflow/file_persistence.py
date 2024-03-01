@@ -1,7 +1,7 @@
 import os
 import shutil
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Set, Union
 
 import click
 import gql
@@ -12,6 +12,7 @@ from typing_extensions import TypeAlias
 from latch.ldata._transfer.node import get_node_data
 from latch.ldata.type import LDataNodeType
 from latch.types.directory import LatchDir
+from latch.types.file import LatchFile
 from latch_cli.utils import urljoins
 
 JSONValue: TypeAlias = Union[
@@ -46,7 +47,7 @@ def _extract_paths(parameter: JSONValue, res: List[Path]):
     if k == "path":
         assert isinstance(v, str)
 
-        res.append(Path(v).resolve())
+        res.append(Path(v).absolute())
     elif k == "list":
         assert isinstance(v, List)
 
@@ -86,7 +87,9 @@ def _get_execution_name() -> Optional[str]:
     return res["info"]["displayName"]
 
 
-def download_files(channels: List[List[JSONValue]], outdir: LatchDir):
+def download_files(
+    channels: List[List[JSONValue]], outdir: LatchDir, *, make_impostors: bool = False
+):
     paths: List[Path] = []
     for channel in channels:
         for param in channel:
@@ -102,6 +105,7 @@ def download_files(channels: List[List[JSONValue]], outdir: LatchDir):
     remote_to_local = {urljoins(remote, str(local)[1:]): local for local in paths}
     node_data = get_node_data(*remote_to_local, allow_resolve_to_parent=True)
 
+    downloaded: Set[str] = set()
     lp = LatchPersistence()
     for remote, data in node_data.data.items():
         local = remote_to_local[remote]
@@ -115,14 +119,27 @@ def download_files(channels: List[List[JSONValue]], outdir: LatchDir):
             )
             raise PathNotFoundError()
 
+        if make_impostors:
+            if data.type == LDataNodeType.obj:
+                LatchFile(remote)._create_imposters()
+            else:
+                LatchDir(remote)._create_imposters()
+
+            continue
+
+        if remote in downloaded:
+            continue
+
+        downloaded.add(remote)
+
         click.echo(f"Downloading {remote} -> {local}. ", nl=False)
 
         local.parent.mkdir(parents=True, exist_ok=True)
 
         if data.type == LDataNodeType.obj:
-            lp.download(remote, local)
+            lp.download(remote, str(local))
         else:
-            lp.download_directory(remote, local)
+            lp.download_directory(remote, str(local))
 
         click.echo("Done.")
 
@@ -140,13 +157,14 @@ def _upload(local: Path, remote: str):
     click.echo(f"Uploading {local} -> {remote}. ", nl=False)
 
     if p.is_file():
-        lp.upload(local, remote)
+        lp.upload(str(local), remote)
     else:
-        lp.upload_directory(local, remote)
+        lp.upload_directory(str(local), remote)
 
     click.echo("Done.")
 
 
+# todo(ayush): use crc or something to avoid reuploading unchanged files
 def upload_files(channels: Dict[str, List[JSONValue]], outdir: LatchDir):
     paths: List[Path] = []
     for channel in channels.values():
