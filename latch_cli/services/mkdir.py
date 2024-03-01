@@ -1,6 +1,6 @@
 import click
 
-from latch.ldata.path import LPath
+from latch.ldata.path import LatchPathError, LPath
 
 
 def mkdirp(remote_directory):
@@ -30,5 +30,9 @@ def mkdirp(remote_directory):
             Creates a two new directories visible in Latch Console called "doesnt_exist" and
             "dir2", located in the directory dir1.
     """
-    LPath(remote_directory).mkdirp()
+    try:
+        LPath(remote_directory).mkdirp()
+    except LatchPathError as e:
+        click.secho(str(e), fg="red")
+        raise click.exceptions.Exit(1) from e
     click.secho(f"Successfully created {remote_directory}.", fg="green")
