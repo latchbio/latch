@@ -81,17 +81,6 @@ class NextflowOutputTask(NextflowOperatorTask):
     def get_fn_code(self, nf_script_path_in_container: Path):
         code_block = self.get_fn_interface()
         code_block += self.get_fn_conditions()
-
-        code_block += reindent(
-            rf"""
-            if cond:
-                channel_vals = [{", ".join([f"json.loads({x})" for x in self.channel_inputs])}]
-
-                stage_for_output(channel_vals, LatchDir({repr(self.wf.output_directory.remote_path)}))
-
-            """,
-            1,
-        )
-
         code_block += self.get_fn_return_stmt()
+
         return code_block

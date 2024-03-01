@@ -33,6 +33,17 @@ lp = LatchPersistence()
 class PathNotFoundError(RuntimeError): ...
 
 
+def _get_remote(outdir: LatchDir) -> str:
+    remote = outdir.remote_path
+    assert remote is not None
+
+    exec_name = _get_execution_name()
+    if exec_name is not None:
+        remote = urljoins(remote, exec_name)
+
+    return remote
+
+
 def _extract_paths(parameter: JSONValue, res: List[Path]):
     if not isinstance(parameter, Dict):
         raise ValueError(f"malformed parameter: {parameter}")
@@ -48,7 +59,7 @@ def _extract_paths(parameter: JSONValue, res: List[Path]):
     if k == "path":
         assert isinstance(v, str)
 
-        res.append(Path(v).absolute())
+        res.append(Path(v).absolute().relative_to(Path.home()))
     elif k == "list":
         assert isinstance(v, List)
 
@@ -96,14 +107,9 @@ def download_files(
         for param in channel:
             _extract_paths(param, paths)
 
-    remote = outdir.remote_path
-    assert remote is not None
+    remote = _get_remote(outdir)
 
-    exec_name = _get_execution_name()
-    if exec_name is not None:
-        remote = urljoins(remote, exec_name)
-
-    remote_to_local = {urljoins(remote, str(local)[1:]): local for local in paths}
+    remote_to_local = {urljoins(remote, str(local)): local for local in paths}
     node_data = get_node_data(*remote_to_local, allow_resolve_to_parent=True)
 
     downloaded: Set[str] = set()
@@ -113,12 +119,12 @@ def download_files(
 
         if not data.exists():
             click.secho(
-                f"Nextflow process expects a file/directory to be at {local}, but no"
-                " corresponding remote file was found. A previous task may not have"
-                " uploaded the file. Aborting.",
-                fg="red",
+                f"Warning: Nextflow process expects a file/directory to be at {local},"
+                " but no corresponding remote file was found. A previous task may not"
+                " have uploaded the file.",
+                fg="yellow",
             )
-            raise PathNotFoundError()
+            continue
 
         if make_impostors:
             if data.type == LDataNodeType.obj:
@@ -172,14 +178,9 @@ def upload_files(channels: Dict[str, List[JSONValue]], outdir: LatchDir):
         for param in channel:
             _extract_paths(param, paths)
 
-    remote = outdir.remote_path
-    assert remote is not None
+    remote = _get_remote(outdir)
 
-    exec_name = _get_execution_name()
-    if exec_name is not None:
-        remote = urljoins(remote, exec_name)
-
-    local_to_remote = {local: urljoins(remote, str(local)[1:]) for local in paths}
+    local_to_remote = {local: urljoins(remote, str(local)) for local in paths}
 
     for local in paths:
         _upload(local, local_to_remote[local])
@@ -191,14 +192,9 @@ def stage_for_output(channels: List[List[JSONValue]], outdir: LatchDir):
         for param in channel:
             _extract_paths(param, old)
 
-    remote = outdir.remote_path
-    assert remote is not None
+    remote = _get_remote(outdir)
 
-    exec_name = _get_execution_name()
-    if exec_name is not None:
-        remote = urljoins(remote, exec_name)
-
-    old_remotes = {local: urljoins(remote, str(local)[1:]) for local in old}
+    old_remotes = {local: urljoins(remote, str(local)) for local in old}
     new_remotes = {local: urljoins(remote, "output", local.name) for local in old}
 
     for local in old:

@@ -131,31 +131,28 @@ class NextflowOperatorTask(NextflowBaseTask):
             )
 
         # todo(ayush): figure out how to make this work
-        # do_file_io = False
-        # for op_name in [
-        #     "collectFile",
-        #     "countFasta",
-        #     "countFastq",
-        #     "countJson",
-        #     "countLines",
-        #     "splitCsv",
-        #     "splitFasta",
-        #     "splitFastq",
-        #     "splitJson",
-        #     "splitText",
-        # ]:
-        #     if op_name in self.name:
-        #         do_file_io = True
-        #         break
+        do_file_io = False
+        for op_name in [
+            "collectFile",
+            "countFasta",
+            "countFastq",
+            "countJson",
+            "countLines",
+            "splitCsv",
+            "splitFasta",
+            "splitFastq",
+            "splitJson",
+            "splitText",
+        ]:
+            if op_name in self.name:
+                do_file_io = True
+                break
 
-        # download_str = ""
-        # upload_str = ""
-        # if do_file_io:
-        #     download_str = rf"""download_files(channel_vals, LatchDir({repr(self.wf.output_directory.remote_path)}))"""
-        #     upload_str = rf"""upload_files({{k: json.loads(v) for k, v in out_channels.items()}}, LatchDir({repr(self.wf.output_directory.remote_path)}))"""
-
-        download_str = rf"""download_files(channel_vals, LatchDir({repr(self.wf.output_directory.remote_path)}))"""
-        upload_str = rf"""upload_files({{k: json.loads(v) for k, v in out_channels.items()}}, LatchDir({repr(self.wf.output_directory.remote_path)}))"""
+        upload_str = ""
+        download_str = ""
+        if do_file_io:
+            download_str = rf"""download_files(channel_vals, LatchDir({repr(self.wf.output_directory.remote_path)}))"""
+            upload_str = rf"""upload_files({{k: json.loads(v) for k, v in out_channels.items()}}, LatchDir({repr(self.wf.output_directory.remote_path)}))"""
 
         code_block += reindent(
             rf"""
