@@ -10,6 +10,7 @@ from latch_sdk_gql.execute import execute
 from typing_extensions import TypeAlias
 
 from latch.ldata._transfer.node import get_node_data
+from latch.ldata.path import LPath
 from latch.ldata.type import LDataNodeType
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
@@ -110,7 +111,7 @@ def download_files(
     for remote, data in node_data.data.items():
         local = remote_to_local[remote]
 
-        if data.is_parent:
+        if not data.exists():
             click.secho(
                 f"Nextflow process expects a file/directory to be at {local}, but no"
                 " corresponding remote file was found. A previous task may not have"
@@ -185,8 +186,6 @@ def upload_files(channels: Dict[str, List[JSONValue]], outdir: LatchDir):
 
 
 def stage_for_output(channels: List[List[JSONValue]], outdir: LatchDir):
-    download_files(channels, outdir)
-
     old: List[Path] = []
     for channel in channels:
         for param in channel:
@@ -199,7 +198,13 @@ def stage_for_output(channels: List[List[JSONValue]], outdir: LatchDir):
     if exec_name is not None:
         remote = urljoins(remote, exec_name)
 
-    for local_path in old:
-        new_path = Path("/root/outputs") / local_path.name
-        os.renames(local_path, new_path)
-        _upload(new_path, urljoins(remote, "output", new_path.name))
+    old_remotes = {local: urljoins(remote, str(local)[1:]) for local in old}
+    new_remotes = {local: urljoins(remote, "output", local.name) for local in old}
+
+    for local in old:
+        old_remote = old_remotes[local]
+        new_remote = new_remotes[local]
+
+        lp = LPath(old_remote)
+        lp.copy_to(LPath(new_remote))
+        print(f"Moving {local.name} to outputs")
