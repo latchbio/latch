@@ -271,7 +271,9 @@ class _CentromereCtx:
                 # todo(maximsmol): connect only AFTER confirming registration
                 self.ssh_key_path = self.pkg_root / ".latch/ssh_key"
                 self.jump_key_path = self.pkg_root / ".latch/jump_key"
-                self.public_key = generate_temporary_ssh_credentials(self.ssh_key_path)
+                self.public_key = generate_temporary_ssh_credentials(
+                    self.ssh_key_path, add_to_agent=False
+                )
 
                 if use_new_centromere:
                     self.internal_ip, self.username = (
