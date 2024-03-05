@@ -16,7 +16,26 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.39.1 - 2023-02-27
+## 2.39.3 - 2024
+
+### Fixed
+
+* Fix bug where temporary SSH keys were getting added but not removed from the SSH Agent during workflow registration
+
+## 2.39.2 - 2024-03-01
+
+### Fixed
+
+* Fix bug `LPath` resolves to parent node if path does not exist
+
+### Deprecated
+
+* `latch mkdir` command (replaced with `latch mkdirp`)
+* `latch rm` command (replaced with `latch rmr`)
+* `latch touch`
+* `latch open`
+
+## 2.39.1 - 2024-02-27
 
 ### Added
 
@@ -27,35 +46,35 @@ Types of changes
 
 * skip symlinks that point to non-existent files when running `latch cp`
 
-## 2.39.0 - 2023-02-21
+## 2.39.0 - 2024-02-21
 
 ### Added
 
 * add `LPath` implementation
 * add support for registering workflows without Latch metadata
 
-## 2.38.9 - 2023-02-14
+## 2.38.9 - 2024-02-14
 
 ### Added
 
 * Snakemake
   + add support for optional input parameters
 
-## 2.38.8 - 2023-01-26
+## 2.38.8 - 2024-01-26
 
 ### Fixed
 
 * Snakemake
   + fix bug in `ruleorder` directive caused by `block_content` monkey patch returning None
 
-## 2.38.7 - 2023-01-26
+## 2.38.7 - 2024-01-26
 
 ### Fixed
 
 * Snakemake
   + warn instead of error when config parameter type cannot be parsed in generate-metadata command
 
-## 2.38.6 - 2023-01-26
+## 2.38.6 - 2024-01-26
 
 ### Added
 
@@ -64,21 +83,20 @@ Types of changes
   + GPU support for non-container tasks
   + Add `cores` field to SnakemakeMetadata object
 
-
-## 2.38.5 - 2023-01-22
+## 2.38.5 - 2024-01-22
 
 ### Fixed
 
 * Broken default in snakemake metadata which prevented registration of any workflow
 
-## 2.38.4 - 2023-01-20
+## 2.38.4 - 2024-01-20
 
 ### Added
 
 * Snakemake
   + update defaults for conda + containers to `False`
 
-## 2.38.3 - 2023-01-19
+## 2.38.3 - 2024-01-19
 
 ### Added
 
@@ -91,7 +109,7 @@ Types of changes
 * Snakemake
   + fix regression in 2.38.2 that caused failure to resolve upstream nodes for target files
 
-## 2.38.2 - 2023-01-17
+## 2.38.2 - 2024-01-17
 
 ### Added
 
@@ -104,7 +122,7 @@ Types of changes
   + add `_jit_register` suffix when resolving Snakemake workflow name for `latch develop`
   + use `variable_name_for_value` instead of `variable_name_for_file` when resolving upstream jobs for target files
 
-## 2.38.1 - 2023-01-15
+## 2.38.1 - 2024-01-15
 
 ### Added
 
@@ -116,13 +134,13 @@ Types of changes
   + remove `.latch` directory copy from Dockerfile generation to avoid unexpected file overrides
   + limit pulp package version to < 2.8 to fix snakemake import failure
 
-## 2.38.0 - 2023-01-13
+## 2.38.0 - 2024-01-13
 
 ### Added
 
 * The `latch exec` command to spawn a shell inside a running task.
 
-## 2.37.1 - 2023-01-08
+## 2.37.1 - 2024-01-08
 
 ### Added
 

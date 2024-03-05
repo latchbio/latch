@@ -250,7 +250,9 @@ def hash_directory(dir_path: Path) -> str:
     return m.hexdigest()
 
 
-def generate_temporary_ssh_credentials(ssh_key_path: Path) -> str:
+def generate_temporary_ssh_credentials(
+    ssh_key_path: Path, *, add_to_agent: bool = True
+) -> str:
     # check if there is already a valid key at that path, and if so, use that
     # otherwise, if its not valid, remove it
     if ssh_key_path.exists():
@@ -298,25 +300,26 @@ def generate_temporary_ssh_credentials(ssh_key_path: Path) -> str:
 
         os.chmod(ssh_key_path, 0o700)
 
-    # make key available to ssh-agent daemon
-    cmd = ["ssh-add", ssh_key_path]
+    if add_to_agent:
+        # make key available to ssh-agent daemon
+        cmd = ["ssh-add", ssh_key_path]
 
-    try:
-        subprocess.run(cmd, check=True, stderr=subprocess.DEVNULL)
-    except subprocess.CalledProcessError as e:
-        click.secho(
-            dedent(f"""
-                There was an issue adding temporary SSH credentials to your SSH Agent.
-                Please activate your SSH Agent by running
+        try:
+            subprocess.run(cmd, check=True, stderr=subprocess.DEVNULL)
+        except subprocess.CalledProcessError as e:
+            click.secho(
+                dedent(f"""
+                    There was an issue adding temporary SSH credentials to your SSH Agent.
+                    Please activate your SSH Agent by running
 
-                    {bold("$ eval `ssh-agent -s`")}
+                        {bold("$ eval `ssh-agent -s`")}
 
-                in your terminal.
-            """.strip()),
-            fg="red",
-        )
+                    in your terminal.
+                """.strip()),
+                fg="red",
+            )
 
-        raise click.exceptions.Exit(1) from e
+            raise click.exceptions.Exit(1) from e
 
     # decode private key into public key
     cmd = ["ssh-keygen", "-y", "-f", ssh_key_path]
