@@ -347,6 +347,7 @@ def generate_snakemake_entrypoint(
     entrypoint_code_block = textwrap.dedent(r"""
         import os
         from pathlib import Path
+        import time
         import shutil
         import subprocess
         from subprocess import CalledProcessError

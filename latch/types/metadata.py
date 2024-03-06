@@ -436,7 +436,7 @@ class SnakemakeFileParameter(SnakemakeParameter):
     """
     download: bool = False
     """
-    Whether or not the file is downloaded in the JIT step
+    Whether or not the file is downloaded before task execution
     """
 
 
@@ -452,7 +452,7 @@ class SnakemakeFileMetadata:
     """
     download: bool = False
     """
-    If `True`, download the file in the JIT step
+    If `True`, download the file before all task executions
     """
 
 

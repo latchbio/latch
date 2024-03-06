@@ -747,8 +747,12 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         self.jit_exec_display_name = jit_exec_display_name
         self.cores = metadata._snakemake_metadata.cores
 
+        self.file_metadata = metadata._snakemake_metadata.file_metadata
+        self.parameters = metadata._snakemake_metadata.parameters
+
         assert name is not None
 
+        self.local_to_remote_path_mapping = local_to_remote_path_mapping
         python_interface, literal_map, return_files = snakemake_dag_to_interface(
             dag,
             name,
@@ -970,6 +974,72 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         self._nodes = list(node_map.values())
         self._output_bindings = bindings
+
+    def params_to_download(self) -> List[Union[LatchFile, LatchDir]]:
+        to_download: List[Union[LatchFile, LatchDir]] = []
+
+        def _to_download_helper(
+            param: SnakemakeParameter,
+        ) -> List[Union[LatchFile, LatchDir]]:
+            if is_primitive_type(param.type):
+                return []
+
+            if typ in {LatchFile, LatchDir}:
+                return reindent(
+                    f"""\
+                    SnakemakeFileMetadata(
+                        path={repr(value)},
+                        config=True,
+                    ),\n""",
+                    level,
+                )
+
+            metadata: List[str] = []
+            if is_list_type(typ):
+                template = """
+                [
+                __metadata__],\n"""
+
+                args = get_args(typ)
+                assert len(args) > 0
+                for val in value:
+                    metadata_str = file_metadata_str(get_args(typ)[0], val, level + 1)
+                    if metadata_str == "":
+                        continue
+                    metadata.append(metadata_str)
+            else:
+                template = """
+                {
+                __metadata__},\n"""
+
+                assert is_dataclass(typ)
+                for field in fields(typ):
+                    metadata_str = file_metadata_str(
+                        field.type, getattr(value, field.name), level
+                    )
+                    if metadata_str == "":
+                        continue
+                    metadata_str = (
+                        f"{repr(identifier_from_str(field.name))}: {metadata_str}"
+                    )
+                    metadata.append(reindent(metadata_str, level + 1))
+                    pass
+
+            for param in self.parameters:
+                if isinstance(param, SnakemakeFileParameter):
+                    if param.download:
+                        to_download.append(
+                            param.type(
+                                path=param.path,
+                                remote_path=self.local_to_remote_path_mapping[
+                                    param.path
+                                ],
+                            )
+                        )
+                if param.type in {LatchFile, LatchDir}:
+                    to_download.extend(_to_download_helper(param))
+
+        return to_download
 
     def find_upstream_node_matching_file(self, job: snakemake.jobs.Job, out_file: str):
         for depen, files in self._dag.dependencies[job].items():
@@ -1404,6 +1474,15 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
     ):
         code_block = self.get_fn_interface()
 
+        for param in self.wf.params_to_download():
+            code_block += reindent(
+                rf"""
+                print(f"Downloading {param.remote_path}")
+                Path({param}).resolve()
+                """,
+                1,
+            )
+
         for param, t in self._python_inputs.items():
             if not issubclass(t, (LatchFile, LatchDir)):
                 continue
@@ -1412,9 +1491,10 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
                 rf"""
                 {param}_dst_p = Path("{self._target_file_for_input_param[param]}")
 
+                start = time.time()
                 print(f"Downloading {param}: {{{param}.remote_path}}")
                 {param}_p = Path({param}).resolve()
-                print(f"  {{file_name_and_size({param}_p)}}")
+                print(f"Downloaded {{file_name_and_size({param}_p)}} in {{time.time() - start}} seconds\n")
 
                 """,
                 1,
