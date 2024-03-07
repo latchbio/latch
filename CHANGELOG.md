@@ -16,7 +16,15 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.39.3 - 2024
+## 2.39.3 - 2024-03-07
+
+### Fixed
+
+* Snakemake
+  + fix bug where two rules with the same input parameter name causes JIT step to fail
+
+
+## 2.39.3 - 2024-03-05
 
 ### Fixed
 

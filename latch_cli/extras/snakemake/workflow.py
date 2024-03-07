@@ -113,18 +113,6 @@ def variable_name_for_file(file: snakemake.io.AnnotatedString):
     return f"r_{identifier_suffix_from_str(file)}"
 
 
-def variable_name_for_value(
-    val: SnakemakeInputVal,
-    params: Union[snakemake.io.InputFiles, snakemake.io.OutputFiles, None] = None,
-) -> str:
-    if params is not None:
-        for name, v in params.items():
-            if val == v:
-                return name
-
-    return variable_name_for_file(val.file)
-
-
 @dataclass
 class RemoteFile:
     local_path: str
@@ -140,7 +128,7 @@ def snakemake_dag_to_interface(
     outputs: Dict[str, Union[Type[LatchFile], Type[LatchDir]]] = {}
     for target in dag.targetjobs:
         for desired in target.input:
-            param = variable_name_for_value(desired, target.input)
+            param = variable_name_for_file(desired)
 
             jobs: List[snakemake.jobs.Job] = dag.file2jobs(desired)
             producer_out: snakemake.io._IOFile = next(x for x in jobs[0].output)
@@ -164,7 +152,7 @@ def snakemake_dag_to_interface(
 
         for x in job.input:
             if x not in dep_outputs:
-                param = variable_name_for_value(x, job.input)
+                param = variable_name_for_file(x)
                 inputs[param] = (LatchFile, None)
 
                 remote_path = (
@@ -742,7 +730,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
                     if x in target_files:
                         is_target = True
-                    param = variable_name_for_value(x, job.output)
+                    param = variable_name_for_file(x)
                     target_file_for_output_param[param] = x
 
                     if x.is_directory:
@@ -755,7 +743,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
                     if x in target_files:
                         is_target = True
-                    param = variable_name_for_value(x, job.log)
+                    param = variable_name_for_file(x)
                     target_file_for_output_param[param] = x
 
                     if x.is_directory:
@@ -771,9 +759,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
                             dep_outputs[o] = JobOutputInfo(
                                 jobid=dep.jobid,
-                                output_param_name=variable_name_for_value(
-                                    o, dep.output
-                                ),
+                                output_param_name=variable_name_for_file(o),
                                 type_=LatchDir if o.is_directory else LatchFile,
                             )
 
@@ -783,14 +769,14 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
                             dep_outputs[o] = JobOutputInfo(
                                 jobid=dep.jobid,
-                                output_param_name=variable_name_for_value(o, dep.log),
+                                output_param_name=variable_name_for_file(o),
                                 type_=LatchDir if o.is_directory else LatchFile,
                             )
 
                 python_inputs: Dict[str, Union[Type[LatchFile], Type[LatchDir]]] = {}
                 promise_map: Dict[str, JobOutputInfo] = {}
                 for x in job.input:
-                    param = variable_name_for_value(x, job.input)
+                    param = variable_name_for_file(x)
                     target_file_for_input_param[param] = x
 
                     dep_out = dep_outputs.get(x)
@@ -874,10 +860,15 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
                 node_id += 1
 
-        bindings: List[literals_models.Binding] = []
+        bindings: Dict[str, literals_models.Binding] = {}
         for target in self._dag.targetjobs:
             for out_file in target.input:
-                out_param_name = variable_name_for_value(out_file, target.input)
+                out_param_name = variable_name_for_file(out_file)
+                if out_param_name in bindings:
+                    # rahul: Flyte will error if there are mulitple
+                    # bindings for the same output
+                    continue
+
                 upstream_id, upstream_var = self.find_upstream_node_matching_file(
                     target, out_file
                 )
@@ -892,16 +883,16 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     promise_to_bind,
                     t,
                 )
-                bindings.append(b)
+                bindings[out_param_name] = b
 
         self._nodes = list(node_map.values())
-        self._output_bindings = bindings
+        self._output_bindings = list(bindings.values())
 
     def find_upstream_node_matching_file(self, job: snakemake.jobs.Job, out_file: str):
         for depen, files in self._dag.dependencies[job].items():
             for f in files:
                 if f == out_file:
-                    return depen.jobid, variable_name_for_value(f, depen.output)
+                    return depen.jobid, variable_name_for_file(f)
 
         raise RuntimeError(f"could not find upstream node for output file: {out_file}")
 
