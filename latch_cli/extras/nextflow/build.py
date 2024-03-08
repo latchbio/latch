@@ -402,11 +402,11 @@ def build_nf_wf(
     env = {
         **os.environ,
         # read NF binaries from `.latch/.nextflow` instead of system
-        # "NXF_HOME": str(pkg_root / ".latch" / ".nextflow"),
+        "NXF_HOME": str(pkg_root / ".latch" / ".nextflow"),
         # don't display version mismatch warning
         "NXF_DISABLE_CHECK_LATEST": "true",
         # don't emit .nextflow.log files
-        # "NXF_LOG_FILE": "/dev/null",
+        "NXF_LOG_FILE": "/dev/null",
     }
 
     if os.environ.get("LATCH_NEXTFLOW_DEV") is not None:
