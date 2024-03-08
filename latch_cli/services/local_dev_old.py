@@ -36,7 +36,7 @@ from latch_cli.utils import (
 def _get_workflow_name(pkg_root: Path, snakemake: bool) -> str:
     if snakemake:
         import latch.types.metadata as metadata
-        from latch_cli.snakemake.utils import load_snakemake_metadata
+        from latch_cli.extras.snakemake.utils import load_snakemake_metadata
 
         load_snakemake_metadata(pkg_root)
         if metadata._snakemake_metadata is None:
@@ -238,12 +238,10 @@ async def _send_resize_message(
 ):
     await _send_message(
         ws,
-        json.dumps(
-            {
-                "Width": term_width,
-                "Height": term_height,
-            }
-        ),
+        json.dumps({
+            "Width": term_width,
+            "Height": term_height,
+        }),
         typ=_MessageType.resize,
     )
 
@@ -324,7 +322,8 @@ async def _shell_session(
     try:
         io_task = asyncio.gather(input_task(), output_task(), resize_task())
         await io_task
-    except asyncio.CancelledError: ...
+    except asyncio.CancelledError:
+        ...
     finally:
         termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, old_settings_stdin)
         signal.signal(signal.SIGWINCH, old_sigwinch_handler)

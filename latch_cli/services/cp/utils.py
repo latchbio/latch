@@ -1,12 +1,12 @@
 from typing import List, TypedDict
 
+import gql
+from latch_sdk_gql.execute import execute
+
 try:
     from functools import cache
 except ImportError:
     from functools import lru_cache as cache
-
-import gql
-from latch_sdk_gql.execute import execute
 
 
 class Child(TypedDict):

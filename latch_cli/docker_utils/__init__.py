@@ -37,6 +37,8 @@ def get_prologue(
 ) -> List[str]:
     if wf_type == WorkflowType.snakemake:
         library_name = '"latch[snakemake]"'
+    elif wf_type == WorkflowType.nextflow:
+        library_name = '"latch[nextflow]"'
     else:
         library_name = "latch"
     return [
@@ -78,7 +80,17 @@ def get_epilogue(wf_type: WorkflowType = WorkflowType.latchbiosdk) -> List[str]:
             "",
             "# Latch snakemake workflow entrypoint",
             "# DO NOT CHANGE",
+            "",
             "copy .latch/snakemake_jit_entrypoint.py /root/snakemake_jit_entrypoint.py",
+        ]
+    elif wf_type == WorkflowType.nextflow:
+        cmds += [
+            "",
+            "# Latch nextflow workflow entrypoint",
+            "# DO NOT CHANGE",
+            "",
+            "copy .latch/bin/nextflow /root/nextflow",
+            "copy .latch/nf_entrypoint.py /root/nf_entrypoint.py",
         ]
 
     cmds += [

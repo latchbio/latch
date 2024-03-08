@@ -8,6 +8,7 @@ from latch_sdk_gql.execute import execute
 from latch.ldata._transfer.node import get_node_data as _get_node_data
 from latch.ldata.type import LDataNodeType
 from latch_cli.services.cp.glob import expand_pattern
+from latch_cli.utils.ldata import LDataNodeType, get_node_data
 from latch_cli.utils.path import get_name_from_path, get_path_error, is_remote_path
 
 

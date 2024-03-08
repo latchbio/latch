@@ -58,12 +58,7 @@ def requires_login(f: Callable[P, T]) -> Callable[P, T]:
     return decorated
 
 
-@click.group(
-    "latch",
-    context_settings={
-        "max_content_width": 160,
-    },
-)
+@click.group("latch", context_settings={"max_content_width": 160})
 @click.version_option(package_name="latch")
 def main():
     """
@@ -84,7 +79,7 @@ def main():
             fg="yellow",
         )
 
-    crash_handler.init()
+    # crash_handler.init()
 
 
 """
@@ -207,9 +202,11 @@ def dockerfile(pkg_root: str, snakemake: bool = False):
         f"Dockerfile already exists at `{dest}`. Overwrite?"
     ):
         return
+
     workflow_type = WorkflowType.latchbiosdk
     if snakemake is True:
         workflow_type = WorkflowType.snakemake
+
     generate_dockerfile(source, dest, wf_type=workflow_type)
 
     click.secho(f"Successfully generated dockerfile `{dest}`", fg="green")
@@ -395,6 +392,19 @@ def execute(
         " provided."
     ),
 )
+@click.option(
+    "--nf-script",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Path to a nextflow script to register.",
+)
+@click.option(
+    "--redownload-dependencies",
+    type=bool,
+    is_flag=True,
+    default=False,
+    help="Redownload external Nextflow dependencies",
+)
 def register(
     pkg_root: str,
     disable_auto_version: bool,
@@ -404,6 +414,8 @@ def register(
     open: bool,
     snakefile: Optional[Path],
     cache_tasks: bool,
+    nf_script: Optional[Path],
+    redownload_dependencies: bool,
 ):
     """Register local workflow code to Latch.
 
@@ -424,6 +436,8 @@ def register(
         skip_confirmation=yes,
         open=open,
         snakefile=snakefile,
+        nf_script=nf_script,
+        nf_redownload_dependencies=redownload_dependencies,
         progress_plain=(docker_progress == "auto" and not sys.stdout.isatty())
         or docker_progress == "plain",
         use_new_centromere=use_new_centromere,

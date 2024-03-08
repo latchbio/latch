@@ -1,25 +1,36 @@
-import re
+import sys
+from dataclasses import fields
 from pathlib import Path
-from typing import Dict, Union
+from typing import Any, Dict, Optional, Type, TypeVar, Union, get_args
 
+import click
+from flyteidl.admin.launch_plan_pb2 import LaunchPlan as _idl_admin_LaunchPlan
+from flyteidl.admin.task_pb2 import TaskSpec as _idl_admin_TaskSpec
+from flyteidl.admin.workflow_pb2 import WorkflowSpec as _idl_admin_WorkflowSpec
 from flytekit import LaunchPlan
-from flytekit.configuration import SerializationSettings
+from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core import constants as common_constants
 from flytekit.core.base_task import PythonTask
+from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.interface import Interface
 from flytekit.core.node import Node
+from flytekit.core.promise import Promise
+from flytekit.core.type_engine import TypeEngine
 from flytekit.core.utils import _dnsify
 from flytekit.core.workflow import WorkflowBase
 from flytekit.models import common as common_models
 from flytekit.models import interface as interface_models
 from flytekit.models import launch_plan as launch_plan_models
+from flytekit.models import literals as literals_models
 from flytekit.models import task as task_models
+from flytekit.models import types as type_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.core import identifier as identifier_model
 from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.workflow import TaskNodeOverrides
+from flytekit.tools.serialize_helpers import persist_registrable_entities
+from google.protobuf.json_format import MessageToJson
 from typing_extensions import TypeAlias
-
-from latch_cli.utils import urljoins
 
 FlyteLocalEntity: TypeAlias = Union[
     PythonTask,
@@ -36,6 +47,56 @@ FlyteSerializableModel: TypeAlias = Union[
 ]
 
 EntityCache: TypeAlias = Dict[FlyteLocalEntity, FlyteSerializableModel]
+
+
+def transform_type(
+    x: Type, description: Optional[str] = None
+) -> interface_models.Variable:
+    return interface_models.Variable(
+        type=TypeEngine.to_literal_type(x), description=description
+    )
+
+
+def transform_types_in_variable_map(
+    variable_map: Dict[str, Type],
+    descriptions: Dict[str, str] = {},
+) -> Dict[str, interface_models.Variable]:
+    res = {}
+    if variable_map:
+        for k, v in variable_map.items():
+            res[k] = transform_type(v, descriptions.get(k, k))
+    return res
+
+
+def interface_to_parameters(
+    interface: Optional[Interface],
+) -> interface_models.ParameterMap:
+    if interface is None or interface.inputs_with_defaults is None:
+        return interface_models.ParameterMap({})
+
+    if interface.docstring is None:
+        inputs_vars = transform_types_in_variable_map(interface.inputs)
+    else:
+        inputs_vars = transform_types_in_variable_map(
+            interface.inputs, interface.docstring.input_descriptions
+        )
+
+    params: Dict[str, interface_models.Parameter] = {}
+    for k, v in inputs_vars.items():
+        val, default = interface.inputs_with_defaults[k]
+        required = default is None
+        default_lv = None
+
+        ctx = FlyteContextManager.current_context()
+        if default is not None:
+            default_lv = TypeEngine.to_literal(
+                ctx, default, python_type=interface.inputs[k], expected=v.type
+            )
+
+        params[k] = interface_models.Parameter(
+            var=v, default=default_lv, required=required
+        )
+    return interface_models.ParameterMap(params)
 
 
 def get_serializable_launch_plan(
@@ -216,10 +277,102 @@ def get_serializable_workflow(
     return admin_wf
 
 
-def update_mapping(cur: Path, stem: Path, remote: str, mapping: Dict[str, str]):
-    if cur.is_file():
-        mapping[str(stem)] = remote
+RegistrableEntity = Union[
+    task_models.TaskSpec,
+    launch_plan_models.LaunchPlan,
+    admin_workflow_models.WorkflowSpec,
+]
+
+
+def should_register_with_admin(entity: RegistrableEntity) -> bool:
+    return isinstance(entity, get_args(RegistrableEntity))
+
+
+def serialize(
+    wf: WorkflowBase,
+    output_dir: str,
+    image_name: str,
+    dkr_repo: str,
+    *,
+    write_spec: bool = False,
+):
+    image_name_no_version, version = image_name.split(":")
+    default_img = Image(
+        name=image_name,
+        fqn=f"{dkr_repo}/{image_name_no_version}",
+        tag=version,
+    )
+    settings = SerializationSettings(
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
+
+    registrable_entity_cache: EntityCache = {}
+
+    get_serializable_workflow(wf, settings, registrable_entity_cache)
+
+    parameter_map = interface_to_parameters(wf.python_interface)
+    lp = LaunchPlan(
+        name=wf.name,
+        workflow=wf,
+        parameters=parameter_map,
+        fixed_inputs=literals_models.LiteralMap(literals={}),
+    )
+    admin_lp = get_serializable_launch_plan(lp, settings, registrable_entity_cache)
+
+    registrable_entities = [
+        x.to_flyte_idl()
+        for x in list(
+            filter(should_register_with_admin, list(registrable_entity_cache.values()))
+        )
+        + [admin_lp]
+    ]
+
+    click.secho("\nSerializing workflow entities", bold=True)
+    persist_registrable_entities(registrable_entities, output_dir)
+
+    if not write_spec:
         return
 
-    for p in cur.iterdir():
-        update_mapping(p, stem / p.name, urljoins(remote, p.name), mapping)
+    spec_dir = Path("spec")
+    spec_dir.mkdir(parents=True, exist_ok=True)
+
+    for idx, entity in enumerate(registrable_entities):
+        cur = spec_dir
+
+        if isinstance(entity, _idl_admin_TaskSpec):
+            cur = cur / "tasks" / f"{entity.template.id.name}_{idx}.json"
+        elif isinstance(entity, _idl_admin_WorkflowSpec):
+            cur = cur / "wfs" / f"{entity.template.id.name}_{idx}.json"
+        elif isinstance(entity, _idl_admin_LaunchPlan):
+            cur = cur / "lps" / f"{entity.id.name}_{idx}.json"
+        else:
+            click.secho(
+                f"Entity is incorrect formatted {entity} - type {type(entity)}",
+                fg="red",
+            )
+            sys.exit(-1)
+
+        cur.parent.mkdir(parents=True, exist_ok=True)
+        cur.write_text(MessageToJson(entity))
+
+
+def binding_data_from_python(
+    expected_literal_type: type_models.LiteralType,
+    t_value: Any,
+    t_value_type: Optional[Type] = None,
+) -> Optional[literals_models.BindingData]:
+    if isinstance(t_value, Promise):
+        if not t_value.is_ready:
+            return literals_models.BindingData(promise=t_value.ref)
+
+
+def binding_from_python(
+    var_name: str,
+    expected_literal_type: type_models.LiteralType,
+    t_value: Any,
+    t_value_type: Type,
+) -> literals_models.Binding:
+    binding_data = binding_data_from_python(
+        expected_literal_type, t_value, t_value_type
+    )
+    return literals_models.Binding(var=var_name, binding=binding_data)

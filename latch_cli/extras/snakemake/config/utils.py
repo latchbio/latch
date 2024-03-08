@@ -11,6 +11,8 @@ from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
 from latch_cli.utils import identifier_from_str
 
+from ...common.utils import is_primitive_type, is_primitive_value, type_repr
+
 JSONValue: TypeAlias = Union[int, str, bool, float, None, List["JSONValue"], "JSONDict"]
 JSONDict: TypeAlias = Dict[str, "JSONValue"]
 

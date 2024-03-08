@@ -30,7 +30,6 @@ from flytekit.configuration import SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import TaskMetadata
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
-from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
 from flytekit.core.node import Node
@@ -47,10 +46,8 @@ from flytekit.core.workflow import (
     WorkflowMetadataDefaults,
 )
 from flytekit.exceptions import scopes as exception_scopes
-from flytekit.models import interface as interface_models
 from flytekit.models import literals as literals_models
 from flytekit.models import task as _task_models
-from flytekit.models import types as type_models
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralMap, Scalar
 from flytekitplugins.pod.task import (
@@ -76,10 +73,11 @@ from latch.resources.tasks import _get_large_gpu_pod, _get_small_gpu_pod, custom
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
 from latch.types.metadata import FileMetadata, SnakemakeFileParameter
-from latch_cli.snakemake.config.utils import is_list_type, is_primitive_type, type_repr
-from latch_cli.snakemake.utils import reindent
 
-from ..utils import identifier_from_str, identifier_suffix_from_str
+from ...utils import identifier_from_str, identifier_suffix_from_str
+from ..common.serialize import binding_from_python, interface_to_parameters
+from ..common.utils import reindent
+from .config.utils import is_list_type, is_primitive_type, type_repr
 
 SnakemakeInputVal: TypeAlias = snakemake.io._IOFile
 
@@ -221,78 +219,6 @@ def snakemake_dag_to_interface(
         LiteralMap(literals=literals),
         return_files,
     )
-
-
-def binding_data_from_python(
-    expected_literal_type: type_models.LiteralType,
-    t_value: typing.Any,
-    t_value_type: Optional[Type] = None,
-) -> Optional[literals_models.BindingData]:
-    if isinstance(t_value, Promise):
-        if not t_value.is_ready:
-            return literals_models.BindingData(promise=t_value.ref)
-
-
-def binding_from_python(
-    var_name: str,
-    expected_literal_type: type_models.LiteralType,
-    t_value: typing.Any,
-    t_value_type: Type,
-) -> literals_models.Binding:
-    binding_data = binding_data_from_python(
-        expected_literal_type, t_value, t_value_type
-    )
-    return literals_models.Binding(var=var_name, binding=binding_data)
-
-
-def transform_type(
-    x: Type, description: Optional[str] = None
-) -> interface_models.Variable:
-    return interface_models.Variable(
-        type=TypeEngine.to_literal_type(x), description=description
-    )
-
-
-def transform_types_in_variable_map(
-    variable_map: Dict[str, Type],
-    descriptions: Dict[str, str] = {},
-) -> Dict[str, interface_models.Variable]:
-    res = {}
-    if variable_map:
-        for k, v in variable_map.items():
-            res[k] = transform_type(v, descriptions.get(k, k))
-    return res
-
-
-def interface_to_parameters(
-    interface: Optional[Interface],
-) -> interface_models.ParameterMap:
-    if interface is None or interface.inputs_with_defaults is None:
-        return interface_models.ParameterMap({})
-
-    if interface.docstring is None:
-        inputs_vars = transform_types_in_variable_map(interface.inputs)
-    else:
-        inputs_vars = transform_types_in_variable_map(
-            interface.inputs, interface.docstring.input_descriptions
-        )
-
-    params: Dict[str, interface_models.Parameter] = {}
-    for k, v in inputs_vars.items():
-        val, default = interface.inputs_with_defaults[k]
-        required = default is None
-        default_lv = None
-
-        ctx = FlyteContextManager.current_context()
-        if default is not None:
-            default_lv = TypeEngine.to_literal(
-                ctx, default, python_type=interface.inputs[k], expected=v.type
-            )
-
-        params[k] = interface_models.Parameter(
-            var=v, default=default_lv, required=required
-        )
-    return interface_models.ParameterMap(params)
 
 
 class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):

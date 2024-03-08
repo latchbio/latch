@@ -3,16 +3,28 @@ from dataclasses import Field, asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
 from textwrap import indent
-from typing import Any, ClassVar, Dict, List, Optional, Protocol, Tuple, Type, Union
+from typing import (
+    Any,
+    ClassVar,
+    Collection,
+    Dict,
+    Generic,
+    List,
+    Optional,
+    Protocol,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import click
 import yaml
 from typing_extensions import TypeAlias
 
-from latch_cli.snakemake.config.utils import validate_snakemake_type
 from latch_cli.utils import identifier_suffix_from_str
 
-from .directory import LatchDir
+from .directory import LatchDir, LatchOutputDir
 from .file import LatchFile
 
 
@@ -388,31 +400,33 @@ class _IsDataclass(Protocol):
 
 
 ParameterType: TypeAlias = Union[
-    Type[None],
-    Type[int],
-    Type[float],
-    Type[str],
-    Type[bool],
-    Type[Enum],
-    Type[_IsDataclass],
-    Type[List["ParameterType"]],
-    Type[LatchFile],
-    Type[LatchDir],
+    None,
+    int,
+    float,
+    str,
+    bool,
+    LatchFile,
+    LatchDir,
+    Enum,
+    _IsDataclass,
+    Collection["ParameterType"],
 ]
 
 
+T = TypeVar("T", bound=ParameterType)
+
+
 @dataclass
-class SnakemakeParameter(LatchParameter):
-    type: Optional[ParameterType] = None
+class SnakemakeParameter(Generic[T], LatchParameter):
+    type: Optional[Type[T]] = None
     """
     The python type of the parameter.
     """
-    # todo(ayush): needs to be typed properly
-    default: Optional[Any] = None
+    default: Optional[T] = None
 
 
 @dataclass
-class SnakemakeFileParameter(SnakemakeParameter):
+class SnakemakeFileParameter(SnakemakeParameter[Union[LatchFile, LatchDir]]):
     """
     Deprecated: use `file_metadata` keyword in `SnakemakeMetadata` instead
     """
@@ -454,6 +468,31 @@ class SnakemakeFileMetadata:
     """
     If `True`, download the file in the JIT step
     """
+
+
+@dataclass
+class NextflowParameter(Generic[T], LatchParameter):
+    type: Optional[Type[T]] = None
+    """
+    The python type of the parameter.
+    """
+    default: Optional[T] = None
+
+
+@dataclass
+class NextflowFileParameter(NextflowParameter[Union[LatchFile, LatchDir]]):
+    path: Optional[Path] = None
+    """
+    The path where the file passed to this parameter will be copied.
+    """
+    download: bool = True
+    """
+    Whether to download the file/directory into every task
+    """
+
+    def __post_init__(self):
+        if self.type is LatchOutputDir:
+            self.download = False
 
 
 @dataclass
@@ -624,6 +663,7 @@ class SnakemakeMetadata(LatchMetadata):
     """
 
     def validate(self):
+        from latch_cli.extras.snakemake.config.utils import validate_snakemake_type
 
         for name, param in self.parameters.items():
             if param.default is None:
@@ -647,3 +687,23 @@ class SnakemakeMetadata(LatchMetadata):
 
 
 _snakemake_metadata: Optional[SnakemakeMetadata] = None
+
+
+@dataclass
+class NextflowMetadata(LatchMetadata):
+    name: Optional[str] = None
+    parameters: Dict[str, NextflowParameter] = field(default_factory=dict)
+    output_directory: Optional[LatchDir] = None
+
+    def __post_init__(self):
+        if self.name is None:
+            self.name = f"nf_{identifier_suffix_from_str(self.display_name.lower())}"
+
+        if self.output_directory is None:
+            self.output_directory = LatchDir("latch:///Nextflow Outputs/")
+
+        global _nextflow_metadata
+        _nextflow_metadata = self
+
+
+_nextflow_metadata: Optional[NextflowMetadata] = None
