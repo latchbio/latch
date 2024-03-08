@@ -93,7 +93,11 @@ class DAG:
         vertices: List[Vertex] = []
         for v in payload["vertices"]:
             c = v["content"]
-            c["label"] = textwrap.shorten(identifier_from_str(c["label"]), 128)
+            c["label"] = textwrap.shorten(
+                identifier_from_str(c["label"]),
+                64,
+                placeholder="",
+            )
             vertices.append(Vertex(**c))
 
         edges: List[Edge] = []

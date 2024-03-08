@@ -274,6 +274,7 @@ def register(
     skip_confirmation: bool = False,
     snakefile: Optional[Path] = None,
     nf_script: Optional[Path] = None,
+    nf_redownload_dependencies: bool = False,
     progress_plain: bool = False,
     cache_tasks: bool = False,
     use_new_centromere: bool = False,
@@ -415,7 +416,11 @@ def register(
 
             click.secho("Generating Nextflow entrypoint", bold=True)
 
-            nf_wf = build_nf_wf(ctx.pkg_root, ctx.nf_script)
+            nf_wf = build_nf_wf(
+                ctx.pkg_root,
+                ctx.nf_script,
+                redownload_dependencies=nf_redownload_dependencies,
+            )
             generate_nf_entrypoint(nf_wf, ctx.pkg_root, ctx.nf_script)
 
         click.secho("\nInitializing registration", bold=True)

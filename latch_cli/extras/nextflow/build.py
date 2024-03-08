@@ -1,5 +1,6 @@
 import glob
 import os
+import shutil
 import subprocess
 import sys
 from collections import OrderedDict
@@ -83,33 +84,34 @@ def build_from_nextflow_dag(wf: NextflowWorkflow):
         branches: Dict[str, bool] = {}
         for dep, edge in wf.dag.ancestors()[vertex]:
             if dep.type == VertexType.Conditional:
-                param_name = f"condition_{dep.id}"
-                task_inputs[param_name] = Optional[bool]
+                input_name = f"condition_{dep.id}"
+                task_inputs[input_name] = Optional[bool]
 
                 assert edge.branch is not None
 
-                branches[param_name] = edge.branch
+                branches[input_name] = edge.branch
 
                 node = NodeOutput(node=node_map[dep.id], var=f"condition")
             else:
-                param_name = f"channel_{dep.id}"
-                var = "res"
+                input_name = f"channel_{dep.id}"
+                output_name = "res"
 
-                for o in dep.outputNames:
-                    parts = edge.label.split(".")
-                    if parts[-1] == o:
-                        param_name = var = o
-                        break
+                if len(dep.outputNames) > 0:
+                    idx = int(edge.label)
+                    input_name = output_name = dep.outputNames[idx]
 
-                task_inputs[param_name] = Optional[str]
+                task_inputs[input_name] = Optional[str]
 
-                node = NodeOutput(node=node_map[dep.id], var=var)
+                node = NodeOutput(node=node_map[dep.id], var=output_name)
 
             task_bindings.append(
                 literals_models.Binding(
-                    var=param_name,
+                    var=input_name,
                     binding=literals_models.BindingData(
-                        promise=Promise(var=param_name, val=node).ref
+                        promise=Promise(
+                            var=input_name,
+                            val=node,
+                        ).ref
                     ),
                 )
             )
@@ -324,7 +326,7 @@ def build_from_nextflow_dag(wf: NextflowWorkflow):
 
 # todo(ayush): add versioning system to nf download
 # todo(ayush): allow user to redownload nf anyway via cli option
-def ensure_nf_dependencies(pkg_root: Path):
+def ensure_nf_dependencies(pkg_root: Path, *, force_redownload: bool = False):
     try:
         subprocess.run(["java", "--version"], check=True, capture_output=True)
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
@@ -340,6 +342,11 @@ def ensure_nf_dependencies(pkg_root: Path):
 
     nf_executable = pkg_root / ".latch" / "bin" / "nextflow"
     nf_jars = pkg_root / ".latch" / ".nextflow"
+
+    if force_redownload:
+        nf_executable.unlink(missing_ok=True)
+        if nf_jars.exists():
+            shutil.rmtree(nf_jars)
 
     if not nf_executable.exists():
         res = tinyrequests.get(
@@ -379,8 +386,13 @@ def ensure_nf_dependencies(pkg_root: Path):
         click.secho("Done. \x1b[?25h", italic=True)
 
 
-def build_nf_wf(pkg_root: Path, nf_script: Path) -> NextflowWorkflow:
-    ensure_nf_dependencies(pkg_root)
+def build_nf_wf(
+    pkg_root: Path,
+    nf_script: Path,
+    *,
+    redownload_dependencies: bool = False,
+) -> NextflowWorkflow:
+    ensure_nf_dependencies(pkg_root, force_redownload=redownload_dependencies)
 
     # clear out old dags from previous registers
     old_dag_files = map(Path, glob.glob(str(pkg_root / ".latch" / "*.dag.json")))
@@ -390,11 +402,11 @@ def build_nf_wf(pkg_root: Path, nf_script: Path) -> NextflowWorkflow:
     env = {
         **os.environ,
         # read NF binaries from `.latch/.nextflow` instead of system
-        "NXF_HOME": str(pkg_root / ".latch" / ".nextflow"),
+        # "NXF_HOME": str(pkg_root / ".latch" / ".nextflow"),
         # don't display version mismatch warning
         "NXF_DISABLE_CHECK_LATEST": "true",
         # don't emit .nextflow.log files
-        "NXF_LOG_FILE": "/dev/null",
+        # "NXF_LOG_FILE": "/dev/null",
     }
 
     if os.environ.get("LATCH_NEXTFLOW_DEV") is not None:

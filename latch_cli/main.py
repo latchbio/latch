@@ -398,6 +398,13 @@ def execute(
     default=None,
     help="Path to a nextflow script to register.",
 )
+@click.option(
+    "--redownload-dependencies",
+    type=bool,
+    is_flag=True,
+    default=False,
+    help="Redownload external Nextflow dependencies",
+)
 def register(
     pkg_root: str,
     disable_auto_version: bool,
@@ -408,6 +415,7 @@ def register(
     snakefile: Optional[Path],
     cache_tasks: bool,
     nf_script: Optional[Path],
+    redownload_dependencies: bool,
 ):
     """Register local workflow code to Latch.
 
@@ -429,6 +437,7 @@ def register(
         open=open,
         snakefile=snakefile,
         nf_script=nf_script,
+        nf_redownload_dependencies=redownload_dependencies,
         progress_plain=(docker_progress == "auto" and not sys.stdout.isatty())
         or docker_progress == "plain",
         use_new_centromere=use_new_centromere,
