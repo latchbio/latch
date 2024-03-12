@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.39.4 - 2024-03-11
+
+### Added
+
+* Snakemake
+  + Add `container_args` field in `EnvironmentConfig`
+
 ## 2.39.3 - 2024-03-07
 
 ### Fixed
