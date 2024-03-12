@@ -25,6 +25,14 @@ def is_primitive_value(val: object) -> TypeGuard[Union[None, str, bool, int, flo
     return is_primitive_type(type(val))
 
 
+def is_blob_type(typ: Type) -> TypeGuard[Union[Type[LatchFile], Type[LatchDir]]]:
+    origin = get_origin(typ)
+    if origin is not None:
+        return all([is_blob_type(sub_typ) for sub_typ in get_args(typ)])
+
+    return typ in {LatchFile, LatchDir}
+
+
 def type_repr(t: Type, *, add_namespace: bool = False) -> str:
     if getattr(t, "__name__", None) == "NoneType":
         return "None"

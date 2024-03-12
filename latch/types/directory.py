@@ -140,6 +140,9 @@ class LatchDir(FlyteDirectory):
 
             super().__init__(self.path, downloader, self._remote_directory)
 
+    def __hash__(self) -> int:
+        return hash(self.path)
+
     def _idempotent_set_path(self):
         if self._path_generated:
             return

@@ -40,14 +40,18 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
         )
 
         self.flags_to_params = {
-            f"--{k}": v.path if isinstance(v, NextflowFileParameter) else f"wf_{k}"
+            f"--{k}": (
+                f"wf_paths[wf_{k}]"
+                if isinstance(v, NextflowFileParameter)
+                else f"wf_{k}"
+            )
             for k, v in metadata._nextflow_metadata.parameters.items()
         }
 
         self.downloadable_params = {
             k: str(v.path)
             for k, v in metadata._nextflow_metadata.parameters.items()
-            if isinstance(v, NextflowFileParameter) and v.download
+            if isinstance(v, NextflowFileParameter) and v._download
         }
 
         name = metadata._nextflow_metadata.name

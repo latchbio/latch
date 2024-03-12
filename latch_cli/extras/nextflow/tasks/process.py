@@ -3,9 +3,11 @@ from dataclasses import fields, is_dataclass
 from pathlib import Path
 from typing import List, Mapping, Type
 
+from latch.types.directory import LatchDir
+from latch.types.file import LatchFile
 from latch.types.metadata import ParameterType
 
-from ...common.utils import reindent, type_repr
+from ...common.utils import is_blob_type, reindent, type_repr
 from ..workflow import NextflowWorkflow
 from .base import NextflowBaseTask
 
@@ -97,6 +99,13 @@ class NextflowProcessTask(NextflowBaseTask):
     def get_fn_code(self, nf_script_path_in_container: Path):
         code_block = self.get_fn_interface()
 
+        code_block += reindent(
+            """
+            wf_paths = {}
+            """,
+            1,
+        )
+
         run_task_entrypoint = [
             "/root/nextflow",
             "run",
@@ -106,21 +115,36 @@ class NextflowProcessTask(NextflowBaseTask):
         for flag, val in self.wf.flags_to_params.items():
             run_task_entrypoint.extend([flag, str(val)])
 
-        for k, v in self.wf.downloadable_params.items():
+        for k, typ in self.wf_inputs.items():
             code_block += reindent(
                 f"""
-                if default.wf_{k} is not None:
-                    {k}_p = Path(default.wf_{k}).resolve()
-                    {k}_dest_p = Path({repr(v)}).resolve()
-
-                    check_exists_and_rename(
-                        {k}_p,
-                        {k}_dest_p
-                    )
-
+                {k} = default.{k}
                 """,
                 1,
             )
+
+            if k[3:] in self.wf.downloadable_params:
+                code_block += reindent(
+                    f"""
+                    if {k} is not None:
+                        {k}_p = Path({k}).resolve()
+                        check_exists_and_rename({k}_p, Path("/root") / {k}_p.name)
+                        wf_paths[{k}] = Path("/root") / {k}_p.name
+
+                    """,
+                    1,
+                )
+
+            elif is_blob_type(typ):
+                code_block += reindent(
+                    f"""
+                    if {k} is not None:
+                        {k}_p = Path("/root/").resolve() # superhack
+                        wf_paths[{k}] = {k}_p
+
+                    """,
+                    1,
+                )
 
         include_str = ""
         if self.import_path.resolve() != self.wf.nf_script.resolve():
@@ -144,7 +168,7 @@ class NextflowProcessTask(NextflowBaseTask):
             download_files(channel_vals, LatchDir({repr(self.wf.output_directory.remote_path)}))
 
             subprocess.run(
-                [{','.join([f"str(default.{x})" if x.startswith("wf_") else repr(x) for x in run_task_entrypoint])}],
+                [{','.join([f"str({x})" if x.startswith("wf_") else repr(x) for x in run_task_entrypoint])}],
                 env={{
                     **os.environ,
                     "LATCH_INCLUDE_META": {repr(include_str)},

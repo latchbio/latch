@@ -485,14 +485,12 @@ class NextflowFileParameter(NextflowParameter[Union[LatchFile, LatchDir]]):
     """
     The path where the file passed to this parameter will be copied.
     """
-    download: bool = True
-    """
-    Whether to download the file/directory into every task
-    """
+
+    _download: bool = field(default=True, init=False)
 
     def __post_init__(self):
         if self.type is LatchOutputDir:
-            self.download = False
+            self._download = False
 
 
 @dataclass

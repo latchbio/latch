@@ -2,9 +2,11 @@ import json
 from pathlib import Path
 from typing import Dict, List, Mapping, Type
 
+from latch.types.directory import LatchDir
+from latch.types.file import LatchFile
 from latch.types.metadata import ParameterType
 
-from ...common.utils import reindent, type_repr
+from ...common.utils import is_blob_type, reindent, type_repr
 from ..workflow import NextflowWorkflow
 from .base import NextflowBaseTask
 
@@ -114,21 +116,36 @@ class NextflowOperatorTask(NextflowBaseTask):
         for flag, val in self.wf.flags_to_params.items():
             run_task_entrypoint.extend([flag, str(val)])
 
-        for k, v in self.wf.downloadable_params.items():
-            code_block += reindent(
-                f"""
-                if wf_{k} is not None:
-                    {k}_p = Path(wf_{k}).resolve()
-                    {k}_dest_p = Path({repr(v)}).resolve()
+        code_block += reindent(
+            """
+            wf_paths = {}
+            """,
+            2,
+        )
 
-                    check_exists_and_rename(
-                        {k}_p,
-                        {k}_dest_p
-                    )
+        for k, typ in self.wf_inputs.items():
+            if k[3:] in self.wf.downloadable_params:
+                code_block += reindent(
+                    f"""
+                    if {k} is not None:
+                        {k}_p = Path({k}).resolve()
+                        check_exists_and_rename({k}_p, Path("/root") / {k}_p.name)
+                        wf_paths[{k}] = Path("/root") / {k}_p.name
 
-                """,
-                2,
-            )
+                    """,
+                    2,
+                )
+
+            elif is_blob_type(typ):
+                code_block += reindent(
+                    f"""
+                    if {k} is not None:
+                        {k}_p = Path("/root/").resolve() # superhack
+                        wf_paths[{k}] = {k}_p
+
+                    """,
+                    2,
+                )
 
         # todo(ayush): figure out how to make this work
         do_file_io = False
@@ -143,6 +160,7 @@ class NextflowOperatorTask(NextflowBaseTask):
             "splitFastq",
             "splitJson",
             "splitText",
+            "fromPath",
         ]:
             if op_name in self.name:
                 do_file_io = True
