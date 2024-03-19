@@ -1,3 +1,4 @@
+import os
 import subprocess
 from pathlib import Path
 from typing import List
@@ -11,6 +12,7 @@ from ...utils import best_effort_display_name, identifier_from_str
 from ..common.config.parser import parse_config, write_metadata
 from ..common.config.utils import get_preamble, type_repr
 from ..common.utils import reindent
+from .build import ensure_nf_dependencies
 
 nextflow_metadata = """
 from latch.types.metadata import NextflowMetadata, LatchAuthor, EnvironmentConfig
@@ -45,6 +47,18 @@ def generate_nf_metadata(
         )
         raise click.exceptions.Exit(1)
 
+    ensure_nf_dependencies(config_path)
+
+    env = {
+        **os.environ,
+        # read NF binaries from `.latch/.nextflow` instead of system
+        "NXF_HOME": str(config_path / ".latch" / ".nextflow"),
+        # don't display version mismatch warning
+        "NXF_DISABLE_CHECK_LATEST": "true",
+        # don't emit .nextflow.log files
+        "NXF_LOG_FILE": "/dev/null",
+    }
+
     config_file = ".latch/nf-config.yaml"
     try:
         subprocess.run(
@@ -57,6 +71,7 @@ def generate_nf_metadata(
                 config_file,
             ],
             check=True,
+            env=env if os.environ.get("LATCH_NEXTFLOW_DEV") is not None else None,
             cwd=config_path,
         )
     except subprocess.CalledProcessError as e:
