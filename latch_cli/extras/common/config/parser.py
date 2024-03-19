@@ -1,0 +1,118 @@
+from dataclasses import fields, is_dataclass
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple, Type, TypeVar, get_args, get_origin
+
+import click
+import yaml
+from typing_extensions import Annotated
+
+from latch.types.directory import LatchDir
+from latch.types.file import LatchFile
+from latch_cli.utils import best_effort_display_name, identifier_from_str
+
+from ....utils import WorkflowType
+from ..utils import reindent
+from .utils import (
+    JSONValue,
+    get_preamble,
+    is_list_type,
+    is_primitive_type,
+    parse_type,
+    parse_value,
+    type_repr,
+)
+
+T = TypeVar("T")
+
+
+def parse_config(
+    config_path: Path,
+    *,
+    infer_files: bool = False,
+    field: Optional[str] = None,
+) -> Dict[str, Tuple[Type[T], T]]:
+    try:
+        res: JSONValue = yaml.safe_load(config_path.read_text())
+    except yaml.YAMLError as e:
+        click.secho(
+            reindent(
+                f"""
+                Error loading config from {config_path}:
+
+                {e}
+                """,
+                0,
+            ),
+            fg="red",
+        )
+        raise click.exceptions.Exit(1) from e
+
+    if field is not None:
+        res = res.get(field, {})
+
+    parsed: Dict[str, Type] = {}
+    for k, v in res.items():
+        try:
+            typ = parse_type(v, k, infer_files=infer_files)
+        except ValueError as e:
+            click.secho(
+                f"WARNING: Skipping parameter {k}. Failed to parse type: {e}.",
+                fg="yellow",
+            )
+            continue
+        val, default = parse_value(typ, v)
+
+        parsed[k] = (typ, (val, default))
+
+    return parsed
+
+
+def write_metadata(
+    metadata: str,
+    params: str,
+    *,
+    skip_confirmation: bool = False,
+) -> None:
+    metadata_root = Path("latch_metadata")
+    if metadata_root.is_file():
+        if not click.confirm("A file exists at `latch_metadata`. Delete it?"):
+            raise click.exceptions.Exit(0)
+
+        metadata_root.unlink()
+
+    metadata_root.mkdir(exist_ok=True)
+
+    metadata_path = metadata_root / Path("__init__.py")
+    old_metadata_path = Path("latch_metadata.py")
+
+    if old_metadata_path.exists() and not metadata_path.exists():
+        if click.confirm(
+            "Found legacy `latch_metadata.py` file in current directory. This is"
+            " deprecated and will be ignored in future releases. Move to"
+            " `latch_metadata/__init__.py`? (This will not change file contents)"
+        ):
+            old_metadata_path.rename(metadata_path)
+    elif old_metadata_path.exists() and metadata_path.exists():
+        click.secho(
+            "Warning: Found both `latch_metadata.py` and"
+            " `latch_metadata/__init__.py` in current directory."
+            " `latch_metadata.py` will be ignored.",
+            fg="yellow",
+        )
+
+    if not metadata_path.exists():
+        metadata_path.write_text(reindent(metadata, 0))
+        click.secho("Generated `latch_metadata/__init__.py`.", fg="green")
+
+    params_path = metadata_root / Path("parameters.py")
+    if (
+        params_path.exists()
+        and not skip_confirmation
+        and not click.confirm(
+            "File `latch_metadata/parameters.py` already exists. Overwrite?"
+        )
+    ):
+        raise click.exceptions.Exit(0)
+
+    params_path.write_text(reindent(params, 0))
+    click.secho("Generated `latch_metadata/parameters.py`.", fg="green")

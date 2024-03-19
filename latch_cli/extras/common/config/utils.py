@@ -1,17 +1,14 @@
-from dataclasses import asdict, fields, is_dataclass, make_dataclass
-from enum import Enum
-from textwrap import dedent
+from dataclasses import fields, is_dataclass, make_dataclass
 from typing import Any, Dict, List, Optional, Type, Union, get_args, get_origin
 
-import click
 from flytekit.core.annotation import FlyteAnnotation
-from typing_extensions import Annotated, TypeAlias, TypeGuard, TypeVar
+from typing_extensions import Annotated, TypeAlias, TypeGuard
 
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
 from latch_cli.utils import identifier_from_str
 
-from ...common.utils import is_primitive_type, is_primitive_value, type_repr
+from ..utils import is_primitive_type, is_primitive_value, type_repr
 
 JSONValue: TypeAlias = Union[int, str, bool, float, None, List["JSONValue"], "JSONDict"]
 JSONDict: TypeAlias = Dict[str, "JSONValue"]
