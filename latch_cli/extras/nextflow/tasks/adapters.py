@@ -1,5 +1,5 @@
 import typing
-from dataclasses import dataclass, fields, make_dataclass
+from dataclasses import Field, dataclass, fields, make_dataclass
 from pathlib import Path
 from typing import Dict, List, Mapping, Type, Union, get_args, get_origin
 
@@ -116,36 +116,27 @@ class NextflowProcessPreAdapterTask(NextflowBaseTask):
 
         fs = fields(self.dataclass)
 
-        channel_fields = [f for f in fs if not f.name.startswith("wf_")]
-        if len(channel_fields) == 0:
-            field_str = ", ".join(f"{f.name}={f.name}" for f in fs)
+        channel_fields: List[Field] = []
+        wf_fields: List[Field] = []
+        for f in fs:
+            if f.name.startswith("wf_"):
+                wf_fields.append(f)
+            else:
+                channel_fields.append(f)
 
-            code_block += reindent(
-                f"""
-                result = [Dataclass_{self.id}(__fields__)]
-                """.replace("__fields__", field_str),
-                2,
-            )
-        else:
-            assignment_str = ", ".join(
-                [f"{field.name}=x[{i}]" for i, field in enumerate(fs)]
-            )
+        wf_dict_str = (
+            "{" + ", ".join(f"{repr(f.name)}: {f.name}" for f in wf_fields) + "}"
+        )
+        channel_dict_str = (
+            "{" + ", ".join(f"{repr(f.name)}: {f.name}" for f in channel_fields) + "}"
+        )
 
-            variables = ", ".join([
-                (
-                    f"repeat({field.name})"
-                    if field.name.startswith("wf_")
-                    else f"map(lambda x: json.dumps([x]), json.loads({field.name}))"
-                )
-                for field in fs
-            ])
-
-            code_block += reindent(
-                rf"""
-                result = [Dataclass_{self.id}({assignment_str}) for x in zip({variables})]
-                """,
-                2,
-            )
+        code_block += reindent(
+            f"""
+            result = get_mapper_inputs({self.dataclass.__name__}, {wf_dict_str}, {channel_dict_str})
+            """,
+            2,
+        )
 
         code_block += reindent(
             rf"""

@@ -410,7 +410,7 @@ def build_nf_wf(
     }
 
     if os.environ.get("LATCH_NEXTFLOW_DEV") is not None:
-        env = {**os.environ}
+        env = os.environ
 
     try:
         subprocess.run(
@@ -501,6 +501,7 @@ def generate_nf_entrypoint(
 
         from flytekit.extras.persistence import LatchPersistence
         from latch_cli.extras.nextflow.file_persistence import download_files, stage_for_output, upload_files
+        from latch_cli.extras.nextflow.channel import get_mapper_inputs
         from latch_cli.utils import check_exists_and_rename, get_parameter_json_value, urljoins
 
         from latch.resources.tasks import custom_task

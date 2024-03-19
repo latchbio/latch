@@ -48,6 +48,8 @@ In addition, we rely on the global entity map to know which method calls are pro
 
 Visiting is recursive - an `Expression`'s sub-`Expression`s must be visited first to correctly determine any necessary dependencies. The result of visiting an `Expression` is a `ScopeVariable`, a wrapper around the vertices that produce the value(s) of that `Expression` with some metadata for correctly resolving property accesses.
 
+The first step in parsing the workflow body is to add any workflow input names to the scope, and to add *input vertices* for each of these inputs. These vertices exist as plumbing, and won't appear in the final DAG.
+
 ### Binary Expressions
 
 `BinaryExpressions` are treated differently based on their operator.
@@ -68,14 +70,12 @@ Other common operators (i.e. every operator that has a callable method name) are
 
 `MethodCallExpression`s are handled differently based on their method name.
 
-Calls to `set` are treated as assignment expressions. The only difference is that we need to first parse the closure argument for the destination variable name.
+Calls to `Channel.set` are treated as assignment expressions. The only difference is that we need to first parse the closure argument for the destination variable name.
 
 Every other call is treated as follows.
 
 We first check the method name against the global entity map to figure out if we are calling a process or subworkflow. As of now, we parse a workflow at the site it is defined, so the global entity map only contains process/subworkflows that have been defined above the workflow definition. It is a straightforward enhancement to defer workflow body parsing to after the entire file has been traversed.
 
-Next, we visit each argument in order.
+Next, we visit each argument in order. One special case to note is that if we are calling a subworkflow, we create a node for literal arguments as well. This is so that when inlining (detailed below), we always have a producer for every input node.
 
-If we are calling a process
-
-WIP
+If we are calling a process,
