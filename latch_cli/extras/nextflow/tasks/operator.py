@@ -199,6 +199,7 @@ class NextflowOperatorTask(NextflowBaseTask):
 
                 else:
                     print("TASK SKIPPED")
+                    override_task_status(status="SKIPPED")
                     out_channels = {{__skip__}}
 
             """,
