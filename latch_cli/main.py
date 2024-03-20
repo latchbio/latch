@@ -185,14 +185,29 @@ def init(
     type=bool,
     help="Generate a Dockerfile with arguments needed for Snakemake compatability",
 )
-def dockerfile(pkg_root: str, snakemake: bool = False):
+@click.option(
+    "-n",
+    "--nextflow",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Generate a Dockerfile with arguments needed for Nextflow compatability",
+)
+def dockerfile(pkg_root: str, snakemake: bool = False, nextflow: bool = False):
     """Generates a user editable dockerfile for a workflow and saves under `pkg_root/Dockerfile`.
 
     Visit docs.latch.bio to learn more.
     """
-
     crash_handler.message = "Failed to generate Dockerfile."
     crash_handler.pkg_root = pkg_root
+
+    if snakemake is True and nextflow is True:
+        click.secho(
+            f"Please specify only one workflow type to generate metadata for. Use"
+            f" either `--snakemake` or `--nextflow`.",
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
 
     from latch_cli.docker_utils import generate_dockerfile
 
@@ -206,6 +221,8 @@ def dockerfile(pkg_root: str, snakemake: bool = False):
     workflow_type = WorkflowType.latchbiosdk
     if snakemake is True:
         workflow_type = WorkflowType.snakemake
+    elif nextflow is True:
+        workflow_type = WorkflowType.nextflow
 
     generate_dockerfile(source, dest, wf_type=workflow_type)
 
@@ -263,7 +280,7 @@ def generate_metadata(
 ):
     """Generate a `latch_metadata.py` file from a Snakemake config file"""
 
-    if snakemake and nextflow:
+    if snakemake is True and nextflow is True:
         click.secho(
             f"Please specify only one workflow type to generate metadata for. Use"
             f" either `--snakemake` or `--nextflow`.",
@@ -271,7 +288,7 @@ def generate_metadata(
         )
         raise click.exceptions.Exit(1)
 
-    if snakemake:
+    if snakemake is True:
         from latch_cli.extras.snakemake.config import generate_snakemake_metadata
 
         generate_snakemake_metadata(
@@ -280,7 +297,7 @@ def generate_metadata(
             infer_files=not no_infer_files,
             generate_defaults=not no_defaults,
         )
-    elif nextflow:
+    elif nextflow is True:
         from latch_cli.extras.nextflow.config import generate_nf_metadata
 
         generate_nf_metadata(
