@@ -7,6 +7,9 @@ what sample values could look like.
 To this aim, the SDK provides the ability to define sets of sample parameter
 values and to host example files.
 
+The example files are hosted on AWS S3 and are publicly available for download.
+Thus, they should only contain information that can be made publicly available.
+
 ## Defining Test Data
 
 If we have a toy workflow:
@@ -43,9 +46,12 @@ drop-down on the workflow parameters page.
 ## Hosting Test Files
 
 Notice that in the above example, our test value for the `c` parameter is a
-`LatchFile` that points to some object in S3. To upload your own objects, so
-that others can use them in their `LaunchPlan`s, we have provided some utility
-subcommands on the CLI.
+`LatchFile` that points to some file in S3. To upload your own example files so
+that others can use them in their `LaunchPlan`s, we have provided utility
+subcommands in the CLI.
+
+The example files are hosted on AWS S3 and are publicly available for download.
+Thus, they should only contain information that can be made publicly available.
 
 ```console
 $ latch test-data upload README.md
