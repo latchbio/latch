@@ -5,9 +5,6 @@ from typing import List
 
 import click
 
-from latch.types.directory import LatchDir
-from latch.types.file import LatchFile
-
 from ...utils import best_effort_display_name, identifier_from_str
 from ..common.config.parser import parse_config, write_metadata
 from ..common.config.utils import get_preamble, type_repr
@@ -90,15 +87,9 @@ def generate_nf_metadata(
     for k, (typ, (val, default)) in parsed.items():
         preambles.append(get_preamble(typ))
 
-        param_typ = (
-            "NextflowFileParameter"
-            if typ in {LatchFile, LatchDir}
-            else "NextflowParameter"
-        )
-
         param_str = reindent(
             f"""\
-            {repr(identifier_from_str(k))}: {param_typ}(
+            {repr(identifier_from_str(k))}: NextflowParameter(
                 display_name={repr(best_effort_display_name(k))},
                 type={type_repr(typ)},
             __default__),""",
@@ -123,7 +114,7 @@ def generate_nf_metadata(
 
             from flytekit.core.annotation import FlyteAnnotation
 
-            from latch.types.metadata import NextflowParameter, NextflowFileParameter
+            from latch.types.metadata import NextflowParameter
             from latch.types.file import LatchFile
             from latch.types.directory import LatchDir
 
