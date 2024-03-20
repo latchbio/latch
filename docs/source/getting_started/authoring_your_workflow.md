@@ -242,7 +242,10 @@ latch preview .
 
 ## 6. Add test data for your workflow
 
-First, you'd need to upload your test data to a remote S3 bucket using `latch test-data` command:
+First, you'd need to upload your test data to a remote S3 bucket using `latch test-data` command.
+
+The example files are hosted on AWS S3 and are publicly available for download. Thus, they should only contain information that can be made publicly available.
+
 
 ```bash
 $ latch test-data upload <path_to_local_file>
