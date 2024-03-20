@@ -1,28 +1,20 @@
-from dataclasses import fields, is_dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Type, TypeVar, get_args, get_origin
+from typing import Dict, Optional, Tuple, Type, TypeVar
 
 import click
 import yaml
-from typing_extensions import Annotated
 
-from latch.types.directory import LatchDir
-from latch.types.file import LatchFile
-from latch_cli.utils import best_effort_display_name, identifier_from_str
-
-from ....utils import WorkflowType
 from ..utils import reindent
-from .utils import (
-    JSONValue,
-    get_preamble,
-    is_list_type,
-    is_primitive_type,
-    parse_type,
-    parse_value,
-    type_repr,
-)
+from .utils import JSONValue, parse_type, parse_value
 
 T = TypeVar("T")
+
+
+# rahul: ignore nextflow specific tags that can't be parsed by pyyaml
+yaml.SafeLoader.add_constructor(
+    "tag:yaml.org,2002:nextflow.config.ConfigClosurePlaceholder",
+    lambda loader, node: None,
+)
 
 
 def parse_config(
