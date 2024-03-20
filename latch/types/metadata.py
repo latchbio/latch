@@ -661,7 +661,7 @@ class SnakemakeMetadata(LatchMetadata):
     """
 
     def validate(self):
-        from latch_cli.extras.common.config.utils import validate_snakemake_type
+        from latch_cli.extras.snakemake.config import validate_snakemake_type
 
         for name, param in self.parameters.items():
             if param.default is None:
