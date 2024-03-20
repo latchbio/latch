@@ -1,17 +1,14 @@
-from dataclasses import asdict, fields, is_dataclass, make_dataclass
-from enum import Enum
-from textwrap import dedent
+from dataclasses import fields, is_dataclass, make_dataclass
 from typing import Any, Dict, List, Optional, Type, Union, get_args, get_origin
 
-import click
 from flytekit.core.annotation import FlyteAnnotation
-from typing_extensions import Annotated, TypeAlias, TypeGuard, TypeVar
+from typing_extensions import Annotated, TypeAlias, TypeGuard
 
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
 from latch_cli.utils import identifier_from_str
 
-from ...common.utils import is_primitive_type, is_primitive_value, type_repr
+from ..utils import is_primitive_type, is_primitive_value, type_repr
 
 JSONValue: TypeAlias = Union[int, str, bool, float, None, List["JSONValue"], "JSONDict"]
 JSONDict: TypeAlias = Dict[str, "JSONValue"]
@@ -269,52 +266,3 @@ def get_preamble(typ: Type) -> str:
     preamble = "".join([get_preamble(f.type) for f in fields(typ)])
 
     return "".join([preamble, dataclass_repr(typ)])
-
-
-def validate_snakemake_type(name: str, t: Type, param: Any) -> None:
-    if t is type(None):
-        return param is None
-
-    elif is_primitive_type(t) or t in {LatchFile, LatchDir}:
-        if param is None:
-            raise ValueError(
-                f"Parameter {name} of type {t} cannot be None. Either specify a"
-                " non-None default value or use the Optional type"
-            )
-        if not isinstance(param, t):
-            raise ValueError(f"Parameter {name} must be of type {t}, not {type(param)}")
-
-    elif get_origin(t) is Union:
-        args = get_args(t)
-        # only Optional types supported
-        if len(args) != 2 or args[1] is not type(None):
-            raise ValueError(
-                f"Failed to parse input param {param}. Union types other than"
-                " Optional are not yet supported in Snakemake workflows."
-            )
-        if param is None:
-            return
-        validate_snakemake_type(name, args[0], param)
-
-    elif get_origin(t) is Annotated:
-        args = get_args(t)
-        assert len(args) > 0
-        validate_snakemake_type(name, args[0], param)
-
-    elif is_list_type(t):
-        args = get_args(t)
-        if len(args) == 0:
-            raise ValueError(
-                "Generic Lists are not supported - please specify a subtype,"
-                " e.g. List[LatchFile]",
-            )
-        list_typ = args[0]
-        for i, val in enumerate(param):
-            validate_snakemake_type(f"{name}[{i}]", list_typ, val)
-
-    else:
-        assert is_dataclass(t)
-        for field in fields(t):
-            validate_snakemake_type(
-                f"{name}.{field.name}", field.type, getattr(param, field.name)
-            )

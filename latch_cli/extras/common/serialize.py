@@ -15,7 +15,7 @@ from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.interface import Interface
 from flytekit.core.node import Node
 from flytekit.core.promise import Promise
-from flytekit.core.type_engine import TypeEngine
+from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.core.utils import _dnsify
 from flytekit.core.workflow import WorkflowBase
 from flytekit.models import common as common_models
@@ -89,9 +89,17 @@ def interface_to_parameters(
 
         ctx = FlyteContextManager.current_context()
         if default is not None:
-            default_lv = TypeEngine.to_literal(
-                ctx, default, python_type=interface.inputs[k], expected=v.type
-            )
+            try:
+                default_lv = TypeEngine.to_literal(
+                    ctx, default, python_type=interface.inputs[k], expected=v.type
+                )
+            except TypeTransformerFailedError as e:
+                click.secho(
+                    f"Failed to transform default value for parameter `{k}` to a"
+                    f" literal: {str(e)}",
+                    fg="red",
+                )
+                raise click.exceptions.Exit(1) from e
 
         params[k] = interface_models.Parameter(
             var=v, default=default_lv, required=required
