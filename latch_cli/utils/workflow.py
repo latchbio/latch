@@ -1,22 +1,26 @@
+import re
+
 import gql
 from latch_sdk_gql.execute import execute
+
+pod_name_regex = re.compile(
+    r"^(?P<token>[a-zA-Z0-9]+)-(?P<node_name>(n\d+-\d+-)*n\d+)-(?P<retry>\d)+(?:-(?P<arr_index>\d+))?(?:-(?P<arr_retry>\d+))?$"
+)
 
 
 def override_task_status(status: str) -> None:
     with open("/etc/hostname", "r") as f:
         pod_name = f.read().strip()
 
-    s = pod_name.split("-")
-
-    try:
-        token = s[0]
-        node_name = s[1]
-        retry = s[2]
-    except IndexError:
+    match = pod_name_regex.match(pod_name)
+    if not match:
         raise RuntimeError(f"Invalid pod name: {pod_name}")
 
-    arr_index = None if len(s) <= 3 else s[3]
-    arr_retry = None if len(s) <= 4 else s[4]
+    token = match.group("token")
+    node_name = match.group("node_name")
+    retry = match.group("retry")
+    arr_index = match.group("arr_index")
+    arr_retry = match.group("arr_retry")
 
     execute(
         gql.gql("""
