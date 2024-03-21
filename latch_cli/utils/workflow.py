@@ -15,17 +15,20 @@ def override_task_status(status: str) -> None:
     except IndexError:
         raise RuntimeError(f"Invalid pod name: {pod_name}")
 
-    arr_index = None
-    arr_retry = None
-    if len(s) > 3:
-        arr_index = s[3]
-    if len(s) > 4:
-        arr_retry = s[4]
+    arr_index = None if len(s) <= 3 else s[3]
+    arr_retry = None if len(s) <= 4 else s[4]
 
     execute(
         gql.gql("""
-            mutation OverrideTaskStatus($argName: String!, $argToken: String!) {
-                overrideTaskStatusByExecutionId(
+            mutation OverrideTaskStatus(
+                $argToken: String!
+                $argNodeName: String!,
+                $argRetry: BigInt!,
+                $argArrIndex: BigInt,
+                $argArrRetry: BigInt,
+                $argStatus: String!
+            ) {
+                overrideTaskStatusByToken(
                     input: {
                         argToken: $argToken,
                         argNodeName: $argNodeName,
