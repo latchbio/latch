@@ -4,7 +4,34 @@ import gql
 from latch_sdk_gql.execute import execute
 
 pod_name_regex = re.compile(
-    r"^(?P<token>[a-zA-Z0-9]+)-(?P<node_name>(n\d+-\d+-)*n\d+)-(?P<retry>\d)+(?:-(?P<arr_index>\d+))?(?:-(?P<arr_retry>\d+))?$"
+    r"""
+    ^(
+        (?P<token>[a-zA-Z0-9]+)
+        -
+        (?P<node_name>
+            (
+                n
+                [0-9]+
+                -
+                [0-9]+
+                -
+            )*
+            n
+            [0-9]+
+        )
+        -
+        (?P<retry>[0-9]+)
+        (
+            -
+            (?P<arr_index>[0-9]+)
+        )?
+        (
+            -
+            (?P<arr_retry>[0-9]+)
+        )?
+    )$
+    """,
+    re.VERBOSE,
 )
 
 
