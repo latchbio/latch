@@ -151,7 +151,7 @@ class NextflowProcessPreAdapterTask(NextflowBaseTask):
             rf"""
             else:
                 print("TASK SKIPPED")
-                override_task_status(status="SKIPPED")
+                _override_task_status(status="SKIPPED")
                 result = []
 
             """,

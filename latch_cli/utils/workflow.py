@@ -8,7 +8,7 @@ pod_name_regex = re.compile(
 )
 
 
-def override_task_status(status: str) -> None:
+def _override_task_status(status: str) -> None:
     with open("/etc/hostname", "r") as f:
         pod_name = f.read().strip()
 
