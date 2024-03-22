@@ -80,6 +80,7 @@ class NextflowMergeTask(NextflowOperatorTask):
                 res = {expr}
             else:
                 print("TASK SKIPPED")
+                _override_task_status(status="SKIPPED")
                 res = None
 
             """,
