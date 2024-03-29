@@ -1,60 +1,17 @@
-import json
 import os
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Union
 
-import boto3
 from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.core.task import TaskPlugins
 from flytekit.exceptions import scopes as exception_scopes
 from flytekitplugins.pod import Pod
 from flytekitplugins.pod.task import PodFunctionTask
+from latch_sdk_config.latch import config as latch_config
 
-from ..types.json import JsonValue
-
-# todo(rahul): get env instead of hardcoding
-flyte_bucket_name = "prion-flyte-dev"
-
-
-def _update_pod_resources(crd: JsonValue, new: Pod) -> JsonValue:
-    if "tasks" not in crd:
-        raise RuntimeError("no tasks found in CRD")
-
-    task_name = os.environ.get("FLYTE_INTERNAL_TASK_NAME")
-    if task_name is None:
-        raise RuntimeError("FLYTE_INTERNAL_TASK_NAME not set")
-
-    key = None
-    pod = None
-    for key, task_template in crd["tasks"].items():
-        if "id" in task_template and task_template["id"].get("name") == task_name:
-            if "k8sPod" not in task_template:
-                raise RuntimeError(f"task does not have k8sPod spec")
-            key = key
-            pod = task_template["k8sPod"]
-            break
-
-    if key is None:
-        raise RuntimeError(f"task not found in CRD")
-
-    # override resource limits/requests and tolerations
-    pod["podSpec"]["containers"][0]["resources"] = new.pod_spec.containers[
-        0
-    ].resources.to_dict()
-
-    pod["podSpec"]["tolerations"] = [
-        toleration.to_dict() for toleration in new.pod_spec.tolerations
-    ]
-    pod["podSpec"]["runtimeClassName"] = new.pod_spec.runtime_class_name
-
-    if new.annotations is not None:
-        if "metadata" not in pod:
-            pod["metadata"] = {}
-        pod["metadata"]["annotations"] = new.annotations
-
-    crd["tasks"][key]["k8sPod"] = pod
-    return crd
+from latch_cli import tinyrequests
+from latch_cli.utils import get_auth_header
 
 
 def _dynamic_resource_task(
@@ -70,30 +27,34 @@ def _dynamic_resource_task(
 
         from .tasks import _custom_task_config
 
-        new_spec = _custom_task_config(res["cpu"], res["memory"], res["disk"])
+        new_task_config = _custom_task_config(res["cpu"], res["memory"], res["disk"])
 
         workspace_id = os.environ.get("FLYTE_INTERNAL_EXECUTION_PROJECT")
-        token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
-        if workspace_id is None or token is None:
+        if workspace_id is None:
             raise RuntimeError(
-                "FLYTE_INTERNAL_EXECUTION_PROJECT or FLYTE_INTERNAL_EXECUTION_ID"
-                " not set"
+                "FLYTE_INTERNAL_EXECUTION_PROJECT environment variable not set"
             )
-        file_key = f"metadata/{workspace_id}/development/{token}/crd/crdparts.json"
 
-        s3 = boto3.client("s3")
+        try:
+            with open("/etc/hostname", "r") as f:
+                task_identifier = f.read().strip()
+        except FileNotFoundError:
+            raise RuntimeError("could not read task identifier from /etc/hostname")
 
-        # todo(rahul): probably want to add retries here
-        response = s3.get_object(Bucket=flyte_bucket_name, Key=file_key)
-        json_data = response["Body"].read().decode("utf-8")
-        crd = json.loads(json_data)
+        task_name = os.environ.get("FLYTE_INTERNAL_TASK_NAME")
+        if task_name is None:
+            raise RuntimeError("FLYTE_INTERNAL_TASK_NAME environment variable not set")
 
-        updated = _update_pod_resources(crd, new_spec)
-
-        # todo(rahul): probably want to add retries here
-        s3.put_object(Bucket=flyte_bucket_name, Key=file_key, Body=json.dumps(updated))
-
-        print("CRD updated successfully")
+        res = tinyrequests.post(
+            "/sdk/workflow-update-task-resources",
+            headers={"Authorization": get_auth_header()},
+            json={
+                "workspace_id": workspace_id,
+                "task_identifier": task_identifier,
+                "task_name": task_name,
+                "new_pod_spec": new_task_config.pod_spec.to_dict(),
+            },
+        )
 
     return f
 
