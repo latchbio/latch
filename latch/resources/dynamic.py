@@ -13,7 +13,7 @@ from latch_sdk_config.latch import config as latch_config
 from latch_cli import tinyrequests
 from latch_cli.utils import get_auth_header
 
-NUCLEUS_URL = os.environ.get("LATCH_CLI_NUCLEUS_URL", "https://nucleus.latch.bio")
+NUCLEUS_URL = f'https://nucleus.{os.environ.get("LATCH_SDK_DOMAIN", "latch.bio")}'
 
 
 def _dynamic_resource_task(
@@ -47,17 +47,24 @@ def _dynamic_resource_task(
         if task_name is None:
             raise RuntimeError("FLYTE_INTERNAL_TASK_NAME environment variable not set")
 
-        res = tinyrequests.post(
+        resp = tinyrequests.post(
             f"{NUCLEUS_URL}/workflows/update-task-resources",
             headers={"Authorization": get_auth_header()},
             json={
                 "workspace_id": workspace_id,
                 "task_identifier": task_identifier,
                 "task_name": task_name,
-                "resources": new_task_config.pod_spec.containers[0].resources.to_dict(),
-                "tolerations": new_task_config.pod_spec.tolerations.to_dict(),
+                "resources": {
+                    container.name: container.resources.to_dict()
+                    for container in new_task_config.pod_spec.containers
+                },
+                "tolerations": [
+                    toleration.to_dict()
+                    for toleration in new_task_config.pod_spec.tolerations
+                ],
             },
         )
+        resp.raise_for_status()
 
     return f
 
