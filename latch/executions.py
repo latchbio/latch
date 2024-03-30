@@ -33,6 +33,7 @@ pod_name_regex = re.compile(
             -
             (?P<arr_retry>[0-9]+)
         )?
+        (-preexec)?
     )$
     """,
     re.VERBOSE,
