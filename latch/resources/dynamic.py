@@ -1,19 +1,68 @@
+import json
 import os
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Union
 
+import gql
 from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.core.task import TaskPlugins
 from flytekit.exceptions import scopes as exception_scopes
 from flytekitplugins.pod import Pod
 from flytekitplugins.pod.task import PodFunctionTask
-from latch_sdk_config.latch import config as latch_config
+from latch_sdk_gql.execute import execute
 
-from latch_cli import tinyrequests
-from latch_cli.utils import get_auth_header
+from ..executions import get_task_identifier
 
-NUCLEUS_URL = f'https://nucleus.{os.environ.get("LATCH_SDK_DOMAIN", "latch.bio")}'
+
+def _override_task_resources(task_config: Pod) -> None:
+    task_id = get_task_identifier()
+    if task_id is None:
+        raise RuntimeError("Could not determine task identifier")
+
+    resources = {
+        "tolerations": [
+            toleration.to_dict() for toleration in task_config.pod_spec.tolerations
+        ],
+        "resources": {
+            container.name: container.resources.to_dict()
+            for container in task_config.pod_spec.containers
+        },
+    }
+
+    execute(
+        gql.gql("""
+            mutation OverrideTaskResources(
+                $argToken: String!
+                $argNodeName: String!,
+                $argRetry: BigInt!,
+                $argArrIndex: BigInt,
+                $argArrRetry: BigInt,
+                $argResources: JSON!
+            ) {
+                overrideTaskResourcesByToken(
+                    input: {
+                        argToken: $argToken,
+                        argNodeName: $argNodeName,
+                        argRetry: $argRetry,
+                        argArrIndex: $argArrIndex,
+                        argArrRetry: $argArrRetry,
+                        argResources: $argResources
+                    }
+                ) {
+                    clientMutationId
+                }
+            }
+        """),
+        {
+            "argToken": task_id.token,
+            "argNodeName": task_id.node_name,
+            "argRetry": task_id.retry,
+            "argArrIndex": task_id.arr_index,
+            "argArrRetry": task_id.arr_retry,
+            "argResources": resources,
+        },
+    )
 
 
 def _dynamic_resource_task(
@@ -30,41 +79,7 @@ def _dynamic_resource_task(
         from .tasks import _custom_task_config
 
         new_task_config = _custom_task_config(res["cpu"], res["memory"], res["disk"])
-
-        workspace_id = os.environ.get("FLYTE_INTERNAL_EXECUTION_PROJECT")
-        if workspace_id is None:
-            raise RuntimeError(
-                "FLYTE_INTERNAL_EXECUTION_PROJECT environment variable not set"
-            )
-
-        try:
-            with open("/etc/hostname", "r") as f:
-                task_identifier = f.read().strip()
-        except FileNotFoundError:
-            raise RuntimeError("could not read task identifier from /etc/hostname")
-
-        task_name = os.environ.get("FLYTE_INTERNAL_TASK_NAME")
-        if task_name is None:
-            raise RuntimeError("FLYTE_INTERNAL_TASK_NAME environment variable not set")
-
-        resp = tinyrequests.post(
-            f"{NUCLEUS_URL}/workflows/update-task-resources",
-            headers={"Authorization": get_auth_header()},
-            json={
-                "workspace_id": workspace_id,
-                "task_identifier": task_identifier,
-                "task_name": task_name,
-                "resources": {
-                    container.name: container.resources.to_dict()
-                    for container in new_task_config.pod_spec.containers
-                },
-                "tolerations": [
-                    toleration.to_dict()
-                    for toleration in new_task_config.pod_spec.tolerations
-                ],
-            },
-        )
-        resp.raise_for_status()
+        _override_task_resources(new_task_config)
 
     return f
 
