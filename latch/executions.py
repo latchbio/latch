@@ -53,7 +53,7 @@ def get_task_identifier() -> Optional[TaskIdentifier]:
         with open("/etc/hostname", "r") as f:
             pod_name = f.read().strip()
     except FileNotFoundError:
-        pod_name = "fe4ad3374144d4bbf9f4-n0-0"
+        return None
 
     match = pod_name_regex.match(pod_name)
     if not match:
