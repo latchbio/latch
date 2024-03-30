@@ -116,7 +116,7 @@ class DynamicPythonFunctionTask(PodFunctionTask):
         return super().execute(**kwargs)
 
     def get_custom(self, _: SerializationSettings) -> Dict[str, Any]:
-        return {"preExecEnabled": True}
+        return {"preExecEnabled": True, "useDynamicResources": True}
 
 
 TaskPlugins.register_pythontask_plugin(DynamicTaskConfig, DynamicPythonFunctionTask)
