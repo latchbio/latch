@@ -305,7 +305,7 @@ def sync(
         click.secho(
             f"`{dest}`: only local -> remote sync is supported", fg="red", bold=True
         )
-        sys.exit(1)
+        raise click.exceptions.Exit(1)
 
     srcs: Dict[str, Tuple[Path, os.stat_result]] = {}
     have_errors = False
@@ -329,7 +329,7 @@ def sync(
         click.secho(
             "\nAll source paths were skipped due to errors", fg="red", bold=True
         )
-        sys.exit(1)
+        raise click.exceptions.Exit(1)
 
     if have_errors:
         # todo(maximsmol): do we want to precheck recursively?
