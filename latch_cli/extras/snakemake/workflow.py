@@ -38,7 +38,6 @@ from flytekit.core.python_auto_container import (
     DefaultTaskResolver,
     PythonAutoContainerTask,
 )
-from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.core.workflow import (
     WorkflowBase,
     WorkflowFailurePolicy,

@@ -90,6 +90,7 @@ def get_epilogue(wf_type: WorkflowType = WorkflowType.latchbiosdk) -> List[str]:
             "# DO NOT CHANGE",
             "",
             "copy .latch/bin/nextflow /root/nextflow",
+            "copy .latch/.nextflow /root/.nextflow",
             "copy .latch/nf_entrypoint.py /root/nf_entrypoint.py",
         ]
 

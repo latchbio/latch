@@ -142,6 +142,10 @@ class NextflowProcessPreAdapterTask(NextflowBaseTask):
             rf"""
             else:
                 print("TASK SKIPPED")
+                try:
+                    _override_task_status(status="SKIPPED")
+                except Exception as e:
+                    print(f"Failed to override task status: {{e}}")
                 result = []
 
             """,
