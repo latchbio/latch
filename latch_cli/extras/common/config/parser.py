@@ -1,8 +1,7 @@
 from pathlib import Path
-from typing import Dict, Optional, Tuple, Type, TypeVar
+from typing import Dict, Tuple, Type, TypeVar
 
 import click
-import yaml
 
 from ..utils import reindent
 from .utils import JSONValue, parse_type, parse_value
@@ -10,40 +9,13 @@ from .utils import JSONValue, parse_type, parse_value
 T = TypeVar("T")
 
 
-# rahul: ignore nextflow specific tags that can't be parsed by pyyaml
-yaml.SafeLoader.add_constructor(
-    "tag:yaml.org,2002:nextflow.config.ConfigClosurePlaceholder",
-    lambda loader, node: None,
-)
-
-
 def parse_config(
-    config_path: Path,
+    config: JSONValue,
     *,
     infer_files: bool = False,
-    field: Optional[str] = None,
 ) -> Dict[str, Tuple[Type[T], T]]:
-    try:
-        res: JSONValue = yaml.safe_load(config_path.read_text())
-    except yaml.YAMLError as e:
-        click.secho(
-            reindent(
-                f"""
-                Error loading config from {config_path}:
-
-                {e}
-                """,
-                0,
-            ),
-            fg="red",
-        )
-        raise click.exceptions.Exit(1) from e
-
-    if field is not None:
-        res = res.get(field, {})
-
     parsed: Dict[str, Type] = {}
-    for k, v in res.items():
+    for k, v in config.items():
         try:
             typ = parse_type(v, k, infer_files=infer_files)
         except ValueError as e:

@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, List, Type, Union, get_args, get_origin
 
 import click
+import yaml
 from typing_extensions import Annotated
 
 from latch.types.directory import LatchDir
@@ -121,10 +122,23 @@ def generate_snakemake_metadata(
         )
         raise click.exceptions.Exit(1)
 
-    parsed = parse_config(
-        config_path,
-        infer_files=infer_files,
-    )
+    try:
+        config: JSONValue = yaml.safe_load(config_path.read_text())
+    except yaml.YAMLError as e:
+        click.secho(
+            reindent(
+                f"""
+                Error loading config from {config_path}:
+
+                {e}
+                """,
+                0,
+            ),
+            fg="red",
+        )
+        raise click.exceptions.Exit(1) from e
+
+    parsed = parse_config(config, infer_files=infer_files)
 
     preambles: List[str] = []
     params: List[str] = []

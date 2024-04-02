@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 from pathlib import Path
@@ -7,7 +8,7 @@ import click
 
 from ...utils import best_effort_display_name, identifier_from_str
 from ..common.config.parser import parse_config, write_metadata
-from ..common.config.utils import get_preamble, type_repr
+from ..common.config.utils import JSONValue, get_preamble, type_repr
 from ..common.utils import reindent
 from .build import ensure_nf_dependencies
 
@@ -63,7 +64,7 @@ def generate_nf_metadata(
                 ".latch/bin/nextflow",
                 "config",
                 "-format",
-                "yaml",
+                "json",
                 "-output",
                 config_file,
             ],
@@ -79,7 +80,24 @@ def generate_nf_metadata(
         raise click.exceptions.Exit(1) from e
 
     config_file = config_path / config_file
-    parsed = parse_config(config_file, infer_files=infer_files, field="params")
+
+    try:
+        config: JSONValue = json.loads(config_file.read_text())
+    except json.JSONDecodeError as e:
+        click.secho(
+            reindent(
+                f"""
+                Error loading config from {config_file}:
+
+                {e}
+                """,
+                0,
+            ),
+            fg="red",
+        )
+        raise click.exceptions.Exit(1) from e
+
+    parsed = parse_config(config.get("params", {}), infer_files=infer_files)
 
     preambles: List[str] = []
     params: List[str] = []
