@@ -198,7 +198,7 @@ class LatchDir(FlyteDirectory):
         return ret
 
     def size(self):
-        return LPath(self.remote_path).size()
+        return LPath(self.remote_path).size_recursive()
 
     def _create_imposters(self):
         self._idempotent_set_path()
