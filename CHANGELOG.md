@@ -16,6 +16,14 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.39.6 - 2024-04-02
+
+### Fixed
+
+* latch sync
+  + prints error when case other than local -> remote is attempted
+
+
 ## 2.39.4 - 2024-03-11
 
 ### Added
