@@ -490,6 +490,7 @@ def generate_nf_entrypoint(
         from latch_cli.extras.nextflow.file_persistence import download_files, stage_for_output, upload_files
         from latch_cli.extras.nextflow.channel import get_mapper_inputs, get_boolean_value, get_mapper_outputs
         from latch_cli.utils import check_exists_and_rename, get_parameter_json_value, urljoins
+        from latch_cli.utils.workflow import _override_task_status
 
         from latch.resources.tasks import custom_task
         from latch.types.directory import LatchDir, LatchOutputDir

@@ -185,14 +185,29 @@ def init(
     type=bool,
     help="Generate a Dockerfile with arguments needed for Snakemake compatability",
 )
-def dockerfile(pkg_root: str, snakemake: bool = False):
+@click.option(
+    "-n",
+    "--nextflow",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Generate a Dockerfile with arguments needed for Nextflow compatability",
+)
+def dockerfile(pkg_root: str, snakemake: bool = False, nextflow: bool = False):
     """Generates a user editable dockerfile for a workflow and saves under `pkg_root/Dockerfile`.
 
     Visit docs.latch.bio to learn more.
     """
-
     crash_handler.message = "Failed to generate Dockerfile."
     crash_handler.pkg_root = pkg_root
+
+    if snakemake is True and nextflow is True:
+        click.secho(
+            f"Please specify only one workflow type to generate metadata for. Use"
+            f" either `--snakemake` or `--nextflow`.",
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
 
     from latch_cli.docker_utils import generate_dockerfile
 
@@ -206,6 +221,8 @@ def dockerfile(pkg_root: str, snakemake: bool = False):
     workflow_type = WorkflowType.latchbiosdk
     if snakemake is True:
         workflow_type = WorkflowType.snakemake
+    elif nextflow is True:
+        workflow_type = WorkflowType.nextflow
 
     generate_dockerfile(source, dest, wf_type=workflow_type)
 
@@ -213,7 +230,7 @@ def dockerfile(pkg_root: str, snakemake: bool = False):
 
 
 @main.command("generate-metadata")
-@click.argument("config_file", nargs=1, type=click.Path(exists=True, path_type=Path))
+@click.argument("path", nargs=1, type=click.Path(exists=True, path_type=Path))
 @click.option(
     "--yes",
     "-y",
@@ -222,6 +239,22 @@ def dockerfile(pkg_root: str, snakemake: bool = False):
     help=(
         "Overwrite an existing `latch_metadata/parameters.py` file without confirming."
     ),
+)
+@click.option(
+    "--snakemake",
+    "-s",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Generate Latch metadata for Snakemake.",
+)
+@click.option(
+    "--nextflow",
+    "-n",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Generate Latch metadata for Nextflow.",
 )
 @click.option(
     "--no-infer-files",
@@ -238,18 +271,48 @@ def dockerfile(pkg_root: str, snakemake: bool = False):
     help="Don't generate defaults for parameters.",
 )
 def generate_metadata(
-    config_file: Path, yes: bool, no_infer_files: bool, no_defaults: bool
+    path: Path,
+    snakemake: bool,
+    nextflow: bool,
+    yes: bool,
+    no_infer_files: bool,
+    no_defaults: bool,
 ):
     """Generate a `latch_metadata.py` file from a Snakemake config file"""
 
-    from latch_cli.snakemake.config.parser import generate_metadata
+    if snakemake is True and nextflow is True:
+        click.secho(
+            f"Please specify only one workflow type to generate metadata for. Use"
+            f" either `--snakemake` or `--nextflow`.",
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
 
-    generate_metadata(
-        config_file,
-        skip_confirmation=yes,
-        infer_files=not no_infer_files,
-        generate_defaults=not no_defaults,
-    )
+    if snakemake is True:
+        from latch_cli.extras.snakemake.config import generate_snakemake_metadata
+
+        generate_snakemake_metadata(
+            path,
+            skip_confirmation=yes,
+            infer_files=not no_infer_files,
+            generate_defaults=not no_defaults,
+        )
+    elif nextflow is True:
+        from latch_cli.extras.nextflow.config import generate_nf_metadata
+
+        generate_nf_metadata(
+            path,
+            skip_confirmation=yes,
+            infer_files=not no_infer_files,
+            generate_defaults=not no_defaults,
+        )
+    else:
+        click.secho(
+            f"Please specify a workflow type to generate metadata for. Use"
+            f" `--snakemake` or `--nextflow`.",
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
 
 
 @requires_login
