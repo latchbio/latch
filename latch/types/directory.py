@@ -16,6 +16,7 @@ from flytekit.types.directory.types import (
 from latch_sdk_gql.execute import execute
 from typing_extensions import Annotated
 
+from latch.ldata.path import LPath
 from latch.types.file import LatchFile
 from latch.types.utils import format_path, is_valid_url
 from latch_cli.utils import urljoins
@@ -195,6 +196,9 @@ class LatchDir(FlyteDirectory):
                 ret.append(LatchFile(path))
 
         return ret
+
+    def size(self):
+        return LPath(self.remote_path).size()
 
     def _create_imposters(self):
         self._idempotent_set_path()
