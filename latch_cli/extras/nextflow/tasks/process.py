@@ -1,7 +1,7 @@
 import json
 from dataclasses import fields, is_dataclass
 from pathlib import Path
-from typing import List, Mapping, Type
+from typing import List, Mapping, Optional, Type
 
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
@@ -9,7 +9,7 @@ from latch.types.metadata import ParameterType
 
 from ...common.utils import is_blob_type, reindent, type_repr
 from ..workflow import NextflowWorkflow
-from .base import NextflowBaseTask
+from .base import NextflowBaseTask, NFTaskType
 
 
 class NextflowProcessTask(NextflowBaseTask):
@@ -24,9 +24,12 @@ class NextflowProcessTask(NextflowBaseTask):
         import_path: Path,
         process_name: str,
         unaliased: str,
+        execution_profile: Optional[str],
         wf: NextflowWorkflow,
     ):
-        super().__init__(inputs, outputs, id, name, {}, wf, cpu=16, memory=32)
+        super().__init__(
+            inputs, outputs, id, name, {}, wf, NFTaskType.Process, cpu=16, memory=32
+        )
 
         self.wf_inputs = {}
         self.conditional_inputs = {}
@@ -50,6 +53,7 @@ class NextflowProcessTask(NextflowBaseTask):
         self.import_path = import_path
         self.process_name = process_name
         self.unaliased = unaliased
+        self.execution_profile = execution_profile
 
     def get_fn_interface(self):
         input_name, input_t = list(self._python_inputs.items())[0]
@@ -112,6 +116,9 @@ class NextflowProcessTask(NextflowBaseTask):
             str(nf_script_path_in_container),
         ]
 
+        if self.execution_profile is not None:
+            run_task_entrypoint.extend(["-profile", self.execution_profile])
+
         for flag, val in self.wf.flags_to_params.items():
             run_task_entrypoint.extend([flag, str(val)])
 
@@ -134,7 +141,6 @@ class NextflowProcessTask(NextflowBaseTask):
                     """,
                     1,
                 )
-
             elif is_blob_type(typ):
                 code_block += reindent(
                     f"""
@@ -167,17 +173,24 @@ class NextflowProcessTask(NextflowBaseTask):
 
             download_files(channel_vals, LatchDir({repr(self.wf.output_directory.remote_path)}))
 
-            subprocess.run(
-                [{','.join([f"str({x})" if x.startswith("wf_") else repr(x) for x in run_task_entrypoint])}],
-                env={{
-                    **os.environ,
-                    "LATCH_INCLUDE_META": {repr(include_str)},
-                    "LATCH_EXPRESSION": {repr(self.statement)},
-                    "LATCH_RETURN": {repr(json.dumps(self.ret))},
-                    "LATCH_PARAM_VALS": json.dumps(channel_vals),
-                }},
-                check=True,
-            )
+            try:
+                subprocess.run(
+                    [{','.join([f"str({x})" if x.startswith("wf_") else repr(x) for x in run_task_entrypoint])}],
+                    env={{
+                        **os.environ,
+                        "LATCH_INCLUDE_META": {repr(include_str)},
+                        "LATCH_EXPRESSION": {repr(self.statement)},
+                        "LATCH_RETURN": {repr(json.dumps(self.ret))},
+                        "LATCH_PARAM_VALS": json.dumps(channel_vals),
+                    }},
+                    check=True,
+                )
+            except subprocess.CalledProcessError:
+                log = Path("/root/.nextflow.log").read_text()
+                print("\n\n\n\n\n" + log)
+
+                import time
+                time.sleep(10000)
 
             out_channels = {{}}
             files = [Path(f) for f in glob.glob(".latch/task-outputs/*.json")]

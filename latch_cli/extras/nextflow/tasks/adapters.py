@@ -7,7 +7,7 @@ from latch.types.metadata import ParameterType, _IsDataclass
 
 from ...common.utils import reindent, type_repr
 from ..workflow import NextflowWorkflow
-from .base import NextflowBaseTask
+from .base import NextflowBaseTask, NFTaskType
 
 
 def dataclass_from_python_params(
@@ -65,7 +65,13 @@ class NextflowProcessPreAdapterTask(NextflowBaseTask):
         self.dataclass = dataclass_from_python_params(inputs, id)
 
         super().__init__(
-            inputs, {"default": List[self.dataclass]}, id, name, branches, wf
+            inputs,
+            {"default": List[self.dataclass]},
+            id,
+            name,
+            branches,
+            wf,
+            NFTaskType.Adapter,
         )
 
     def get_fn_interface(self):
@@ -110,7 +116,7 @@ class NextflowProcessPreAdapterTask(NextflowBaseTask):
     def get_fn_return_stmt(self):
         return reindent(f"return Res_{self.id}(default=result)", 1)
 
-    def get_fn_code(self, nf_path_in_container: str):
+    def get_fn_code(self, nf_script_path_in_container: Path):
         code_block = self.get_fn_interface()
         code_block += self.get_fn_conditions()
 
@@ -162,7 +168,15 @@ class NextflowProcessPostAdapterTask(NextflowBaseTask):
     ):
         self.dataclass = dataclass_from_python_params(outputs, id)
 
-        super().__init__({"default": List[self.dataclass]}, outputs, id, name, {}, wf)
+        super().__init__(
+            {"default": List[self.dataclass]},
+            outputs,
+            id,
+            name,
+            {},
+            wf,
+            NFTaskType.Adapter,
+        )
 
     def get_fn_interface(self):
         res = ""
@@ -216,9 +230,7 @@ class NextflowProcessPostAdapterTask(NextflowBaseTask):
 
         return reindent(
             rf"""
-            return Res{self.name}(
-            __return_str__
-            )
+            return get_mapper_outputs(Res{self.name}, default)
             """,
             1,
         ).replace("__return_str__", return_str)

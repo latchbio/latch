@@ -19,7 +19,7 @@ from .dag import DAG
 
 
 class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
-    def __init__(self, nf_script: Path, dag: DAG):
+    def __init__(self, nf_script: Path, version: str, dag: DAG):
         assert metadata._nextflow_metadata is not None
         assert metadata._nextflow_metadata.output_directory is not None
 
@@ -70,8 +70,9 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         self.nextflow_tasks: List[NextflowBaseTask] = []
 
-        self.dag = dag
         self.nf_script = nf_script
+        self.version = version
+        self.dag = dag
 
     def execute(self, **kwargs):
         return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)

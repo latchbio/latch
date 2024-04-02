@@ -6,21 +6,24 @@ import sys
 from collections import OrderedDict
 from pathlib import Path
 from textwrap import dedent
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, cast
 
 import boto3
 import click
+import gql
 from flytekit.core import constants as _common_constants
 from flytekit.core.interface import transform_variable_map
 from flytekit.core.node import Node
 from flytekit.core.promise import NodeOutput, Promise
 from flytekit.models import literals as literals_models
+from latch_sdk_gql.execute import execute
 
 from latch_cli import tinyrequests
+from latch_cli.extras.nextflow.tasks.base import NextflowBaseTask, NFTaskType
 
 from ...click_utils import italic
 from ...menus import select_tui
-from ...utils import identifier_from_str
+from ...utils import current_workspace, identifier_from_str
 from ..common.serialize import binding_from_python
 from ..common.utils import reindent
 from .dag import DAG, VertexType
@@ -33,7 +36,6 @@ from .tasks.input import NextflowInputTask
 from .tasks.map import MapContainerTask
 from .tasks.merge import NextflowMergeTask
 from .tasks.operator import NextflowOperatorTask
-from .tasks.output import NextflowOutputTask
 from .tasks.process import NextflowProcessTask
 from .workflow import NextflowWorkflow
 
@@ -42,7 +44,9 @@ def get_node_name(vertex_id: str) -> str:
     return f"n{vertex_id}"
 
 
-def build_from_nextflow_dag(wf: NextflowWorkflow):
+def build_from_nextflow_dag(
+    wf: NextflowWorkflow, *, execution_profile: Optional[str] = None
+):
     global_start_node = Node(
         id=_common_constants.GLOBAL_INPUT_NODE_ID,
         metadata=None,
@@ -158,6 +162,7 @@ def build_from_nextflow_dag(wf: NextflowWorkflow):
                 import_path=Path(vertex.module),
                 process_name=vertex.label,
                 unaliased=vertex.unaliased,
+                execution_profile=execution_profile,
                 wf=wf,
             )
 
@@ -253,29 +258,6 @@ def build_from_nextflow_dag(wf: NextflowWorkflow):
 
             node_map[vertex.id] = node
 
-        elif vertex.type == VertexType.Output:
-            output_task = NextflowOutputTask(
-                inputs=task_inputs,
-                outputs=task_outputs,
-                name=vertex.label,
-                id=vertex.id,
-                statement=vertex.statement,
-                ret=vertex.ret,
-                branches=branches,
-                wf=wf,
-            )
-            wf.nextflow_tasks.append(output_task)
-
-            node = Node(
-                id=node_name,
-                metadata=output_task.construct_node_metadata(),
-                bindings=task_bindings,
-                upstream_nodes=upstream_nodes,
-                flyte_entity=output_task,
-            )
-
-            node_map[vertex.id] = node
-
         elif vertex.type == VertexType.Merge:
             merge_task = NextflowMergeTask(
                 inputs=task_inputs,
@@ -310,6 +292,9 @@ def build_from_nextflow_dag(wf: NextflowWorkflow):
                 wf=wf,
             )
             wf.nextflow_tasks.append(operator_task)
+
+            if vertex.type != "Operator":
+                operator_task.nf_task_type = NFTaskType(vertex.type)
 
             node = Node(
                 id=node_name,
@@ -388,9 +373,11 @@ def ensure_nf_dependencies(pkg_root: Path, *, force_redownload: bool = False):
 
 def build_nf_wf(
     pkg_root: Path,
+    version: str,
     nf_script: Path,
     *,
     redownload_dependencies: bool = False,
+    execution_profile: Optional[str] = None,
 ) -> NextflowWorkflow:
     ensure_nf_dependencies(pkg_root, force_redownload=redownload_dependencies)
 
@@ -467,9 +454,9 @@ def build_nf_wf(
 
             raise click.exceptions.Exit(0)
 
-    wf = NextflowWorkflow(nf_script, main_dag)
+    wf = NextflowWorkflow(nf_script, version, main_dag)
 
-    build_from_nextflow_dag(wf)
+    build_from_nextflow_dag(wf, execution_profile=execution_profile)
 
     return wf
 
@@ -501,7 +488,7 @@ def generate_nf_entrypoint(
 
         from flytekit.extras.persistence import LatchPersistence
         from latch_cli.extras.nextflow.file_persistence import download_files, stage_for_output, upload_files
-        from latch_cli.extras.nextflow.channel import get_mapper_inputs
+        from latch_cli.extras.nextflow.channel import get_mapper_inputs, get_boolean_value, get_mapper_outputs
         from latch_cli.utils import check_exists_and_rename, get_parameter_json_value, urljoins
 
         from latch.resources.tasks import custom_task

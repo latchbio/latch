@@ -15,6 +15,7 @@ from flytekit.core.workflow import WorkflowBase
 from scp import SCPClient
 
 from latch_cli.click_utils import color
+from latch_cli.extras.nextflow.serialize import add_task_metadata
 
 from ...centromere.ctx import _CentromereCtx
 from ...centromere.utils import MaybeRemoteDir
@@ -275,6 +276,7 @@ def register(
     snakefile: Optional[Path] = None,
     nf_script: Optional[Path] = None,
     nf_redownload_dependencies: bool = False,
+    nf_execution_profile: Optional[str] = None,
     progress_plain: bool = False,
     cache_tasks: bool = False,
     use_new_centromere: bool = False,
@@ -418,8 +420,10 @@ def register(
 
             nf_wf = build_nf_wf(
                 ctx.pkg_root,
+                ctx.version,
                 ctx.nf_script,
                 redownload_dependencies=nf_redownload_dependencies,
+                execution_profile=nf_execution_profile,
             )
             generate_nf_entrypoint(nf_wf, ctx.pkg_root, ctx.nf_script)
 
@@ -518,6 +522,9 @@ def register(
                 protos, ctx.token, ctx.version, current_workspace()
             )
             _print_reg_resp(reg_resp, ctx.default_container.image_name)
+
+            if nf_wf is not None:
+                add_task_metadata(nf_wf)
 
             click.secho("Successfully registered workflow.", fg="green", bold=True)
 

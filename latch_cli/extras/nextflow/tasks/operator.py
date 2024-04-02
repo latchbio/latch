@@ -8,7 +8,7 @@ from latch.types.metadata import ParameterType
 
 from ...common.utils import is_blob_type, reindent, type_repr
 from ..workflow import NextflowWorkflow
-from .base import NextflowBaseTask
+from .base import NextflowBaseTask, NFTaskType
 
 
 class NextflowOperatorTask(NextflowBaseTask):
@@ -26,7 +26,7 @@ class NextflowOperatorTask(NextflowBaseTask):
         self.statement = statement
         self.ret = ret
 
-        super().__init__(inputs, outputs, id, name, branches, wf)
+        super().__init__(inputs, outputs, id, name, branches, wf, NFTaskType.Operator)
 
     def get_fn_interface(self):
         res = ""
@@ -135,7 +135,6 @@ class NextflowOperatorTask(NextflowBaseTask):
                     """,
                     2,
                 )
-
             elif is_blob_type(typ):
                 code_block += reindent(
                     f"""

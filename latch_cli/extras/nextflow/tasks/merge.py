@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Dict, List, Mapping, Type
 
 from latch.types.metadata import ParameterType
+from latch_cli.extras.nextflow.tasks.base import NFTaskType
 
 from ....extras.common.utils import reindent
 from ..workflow import NextflowWorkflow
@@ -28,6 +29,8 @@ class NextflowMergeTask(NextflowOperatorTask):
             branches,
             wf,
         )
+
+        self.nf_task_type = NFTaskType.Merge
 
     def get_fn_conditions(self):
         res: List[str] = []

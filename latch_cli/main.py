@@ -405,6 +405,12 @@ def execute(
     default=False,
     help="Redownload external Nextflow dependencies",
 )
+@click.option(
+    "--execution-profile",
+    type=str,
+    default=None,
+    help="Set execution profile for Nextflow workflow",
+)
 def register(
     pkg_root: str,
     disable_auto_version: bool,
@@ -416,6 +422,7 @@ def register(
     cache_tasks: bool,
     nf_script: Optional[Path],
     redownload_dependencies: bool,
+    execution_profile: Optional[str],
 ):
     """Register local workflow code to Latch.
 
@@ -438,6 +445,7 @@ def register(
         snakefile=snakefile,
         nf_script=nf_script,
         nf_redownload_dependencies=redownload_dependencies,
+        nf_execution_profile=execution_profile,
         progress_plain=(docker_progress == "auto" and not sys.stdout.isatty())
         or docker_progress == "plain",
         use_new_centromere=use_new_centromere,

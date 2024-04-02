@@ -104,8 +104,11 @@ def download_files(
 ):
     paths: List[Path] = []
     for channel in channels:
-        for param in channel:
-            _extract_paths(param, paths)
+        if type(channel) == dict and "value" in channel:
+            _extract_paths(channel["value"], paths)
+        elif type(channel) == list:
+            for param in channel:
+                _extract_paths(param, paths)
 
     remote = _get_remote(outdir)
 
@@ -175,8 +178,11 @@ def _upload(local: Path, remote: str):
 def upload_files(channels: Dict[str, List[JSONValue]], outdir: LatchDir):
     paths: List[Path] = []
     for channel in channels.values():
-        for param in channel:
-            _extract_paths(param, paths)
+        if type(channel) == dict and "value" in channel:
+            _extract_paths(channel["value"], paths)
+        elif type(channel) == list:
+            for param in channel:
+                _extract_paths(param, paths)
 
     remote = _get_remote(outdir)
 

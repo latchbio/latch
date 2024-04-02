@@ -1,8 +1,7 @@
 import textwrap
-import types
 from typing import Type, Union, get_args, get_origin
 
-from typing_extensions import TypeGuard
+from typing_extensions import Annotated, TypeGuard
 
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
@@ -27,6 +26,8 @@ def is_primitive_value(val: object) -> TypeGuard[Union[None, str, bool, int, flo
 
 def is_blob_type(typ: Type) -> TypeGuard[Union[Type[LatchFile], Type[LatchDir]]]:
     origin = get_origin(typ)
+    if origin is Annotated:
+        return any([is_blob_type(sub_typ) for sub_typ in get_args(typ)])
     if origin is not None:
         return all([is_blob_type(sub_typ) for sub_typ in get_args(typ)])
 

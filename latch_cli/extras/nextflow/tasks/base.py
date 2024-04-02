@@ -1,4 +1,5 @@
 import importlib
+from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Type, cast
 
@@ -25,6 +26,16 @@ from ...common.utils import reindent
 from ..workflow import NextflowWorkflow
 
 
+class NFTaskType(str, Enum):
+    Process = "Process"
+    Adapter = "Adapter"
+    Operator = "Operator"
+    SubWorkflow = "SubWorkflow"
+    Generator = "Generator"
+    Conditional = "Conditional"
+    Merge = "Merge"
+
+
 class NextflowBaseTask(PythonAutoContainerTask[Pod]):
     def __init__(
         self,
@@ -34,12 +45,14 @@ class NextflowBaseTask(PythonAutoContainerTask[Pod]):
         name: str,
         branches: Dict[str, bool],
         wf: NextflowWorkflow,
+        nf_task_type: NFTaskType,
         # todo(ayush): expose / infer these somehow
         cpu: int = 4,
         memory: int = 8,
     ):
         self.id = id
         self.wf = wf
+        self.nf_task_type = nf_task_type
 
         interface = Interface(inputs, outputs, docstring=None)
         self._python_inputs = inputs

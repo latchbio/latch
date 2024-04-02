@@ -24,7 +24,6 @@ class VertexType(str, Enum):
     Conditional = "Conditional"
     Merge = "Merge"
     Input = "Input"
-    Output = "Output"
 
 
 @dataclass(frozen=True)

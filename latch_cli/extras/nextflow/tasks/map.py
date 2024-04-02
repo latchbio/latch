@@ -18,7 +18,7 @@ from flytekit.models.interface import Variable
 from flytekit.models.task import Container, K8sPod, Sql
 from flytekitplugins.pod.task import Pod
 
-from .base import NextflowBaseTaskResolver
+from .base import NextflowBaseTaskResolver, NFTaskType
 from .process import NextflowProcessTask
 
 
@@ -37,6 +37,8 @@ class MapContainerTask(PythonAutoContainerTask[Pod]):
         collection_interface = transform_interface_to_list_interface(
             container_task.python_interface
         )
+
+        self.nf_task_type = NFTaskType.Process
 
         super().__init__(
             name=name,

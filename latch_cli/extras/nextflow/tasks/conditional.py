@@ -1,6 +1,7 @@
 from typing import Dict, List, Mapping, Optional, Type
 
 from latch.types.metadata import ParameterType
+from latch_cli.extras.nextflow.tasks.base import NFTaskType
 
 from ...common.utils import reindent
 from ..workflow import NextflowWorkflow
@@ -29,28 +30,18 @@ class NextflowConditionalTask(NextflowOperatorTask):
             wf,
         )
 
-    def get_fn_return_stmt(self):
-        results: List[str] = []
-        for out_name, out_type in self._python_outputs.items():
-            results.append(
-                reindent(
-                    rf"""
-                    {out_name}=json.loads(out_channels.get("{out_name}", "true"))
-                    """,
-                    2,
-                ).rstrip()
-            )
+        self.nf_task_type = NFTaskType.Conditional
 
-        return_str = ",\n".join(results)
+    def get_fn_return_stmt(self):
 
         return reindent(
             rf"""
-            res = out_channels.get({repr(out_name)})
+            res = out_channels.get("condition")
 
             if res is not None:
-                res = json.loads(res)[0]["boolean"]
+                res = get_boolean_value(res)
 
             return Res{self.name}(condition=res)
             """,
             1,
-        ).replace("__return_str__", return_str)
+        )
