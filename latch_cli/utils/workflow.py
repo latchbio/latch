@@ -1,4 +1,5 @@
 import re
+from pathlib import Path
 
 import gql
 from latch_sdk_gql.execute import execute
@@ -11,13 +12,13 @@ pod_name_regex = re.compile(
         (?P<node_name>
             (
                 n
-                [0-9]+
+                [^\-]+
                 -
                 [0-9]+
                 -
             )*
             n
-            [0-9]+
+            [^\-]+
         )
         -
         (?P<retry>[0-9]+)
@@ -36,8 +37,7 @@ pod_name_regex = re.compile(
 
 
 def _override_task_status(status: str) -> None:
-    with open("/etc/hostname", "r") as f:
-        pod_name = f.read().strip()
+    pod_name = Path("/etc/hostname").read_text().strip()
 
     match = pod_name_regex.match(pod_name)
     if not match:

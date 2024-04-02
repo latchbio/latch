@@ -53,7 +53,10 @@ class NextflowInputTask(NextflowOperatorTask):
                 res = {channel_input}
             else:
                 print("TASK SKIPPED")
-                _override_task_status(status="SKIPPED")
+                try:
+                    _override_task_status(status="SKIPPED")
+                except Exception as e:
+                    print(f"Failed to override task status: {{e}}")
                 res = None
 
             """,
