@@ -48,6 +48,7 @@ class _Cache:
     name: Optional[str] = None
     type: Optional[LDataNodeType] = None
     size: Optional[int] = None
+    dir_size: Optional[int] = None
     content_type: Optional[str] = None
 
 
@@ -113,6 +114,8 @@ class LPath:
         ):
             raise LatchPathError(f"no such Latch file or directory", self.path)
 
+        self._clear_cache()
+
         self._cache.path = self.path
 
         final_link_target = data["ldataNode"]["finalLinkTarget"]
@@ -133,6 +136,7 @@ class LPath:
         self._cache.name = None
         self._cache.type = None
         self._cache.size = None
+        self._cache.dir_size = None
         self._cache.content_type = None
 
     def node_id(self, *, load_if_missing: bool = True) -> Optional[str]:
@@ -153,6 +157,24 @@ class LPath:
         if self._cache.type is None and load_if_missing:
             self.fetch_metadata()
         return self._cache.type
+
+    def size_recursive(self, *, load_if_missing: bool = True) -> Optional[int]:
+        if not self.is_dir(load_if_missing=load_if_missing):
+            return self.size(load_if_missing=load_if_missing)
+
+        if self._cache.dir_size is None and load_if_missing:
+            data = query_with_retry(
+                gql.gql("""
+                query GetLDataSubtreeSize($nodeId: BigInt!) {
+                    ldataGetSubtreeSizeRecursive(argNodeId: $nodeId)
+                }
+                """),
+                {"nodeId": self.node_id()},
+                num_retries=2,
+            )["ldataGetSubtreeSizeRecursive"]
+            self._cache.dir_size = int(data)
+
+        return self._cache.dir_size
 
     def size(self, *, load_if_missing: bool = True) -> Optional[int]:
         if self._cache.size is None and load_if_missing:
