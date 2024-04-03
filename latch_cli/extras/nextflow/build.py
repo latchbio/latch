@@ -3,7 +3,7 @@ import os
 import shutil
 import subprocess
 import sys
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from pathlib import Path
 from textwrap import dedent
 from typing import Dict, List, Optional, cast
@@ -86,6 +86,7 @@ def build_from_nextflow_dag(
 
         task_bindings: List[literals_models.Binding] = [*global_wf_input_bindings]
         branches: Dict[str, bool] = {}
+        merge_sources: Dict[str, List[str]] = defaultdict(lambda: [])
         for dep, edge in wf.dag.ancestors()[vertex]:
             if dep.type == VertexType.Conditional:
                 input_name = f"condition_{dep.id}"
@@ -98,11 +99,15 @@ def build_from_nextflow_dag(
                 node = NodeOutput(node=node_map[dep.id], var=f"condition")
             else:
                 input_name = f"channel_{dep.id}"
-                output_name = "res"
 
+                output_name = "res"
                 if len(dep.outputNames) > 0:
                     idx = int(edge.label)
-                    input_name = output_name = dep.outputNames[idx]
+                    input_name = f"{input_name}_{idx}"
+                    output_name = dep.outputNames[idx]
+
+                if vertex.type == VertexType.Merge:
+                    merge_sources[output_name].append(input_name)
 
                 task_inputs[input_name] = Optional[str]
 
@@ -123,6 +128,8 @@ def build_from_nextflow_dag(
             upstream_nodes.append(node_map[dep.id])
 
         node_name = get_node_name(vertex.id)
+        if vertex.type == VertexType.Merge:
+            task_outputs = {k: Optional[str] for k in merge_sources.keys()}
 
         if vertex.type == VertexType.Process:
             pre_adapter_task = NextflowProcessPreAdapterTask(
@@ -265,6 +272,7 @@ def build_from_nextflow_dag(
                 name=vertex.label,
                 id=vertex.id,
                 branches=branches,
+                sources=merge_sources,
                 wf=wf,
             )
 

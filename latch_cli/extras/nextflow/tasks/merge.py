@@ -17,6 +17,7 @@ class NextflowMergeTask(NextflowOperatorTask):
         id: str,
         name: str,
         branches: Dict[str, bool],
+        sources: Dict[str, List[str]],
         wf: NextflowWorkflow,
     ):
         super().__init__(
@@ -30,6 +31,7 @@ class NextflowMergeTask(NextflowOperatorTask):
             wf,
         )
 
+        self.sources = sources
         self.nf_task_type = NFTaskType.Merge
 
     def get_fn_conditions(self):
@@ -59,7 +61,9 @@ class NextflowMergeTask(NextflowOperatorTask):
     def get_fn_return_stmt(self):
         results: List[str] = []
         for out_name in self._python_outputs.keys():
-            results.append(reindent(rf"{out_name}=res", 2).rstrip())
+            results.append(
+                reindent(rf"{out_name}=res.get({repr(out_name)})", 2).rstrip()
+            )
 
         return_str = ",\n".join(results)
 
@@ -76,18 +80,24 @@ class NextflowMergeTask(NextflowOperatorTask):
         code_block = self.get_fn_interface()
         code_block += self.get_fn_conditions()
 
-        expr = " or ".join(channel_input for channel_input in self.channel_inputs)
+        exprs = []
+        for out_name, inputs in self.sources.items():
+            expr = " or ".join(input for input in inputs)
+
+            exprs.append(f"{repr(out_name)}: {expr}")
+
+        expr = ", ".join(x for x in exprs)
 
         code_block += reindent(
             rf"""
-                res = {expr}
+                res = {{ {expr} }}
             else:
                 print("TASK SKIPPED")
                 try:
                     _override_task_status(status="SKIPPED")
                 except Exception as e:
                     print(f"Failed to override task status: {{e}}")
-                res = None
+                res = {{}}
 
             """,
             1,

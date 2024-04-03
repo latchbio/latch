@@ -33,7 +33,6 @@ class NextflowConditionalTask(NextflowOperatorTask):
         self.nf_task_type = NFTaskType.Conditional
 
     def get_fn_return_stmt(self):
-
         return reindent(
             rf"""
             res = out_channels.get("condition")

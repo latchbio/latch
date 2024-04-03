@@ -415,14 +415,14 @@ def generate_jit_register_code(
             print_and_write_build_logs,
             print_upload_logs,
         )
-        from latch_cli.snakemake.serialize import (
+        from latch_cli.extras.snakemake.serialize import (
             extract_snakemake_workflow,
             generate_snakemake_entrypoint,
             serialize_snakemake,
         )
         from latch_cli.utils import get_parameter_json_value, check_exists_and_rename
-        import latch_cli.snakemake
-        from latch_cli.snakemake.serialize_utils import update_mapping
+        import latch_cli.extras.snakemake
+        from latch_cli.extras.snakemake.serialize_utils import update_mapping
         from latch_cli.utils import urljoins
 
         from latch import small_task
