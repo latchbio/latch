@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.39.7 - 2024-04-03
+
+### Documentation
+
+* latch cp
+  + Commandline docstring states recursive default behavior.
+
 ## 2.39.6 - 2024-04-02
 
 ### Fixed
