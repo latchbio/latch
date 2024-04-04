@@ -1,7 +1,7 @@
 import sys
 from dataclasses import fields
 from pathlib import Path
-from typing import Any, Dict, Optional, Type, TypeVar, Union, get_args
+from typing import Any, Dict, List, Optional, Type, TypeVar, Union, get_args
 
 import click
 from flyteidl.admin.launch_plan_pb2 import LaunchPlan as _idl_admin_LaunchPlan
@@ -292,7 +292,7 @@ RegistrableEntity = Union[
 ]
 
 
-def should_register_with_admin(entity: RegistrableEntity) -> bool:
+def should_register_with_admin(entity: FlyteSerializableModel) -> bool:
     return isinstance(entity, get_args(RegistrableEntity))
 
 
@@ -327,15 +327,29 @@ def serialize(
     )
     admin_lp = get_serializable_launch_plan(lp, settings, registrable_entity_cache)
 
-    registrable_entities = [
-        x.to_flyte_idl()
-        for x in list(
-            filter(should_register_with_admin, list(registrable_entity_cache.values()))
-        )
-        + [admin_lp]
-    ]
+    click.secho(
+        "\nBuilding flyte models: \x1b[?25l",
+        nl=False,
+    )
+
+    registrable_entities = []
+    i = 0
+    for x in list(registrable_entity_cache.values()) + [admin_lp]:
+        progress_str = f"{i + 1}/{len(registrable_entity_cache) + 1}"
+
+        click.echo("\x1b[0K", nl=False)
+        click.secho(progress_str, dim=True, italic=True, nl=False)
+        click.echo(f"\x1b[{len(progress_str)}D", nl=False)
+
+        i += 1
+
+        if not should_register_with_admin(x):
+            continue
+
+        registrable_entities.append(x.to_flyte_idl())
 
     click.secho("\nSerializing workflow entities", bold=True)
+
     persist_registrable_entities(registrable_entities, output_dir)
 
     if not write_spec:

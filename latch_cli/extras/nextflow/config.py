@@ -2,7 +2,7 @@ import json
 import os
 import subprocess
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import click
 
@@ -37,6 +37,7 @@ def generate_nf_metadata(
     skip_confirmation: bool = False,
     generate_defaults: bool = False,
     infer_files: bool = False,
+    make_optionals: bool = True,
 ):
     if not config_path.is_dir():
         click.secho(
@@ -103,7 +104,10 @@ def generate_nf_metadata(
     params: List[str] = []
 
     for k, (typ, (val, default)) in parsed.items():
-        preambles.append(get_preamble(typ))
+        if make_optionals:
+            typ = Optional[typ]
+
+        preambles.append(get_preamble(typ, make_optionals=make_optionals))
 
         param_str = reindent(
             f"""\

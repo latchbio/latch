@@ -47,8 +47,8 @@ class NextflowBaseTask(PythonAutoContainerTask[Pod]):
         wf: NextflowWorkflow,
         nf_task_type: NFTaskType,
         # todo(ayush): expose / infer these somehow
-        cpu: int = 4,
-        memory: int = 8,
+        cpu: float = 0.5,
+        memory: float = 1,
     ):
         self.id = id
         self.wf = wf

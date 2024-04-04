@@ -188,81 +188,48 @@ def parse_value(t: Type, v: JSONValue):
     return t(**ret), t(**defaults)
 
 
-def is_primitive_type(
-    typ: Type,
-) -> TypeGuard[Union[Type[None], Type[str], Type[bool], Type[int], Type[float]]]:
-    return typ in {Type[None], str, bool, int, float}
-
-
-def is_primitive_value(val: object) -> TypeGuard[Union[None, str, bool, int, float]]:
-    return is_primitive_type(type(val))
-
-
 def is_list_type(typ: Type) -> TypeGuard[Type[List]]:
     return get_origin(typ) is list
 
 
-def type_repr(t: Type, *, add_namespace: bool = False) -> str:
-    if is_primitive_type(t) or t in {LatchFile, LatchDir}:
-        return t.__name__
-
-    if get_origin(t) is None:
-        return f"{'latch_metadata.' if add_namespace else ''}{t.__name__}"
-
-    if get_origin(t) is list:
-        args = get_args(t)
-        if len(args) > 0:
-            return f"typing.List[{type_repr(args[0], add_namespace=add_namespace)}]"
-
-        return "typing.List"
-
-    if get_origin(t) is Union:
-        args = get_args(t)
-
-        if len(args) != 2 or args[1] is not type(None):
-            raise ValueError(
-                "Union types other than Optional are not yet supported in Snakemake"
-                " workflows."
-            )
-
-        return f"typing.Optional[{type_repr(args[0], add_namespace=add_namespace)}]"
-
-    if get_origin(t) is Annotated:
-        args = get_args(t)
-        assert len(args) > 1
-        assert isinstance(args[1], FlyteAnnotation)
-        return (
-            f"typing_extensions.Annotated[{type_repr(args[0], add_namespace=add_namespace)},"
-            f" FlyteAnnotation({repr(args[1].data)})]"
-        )
-
-    return t.__name__
-
-
-def dataclass_repr(typ: Type) -> str:
+def dataclass_repr(typ: Type, *, make_optionals: bool = False) -> str:
     assert is_dataclass(typ)
 
     lines = ["@dataclass", f"class {typ.__name__}:"]
     for f in fields(typ):
-        lines.append(f"    {f.name}: {type_repr(f.type)}")
+        t = f.type
+        if make_optionals:
+            t = Optional[t]
+
+        lines.append(f"    {f.name}: {type_repr(t)}")
 
     return "\n".join(lines) + "\n\n\n"
 
 
-def get_preamble(typ: Type) -> str:
+def get_preamble(typ: Type, *, make_optionals: bool = False) -> str:
     if get_origin(typ) is Annotated:
         args = get_args(typ)
         assert len(args) > 0
-        return get_preamble(args[0])
+        return get_preamble(args[0], make_optionals=make_optionals)
 
     if is_primitive_type(typ) or typ in {LatchFile, LatchDir}:
         return ""
 
     if get_origin(typ) in {Union, list}:
-        return "".join([get_preamble(t) for t in get_args(typ)])
+        return "".join(
+            [get_preamble(t, make_optionals=make_optionals) for t in get_args(typ)]
+        )
 
     assert is_dataclass(typ), typ
 
-    preamble = "".join([get_preamble(f.type) for f in fields(typ)])
+    preambles = []
+    for f in fields(typ):
+        t = f.type
+        if make_optionals:
+            t = Optional[f.type]
 
-    return "".join([preamble, dataclass_repr(typ)])
+        preambles.append(get_preamble(t, make_optionals=make_optionals))
+
+    preamble = "".join(preambles)
+
+    return "".join([preamble, dataclass_repr(typ, make_optionals=make_optionals)])

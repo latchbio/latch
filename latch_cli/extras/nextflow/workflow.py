@@ -1,5 +1,6 @@
+from dataclasses import fields, is_dataclass
 from pathlib import Path
-from typing import List
+from typing import Any, Dict, List, Tuple, Type
 
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.docstring import Docstring
@@ -13,9 +14,31 @@ from flytekit.core.workflow import (
 from flytekit.exceptions import scopes as exception_scopes
 
 from latch.types import metadata
-from latch.types.metadata import NextflowFileParameter
+from latch_cli.extras.common.utils import is_blob_type, is_downloadable_blob_type
 
 from .dag import DAG
+
+# def _get_flattened_inputs(
+#     key: str, t: Type, val: Any, inputs: Dict[str, Tuple[Type, Any]]
+# ):
+#     if not is_dataclass(t):
+#         inputs[key] = (t, val)
+#         return
+
+#     for f in fields(t):
+#         v = val
+#         if val is not None:
+#             v = getattr()
+
+
+def _get_flags_to_params(key: str, t: Type, flags: Dict[str, str]):
+    if is_blob_type(t):
+        flags[f"--{key}"] = f"wf_paths['wf_{key}']"
+    elif is_dataclass(t):
+        for f in fields(t):
+            _get_flags_to_params(f"{key}.{f.name}", f.type, flags)
+    else:
+        flags[f"--{key}"] = f"wf_{key}"
 
 
 class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
@@ -39,19 +62,17 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
             docstring=docstring,
         )
 
-        self.flags_to_params = {
-            f"--{k}": (
-                f"wf_paths[wf_{k}]"
-                if isinstance(v, NextflowFileParameter)
-                else f"wf_{k}"
-            )
-            for k, v in metadata._nextflow_metadata.parameters.items()
-        }
+        self.flattened_inputs = {}
+
+        self.flags_to_params = {}
+        for k, v in metadata._nextflow_metadata.parameters.items():
+            assert v.type is not None
+            _get_flags_to_params(k, v.type, self.flags_to_params)
 
         self.downloadable_params = {
-            k: str(v.path)
+            k
             for k, v in metadata._nextflow_metadata.parameters.items()
-            if isinstance(v, NextflowFileParameter) and v._download
+            if is_downloadable_blob_type(v.type)
         }
 
         name = metadata._nextflow_metadata.name

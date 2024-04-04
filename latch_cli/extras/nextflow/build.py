@@ -19,6 +19,7 @@ from flytekit.models import literals as literals_models
 from latch_sdk_gql.execute import execute
 
 from latch_cli import tinyrequests
+from latch_cli.extras.common.config.utils import get_preamble
 from latch_cli.extras.nextflow.tasks.base import NextflowBaseTask, NFTaskType
 
 from ...click_utils import italic
@@ -102,7 +103,7 @@ def build_from_nextflow_dag(
 
                 output_name = "res"
                 if len(dep.outputNames) > 0:
-                    idx = int(edge.label)
+                    idx = int(edge.label or "0")
                     input_name = f"{input_name}_{idx}"
                     output_name = dep.outputNames[idx]
 
@@ -128,8 +129,6 @@ def build_from_nextflow_dag(
             upstream_nodes.append(node_map[dep.id])
 
         node_name = get_node_name(vertex.id)
-        if vertex.type == VertexType.Merge:
-            task_outputs = {k: Optional[str] for k in merge_sources.keys()}
 
         if vertex.type == VertexType.Process:
             pre_adapter_task = NextflowProcessPreAdapterTask(
@@ -512,6 +511,9 @@ def generate_nf_entrypoint(
         """,
         0,
     )
+
+    for t in wf.python_interface.inputs.values():
+        preamble += get_preamble(t, make_optionals=True)
 
     nf_script_path_in_container = nf_script.resolve().relative_to(pkg_root.resolve())
 

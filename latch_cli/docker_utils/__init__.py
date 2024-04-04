@@ -9,6 +9,7 @@ from typing import List
 import click
 import yaml
 
+from latch_cli.click_utils import color
 from latch_cli.constants import latch_constants
 from latch_cli.utils import WorkflowType
 from latch_cli.workflow_config import LatchWorkflowConfig, create_and_write_config
@@ -352,18 +353,8 @@ def generate_dockerfile(
         with (pkg_root / latch_constants.pkg_config).open("r") as f:
             config = LatchWorkflowConfig(**json.load(f))
 
-    click.echo(
-        " ".join([
-            click.style("Base image:", fg="bright_blue"),
-            config.base_image,
-        ])
-    )
-    click.echo(
-        " ".join([
-            click.style("Latch SDK version:", fg="bright_blue"),
-            config.latch_version,
-        ])
-    )
+    click.echo(" ".join([color("Base image:"), config.base_image]))
+    click.echo(" ".join([color("Latch SDK version:"), config.latch_version]))
     click.echo()
 
     with outfile.open("w") as f:

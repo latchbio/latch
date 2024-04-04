@@ -696,6 +696,8 @@ class NextflowMetadata(LatchMetadata):
     def __post_init__(self):
         if self.name is None:
             self.name = f"nf_{identifier_suffix_from_str(self.display_name.lower())}"
+        else:
+            self.name = identifier_suffix_from_str(self.name)
 
         if self.output_directory is None:
             self.output_directory = LatchDir("latch:///Nextflow Outputs/")

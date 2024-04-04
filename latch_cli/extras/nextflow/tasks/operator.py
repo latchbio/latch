@@ -130,7 +130,7 @@ class NextflowOperatorTask(NextflowBaseTask):
                     if {k} is not None:
                         {k}_p = Path({k}).resolve()
                         check_exists_and_rename({k}_p, Path("/root") / {k}_p.name)
-                        wf_paths[{k}] = Path("/root") / {k}_p.name
+                        wf_paths["{k}"] = Path("/root") / {k}_p.name
 
                     """,
                     2,
@@ -140,7 +140,7 @@ class NextflowOperatorTask(NextflowBaseTask):
                     f"""
                     if {k} is not None:
                         {k}_p = Path("/root/").resolve() # superhack
-                        wf_paths[{k}] = {k}_p
+                        wf_paths["{k}"] = {k}_p
 
                     """,
                     2,

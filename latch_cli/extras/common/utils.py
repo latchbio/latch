@@ -3,7 +3,7 @@ from typing import Type, Union, get_args, get_origin
 
 from typing_extensions import Annotated, TypeGuard
 
-from latch.types.directory import LatchDir
+from latch.types.directory import LatchDir, LatchOutputDir
 from latch.types.file import LatchFile
 
 
@@ -17,7 +17,7 @@ def reindent(x: str, level: int) -> str:
 def is_primitive_type(
     typ: Type,
 ) -> TypeGuard[Union[Type[None], Type[str], Type[bool], Type[int], Type[float]]]:
-    return typ in {Type[None], str, bool, int, float}
+    return typ in {type(None), str, bool, int, float}
 
 
 def is_primitive_value(val: object) -> TypeGuard[Union[None, str, bool, int, float]]:
@@ -32,6 +32,13 @@ def is_blob_type(typ: Type) -> TypeGuard[Union[Type[LatchFile], Type[LatchDir]]]
         return all([is_blob_type(sub_typ) for sub_typ in get_args(typ)])
 
     return typ in {LatchFile, LatchDir}
+
+
+def is_downloadable_blob_type(typ: Type):
+    if not is_blob_type(typ):
+        return False
+
+    return typ is not LatchOutputDir
 
 
 def type_repr(t: Type, *, add_namespace: bool = False) -> str:
