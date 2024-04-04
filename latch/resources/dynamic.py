@@ -37,7 +37,6 @@ def _override_task_resources(task_config: Pod) -> None:
                 $argNodeName: String!,
                 $argRetry: BigInt!,
                 $argArrIndex: BigInt,
-                $argArrRetry: BigInt,
                 $argResources: JSON!
             ) {
                 overrideTaskResourcesByToken(
@@ -46,7 +45,6 @@ def _override_task_resources(task_config: Pod) -> None:
                         argNodeName: $argNodeName,
                         argRetry: $argRetry,
                         argArrIndex: $argArrIndex,
-                        argArrRetry: $argArrRetry,
                         argResources: $argResources
                     }
                 ) {
@@ -59,7 +57,6 @@ def _override_task_resources(task_config: Pod) -> None:
             "argNodeName": task_id.node_name,
             "argRetry": task_id.retry,
             "argArrIndex": task_id.arr_index,
-            "argArrRetry": task_id.arr_retry,
             "argResources": resources,
         },
     )
