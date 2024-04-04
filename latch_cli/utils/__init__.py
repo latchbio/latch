@@ -33,16 +33,40 @@ if "latch" not in urllib.parse.uses_netloc:
 
 
 def get_workspaces() -> Dict[str, str]:
-    headers = {"Authorization": f"Bearer {retrieve_or_login()}"}
+    """Retrieve workspaces that user can access.
 
-    resp = post(
-        url=config.api.user.list_workspaces,
-        headers=headers,
+    Returns:
+        A dictionary mapping workspace IDs to workspace display names.
+    """
+    account_id = account_id_from_token(retrieve_or_login())
+    res = execute(
+        gql.gql("""
+        query GetUserDefaultWorkspace($accountId: BigInt!) {
+            teamInfos(filter: {owner: {accountId: {equalTo: $accountId}}}) {
+                nodes {
+                    displayName
+                    accountId
+                }
+            }
+            teamMembers(filter: {user: {accountId: {equalTo: $accountId}}}) {
+                nodes {
+                    team {
+                        accountId
+                        displayName
+                    }
+                }
+            }
+        }"""),
+        {"accountId": account_id},
     )
-    resp.raise_for_status()
 
-    data = resp.json()
-    return data
+    owned_teams = res["teamInfos"]["nodes"]
+    member_teams = [x["team"] for x in res["teamMembers"]["nodes"]]
+
+    teams = {x["accountId"]: x["displayName"] for x in owned_teams + member_teams}
+    teams[account_id] = "Personal Workspace"
+
+    return teams
 
 def urljoins(*args: str, dir: bool = False) -> str:
     """Construct a URL by appending paths
@@ -114,7 +138,7 @@ def current_workspace() -> str:
     ws = user_config.workspace_id
     if ws == "":
         ws = account_id_from_token(retrieve_or_login())
-        ws = execute(
+        default_ws = execute(
             gql.gql("""
             query GetUserDefaultWorkspace($accountId: BigInt!) {
                 userInfoByAccountId(accountId: $accountId) {
@@ -124,14 +148,15 @@ def current_workspace() -> str:
             {"accountId": ws},
         )["userInfoByAccountId"]["defaultAccount"]
 
+        if default_ws is not None:
+            ws = default_ws
+
         workspace_names = get_workspaces()
 
         if ws not in workspace_names:
             raise ValueError(
-                f"Default workspace {ws} not found in the list of workspaces."
+                f"Workspace {ws} not found in the list of workspaces."
             )
-
-        user_config.update_workspace(ws, workspace_names[ws])
 
     return ws
 
