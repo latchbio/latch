@@ -9,7 +9,6 @@ from latch_cli.tinyrequests import post
 from latch_cli.utils import current_workspace, get_workspaces
 
 
-
 class WSInfo(TypedDict):
     workspace_id: str
     name: str

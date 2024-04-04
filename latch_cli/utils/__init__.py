@@ -12,22 +12,19 @@ from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from textwrap import dedent
-from typing import List
+from typing import Dict, List
 from urllib.parse import urljoin
-from latch_sdk_gql.execute import execute
-import gql
-from typing import Dict
-from latch_sdk_config.latch import config
-from latch_cli.tinyrequests import post
-
 
 import click
+import gql
 import jwt
+from latch_sdk_config.latch import config
 from latch_sdk_config.user import user_config
+from latch_sdk_gql.execute import execute
 
 from latch_cli.click_utils import bold
 from latch_cli.constants import latch_constants
-from latch_cli.tinyrequests import get
+from latch_cli.tinyrequests import get, post
 
 # todo(ayush): need a better way to check if "latch" has been appended to urllib
 if "latch" not in urllib.parse.uses_netloc:
