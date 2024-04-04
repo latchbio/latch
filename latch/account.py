@@ -16,7 +16,7 @@ from typing_extensions import Self, TypeAlias
 
 from latch.registry.project import Project
 from latch.registry.table import Table
-from latch_cli.utils import current_workspace
+from latch.utils import current_workspace
 
 
 class _CatalogExperiment(TypedDict):
@@ -80,7 +80,7 @@ class Account:
         was run.
 
         In the CLI context (when running `latch` commands) this is the
-        current setting of `latch workspace`, which defaults to the user's personal
+        current setting of `latch workspace`, which defaults to the user's default
         workspace.
 
         Returns:

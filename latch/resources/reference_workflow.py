@@ -1,6 +1,6 @@
 from flytekit.core.launch_plan import reference_launch_plan
 
-from latch_cli.utils import current_workspace
+from latch.utils import current_workspace
 
 
 def workflow_reference(

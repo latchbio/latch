@@ -23,14 +23,10 @@ import websockets.exceptions
 from latch_sdk_config.latch import config
 from watchfiles import awatch
 
+from latch.utils import current_workspace, retrieve_or_login
 from latch_cli.constants import docker_image_name_illegal_pat
 from latch_cli.tinyrequests import post
-from latch_cli.utils import (
-    TemporarySSHCredentials,
-    current_workspace,
-    identifier_suffix_from_str,
-    retrieve_or_login,
-)
+from latch_cli.utils import TemporarySSHCredentials, identifier_suffix_from_str
 
 
 def _get_workflow_name(pkg_root: Path, snakemake: bool) -> str:
