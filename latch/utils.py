@@ -98,9 +98,4 @@ def current_workspace() -> str:
         if default_ws is not None:
             ws = default_ws
 
-        workspace_names = get_workspaces()
-
-        if ws not in workspace_names:
-            raise ValueError(f"Workspace {ws} not found in the list of workspaces.")
-
     return ws

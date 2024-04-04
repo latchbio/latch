@@ -1,4 +1,3 @@
-import os
 from urllib.parse import urljoin
 
 from latch_sdk_config.latch import NUCLEUS_URL
