@@ -10,10 +10,10 @@ from typing import Iterator, List, Literal, Optional, TypedDict, Union, overload
 
 import gql
 import graphql.language as l
-from latch_sdk_config.user import user_config
 from latch_sdk_gql.execute import execute
 from latch_sdk_gql.utils import _GqlJsonValue, _json_value, _name_node, _parse_selection
 from typing_extensions import Self, TypeAlias
+from latch_cli.utils import current_workspace
 
 from latch.registry.project import Project
 from latch.registry.table import Table
@@ -86,20 +86,7 @@ class Account:
         Returns:
             Current account.
         """
-        if user_config.workspace_id != "":
-            account_id = user_config.workspace_id
-        else:
-            account_id = execute(
-                document=gql.gql("""
-                    query accountInfoQuery {
-                        accountInfoCurrent {
-                            id
-                        }
-                    }
-                    """),
-            )["accountInfoCurrent"]["id"]
-
-        return cls(id=account_id)
+        return cls(id=current_workspace())
 
     def load(self) -> None:
         """(Re-)populate this account instance's cache.

@@ -14,6 +14,12 @@ from pathlib import Path
 from textwrap import dedent
 from typing import List
 from urllib.parse import urljoin
+from latch_sdk_gql.execute import execute
+import gql
+from typing import Dict
+from latch_sdk_config.latch import config
+from latch_cli.tinyrequests import post
+
 
 import click
 import jwt
@@ -28,6 +34,18 @@ if "latch" not in urllib.parse.uses_netloc:
     urllib.parse.uses_netloc.append("latch")
     urllib.parse.uses_relative.append("latch")
 
+
+def get_workspaces() -> Dict[str, str]:
+    headers = {"Authorization": f"Bearer {retrieve_or_login()}"}
+
+    resp = post(
+        url=config.api.user.list_workspaces,
+        headers=headers,
+    )
+    resp.raise_for_status()
+
+    data = resp.json()
+    return data
 
 def urljoins(*args: str, dir: bool = False) -> str:
     """Construct a URL by appending paths
@@ -99,7 +117,24 @@ def current_workspace() -> str:
     ws = user_config.workspace_id
     if ws == "":
         ws = account_id_from_token(retrieve_or_login())
-        user_config.update_workspace(ws, "Personal Workspace")
+        ws = execute(
+            gql.gql("""
+            query GetUserDefaultWorkspace($accountId: BigInt!) {
+                userInfoByAccountId(accountId: $accountId) {
+                    defaultAccount
+                }
+            }"""),
+            {"accountId": ws},
+        )["userInfoByAccountId"]["defaultAccount"]
+
+        workspace_names = get_workspaces()
+
+        if ws not in workspace_names:
+            raise ValueError(
+                f"Default workspace {ws} not found in the list of workspaces."
+            )
+
+        user_config.update_workspace(ws, workspace_names[ws])
 
     return ws
 

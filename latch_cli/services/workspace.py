@@ -6,20 +6,8 @@ from latch_sdk_config.user import user_config
 
 from latch_cli.menus import SelectOption, select_tui
 from latch_cli.tinyrequests import post
-from latch_cli.utils import current_workspace, retrieve_or_login
+from latch_cli.utils import current_workspace, get_workspaces
 
-
-def _get_workspaces() -> Dict[str, str]:
-    headers = {"Authorization": f"Bearer {retrieve_or_login()}"}
-
-    resp = post(
-        url=config.api.user.list_workspaces,
-        headers=headers,
-    )
-    resp.raise_for_status()
-
-    data = resp.json()
-    return data
 
 
 class WSInfo(TypedDict):
@@ -33,7 +21,7 @@ def workspace():
 
     Like `get_executions`, this function should only be called from the CLI.
     """
-    data = _get_workspaces()
+    data = get_workspaces()
 
     old_id = current_workspace()
 
