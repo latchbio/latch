@@ -1,8 +1,9 @@
 import re
-from pathlib import Path
 
 import gql
 from latch_sdk_gql.execute import execute
+
+from latch.executions import get_task_identifier
 
 pod_name_regex = re.compile(
     r"""
@@ -37,17 +38,7 @@ pod_name_regex = re.compile(
 
 
 def _override_task_status(status: str) -> None:
-    pod_name = Path("/etc/hostname").read_text().strip()
-
-    match = pod_name_regex.match(pod_name)
-    if not match:
-        raise RuntimeError(f"Invalid pod name: {pod_name}")
-
-    token = match.group("token")
-    node_name = match.group("node_name")
-    retry = match.group("retry")
-    arr_index = match.group("arr_index")
-    arr_retry = match.group("arr_retry")
+    task_id = get_task_identifier()
 
     execute(
         gql.gql("""
@@ -56,7 +47,6 @@ def _override_task_status(status: str) -> None:
                 $argNodeName: String!,
                 $argRetry: BigInt!,
                 $argArrIndex: BigInt,
-                $argArrRetry: BigInt,
                 $argStatus: String!
             ) {
                 overrideTaskStatusByToken(
@@ -65,7 +55,6 @@ def _override_task_status(status: str) -> None:
                         argNodeName: $argNodeName,
                         argRetry: $argRetry,
                         argArrIndex: $argArrIndex,
-                        argArrRetry: $argArrRetry,
                         argStatus: $argStatus
                     }
                 ) {
@@ -74,11 +63,10 @@ def _override_task_status(status: str) -> None:
             }
         """),
         {
-            "argToken": token,
-            "argNodeName": node_name,
-            "argRetry": retry,
-            "argArrIndex": arr_index,
-            "argArrRetry": arr_retry,
+            "argToken": task_id.token,
+            "argNodeName": task_id.node_name,
+            "argRetry": task_id.retry,
+            "argArrIndex": task_id.arr_index,
             "argStatus": status,
         },
     )
