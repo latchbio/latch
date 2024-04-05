@@ -33,7 +33,6 @@ from .tasks.adapters import (
     NextflowProcessPreAdapterTask,
 )
 from .tasks.conditional import NextflowConditionalTask
-from .tasks.input import NextflowInputTask
 from .tasks.map import MapContainerTask
 from .tasks.merge import NextflowMergeTask
 from .tasks.operator import NextflowOperatorTask
@@ -165,7 +164,8 @@ def build_from_nextflow_dag(
                 name=identifier_from_str(vertex.label),
                 statement=vertex.statement,
                 ret=vertex.ret,
-                import_path=Path(vertex.module),
+                script_path=Path(vertex.subWorkflowPath),
+                calling_subwf_name=vertex.subWorkflowName,
                 process_name=vertex.label,
                 unaliased=vertex.unaliased,
                 execution_profile=execution_profile,
@@ -223,13 +223,15 @@ def build_from_nextflow_dag(
 
         elif vertex.type in VertexType.Conditional:
             conditional_task = NextflowConditionalTask(
-                task_inputs,
-                vertex.id,
-                f"conditional_{vertex.label}",
-                vertex.statement,
-                vertex.ret,
-                branches,
-                wf,
+                inputs=task_inputs,
+                id=vertex.id,
+                name=f"conditional_{vertex.label}",
+                statement=vertex.statement,
+                ret=vertex.ret,
+                branches=branches,
+                script_path=Path(vertex.subWorkflowPath),
+                calling_subwf_name=vertex.subWorkflowName,
+                wf=wf,
             )
             wf.nextflow_tasks.append(conditional_task)
 
@@ -243,27 +245,6 @@ def build_from_nextflow_dag(
 
             node_map[vertex.id] = node
 
-        elif vertex.type == VertexType.Input:
-            input_task = NextflowInputTask(
-                inputs=task_inputs,
-                outputs=task_outputs,
-                name=vertex.label,
-                id=vertex.id,
-                branches=branches,
-                wf=wf,
-            )
-            wf.nextflow_tasks.append(input_task)
-
-            node = Node(
-                id=node_name,
-                metadata=input_task.construct_node_metadata(),
-                bindings=task_bindings,
-                upstream_nodes=upstream_nodes,
-                flyte_entity=input_task,
-            )
-
-            node_map[vertex.id] = node
-
         elif vertex.type == VertexType.Merge:
             merge_task = NextflowMergeTask(
                 inputs=task_inputs,
@@ -272,6 +253,8 @@ def build_from_nextflow_dag(
                 id=vertex.id,
                 branches=branches,
                 sources=merge_sources,
+                script_path=Path(vertex.subWorkflowPath),
+                calling_subwf_name=vertex.subWorkflowName,
                 wf=wf,
             )
 
@@ -296,6 +279,8 @@ def build_from_nextflow_dag(
                 statement=vertex.statement,
                 ret=vertex.ret,
                 branches=branches,
+                script_path=Path(vertex.subWorkflowPath),
+                calling_subwf_name=vertex.subWorkflowName,
                 wf=wf,
             )
             wf.nextflow_tasks.append(operator_task)
@@ -461,7 +446,7 @@ def build_nf_wf(
 
             raise click.exceptions.Exit(0)
 
-    wf = NextflowWorkflow(nf_script, version, main_dag)
+    wf = NextflowWorkflow(pkg_root, nf_script, version, main_dag)
 
     build_from_nextflow_dag(wf, execution_profile=execution_profile)
 

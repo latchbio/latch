@@ -42,7 +42,7 @@ def _get_flags_to_params(key: str, t: Type, flags: Dict[str, str]):
 
 
 class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
-    def __init__(self, nf_script: Path, version: str, dag: DAG):
+    def __init__(self, pkg_root: Path, nf_script: Path, version: str, dag: DAG):
         assert metadata._nextflow_metadata is not None
         assert metadata._nextflow_metadata.output_directory is not None
 
@@ -91,6 +91,7 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         self.nextflow_tasks: List[NextflowBaseTask] = []
 
+        self.pkg_root = pkg_root
         self.nf_script = nf_script
         self.version = version
         self.dag = dag

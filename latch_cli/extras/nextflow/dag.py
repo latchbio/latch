@@ -36,6 +36,8 @@ class Vertex:
     outputNames: List[str] = field(hash=False)
     module: str
     unaliased: str
+    subWorkflowName: str
+    subWorkflowPath: str
 
 
 @dataclass(frozen=True)
@@ -55,6 +57,8 @@ class _VertexContentJson(TypedDict):
     outputNames: List[str]
     module: str
     unaliased: str
+    subWorkflowName: str
+    subWorkflowPath: str
 
 
 class _VertexJson(TypedDict):

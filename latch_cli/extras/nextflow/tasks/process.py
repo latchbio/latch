@@ -21,14 +21,15 @@ class NextflowProcessTask(NextflowBaseTask):
         name: str,
         statement: str,
         ret: List[str],
-        import_path: Path,
+        script_path: Path,
+        calling_subwf_name: str,
         process_name: str,
         unaliased: str,
         execution_profile: Optional[str],
         wf: NextflowWorkflow,
     ):
         super().__init__(
-            inputs, outputs, id, name, {}, wf, NFTaskType.Process, cpu=16, memory=32
+            inputs, outputs, id, name, {}, wf, NFTaskType.Process, cpu=16, memory=48
         )
 
         self.wf_inputs = {}
@@ -50,7 +51,8 @@ class NextflowProcessTask(NextflowBaseTask):
 
         self.statement = statement
         self.ret = ret
-        self.import_path = import_path
+        self.script_path = script_path
+        self.calling_subwf_name = calling_subwf_name
         self.process_name = process_name
         self.unaliased = unaliased
         self.execution_profile = execution_profile
@@ -152,19 +154,10 @@ class NextflowProcessTask(NextflowBaseTask):
                     1,
                 )
 
-        include_str = ""
-        if self.import_path.resolve() != self.wf.nf_script.resolve():
-            include_meta = {}
-            stem = str(
-                self.import_path.resolve().relative_to(
-                    self.wf.nf_script.parent.resolve()
-                )
-            )
-            include_meta["path"] = f"./{stem}"
-            include_meta["alias"] = self.process_name
-            include_meta["name"] = self.unaliased
-
-            include_str = json.dumps(include_meta)
+        if self.script_path.resolve() != self.wf.nf_script.resolve():
+            stem = self.script_path.resolve().relative_to(self.wf.pkg_root.resolve())
+            run_task_entrypoint[2] = str(Path("/root") / stem)
+            run_task_entrypoint.extend(["-entry", self.calling_subwf_name])
 
         code_block += reindent(
             rf"""
@@ -178,7 +171,6 @@ class NextflowProcessTask(NextflowBaseTask):
                     [{','.join([f"str({x})" if x.startswith("wf_") else repr(x) for x in run_task_entrypoint])}],
                     env={{
                         **os.environ,
-                        "LATCH_INCLUDE_META": {repr(include_str)},
                         "LATCH_EXPRESSION": {repr(self.statement)},
                         "LATCH_RETURN": {repr(json.dumps(self.ret))},
                         "LATCH_PARAM_VALS": json.dumps(channel_vals),
@@ -188,9 +180,7 @@ class NextflowProcessTask(NextflowBaseTask):
             except subprocess.CalledProcessError:
                 log = Path("/root/.nextflow.log").read_text()
                 print("\n\n\n\n\n" + log)
-
-                import time
-                time.sleep(10000)
+                raise
 
             out_channels = {{}}
             files = [Path(f) for f in glob.glob(".latch/task-outputs/*.json")]

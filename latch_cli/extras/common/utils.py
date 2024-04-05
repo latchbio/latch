@@ -29,7 +29,9 @@ def is_blob_type(typ: Type) -> TypeGuard[Union[Type[LatchFile], Type[LatchDir]]]
     if origin is Annotated:
         return any([is_blob_type(sub_typ) for sub_typ in get_args(typ)])
     if origin is not None:
-        return all([is_blob_type(sub_typ) for sub_typ in get_args(typ)])
+        return all([
+            is_blob_type(sub_typ) or sub_typ is type(None) for sub_typ in get_args(typ)
+        ])
 
     return typ in {LatchFile, LatchDir}
 

@@ -18,6 +18,8 @@ class NextflowMergeTask(NextflowOperatorTask):
         name: str,
         branches: Dict[str, bool],
         sources: Dict[str, List[str]],
+        script_path: Path,
+        calling_subwf_name: str,
         wf: NextflowWorkflow,
     ):
         super().__init__(
@@ -28,6 +30,8 @@ class NextflowMergeTask(NextflowOperatorTask):
             "",
             [],
             branches,
+            script_path,
+            calling_subwf_name,
             wf,
         )
 

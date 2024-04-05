@@ -21,10 +21,14 @@ class NextflowOperatorTask(NextflowBaseTask):
         statement: str,
         ret: List[str],
         branches: Dict[str, bool],
+        script_path: Path,
+        calling_subwf_name: str,
         wf: NextflowWorkflow,
     ):
         self.statement = statement
         self.ret = ret
+        self.script_path = script_path
+        self.calling_subwf_name = calling_subwf_name
 
         super().__init__(inputs, outputs, id, name, branches, wf, NFTaskType.Operator)
 
@@ -170,6 +174,11 @@ class NextflowOperatorTask(NextflowBaseTask):
         if do_file_io:
             download_str = rf"""download_files(channel_vals, LatchDir({repr(self.wf.output_directory.remote_path)}))"""
             upload_str = rf"""upload_files({{k: json.loads(v) for k, v in out_channels.items()}}, LatchDir({repr(self.wf.output_directory.remote_path)}))"""
+
+        if self.script_path.resolve() != self.wf.nf_script.resolve():
+            stem = self.script_path.resolve().relative_to(self.wf.pkg_root.resolve())
+            run_task_entrypoint[2] = str(Path("/root") / stem)
+            run_task_entrypoint.extend(["-entry", self.calling_subwf_name])
 
         code_block += reindent(
             rf"""

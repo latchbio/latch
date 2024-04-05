@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Dict, List, Mapping, Optional, Type
 
 from latch.types.metadata import ParameterType
@@ -17,6 +18,8 @@ class NextflowConditionalTask(NextflowOperatorTask):
         statement: str,
         ret: List[str],
         branches: Dict[str, bool],
+        script_path: Path,
+        calling_subwf_name: str,
         wf: NextflowWorkflow,
     ):
         super().__init__(
@@ -27,6 +30,8 @@ class NextflowConditionalTask(NextflowOperatorTask):
             statement,
             ret,
             branches,
+            script_path,
+            calling_subwf_name,
             wf,
         )
 
