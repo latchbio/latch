@@ -11,9 +11,9 @@ from google.protobuf.json_format import MessageToJson
 from latch_sdk_config.latch import config
 
 import latch_cli.menus as menus
+from latch.utils import current_workspace, retrieve_or_login
 from latch_cli.centromere.utils import _import_flyte_objects
 from latch_cli.tinyrequests import post
-from latch_cli.utils import current_workspace, retrieve_or_login
 
 
 # TODO(ayush): make this import the `wf` directory and use the package root

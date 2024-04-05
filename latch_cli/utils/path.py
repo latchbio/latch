@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 import click
 from latch_sdk_config.user import user_config
 
+from latch.utils import current_workspace
 from latch_cli.utils import get_auth_header
 
 latch_url_regex = re.compile(r"^(latch)?://")
@@ -84,7 +85,7 @@ def append_scheme(path: str, *, assume_remote: bool = False) -> str:
 #   latch://shared/a/b/c => latch://shared.xxx.account/a/b/c
 #   latch://any_other_domain/a/b/c => unchanged
 def append_domain(path: str) -> str:
-    workspace = user_config.workspace_id
+    workspace = current_workspace()
 
     parsed = urlparse(path)
     dom = parsed.netloc
@@ -176,7 +177,7 @@ def get_path_error(path: str, message: str, acc_id: str) -> str:
         + "\n"
     )
 
-    ws_id = user_config.workspace_id
+    ws_id = current_workspace()
     ws_name = user_config.workspace_name
 
     resolve_str = (
