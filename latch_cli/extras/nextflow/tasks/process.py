@@ -29,7 +29,17 @@ class NextflowProcessTask(NextflowBaseTask):
         wf: NextflowWorkflow,
     ):
         super().__init__(
-            inputs, outputs, id, name, {}, wf, NFTaskType.Process, cpu=16, memory=48
+            # cpu and memory are defined for pre-execution task only, they will be
+            # overriden at runtime
+            inputs,
+            outputs,
+            id,
+            name,
+            {},
+            wf,
+            NFTaskType.Process,
+            cpu=2,
+            memory=4,
         )
 
         self.wf_inputs = {}
@@ -56,9 +66,6 @@ class NextflowProcessTask(NextflowBaseTask):
         self.process_name = process_name
         self.unaliased = unaliased
         self.execution_profile = execution_profile
-
-    def get_custom(self, _: SerializationSettings) -> Dict[str, Any]:
-        return {"preExecEnabled": True, "useDynamicResources": True}
 
     def get_fn_interface(self, nf_script_path_in_container: Path):
         input_name, input_t = list(self._python_inputs.items())[0]

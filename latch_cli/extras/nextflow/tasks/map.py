@@ -83,9 +83,11 @@ class MapContainerTask(PythonAutoContainerTask[Pod]):
             return self.container_task.get_sql(settings)
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        return ArrayJob(
+        custom = ArrayJob(
             parallelism=self._max_concurrency, min_success_ratio=self._min_success_ratio
         ).to_dict()
+        custom.update({"preExecEnabled": True, "useDynamicResources": True})
+        return custom
 
     def get_config(self, settings: SerializationSettings) -> Optional[Dict[str, str]]:
         return self.container_task.get_config(settings)
