@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.40.0 - 2024-04-05
+
+### Fixed
+
+* latch commands default to the user's default workspace instead of personal workspace
+
 ## 2.39.7 - 2024-04-03
 
 ### Documentation
