@@ -75,7 +75,9 @@ def _dynamic_resource_task(
 
         from .tasks import _custom_task_config
 
-        new_task_config = _custom_task_config(res["cpu"], res["memory"], res["disk"])
+        new_task_config = _custom_task_config(
+            int(res["cpu"]), int(res["memory"]), int(res["disk"])
+        )
         _override_task_resources(new_task_config)
 
     return f
