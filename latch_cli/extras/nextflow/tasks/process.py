@@ -1,9 +1,8 @@
 import json
 from dataclasses import fields, is_dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Type
-
-from flytekit.configuration import SerializationSettings
+from textwrap import dedent
+from typing import List, Mapping, Optional, Type
 
 from latch.types.metadata import ParameterType
 
@@ -67,9 +66,12 @@ class NextflowProcessTask(NextflowBaseTask):
         self.unaliased = unaliased
         self.execution_profile = execution_profile
 
-    def get_fn_interface(self, nf_script_path_in_container: Path):
-        input_name, input_t = list(self._python_inputs.items())[0]
-        output_t = list(self._python_outputs.values())[0]
+    def _get_nextflow_fn_code(
+        self, nf_script_path_in_container: Path, pre_execute: bool = False
+    ):
+        code_block = dedent("""
+            wf_paths = {}
+            """)
 
         run_task_entrypoint = [
             "/root/nextflow",
@@ -77,49 +79,108 @@ class NextflowProcessTask(NextflowBaseTask):
             str(nf_script_path_in_container),
         ]
 
-        return reindent(
+        if self.execution_profile is not None:
+            run_task_entrypoint.extend(["-profile", self.execution_profile])
+
+        for flag, val in self.wf.flags_to_params.items():
+            run_task_entrypoint.extend([flag, str(val)])
+
+        for k, typ in self.wf_inputs.items():
+            code_block += dedent(f"""
+                {k} = default.{k}
+                """)
+
+            if not pre_execute:
+                if k[3:] in self.wf.downloadable_params:
+                    code_block += dedent(f"""
+                        if {k} is not None:
+                            {k}_p = Path({k}).resolve()
+                            check_exists_and_rename({k}_p, Path("/root") / {k}_p.name)
+                            wf_paths["{k}"] = Path("/root") / {k}_p.name
+
+                        """)
+                elif is_blob_type(typ):
+                    code_block += dedent(f"""
+                        if {k} is not None:
+                            {k}_p = Path("/root/").resolve() # superhack
+                            wf_paths["{k}"] = {k}_p
+
+                        """)
+
+        if self.script_path.resolve() != self.wf.nf_script.resolve():
+            stem = self.script_path.resolve().relative_to(self.wf.pkg_root.resolve())
+            run_task_entrypoint[2] = str(Path("/root") / stem)
+            run_task_entrypoint.extend(["-entry", self.calling_subwf_name])
+
+        code_block += reindent(
             rf"""
-                def _read_resources() -> Dict:
-                    try:
-                        with open(".latch/resources.json") as f:
-                            return json.load(f)
-                    except FileNotFoundError:
-                        return {{}}
 
-                def allocate_cpu({input_name}: {type_repr(input_t)}) -> int:
-                    res = _read_resources()
-                    return max(1, res['cpu_cores']) if res.get('cpu_cores') is not None else 16
+            channel_vals = [{','.join([f"json.loads(default.{x})" for x in self.channel_inputs])}]
 
-                def allocate_memory({input_name}: {type_repr(input_t)}) -> int:
-                    res = _read_resources()
-                    return max(1, res['memory_bytes'] // 1024**3) if res.get('memory_bytes') is not None else 48
+            download_files(channel_vals, LatchDir({repr(self.wf.output_directory.remote_path)}))
 
-                def allocate_disk({input_name}: {type_repr(input_t)}) -> int:
-                    res = _read_resources()
-                    return max(1, res['disk_bytes'] // 1024**3) if res.get('disk_bytes') is not None else 500
-
-                def get_resources({input_name}: {type_repr(input_t)}):
-                    try:
-                        subprocess.run(
-                            [{','.join([f"str({x})" if x.startswith("wf_") else repr(x) for x in run_task_entrypoint])}],
-                            env={{
-                                **os.environ,
-                                "LATCH_EXPRESSION": {repr(self.statement)},
-                                "LATCH_PRE_EXECUTE": 'True',
-                            }},
-                            check=True,
-                        )
-                    except subprocess.CalledProcessError:
-                        log = Path("/root/.nextflow.log").read_text()
-                        print("\n\n\n\n\n" + log)
-
-                @custom_task(cpu=allocate_cpu, memory=allocate_memory, storage_gib=allocate_disk, pre_execute=get_resources, cache=True)
-                def {self.name}(
-                    {input_name}: {type_repr(input_t)}
-                ) -> {type_repr(output_t)}:
-                """,
+            try:
+                subprocess.run(
+                    [{','.join([f"str({x})" if x.startswith("wf_") else repr(x) for x in run_task_entrypoint])}],
+                    env={{
+                        **os.environ,
+                        "LATCH_EXPRESSION": {repr(self.statement)},
+                        "LATCH_RETURN": {repr(json.dumps(self.ret))},
+                        "LATCH_PARAM_VALS": json.dumps(channel_vals),
+                        "LATCH_PRE_EXECUTE": '{repr(pre_execute)}',
+                    }},
+                    check=True,
+                )
+            except subprocess.CalledProcessError:
+                log = Path("/root/.nextflow.log").read_text()
+                print("\n\n\n\n\n" + log)
+                raise
+            """,
             0,
         )
+
+        return code_block
+
+    def get_fn_interface(self, nf_script_path_in_container: Path):
+        input_name, input_t = list(self._python_inputs.items())[0]
+        output_t = list(self._python_outputs.values())[0]
+
+        code_block = dedent(f"""\
+            def _read_resources() -> Dict:
+                try:
+                    with open(".latch/resources.json") as f:
+                        return json.load(f)
+                except FileNotFoundError:
+                    return {{}}
+
+            def allocate_cpu({input_name}: {type_repr(input_t)}) -> int:
+                res = _read_resources()
+                return max(1, res['cpu_cores']) if res.get('cpu_cores') is not None else 16
+
+            def allocate_memory({input_name}: {type_repr(input_t)}) -> int:
+                res = _read_resources()
+                return max(1, res['memory_bytes'] // 1024**3) if res.get('memory_bytes') is not None else 48
+
+            def allocate_disk({input_name}: {type_repr(input_t)}) -> int:
+                res = _read_resources()
+                return max(1, res['disk_bytes'] // 1024**3) if res.get('disk_bytes') is not None else 500
+
+            def get_resources({input_name}: {type_repr(input_t)}):
+        """)
+
+        code_block += reindent(
+            self._get_nextflow_fn_code(nf_script_path_in_container, pre_execute=True), 1
+        )
+
+        code_block += dedent(f"""\
+
+            @custom_task(cpu=allocate_cpu, memory=allocate_memory, storage_gib=allocate_disk, pre_execute=get_resources, cache=True)
+            def {self.name}(
+                {input_name}: {type_repr(input_t)}
+            ) -> {type_repr(output_t)}:
+            """)
+
+        return code_block
 
     def get_fn_return_stmt(self):
         results: List[str] = []
@@ -153,84 +214,15 @@ class NextflowProcessTask(NextflowBaseTask):
         ).replace("__return_str__", return_str)
 
     def get_fn_code(self, nf_script_path_in_container: Path):
-        code_block = self.get_fn_interface(nf_script_path_in_container)
+        code_block = dedent(self.get_fn_interface(nf_script_path_in_container))
 
         code_block += reindent(
-            """
-            wf_paths = {}
-            """,
+            self._get_nextflow_fn_code(nf_script_path_in_container),
             1,
         )
 
-        run_task_entrypoint = [
-            "/root/nextflow",
-            "run",
-            str(nf_script_path_in_container),
-        ]
-
-        if self.execution_profile is not None:
-            run_task_entrypoint.extend(["-profile", self.execution_profile])
-
-        for flag, val in self.wf.flags_to_params.items():
-            run_task_entrypoint.extend([flag, str(val)])
-
-        for k, typ in self.wf_inputs.items():
-            code_block += reindent(
-                f"""
-                {k} = default.{k}
-                """,
-                1,
-            )
-
-            if k[3:] in self.wf.downloadable_params:
-                code_block += reindent(
-                    f"""
-                    if {k} is not None:
-                        {k}_p = Path({k}).resolve()
-                        check_exists_and_rename({k}_p, Path("/root") / {k}_p.name)
-                        wf_paths["{k}"] = Path("/root") / {k}_p.name
-
-                    """,
-                    1,
-                )
-            elif is_blob_type(typ):
-                code_block += reindent(
-                    f"""
-                    if {k} is not None:
-                        {k}_p = Path("/root/").resolve() # superhack
-                        wf_paths["{k}"] = {k}_p
-
-                    """,
-                    1,
-                )
-
-        if self.script_path.resolve() != self.wf.nf_script.resolve():
-            stem = self.script_path.resolve().relative_to(self.wf.pkg_root.resolve())
-            run_task_entrypoint[2] = str(Path("/root") / stem)
-            run_task_entrypoint.extend(["-entry", self.calling_subwf_name])
-
         code_block += reindent(
             rf"""
-
-            channel_vals = [{','.join([f"json.loads(default.{x})" for x in self.channel_inputs])}]
-
-            download_files(channel_vals, LatchDir({repr(self.wf.output_directory.remote_path)}))
-
-            try:
-                subprocess.run(
-                    [{','.join([f"str({x})" if x.startswith("wf_") else repr(x) for x in run_task_entrypoint])}],
-                    env={{
-                        **os.environ,
-                        "LATCH_EXPRESSION": {repr(self.statement)},
-                        "LATCH_RETURN": {repr(json.dumps(self.ret))},
-                        "LATCH_PARAM_VALS": json.dumps(channel_vals),
-                    }},
-                    check=True,
-                )
-            except subprocess.CalledProcessError:
-                log = Path("/root/.nextflow.log").read_text()
-                print("\n\n\n\n\n" + log)
-                raise
 
             out_channels = {{}}
             files = [Path(f) for f in glob.glob(".latch/task-outputs/*.json")]
