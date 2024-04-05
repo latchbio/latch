@@ -57,13 +57,53 @@ class NextflowProcessTask(NextflowBaseTask):
         self.unaliased = unaliased
         self.execution_profile = execution_profile
 
-    def get_fn_interface(self):
+    def get_fn_interface(self, nf_script_path_in_container: Path):
         input_name, input_t = list(self._python_inputs.items())[0]
         output_t = list(self._python_outputs.values())[0]
 
+        run_task_entrypoint = [
+            "/root/nextflow",
+            "run",
+            str(nf_script_path_in_container),
+        ]
+
         return reindent(
             rf"""
-                @task(cache=True)
+                def _read_resources() -> Dict:
+                    try:
+                        with open(".latch/resources.json") as f:
+                            return json.load(f)
+                    except FileNotFoundError:
+                        return {{}}
+
+                def allocate_cpu({input_name}: {type_repr(input_t)}) -> int:
+                    res = _read_resources()
+                    return max(1, res['cpu_cores']) if res.get('cpu_cores') is not None else None
+
+                def allocate_memory({input_name}: {type_repr(input_t)}) -> int:
+                    res = _read_resources()
+                    return max(1, res['memory_bytes'] // 1024**3) if res.get('memory_bytes') is not None else None
+
+                def allocate_disk({input_name}: {type_repr(input_t)}) -> int:
+                    res = _read_resources()
+                    return max(1, res['disk_bytes'] // 1024**3) if res.get('disk_bytes') is not None else None
+
+                def get_resources({input_name}: {type_repr(input_t)}):
+                    try:
+                        subprocess.run(
+                            [{','.join([f"str({x})" if x.startswith("wf_") else repr(x) for x in run_task_entrypoint])}],
+                            env={{
+                                **os.environ,
+                                "LATCH_EXPRESSION": {repr(self.statement)},
+                                "LATCH_PRE_EXECUTE": true,
+                            }},
+                            check=True,
+                        )
+                    except subprocess.CalledProcessError:
+                        log = Path("/root/.nextflow.log").read_text()
+                        print("\n\n\n\n\n" + log)
+
+                @custom_task(cpu=allocate_cpu, memory=allocate_memory, storage_gib=allocate_disk, pre_execute=get_resources, cache=True)
                 def {self.name}(
                     {input_name}: {type_repr(input_t)}
                 ) -> {type_repr(output_t)}:
@@ -103,7 +143,7 @@ class NextflowProcessTask(NextflowBaseTask):
         ).replace("__return_str__", return_str)
 
     def get_fn_code(self, nf_script_path_in_container: Path):
-        code_block = self.get_fn_interface()
+        code_block = self.get_fn_interface(nf_script_path_in_container)
 
         code_block += reindent(
             """

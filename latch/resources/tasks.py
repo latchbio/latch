@@ -26,7 +26,7 @@ exported decorators.
 
 import datetime
 import functools
-from typing import Callable, Union
+from typing import Callable, Optional, Union
 from warnings import warn
 
 from flytekit import task
@@ -470,6 +470,7 @@ def custom_task(
     *,
     storage_gib: Union[Callable, int] = 500,
     timeout: Union[datetime.timedelta, int] = 0,
+    pre_execute: Optional[Callable] = None,
 ):
     """Returns a custom task configuration requesting
     the specified CPU/RAM allocations
@@ -481,6 +482,7 @@ def custom_task(
     """
     if callable(cpu) or callable(memory) or callable(storage_gib):
         task_config = DynamicTaskConfig(
+            dynamic_func=pre_execute,
             cpu=cpu,
             memory=memory,
             storage=storage_gib,
