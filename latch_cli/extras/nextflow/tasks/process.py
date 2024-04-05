@@ -1,10 +1,10 @@
 import json
 from dataclasses import fields, is_dataclass
 from pathlib import Path
-from typing import List, Mapping, Optional, Type
+from typing import Any, Dict, List, Mapping, Optional, Type
 
-from latch.types.directory import LatchDir
-from latch.types.file import LatchFile
+from flytekit.configuration import SerializationSettings
+
 from latch.types.metadata import ParameterType
 
 from ...common.utils import is_blob_type, reindent, type_repr
@@ -57,6 +57,9 @@ class NextflowProcessTask(NextflowBaseTask):
         self.unaliased = unaliased
         self.execution_profile = execution_profile
 
+    def get_custom(self, _: SerializationSettings) -> Dict[str, Any]:
+        return {"preExecEnabled": True, "useDynamicResources": True}
+
     def get_fn_interface(self, nf_script_path_in_container: Path):
         input_name, input_t = list(self._python_inputs.items())[0]
         output_t = list(self._python_outputs.values())[0]
@@ -95,7 +98,7 @@ class NextflowProcessTask(NextflowBaseTask):
                             env={{
                                 **os.environ,
                                 "LATCH_EXPRESSION": {repr(self.statement)},
-                                "LATCH_PRE_EXECUTE": true,
+                                "LATCH_PRE_EXECUTE": 'True',
                             }},
                             check=True,
                         )

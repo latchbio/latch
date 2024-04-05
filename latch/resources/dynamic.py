@@ -100,7 +100,6 @@ class DynamicPythonFunctionTask(PodFunctionTask):
         self,
         task_config: DynamicTaskConfig,
         task_function: Callable,
-        dynamic_func: Callable,
         **kwargs,
     ):
         # validate that the task function inputs are the same as the resource functions
@@ -121,7 +120,10 @@ class DynamicPythonFunctionTask(PodFunctionTask):
                     )
 
         self._pre_task_function = _dynamic_resource_task(
-            dynamic_func, task_config.cpu, task_config.memory, task_config.storage
+            task_config.dynamic_func,
+            task_config.cpu,
+            task_config.memory,
+            task_config.storage,
         )
 
         super().__init__(
