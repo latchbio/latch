@@ -29,7 +29,7 @@ class NextflowProcessTask(NextflowBaseTask):
         wf: NextflowWorkflow,
     ):
         super().__init__(
-            inputs, outputs, id, name, {}, wf, NFTaskType.Process, cpu=16, memory=48
+            inputs, outputs, id, name, {}, wf, NFTaskType.Process, cpu=16, memory=96
         )
 
         self.wf_inputs = {}
@@ -85,7 +85,7 @@ class NextflowProcessTask(NextflowBaseTask):
             results.append(
                 reindent(
                     rf"""
-                    {field.name}=out_channels.get(f"{field.name}", "")
+                    {field.name}=out_channels.get(f"{field.name}", "[]")
                     """,
                     2,
                 ).rstrip()
@@ -116,6 +116,8 @@ class NextflowProcessTask(NextflowBaseTask):
             "/root/nextflow",
             "run",
             str(nf_script_path_in_container),
+            "-lib",
+            "lib",
         ]
 
         if self.execution_profile is not None:
@@ -171,6 +173,7 @@ class NextflowProcessTask(NextflowBaseTask):
                     [{','.join([f"str({x})" if x.startswith("wf_") else repr(x) for x in run_task_entrypoint])}],
                     env={{
                         **os.environ,
+                        "LATCH_CONFIG_DIR_OVERRIDE": str(Path.cwd()),
                         "LATCH_EXPRESSION": {repr(self.statement)},
                         "LATCH_RETURN": {repr(json.dumps(self.ret))},
                         "LATCH_PARAM_VALS": json.dumps(channel_vals),

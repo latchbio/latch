@@ -70,7 +70,7 @@ def generate_nf_metadata(
                 config_file,
             ],
             check=True,
-            env=env if os.environ.get("LATCH_NEXTFLOW_DEV") is not None else None,
+            env=None if os.environ.get("LATCH_NEXTFLOW_DEV") is not None else env,
             cwd=config_path,
         )
     except subprocess.CalledProcessError as e:
