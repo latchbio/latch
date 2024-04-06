@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.40.1 - 2024-04-06
+
+### Added
+
+* add support for allocating task resources at runtime
+
 ## 2.40.0 - 2024-04-05
 
 ### Fixed
