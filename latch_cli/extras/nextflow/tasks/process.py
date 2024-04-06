@@ -161,10 +161,7 @@ class NextflowProcessTask(NextflowBaseTask):
             run_task_entrypoint[2] = str(Path("/root") / stem)
             run_task_entrypoint.extend(["-entry", self.calling_subwf_name])
 
-        if (
-            self.wf._docker_metadata is not None
-            and self.job.container_img_url is not None
-        ):
+        if self.wf._docker_metadata is not None:
             code_block += reindent(
                 rf"""
 
