@@ -1,12 +1,17 @@
 import glob
+import multiprocessing
 import os
 import shutil
 import subprocess
 import sys
 from collections import OrderedDict, defaultdict
+from concurrent.futures import ProcessPoolExecutor, as_completed, wait
+from ctypes import c_int
+from multiprocessing.managers import SyncManager
 from pathlib import Path
 from textwrap import dedent
 from typing import Dict, List, Optional, cast
+from urllib.parse import urljoin, urlunparse
 
 import boto3
 import click
@@ -301,6 +306,50 @@ def build_from_nextflow_dag(
     wf._nodes = list(node_map.values()) + extra_nodes
 
 
+def _do_download(
+    url: str,
+    output_path: Path,
+    total_count: int,
+    counter,
+    lock,
+):  # todo(ayush): figure out the right type annotation for counter/lock
+    res = tinyrequests.get(url)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_bytes(res.content)
+
+    with lock:
+        counter.value += 1
+        progress_str = f"{counter.value}/{total_count}"
+
+        click.echo("\x1b[0K", nl=False)
+        click.secho(progress_str, dim=True, italic=True, nl=False)
+        click.echo(f"\x1b[{len(progress_str)}D", nl=False)
+
+
+def download_nf_jars(pkg_root: Path):
+    s3_resource = boto3.resource("s3")
+    bucket = s3_resource.Bucket("latch-public")
+
+    objects = list(bucket.objects.filter(Prefix=".nextflow/"))
+
+    click.secho("  Downloading Nextflow binaries: \x1b[?25l", italic=True, nl=False)
+
+    with SyncManager() as man:
+        counter = man.Value(c_int, 0)
+        lock = man.Lock()
+        with ProcessPoolExecutor() as exec:
+            for obj in objects:
+                url = urljoin(
+                    "https://latch-public.s3.us-west-2.amazonaws.com/", obj.key
+                )
+                obj_path = pkg_root / ".latch" / obj.key
+
+                exec.submit(_do_download, url, obj_path, len(objects), counter, lock)
+
+    click.echo("\x1b[0K", nl=False)
+    click.secho("Done. \x1b[?25h", italic=True)
+
+
 # todo(ayush): add versioning system to nf download
 # todo(ayush): allow user to redownload nf anyway via cli option
 def ensure_nf_dependencies(pkg_root: Path, *, force_redownload: bool = False):
@@ -335,32 +384,7 @@ def ensure_nf_dependencies(pkg_root: Path, *, force_redownload: bool = False):
         nf_executable.chmod(0o700)
 
     if not nf_jars.exists():
-        click.secho(
-            "  Downloading Nextflow binaries: \x1b[?25l",
-            italic=True,
-            nl=False,
-        )
-
-        s3_resource = boto3.resource("s3")
-        bucket = s3_resource.Bucket("latch-public")
-
-        objects = list(bucket.objects.filter(Prefix=".nextflow/"))
-
-        # todo(ayush): parallelize
-        for i, obj in enumerate(objects):
-            obj_path = pkg_root / ".latch" / obj.key
-            obj_path.parent.mkdir(parents=True, exist_ok=True)
-
-            bucket.download_file(obj.key, str(obj_path))
-
-            progress_str = f"{i + 1}/{len(objects)}"
-
-            click.echo("\x1b[0K", nl=False)
-            click.secho(progress_str, dim=True, italic=True, nl=False)
-            click.echo(f"\x1b[{len(progress_str)}D", nl=False)
-
-        click.echo("\x1b[0K", nl=False)
-        click.secho("Done. \x1b[?25h", italic=True)
+        download_nf_jars(pkg_root)
 
 
 def build_nf_wf(
