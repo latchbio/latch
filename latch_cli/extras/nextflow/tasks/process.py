@@ -69,14 +69,14 @@ class NextflowProcessTask(NextflowBaseTask):
     def _get_nextflow_fn_code(
         self, nf_script_path_in_container: Path, pre_execute: bool = False
     ):
-        code_block = dedent("""
-            wf_paths = {}
-            """)
+        code_block = ""
 
         run_task_entrypoint = [
             "/root/nextflow",
             "run",
             str(nf_script_path_in_container),
+            "-lib",
+            "lib",
         ]
 
         if self.execution_profile is not None:
@@ -86,26 +86,35 @@ class NextflowProcessTask(NextflowBaseTask):
             run_task_entrypoint.extend([flag, str(val)])
 
         for k, typ in self.wf_inputs.items():
-            code_block += dedent(f"""
+            code_block += reindent(
+                f"""
                 {k} = default.{k}
-                """)
+                """,
+                0,
+            )
 
             if not pre_execute:
                 if k[3:] in self.wf.downloadable_params:
-                    code_block += dedent(f"""
+                    code_block += reindent(
+                        f"""
                         if {k} is not None:
                             {k}_p = Path({k}).resolve()
                             check_exists_and_rename({k}_p, Path("/root") / {k}_p.name)
                             wf_paths["{k}"] = Path("/root") / {k}_p.name
 
-                        """)
+                        """,
+                        0,
+                    )
                 elif is_blob_type(typ):
-                    code_block += dedent(f"""
+                    code_block += reindent(
+                        f"""
                         if {k} is not None:
                             {k}_p = Path("/root/").resolve() # superhack
                             wf_paths["{k}"] = {k}_p
 
-                        """)
+                        """,
+                        0,
+                    )
 
         if self.script_path.resolve() != self.wf.nf_script.resolve():
             stem = self.script_path.resolve().relative_to(self.wf.pkg_root.resolve())
@@ -124,6 +133,7 @@ class NextflowProcessTask(NextflowBaseTask):
                     [{','.join([f"str({x})" if x.startswith("wf_") else repr(x) for x in run_task_entrypoint])}],
                     env={{
                         **os.environ,
+                        "LATCH_CONFIG_DIR_OVERRIDE": str(Path.cwd()),
                         "LATCH_EXPRESSION": {repr(self.statement)},
                         "LATCH_RETURN": {repr(json.dumps(self.ret))},
                         "LATCH_PARAM_VALS": json.dumps(channel_vals),
@@ -196,7 +206,7 @@ class NextflowProcessTask(NextflowBaseTask):
             results.append(
                 reindent(
                     rf"""
-                    {field.name}=out_channels.get(f"{field.name}", "")
+                    {field.name}=out_channels.get(f"{field.name}", "[]")
                     """,
                     2,
                 ).rstrip()

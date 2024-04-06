@@ -348,6 +348,9 @@ def serialize(
 
         registrable_entities.append(x.to_flyte_idl())
 
+    click.echo("\x1b[0K", nl=False)
+    click.secho("Done. \x1b[?25h", italic=True)
+
     click.secho("\nSerializing workflow entities", bold=True)
 
     persist_registrable_entities(registrable_entities, output_dir)

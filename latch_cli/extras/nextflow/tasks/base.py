@@ -46,9 +46,9 @@ class NextflowBaseTask(PythonAutoContainerTask[Pod]):
         branches: Dict[str, bool],
         wf: NextflowWorkflow,
         nf_task_type: NFTaskType,
-        # todo(ayush): expose / infer these somehow
-        cpu: float = 0.5,
-        memory: float = 1,
+        # ayush: 0.5/1 is too small and stuff starts taking a while to run
+        cpu: float = 1,
+        memory: float = 2,
     ):
         self.id = id
         self.wf = wf

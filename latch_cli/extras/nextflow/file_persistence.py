@@ -2,6 +2,7 @@ import os
 import shutil
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Union
+from urllib.parse import urlparse
 
 import click
 import gql
@@ -59,7 +60,14 @@ def _extract_paths(parameter: JSONValue, res: List[Path]):
     if k == "path":
         assert isinstance(v, str)
 
-        res.append(Path(v).absolute().relative_to(Path.home()))
+        parsed = urlparse(v)
+        if parsed.scheme == "latch":
+            p = LPath(v).download()
+            res.append(p)
+            parameter[k] = str(p)
+        elif parsed.scheme == "":
+            res.append(Path(v).absolute().relative_to(Path.home()))
+
     elif k == "list":
         assert isinstance(v, List)
 

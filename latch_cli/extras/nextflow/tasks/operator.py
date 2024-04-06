@@ -90,7 +90,7 @@ class NextflowOperatorTask(NextflowBaseTask):
             results.append(
                 reindent(
                     rf"""
-                    {out_name}=out_channels.get("{out_name}", "")
+                    {out_name}=out_channels.get("{out_name}", "[]")
                     """,
                     2,
                 ).rstrip()
@@ -115,6 +115,8 @@ class NextflowOperatorTask(NextflowBaseTask):
             "/root/nextflow",
             "run",
             str(nf_script_path_in_container),
+            "-lib",
+            "lib",
         ]
 
         for flag, val in self.wf.flags_to_params.items():
@@ -190,6 +192,7 @@ class NextflowOperatorTask(NextflowBaseTask):
                         [{', '.join([f"str({x})" if x.startswith("wf_") else repr(x) for x in run_task_entrypoint])}],
                         env={{
                             **os.environ,
+                            "LATCH_CONFIG_DIR_OVERRIDE": str(Path.cwd()),
                             "LATCH_EXPRESSION": {repr(self.statement)},
                             "LATCH_RETURN": {repr(json.dumps(self.ret))},
                             "LATCH_PARAM_VALS": json.dumps(channel_vals),
