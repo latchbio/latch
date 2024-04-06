@@ -188,17 +188,22 @@ class NextflowOperatorTask(NextflowBaseTask):
 
                     {download_str}
 
-                    subprocess.run(
-                        [{', '.join([f"str({x})" if x.startswith("wf_") else repr(x) for x in run_task_entrypoint])}],
-                        env={{
-                            **os.environ,
-                            "LATCH_CONFIG_DIR_OVERRIDE": str(Path.cwd()),
-                            "LATCH_EXPRESSION": {repr(self.statement)},
-                            "LATCH_RETURN": {repr(json.dumps(self.ret))},
-                            "LATCH_PARAM_VALS": json.dumps(channel_vals),
-                        }},
-                        check=True,
-                    )
+                    try:
+                        subprocess.run(
+                            [{', '.join([f"str({x})" if x.startswith("wf_") else repr(x) for x in run_task_entrypoint])}],
+                            env={{
+                                **os.environ,
+                                "LATCH_CONFIG_DIR_OVERRIDE": str(Path.cwd()),
+                                "LATCH_EXPRESSION": {repr(self.statement)},
+                                "LATCH_RETURN": {repr(json.dumps(self.ret))},
+                                "LATCH_PARAM_VALS": json.dumps(channel_vals),
+                            }},
+                            check=True,
+                        )
+                    except subprocess.CalledProcessError:
+                        log = Path("/root/.nextflow.log").read_text()
+                        print("\n\n\n\n\n" + log)
+                        raise
 
                     out_channels = {{}}
                     files = [Path(f) for f in glob.glob(".latch/task-outputs/*.json")]
