@@ -161,6 +161,42 @@ class NextflowProcessTask(NextflowBaseTask):
             run_task_entrypoint[2] = str(Path("/root") / stem)
             run_task_entrypoint.extend(["-entry", self.calling_subwf_name])
 
+        if (
+            self.wf._docker_metadata is not None
+            and self.job.container_img_url is not None
+        ):
+            code_block += reindent(
+                rf"""
+
+                print("\n\n\nLogging into Docker\n")
+                from latch.functions.secrets import get_secret
+                docker_usr = "{self.wf._docker_metadata.username}"
+                try:
+                    docker_pwd = get_secret("{self.wf._docker_metadata.secret_name}")
+                except ValueError as e:
+                    print("Failed to get Docker credentials:", e)
+                    sys.exit(1)
+
+                try:
+                    subprocess.run(
+                        [
+                            "docker",
+                            "login",
+                            "--username",
+                            docker_usr,
+                            "--password",
+                            docker_pwd,
+                        ],
+                        check=True,
+                    )
+                except CalledProcessError as e:
+                    print("Failed to login to Docker")
+                except Exception:
+                    traceback.print_exc()
+                """,
+                1,
+            )
+
         code_block += reindent(
             rf"""
 

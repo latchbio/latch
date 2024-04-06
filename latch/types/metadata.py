@@ -692,6 +692,7 @@ class NextflowMetadata(LatchMetadata):
     name: Optional[str] = None
     parameters: Dict[str, NextflowParameter] = field(default_factory=dict)
     output_directory: Optional[LatchDir] = None
+    docker_metadata: Optional[DockerMetadata] = None
 
     def __post_init__(self):
         if self.name is None:

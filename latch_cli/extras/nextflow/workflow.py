@@ -47,6 +47,7 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
         assert metadata._nextflow_metadata.output_directory is not None
 
         self.output_directory = metadata._nextflow_metadata.output_directory
+        self._docker_metadata = metadata._nextflow_metadata.docker_metadata
 
         docstring = Docstring(
             f"{metadata._nextflow_metadata.display_name}\n\nSample Description\n\n"
