@@ -16,6 +16,7 @@ def _override_task_status(status: str) -> None:
                 $argNodeName: String!,
                 $argRetry: BigInt!,
                 $argArrIndex: BigInt,
+                $argArrRetry: BigInt,
                 $argStatus: String!
             ) {
                 overrideTaskStatusByToken(
@@ -24,6 +25,7 @@ def _override_task_status(status: str) -> None:
                         argNodeName: $argNodeName,
                         argRetry: $argRetry,
                         argArrIndex: $argArrIndex,
+                        argArrRetry: $argArrRetry,
                         argStatus: $argStatus
                     }
                 ) {
@@ -36,6 +38,7 @@ def _override_task_status(status: str) -> None:
             "argNodeName": task_id.node_name,
             "argRetry": task_id.retry,
             "argArrIndex": task_id.arr_index,
+            "argArrRetry": task_id.arr_retry,
             "argStatus": status,
         },
     )
