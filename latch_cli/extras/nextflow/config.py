@@ -140,21 +140,21 @@ def generate_nf_metadata(
             from latch.types.file import LatchFile
             from latch.types.directory import LatchDir
 
-            __preambles__
+            ||preambles||
 
             # Import these into your `__init__.py` file:
             #
             # from .parameters import generated_parameters, file_metadata
 
             generated_parameters = {
-            __params__
+            ||params||
             }
 
             """,
             0,
         )
-        .replace("__preambles__", "".join(preambles))
-        .replace("__params__", "\n".join(params))
+        .replace("||preambles||", "".join(preambles))
+        .replace("||params||", "\n".join(params))
     )
 
     write_metadata(

@@ -96,11 +96,11 @@ class NextflowProcessTask(NextflowBaseTask):
         return reindent(
             rf"""
                     return {res_type.__name__}(
-                __return_str__
+                ||return|str||
                     )
             """,
             0,
-        ).replace("__return_str__", return_str)
+        ).replace("||return|str||", return_str)
 
     def get_fn_code(self, nf_script_path_in_container: Path):
         code_block = self.get_fn_interface()
