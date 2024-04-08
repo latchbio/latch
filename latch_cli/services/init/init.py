@@ -17,10 +17,9 @@ def _get_boilerplate(pkg_root: Path, source_path: Path, copy_wf_dir: bool = True
     pkg_root = pkg_root.resolve()
     source_path = source_path.resolve()
 
-    wf_root = pkg_root / "wf"
-    wf_root.mkdir(exist_ok=True)
-
     if copy_wf_dir is True:
+        wf_root = pkg_root / "wf"
+        wf_root.mkdir(exist_ok=True)
         for f in source_path.glob("*.py"):
             shutil.copy(f, wf_root)
 
@@ -209,6 +208,16 @@ def _gen_example_snakemake(pkg_root: Path):
     shutil.copytree(scripts_src, scripts_dest)
 
 
+def _gen_example_nf_tutorial(dst: Path):
+    dst = dst.resolve()
+    src = Path(__file__).parent / "example_nf_tutorial"
+
+    _get_boilerplate(dst, src, copy_wf_dir=False)
+
+    for f in ["workflow.nf", "main.nf", "nextflow.config"]:
+        shutil.copy(src / f, dst / f)
+
+
 def _gen_example_nf_integration(dst: Path):
     dst = dst.resolve()
     src = Path(__file__).parent / "example_nf_integration"
@@ -237,6 +246,7 @@ option_map = {
     "Snakemake Example": _gen_example_snakemake,
     # todo(ayush): redo this w/ integration
     # "NFCore Example": _gen_example_nfcore,
+    "Nextflow Tutorial Example": _gen_example_nf_tutorial,
     "NF Integration Example": _gen_example_nf_integration,
 }
 
@@ -249,6 +259,7 @@ template_flag_to_option = {
     "conda": "Conda Example",
     "snakemake": "Snakemake Example",
     # "nfcore": "NFCore Example",
+    "nextflow-tutorial": "Nextflow Tutorial Example",
     "nextflow": "NF Integration Example",
 }
 
