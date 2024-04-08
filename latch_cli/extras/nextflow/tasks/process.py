@@ -69,7 +69,12 @@ class NextflowProcessTask(NextflowBaseTask):
     def _get_nextflow_fn_code(
         self, nf_script_path_in_container: Path, pre_execute: bool = False
     ):
-        code_block = ""
+        code_block = reindent(
+            """
+            wf_paths = {}
+            """,
+            1,
+        )
 
         run_task_entrypoint = [
             "/root/nextflow",
