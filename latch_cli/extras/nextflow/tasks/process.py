@@ -98,28 +98,33 @@ class NextflowProcessTask(NextflowBaseTask):
                 0,
             )
 
-            if not pre_execute:
-                if k[3:] in self.wf.downloadable_params:
-                    code_block += reindent(
-                        f"""
-                        if {k} is not None:
+            if k[3:] in self.wf.downloadable_params:
+                code_block += reindent(
+                    f"""
+                    if {k} is not None:
+                        if not {pre_execute}:
                             {k}_p = Path({k}).resolve()
                             check_exists_and_rename({k}_p, Path("/root") / {k}_p.name)
                             wf_paths["{k}"] = Path("/root") / {k}_p.name
+                        else:
+                            wf_paths["{k}"] = Path("/root") / "{k}"
 
-                        """,
-                        0,
-                    )
-                elif is_blob_type(typ):
-                    code_block += reindent(
-                        f"""
-                        if {k} is not None:
+                    """,
+                    0,
+                )
+            elif is_blob_type(typ):
+                code_block += reindent(
+                    f"""
+                    if {k} is not None:
+                        if not {pre_execute}:
                             {k}_p = Path("/root/").resolve() # superhack
                             wf_paths["{k}"] = {k}_p
+                        else:
+                            wf_paths["{k}"] = Path("/root") / "{k}"
 
-                        """,
-                        0,
-                    )
+                    """,
+                    0,
+                )
 
         if self.script_path.resolve() != self.wf.nf_script.resolve():
             stem = self.script_path.resolve().relative_to(self.wf.pkg_root.resolve())
