@@ -266,7 +266,9 @@ class _CentromereCtx:
                     click.secho(
                         dedent(
                             "Make sure a `latch_metadata` package exists in the"
-                            " nextflow project root.",
+                            " nextflow project root."
+                            "\nYou can generate this package with the"
+                            "`latch generate-metadata --nextflow <pkg_root>` command.",
                         ),
                         fg="red",
                     )
