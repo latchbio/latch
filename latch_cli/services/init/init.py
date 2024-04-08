@@ -208,9 +208,9 @@ def _gen_example_snakemake(pkg_root: Path):
     shutil.copytree(scripts_src, scripts_dest)
 
 
-def _gen_example_nf_tutorial(dst: Path):
+def _gen_example_nextflow(dst: Path):
     dst = dst.resolve()
-    src = Path(__file__).parent / "example_nf_tutorial"
+    src = Path(__file__).parent / "example_nextflow"
 
     _get_boilerplate(dst, src, copy_wf_dir=False)
 
@@ -244,10 +244,7 @@ option_map = {
     "Conda Example": _gen_example_conda,
     "Docker Example": _gen_example_docker,
     "Snakemake Example": _gen_example_snakemake,
-    # todo(ayush): redo this w/ integration
-    # "NFCore Example": _gen_example_nfcore,
-    "Nextflow Tutorial Example": _gen_example_nf_tutorial,
-    "NF Integration Example": _gen_example_nf_integration,
+    "Nextflow Example": _gen_example_nextflow,
 }
 
 
@@ -258,9 +255,7 @@ template_flag_to_option = {
     "r": "R Example",
     "conda": "Conda Example",
     "snakemake": "Snakemake Example",
-    # "nfcore": "NFCore Example",
-    "nextflow-tutorial": "Nextflow Tutorial Example",
-    "nextflow": "NF Integration Example",
+    "nextflow": "Nextflow Tutorial Example",
 }
 
 
