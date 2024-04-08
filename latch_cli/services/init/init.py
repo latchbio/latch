@@ -255,7 +255,7 @@ template_flag_to_option = {
     "r": "R Example",
     "conda": "Conda Example",
     "snakemake": "Snakemake Example",
-    "nextflow": "Nextflow Tutorial Example",
+    "nextflow": "Nextflow Example",
 }
 
 
