@@ -47,15 +47,13 @@ def workspace():
         if id == old_id:
             display_name = f"{name}{selected_marker}"
 
-        options.append(
-            {
-                "display_name": display_name,
-                "value": {
-                    "workspace_id": id,
-                    "name": name,
-                },
-            }
-        )
+        options.append({
+            "display_name": display_name,
+            "value": {
+                "workspace_id": id,
+                "name": name,
+            },
+        })
 
     selected_option = select_tui(
         title="Select Workspace",
