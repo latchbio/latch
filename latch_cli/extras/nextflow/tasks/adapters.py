@@ -46,11 +46,11 @@ def get_dataclass_code(cls: Type[_IsDataclass]) -> str:
         rf"""
         @dataclass
         class {cls.__name__}:
-        __output_fields__
+        ||output|fields||
 
         """,
         0,
-    ).replace("__output_fields__", output_fields)
+    ).replace("||output|fields||", output_fields)
 
 
 class NextflowProcessPreAdapterTask(NextflowBaseTask):
@@ -105,11 +105,11 @@ class NextflowProcessPreAdapterTask(NextflowBaseTask):
             rf"""
                 @task(cache=True)
                 def {self.name}(
-                __params__
+                ||params||
                 ) -> Res_{self.id}:
                 """,
             0,
-        ).replace("__params__", params_str)
+        ).replace("||params||", params_str)
 
         return res
 
@@ -198,11 +198,11 @@ class NextflowProcessPostAdapterTask(NextflowBaseTask):
         res += reindent(
             rf"""
             class Res{self.name}(NamedTuple):
-            __output_fields__
+            ||output|fields||
 
             """,
             0,
-        ).replace("__output_fields__", output_fields)
+        ).replace("||output|fields||", output_fields)
 
         res += get_dataclass_code(self.dataclass)
 
@@ -219,25 +219,12 @@ class NextflowProcessPostAdapterTask(NextflowBaseTask):
         return res
 
     def get_fn_return_stmt(self):
-        results: List[str] = []
-        for out_name in self._python_outputs.keys():
-            results.append(
-                reindent(
-                    rf"""
-                    {out_name}=json.dumps([*chain.from_iterable([json.loads(x.{out_name}) for x in default])])
-                    """,
-                    1,
-                ).rstrip()
-            )
-
-        return_str = ",\n".join(results)
-
         return reindent(
             rf"""
             return get_mapper_outputs(Res{self.name}, default)
             """,
             1,
-        ).replace("__return_str__", return_str)
+        )
 
     def get_fn_code(self, nf_script_path_in_container: Path):
         code_block = self.get_fn_interface()
