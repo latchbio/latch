@@ -73,7 +73,7 @@ class NextflowProcessTask(NextflowBaseTask):
             """
             wf_paths = {}
             """,
-            1,
+            0,
         )
 
         run_task_entrypoint = [
@@ -131,7 +131,8 @@ class NextflowProcessTask(NextflowBaseTask):
 
             channel_vals = [{','.join([f"json.loads(default.{x})" for x in self.channel_inputs])}]
 
-            download_files(channel_vals, LatchDir({repr(self.wf.output_directory.remote_path)}))
+            if not {pre_execute}:
+                download_files(channel_vals, LatchDir({repr(self.wf.output_directory.remote_path)}))
 
             try:
                 subprocess.run(
