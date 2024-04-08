@@ -93,6 +93,7 @@ def get_epilogue(wf_type: WorkflowType = WorkflowType.latchbiosdk) -> List[str]:
             "copy .latch/bin/nextflow /root/nextflow",
             "copy .latch/.nextflow /root/.nextflow",
             "copy .latch/nf_entrypoint.py /root/nf_entrypoint.py",
+            "run apt-get update && apt-get install -y default-jre-headless",
         ]
 
     cmds += [
@@ -114,10 +115,12 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
 
     if (pkg_root / "system-requirements.txt").exists():
         click.echo(
-            " ".join([
-                click.style(f"system-requirements.txt:", bold=True),
-                "System dependencies installation phase",
-            ])
+            " ".join(
+                [
+                    click.style(f"system-requirements.txt:", bold=True),
+                    "System dependencies installation phase",
+                ]
+            )
         )
 
         commands.append(
@@ -137,10 +140,12 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
 
     if (pkg_root / "environment.R").exists():
         click.echo(
-            " ".join([
-                click.style(f"environment.R:", bold=True),
-                "R dependencies installation phase",
-            ])
+            " ".join(
+                [
+                    click.style(f"environment.R:", bold=True),
+                    "R dependencies installation phase",
+                ]
+            )
         )
 
         # todo(maximsmol): allow specifying R version
@@ -189,10 +194,12 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
 
     if conda_env_p.exists():
         click.echo(
-            " ".join([
-                click.style(f"{conda_env_p.name}:", bold=True),
-                "Conda dependencies installation phase",
-            ])
+            " ".join(
+                [
+                    click.style(f"{conda_env_p.name}:", bold=True),
+                    "Conda dependencies installation phase",
+                ]
+            )
         )
 
         with conda_env_p.open("rb") as f:
@@ -264,10 +271,12 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
     if has_setup_py or has_buildable_pyproject:
         cause = "setup.py" if has_setup_py else "pyproject.toml"
         click.echo(
-            " ".join([
-                click.style(f"{cause}:", bold=True),
-                "Python package installation phase",
-            ])
+            " ".join(
+                [
+                    click.style(f"{cause}:", bold=True),
+                    "Python package installation phase",
+                ]
+            )
         )
 
         print()
@@ -281,10 +290,12 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
 
     if (pkg_root / "requirements.txt").exists():
         click.echo(
-            " ".join([
-                click.style("requirements.txt:", bold=True),
-                "Python pip dependencies installation phase",
-            ])
+            " ".join(
+                [
+                    click.style("requirements.txt:", bold=True),
+                    "Python pip dependencies installation phase",
+                ]
+            )
         )
         commands.append(
             DockerCmdBlock(
