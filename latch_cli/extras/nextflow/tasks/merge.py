@@ -74,11 +74,11 @@ class NextflowMergeTask(NextflowOperatorTask):
         return reindent(
             rf"""
                 return Res{self.name}(
-            __return_str__
+            ||return|str||
                 )
             """,
             0,
-        ).replace("__return_str__", return_str)
+        ).replace("||return|str||", return_str)
 
     def get_fn_code(self, nf_script_path_in_container: Path):
         code_block = self.get_fn_interface()

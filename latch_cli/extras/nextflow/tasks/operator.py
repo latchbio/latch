@@ -50,11 +50,11 @@ class NextflowOperatorTask(NextflowBaseTask):
             res += reindent(
                 rf"""
                 class Res{self.name}(NamedTuple):
-                __output_fields__
+                ||output|fields||
 
                 """,
                 0,
-            ).replace("__output_fields__", output_fields)
+            ).replace("||output|fields||", output_fields)
 
             outputs_str = f"Res{self.name}:"
 
@@ -73,13 +73,13 @@ class NextflowOperatorTask(NextflowBaseTask):
                 rf"""
                 @task(cache=True)
                 def {self.name}(
-                __params__
-                ) -> __outputs__
+                ||params||
+                ) -> ||outputs||
                 """,
                 0,
             )
-            .replace("__params__", params_str)
-            .replace("__outputs__", outputs_str)
+            .replace("||params||", params_str)
+            .replace("||outputs||", outputs_str)
         )
 
         return res
@@ -101,11 +101,11 @@ class NextflowOperatorTask(NextflowBaseTask):
         return reindent(
             rf"""
                     return Res{self.name}(
-                __return_str__
+                ||return|str||
                     )
             """,
             0,
-        ).replace("__return_str__", return_str)
+        ).replace("||return|str||", return_str)
 
     def get_fn_code(self, nf_script_path_in_container: Path):
         code_block = self.get_fn_interface()
@@ -219,12 +219,12 @@ class NextflowOperatorTask(NextflowBaseTask):
                         _override_task_status(status="SKIPPED")
                     except Exception as e:
                         print(f"Failed to override task status: {{e}}")
-                    out_channels = {{__skip__}}
+                    out_channels = {{||skip||}}
 
             """,
             1,
         ).replace(
-            "__skip__",
+            "||skip||",
             ", ".join([f"{repr(o)}: None" for o in self._python_outputs.keys()]),
         )
 
