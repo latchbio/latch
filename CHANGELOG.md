@@ -16,6 +16,10 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.40.3 - 2024-04-09
+
+* bump flytekit version to 0.15.5
+
 ## 2.40.2 - 2024-04-09
 
 ### Fixed
