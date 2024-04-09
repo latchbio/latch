@@ -38,6 +38,8 @@ class Vertex:
     unaliased: str
     subWorkflowName: str
     subWorkflowPath: str
+    cpu: Optional[int] = None
+    memoryBytes: Optional[int] = None
 
 
 @dataclass(frozen=True)
@@ -59,6 +61,8 @@ class _VertexContentJson(TypedDict):
     unaliased: str
     subWorkflowName: str
     subWorkflowPath: str
+    cpu: Optional[int]
+    memoryBytes: Optional[int]
 
 
 class _VertexJson(TypedDict):
@@ -108,10 +112,6 @@ class DAG:
         for e in payload["edges"]:
             c = e["content"]
             t = (c["src"], c["dest"])
-
-            # if t in edge_set:
-            #     # disallow multiple edges
-            #     continue
 
             edge = Edge(**c)
             edges.append(edge)

@@ -27,9 +27,19 @@ class NextflowProcessTask(NextflowBaseTask):
         unaliased: str,
         execution_profile: Optional[str],
         wf: NextflowWorkflow,
+        cpu: Optional[int] = None,
+        memory: Optional[float] = None,
     ):
         super().__init__(
-            inputs, outputs, id, name, {}, wf, NFTaskType.Process, cpu=8, memory=8
+            inputs,
+            outputs,
+            id,
+            name,
+            {},
+            wf,
+            NFTaskType.Process,
+            cpu=cpu if cpu is not None else 4,
+            memory=memory / 1024 / 1024 / 1024 if memory is not None else 8,
         )
 
         self.wf_inputs = {}

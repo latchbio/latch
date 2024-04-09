@@ -175,6 +175,8 @@ def build_from_nextflow_dag(
                 unaliased=vertex.unaliased,
                 execution_profile=execution_profile,
                 wf=wf,
+                cpu=vertex.cpu,
+                memory=vertex.memoryBytes,
             )
 
             wf.nextflow_tasks.append(process_task)
