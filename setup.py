@@ -19,11 +19,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     python_requires=">=3.8,<3.12",
-    entry_points={
-        "console_scripts": [
-            "latch=latch_cli.main:main",
-        ]
-    },
+    entry_points={"console_scripts": ["latch=latch_cli.main:main"]},
     install_requires=[
         "kubernetes>=24.2.0",
         "pyjwt>=0.2.0",

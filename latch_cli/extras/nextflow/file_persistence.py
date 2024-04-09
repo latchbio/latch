@@ -62,7 +62,7 @@ def _extract_paths(parameter: JSONValue, res: List[Path]):
 
         parsed = urlparse(v)
         if parsed.scheme == "latch":
-            p = LPath(v).download()
+            p = LPath(v).download(show_progress_bar=True)
             res.append(p)
             parameter[k] = str(p)
         elif parsed.scheme == "":
