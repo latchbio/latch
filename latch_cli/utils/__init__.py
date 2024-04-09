@@ -102,7 +102,6 @@ def sub_from_jwt(token: str) -> str:
     return sub
 
 
-
 def _normalize_remote_path(remote_path: str):
     if remote_path.startswith("latch://"):
         remote_path = remote_path[len("latch://") :]
