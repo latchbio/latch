@@ -49,6 +49,7 @@ class NextflowBaseTask(PythonAutoContainerTask[Pod]):
         # ayush: 0.5/1 is too small and stuff starts taking a while to run
         cpu: float = 1,
         memory: float = 2,
+        **kwargs,
     ):
         self.id = id
         self.wf = wf
@@ -79,6 +80,7 @@ class NextflowBaseTask(PythonAutoContainerTask[Pod]):
             interface=interface,
             task_config=custom_task(cpu=cpu, memory=memory).keywords["task_config"],
             task_resolver=NextflowBaseTaskResolver(),
+            **kwargs,
         )
 
     def _serialize_pod_spec(self, settings: SerializationSettings) -> Dict[str, Any]:

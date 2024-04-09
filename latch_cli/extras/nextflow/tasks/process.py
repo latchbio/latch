@@ -4,6 +4,8 @@ from pathlib import Path
 from textwrap import dedent
 from typing import List, Mapping, Optional, Type
 
+from flytekit.core.base_task import TaskMetadata
+
 from latch.types.metadata import ParameterType
 
 from ...common.utils import is_blob_type, reindent, type_repr
@@ -28,8 +30,8 @@ class NextflowProcessTask(NextflowBaseTask):
         wf: NextflowWorkflow,
     ):
         super().__init__(
-            # cpu and memory are defined for pre-execution task only, they will be
-            # overriden at runtime
+            # rahul: cpu and memory are defined for pre-execution task only,
+            # they will be overriden at runtime
             inputs,
             outputs,
             id,
@@ -39,6 +41,9 @@ class NextflowProcessTask(NextflowBaseTask):
             NFTaskType.Process,
             cpu=2,
             memory=4,
+            # todo(rahul): default to 3 retries for now; we should pull this from
+            # process config at runtime and update the CRD
+            metadata=TaskMetadata(retries=3),
         )
 
         self.wf_inputs = {}
