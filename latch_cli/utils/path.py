@@ -85,7 +85,7 @@ def append_scheme(path: str, *, assume_remote: bool = False) -> str:
 #   latch://shared/a/b/c => latch://shared.xxx.account/a/b/c
 #   latch://any_other_domain/a/b/c => unchanged
 def append_domain(path: str) -> str:
-    workspace = current_workspace(try_login=False)
+    workspace = current_workspace()
 
     parsed = urlparse(path)
     dom = parsed.netloc
@@ -177,7 +177,7 @@ def get_path_error(path: str, message: str, acc_id: str) -> str:
         + "\n"
     )
 
-    ws_id = current_workspace(try_login=False)
+    ws_id = current_workspace()
     ws_name = user_config.workspace_name
 
     resolve_str = (

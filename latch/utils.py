@@ -76,7 +76,7 @@ def get_workspaces() -> Dict[str, str]:
     return teams
 
 
-def current_workspace(*, try_login: bool = True) -> str:
+def current_workspace() -> str:
     """Retrieves the current workspace ID based on the user's configuration.
 
     If the workspace ID is not set, it retrieves the default workspace ID from the user's account.
@@ -84,15 +84,7 @@ def current_workspace(*, try_login: bool = True) -> str:
     """
     ws = user_config.workspace_id
     if ws == "":
-        token = user_config.token
-        if token == "" and not try_login:
-            return ws
-
-        if token == "":
-            token = retrieve_or_login()
-
-        ws = account_id_from_token(token)
-
+        ws = account_id_from_token(retrieve_or_login())
         default_ws = execute(
             gql.gql("""
             query GetUserDefaultWorkspace($accountId: BigInt!) {

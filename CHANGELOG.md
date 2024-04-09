@@ -16,12 +16,6 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.40.2 - 2024-04-09
-
-### Fixed
-
-* latch register failing when using launchplans with file or directory types
-
 ## 2.40.1 - 2024-04-06
 
 ### Added
