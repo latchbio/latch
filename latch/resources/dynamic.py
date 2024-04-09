@@ -1,4 +1,5 @@
 import os
+import sys
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Union
 
@@ -84,6 +85,10 @@ def _dynamic_resource_task(
             int(res["cpu"]), int(res["memory"]), int(res["disk"])
         )
         _override_task_resources(new_task_config)
+
+        # rahul: on success, exit the process to avoid polluting the output
+        # s3 directory with empty outputs
+        sys.exit(0)
 
     return f
 
