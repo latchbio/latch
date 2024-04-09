@@ -93,7 +93,6 @@ def current_workspace(*, try_login: bool = True) -> str:
 
         ws = account_id_from_token(token)
 
-        print()
         default_ws = execute(
             gql.gql("""
             query GetUserDefaultWorkspace($accountId: BigInt!) {
