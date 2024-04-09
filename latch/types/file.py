@@ -14,6 +14,7 @@ from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
 from latch_sdk_gql.execute import execute
 from typing_extensions import Annotated
 
+from latch.ldata.path import LPath
 from latch.types.utils import format_path, is_absolute_node_path, is_valid_url
 from latch_cli.utils.path import normalize_path
 
@@ -121,6 +122,9 @@ class LatchFile(FlyteFile):
 
     def __hash__(self) -> int:
         return hash(self.path)
+
+    def size(self):
+        return LPath(self.remote_path).size()
 
     def _idempotent_set_path(self, hint: Optional[str] = None):
         if self._path_generated:

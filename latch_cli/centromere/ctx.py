@@ -19,6 +19,7 @@ from flytekit.core.workflow import PythonFunctionWorkflow
 from latch_sdk_config.latch import config
 
 import latch_cli.tinyrequests as tinyrequests
+from latch.utils import account_id_from_token, current_workspace, retrieve_or_login
 from latch_cli.centromere.utils import (
     RemoteConnInfo,
     _construct_dkr_client,
@@ -29,11 +30,8 @@ from latch_cli.constants import docker_image_name_illegal_pat
 from latch_cli.docker_utils import get_default_dockerfile
 from latch_cli.utils import (
     WorkflowType,
-    account_id_from_token,
-    current_workspace,
     generate_temporary_ssh_credentials,
     hash_directory,
-    retrieve_or_login,
 )
 
 

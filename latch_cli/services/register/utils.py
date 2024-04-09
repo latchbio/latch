@@ -23,7 +23,7 @@ import docker
 import requests
 from latch_sdk_config.latch import config
 
-from ...utils import current_workspace
+from latch.utils import current_workspace
 
 if TYPE_CHECKING:
     from ...centromere.ctx import _CentromereCtx

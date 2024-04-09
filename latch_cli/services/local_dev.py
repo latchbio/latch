@@ -11,14 +11,11 @@ from typing import Dict, Optional
 import click
 from latch_sdk_config.latch import config
 
+from latch.utils import current_workspace, retrieve_or_login
 from latch_cli.constants import latch_constants
 from latch_cli.menus import select_tui
 from latch_cli.tinyrequests import post
-from latch_cli.utils import (
-    TemporarySSHCredentials,
-    current_workspace,
-    retrieve_or_login,
-)
+from latch_cli.utils import TemporarySSHCredentials
 
 max_polls = 1800
 

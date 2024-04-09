@@ -626,6 +626,10 @@ class EnvironmentConfig:
     """
     Use Snakemake `container` directive to spawn tasks in Docker containers
     """
+    container_args: List[str] = field(default_factory=list)
+    """
+    Additional arguments to use when running Docker containers
+    """
 
 
 FileMetadata: TypeAlias = Dict[str, Union[SnakemakeFileMetadata, "FileMetadata"]]

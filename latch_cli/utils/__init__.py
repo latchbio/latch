@@ -22,6 +22,7 @@ import jwt
 from latch_sdk_config.user import user_config
 from latch_sdk_gql.execute import execute
 
+from latch.utils import account_id_from_token, current_workspace
 from latch_cli.click_utils import bold
 from latch_cli.constants import latch_constants
 from latch_cli.tinyrequests import get
@@ -145,26 +146,6 @@ def sub_from_jwt(token: str) -> str:
             " and is not a valid token."
         )
     return sub
-
-
-def account_id_from_token(token: str) -> str:
-    """Exchanges a valid JWT for a Latch account ID.
-
-    Latch account IDs are needed for any user-specific request, eg. register
-    workflows or copy files to Latch.
-
-    Args:
-        token: JWT
-
-    Returns:
-        A Latch account ID (UUID).
-    """
-
-    decoded_jwt = jwt.decode(token, options={"verify_signature": False})
-    try:
-        return decoded_jwt.get("id")
-    except KeyError as e:
-        raise ValueError("Your Latch access token is malformed") from e
 
 
 def _normalize_remote_path(remote_path: str):

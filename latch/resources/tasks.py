@@ -26,7 +26,7 @@ exported decorators.
 
 import datetime
 import functools
-from typing import Union
+from typing import Callable, Union
 from warnings import warn
 
 from flytekit import task
@@ -37,6 +37,8 @@ from kubernetes.client.models import (
     V1ResourceRequirements,
     V1Toleration,
 )
+
+from .dynamic import DynamicTaskConfig
 
 
 def _get_large_gpu_pod() -> Pod:
@@ -363,21 +365,11 @@ def custom_memory_optimized_task(cpu: int, memory: int):
     return functools.partial(task, task_config=task_config)
 
 
-def custom_task(
+def _custom_task_config(
     cpu: int,
     memory: int,
-    *,
-    storage_gib: int = 500,
-    timeout: Union[datetime.timedelta, int] = 0,
-):
-    """Returns a custom task configuration requesting
-    the specified CPU/RAM allocations
-
-    Args:
-        cpu: An integer number of cores to request, up to 95 cores
-        memory: An integer number of Gibibytes of RAM to request, up to 490 GiB
-        storage: An integer number of Gibibytes of storage to request, up to 4949 GiB
-    """
+    storage_gib: int,
+) -> Pod:
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
         requests={
@@ -469,4 +461,33 @@ def custom_task(
                 " 4949 GiB)"
             )
 
-    return functools.partial(task, task_config=task_config, timeout=timeout)
+    return task_config
+
+
+def custom_task(
+    cpu: Union[Callable, int],
+    memory: Union[Callable, int],
+    *,
+    storage_gib: Union[Callable, int] = 500,
+    timeout: Union[datetime.timedelta, int] = 0,
+):
+    """Returns a custom task configuration requesting
+    the specified CPU/RAM allocations
+
+    Args:
+        cpu: An integer number of cores to request, up to 95 cores
+        memory: An integer number of Gibibytes of RAM to request, up to 490 GiB
+        storage: An integer number of Gibibytes of storage to request, up to 4949 GiB
+    """
+    if callable(cpu) or callable(memory) or callable(storage_gib):
+        task_config = DynamicTaskConfig(
+            cpu=cpu,
+            memory=memory,
+            storage=storage_gib,
+            pod_config=_get_small_pod(),
+        )
+        return functools.partial(task, task_config=task_config, timeout=timeout)
+
+    return functools.partial(
+        task, task_config=_custom_task_config(cpu, memory, storage_gib), timeout=timeout
+    )

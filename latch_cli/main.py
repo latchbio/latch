@@ -664,8 +664,7 @@ def cp(
     verbose: bool,
     no_glob: bool,
 ):
-    """Copy local files to LatchData and vice versa."""
-
+    """Copy files between Latch Data and local, or between two Latch Data locations. Behaves like `cp -R` in Unix. Directories are copied recursively. If any parents of dest do not exist, the copy will fail."""
     crash_handler.message = f"Unable to copy {src} to {dest}"
     crash_handler.pkg_root = str(Path.cwd())
 

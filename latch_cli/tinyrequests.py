@@ -150,7 +150,7 @@ def get(
     json: Optional[Any] = None,
     stream: bool = False,
     num_retries: int = 3,
-):
+) -> TinyResponse:
     assert data is None or json is None, "At most one of `data` and `json` can be set"
 
     return request(
@@ -172,7 +172,7 @@ def put(
     json: Optional[Any] = None,
     stream: bool = False,
     num_retries: int = 3,
-):
+) -> TinyResponse:
     assert data is None or json is None, "At most one of `data` and `json` can be set"
 
     return request(
@@ -194,7 +194,7 @@ def post(
     json: Optional[Any] = None,
     stream: bool = False,
     num_retries: int = 3,
-):
+) -> TinyResponse:
     assert data is None or json is None, "At most one of `data` and `json` can be set"
 
     return request(

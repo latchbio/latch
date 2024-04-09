@@ -14,13 +14,13 @@ import latch_sdk_gql.execute as l_gql
 from flytekit.core.workflow import WorkflowBase
 from scp import SCPClient
 
+from latch.utils import current_workspace, get_workspaces
 from latch_cli.click_utils import color
 from latch_cli.extras.nextflow.serialize import add_task_metadata
 
 from ...centromere.ctx import _CentromereCtx
 from ...centromere.utils import MaybeRemoteDir
-from ...utils import WorkflowType, current_workspace
-from ..workspace import _get_workspaces
+from ...utils import WorkflowType
 from .constants import ANSI_REGEX, MAX_LINES
 from .utils import (
     DockerBuildLogItem,
@@ -348,7 +348,7 @@ def register(
         click.echo(" ".join([color("Workflow name:"), ctx.workflow_name]))
         click.echo(" ".join([color("Version:"), ctx.version]))
 
-        workspaces = _get_workspaces()
+        workspaces = get_workspaces()
         ws_name = next(
             (
                 x[1]
