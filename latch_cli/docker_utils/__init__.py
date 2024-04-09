@@ -42,7 +42,8 @@ def get_prologue(
         library_name = '"latch[nextflow]"'
     else:
         library_name = "latch"
-    return [
+
+    directives = [
         "# DO NOT CHANGE",
         f"from {config.base_image}",
         "",
@@ -71,6 +72,11 @@ def get_prologue(
         f"run pip install {library_name}=={config.latch_version}",
         "run mkdir /opt/latch",
     ]
+    if wf_type == WorkflowType.nextflow:
+        directives.append(
+            "run apt-get update && apt-get install -y default-jre-headless"
+        )
+    return directives
 
 
 def get_epilogue(wf_type: WorkflowType = WorkflowType.latchbiosdk) -> List[str]:

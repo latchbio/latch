@@ -1,6 +1,5 @@
 """Service to login."""
 
-
 from typing import Optional
 
 import click
