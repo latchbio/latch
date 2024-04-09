@@ -215,6 +215,7 @@ class NextflowProcessTask(NextflowBaseTask):
                     [{','.join([f"str({x})" if x.startswith("wf_") else repr(x) for x in run_task_entrypoint])}],
                     env={{
                         **os.environ,
+                        "LATCH_BIN_DIR_OVERRIDE": str(Path.cwd() / "bin"),
                         "LATCH_CONFIG_DIR_OVERRIDE": str(Path.cwd()),
                         "LATCH_EXPRESSION": {repr(self.statement)},
                         "LATCH_RETURN": {repr(json.dumps(self.ret))},
