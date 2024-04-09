@@ -119,7 +119,6 @@ def current_workspace() -> str:
                     }
                 }
             """))["accountInfoCurrent"]["id"]
-
         else:
             ws = account_id_from_token(retrieve_or_login())
         user_config.update_workspace(ws, "Personal Workspace")
