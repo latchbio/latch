@@ -608,6 +608,10 @@ class DockerMetadata:
     """
     The name of the Latch Secret that contains the password for the private repository
     """
+    server: Optional[str] = None
+    """
+    The name of a docker server to login to, if relevant (eg. registry.gitlab.com)
+    """
 
 
 @dataclass
