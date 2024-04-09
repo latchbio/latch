@@ -85,11 +85,11 @@ def current_workspace(*, try_login: bool = True) -> str:
     ws = user_config.workspace_id
     if ws == "":
         token = user_config.token
-        if try_login:
-            token = retrieve_or_login()
+        if token == "" and not try_login:
+            return ws
 
         if token == "":
-            return ws
+            token = retrieve_or_login()
 
         ws = account_id_from_token(token)
 
