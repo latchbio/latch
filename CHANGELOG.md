@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.40.3 - 2024-04-09
+
+### Fixed
+
+* Issue where functions that use `current_workspace` would break if called from an execution
+
 ## 2.40.2 - 2024-04-09
 
 ### Fixed
@@ -1021,15 +1027,15 @@ Types of changes
 ### Deprecated
 
 * The commands
-  + `latch rm`, 
+  + `latch rm`,
   + `latch mkdir`, and
   + `latch touch`.
 * The operators
-  + `left_join`, 
-  + `right_join`, 
-  + `inner_join`, 
-  + `outer_join`, 
-  + `group_tuple`, 
+  + `left_join`,
+  + `right_join`,
+  + `inner_join`,
+  + `outer_join`,
+  + `group_tuple`,
   + `latch_filter`, and
   + `combine`.
 
