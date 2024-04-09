@@ -164,15 +164,13 @@ class OAuth2:
         """
 
         token_url = self.authz_server_host + "/oauth/token"
-        token_body: bytes = json.dumps(
-            {
-                "grant_type": "authorization_code",
-                "client_id": self.client_id,
-                "code_verifier": self.pkce.verifier,
-                "code": auth_code,
-                "redirect_uri": self.redirect_url,
-            }
-        ).encode("utf-8")
+        token_body: bytes = json.dumps({
+            "grant_type": "authorization_code",
+            "client_id": self.client_id,
+            "code_verifier": self.pkce.verifier,
+            "code": auth_code,
+            "redirect_uri": self.redirect_url,
+        }).encode("utf-8")
         token_request = urllib.request.Request(token_url, token_body)
         token_request.add_header("Content-Type", "application/json")
         with urllib.request.urlopen(

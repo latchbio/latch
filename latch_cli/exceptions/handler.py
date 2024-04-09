@@ -28,29 +28,23 @@ class _Metadata:
     def print(self):
         click.secho("Crash info:", fg="red", bold=True)
         click.echo(
-            " ".join(
-                [
-                    click.style("Latch SDK version:", fg="red"),
-                    self.latch_version,
-                ]
-            )
+            " ".join([
+                click.style("Latch SDK version:", fg="red"),
+                self.latch_version,
+            ])
         )
         click.echo(
-            " ".join(
-                [
-                    click.style("Python version:", fg="red"),
-                    self.py_version.replace("\n", ";"),
-                ]
-            )
+            " ".join([
+                click.style("Python version:", fg="red"),
+                self.py_version.replace("\n", ";"),
+            ])
         )
         click.echo(" ".join([click.style("Platform:", fg="red"), self.platform]))
         click.echo(
-            " ".join(
-                [
-                    click.style("OS:", fg="red"),
-                    f"{self.os_name}; {self.os_version}",
-                ]
-            )
+            " ".join([
+                click.style("OS:", fg="red"),
+                f"{self.os_name}; {self.os_version}",
+            ])
         )
 
 

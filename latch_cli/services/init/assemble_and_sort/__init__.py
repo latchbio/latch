@@ -1,6 +1,7 @@
 """
 Assemble and sort some COVID reads...
 """
+
 from wf.assemble import assembly_task
 from wf.sort import sort_bam_task
 

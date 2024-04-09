@@ -13,12 +13,14 @@ from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from textwrap import dedent
-from typing import List
+from typing import List, TypedDict
 from urllib.parse import urljoin
 
 import click
+import gql
 import jwt
 from latch_sdk_config.user import user_config
+from latch_sdk_gql.execute import execute
 
 from latch_cli.click_utils import bold
 from latch_cli.constants import latch_constants
@@ -96,10 +98,29 @@ def retrieve_or_login() -> str:
     return token
 
 
+class AccountId(TypedDict):
+    id: str
+
+
+class AccountInfoCurrent(TypedDict):
+    accountInfoCurrent: AccountId
+
+
 def current_workspace() -> str:
     ws = user_config.workspace_id
+
     if ws == "":
-        ws = account_id_from_token(retrieve_or_login())
+        execution_token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
+        if execution_token is not None:
+            ws = execute(gql.gql("""
+                query accountInfoCurrentQuery {
+                    accountInfoCurrent {
+                        id
+                    }
+                }
+            """))["accountInfoCurrent"]["id"]
+        else:
+            ws = account_id_from_token(retrieve_or_login())
         user_config.update_workspace(ws, "Personal Workspace")
 
     return ws
