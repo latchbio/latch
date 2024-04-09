@@ -29,7 +29,7 @@ class NextflowProcessTask(NextflowBaseTask):
         wf: NextflowWorkflow,
     ):
         super().__init__(
-            inputs, outputs, id, name, {}, wf, NFTaskType.Process, cpu=16, memory=96
+            inputs, outputs, id, name, {}, wf, NFTaskType.Process, cpu=8, memory=8
         )
 
         self.wf_inputs = {}
@@ -185,9 +185,10 @@ class NextflowProcessTask(NextflowBaseTask):
                     docker_pwd,
                 ]
 
-                if self.wf.docker_metadata.server:
-                    docker_server = "{self.wf.docker_metadata.server}"
-                    login_cmd += docker_server
+
+                docker_server = "{self.wf.docker_metadata.server}"
+                if docker_server != "None":
+                    login_cmd.append(docker_server)
 
                 try:
                     subprocess.run(
