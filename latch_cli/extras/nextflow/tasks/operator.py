@@ -209,9 +209,11 @@ class NextflowOperatorTask(NextflowBaseTask):
                     files = [Path(f) for f in glob.glob(".latch/task-outputs/*.json")]
 
                     for file in files:
-                        out_channels[file.stem] = file.read_text()
+                        out_channels[file.stem] = json.loads(file.read_text())
 
                     {upload_str}
+
+                    out_channels = {{k: json.dumps(v) for k, v in out_channels.items()}}
 
                 else:
                     print("TASK SKIPPED")

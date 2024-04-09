@@ -231,11 +231,13 @@ class NextflowProcessTask(NextflowBaseTask):
             files = [Path(f) for f in glob.glob(".latch/task-outputs/*.json")]
 
             for file in files:
-                out_channels[file.stem] = file.read_text()
+                out_channels[file.stem] = json.loads(file.read_text())
 
             print(out_channels)
 
-            upload_files({{k: json.loads(v) for k, v in out_channels.items()}}, LatchDir({repr(self.wf.output_directory.remote_path)}))
+            upload_files(out_channels, LatchDir({repr(self.wf.output_directory.remote_path)}))
+
+            out_channels = {{k: json.dumps(v) for k, v in out_channels.items()}}
 
             """,
             1,

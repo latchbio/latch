@@ -1,5 +1,6 @@
 import os
 import shutil
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Union
 from urllib.parse import urlparse
@@ -45,7 +46,14 @@ def _get_remote(outdir: LatchDir) -> str:
     return remote
 
 
-def _extract_paths(parameter: JSONValue, res: List[Path]):
+@dataclass
+class PathData:
+    parameter: Dict[str, str]
+    local: Optional[Path] = None
+    remote: Optional[str] = None
+
+
+def _extract_paths(parameter: JSONValue, res: List[PathData]):
     if not isinstance(parameter, Dict):
         raise ValueError(f"malformed parameter: {parameter}")
 
@@ -54,26 +62,34 @@ def _extract_paths(parameter: JSONValue, res: List[Path]):
             f"malformed parameter does not have exactly one key: {parameter}"
         )
 
-    k = next(iter(parameter.keys()))
-    v = parameter[k]
-
-    if k == "path":
+    if "path" in parameter:
+        v = parameter["path"]
         assert isinstance(v, str)
 
+        remote: Optional[str] = None
+        if "remote" in parameter:
+            assert isinstance(parameter["remote"], str)
+            remote = parameter["remote"]
+
+        local: Optional[Path] = None
         parsed = urlparse(v)
         if parsed.scheme == "latch":
-            p = LPath(v).download(show_progress_bar=True)
-            res.append(p)
-            parameter[k] = str(p)
+            remote = v
         elif parsed.scheme == "":
-            res.append(Path(v).absolute().relative_to(Path.home()))
+            local = Path(v).absolute().relative_to(Path.home())
+        else:
+            return
 
-    elif k == "list":
+        res.append(PathData(parameter=parameter, local=local, remote=remote))
+
+    elif "list" in parameter:
+        v = parameter["list"]
         assert isinstance(v, List)
 
         for x in v:
             _extract_paths(x, res)
-    elif k == "map":
+    elif "map" in parameter:
+        v = parameter["map"]
         assert isinstance(v, List)
 
         for x in v:
@@ -110,17 +126,31 @@ def _get_execution_name() -> Optional[str]:
 def download_files(
     channels: List[List[JSONValue]], outdir: LatchDir, *, make_impostors: bool = False
 ):
-    paths: List[Path] = []
+    path_data: List[PathData] = []
     for channel in channels:
         if type(channel) == dict and "value" in channel:
-            _extract_paths(channel["value"], paths)
+            _extract_paths(channel["value"], path_data)
         elif type(channel) == list:
             for param in channel:
-                _extract_paths(param, paths)
+                _extract_paths(param, path_data)
 
     remote = _get_remote(outdir)
 
-    remote_to_local = {urljoins(remote, str(local)): local for local in paths}
+    remote_to_local: Dict[str, Path] = {}
+    for data in path_data:
+        if data.local is None:
+            assert data.remote is not None
+
+            click.echo(f"Downloading {data.remote}. ", nl=False)
+            p = LPath(data.remote).download()
+            data.parameter["path"] = str(p)
+        elif data.remote is None:
+            assert data.local is not None
+
+            remote_to_local[urljoins(remote, str(data.local))] = data.local
+        else:
+            remote_to_local[data.remote] = data.local
+
     node_data = get_node_data(*remote_to_local, allow_resolve_to_parent=True)
 
     downloaded: Set[str] = set()
@@ -150,7 +180,7 @@ def download_files(
 
         downloaded.add(remote)
 
-        click.echo(f"Downloading {remote} -> {local}. ", nl=False)
+        click.echo(f"Downloading {remote}. ", nl=False)
 
         local.parent.mkdir(parents=True, exist_ok=True)
 
@@ -184,37 +214,26 @@ def _upload(local: Path, remote: str):
 
 # todo(ayush): use crc or something to avoid reuploading unchanged files
 def upload_files(channels: Dict[str, List[JSONValue]], outdir: LatchDir):
-    paths: List[Path] = []
+    path_data: List[PathData] = []
     for channel in channels.values():
         if type(channel) == dict and "value" in channel:
-            _extract_paths(channel["value"], paths)
+            _extract_paths(channel["value"], path_data)
         elif type(channel) == list:
             for param in channel:
-                _extract_paths(param, paths)
+                _extract_paths(param, path_data)
 
-    remote = _get_remote(outdir)
+    remote_parent = _get_remote(outdir)
 
-    local_to_remote = {local: urljoins(remote, str(local)) for local in paths}
+    local_to_remote: Dict[Path, str] = {}
+    for data in path_data:
+        if data.local is None:
+            continue
 
-    for local in paths:
-        _upload(local, local_to_remote[local])
+        remote = urljoins(remote_parent, str(data.local))
+        local = Path.home() / data.local
 
+        local_to_remote[local] = remote
+        data.parameter["remote"] = remote
 
-def stage_for_output(channels: List[List[JSONValue]], outdir: LatchDir):
-    old: List[Path] = []
-    for channel in channels:
-        for param in channel:
-            _extract_paths(param, old)
-
-    remote = _get_remote(outdir)
-
-    old_remotes = {local: urljoins(remote, str(local)) for local in old}
-    new_remotes = {local: urljoins(remote, "output", local.name) for local in old}
-
-    for local in old:
-        old_remote = old_remotes[local]
-        new_remote = new_remotes[local]
-
-        lp = LPath(old_remote)
-        lp.copy_to(LPath(new_remote))
-        print(f"Moving {local.name} to outputs")
+    for local, remote in local_to_remote.items():
+        _upload(local, remote)
