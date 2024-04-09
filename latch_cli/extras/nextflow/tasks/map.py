@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Type
 
 from flytekit.configuration import SerializationSettings
+from flytekit.core.base_task import TaskMetadata
 from flytekit.core.constants import SdkTaskType
 from flytekit.core.context_manager import (
     ExecutionState,
@@ -47,6 +48,9 @@ class MapContainerTask(PythonAutoContainerTask[Pod]):
             task_type_version=1,
             task_config=None,
             task_resolver=NextflowBaseTaskResolver(),
+            # todo(rahul): default to 3 retries for now; we should pull this from
+            # process config at runtime and update the CRD
+            metadata=TaskMetadata(retries=3),
         )
 
     def get_command(self, settings: SerializationSettings) -> List[str]:
