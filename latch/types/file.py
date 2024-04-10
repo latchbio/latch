@@ -120,11 +120,11 @@ class LatchFile(FlyteFile):
 
             super().__init__(self.path, downloader, self._remote_path)
 
-    def size(self):
-        return LPath(self.remote_path).size()
-
     def __hash__(self) -> int:
         return hash(self.path)
+
+    def size(self):
+        return LPath(self.remote_path).size()
 
     def _idempotent_set_path(self, hint: Optional[str] = None):
         if self._path_generated:
