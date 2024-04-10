@@ -4,7 +4,9 @@ from enum import Enum
 from pathlib import Path
 from textwrap import indent
 from typing import (
+    Annotated,
     Any,
+    Callable,
     ClassVar,
     Collection,
     Dict,
@@ -477,6 +479,16 @@ class NextflowParameter(Generic[T], LatchParameter):
     The python type of the parameter.
     """
     default: Optional[T] = None
+    samplesheet_constructor: Optional[Callable[[List[dataclass]], Path]] = None
+    """
+    A function that creates a samplesheet file from a list of dataclasses.
+    This function is injected into the preamble and called for each necessary
+    task.
+    """
+
+    def __post_init__(self):
+        if self.samplesheet is True:
+            self.type = Annotated[self.type, "samplesheet"]
 
 
 @dataclass
