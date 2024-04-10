@@ -156,7 +156,7 @@ class NextflowOperatorTask(NextflowBaseTask):
                     f"""
                     {k} = construct_samplesheet({k})
                     """,
-                    1,
+                    2,
                 )
 
         # todo(ayush): figure out how to make this work
