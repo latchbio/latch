@@ -11,14 +11,12 @@ def r_task(input_file: LatchFile, output_directory: LatchOutputDir) -> LatchFile
     # You can run R files as a subprocess:
 
     subprocess.run(
-        " ".join(
-            [
-                "Rscript",
-                "path/to/your_script.R",
-                "command_line_arg_1",
-                "command_line_arg_2",
-            ]
-        ),
+        " ".join([
+            "Rscript",
+            "path/to/your_script.R",
+            "command_line_arg_1",
+            "command_line_arg_2",
+        ]),
         check=True,
         shell=True,
     )

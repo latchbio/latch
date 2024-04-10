@@ -17,8 +17,8 @@ from flytekit.models.types import LiteralType
 
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
+from latch.utils import retrieve_or_login
 from latch_cli.services.launch import _get_workflow_interface
-from latch_cli.utils import retrieve_or_login
 
 
 class _Unsupported: ...

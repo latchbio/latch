@@ -683,6 +683,11 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
             metadata._snakemake_metadata.env_config is not None
             and metadata._snakemake_metadata.env_config.use_container
         )
+        self._container_args = (
+            []
+            if metadata._snakemake_metadata.env_config is None
+            else metadata._snakemake_metadata.env_config.container_args
+        )
         self.snakemake_tasks: List[SnakemakeJobTask] = []
 
         workflow_metadata = WorkflowMetadata(
@@ -1355,6 +1360,15 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             for param, val in overwrite_config.items():
                 self.job.rule.workflow.globals["config"][param] = val
 
+        container_args = []
+        if self.wf._use_container:
+            args = self.wf._container_args
+            if self._uses_gpu:
+                args.append("--gpus all")
+
+            if len(args) > 0:
+                container_args = ["--singularity-args"] + args
+
         snakemake_args = [
             "-m",
             "latch_cli.snakemake.single_task_snakemake",
@@ -1363,11 +1377,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             *(["--use-conda"] if self.wf._use_conda else []),
             *(["--use-singularity"] if self.wf._use_container else []),
             # we use docker instead of singularity, so these are docker run arguments
-            *(
-                ["--singularity-args", "--gpus all"]
-                if self.wf._use_container and self._uses_gpu
-                else []
-            ),
+            *container_args,
             "--target-jobs",
             *jobs_cli_args(jobs),
             "--allowed-rules",

@@ -1,10 +1,10 @@
-import os
 from urllib.parse import urljoin
 
 from latch_sdk_config.latch import NUCLEUS_URL
 
+from latch.utils import current_workspace
 from latch_cli.tinyrequests import post
-from latch_cli.utils import current_workspace, get_auth_header, retrieve_or_login
+from latch_cli.utils import get_auth_header
 
 
 def get_secret(secret_name: str):

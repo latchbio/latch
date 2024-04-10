@@ -608,6 +608,10 @@ class DockerMetadata:
     """
     The name of the Latch Secret that contains the password for the private repository
     """
+    server: Optional[str] = None
+    """
+    The name of a docker server to login to, if relevant (eg. registry.gitlab.com)
+    """
 
 
 @dataclass
@@ -621,6 +625,10 @@ class EnvironmentConfig:
     use_container: bool = False
     """
     Use Snakemake `container` directive to spawn tasks in Docker containers
+    """
+    container_args: List[str] = field(default_factory=list)
+    """
+    Additional arguments to use when running Docker containers
     """
 
 
@@ -692,6 +700,7 @@ class NextflowMetadata(LatchMetadata):
     name: Optional[str] = None
     parameters: Dict[str, NextflowParameter] = field(default_factory=dict)
     output_directory: Optional[LatchDir] = None
+    docker_metadata: Optional[DockerMetadata] = None
 
     def __post_init__(self):
         if self.name is None:

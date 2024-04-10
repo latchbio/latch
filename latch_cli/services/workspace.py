@@ -1,25 +1,10 @@
-from typing import Dict, List, TypedDict
+from typing import List, TypedDict
 
 import click
-from latch_sdk_config.latch import config
 from latch_sdk_config.user import user_config
 
+from latch.utils import current_workspace, get_workspaces
 from latch_cli.menus import SelectOption, select_tui
-from latch_cli.tinyrequests import post
-from latch_cli.utils import current_workspace, retrieve_or_login
-
-
-def _get_workspaces() -> Dict[str, str]:
-    headers = {"Authorization": f"Bearer {retrieve_or_login()}"}
-
-    resp = post(
-        url=config.api.user.list_workspaces,
-        headers=headers,
-    )
-    resp.raise_for_status()
-
-    data = resp.json()
-    return data
 
 
 class WSInfo(TypedDict):
@@ -33,7 +18,7 @@ def workspace():
 
     Like `get_executions`, this function should only be called from the CLI.
     """
-    data = _get_workspaces()
+    data = get_workspaces()
 
     old_id = current_workspace()
 
@@ -47,15 +32,13 @@ def workspace():
         if id == old_id:
             display_name = f"{name}{selected_marker}"
 
-        options.append(
-            {
-                "display_name": display_name,
-                "value": {
-                    "workspace_id": id,
-                    "name": name,
-                },
-            }
-        )
+        options.append({
+            "display_name": display_name,
+            "value": {
+                "workspace_id": id,
+                "name": name,
+            },
+        })
 
     selected_option = select_tui(
         title="Select Workspace",

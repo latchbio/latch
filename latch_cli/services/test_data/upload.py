@@ -6,8 +6,8 @@ import boto3
 import botocore
 import click
 
+from latch.utils import account_id_from_token, retrieve_or_login
 from latch_cli.services.test_data.utils import _retrieve_creds
-from latch_cli.utils import account_id_from_token, retrieve_or_login
 
 BUCKET = "latch-public"
 

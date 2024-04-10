@@ -12,6 +12,7 @@ from gql.transport.exceptions import TransportQueryError
 from latch_sdk_gql.execute import JsonValue, execute
 
 import latch.ldata._transfer.upload as _upl
+from latch_cli.utils.path import is_remote_path
 
 
 def upload_file(src: Path, dest: str):
@@ -300,9 +301,22 @@ def sync(
     delete: bool,
     ignore_unsyncable: bool,
 ):
+    if not is_remote_path(dest):
+        click.secho(
+            f"`{dest}`: only local -> remote sync is supported", fg="red", bold=True
+        )
+        raise click.exceptions.Exit(1)
+
     srcs: Dict[str, Tuple[Path, os.stat_result]] = {}
     have_errors = False
     for x in srcs_raw:
+        if is_remote_path(x):
+            click.secho(
+                f"`{x}`: only local -> remote sync is supported", fg="red", bold=True
+            )
+            have_errors = True
+            continue
+
         p = Path(x)
         res = check_src(p)
         if res is None:
@@ -315,7 +329,7 @@ def sync(
         click.secho(
             "\nAll source paths were skipped due to errors", fg="red", bold=True
         )
-        sys.exit(1)
+        raise click.exceptions.Exit(1)
 
     if have_errors:
         # todo(maximsmol): do we want to precheck recursively?

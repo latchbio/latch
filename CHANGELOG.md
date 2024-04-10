@@ -16,6 +16,57 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.40.4 - 2024-04-09
+
+### Fixed
+
+* Issue where functions that use `current_workspace` would break if called from an execution
+* Issue where CLI commands that required an auth method would not print the correct error message if no auth was present
+
+## 2.40.3 - 2024-04-09
+
+* bump flytekit version to 0.15.5
+
+## 2.40.2 - 2024-04-09
+
+### Fixed
+
+* latch register failing when using launchplans with file or directory types
+
+## 2.40.1 - 2024-04-06
+
+### Added
+
+* add support for allocating task resources at runtime
+
+## 2.40.0 - 2024-04-05
+
+### Fixed
+
+* latch commands default to the user's default workspace instead of personal workspace
+
+## 2.39.7 - 2024-04-03
+
+### Documentation
+
+* latch cp
+  + Commandline docstring states recursive default behavior.
+
+## 2.39.6 - 2024-04-02
+
+### Fixed
+
+* latch sync
+  + prints error when case other than local -> remote is attempted
+
+
+## 2.39.4 - 2024-03-11
+
+### Added
+
+* Snakemake
+  + Add `container_args` field in `EnvironmentConfig`
+
 ## 2.39.3 - 2024-03-07
 
 ### Fixed
@@ -981,15 +1032,15 @@ Types of changes
 ### Deprecated
 
 * The commands
-  + `latch rm`, 
+  + `latch rm`,
   + `latch mkdir`, and
   + `latch touch`.
 * The operators
-  + `left_join`, 
-  + `right_join`, 
-  + `inner_join`, 
-  + `outer_join`, 
-  + `group_tuple`, 
+  + `left_join`,
+  + `right_join`,
+  + `inner_join`,
+  + `outer_join`,
+  + `group_tuple`,
   + `latch_filter`, and
   + `combine`.
 

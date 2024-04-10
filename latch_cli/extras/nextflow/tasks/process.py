@@ -26,6 +26,8 @@ class NextflowProcessTask(NextflowBaseTask):
         unaliased: str,
         execution_profile: Optional[str],
         wf: NextflowWorkflow,
+        cpu: Optional[int] = None,
+        memory: Optional[float] = None,
     ):
         super().__init__(
             # rahul: cpu and memory are defined for pre-execution task only,
@@ -131,6 +133,48 @@ class NextflowProcessTask(NextflowBaseTask):
             run_task_entrypoint[2] = str(Path("/root") / stem)
             run_task_entrypoint.extend(["-entry", self.calling_subwf_name])
 
+        # TODO (kenny) : only login if we need to
+        if not pre_execute and self.wf.docker_metadata is not None:
+            code_block += reindent(
+                rf"""
+
+                print("\n\n\nLogging into Docker\n")
+                from latch.functions.secrets import get_secret
+                docker_usr = "{self.wf.docker_metadata.username}"
+
+                try:
+                    docker_pwd = get_secret("{self.wf.docker_metadata.secret_name}")
+                except ValueError as e:
+                    print("Failed to get Docker credentials:", e)
+                    sys.exit(1)
+
+                login_cmd = [
+                    "docker",
+                    "login",
+                    "--username",
+                    docker_usr,
+                    "--password",
+                    docker_pwd,
+                ]
+
+
+                docker_server = "{self.wf.docker_metadata.server}"
+                if docker_server != "None":
+                    login_cmd.append(docker_server)
+
+                try:
+                    subprocess.run(
+                        login_cmd,
+                        check=True,
+                    )
+                except CalledProcessError as e:
+                    print("Failed to login to Docker")
+                except Exception:
+                    traceback.print_exc()
+                """,
+                0,
+            )
+
         code_block += reindent(
             rf"""
 
@@ -144,6 +188,7 @@ class NextflowProcessTask(NextflowBaseTask):
                     [{','.join([f"str({x})" if x.startswith("wf_") else repr(x) for x in run_task_entrypoint])}],
                     env={{
                         **os.environ,
+                        "LATCH_BIN_DIR_OVERRIDE": str(Path.cwd() / "bin"),
                         "LATCH_CONFIG_DIR_OVERRIDE": str(Path.cwd()),
                         "LATCH_EXPRESSION": {repr(self.statement)},
                         "LATCH_RETURN": {repr(json.dumps(self.ret))},
@@ -249,11 +294,13 @@ class NextflowProcessTask(NextflowBaseTask):
             files = [Path(f) for f in glob.glob(".latch/task-outputs/*.json")]
 
             for file in files:
-                out_channels[file.stem] = file.read_text()
+                out_channels[file.stem] = json.loads(file.read_text())
 
             print(out_channels)
 
-            upload_files({{k: json.loads(v) for k, v in out_channels.items()}}, LatchDir({repr(self.wf.output_directory.remote_path)}))
+            upload_files(out_channels, LatchDir({repr(self.wf.output_directory.remote_path)}))
+
+            out_channels = {{k: json.dumps(v) for k, v in out_channels.items()}}
 
             """,
             1,
