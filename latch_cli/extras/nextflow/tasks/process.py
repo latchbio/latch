@@ -30,8 +30,6 @@ class NextflowProcessTask(NextflowBaseTask):
         memory: Optional[float] = None,
     ):
         super().__init__(
-            # rahul: cpu and memory are defined for pre-execution task only,
-            # they will be overriden at runtime
             inputs,
             outputs,
             id,
@@ -39,6 +37,8 @@ class NextflowProcessTask(NextflowBaseTask):
             {},
             wf,
             NFTaskType.Process,
+            # rahul: cpu and memory are defined for pre-execution task only,
+            # they will be overriden at runtime
             cpu=2,
             memory=4,
         )
