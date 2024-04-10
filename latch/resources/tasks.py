@@ -471,6 +471,7 @@ def custom_task(
     storage_gib: Union[Callable, int] = 500,
     timeout: Union[datetime.timedelta, int] = 0,
     cache: bool = False,
+    retries: int = 0,
     pre_execute: Optional[Callable] = None,
 ):
     """Returns a custom task configuration requesting
@@ -490,7 +491,7 @@ def custom_task(
             pod_config=_get_small_pod(),
         )
         return functools.partial(
-            task, task_config=task_config, timeout=timeout, cache=cache
+            task, task_config=task_config, timeout=timeout, cache=cache, retries=retries
         )
 
     return functools.partial(
@@ -498,4 +499,5 @@ def custom_task(
         task_config=_custom_task_config(cpu, memory, storage_gib),
         timeout=timeout,
         cache=cache,
+        retries=retries,
     )
