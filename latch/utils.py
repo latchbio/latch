@@ -84,17 +84,24 @@ def current_workspace() -> str:
     """
     ws = user_config.workspace_id
     if ws == "":
-        default_ws = execute(
+        res = execute(
             gql.gql("""
                 query DefaultAccountQuery {
                     accountInfoCurrent {
+                        id
                         user {
                             defaultAccount
                         }
                     }
                 }
             """),
-        )["accountInfoCurrent"]["user"]["defaultAccount"]
+        )["accountInfoCurrent"]
+
+        default_ws = res["id"]
+
+        is_local = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID") is None
+        if is_local:
+            default_ws = res["user"]["defaultAccount"]
 
         if default_ws is not None:
             ws = default_ws
