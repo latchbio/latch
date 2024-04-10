@@ -16,6 +16,11 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.40.5 - 2024-04-09
+
+### Fixed
+* bump flytekit version to 0.15.6 which fixes retries in dynamic resource allocation for map tasks
+
 ## 2.40.4 - 2024-04-09
 
 ### Fixed
