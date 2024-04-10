@@ -221,15 +221,15 @@ class NextflowProcessTask(NextflowBaseTask):
 
             def allocate_cpu({input_name}: {type_repr(input_t)}) -> int:
                 res = _read_resources()
-                return max(1, res['cpu_cores']) if res.get('cpu_cores') is not None else 16
+                return max(1, res.get('cpu_cores', 16))
 
             def allocate_memory({input_name}: {type_repr(input_t)}) -> int:
                 res = _read_resources()
-                return max(1, res['memory_bytes'] // 1024**3) if res.get('memory_bytes') is not None else 48
+                return max(1, res.get('memory_bytes', 48 * 1024**3) // 1024**3)
 
             def allocate_disk({input_name}: {type_repr(input_t)}) -> int:
                 res = _read_resources()
-                return max(1, res['disk_bytes'] // 1024**3) if res.get('disk_bytes') is not None else 500
+                return max(1, res.get('disk_bytes', 500 * 1024**3) // 1024**3)
 
             def get_resources({input_name}: {type_repr(input_t)}):
         """)
