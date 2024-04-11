@@ -504,6 +504,11 @@ def register(
     crash_handler.message = "Unable to register workflow."
     crash_handler.pkg_root = pkg_root
 
+    if ephemeral_storage_gib > 4949:
+        raise ValueError(
+            "Ephemeral storage exceeds the maximum allowed size of 4949 GiB"
+        )
+
     from latch_cli.services.register import register
 
     register(
