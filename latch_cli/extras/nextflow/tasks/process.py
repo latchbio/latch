@@ -1,13 +1,18 @@
 import json
 from dataclasses import fields, is_dataclass
 from pathlib import Path
-from typing import List, Mapping, Optional, Type
+from typing import Annotated, List, Mapping, Optional, Type
+
+try:
+    from typing import get_args, get_origin
+except ImportError:
+    from typing_extensions import get_args, get_origin
 
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
 from latch.types.metadata import ParameterType
 
-from ...common.utils import is_blob_type, reindent, type_repr
+from ...common.utils import is_blob_type, is_samplesheet_param, reindent, type_repr
 from ..workflow import NextflowWorkflow
 from .base import NextflowBaseTask, NFTaskType
 
@@ -162,6 +167,13 @@ class NextflowProcessTask(NextflowBaseTask):
                         {k}_p = Path("/root/").resolve() # superhack
                         wf_paths["{k}"] = {k}_p
 
+                    """,
+                    1,
+                )
+            elif is_samplesheet_param(typ):
+                code_block += reindent(
+                    f"""
+                    {k} = construct_samplesheet({k})
                     """,
                     1,
                 )

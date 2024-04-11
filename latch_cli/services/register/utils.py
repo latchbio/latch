@@ -102,7 +102,6 @@ def build_image(
         tag=f"{ctx.dkr_repo}/{image_name}",
         decode=True,
     )
-
     return build_logs
 
 
