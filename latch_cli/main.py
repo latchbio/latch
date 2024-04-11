@@ -509,6 +509,9 @@ def register(
             "Ephemeral storage exceeds the maximum allowed size of 4949 GiB"
         )
 
+    if ephemeral_storage_gib <= 0:
+        raise ValueError("Ephemeral storage value must be a positive integer")
+
     from latch_cli.services.register import register
 
     register(
