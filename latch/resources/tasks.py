@@ -488,7 +488,7 @@ def custom_task(
             cpu=cpu,
             memory=memory,
             storage=storage_gib,
-            pod_config=_get_small_pod(),
+            pod_config=_custom_task_config(1, 1, 50),
         )
         return functools.partial(
             task, task_config=task_config, timeout=timeout, cache=cache, retries=retries
