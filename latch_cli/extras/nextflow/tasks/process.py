@@ -6,7 +6,7 @@ from typing import List, Mapping, Optional, Type
 
 from latch.types.metadata import ParameterType
 
-from ...common.utils import is_blob_type, reindent, type_repr
+from ...common.utils import is_blob_type, is_samplesheet_param, reindent, type_repr
 from ..workflow import NextflowWorkflow
 from .base import NextflowBaseTask, NFTaskType
 
@@ -124,6 +124,13 @@ class NextflowProcessTask(NextflowBaseTask):
                         else:
                             wf_paths["{k}"] = Path("/root") / "{k}"
 
+                    """,
+                    0,
+                )
+            elif is_samplesheet_param(typ):
+                code_block += reindent(
+                    f"""
+                    {k} = construct_samplesheet({k})
                     """,
                     0,
                 )

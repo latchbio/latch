@@ -44,6 +44,9 @@ def is_downloadable_blob_type(typ: Type):
 
 
 def type_repr(t: Type, *, add_namespace: bool = False) -> str:
+    if get_origin(t) == Annotated:
+        return type_repr(get_args(t)[0])
+
     if getattr(t, "__name__", None) == "NoneType":
         return "None"
 
@@ -70,3 +73,7 @@ def type_repr(t: Type, *, add_namespace: bool = False) -> str:
         )
 
     return getattr(t, "__name__", repr(t))
+
+
+def is_samplesheet_param(t: Type) -> bool:
+    return get_origin(t) == Annotated and get_args(t)[-1] == "samplesheet"

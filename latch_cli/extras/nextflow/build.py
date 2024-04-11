@@ -31,7 +31,7 @@ from ...click_utils import italic
 from ...menus import select_tui
 from ...utils import current_workspace, identifier_from_str
 from ..common.serialize import binding_from_python
-from ..common.utils import reindent
+from ..common.utils import is_samplesheet_param, reindent
 from .dag import DAG, VertexType
 from .tasks.adapters import (
     NextflowProcessPostAdapterTask,
@@ -522,6 +522,14 @@ def generate_nf_entrypoint(
         """,
         0,
     )
+
+    if any([is_samplesheet_param(t) for t in wf.python_interface.inputs.values()]):
+        preamble += reindent(
+            r"""
+            from latch_metadata.parameters import  construct_samplesheet
+            """,
+            0,
+        )
 
     for t in wf.python_interface.inputs.values():
         preamble += get_preamble(t, make_optionals=True)

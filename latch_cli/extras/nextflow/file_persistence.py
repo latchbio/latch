@@ -57,11 +57,6 @@ def _extract_paths(parameter: JSONValue, res: List[PathData]):
     if not isinstance(parameter, Dict):
         raise ValueError(f"malformed parameter: {parameter}")
 
-    if len(parameter.keys()) != 1:
-        raise ValueError(
-            f"malformed parameter does not have exactly one key: {parameter}"
-        )
-
     if "path" in parameter:
         v = parameter["path"]
         assert isinstance(v, str)
