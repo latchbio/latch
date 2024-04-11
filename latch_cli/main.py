@@ -505,12 +505,20 @@ def register(
     crash_handler.pkg_root = pkg_root
 
     if ephemeral_storage_gib > 4949:
-        raise ValueError(
-            "Ephemeral storage exceeds the maximum allowed size of 4949 GiB"
+        click.secho(
+            f"You tried setting ephemeral storage to {ephemeral_storage_gib} GiB. "
+            "This value exceeds the maximum allowed size of 4949 GiB.",
+            fg="red",
         )
+        raise click.exceptions.Exit(1)
 
     if ephemeral_storage_gib <= 0:
-        raise ValueError("Ephemeral storage value must be a positive integer")
+        click.secho(
+            f"You tried setting ephemeral storage to {ephemeral_storage_gib} GiB. "
+            "Ephemeral storage value must be a positive integer less than 4949.",
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
 
     from latch_cli.services.register import register
 
