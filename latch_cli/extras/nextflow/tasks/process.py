@@ -34,7 +34,7 @@ class NextflowProcessTask(NextflowBaseTask):
         wf: NextflowWorkflow,
         cpu: Optional[int] = None,
         memory: Optional[float] = None,
-        storage: int = 500,
+        storage_gib: int = 500,
     ):
         super().__init__(
             inputs,
@@ -46,7 +46,7 @@ class NextflowProcessTask(NextflowBaseTask):
             NFTaskType.Process,
             cpu=cpu if cpu is not None else 4,
             memory=memory / 1024 / 1024 / 1024 if memory is not None else 8,
-            storage=storage,
+            storage_gib=storage_gib,
         )
 
         self.wf_inputs = {}

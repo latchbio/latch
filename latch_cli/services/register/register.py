@@ -280,7 +280,7 @@ def register(
     progress_plain: bool = False,
     cache_tasks: bool = False,
     use_new_centromere: bool = False,
-    nf_ephemeral_storage_gb: int = 500,
+    nf_ephemeral_storage_gib: int = 500,
 ):
     """Registers a workflow, defined as python code, with Latch.
 
@@ -425,7 +425,7 @@ def register(
                 ctx.nf_script,
                 redownload_dependencies=nf_redownload_dependencies,
                 execution_profile=nf_execution_profile,
-                ephemeral_storage_gb=nf_ephemeral_storage_gb,
+                ephemeral_storage_gib=nf_ephemeral_storage_gib,
             )
             generate_nf_entrypoint(nf_wf, ctx.pkg_root, ctx.nf_script)
 

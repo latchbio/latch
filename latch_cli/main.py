@@ -474,7 +474,7 @@ def execute(
     help="Set execution profile for Nextflow workflow",
 )
 @click.option(
-    "--ephemeral-storage-gb",
+    "--ephemeral-storage-gib",
     default=500,
     type=int,
     help="Input the number of GiB needed of ephemeral storage.",
@@ -492,7 +492,7 @@ def register(
     nf_script: Optional[Path],
     redownload_dependencies: bool,
     execution_profile: Optional[str],
-    ephemeral_storage_gb: int,
+    ephemeral_storage_gib: int,
 ):
     """Register local workflow code to Latch.
 
@@ -520,7 +520,7 @@ def register(
         or docker_progress == "plain",
         use_new_centromere=use_new_centromere,
         cache_tasks=cache_tasks,
-        nf_ephemeral_storage_gb=ephemeral_storage_gb,
+        nf_ephemeral_storage_gib=ephemeral_storage_gib,
     )
 
 
