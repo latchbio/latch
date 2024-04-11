@@ -37,10 +37,6 @@ class NextflowProcessTask(NextflowBaseTask):
             {},
             wf,
             NFTaskType.Process,
-            # rahul: cpu and memory are defined for pre-execution task only,
-            # they will be overriden at runtime
-            cpu=2,
-            memory=4,
         )
 
         self.wf_inputs = {}
