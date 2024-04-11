@@ -41,14 +41,16 @@ def requires_login(f: Callable[P, T]) -> Callable[P, T]:
             get_auth_header()
         except AuthenticationError as e:
             click.secho(
-                dedent("""
+                dedent(
+                    """
                 Unable to authenticate with Latch.
 
                 If you are on a machine with a browser, run `latch login`.
 
                 If not, navigate to `https://console.latch.bio/settings/developer` on a different machine, select `Access Tokens`, and copy your `API Key` to `~/.latch/token` on this machine.
                 If you do not see this value in the console, make sure you are logged into your personal workspace.
-                """).strip("\n"),
+                """
+                ).strip("\n"),
                 fg="red",
             )
             raise click.exceptions.Exit(1) from e
@@ -74,10 +76,12 @@ def main():
     latest_ver = parse_version(get_latest_package_version())
     if local_ver < latest_ver:
         click.secho(
-            dedent(f"""
+            dedent(
+                f"""
                 WARN: Your local version of latch ({local_ver}) is out of date. This may result in unexpected behavior.
                 Please upgrade to the latest version ({latest_ver}) using `python3 -m pip install --upgrade latch`.
-                """).strip("\n"),
+                """
+            ).strip("\n"),
             fg="yellow",
         )
 
@@ -473,6 +477,12 @@ def execute(
     default=None,
     help="Set execution profile for Nextflow workflow",
 )
+@click.option(
+    "--ephemeral-storage-gb",
+    default=500,
+    type=int,
+    help="Input the number of GiB needed of ephemeral storage.",
+)
 @requires_login
 def register(
     pkg_root: str,
@@ -486,6 +496,7 @@ def register(
     nf_script: Optional[Path],
     redownload_dependencies: bool,
     execution_profile: Optional[str],
+    ephemeral_storage_gb: int,
 ):
     """Register local workflow code to Latch.
 
@@ -513,6 +524,7 @@ def register(
         or docker_progress == "plain",
         use_new_centromere=use_new_centromere,
         cache_tasks=cache_tasks,
+        nf_ephemeral_storage_gb=ephemeral_storage_gb,
     )
 
 
