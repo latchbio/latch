@@ -363,13 +363,11 @@ def ensure_nf_dependencies(pkg_root: Path, *, force_redownload: bool = False):
         subprocess.run(["java", "--version"], check=True, capture_output=True)
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
         click.secho(
-            dedent(
-                """\
+            dedent("""\
             Java is not installed - this is a requirement to run Nextflow.
 
             Please install Java and try again.
-            """
-            ),
+            """),
             fg="red",
         )
         raise click.exceptions.Exit(1) from e

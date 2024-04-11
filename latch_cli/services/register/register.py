@@ -536,8 +536,7 @@ def register(
             wf_name = ctx.workflow_name
             while len(wf_infos) == 0:
                 wf_infos = l_gql.execute(
-                    gql.gql(
-                        """
+                    gql.gql("""
                     query workflowQuery($name: String, $ownerId: BigInt, $version: String) {
                         workflowInfos(condition: { name: $name, ownerId: $ownerId, version: $version}) {
                             nodes {
@@ -545,8 +544,7 @@ def register(
                             }
                         }
                     }
-                    """
-                    ),
+                    """),
                     {
                         "name": wf_name,
                         "version": ctx.version,
