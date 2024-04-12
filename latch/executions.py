@@ -15,13 +15,13 @@ pod_name_regex = re.compile(
         (?P<node_name>
             (
                 n
-                [0-9]+
+                [^\-]+
                 -
                 [0-9]+
                 -
             )*
             n
-            [0-9]+
+            [^\-]+
         )
         -
         (?P<retry>[0-9]+)
