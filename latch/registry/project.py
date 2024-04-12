@@ -228,12 +228,10 @@ class ProjectUpdate:
 
         args = l.ArgumentNode()
         args.name = _name_node("input")
-        args.value = _json_value(
-            {
-                "argProjectId": self.project.id,
-                "argDisplayNames": display_names,
-            }
-        )
+        args.value = _json_value({
+            "argProjectId": self.project.id,
+            "argDisplayNames": display_names,
+        })
 
         res.alias = _name_node(f"upd{len(mutations)}")
         res.arguments = tuple([args])
@@ -267,11 +265,9 @@ class ProjectUpdate:
 
         args = l.ArgumentNode()
         args.name = _name_node("input")
-        args.value = _json_value(
-            {
-                "argIds": ids,
-            }
-        )
+        args.value = _json_value({
+            "argIds": ids,
+        })
 
         res.alias = _name_node(f"upd{len(mutations)}")
         res.arguments = tuple([args])

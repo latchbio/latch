@@ -58,9 +58,9 @@ class Parameter:
     var: Variable
     """+required Variable. Defines the type of the variable backing this parameter."""
 
-    behavior: "Optional[typing.Union[ParameterBehaviorDefault, ParameterBehaviorRequired]]" = (
-        None
-    )
+    behavior: (
+        "Optional[typing.Union[ParameterBehaviorDefault, ParameterBehaviorRequired]]"
+    ) = None
 
     def to_idl(self) -> pb.Parameter:
         return merged_pb(pb.Parameter(var=self.var.to_idl()), self.behavior)

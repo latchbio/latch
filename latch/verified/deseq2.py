@@ -19,17 +19,13 @@ def deseq2_wf(
     raw_count_table: Optional[
         Annotated[
             LatchFile,
-            FlyteAnnotation(
-                {
-                    "_tmp_hack_deseq2": "counts_table",
-                    "rules": [
-                        {
-                            "regex": r".*\.(csv|tsv|xlsx)$",
-                            "message": "Expected a CSV, TSV, or XLSX file",
-                        }
-                    ],
-                }
-            ),
+            FlyteAnnotation({
+                "_tmp_hack_deseq2": "counts_table",
+                "rules": [{
+                    "regex": r".*\.(csv|tsv|xlsx)$",
+                    "message": "Expected a CSV, TSV, or XLSX file",
+                }],
+            }),
         ]
     ] = None,
     raw_count_tables: List[LatchFile] = [],
@@ -44,17 +40,13 @@ def deseq2_wf(
     conditions_table: Optional[
         Annotated[
             LatchFile,
-            FlyteAnnotation(
-                {
-                    "_tmp_hack_deseq2": "design_matrix",
-                    "rules": [
-                        {
-                            "regex": r".*\.(csv|tsv|xlsx)$",
-                            "message": "Expected a CSV, TSV, or XLSX file",
-                        }
-                    ],
-                }
-            ),
+            FlyteAnnotation({
+                "_tmp_hack_deseq2": "design_matrix",
+                "rules": [{
+                    "regex": r".*\.(csv|tsv|xlsx)$",
+                    "message": "Expected a CSV, TSV, or XLSX file",
+                }],
+            }),
         ]
     ] = None,
     design_matrix_sample_id_column: Optional[
@@ -62,12 +54,10 @@ def deseq2_wf(
     ] = None,
     design_formula: Annotated[
         List[List[str]],
-        FlyteAnnotation(
-            {
-                "_tmp_hack_deseq2": "design_formula",
-                "_tmp_hack_deseq2_allow_clustering": True,
-            }
-        ),
+        FlyteAnnotation({
+            "_tmp_hack_deseq2": "design_formula",
+            "_tmp_hack_deseq2_allow_clustering": True,
+        }),
     ] = [],
     number_of_genes_to_plot: int = 30,
 ) -> LatchDir: ...
