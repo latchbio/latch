@@ -81,8 +81,6 @@ def main():
             fg="yellow",
         )
 
-    # crash_handler.init()
-
 
 """
 LOGIN COMMANDS

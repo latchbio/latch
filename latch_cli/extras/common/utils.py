@@ -37,10 +37,17 @@ def is_blob_type(typ: Type) -> TypeGuard[Union[Type[LatchFile], Type[LatchDir]]]
 
 
 def is_downloadable_blob_type(typ: Type):
-    if not is_blob_type(typ):
+    if not is_blob_type(typ) or typ is LatchOutputDir:
         return False
 
-    return typ is not LatchOutputDir
+    origin = get_origin(typ)
+    if origin is not None:
+        return all([
+            is_downloadable_blob_type(sub_typ) or sub_typ is type(None)
+            for sub_typ in get_args(typ)
+        ])
+
+    return True
 
 
 def type_repr(t: Type, *, add_namespace: bool = False) -> str:
