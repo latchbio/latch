@@ -64,7 +64,7 @@ class NextflowMergeTask(NextflowOperatorTask):
 
     def get_fn_return_stmt(self):
         results: List[str] = []
-        for out_name in self.sources.keys():
+        for out_name in self._python_outputs.keys():
             results.append(
                 reindent(rf"{out_name}=res.get({repr(out_name)})", 2).rstrip()
             )
