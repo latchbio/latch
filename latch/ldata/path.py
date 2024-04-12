@@ -29,6 +29,53 @@ from ._transfer.remote_copy import remote_copy as _remote_copy
 from ._transfer.upload import upload as _upload
 from ._transfer.utils import query_with_retry
 
+
+class RemotePathImpl:
+    def fetch_metadata(self) -> None:
+        raise NotImplementedError
+
+    def node_id(self, *, load_if_missing: bool = True) -> Optional[str]:
+        raise NotImplementedError
+
+    def name(self, *, load_if_missing: bool = True) -> Optional[str]:
+        raise NotImplementedError
+
+    def type(self, *, load_if_missing: bool = True) -> Optional[LDataNodeType]:
+        raise NotImplementedError
+
+    def size_recursive(self, *, load_if_missing: bool = True) -> Optional[int]:
+        raise NotImplementedError
+
+    def size(self, *, load_if_missing: bool = True) -> Optional[int]:
+        raise NotImplementedError
+
+    def content_type(self, *, load_if_missing: bool = True) -> Optional[str]:
+        raise NotImplementedError
+
+    def is_dir(self, *, load_if_missing: bool = True) -> bool:
+        raise NotImplementedError
+
+    def iterdir(self) -> Iterator[Self]:
+        raise NotImplementedError
+
+    def mkdirp(self) -> None:
+        raise NotImplementedError
+
+    def rmr(self) -> None:
+        raise NotImplementedError
+
+    def copy_to(self, dst: "LPath") -> None:
+        raise NotImplementedError
+
+    def upload_from(self, src: Path, *, show_progress_bar: bool = False) -> None:
+        raise NotImplementedError
+
+    def download(
+        self, dst: Optional[Path] = None, *, show_progress_bar: bool = False
+    ) -> Path:
+        raise NotImplementedError
+
+
 node_id_regex = re.compile(r"^latch://(?P<id>[0-9]+)\.node$")
 
 
@@ -53,11 +100,8 @@ class _Cache:
 
 
 @dataclass(frozen=True)
-class LPath:
-    """Latch Path.
-
-    Represents a remote file/directory path hosted on Latch. Can be used to
-    interact with files and directories in Latch.
+class _LatchPathImpl(RemotePathImpl):
+    """Latch Path Implementation.
 
     Attributes:
     path: The Latch path. Must start with "latch://".
@@ -314,6 +358,126 @@ class LPath:
             confirm_overwrite=False,
         )
         return dst
+
+    def __truediv__(self, other: object) -> "LPath":
+        if not isinstance(other, str):
+            return NotImplemented
+        return LPath(urljoins(self.path, other))
+
+
+@dataclass(frozen=True)
+class LPath:
+    """Latch Path.
+
+    Represents a remote file/directory path hosted on remotely.
+    Can be used to interact with files and directories in Latch or s3.
+
+    Attributes:
+    path: The Latch path. Must start with "latch://" or "s3://".
+    """
+
+    scheme_to_impl = {
+        "latch": _LatchPathImpl,
+        "s3": _S3PathImpl,
+    }
+
+    path: str
+
+    def __post_init__(self):
+        if isinstance(self.path, LPath):
+            raise ValueError("LPath cannot be initialized with another LPath")
+        if self.path.split(":")[0] not in scheme_to_impl:
+            raise ValueError(
+                f"invalid LPath: {self.path} has an invalid scheme. Must be latch:// or"
+                " s3://"
+            )
+
+    def _scheme(self) -> str:
+        return self.path.split(":")[0]
+
+    def _impl(self) -> RemotePathImpl:
+        return scheme_to_impl[self._scheme()](self.path)
+
+    def fetch_metadata(self) -> None:
+        """(Re-)populate this LPath's instance's cache.
+
+        Future calls to most getters will return immediately without making a network request.
+
+        Always makes a network request.
+        """
+        self._impl().fetch_metadata()
+
+    def node_id(self, *, load_if_missing: bool = True) -> Optional[str]:
+        return self._impl().node_id()
+
+    def name(self, *, load_if_missing: bool = True) -> Optional[str]:
+        return self._impl().name()
+
+    def type(self, *, load_if_missing: bool = True) -> Optional[LDataNodeType]:
+        return self._impl().type()
+
+    def size_recursive(self, *, load_if_missing: bool = True) -> Optional[int]:
+        return self._impl().size_recursive()
+
+    def size(self, *, load_if_missing: bool = True) -> Optional[int]:
+        return self._impl().size()
+
+    def content_type(self, *, load_if_missing: bool = True) -> Optional[str]:
+        return self._impl().content_type()
+
+    def is_dir(self, *, load_if_missing: bool = True) -> bool:
+        return self._impl().is_dir()
+
+    def iterdir(self) -> Iterator[Self]:
+        """Yield LPaths objects contained within the directory.
+
+        Should only be called on directories. Does not recursively list directories.
+
+        Always makes a network request.
+        """
+        return self._impl().iterdir()
+
+    def mkdirp(self) -> None:
+        return self._impl().mkdirp()
+
+    def rmr(self) -> None:
+        """Recursively delete files at this instance's path.
+
+        Throws LatchPathError if the path does not exist.
+
+        Always makes a network request.
+        """
+        return self._impl().is_dir()
+
+    def copy_to(self, dst: "LPath") -> None:
+        """Copy the file at this instance's path to the given destination.
+
+        Args:
+        dst: The destination LPath.
+        show_summary: Whether to print a summary of the copy operation.
+        """
+        return self._impl().copy_to(dst)
+
+    def upload_from(self, src: Path, *, show_progress_bar: bool = False) -> None:
+        """Upload the file at the given source to this instance's path.
+
+        Args:
+        src: The source path.
+        show_progress_bar: Whether to show a progress bar during the upload.
+        """
+        return self._impl().upload_from(src, show_progress_bar=show_progress_bar)
+
+    def download(
+        self, dst: Optional[Path] = None, *, show_progress_bar: bool = False
+    ) -> Path:
+        """Download the file at this instance's path to the given destination.
+
+        Args:
+        dst: The destination path. If None, a temporary directory is created and the file is
+            downloaded there. The temprary directory is deleted when the program exits.
+        show_progress_bar: Whether to show a progress bar during the download.
+        """
+        return self._impl().download(dst, show_progress_bar=show_progress_bar)
 
     def __truediv__(self, other: object) -> "LPath":
         if not isinstance(other, str):
