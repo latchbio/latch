@@ -105,18 +105,22 @@ def build_from_nextflow_dag(
             else:
                 input_name = f"channel_{dep.id}"
 
-                output_name = "res"
+                dep_output_name = "res"
                 if len(dep.outputNames) > 0:
                     idx = int(edge.label or "0")
                     input_name = f"{input_name}_{idx}"
-                    output_name = dep.outputNames[idx]
+                    dep_output_name = dep.outputNames[idx]
 
                 if vertex.type == VertexType.Merge:
-                    merge_sources[output_name].append(input_name)
+                    vertex_output_name = "res"
+                    if len(vertex.outputNames) > 0:
+                        vertex_output_name = dep_output_name
+
+                    merge_sources[vertex_output_name].append(input_name)
 
                 task_inputs[input_name] = Optional[str]
 
-                node = NodeOutput(node=node_map[dep.id], var=output_name)
+                node = NodeOutput(node=node_map[dep.id], var=dep_output_name)
 
             task_bindings.append(
                 literals_models.Binding(
