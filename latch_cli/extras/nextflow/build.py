@@ -228,9 +228,21 @@ def build_from_nextflow_dag(
                                 ),
                             ).ref
                         ),
-                    )
+                    ),
+                    literals_models.Binding(
+                        var="is_skipped",
+                        binding=literals_models.BindingData(
+                            promise=Promise(
+                                var="is_skipped",
+                                val=NodeOutput(
+                                    node=pre_adapter_node,
+                                    var="is_skipped",
+                                ),
+                            ).ref
+                        ),
+                    ),
                 ],
-                upstream_nodes=[mapped_process_node],
+                upstream_nodes=[mapped_process_node, pre_adapter_node],
                 flyte_entity=post_adapter_task,
             )
 

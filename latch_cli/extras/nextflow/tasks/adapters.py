@@ -66,7 +66,7 @@ class NextflowProcessPreAdapterTask(NextflowBaseTask):
 
         super().__init__(
             inputs,
-            {"default": List[self.dataclass]},
+            {"default": List[self.dataclass], "is_skipped": bool},
             id,
             name,
             branches,
@@ -114,7 +114,9 @@ class NextflowProcessPreAdapterTask(NextflowBaseTask):
         return res
 
     def get_fn_return_stmt(self):
-        return reindent(f"return Res_{self.id}(default=result)", 1)
+        return reindent(
+            f"return Res_{self.id}(default=result, is_skipped = not cond)", 1
+        )
 
     def get_fn_code(self, nf_script_path_in_container: Path):
         code_block = self.get_fn_interface()
@@ -173,7 +175,7 @@ class NextflowProcessPostAdapterTask(NextflowBaseTask):
         self.dataclass = dataclass_from_python_params(outputs, id)
 
         super().__init__(
-            {"default": List[self.dataclass]},
+            {"default": List[self.dataclass], "is_skipped": bool},
             outputs,
             id,
             name,
@@ -210,7 +212,8 @@ class NextflowProcessPostAdapterTask(NextflowBaseTask):
             rf"""
             @task(cache=True)
             def {self.name}(
-                default: List[Dataclass_{self.id}]
+                default: List[Dataclass_{self.id}],
+                is_skipped: bool,
             ) -> Res{self.name}:
             """,
             0,
@@ -221,7 +224,7 @@ class NextflowProcessPostAdapterTask(NextflowBaseTask):
     def get_fn_return_stmt(self):
         return reindent(
             rf"""
-            return get_mapper_outputs(Res{self.name}, default)
+            return get_mapper_outputs(Res{self.name}, default, is_skipped)
             """,
             1,
         )
