@@ -60,6 +60,16 @@ exclude_patterns = []
 # a list of builtin themes.
 #
 html_theme = "furo"
+html_sidebars = {
+   "**": ["sidebar/brand.html",
+          "sidebar/scroll-start.html",
+          "sidebar/navigation.html",
+          "sidebar/ethical-ads.html",
+          "sidebar/scroll-end.html",
+          "sidebar/variant-selector.html"
+        ],
+}
+
 
 html_favicon = "favicon.ico"
 
