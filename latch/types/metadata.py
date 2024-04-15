@@ -553,6 +553,10 @@ class LatchMetadata:
     """ A `LatchAuthor` object that describes the author of the workflow"""
     documentation: Optional[str] = None
     """A link to documentation for the workflow itself"""
+    about_page_markdown: Optional[str] = None
+    """A path to a markdown file that will be rendered as the workflow About
+    page. If provided, it will override the docstring markdown, if it exists,
+    for SDK workflows."""
     repository: Optional[str] = None
     """A link to the repository where the code for the workflow is hosted"""
     license: str = "MIT"
