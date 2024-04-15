@@ -39,7 +39,12 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx_click",
     "sphinx_copybutton",
+    "sphinx_reredirects",
 ]
+
+redirects = {
+    "index": "https://wiki.latch.bio/docs/getting-started/index",
+}
 
 intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
 
