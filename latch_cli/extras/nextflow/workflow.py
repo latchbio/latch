@@ -51,9 +51,9 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
         self.docker_metadata = metadata._nextflow_metadata.docker_metadata
         md_path = metadata._nextflow_metadata.about_page_markdown
 
-        if md_path is not None and Path(md_path).exists():
+        if md_path is not None and md_path.exists():
             click.secho(f"Rendering workflow About page content from {md_path}")
-            markdown_content = Path(md_path).read_text()
+            markdown_content = md_path.read_text()
         else:
             markdown_content = (
                 "Add markdown content to a file and add the path",

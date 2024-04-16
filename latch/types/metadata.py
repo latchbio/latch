@@ -553,7 +553,7 @@ class LatchMetadata:
     """ A `LatchAuthor` object that describes the author of the workflow"""
     documentation: Optional[str] = None
     """A link to documentation for the workflow itself"""
-    about_page_markdown: Optional[str] = None
+    about_page_markdown: Optional[Path] = None
     """A path to a markdown file that will be rendered as the workflow About
     page. If provided, it will override the docstring markdown, if it exists,
     for SDK workflows."""
