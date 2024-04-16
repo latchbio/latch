@@ -2,6 +2,7 @@ from dataclasses import fields, is_dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Tuple, Type
 
+import click
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import Interface
@@ -48,9 +49,19 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         self.output_directory = metadata._nextflow_metadata.output_directory
         self.docker_metadata = metadata._nextflow_metadata.docker_metadata
+        md_path = metadata._nextflow_metadata.about_page_markdown
 
+        if md_path is not None and md_path.exists():
+            click.secho(f"Rendering workflow About page content from {md_path}")
+            markdown_content = md_path.read_text()
+        else:
+            markdown_content = (
+                "Add markdown content to a file and add the path",
+                "to your workflow metadata to populate this page.\nMore information",
+                "[here](https://wiki.latch.bio/docs/nextflow/quickstart).",
+            )
         docstring = Docstring(
-            f"{metadata._nextflow_metadata.display_name}\n\nSample Description\n\n"
+            f"{metadata._nextflow_metadata.display_name}\n\n{markdown_content}\n\n"
             + str(metadata._nextflow_metadata)
         )
         python_interface = Interface(
