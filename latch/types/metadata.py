@@ -581,6 +581,8 @@ class LatchMetadata:
         metadata_dict = asdict(self)
         # remove parameters since that will be handled by each parameters' dict() method
         del metadata_dict["parameters"]
+        # pyyaml is unable to serialize PosixPath objects + unused after registration
+        del metadata_dict["about_page_markdown"]
         metadata_dict["license"] = {"id": self.license}
 
         # flows override all other rendering, so disable them entirely if not provided
@@ -589,12 +591,6 @@ class LatchMetadata:
 
         for key in self._non_standard:
             metadata_dict[key] = self._non_standard[key]
-
-        # pyyaml is unable to serialize PosixPath objects
-        if "about_page_markdown" in metadata_dict:
-            metadata_dict["about_page_markdown"] = str(
-                metadata_dict["about_page_markdown"]
-            )
 
         return {"__metadata__": metadata_dict}
 
