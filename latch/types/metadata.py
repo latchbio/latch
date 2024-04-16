@@ -590,6 +590,12 @@ class LatchMetadata:
         for key in self._non_standard:
             metadata_dict[key] = self._non_standard[key]
 
+        # pyyaml is unable to serialize PosixPath objects
+        if "about_page_markdown" in metadata_dict:
+            metadata_dict["about_page_markdown"] = str(
+                metadata_dict["about_page_markdown"]
+            )
+
         return {"__metadata__": metadata_dict}
 
     def __str__(self):
