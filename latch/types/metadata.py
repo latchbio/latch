@@ -553,6 +553,10 @@ class LatchMetadata:
     """ A `LatchAuthor` object that describes the author of the workflow"""
     documentation: Optional[str] = None
     """A link to documentation for the workflow itself"""
+    about_page_markdown: Optional[Path] = None
+    """A path to a markdown file that will be rendered as the workflow About
+    page. If provided, it will override the docstring markdown, if it exists,
+    for SDK workflows."""
     repository: Optional[str] = None
     """A link to the repository where the code for the workflow is hosted"""
     license: str = "MIT"
@@ -577,6 +581,8 @@ class LatchMetadata:
         metadata_dict = asdict(self)
         # remove parameters since that will be handled by each parameters' dict() method
         del metadata_dict["parameters"]
+        # pyyaml is unable to serialize PosixPath objects + unused after registration
+        del metadata_dict["about_page_markdown"]
         metadata_dict["license"] = {"id": self.license}
 
         # flows override all other rendering, so disable them entirely if not provided
