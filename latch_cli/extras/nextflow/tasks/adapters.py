@@ -96,6 +96,7 @@ class NextflowProcessPreAdapterTask(NextflowBaseTask):
 
             class Res_{self.id}(NamedTuple):
                 default: {type_repr(output_typ)}
+                is_skipped: bool
 
             """,
             0,

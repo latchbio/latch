@@ -102,7 +102,7 @@ class NextflowProcessTask(NextflowBaseTask):
             results.append(
                 reindent(
                     rf"""
-                    {field.name}=out_channels.get(f"{field.name}", "[]")
+                    {field.name}=out_channels.get(f"{field.name}")
                     """,
                     2,
                 ).rstrip()
