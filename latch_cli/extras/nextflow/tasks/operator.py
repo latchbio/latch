@@ -90,7 +90,7 @@ class NextflowOperatorTask(NextflowBaseTask):
             results.append(
                 reindent(
                     rf"""
-                    {out_name}=out_channels.get("{out_name}", "[]")
+                    {out_name}=out_channels.get("{out_name}")
                     """,
                     2,
                 ).rstrip()
