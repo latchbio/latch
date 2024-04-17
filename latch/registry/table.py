@@ -496,13 +496,11 @@ class TableUpdate:
 
         args = l.ArgumentNode()
         args.name = _name_node("input")
-        args.value = _json_value(
-            {
-                "argExperimentId": self.table.id,
-                "argNames": names,
-                "argData": _var_node(argDataVar),
-            }
-        )
+        args.value = _json_value({
+            "argExperimentId": self.table.id,
+            "argNames": names,
+            "argData": _var_node(argDataVar),
+        })
 
         res.alias = _name_node(f"upd{len(mutations)}")
         res.arguments = tuple([args])
@@ -537,12 +535,10 @@ class TableUpdate:
 
         args = l.ArgumentNode()
         args.name = _name_node("input")
-        args.value = _json_value(
-            {
-                "argExperimentId": self.table.id,
-                "argNames": names,
-            }
-        )
+        args.value = _json_value({
+            "argExperimentId": self.table.id,
+            "argNames": names,
+        })
 
         res.alias = _name_node(f"upd{len(mutations)}")
         res.arguments = tuple([args])
@@ -690,13 +686,11 @@ class TableUpdate:
 
         args = l.ArgumentNode()
         args.name = _name_node("input")
-        args.value = _json_value(
-            {
-                "argExperimentId": self.table.id,
-                "argKeys": keys,
-                "argTypes": _var_node(argTypesVar),
-            }
-        )
+        args.value = _json_value({
+            "argExperimentId": self.table.id,
+            "argKeys": keys,
+            "argTypes": _var_node(argTypesVar),
+        })
 
         res.alias = _name_node(f"upd{len(mutations)}")
         res.arguments = tuple([args])

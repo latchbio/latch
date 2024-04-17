@@ -50,7 +50,10 @@ def get_node_name(vertex_id: str) -> str:
 
 
 def build_from_nextflow_dag(
-    wf: NextflowWorkflow, *, execution_profile: Optional[str] = None
+    wf: NextflowWorkflow,
+    *,
+    execution_profile: Optional[str] = None,
+    ephemeral_storage_gib: int = 500,
 ):
     global_start_node = Node(
         id=_common_constants.GLOBAL_INPUT_NODE_ID,
@@ -177,6 +180,7 @@ def build_from_nextflow_dag(
                 wf=wf,
                 cpu=vertex.cpu,
                 memory=vertex.memoryBytes,
+                storage_gib=ephemeral_storage_gib,
             )
 
             wf.nextflow_tasks.append(process_task)
@@ -396,6 +400,7 @@ def build_nf_wf(
     *,
     redownload_dependencies: bool = False,
     execution_profile: Optional[str] = None,
+    ephemeral_storage_gib: int = 500,
 ) -> NextflowWorkflow:
     ensure_nf_dependencies(pkg_root, force_redownload=redownload_dependencies)
 
@@ -474,7 +479,11 @@ def build_nf_wf(
 
     wf = NextflowWorkflow(pkg_root, nf_script, version, main_dag)
 
-    build_from_nextflow_dag(wf, execution_profile=execution_profile)
+    build_from_nextflow_dag(
+        wf,
+        execution_profile=execution_profile,
+        ephemeral_storage_gib=ephemeral_storage_gib,
+    )
 
     return wf
 
