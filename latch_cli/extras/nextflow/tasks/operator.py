@@ -30,7 +30,17 @@ class NextflowOperatorTask(NextflowBaseTask):
         self.script_path = script_path
         self.calling_subwf_name = calling_subwf_name
 
-        super().__init__(inputs, outputs, id, name, branches, wf, NFTaskType.Operator)
+        super().__init__(
+            inputs,
+            outputs,
+            id,
+            name,
+            branches,
+            wf,
+            NFTaskType.Operator,
+            cpu=4,
+            memory=8,
+        )
 
     def get_fn_interface(self):
         res = ""
