@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.41.0 - 2024-04-19
+
+### Added
+
+* `--wf-version` flag to `develop` to use a container for a specific workflow version
+* `--disable-sync` flag to `develop` to disable automatic syncing of local files. Useful for inspecting workflow code from a past version without overwriting with divergent local changes.
+
 ## 2.40.6 - 2024-04-12
 
 ### Fixed
