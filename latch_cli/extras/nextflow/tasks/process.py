@@ -28,6 +28,7 @@ class NextflowProcessTask(NextflowBaseTask):
         wf: NextflowWorkflow,
         cpu: Optional[int] = None,
         memory: Optional[float] = None,
+        storage_gib: int = 500,
     ):
         super().__init__(
             inputs,
@@ -265,7 +266,38 @@ class NextflowProcessTask(NextflowBaseTask):
             results.append(
                 reindent(
                     rf"""
-                    {field.name}=out_channels.get(f"{field.name}", "[]")
+                    {field.name}=out_channels.get(f"{field.name}")
+                    """,
+                    2,
+                ).rstrip()
+            )
+
+        return_str = ",\n".join(results)
+
+        return reindent(
+            rf"""
+                    return {res_type.__name__}(
+                ||return|str||
+                    )
+            """,
+            0,
+        ).replace("||return|str||", return_str)
+
+    def get_fn_return_stmt(self):
+        results: List[str] = []
+
+        res_type = list(self._python_outputs.values())[0]
+
+        if res_type is None:
+            return "    return None"
+
+        assert is_dataclass(res_type)
+
+        for field in fields(res_type):
+            results.append(
+                reindent(
+                    rf"""
+                    {field.name}=out_channels.get(f"{field.name}")
                     """,
                     2,
                 ).rstrip()

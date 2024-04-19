@@ -1,5 +1,5 @@
+import json
 import os
-import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Union
@@ -229,6 +229,19 @@ def upload_files(channels: Dict[str, List[JSONValue]], outdir: LatchDir):
 
         local_to_remote[local] = remote
         data.parameter["remote"] = remote
+
+    published_files: List[str] = []
+    try:
+        with open(".latch/published.json", "r") as f:
+            data = f.read()
+        conf = json.loads(data)
+        published_files = conf.get("files", [])
+    except FileNotFoundError:
+        pass
+
+    for file in published_files:
+        relative_path = Path(file).relative_to(Path.home())
+        local_to_remote[file] = urljoins(remote_parent, str(relative_path))
 
     for local, remote in local_to_remote.items():
         _upload(local, remote)

@@ -473,6 +473,12 @@ def execute(
     default=None,
     help="Set execution profile for Nextflow workflow",
 )
+@click.option(
+    "--ephemeral-storage-gib",
+    default=500,
+    type=int,
+    help="Input the number of GiB needed of ephemeral storage.",
+)
 @requires_login
 def register(
     pkg_root: str,
@@ -486,6 +492,7 @@ def register(
     nf_script: Optional[Path],
     redownload_dependencies: bool,
     execution_profile: Optional[str],
+    ephemeral_storage_gib: int,
 ):
     """Register local workflow code to Latch.
 
@@ -496,6 +503,22 @@ def register(
 
     crash_handler.message = "Unable to register workflow."
     crash_handler.pkg_root = pkg_root
+
+    if ephemeral_storage_gib > 4949:
+        click.secho(
+            f"You tried setting ephemeral storage to {ephemeral_storage_gib} GiB. "
+            "This value exceeds the maximum allowed size of 4949 GiB.",
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
+
+    if ephemeral_storage_gib <= 0:
+        click.secho(
+            f"You tried setting ephemeral storage to {ephemeral_storage_gib} GiB. "
+            "Ephemeral storage value must be a positive integer less than 4949.",
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
 
     from latch_cli.services.register import register
 
@@ -513,6 +536,7 @@ def register(
         or docker_progress == "plain",
         use_new_centromere=use_new_centromere,
         cache_tasks=cache_tasks,
+        nf_ephemeral_storage_gib=ephemeral_storage_gib,
     )
 
 

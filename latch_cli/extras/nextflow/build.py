@@ -50,7 +50,10 @@ def get_node_name(vertex_id: str) -> str:
 
 
 def build_from_nextflow_dag(
-    wf: NextflowWorkflow, *, execution_profile: Optional[str] = None
+    wf: NextflowWorkflow,
+    *,
+    execution_profile: Optional[str] = None,
+    ephemeral_storage_gib: int = 500,
 ):
     global_start_node = Node(
         id=_common_constants.GLOBAL_INPUT_NODE_ID,
@@ -105,18 +108,22 @@ def build_from_nextflow_dag(
             else:
                 input_name = f"channel_{dep.id}"
 
-                output_name = "res"
+                dep_output_name = "res"
                 if len(dep.outputNames) > 0:
                     idx = int(edge.label or "0")
                     input_name = f"{input_name}_{idx}"
-                    output_name = dep.outputNames[idx]
+                    dep_output_name = dep.outputNames[idx]
 
                 if vertex.type == VertexType.Merge:
-                    merge_sources[output_name].append(input_name)
+                    vertex_output_name = "res"
+                    if len(vertex.outputNames) > 0:
+                        vertex_output_name = dep_output_name
+
+                    merge_sources[vertex_output_name].append(input_name)
 
                 task_inputs[input_name] = Optional[str]
 
-                node = NodeOutput(node=node_map[dep.id], var=output_name)
+                node = NodeOutput(node=node_map[dep.id], var=dep_output_name)
 
             task_bindings.append(
                 literals_models.Binding(
@@ -177,6 +184,7 @@ def build_from_nextflow_dag(
                 wf=wf,
                 cpu=vertex.cpu,
                 memory=vertex.memoryBytes,
+                storage_gib=ephemeral_storage_gib,
             )
 
             wf.nextflow_tasks.append(process_task)
@@ -220,9 +228,21 @@ def build_from_nextflow_dag(
                                 ),
                             ).ref
                         ),
-                    )
+                    ),
+                    literals_models.Binding(
+                        var="is_skipped",
+                        binding=literals_models.BindingData(
+                            promise=Promise(
+                                var="is_skipped",
+                                val=NodeOutput(
+                                    node=pre_adapter_node,
+                                    var="is_skipped",
+                                ),
+                            ).ref
+                        ),
+                    ),
                 ],
-                upstream_nodes=[mapped_process_node],
+                upstream_nodes=[mapped_process_node, pre_adapter_node],
                 flyte_entity=post_adapter_task,
             )
 
@@ -396,6 +416,7 @@ def build_nf_wf(
     *,
     redownload_dependencies: bool = False,
     execution_profile: Optional[str] = None,
+    ephemeral_storage_gib: int = 500,
 ) -> NextflowWorkflow:
     ensure_nf_dependencies(pkg_root, force_redownload=redownload_dependencies)
 
@@ -474,7 +495,11 @@ def build_nf_wf(
 
     wf = NextflowWorkflow(pkg_root, nf_script, version, main_dag)
 
-    build_from_nextflow_dag(wf, execution_profile=execution_profile)
+    build_from_nextflow_dag(
+        wf,
+        execution_profile=execution_profile,
+        ephemeral_storage_gib=ephemeral_storage_gib,
+    )
 
     return wf
 

@@ -2,6 +2,7 @@ import builtins
 import contextlib
 import os
 import random
+import shutil
 import string
 import sys
 import tempfile
@@ -261,6 +262,9 @@ class MaybeRemoteDir:
             return
 
         if self._tempdir is not None and not isinstance(self._tempdir, str):
+            if os.environ.get("LATCH_SAVE_PROTO") is not None:
+                shutil.copytree(Path(self._tempdir.name), Path.cwd() / "protos")
+
             self._tempdir.cleanup()
 
 

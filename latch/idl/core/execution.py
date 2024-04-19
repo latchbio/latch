@@ -56,9 +56,9 @@ class QualityOfService:
         def to_idl(self) -> pb.QualityOfService.Tier:
             return self.value
 
-    designation: "typing.Union[QualityOfServiceDesignationTier, QualityOfServiceDesignationSpec]" = field(
-        default_factory=lambda: QualityOfServiceDesignationTier()
-    )
+    designation: (
+        "typing.Union[QualityOfServiceDesignationTier, QualityOfServiceDesignationSpec]"
+    ) = field(default_factory=lambda: QualityOfServiceDesignationTier())
 
     def to_idl(self) -> pb.QualityOfService:
         return self.designation.to_idl()

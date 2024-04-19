@@ -64,8 +64,16 @@ def get_mapper_inputs(
 NT = TypeVar("NT", bound=NamedTuple)
 
 
-def get_mapper_outputs(adapter_output_cls: Type[NT], mapper_outputs: List[DC]) -> NT:
-    kwargs: Dict[str, str] = {}
+def get_mapper_outputs(
+    adapter_output_cls: Type[NT], mapper_outputs: List[DC], is_skipped: bool
+) -> NT:
+
+    kwargs: Dict[str, Optional[str]] = {}
+    if is_skipped:
+        for f in adapter_output_cls._fields:
+            kwargs[f] = None
+
+        return adapter_output_cls(**kwargs)
 
     if len(mapper_outputs) == 1:
         output = mapper_outputs[0]
