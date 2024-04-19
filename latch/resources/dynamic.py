@@ -1,7 +1,6 @@
-import json
 import os
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Union
+from typing import Any, Callable, Dict, Optional, Union
 
 import gql
 from flytekit.configuration import SerializationSettings
@@ -63,9 +62,15 @@ def _override_task_resources(task_config: Pod) -> None:
 
 
 def _dynamic_resource_task(
-    cpu: Union[int, Callable], memory: Union[int, Callable], disk: Union[int, Callable]
+    dynamic_func: Optional[Callable],
+    cpu: Union[int, Callable],
+    memory: Union[int, Callable],
+    disk: Union[int, Callable],
 ):
     def f(**kwargs):
+        if dynamic_func is not None:
+            dynamic_func(**kwargs)
+
         res: Dict[str, int] = {
             "cpu": cpu(**kwargs) if callable(cpu) else cpu,
             "memory": memory(**kwargs) if callable(memory) else memory,
@@ -85,6 +90,7 @@ def _dynamic_resource_task(
 
 @dataclass(frozen=True)
 class DynamicTaskConfig:
+    dynamic_func: Optional[Callable]
     cpu: Union[Callable, int]
     memory: Union[Callable, int]
     storage: Union[Callable, int]
@@ -93,7 +99,10 @@ class DynamicTaskConfig:
 
 class DynamicPythonFunctionTask(PodFunctionTask):
     def __init__(
-        self, task_config: DynamicTaskConfig, task_function: Callable, **kwargs
+        self,
+        task_config: DynamicTaskConfig,
+        task_function: Callable,
+        **kwargs,
     ):
         # validate that the task function inputs are the same as the resource functions
         for resource in [task_config.cpu, task_config.memory, task_config.storage]:
@@ -113,7 +122,10 @@ class DynamicPythonFunctionTask(PodFunctionTask):
                     )
 
         self._pre_task_function = _dynamic_resource_task(
-            task_config.cpu, task_config.memory, task_config.storage
+            task_config.dynamic_func,
+            task_config.cpu,
+            task_config.memory,
+            task_config.storage,
         )
 
         super().__init__(

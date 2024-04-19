@@ -1,15 +1,9 @@
 import json
 from dataclasses import fields, is_dataclass
 from pathlib import Path
-from typing import Annotated, List, Mapping, Optional, Type
+from textwrap import dedent
+from typing import List, Mapping, Optional, Type
 
-try:
-    from typing import get_args, get_origin
-except ImportError:
-    from typing_extensions import get_args, get_origin
-
-from latch.types.directory import LatchDir
-from latch.types.file import LatchFile
 from latch.types.metadata import ParameterType
 
 from ...common.utils import is_blob_type, is_samplesheet_param, reindent, type_repr
@@ -44,9 +38,6 @@ class NextflowProcessTask(NextflowBaseTask):
             {},
             wf,
             NFTaskType.Process,
-            cpu=cpu if cpu is not None else 4,
-            memory=memory / 1024 / 1024 / 1024 if memory is not None else 8,
-            storage_gib=storage_gib,
         )
 
         self.wf_inputs = {}
@@ -74,59 +65,14 @@ class NextflowProcessTask(NextflowBaseTask):
         self.unaliased = unaliased
         self.execution_profile = execution_profile
 
-    def get_fn_interface(self):
-        input_name, input_t = list(self._python_inputs.items())[0]
-        output_t = list(self._python_outputs.values())[0]
-
-        return reindent(
-            rf"""
-                @task(cache=True)
-                def {self.name}(
-                    {input_name}: {type_repr(input_t)}
-                ) -> {type_repr(output_t)}:
-                """,
-            0,
-        )
-
-    def get_fn_return_stmt(self):
-        results: List[str] = []
-
-        res_type = list(self._python_outputs.values())[0]
-
-        if res_type is None:
-            return "    return None"
-
-        assert is_dataclass(res_type)
-
-        for field in fields(res_type):
-            results.append(
-                reindent(
-                    rf"""
-                    {field.name}=out_channels.get(f"{field.name}")
-                    """,
-                    2,
-                ).rstrip()
-            )
-
-        return_str = ",\n".join(results)
-
-        return reindent(
-            rf"""
-                    return {res_type.__name__}(
-                ||return|str||
-                    )
-            """,
-            0,
-        ).replace("||return|str||", return_str)
-
-    def get_fn_code(self, nf_script_path_in_container: Path):
-        code_block = self.get_fn_interface()
-
-        code_block += reindent(
+    def _get_nextflow_fn_code(
+        self, nf_script_path_in_container: Path, pre_execute: bool = False
+    ):
+        code_block = reindent(
             """
             wf_paths = {}
             """,
-            1,
+            0,
         )
 
         run_task_entrypoint = [
@@ -148,36 +94,42 @@ class NextflowProcessTask(NextflowBaseTask):
                 f"""
                 {k} = default.{k}
                 """,
-                1,
+                0,
             )
 
             if k[3:] in self.wf.downloadable_params:
                 code_block += reindent(
                     f"""
                     if {k} is not None:
-                        {k}_p = Path({k}).resolve()
-                        check_exists_and_rename({k}_p, Path("/root") / {k}_p.name)
-                        wf_paths["{k}"] = Path("/root") / {k}_p.name
+                        if not {pre_execute}:
+                            {k}_p = Path({k}).resolve()
+                            check_exists_and_rename({k}_p, Path("/root") / {k}_p.name)
+                            wf_paths["{k}"] = Path("/root") / {k}_p.name
+                        else:
+                            wf_paths["{k}"] = Path("/root") / "{k}"
 
                     """,
-                    1,
+                    0,
                 )
             elif is_blob_type(typ):
                 code_block += reindent(
                     f"""
                     if {k} is not None:
-                        {k}_p = Path("/root/").resolve() # superhack
-                        wf_paths["{k}"] = {k}_p
+                        if not {pre_execute}:
+                            {k}_p = Path("/root/").resolve() # superhack
+                            wf_paths["{k}"] = {k}_p
+                        else:
+                            wf_paths["{k}"] = Path("/root") / "{k}"
 
                     """,
-                    1,
+                    0,
                 )
             elif is_samplesheet_param(typ):
                 code_block += reindent(
                     f"""
                     {k} = construct_samplesheet({k})
                     """,
-                    1,
+                    0,
                 )
 
         if self.script_path.resolve() != self.wf.nf_script.resolve():
@@ -186,7 +138,7 @@ class NextflowProcessTask(NextflowBaseTask):
             run_task_entrypoint.extend(["-entry", self.calling_subwf_name])
 
         # TODO (kenny) : only login if we need to
-        if self.wf.docker_metadata is not None:
+        if not pre_execute and self.wf.docker_metadata is not None:
             code_block += reindent(
                 rf"""
 
@@ -224,7 +176,7 @@ class NextflowProcessTask(NextflowBaseTask):
                 except Exception:
                     traceback.print_exc()
                 """,
-                1,
+                0,
             )
 
         code_block += reindent(
@@ -232,7 +184,8 @@ class NextflowProcessTask(NextflowBaseTask):
 
             channel_vals = [{','.join([f"json.loads(default.{x})" for x in self.channel_inputs])}]
 
-            download_files(channel_vals, LatchDir({repr(self.wf.output_directory.remote_path)}))
+            if not {pre_execute}:
+                download_files(channel_vals, LatchDir({repr(self.wf.output_directory.remote_path)}))
 
             try:
                 subprocess.run(
@@ -244,6 +197,7 @@ class NextflowProcessTask(NextflowBaseTask):
                         "LATCH_EXPRESSION": {repr(self.statement)},
                         "LATCH_RETURN": {repr(json.dumps(self.ret))},
                         "LATCH_PARAM_VALS": json.dumps(channel_vals),
+                        "LATCH_PRE_EXECUTE": '{repr(pre_execute)}',
                     }},
                     check=True,
                 )
@@ -251,6 +205,125 @@ class NextflowProcessTask(NextflowBaseTask):
                 log = Path("/root/.nextflow.log").read_text()
                 print("\n\n\n\n\n" + log)
                 raise
+            """,
+            0,
+        )
+
+        return code_block
+
+    def get_fn_interface(self, nf_script_path_in_container: Path):
+        input_name, input_t = list(self._python_inputs.items())[0]
+        output_t = list(self._python_outputs.values())[0]
+
+        code_block = dedent(f"""\
+            def _read_resources() -> Dict:
+                try:
+                    with open(".latch/resources.json") as f:
+                        return json.load(f)
+                except FileNotFoundError:
+                    return {{}}
+
+            def allocate_cpu({input_name}: {type_repr(input_t)}) -> int:
+                res = _read_resources()
+                return max(1, res['cpu_cores']) if res.get('cpu_cores') is not None else 16
+
+            def allocate_memory({input_name}: {type_repr(input_t)}) -> int:
+                res = _read_resources()
+                return max(1, res['memory_bytes'] // 1024**3) if res.get('memory_bytes') is not None else 48
+
+            def allocate_disk({input_name}: {type_repr(input_t)}) -> int:
+                res = _read_resources()
+                return max(1, res['disk_bytes'] // 1024**3) if res.get('disk_bytes') is not None else 500
+
+            def get_resources({input_name}: {type_repr(input_t)}):
+        """)
+
+        code_block += reindent(
+            self._get_nextflow_fn_code(nf_script_path_in_container, pre_execute=True), 1
+        )
+
+        code_block += dedent(f"""\
+
+            @custom_task(cpu=allocate_cpu, memory=allocate_memory, storage_gib=allocate_disk, pre_execute=get_resources, cache=True)
+            def {self.name}(
+                {input_name}: {type_repr(input_t)}
+            ) -> {type_repr(output_t)}:
+            """)
+
+        return code_block
+
+    def get_fn_return_stmt(self):
+        results: List[str] = []
+
+        res_type = list(self._python_outputs.values())[0]
+
+        if res_type is None:
+            return "    return None"
+
+        assert is_dataclass(res_type)
+
+        for field in fields(res_type):
+            results.append(
+                reindent(
+                    rf"""
+                    {field.name}=out_channels.get(f"{field.name}")
+                    """,
+                    2,
+                ).rstrip()
+            )
+
+        return_str = ",\n".join(results)
+
+        return reindent(
+            rf"""
+                    return {res_type.__name__}(
+                ||return|str||
+                    )
+            """,
+            0,
+        ).replace("||return|str||", return_str)
+
+    def get_fn_return_stmt(self):
+        results: List[str] = []
+
+        res_type = list(self._python_outputs.values())[0]
+
+        if res_type is None:
+            return "    return None"
+
+        assert is_dataclass(res_type)
+
+        for field in fields(res_type):
+            results.append(
+                reindent(
+                    rf"""
+                    {field.name}=out_channels.get(f"{field.name}")
+                    """,
+                    2,
+                ).rstrip()
+            )
+
+        return_str = ",\n".join(results)
+
+        return reindent(
+            rf"""
+                    return {res_type.__name__}(
+                ||return|str||
+                    )
+            """,
+            0,
+        ).replace("||return|str||", return_str)
+
+    def get_fn_code(self, nf_script_path_in_container: Path):
+        code_block = dedent(self.get_fn_interface(nf_script_path_in_container))
+
+        code_block += reindent(
+            self._get_nextflow_fn_code(nf_script_path_in_container),
+            1,
+        )
+
+        code_block += reindent(
+            rf"""
 
             out_channels = {{}}
             files = [Path(f) for f in glob.glob(".latch/task-outputs/*.json")]
