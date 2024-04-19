@@ -63,7 +63,7 @@ def _get_workflow_name(pkg_root: Path, snakemake: bool) -> str:
         raise click.exceptions.Exit(1)
 
 
-def _get_latest_image(pkg_root: Path, snakemake: bool) -> str:
+def get_image(pkg_root: Path, snakemake: bool, version: Optional[str]) -> str:
     click.secho("Image name: ", fg="blue", nl=False)
 
     ws_id = current_workspace()
@@ -79,28 +79,7 @@ def _get_latest_image(pkg_root: Path, snakemake: bool) -> str:
 
     click.secho(registry_name, italic=True, bold=True)
 
-    resp = post(
-        config.api.workflow.get_latest,
-        headers={"Authorization": f"Bearer {retrieve_or_login()}"},
-        json={
-            "registry_name": registry_name,
-            "ws_account_id": current_workspace(),
-        },
-    )
-
-    try:
-        resp.raise_for_status()
-        click.secho("Found image. Using version ", nl=False)
-        latest_version = resp.json()["version"]
-        click.secho(latest_version, italic=True, bold=True)
-    except HTTPException:
-        click.secho("Could not find any images. Retrying with new image name.\n")
-        click.secho("Image name: ", fg="blue", nl=False)
-
-        registry_name = f"{ws_id}_{pkg_root.name}"
-
-        click.secho(registry_name, italic=True, bold=True)
-
+    if version is None:
         resp = post(
             config.api.workflow.get_latest,
             headers={"Authorization": f"Bearer {retrieve_or_login()}"},
@@ -113,22 +92,44 @@ def _get_latest_image(pkg_root: Path, snakemake: bool) -> str:
         try:
             resp.raise_for_status()
             click.secho("Found image. Using version ", nl=False)
-            latest_version = resp.json()["version"]
-            click.secho(latest_version, italic=True, bold=True)
-        except HTTPException as e:
-            click.secho("Could not find any images.\n")
+            version = resp.json()["version"]
+            click.secho(version, italic=True, bold=True)
+        except HTTPException:
+            click.secho("Could not find any images. Retrying with new image name.\n")
+            click.secho("Image name: ", fg="blue", nl=False)
 
-            click.secho(
-                dedent("""
-                There was an issue getting your workflow's docker image.
+            registry_name = f"{ws_id}_{pkg_root.name}"
 
-                Please make sure you've registered your workflow at least once.
-                """).strip("\n"),
-                fg="red",
+            click.secho(registry_name, italic=True, bold=True)
+
+            resp = post(
+                config.api.workflow.get_latest,
+                headers={"Authorization": f"Bearer {retrieve_or_login()}"},
+                json={
+                    "registry_name": registry_name,
+                    "ws_account_id": current_workspace(),
+                },
             )
-            raise click.exceptions.Exit(1)
 
-    return f"{config.dkr_repo}/{registry_name}:{latest_version}"
+            try:
+                resp.raise_for_status()
+                click.secho("Found image. Using version ", nl=False)
+                version = resp.json()["version"]
+                click.secho(version, italic=True, bold=True)
+            except HTTPException as e:
+                click.secho("Could not find any images.\n")
+
+                click.secho(
+                    dedent("""
+                    There was an issue getting your workflow's docker image.
+
+                    Please make sure you've registered your workflow at least once.
+                    """).strip("\n"),
+                    fg="red",
+                )
+                raise click.exceptions.Exit(1)
+
+    return f"{config.dkr_repo}/{registry_name}:{version}"
 
 
 rsync_stop_event = asyncio.Event()
@@ -234,12 +235,10 @@ async def _send_resize_message(
 ):
     await _send_message(
         ws,
-        json.dumps(
-            {
-                "Width": term_width,
-                "Height": term_height,
-            }
-        ),
+        json.dumps({
+            "Width": term_width,
+            "Height": term_height,
+        }),
         typ=_MessageType.resize,
     )
 
@@ -320,16 +319,19 @@ async def _shell_session(
     try:
         io_task = asyncio.gather(input_task(), output_task(), resize_task())
         await io_task
-    except asyncio.CancelledError: ...
+    except asyncio.CancelledError:
+        ...
     finally:
         termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, old_settings_stdin)
         signal.signal(signal.SIGWINCH, old_sigwinch_handler)
 
 
-async def _run_local_dev_session(pkg_root: Path, snakemake: bool):
+async def _run_local_dev_session(
+    pkg_root: Path, snakemake: bool, version: Optional[str], disable_sync: bool
+):
     # hit the endpoint to make sure that a workflow image exists in ecr before
     # doing anything
-    image_name_tagged = _get_latest_image(pkg_root, snakemake)
+    image_name_tagged = get_image(pkg_root, snakemake, version)
     key_path = pkg_root / ".latch" / "ssh_key"
 
     with TemporarySSHCredentials(key_path) as ssh:
@@ -408,13 +410,18 @@ async def _run_local_dev_session(pkg_root: Path, snakemake: bool):
                         "Successfully connected to remote instance."
                     )
                     try:
-                        await aioconsole.aprint("Setting up local sync...")
-                        watch_task = asyncio.create_task(
-                            _watch_and_rsync(
-                                pkg_root, centromere_ip, ssh_port, key_path
+                        if disable_sync:
+                            await aioconsole.aprint(
+                                "Skipping local sync because --disable-sync"
                             )
-                        )
-                        await aioconsole.aprint("Done.")
+                        else:
+                            await aioconsole.aprint("Setting up local sync...")
+                            watch_task = asyncio.create_task(
+                                _watch_and_rsync(
+                                    pkg_root, centromere_ip, ssh_port, key_path
+                                )
+                            )
+                            await aioconsole.aprint("Done.")
 
                         await _send_message(ws, docker_access_token)
                         await _send_message(ws, image_name_tagged)
@@ -427,7 +434,9 @@ async def _run_local_dev_session(pkg_root: Path, snakemake: bool):
 
                         await _shell_session(ws)
                         rsync_stop_event.set()
-                        await watch_task
+
+                        if not disable_sync:
+                            await watch_task
 
                     except websockets.exceptions.ConnectionClosed:
                         continue
@@ -457,7 +466,9 @@ async def _run_local_dev_session(pkg_root: Path, snakemake: bool):
                 raise e
 
 
-def local_development(pkg_root: Path, snakemake: bool):
+def local_development(
+    pkg_root: Path, snakemake: bool, wf_version: Optional[str], disable_sync: bool
+):
     """Starts a REPL that allows a user to interactively run tasks to help with
     debugging during workflow development.
 
@@ -473,7 +484,11 @@ def local_development(pkg_root: Path, snakemake: bool):
     Args:
         pkg_root: A path that points to a valid workflow directory (see the
             docs for `register`)
-
+        snakemake: True if the session corresponds to a snakemake workflow
+        wf_version: Use the container environment of a specific workflow
+            version
+        disable_sync: Disables the automatic syncing of local files to the
+            develop session if True
     """
 
     # ensure that rsync is installed
@@ -491,4 +506,4 @@ def local_development(pkg_root: Path, snakemake: bool):
                     mac: brew install rsync
                 """))
 
-    asyncio.run(_run_local_dev_session(pkg_root, snakemake))
+    asyncio.run(_run_local_dev_session(pkg_root, snakemake, wf_version, disable_sync))
