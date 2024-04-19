@@ -274,6 +274,20 @@ def generate_metadata(
     help="Image to use for develop session.",
 )
 @click.option(
+    "--wf-version",
+    "-v",
+    type=str,
+    help="Use the container environment of a specific workflow version",
+)
+@click.option(
+    "--disable-sync",
+    "-d",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Disable the automatic syncing of local files to develop session",
+)
+@click.option(
     "-s",
     "--snakemake",
     is_flag=True,
@@ -286,6 +300,8 @@ def local_development(
     pkg_root: Path,
     yes: bool,
     image: Optional[str],
+    wf_version: Optional[str],
+    disable_sync: bool,
     snakemake: bool,
 ):
     """Develop workflows "locally"
@@ -308,7 +324,7 @@ def local_development(
     else:
         from latch_cli.services.local_dev_old import local_development
 
-        local_development(pkg_root.resolve(), snakemake)
+        local_development(pkg_root.resolve(), snakemake, wf_version, disable_sync)
 
 
 @main.command("exec")
