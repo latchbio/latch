@@ -2,7 +2,7 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Union
+from typing import Dict, List, Optional, Set, Union, cast
 from urllib.parse import urlparse
 
 import click
@@ -17,6 +17,7 @@ from latch.ldata.type import LDataNodeType
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
 from latch_cli.utils import urljoins
+from latch_cli.utils.path import is_remote_path
 
 JSONValue: TypeAlias = Union[
     int,
@@ -76,7 +77,17 @@ def _extract_paths(parameter: JSONValue, res: List[PathData]):
             return
 
         res.append(PathData(parameter=parameter, local=local, remote=remote))
+    elif "string" in parameter:
+        v = parameter["string"]
+        assert isinstance(v, str)
 
+        if not is_remote_path(v):
+            return
+
+        parameter["path"] = v
+        del parameter["string"]
+
+        _extract_paths(parameter, res)
     elif "list" in parameter:
         v = parameter["list"]
         assert isinstance(v, List)

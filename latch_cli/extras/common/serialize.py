@@ -1,3 +1,4 @@
+import os
 import sys
 from dataclasses import fields
 from pathlib import Path
@@ -302,8 +303,11 @@ def serialize(
     image_name: str,
     dkr_repo: str,
     *,
-    write_spec: bool = False,
+    write_spec: Optional[bool] = None,
 ):
+    if write_spec is None:
+        write_spec = os.environ.get("LATCH_DUMP_SPEC") is not None
+
     image_name_no_version, version = image_name.split(":")
     default_img = Image(
         name=image_name,
