@@ -3,10 +3,10 @@ from typing import cast
 import gql
 from latch_sdk_gql.execute import execute
 
+from latch.utils import current_workspace
 from latch_cli.extras.common.serialize import serialize
 from latch_cli.extras.nextflow.tasks.base import NextflowBaseTask
 from latch_cli.extras.nextflow.workflow import NextflowWorkflow
-from latch_cli.utils import current_workspace
 
 
 def serialize_nf(

@@ -7,9 +7,9 @@ import graphql
 from latch_sdk_config.user import user_config
 from latch_sdk_gql.execute import execute
 
+from latch.utils import current_workspace
 from latch_cli.click_utils import color
 from latch_cli.menus import select_tui
-from latch_cli.utils import current_workspace
 
 
 # todo(ayush): put this into latch_sdk_gql

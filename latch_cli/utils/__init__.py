@@ -13,16 +13,15 @@ from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from textwrap import dedent
-from typing import List, TypedDict
+from typing import List
 from urllib.parse import urljoin
 
 import click
 import gql
 import jwt
 from latch_sdk_config.user import user_config
-from latch_sdk_gql.execute import execute
 
-from latch.utils import account_id_from_token, current_workspace
+from latch.utils import current_workspace
 from latch_cli.click_utils import bold
 from latch_cli.constants import latch_constants
 from latch_cli.tinyrequests import get

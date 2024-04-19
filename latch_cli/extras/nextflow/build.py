@@ -29,7 +29,7 @@ from latch_cli.extras.nextflow.tasks.base import NextflowBaseTask, NFTaskType
 
 from ...click_utils import italic
 from ...menus import select_tui
-from ...utils import current_workspace, identifier_from_str
+from ...utils import identifier_from_str
 from ..common.serialize import binding_from_python
 from ..common.utils import is_samplesheet_param, reindent
 from .dag import DAG, VertexType
