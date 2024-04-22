@@ -85,7 +85,7 @@ from ..utils import identifier_from_str, identifier_suffix_from_str
 SnakemakeInputVal: TypeAlias = snakemake.io._IOFile
 
 
-def is_dir(x: SnakemakeInputVal) -> bool:
+def _is_dir(x: SnakemakeInputVal) -> bool:
     return os.path.isdir(x)
 
 
@@ -139,7 +139,7 @@ def snakemake_dag_to_interface(
 
             jobs: List[snakemake.jobs.Job] = dag.file2jobs(desired)
             producer_out: snakemake.io._IOFile = next(x for x in jobs[0].output)
-            if is_dir(producer_out):
+            if _is_dir(producer_out):
                 outputs[param] = LatchDir
             else:
                 outputs[param] = LatchFile
@@ -161,7 +161,7 @@ def snakemake_dag_to_interface(
             if x not in dep_outputs:
                 param = variable_name_for_file(x)
 
-                if is_dir(x):
+                if _is_dir(x):
                     inputs[param] = (LatchDir, None)
                 else:
                     inputs[param] = (LatchFile, None)
@@ -209,7 +209,7 @@ def snakemake_dag_to_interface(
                                     format="",
                                     dimensionality=(
                                         BlobType.BlobDimensionality.SINGLE
-                                        if not is_dir(x)
+                                        if not _is_dir(x)
                                         else BlobType.BlobDimensionality.MULTIPART
                                     ),
                                 )
@@ -825,7 +825,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     param = variable_name_for_file(x)
                     target_file_for_output_param[param] = x
 
-                    if is_dir(x):
+                    if _is_dir(x):
                         python_outputs[param] = LatchDir
                     else:
                         python_outputs[param] = LatchFile
@@ -838,7 +838,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     param = variable_name_for_file(x)
                     target_file_for_output_param[param] = x
 
-                    if is_dir(x):
+                    if _is_dir(x):
                         python_outputs[param] = LatchDir
                     else:
                         python_outputs[param] = LatchFile
@@ -852,7 +852,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                             dep_outputs[o] = JobOutputInfo(
                                 jobid=dep.jobid,
                                 output_param_name=variable_name_for_file(o),
-                                type_=LatchDir if is_dir(o) else LatchFile,
+                                type_=LatchDir if _is_dir(o) else LatchFile,
                             )
 
                     for o in dep.log:
@@ -862,7 +862,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                             dep_outputs[o] = JobOutputInfo(
                                 jobid=dep.jobid,
                                 output_param_name=variable_name_for_file(o),
-                                type_=LatchDir if is_dir(o) else LatchFile,
+                                type_=LatchDir if _is_dir(o) else LatchFile,
                             )
 
                 python_inputs: Dict[str, Union[Type[LatchFile], Type[LatchDir]]] = {}
@@ -873,7 +873,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
                     dep_out = dep_outputs.get(x)
 
-                    if is_dir(x):
+                    if _is_dir(x):
                         python_inputs[param] = LatchDir
                     else:
                         python_inputs[param] = LatchFile
