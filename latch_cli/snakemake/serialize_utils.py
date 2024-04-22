@@ -217,9 +217,7 @@ def get_serializable_workflow(
 
 
 def update_mapping(cur: Path, stem: Path, remote: str, mapping: Dict[str, str]):
-    if cur.is_file():
-        mapping[str(stem)] = remote
-        return
-
-    for p in cur.iterdir():
-        update_mapping(p, stem / p.name, urljoins(remote, p.name), mapping)
+    if cur.is_dir():
+        for p in cur.iterdir():
+            update_mapping(p, stem / p.name, urljoins(remote, p.name), mapping)
+    mapping[str(stem)] = remote
