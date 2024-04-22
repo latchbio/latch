@@ -16,6 +16,14 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.41.1 - 2024-04-22
+
+### Fixed
+
+* Snakemake
+  + Add support for using directories as inputs to rules
+
+
 ## 2.41.0 - 2024-04-19
 
 ### Added
