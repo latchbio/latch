@@ -74,7 +74,7 @@ class NextflowBaseTask(PythonAutoContainerTask[Pod]):
         self.branches = branches
 
         self.cpu = cpu
-        self.memory = memory_gib
+        self.memory_gib = memory_gib
         self.storage_gib = storage_gib
 
         super().__init__(

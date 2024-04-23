@@ -240,7 +240,7 @@ class NextflowProcessTask(NextflowBaseTask):
 
             def allocate_memory({input_name}: {type_repr(input_t)}) -> int:
                 res = _read_resources()
-                return max(1, res['memory_bytes'] // 1024**3) if res.get('memory_bytes') is not None else {self.memory}
+                return max(1, res['memory_bytes'] // 1024**3) if res.get('memory_bytes') is not None else {self.memory_gib}
 
             def allocate_disk({input_name}: {type_repr(input_t)}) -> int:
                 res = _read_resources()
