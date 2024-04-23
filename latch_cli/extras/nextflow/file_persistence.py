@@ -2,7 +2,7 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Union, cast
+from typing import Dict, List, Optional, Set, Union
 from urllib.parse import urlparse
 
 import click
@@ -54,7 +54,9 @@ class PathData:
     remote: Optional[str] = None
 
 
-def _extract_paths(parameter: JSONValue, res: List[PathData]):
+def _extract_paths(
+    parameter: JSONValue, res: List[PathData], is_download: bool = False
+):
     if not isinstance(parameter, Dict):
         raise ValueError(f"malformed parameter: {parameter}")
 
@@ -77,7 +79,7 @@ def _extract_paths(parameter: JSONValue, res: List[PathData]):
             return
 
         res.append(PathData(parameter=parameter, local=local, remote=remote))
-    elif "string" in parameter:
+    elif "string" in parameter and is_download:
         v = parameter["string"]
         assert isinstance(v, str)
 
@@ -87,13 +89,13 @@ def _extract_paths(parameter: JSONValue, res: List[PathData]):
         parameter["path"] = v
         del parameter["string"]
 
-        _extract_paths(parameter, res)
+        _extract_paths(parameter, res, is_download)
     elif "list" in parameter:
         v = parameter["list"]
         assert isinstance(v, List)
 
         for x in v:
-            _extract_paths(x, res)
+            _extract_paths(x, res, is_download)
     elif "map" in parameter:
         v = parameter["map"]
         assert isinstance(v, List)
@@ -103,8 +105,8 @@ def _extract_paths(parameter: JSONValue, res: List[PathData]):
             if "key" not in x or "value" not in x:
                 raise ValueError(f"malformed map entry: {x}")
 
-            _extract_paths(x["key"], res)
-            _extract_paths(x["value"], res)
+            _extract_paths(x["key"], res, is_download)
+            _extract_paths(x["value"], res, is_download)
 
 
 def _get_execution_name() -> Optional[str]:
@@ -135,10 +137,10 @@ def download_files(
     path_data: List[PathData] = []
     for channel in channels:
         if type(channel) == dict and "value" in channel:
-            _extract_paths(channel["value"], path_data)
+            _extract_paths(channel["value"], path_data, is_download=True)
         elif type(channel) == list:
             for param in channel:
-                _extract_paths(param, path_data)
+                _extract_paths(param, path_data, is_download=True)
 
     remote = _get_remote(outdir)
 

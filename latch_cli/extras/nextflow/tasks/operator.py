@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Annotated, Dict, List, Mapping, Type, get_args, get_origin
+from typing import Dict, List, Mapping, Type
 
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
@@ -39,7 +39,7 @@ class NextflowOperatorTask(NextflowBaseTask):
             wf,
             NFTaskType.Operator,
             cpu=4,
-            memory=8,
+            memory_gib=8,
         )
 
     def get_fn_interface(self):

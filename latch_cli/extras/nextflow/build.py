@@ -183,7 +183,7 @@ def build_from_nextflow_dag(
                 execution_profile=execution_profile,
                 wf=wf,
                 cpu=vertex.cpu,
-                memory=vertex.memoryBytes,
+                memory_bytes=vertex.memoryBytes,
                 storage_gib=ephemeral_storage_gib,
             )
 

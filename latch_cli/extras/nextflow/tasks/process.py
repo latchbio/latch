@@ -27,9 +27,17 @@ class NextflowProcessTask(NextflowBaseTask):
         execution_profile: Optional[str],
         wf: NextflowWorkflow,
         cpu: Optional[int] = None,
-        memory: Optional[float] = None,
+        memory_bytes: Optional[int] = None,
         storage_gib: int = 500,
     ):
+        if cpu is None:
+            cpu = 4
+
+        if memory_bytes is None:
+            memory_gib = 16
+        else:
+            memory_gib = memory_bytes // (1024**3)
+
         super().__init__(
             inputs,
             outputs,
@@ -38,6 +46,9 @@ class NextflowProcessTask(NextflowBaseTask):
             {},
             wf,
             NFTaskType.Process,
+            cpu=cpu,
+            memory_gib=memory_gib,
+            storage_gib=storage_gib,
         )
 
         self.wf_inputs = {}
@@ -225,15 +236,15 @@ class NextflowProcessTask(NextflowBaseTask):
 
             def allocate_cpu({input_name}: {type_repr(input_t)}) -> int:
                 res = _read_resources()
-                return max(1, res['cpu_cores']) if res.get('cpu_cores') is not None else 16
+                return max(1, res['cpu_cores']) if res.get('cpu_cores') is not None else {self.cpu}
 
             def allocate_memory({input_name}: {type_repr(input_t)}) -> int:
                 res = _read_resources()
-                return max(1, res['memory_bytes'] // 1024**3) if res.get('memory_bytes') is not None else 48
+                return max(1, res['memory_bytes'] // 1024**3) if res.get('memory_bytes') is not None else {self.memory_gib}
 
             def allocate_disk({input_name}: {type_repr(input_t)}) -> int:
                 res = _read_resources()
-                return max(1, res['disk_bytes'] // 1024**3) if res.get('disk_bytes') is not None else 500
+                return max(1, res['disk_bytes'] // 1024**3) if res.get('disk_bytes') is not None else {self.storage_gib}
 
             def get_resources({input_name}: {type_repr(input_t)}):
         """)
@@ -251,37 +262,6 @@ class NextflowProcessTask(NextflowBaseTask):
             """)
 
         return code_block
-
-    def get_fn_return_stmt(self):
-        results: List[str] = []
-
-        res_type = list(self._python_outputs.values())[0]
-
-        if res_type is None:
-            return "    return None"
-
-        assert is_dataclass(res_type)
-
-        for field in fields(res_type):
-            results.append(
-                reindent(
-                    rf"""
-                    {field.name}=out_channels.get(f"{field.name}")
-                    """,
-                    2,
-                ).rstrip()
-            )
-
-        return_str = ",\n".join(results)
-
-        return reindent(
-            rf"""
-                    return {res_type.__name__}(
-                ||return|str||
-                    )
-            """,
-            0,
-        ).replace("||return|str||", return_str)
 
     def get_fn_return_stmt(self):
         results: List[str] = []
