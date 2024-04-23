@@ -48,7 +48,7 @@ class NextflowBaseTask(PythonAutoContainerTask[Pod]):
         nf_task_type: NFTaskType,
         # ayush: 0.5/1 is too small and stuff starts taking a while to run
         cpu: float = 1,
-        memory: float = 2,
+        memory_gib: float = 2,
         storage_gib: int = 500,
     ):
         self.id = id
@@ -73,13 +73,17 @@ class NextflowBaseTask(PythonAutoContainerTask[Pod]):
 
         self.branches = branches
 
+        self.cpu = cpu
+        self.memory = memory_gib
+        self.storage_gib = storage_gib
+
         super().__init__(
             task_type=SdkTaskType.SIDECAR_TASK,
             task_type_version=2,
             name=f"{name}_{id}",
             interface=interface,
             task_config=custom_task(
-                cpu=cpu, memory=memory, storage_gib=storage_gib
+                cpu=cpu, memory=memory_gib, storage_gib=storage_gib
             ).keywords["task_config"],
             task_resolver=NextflowBaseTaskResolver(),
         )
