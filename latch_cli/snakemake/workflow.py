@@ -1508,7 +1508,9 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
         if remote_output_url is None:
             remote_path = Path("/Snakemake Outputs") / self.wf.name / self.job.name
         else:
-            remote_path = Path(urlparse(remote_output_url).path)
+            remote_path = (
+                Path(urlparse(remote_output_url).path) / self.wf.jit_exec_display_name
+            )
 
         log_files = self.job.log if self.job.log is not None else []
         # for debugging purposes, we upload outputs to LData even if
