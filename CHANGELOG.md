@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.41.2 - 2024-04-23
+
+### Fixed
+
+* Snakemake
+  + Namespace Snakemake execution outputs by execution name
+
 ## 2.41.1 - 2024-04-22
 
 ### Fixed
