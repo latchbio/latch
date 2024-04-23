@@ -1365,7 +1365,11 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             elif remote_output_url is None:
                 remote_path = Path("/Snakemake Outputs") / self.wf.name / target_path
             else:
-                remote_path = Path(urlparse(remote_output_url).path) / target_path
+                remote_path = (
+                    Path(urlparse(remote_output_url).path)
+                    / self.wf.jit_exec_display_name
+                    / target_path
+                )
 
             results.append(
                 reindent(
