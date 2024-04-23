@@ -221,7 +221,11 @@ def _upload(local: Path, remote: str):
 
 
 # todo(ayush): use crc or something to avoid reuploading unchanged files
-def upload_files(channels: Dict[str, List[JSONValue]], outdir: LatchDir):
+def upload_files(
+    channels: Dict[str, List[JSONValue]],
+    outdir: LatchDir,
+    publish_dir: Optional[LatchDir] = None,
+):
     path_data: List[PathData] = []
     for channel in channels.values():
         if type(channel) == dict and "value" in channel:
@@ -254,7 +258,8 @@ def upload_files(channels: Dict[str, List[JSONValue]], outdir: LatchDir):
 
     for file in published_files:
         relative_path = Path(file).relative_to(Path.home())
-        local_to_remote[file] = urljoins(remote_parent, str(relative_path))
+        dir = publish_dir.remote_path if publish_dir is not None else remote_parent
+        local_to_remote[file] = urljoins(dir, str(relative_path))
 
     for local, remote in local_to_remote.items():
         _upload(local, remote)

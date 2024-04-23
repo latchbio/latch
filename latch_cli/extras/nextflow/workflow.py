@@ -15,7 +15,11 @@ from flytekit.core.workflow import (
 from flytekit.exceptions import scopes as exception_scopes
 
 from latch.types import metadata
-from latch_cli.extras.common.utils import is_blob_type, is_downloadable_blob_type
+from latch_cli.extras.common.utils import (
+    is_blob_type,
+    is_downloadable_blob_type,
+    is_output_dir,
+)
 
 from .dag import DAG
 
@@ -33,6 +37,9 @@ from .dag import DAG
 
 
 def _get_flags_to_params(key: str, t: Type, flags: Dict[str, str]):
+    if is_output_dir(t):
+        return
+
     if is_blob_type(t):
         flags[f"--{key}"] = f"wf_paths['wf_{key}']"
     elif is_dataclass(t):
@@ -86,6 +93,16 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
             for k, v in metadata._nextflow_metadata.parameters.items()
             if is_downloadable_blob_type(v.type)
         }
+
+        self.publish_dir_param = None
+        for k, v in metadata._nextflow_metadata.parameters.items():
+            if is_output_dir(v.type):
+                if self.publish_dir_param is not None:
+                    click.secho(
+                        "Only one LatchOutputDir parameter is allowed.", fg="red"
+                    )
+                    raise click.exceptions.Exit(1)
+                self.publish_dir_param = f"wf_{k}"
 
         name = metadata._nextflow_metadata.name
         assert name is not None

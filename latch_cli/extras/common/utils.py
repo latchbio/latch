@@ -50,6 +50,21 @@ def is_downloadable_blob_type(typ: Type):
     return True
 
 
+def is_output_dir(typ: Type) -> bool:
+    if typ is LatchOutputDir:
+        return True
+
+    origin = get_origin(typ)
+    if origin is Union:
+        return all([
+            is_output_dir(sub_typ)
+            for sub_typ in get_args(typ)
+            if sub_typ is not type(None)
+        ])
+
+    return False
+
+
 def type_repr(t: Type, *, add_namespace: bool = False) -> str:
     if get_origin(t) == Annotated:
         return type_repr(get_args(t)[0])

@@ -111,19 +111,6 @@ class NextflowProcessTask(NextflowBaseTask):
                     """,
                     0,
                 )
-            elif is_blob_type(typ):
-                code_block += reindent(
-                    f"""
-                    if {k} is not None:
-                        if not {pre_execute}:
-                            {k}_p = Path("/root/").resolve() # superhack
-                            wf_paths["{k}"] = {k}_p
-                        else:
-                            wf_paths["{k}"] = Path("/root") / "{k}"
-
-                    """,
-                    0,
-                )
             elif is_samplesheet_param(typ):
                 code_block += reindent(
                     f"""
@@ -333,7 +320,8 @@ class NextflowProcessTask(NextflowBaseTask):
 
             print(out_channels)
 
-            upload_files(out_channels, LatchDir({repr(self.wf.output_directory.remote_path)}))
+            publish_dir = {self.wf.publish_dir_param}
+            upload_files(out_channels, LatchDir({repr(self.wf.output_directory.remote_path)}), publish_dir)
 
             out_channels = {{k: json.dumps(v) for k, v in out_channels.items()}}
 
