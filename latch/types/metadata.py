@@ -4,7 +4,6 @@ from enum import Enum
 from pathlib import Path
 from textwrap import indent
 from typing import (
-    Annotated,
     Any,
     Callable,
     ClassVar,
@@ -22,7 +21,7 @@ from typing import (
 
 import click
 import yaml
-from typing_extensions import TypeAlias
+from typing_extensions import Annotated, TypeAlias
 
 from latch_cli.utils import identifier_suffix_from_str
 
