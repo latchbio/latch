@@ -15,6 +15,7 @@ from latch_sdk_config.user import user_config
 from scp import SCPClient
 
 from latch.utils import current_workspace, get_workspaces
+from latch_cli.click_utils import bold, color
 from latch_cli.services.workspace import workspace_tui
 
 from ...centromere.ctx import _CentromereCtx
@@ -333,6 +334,29 @@ def register(
             click.secho("\n`snakemake` package is not installed.", fg="red", bold=True)
             sys.exit(1)
 
+    workspaces = get_workspaces()
+    ws_name = next(
+        (
+            x[1]
+            for x in workspaces.items()
+            if x[0] == current_workspace()
+            or (current_workspace() == "" and x[1] == "Personal Workspace")
+        ),
+        "N/A",
+    )
+
+    if not skip_workspace_selection:
+        if click.confirm(
+            f"Workflow will be registered to {ws_name} ({current_workspace()})."
+            " Use a different workspace?"
+        ):
+            updated = workspace_tui()
+            if updated is None:
+                click.secho("Cancelled", bold=True)
+                return
+
+            user_config.update_workspace(**updated)
+
     with _CentromereCtx(
         Path(pkg_root),
         disable_auto_version=disable_auto_version,
@@ -350,34 +374,6 @@ def register(
             )
         )
         click.echo(" ".join([click.style("Version:", fg="bright_blue"), ctx.version]))
-
-        workspaces = get_workspaces()
-        ws_name = next(
-            (
-                x[1]
-                for x in workspaces.items()
-                if x[0] == current_workspace()
-                or (current_workspace() == "" and x[1] == "Personal Workspace")
-            ),
-            "N/A",
-        )
-
-        if not skip_workspace_selection:
-            if click.confirm(
-                f"Workflow will be registered to {ws_name} ({current_workspace()})."
-                " Use a different one?"
-            ):
-                updated = workspace_tui()
-                if updated is None:
-                    click.secho("Cancelled", bold=True)
-                    return
-
-                user_config.update_workspace(**updated)
-        else:
-            click.secho(
-                "Skipping workspace selection because of --skip-workspace-selection",
-                bold=True,
-            )
 
         click.echo(
             " ".join([
