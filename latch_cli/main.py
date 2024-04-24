@@ -388,6 +388,14 @@ def execute(
     help="Skip the confirmation dialog.",
 )
 @click.option(
+    "-w",
+    "--skip-workspace-selection",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Skip workspace selection.",
+)
+@click.option(
     "--open",
     "-o",
     is_flag=True,
@@ -419,6 +427,7 @@ def register(
     remote: bool,
     docker_progress: str,
     yes: bool,
+    skip_workspace_selection: bool,
     open: bool,
     snakefile: Optional[Path],
     cache_tasks: bool,
@@ -440,6 +449,7 @@ def register(
         disable_auto_version=disable_auto_version,
         remote=remote,
         skip_confirmation=yes,
+        skip_workspace_selection=skip_workspace_selection,
         open=open,
         snakefile=snakefile,
         progress_plain=(docker_progress == "auto" and not sys.stdout.isatty())

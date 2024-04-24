@@ -11,9 +11,11 @@ from typing import Iterable, List, Optional
 import click
 import gql
 import latch_sdk_gql.execute as l_gql
+from latch_sdk_config.user import user_config
 from scp import SCPClient
 
 from latch.utils import current_workspace, get_workspaces
+from latch_cli.services.workspace import workspace_tui
 
 from ...centromere.ctx import _CentromereCtx
 from ...centromere.utils import MaybeRemoteDir
@@ -273,6 +275,7 @@ def register(
     remote: bool = False,
     open: bool = False,
     skip_confirmation: bool = False,
+    skip_workspace_selection: bool = False,
     snakefile: Optional[Path] = None,
     progress_plain: bool = False,
     cache_tasks: bool = False,
@@ -358,6 +361,24 @@ def register(
             ),
             "N/A",
         )
+
+        if not skip_workspace_selection:
+            if click.confirm(
+                f"Workflow will be registered to {ws_name} ({current_workspace()})."
+                " Use a different one?"
+            ):
+                updated = workspace_tui()
+                if updated is None:
+                    click.secho("Cancelled", bold=True)
+                    return
+
+                user_config.update_workspace(**updated)
+        else:
+            click.secho(
+                "Skipping workspace selection because of --skip-workspace-selection",
+                bold=True,
+            )
+
         click.echo(
             " ".join([
                 click.style("Target workspace:", fg="bright_blue"),
