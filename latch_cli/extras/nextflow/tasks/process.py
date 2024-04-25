@@ -183,7 +183,7 @@ class NextflowProcessTask(NextflowBaseTask):
             channel_vals = [{','.join([f"json.loads(default.{x})" for x in self.channel_inputs])}]
 
             if not {pre_execute}:
-                download_files(channel_vals, LatchDir({repr(self.wf.output_directory.remote_path)}))
+                download_files(channel_vals, LatchDir({repr(self.wf.output_directory.raw_remote_path)}))
 
             try:
                 subprocess.run(
@@ -301,7 +301,7 @@ class NextflowProcessTask(NextflowBaseTask):
             print(out_channels)
 
             publish_dir = {self.wf.publish_dir_param}
-            upload_files(out_channels, LatchDir({repr(self.wf.output_directory.remote_path)}), publish_dir)
+            upload_files(out_channels, LatchDir({repr(self.wf.output_directory.raw_remote_path)}), publish_dir)
 
             out_channels = {{k: json.dumps(v) for k, v in out_channels.items()}}
 
