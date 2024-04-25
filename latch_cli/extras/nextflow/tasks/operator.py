@@ -191,8 +191,8 @@ class NextflowOperatorTask(NextflowBaseTask):
         upload_str = ""
         download_str = ""
         if do_file_io:
-            download_str = rf"""download_files(channel_vals, LatchDir({repr(self.wf.output_directory.remote_path)}))"""
-            upload_str = rf"""upload_files(out_channels, LatchDir({repr(self.wf.output_directory.remote_path)}))"""
+            download_str = rf"""download_files(channel_vals, LatchDir({repr(self.wf.output_directory.raw_remote_path)}))"""
+            upload_str = rf"""upload_files(out_channels, LatchDir({repr(self.wf.output_directory.raw_remote_path)}))"""
 
         if self.script_path.resolve() != self.wf.nf_script.resolve():
             stem = self.script_path.resolve().relative_to(self.wf.pkg_root.resolve())
