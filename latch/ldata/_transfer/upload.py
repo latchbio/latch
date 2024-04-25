@@ -75,6 +75,8 @@ def upload(
     dest_is_dir = dest_data.type in {
         LDataNodeType.account_root,
         LDataNodeType.mount,
+        LDataNodeType.mount_gcp,
+        LDataNodeType.mount_azure,
         LDataNodeType.dir,
     }
 
