@@ -129,9 +129,6 @@ class NextflowOperatorTask(NextflowBaseTask):
             "lib",
         ]
 
-        for flag, val in self.wf.flags_to_params.items():
-            run_task_entrypoint.extend([flag, str(val)])
-
         code_block += reindent(
             """
             wf_paths = {}
@@ -199,15 +196,24 @@ class NextflowOperatorTask(NextflowBaseTask):
             run_task_entrypoint[2] = str(Path("/root") / stem)
             run_task_entrypoint.extend(["-entry", self.calling_subwf_name])
 
+        flag_args = {}
+        for param in self.wf_inputs:
+            key = param[len("wf_") :]
+            flag_args[key] = param
+
         code_block += reindent(
             rf"""
+
+
                     channel_vals = [{", ".join([f"json.loads({x})" for x in self.channel_inputs])}]
 
                     {download_str}
 
+                    flags = get_flags(wf_paths, {", ".join([f"{k}={v}" for k, v in flag_args.items()])})
+
                     try:
                         subprocess.run(
-                            [{', '.join([f"str({x})" if x.startswith("wf_") else repr(x) for x in run_task_entrypoint])}],
+                            [{', '.join([repr(x) for x in run_task_entrypoint])}, *flags],
                             env={{
                                 **os.environ,
                                 "LATCH_CONFIG_DIR_OVERRIDE": str(Path.cwd()),

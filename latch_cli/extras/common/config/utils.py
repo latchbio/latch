@@ -1,4 +1,5 @@
 from dataclasses import fields, is_dataclass, make_dataclass
+from enum import Enum
 from typing import Any, Dict, List, Optional, Type, Union, get_args, get_origin
 
 from flytekit.core.annotation import FlyteAnnotation
@@ -219,6 +220,13 @@ def get_preamble(typ: Type, *, make_optionals: bool = False) -> str:
         return "".join(
             [get_preamble(t, make_optionals=make_optionals) for t in get_args(typ)]
         )
+
+    if issubclass(typ, Enum):
+        lines = [f"class {typ.__name__}(Enum):"]
+        for k, v in typ._member_map_.items():
+            lines.append(f"    {k} = {repr(v.value)}")
+
+        return "\n".join(lines) + "\n\n\n"
 
     assert is_dataclass(typ), typ
 

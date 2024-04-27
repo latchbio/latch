@@ -1,6 +1,7 @@
 from dataclasses import fields, is_dataclass
+from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Tuple, Type
+from typing import Any, Dict, List, Tuple, Type, TypeVar, Union, get_args, get_origin
 
 import click
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
@@ -15,6 +16,7 @@ from flytekit.core.workflow import (
 from flytekit.exceptions import scopes as exception_scopes
 
 from latch.types import metadata
+from latch.types.file import LatchFile
 from latch_cli.extras.common.utils import (
     is_blob_type,
     is_downloadable_blob_type,
@@ -23,30 +25,52 @@ from latch_cli.extras.common.utils import (
 
 from .dag import DAG
 
-# def _get_flattened_inputs(
-#     key: str, t: Type, val: Any, inputs: Dict[str, Tuple[Type, Any]]
-# ):
-#     if not is_dataclass(t):
-#         inputs[key] = (t, val)
-#         return
 
-#     for f in fields(t):
-#         v = val
-#         if val is not None:
-#             v = getattr()
+def get_flags(wf_paths: Dict[str, Path], **kwargs) -> List[str]:
+    assert metadata._nextflow_metadata is not None
+
+    flags = []
+    for key in kwargs.keys():
+        param = metadata._nextflow_metadata.parameters.get(key)
+        assert param is not None, f"Param {key} is not a workflow parameter"
+
+        t = param.type
+        if param.samplesheet:
+            t = LatchFile
+            wf_paths[f"wf_{key}"] = kwargs[key]
+
+        v = kwargs[key]
+
+        _add_flags(key, t, v, flags, wf_paths)
+
+    return flags
 
 
-def _get_flags_to_params(key: str, t: Type, flags: Dict[str, str]):
-    if is_output_dir(t):
+T = TypeVar("T")
+
+
+def _add_flags(key: str, t: Type[T], v: T, flags: List[str], wf_paths: Dict[str, Path]):
+    if v is None or is_output_dir(t):
         return
 
-    if is_blob_type(t):
-        flags[f"--{key}"] = f"wf_paths['wf_{key}']"
+    if get_origin(t) is Union:
+        for arg in get_args(t):
+            if isinstance(v, arg):
+                _add_flags(key, arg, v, flags, wf_paths)
+                return
+
+    if t is bool:
+        if v:
+            flags.append(f"--{key}")
+    elif is_blob_type(t):
+        flags.extend([f"--{key}", str(wf_paths[f"wf_{key}"])])
     elif is_dataclass(t):
         for f in fields(t):
-            _get_flags_to_params(f"{key}.{f.name}", f.type, flags)
+            _add_flags(f"{key}.{f.name}", f.type, getattr(v, f.name), flags, wf_paths)
+    elif issubclass(t, Enum):
+        flags.extend([f"--{key}", getattr(v, "value")])
     else:
-        flags[f"--{key}"] = f"wf_{key}"
+        flags.extend([f"--{key}", str(v)])
 
 
 class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
@@ -67,6 +91,7 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 "to your workflow metadata to populate this page.\nMore information",
                 "[here](https://wiki.latch.bio/docs/nextflow/quickstart).",
             )
+
         docstring = Docstring(
             f"{metadata._nextflow_metadata.display_name}\n\n{markdown_content}\n\n"
             + str(metadata._nextflow_metadata)
@@ -80,13 +105,6 @@ class NextflowWorkflow(WorkflowBase, ClassStorageTaskResolver):
             {},
             docstring=docstring,
         )
-
-        self.flattened_inputs = {}
-
-        self.flags_to_params = {}
-        for k, v in metadata._nextflow_metadata.parameters.items():
-            assert v.type is not None
-            _get_flags_to_params(k, v.type, self.flags_to_params)
 
         self.downloadable_params = {
             k

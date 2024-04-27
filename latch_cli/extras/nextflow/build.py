@@ -531,6 +531,7 @@ def generate_nf_entrypoint(
 
         from flytekit.extras.persistence import LatchPersistence
         from latch_cli.extras.nextflow.file_persistence import download_files, upload_files
+        from latch_cli.extras.nextflow.workflow import get_flags
         from latch_cli.extras.nextflow.channel import get_mapper_inputs, get_boolean_value, get_mapper_outputs
         from latch_cli.utils import check_exists_and_rename, get_parameter_json_value, urljoins
         from latch_cli.utils.workflow import _override_task_status
@@ -551,7 +552,7 @@ def generate_nf_entrypoint(
     if any([is_samplesheet_param(t) for t in wf.python_interface.inputs.values()]):
         preamble += reindent(
             r"""
-            from latch_metadata.parameters import  construct_samplesheet
+            from latch_metadata.parameters import construct_samplesheet
             """,
             0,
         )

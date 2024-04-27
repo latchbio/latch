@@ -97,9 +97,6 @@ class NextflowProcessTask(NextflowBaseTask):
         if self.execution_profile is not None:
             run_task_entrypoint.extend(["-profile", self.execution_profile])
 
-        for flag, val in self.wf.flags_to_params.items():
-            run_task_entrypoint.extend([flag, str(val)])
-
         for k, typ in self.wf_inputs.items():
             code_block += reindent(
                 f"""
@@ -177,6 +174,11 @@ class NextflowProcessTask(NextflowBaseTask):
                 0,
             )
 
+        flag_args = {}
+        for param in self.wf_inputs:
+            key = param[len("wf_") :]
+            flag_args[key] = param
+
         code_block += reindent(
             rf"""
 
@@ -185,9 +187,11 @@ class NextflowProcessTask(NextflowBaseTask):
             if not {pre_execute}:
                 download_files(channel_vals, LatchDir({repr(self.wf.output_directory.raw_remote_path)}))
 
+            flags = get_flags(wf_paths, {", ".join([f"{k}={v}" for k, v in flag_args.items()])})
+
             try:
                 subprocess.run(
-                    [{','.join([f"str({x})" if x.startswith("wf_") else repr(x) for x in run_task_entrypoint])}],
+                    [{','.join([repr(x) for x in run_task_entrypoint])}, *flags],
                     env={{
                         **os.environ,
                         "LATCH_BIN_DIR_OVERRIDE": str(Path.cwd() / "bin"),
