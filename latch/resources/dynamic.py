@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from textwrap import dedent
 from typing import Any, Callable, Dict, Union
 
 import click
@@ -107,9 +108,10 @@ class DynamicPythonFunctionTask(PodFunctionTask):
 
                 if name not in task_func_ann or task_func_ann[name] != typ:
                     click.secho(
-                        f"Invalid parameter for resource function {resource.__name__}."
-                        f" Param `{name}` does not exist in task function"
-                        f" {task_function.__name__}",
+                        dedent(f"""
+                        Invalid parameter for resource function `{resource.__name__}`
+                        Param `{name}` does not exist or has invalid type {typ}"
+                        """),
                         fg="red",
                     )
                     raise click.exceptions.Exit(1)
