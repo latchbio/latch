@@ -1,8 +1,8 @@
-import json
 import os
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Union
 
+import click
 import gql
 from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
@@ -100,17 +100,19 @@ class DynamicPythonFunctionTask(PodFunctionTask):
             if not callable(resource):
                 continue
 
-            resource_func_ann = resource.__annotations__
-            for name, typ in task_function.__annotations__.items():
+            task_func_ann = task_function.__annotations__
+            for name in resource.__annotations__:
                 if name == "return":
                     continue
 
-                if name not in resource_func_ann or resource_func_ann[name] != typ:
-                    raise ValueError(
-                        f"Resource function {resource.__name__} does not have the same"
-                        f" signature as task function {task_function.__name__}. Param"
-                        f" name or type do not match for parameter {name}"
+                if name not in task_func_ann:
+                    click.secho(
+                        f"Invalid parameter for resource function {resource.__name__}."
+                        f" Param `{name}` does not exist in task function"
+                        f" {task_function.__name__}",
+                        fg="red",
                     )
+                    raise click.exceptions.Exit(1)
 
         self._pre_task_function = _dynamic_resource_task(
             task_config.cpu, task_config.memory, task_config.storage
