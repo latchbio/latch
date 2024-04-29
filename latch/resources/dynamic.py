@@ -101,11 +101,11 @@ class DynamicPythonFunctionTask(PodFunctionTask):
                 continue
 
             task_func_ann = task_function.__annotations__
-            for name in resource.__annotations__:
+            for name, typ in resource.__annotations__.items():
                 if name == "return":
                     continue
 
-                if name not in task_func_ann:
+                if name not in task_func_ann or task_func_ann[name] != typ:
                     click.secho(
                         f"Invalid parameter for resource function {resource.__name__}."
                         f" Param `{name}` does not exist in task function"
