@@ -237,7 +237,7 @@ def upload_files(
             for param in channel:
                 _extract_paths(param, path_data)
 
-    remote_parent = _get_remote(outdir, publish_dir)
+    remote_parent = _get_remote(outdir)
 
     local_to_remote: Dict[Path, str] = {}
     for data in path_data:
@@ -250,6 +250,8 @@ def upload_files(
         local_to_remote[local] = remote
         data.parameter["remote"] = remote
 
+    publish_parent = _get_remote(outdir, publish_dir)
+
     published_files: List[str] = []
     try:
         with open(".latch/published.json", "r") as f:
@@ -261,7 +263,7 @@ def upload_files(
 
     for file in published_files:
         relative_path = Path(file).relative_to(Path.home())
-        local_to_remote[Path(file)] = urljoins(remote_parent, str(relative_path))
+        local_to_remote[Path(file)] = urljoins(publish_parent, str(relative_path))
 
     for local, remote in local_to_remote.items():
         _upload(local, remote)
