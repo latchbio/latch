@@ -36,11 +36,8 @@ lp = LatchPersistence()
 class PathNotFoundError(RuntimeError): ...
 
 
-def _get_remote(outdir: LatchDir, publish_dir: Optional[LatchDir] = None) -> str:
+def _get_remote(outdir: LatchDir) -> str:
     remote = outdir.remote_path
-    if publish_dir is not None:
-        remote = publish_dir.remote_path
-
     assert remote is not None
 
     exec_name = _get_execution_name()
@@ -250,7 +247,9 @@ def upload_files(
         local_to_remote[local] = remote
         data.parameter["remote"] = remote
 
-    publish_parent = _get_remote(outdir, publish_dir)
+    publish_parent = remote_parent
+    if publish_dir is not None:
+        publish_parent = _get_remote(publish_dir)
 
     published_files: List[str] = []
     try:
