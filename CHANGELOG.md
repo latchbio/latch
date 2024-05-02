@@ -16,6 +16,10 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.v2.42.0 - 2024-05-02
+
++ Adding support for GCP mount paths
+
 ## 2.41.3 - 2024-04-29
 
 ### Fixed
