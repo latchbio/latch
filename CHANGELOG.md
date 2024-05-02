@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.41.3 - 2024-04-29
+
+### Fixed
+
++ Allow the use of `**kwargs` in dynamic resource allocation functions
+
 ## 2.41.2 - 2024-04-23
 
 ### Fixed
