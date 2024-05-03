@@ -39,6 +39,8 @@ domain = re.compile(
             (shared\.\d+\.account) |
             (\d+\.account) |
             ([^/]+\.mount) |
+            ([^/]+\.mount_gcp) |
+            ([^/]+\.mount_azure) |
             (\d+\.node)
         )
         $

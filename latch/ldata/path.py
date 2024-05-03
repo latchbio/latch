@@ -36,6 +36,8 @@ _dir_types = {
     LDataNodeType.dir,
     LDataNodeType.account_root,
     LDataNodeType.mount,
+    LDataNodeType.mount_gcp,
+    LDataNodeType.mount_azure,
 }
 
 _download_idx = 0

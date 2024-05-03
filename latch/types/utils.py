@@ -24,8 +24,10 @@ def is_valid_url(raw_url: Union[str, Path]) -> bool:
 
 
 is_absolute_node_path = re.compile(r"^(latch)?://(?P<node_id>\d+).node(/)?$")
-old_style_path = re.compile(r"^(?:(?P<account_root>account_root)|(?P<mount>mount))")
 
+# note(aidan): not sure if anything creates these paths anymore.
+# I added support for gcp/azure just in case
+old_style_path = re.compile(r"^(?:(?P<account_root>account_root)|(?P<mount>mount)|(?P<mount_gcp>mount_gcp)|(?P<mount_azure>mount_azure))")
 
 def format_path(path: str) -> str:
     match = is_absolute_node_path.match(path)
@@ -58,6 +60,16 @@ def format_path(path: str) -> str:
         bucket = parts[1]
         key = "/".join(parts[2:])
         return f"latch://{bucket}.mount/{key}"
+
+    if match["mount_gcp"] is not None:
+        bucket = parts[1]
+        key = "/".join(parts[2:])
+        return f"latch://{bucket}.mount_gcp/{key}"
+
+    if match["mount_azure"] is not None:
+        bucket = parts[1]
+        key = "/".join(parts[2:])
+        return f"latch://{bucket}.mount_azure/{key}"
 
     owner: Optional[str] = data["ldataOwner"]
     if owner is None:
