@@ -206,7 +206,8 @@ def _get_nextflow_runtime_pod() -> Pod:
                 V1Volume(
                     name="nextflow-workdir",
                     persistent_volume_claim=V1PersistentVolumeClaimVolumeSource(
-                        claim_name="nf-wf-claim"
+                        # this value will be injected by flytepropeller
+                        claim_name="nextflow-pvc-placeholder"
                     ),
                 )
             ],
