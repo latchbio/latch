@@ -1,24 +1,22 @@
 from pathlib import Path
 from typing import Optional
 
+import click
+
 import latch.types.metadata as metadata
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
 from latch_cli.snakemake.config.utils import type_repr
 from latch_cli.snakemake.utils import reindent
 
-ENTRYPOINT_TEMPLATE = """
-import os
+ENTRYPOINT_TEMPLATE = """import os
 import subprocess
 import requests
 
 from latch.resources.workflow import workflow
 from latch.resources.tasks import nextflow_runtime_task, small_task
-
-try:
-    import latch_metadata.parameters as latch_metadata
-except ImportError:
-    import latch_metadata
+from latch.types.file import LatchFile
+from latch.types.directory import LatchDir, LatchOutputDir
 
 
 @small_task
@@ -66,6 +64,7 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
 def nextflow_workflow({param_signature_with_defaults}) -> None:
     pvc_name: str = initialize()
     nextflow_runtime(pvc_name=pvc_name, {param_args})
+
 """
 
 
@@ -135,7 +134,13 @@ def generate_nextflow_workflow(
         ),
     )
 
-    print(entrypoint)
+    with open(pkg_root / "wf" / "entrypoint.py", "w") as f:
+        f.write(entrypoint)
+
+    click.secho(
+        f"Nextflow workflow written to  {pkg_root / 'wf' / 'entrypoint.py'}",
+        fg="green",
+    )
 
     import sys
 
