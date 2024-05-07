@@ -1,5 +1,6 @@
+import re
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional, Tuple
 
 import click
 
@@ -12,6 +13,7 @@ from latch_cli.snakemake.utils import reindent
 ENTRYPOINT_TEMPLATE = """import os
 import subprocess
 import requests
+from pathlib import Path
 
 from latch.resources.workflow import workflow
 from latch.resources.tasks import nextflow_runtime_task, small_task
@@ -61,7 +63,7 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
 
 
 @workflow
-def nextflow_workflow({param_signature_with_defaults}) -> None:
+def {workflow_func_name}({param_signature_with_defaults}) -> None:
     pvc_name: str = initialize()
     nextflow_runtime(pvc_name=pvc_name, {param_args})
 
@@ -70,9 +72,9 @@ def nextflow_workflow({param_signature_with_defaults}) -> None:
 
 def generate_nextflow_workflow(
     pkg_root: Path,
+    workflow_name: str,
     nf_script: Path,
     *,
-    redownload_dependencies: bool = False,
     execution_profile: Optional[str] = None,
 ):
     assert metadata._nextflow_metadata is not None
@@ -91,7 +93,7 @@ def generate_nextflow_workflow(
         if param.type in {LatchFile, LatchDir}:
             download_str += reindent(
                 f"""
-                {param_name}_path = {param_name}.resolve()
+                {param_name}_path = Path({param_name}).resolve()
                 """,
                 1,
             )
@@ -108,22 +110,25 @@ def generate_nextflow_workflow(
                 """,
                 3,
             )
-    flags_str = flags_str[:-2]
+    flags_str = flags_str[:-1]
 
-    param_signature_with_defaults = []
-    param_signature = []
+    defaults: List[Tuple[str, str]] = []
+    no_defaults: List[str] = []
     for param_name, param in parameters.items():
         sig = f"{param_name}: {type_repr(param.type)}"
-        param_signature.append(sig)
-        if param.default is None:
-            param_signature_with_defaults.append(sig)
+        if param.default is not None:
+            defaults.append((sig, repr(param.default)))
         else:
-            param_signature_with_defaults.append(f"{sig} = {repr(param.default)}")
+            no_defaults.append(sig)
 
     entrypoint = ENTRYPOINT_TEMPLATE.format(
+        # source: https://stackoverflow.com/questions/3303312/how-do-i-convert-a-string-to-a-valid-variable-name-in-python
+        workflow_func_name=re.sub("\W|^(?=\d)", "_", workflow_name),
         script_dir=nf_script.resolve().relative_to(pkg_root.resolve()),
-        param_signature_with_defaults=", ".join(param_signature_with_defaults),
-        param_signature=", ".join(param_signature),
+        param_signature_with_defaults=", ".join(
+            no_defaults + [f"{p[0]} = {p[1]}" for p in defaults]
+        ),
+        param_signature=", ".join(no_defaults + [p[0] for p in defaults]),
         param_args=", ".join(
             f"{param_name}={param_name}" for param_name in parameters.keys()
         ),
@@ -141,7 +146,3 @@ def generate_nextflow_workflow(
         f"Nextflow workflow written to  {pkg_root / 'wf' / 'entrypoint.py'}",
         fg="green",
     )
-
-    import sys
-
-    sys.exit(0)

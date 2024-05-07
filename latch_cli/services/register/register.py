@@ -411,12 +411,16 @@ def register(
         elif ctx.workflow_type == WorkflowType.nextflow:
             assert ctx.nf_script is not None
 
+            from ...nextflow.dependencies import ensure_nf_dependencies
             from ...nextflow.workflow import generate_nextflow_workflow
 
+            ensure_nf_dependencies(
+                Path(pkg_root), force_redownload=nf_redownload_dependencies
+            )
             generate_nextflow_workflow(
                 ctx.pkg_root,
+                ctx.workflow_name,
                 ctx.nf_script,
-                redownload_dependencies=nf_redownload_dependencies,
                 execution_profile=nf_execution_profile,
             )
 
@@ -454,7 +458,6 @@ def register(
                 td,
                 dockerfile=ctx.default_container.dockerfile,
                 progress_plain=progress_plain,
-                cache_tasks=cache_tasks,
                 sm_jit_wf=sm_jit_wf,
             )
 
