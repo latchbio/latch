@@ -48,7 +48,7 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
     }}
     subprocess.run(
         [
-            "/root/.latch/nextflow",
+            "/root/.latch/bin/nextflow",
             "run",
             "{script_dir}",
             "-work-dir",
@@ -106,7 +106,7 @@ def generate_nextflow_workflow(
         else:
             flags_str += reindent(
                 f"""
-                {param_name},
+                str({param_name}),
                 """,
                 3,
             )
