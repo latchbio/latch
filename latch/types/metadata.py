@@ -3,11 +3,24 @@ from dataclasses import Field, asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
 from textwrap import indent
-from typing import Any, ClassVar, Dict, List, Optional, Protocol, Tuple, Type, Union
+from typing import (
+    Any,
+    ClassVar,
+    Collection,
+    Dict,
+    Generic,
+    List,
+    Optional,
+    Protocol,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import click
 import yaml
-from typing_extensions import TypeAlias
+from typing_extensions import Annotated, TypeAlias
 
 from latch_cli.snakemake.config.utils import validate_snakemake_type
 from latch_cli.utils import identifier_suffix_from_str
@@ -16,7 +29,6 @@ from .directory import LatchDir
 from .file import LatchFile
 
 
-@dataclass
 class LatchRule:
     """Class describing a rule that a parameter input must follow"""
 
@@ -388,31 +400,33 @@ class _IsDataclass(Protocol):
 
 
 ParameterType: TypeAlias = Union[
-    Type[None],
-    Type[int],
-    Type[float],
-    Type[str],
-    Type[bool],
-    Type[Enum],
-    Type[_IsDataclass],
-    Type[List["ParameterType"]],
-    Type[LatchFile],
-    Type[LatchDir],
+    None,
+    int,
+    float,
+    str,
+    bool,
+    LatchFile,
+    LatchDir,
+    Enum,
+    _IsDataclass,
+    Collection["ParameterType"],
 ]
 
 
+T = TypeVar("T", bound=ParameterType)
+
+
 @dataclass
-class SnakemakeParameter(LatchParameter):
-    type: Optional[ParameterType] = None
+class SnakemakeParameter(Generic[T], LatchParameter):
+    type: Optional[Type[T]] = None
     """
     The python type of the parameter.
     """
-    # todo(ayush): needs to be typed properly
-    default: Optional[Any] = None
+    default: Optional[T] = None
 
 
 @dataclass
-class SnakemakeFileParameter(SnakemakeParameter):
+class SnakemakeFileParameter(SnakemakeParameter[Union[LatchFile, LatchDir]]):
     """
     Deprecated: use `file_metadata` keyword in `SnakemakeMetadata` instead
     """
@@ -454,6 +468,19 @@ class SnakemakeFileMetadata:
     """
     If `True`, download the file in the JIT step
     """
+
+
+@dataclass
+class NextflowParameter(Generic[T], LatchParameter):
+    type: Optional[Type[T]] = None
+    """
+    The python type of the parameter.
+    """
+    default: Optional[T] = None
+
+    def __post_init__(self):
+        if self.samplesheet is True:
+            self.type = Annotated[self.type, "samplesheet"]
 
 
 @dataclass
@@ -651,3 +678,21 @@ class SnakemakeMetadata(LatchMetadata):
 
 
 _snakemake_metadata: Optional[SnakemakeMetadata] = None
+
+
+@dataclass
+class NextflowMetadata(LatchMetadata):
+    name: Optional[str] = None
+    parameters: Dict[str, NextflowParameter] = field(default_factory=dict)
+
+    def __post_init__(self):
+        if self.name is None:
+            self.name = f"nf_{identifier_suffix_from_str(self.display_name.lower())}"
+        else:
+            self.name = identifier_suffix_from_str(self.name)
+
+        global _nextflow_metadata
+        _nextflow_metadata = self
+
+
+_nextflow_metadata: Optional[NextflowMetadata] = None

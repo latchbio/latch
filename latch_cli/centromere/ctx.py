@@ -59,6 +59,7 @@ class _CentromereCtx:
     default_container: _Container
     workflow_type: WorkflowType
     snakefile: Optional[Path]
+    nf_script: Optional[Path]
 
     latch_register_api_url = config.api.workflow.register
     latch_image_api_url = config.api.workflow.upload_image
@@ -80,6 +81,7 @@ class _CentromereCtx:
         disable_auto_version: bool = False,
         remote: bool = False,
         snakefile: Optional[Path] = None,
+        nf_script: Optional[Path] = None,
         use_new_centromere: bool = False,
     ):
         self.use_new_centromere = use_new_centromere
@@ -93,13 +95,22 @@ class _CentromereCtx:
             self.dkr_repo = config.dkr_repo
             self.pkg_root = pkg_root.resolve()
 
-            if snakefile is None:
-                self.workflow_type = WorkflowType.latchbiosdk
-            else:
+            if snakefile and nf_script:
+                raise ValueError(
+                    "Cannot provide both a snakefile and nextflow script to the"
+                    " register command."
+                )
+            if snakefile is not None:
                 self.workflow_type = WorkflowType.snakemake
                 self.snakefile = snakefile
+            elif nf_script is not None:
+                self.workflow_type = WorkflowType.nextflow
+                self.nf_script = nf_script
+            else:
+                self.workflow_type = WorkflowType.latchbiosdk
 
             self.container_map: Dict[str, _Container] = {}
+
             if self.workflow_type == WorkflowType.latchbiosdk:
                 _import_flyte_objects([self.pkg_root])
                 for entity in FlyteEntities.entities:
@@ -126,7 +137,7 @@ class _CentromereCtx:
                         fg="red",
                     )
                     raise click.exceptions.Exit(1)
-            else:
+            elif self.workflow_type == WorkflowType.snakemake:
                 assert snakefile is not None
 
                 import latch.types.metadata as metadata
@@ -231,6 +242,32 @@ class _CentromereCtx:
                 # todo(kenny): support per container task and custom workflow
                 # name for snakemake
                 self.workflow_name = f"{metadata._snakemake_metadata.name}_jit_register"
+            else:
+                assert nf_script is not None
+
+                import latch.types.metadata as metadata
+
+                from ..services.register.utils import import_module_by_path
+
+                meta = pkg_root / "wf" / "__init__.py"
+                if meta.exists():
+                    click.echo(f"Using metadata file {click.style(meta, italic=True)}")
+                    import_module_by_path(meta)
+
+                if metadata._nextflow_metadata is None:
+                    click.secho(
+                        dedent("""
+                        Failed to register Nextflow workflow.
+                        Make sure the project root contains a `wf/__init__.py`
+                        with a `NextflowMetadata` object defined.
+                        """),
+                        fg="red",
+                    )
+                    raise click.exceptions.Exit(1)
+
+                self.workflow_name = metadata._nextflow_metadata.name
+
+            assert self.workflow_name is not None
 
             version_file = self.pkg_root / "version"
             try:
