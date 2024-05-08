@@ -396,7 +396,7 @@ class _CentromereCtx:
             username = resp["username"]
         except KeyError as e:
             raise ValueError(
-                f"Malformed response from request for access token {resp}"
+                f"Malformed response from request to provision centromere {resp}"
             ) from e
 
         return public_ip, username
@@ -456,7 +456,7 @@ class _CentromereCtx:
             return resp["image_name"]
         except KeyError as e:
             raise ValueError(
-                f"Malformed response from request for access token {resp}"
+                f"Malformed response from request for image url {resp}"
             ) from e
 
     def nucleus_check_version(self, version: str, workflow_name: str) -> bool:
@@ -483,7 +483,7 @@ class _CentromereCtx:
             return resp["exists"]
         except KeyError as e:
             raise ValueError(
-                f"Malformed response from request for access token {resp}"
+                f"Malformed response from request for version check {resp}"
             ) from e
 
     def __enter__(self):

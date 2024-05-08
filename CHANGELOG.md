@@ -16,7 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.v2.42.0 - 2024-05-02
+## 2.42.1 - 2024-05-08
+
++ Fix bug where latch workspace does not display selected workspace when authenticated with workspace token
++ Fix bug with workspace id determination failing when authenticated with workspace token
+
+## 2.42.0 - 2024-05-02
 
 + Adding support for GCP mount paths
 

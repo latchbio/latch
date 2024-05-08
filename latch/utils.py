@@ -50,10 +50,14 @@ def get_workspaces() -> Dict[str, str]:
     res = execute(
         gql.gql("""
         query GetUserDefaultWorkspace($accountId: BigInt!) {
+            teamInfoByAccountId(accountId: $accountId) {
+                accountId
+                displayName
+            }
             teamInfos(filter: {owner: {accountId: {equalTo: $accountId}}}) {
                 nodes {
-                    displayName
                     accountId
+                    displayName
                 }
             }
             teamMembers(filter: {user: {accountId: {equalTo: $accountId}}}) {
@@ -71,8 +75,10 @@ def get_workspaces() -> Dict[str, str]:
     owned_teams = res["teamInfos"]["nodes"]
     member_teams = [x["team"] for x in res["teamMembers"]["nodes"]]
 
-    teams = {x["accountId"]: x["displayName"] for x in owned_teams + member_teams}
-    teams[account_id] = "Personal Workspace"
+    teams = {x["accountId"]: x["displayName"] for x in owned_teams + member_teams + ([res["teamInfoByAccountId"]] if res["teamInfoByAccountId"] is not None else [])}
+
+    if account_id not in teams:
+        teams[account_id] = "Personal Workspace"
 
     return teams
 
@@ -101,7 +107,7 @@ def current_workspace() -> str:
         default_ws = res["id"]
 
         is_local = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID") is None
-        if is_local:
+        if is_local and res["user"] is not None:
             default_ws = res["user"]["defaultAccount"]
 
         if default_ws is not None:
