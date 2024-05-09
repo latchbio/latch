@@ -18,8 +18,11 @@ Types of changes
 
 ## 2.42.1 - 2024-05-08
 
-+ Fix bug where latch workspace does not display selected workspace when authenticated with workspace token
-+ Fix bug with workspace id determination failing when authenticated with workspace token
+### Fixed
+
++ Workflow identifier should be immutable per `latch init`
++ Latch workspace does not display selected workspace when authenticated with workspace token
++ Workspace id determination failing when authenticated with workspace token
 
 ## 2.42.0 - 2024-05-02
 

@@ -4,6 +4,7 @@ from textwrap import dedent
 from typing import Callable, Dict, Union, get_args, get_origin
 
 import click
+import os
 from flytekit import workflow as _workflow
 from flytekit.core.workflow import PythonFunctionWorkflow
 
@@ -98,6 +99,11 @@ def workflow(
                 raise click.exceptions.Exit(1)
 
         _inject_metadata(f, metadata)
-        return _workflow(f)
+
+        wf_name_override = os.environ.get("LATCH_WF_NAME_OVERRIDE")
+        if wf_name_override is not None and wf_name_override.strip() == "":
+            wf_name_override = None
+
+        return _workflow(f, wf_name_override=wf_name_override)
 
     return decorator

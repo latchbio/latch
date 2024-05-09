@@ -24,7 +24,7 @@ from latch_cli.centromere.utils import (
     _construct_ssh_client,
     _import_flyte_objects,
 )
-from latch_cli.constants import docker_image_name_illegal_pat
+from latch_cli.constants import docker_image_name_illegal_pat, latch_constants
 from latch_cli.docker_utils import get_default_dockerfile
 from latch_cli.utils import (
     WorkflowType,
@@ -126,6 +126,10 @@ class _CentromereCtx:
                         fg="red",
                     )
                     raise click.exceptions.Exit(1)
+
+                name_path = pkg_root / latch_constants.pkg_workflow_name
+                if name_path.exists():
+                    self.workflow_name = name_path.read_text().strip()
             else:
                 assert snakefile is not None
 

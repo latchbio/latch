@@ -15,6 +15,7 @@ from scp import SCPClient
 
 from latch.utils import current_workspace, get_workspaces
 
+from ...constants import latch_constants
 from ...centromere.ctx import _CentromereCtx
 from ...centromere.utils import MaybeRemoteDir
 from ...utils import WorkflowType
@@ -225,6 +226,12 @@ def _build_and_serialize(
         image_build_logs, image_name, ctx.pkg_root, progress_plain=progress_plain
     )
 
+    # need to use
+    # from flytekit.models.admin import workflow as admin_workflow_models
+    # WorkflowSpec
+    # we can use from_flyte_idl to read it in and then patch with the proper target workflow
+    # probably have to do the same for launchplans
+
     if ctx.workflow_type == WorkflowType.snakemake:
         assert jit_wf is not None
         assert ctx.dkr_repo is not None
@@ -234,7 +241,7 @@ def _build_and_serialize(
         serialize_jit_register_workflow(jit_wf, tmp_dir, image_name, ctx.dkr_repo)
     else:
         serialize_logs, container_id = serialize_pkg_in_container(
-            ctx, image_name, tmp_dir
+            ctx, image_name, tmp_dir, ctx.workflow_name
         )
         print_serialize_logs(serialize_logs, image_name)
 
@@ -428,6 +435,7 @@ def register(
                 local_td = Path(td)
 
             protos = _recursive_list(local_td)
+            print(protos)
 
             for task_name, container in ctx.container_map.items():
                 task_td = stack.enter_context(MaybeRemoteDir(ctx.ssh_client))
@@ -478,7 +486,7 @@ def register(
                         "The path to your provided dockerfile ",
                         f"{container.dockerfile} given to {task_name} is invalid.",
                     ) from e
-
+            print(protos)
             reg_resp = register_serialized_pkg(
                 protos, ctx.token, ctx.version, current_workspace()
             )
@@ -490,6 +498,11 @@ def register(
             retries = 0
 
             wf_name = ctx.workflow_name
+
+            name_path = Path(pkg_root) / latch_constants.pkg_workflow_name
+            if not name_path.exists():
+                name_path.write_text(ctx.workflow_name)
+
             while len(wf_infos) == 0:
                 wf_infos = l_gql.execute(
                     gql.gql("""
