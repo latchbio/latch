@@ -13,6 +13,7 @@ from latch_cli.snakemake.utils import reindent
 ENTRYPOINT_TEMPLATE = """import os
 import subprocess
 import requests
+import shutil
 from pathlib import Path
 
 from latch.resources.workflow import workflow
@@ -34,32 +35,46 @@ def initialize() -> str:
         headers=headers,
     )
     resp.raise_for_status()
-    print("Done.")
     return resp.json()["name"]
 
 
 @nextflow_runtime_task
 def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
 {file_downloads}
+    workdir = Path("/nf-workdir")
+
+    bin_dir = Path("/root/bin")
+    shared_bin_dir = workdir / "bin"
+    if bin_dir.exists():
+        print("Copying module binaries...")
+        shutil.copytree(bin_dir, shared_bin_dir)
+
     env = {{
         **os.environ,
         "NXF_HOME": "/root/.nextflow",
         "K8_STORAGE_CLAIM_NAME": pvc_name,
+        "LATCH_SHARED_BIN_DIR": str(shared_bin_dir),
     }}
-    subprocess.run(
-        [
-            "/root/.latch/bin/nextflow",
-            "run",
-            "{script_dir}",
-            "-work-dir",
-            "/nf-workdir",
-            "-profile",
-            "{execution_profile}",
+    try:
+        subprocess.run(
+            [
+                "/root/.latch/bin/nextflow",
+                "run",
+                "{script_dir}",
+                "-work-dir",
+                str(workdir),
+                "-profile",
+                "{execution_profile}",
 {params_to_flags}
-        ],
-        env=env,
-        check=True,
-    )
+            ],
+            env=env,
+            check=True,
+        )
+    except subprocess.CalledProcessError:
+        log = Path("/root/.nextflow.log").read_text()
+        print()
+        print(log)
+        raise
 
 
 @workflow
@@ -88,7 +103,7 @@ def generate_nextflow_workflow(
             f"""
             "--{param_name}",
             """,
-            3,
+            4,
         )
         if param.type in {LatchFile, LatchDir}:
             download_str += reindent(
@@ -101,14 +116,14 @@ def generate_nextflow_workflow(
                 f"""
                 {param_name}_path,
                 """,
-                3,
+                4,
             )
         else:
             flags_str += reindent(
                 f"""
                 str({param_name}),
                 """,
-                3,
+                4,
             )
     flags_str = flags_str[:-1]
 
