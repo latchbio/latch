@@ -16,7 +16,15 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.v2.42.0 - 2024-05-02
+## 2.42.1 - 2024-05-08
+
+### Fixed
+
++ Workflow identifier should be immutable per `latch init`
++ Latch workspace does not display selected workspace when authenticated with workspace token
++ Workspace id determination failing when authenticated with workspace token
+
+## 2.42.0 - 2024-05-02
 
 + Adding support for GCP mount paths
 

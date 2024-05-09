@@ -35,6 +35,7 @@ class LatchConstants:
 
     pkg_name: str = "latch"
     pkg_config: str = ".latch/config"
+    pkg_workflow_name: str = ".latch/workflow_name"
 
     # todo(aidan): make this aware of the current working directory so that we do not remove useful context
     ignore_regex = re.compile(
