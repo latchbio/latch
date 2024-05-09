@@ -226,12 +226,6 @@ def _build_and_serialize(
         image_build_logs, image_name, ctx.pkg_root, progress_plain=progress_plain
     )
 
-    # need to use
-    # from flytekit.models.admin import workflow as admin_workflow_models
-    # WorkflowSpec
-    # we can use from_flyte_idl to read it in and then patch with the proper target workflow
-    # probably have to do the same for launchplans
-
     if ctx.workflow_type == WorkflowType.snakemake:
         assert jit_wf is not None
         assert ctx.dkr_repo is not None
@@ -435,7 +429,6 @@ def register(
                 local_td = Path(td)
 
             protos = _recursive_list(local_td)
-            print(protos)
 
             for task_name, container in ctx.container_map.items():
                 task_td = stack.enter_context(MaybeRemoteDir(ctx.ssh_client))
@@ -486,7 +479,7 @@ def register(
                         "The path to your provided dockerfile ",
                         f"{container.dockerfile} given to {task_name} is invalid.",
                     ) from e
-            print(protos)
+
             reg_resp = register_serialized_pkg(
                 protos, ctx.token, ctx.version, current_workspace()
             )

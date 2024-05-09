@@ -100,6 +100,7 @@ def workflow(
 
         _inject_metadata(f, metadata)
 
+        # note(aidan): used for only serialize_in_container
         wf_name_override = os.environ.get("LATCH_WF_NAME_OVERRIDE")
         if wf_name_override is not None and wf_name_override.strip() == "":
             wf_name_override = None
