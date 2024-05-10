@@ -2,7 +2,7 @@ import re
 from dataclasses import fields, is_dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, List, Optional, Tuple, Type, TypeVar
+from typing import Any, List, Optional, Tuple
 
 import click
 
@@ -16,6 +16,7 @@ from latch_cli.utils import identifier_from_str
 template = """\
 from dataclasses import dataclass
 from enum import Enum
+import time
 import os
 import subprocess
 import requests
@@ -56,28 +57,31 @@ def initialize() -> str:
 
 @nextflow_runtime_task
 def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
-    workdir = Path("/nf-workdir")
+    shared_dir = Path("/nf-workdir")
 
-    bin_dir = Path("/root/bin")
-    shared_bin_dir = workdir / "bin"
-    if bin_dir.exists():
-        print("Copying module binaries...")
-        shutil.copytree(bin_dir, shared_bin_dir)
+    print("Copying /root to shared directory...")
+    start = time.time()
+    shutil.copytree(
+        Path("/root"),
+        shared_dir,
+        ignore=lambda src, names: ["latch", ".latch"],
+        dirs_exist_ok=True,
+    )
+    print(f"Finished copying in {{int(time.time() - start)}} seconds")
 
     env = {{
         **os.environ,
         "NXF_HOME": "/root/.nextflow",
         "K8_STORAGE_CLAIM_NAME": pvc_name,
-        "LATCH_SHARED_BIN_DIR": str(shared_bin_dir),
     }}
     try:
         subprocess.run(
             [
                 "/root/.latch/bin/nextflow",
                 "run",
-                "{script_dir}",
+                str(shared_dir / "{nf_script}"),
                 "-work-dir",
-                str(workdir),
+                str(shared_dir),
                 "-profile",
                 "{execution_profile}",
 {params_to_flags}
@@ -162,7 +166,7 @@ def generate_nextflow_workflow(
 
     entrypoint = template.format(
         workflow_func_name=identifier_from_str(workflow_name),
-        script_dir=nf_script.resolve().relative_to(pkg_root.resolve()),
+        nf_script=nf_script.resolve().relative_to(pkg_root.resolve()),
         param_signature_with_defaults=", ".join(
             no_defaults + [f"{name}={val}" for name, val in defaults]
         ),

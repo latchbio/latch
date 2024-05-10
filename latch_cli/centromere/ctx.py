@@ -258,7 +258,7 @@ class _CentromereCtx:
                     click.secho(
                         dedent("""
                         Failed to register Nextflow workflow.
-                        Make sure the project root contains a `wf/__init__.py`
+                        Make sure the project root contains a `latch_metadata/__init__.py`
                         with a `NextflowMetadata` object defined.
                         """),
                         fg="red",
