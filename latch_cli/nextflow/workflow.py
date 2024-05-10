@@ -19,6 +19,7 @@ from enum import Enum
 import os
 import subprocess
 import requests
+import shutil
 from pathlib import Path
 import typing
 import typing_extensions
@@ -47,7 +48,6 @@ def initialize() -> str:
         headers=headers,
     )
     resp.raise_for_status()
-    print("Done.")
     return resp.json()["name"]
 
 
@@ -56,25 +56,40 @@ def initialize() -> str:
 
 @nextflow_runtime_task
 def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
+    workdir = Path("/nf-workdir")
+
+    bin_dir = Path("/root/bin")
+    shared_bin_dir = workdir / "bin"
+    if bin_dir.exists():
+        print("Copying module binaries...")
+        shutil.copytree(bin_dir, shared_bin_dir)
+
     env = {{
         **os.environ,
         "NXF_HOME": "/root/.nextflow",
         "K8_STORAGE_CLAIM_NAME": pvc_name,
+        "LATCH_SHARED_BIN_DIR": str(shared_bin_dir),
     }}
-    subprocess.run(
-        [
-            "/root/.latch/bin/nextflow",
-            "run",
-            "{script_dir}",
-            "-work-dir",
-            "/nf-workdir",
-            "-profile",
-            "{execution_profile}",
+    try:
+        subprocess.run(
+            [
+                "/root/.latch/bin/nextflow",
+                "run",
+                "{script_dir}",
+                "-work-dir",
+                str(workdir),
+                "-profile",
+                "{execution_profile}",
 {params_to_flags}
-        ],
-        env=env,
-        check=True,
-    )
+            ],
+            env=env,
+            check=True,
+        )
+    except subprocess.CalledProcessError:
+        log = Path("/root/.nextflow.log").read_text()
+        print()
+        print(log)
+        raise
 
 
 @workflow(metadata._nextflow_metadata)
