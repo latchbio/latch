@@ -3,13 +3,8 @@ from typing import List, TypedDict
 import click
 from latch_sdk_config.user import user_config
 
-from latch.utils import current_workspace, get_workspaces
+from latch.utils import current_workspace, get_workspaces, WSInfo
 from latch_cli.menus import SelectOption, select_tui
-
-
-class WSInfo(TypedDict):
-    workspace_id: str
-    name: str
 
 
 def workspace():
@@ -25,20 +20,13 @@ def workspace():
     selected_marker = "\x1b[3m\x1b[2m (currently selected) \x1b[22m\x1b[23m"
 
     options: List[SelectOption[WSInfo]] = []
-    for id, name in sorted(
-        data.items(), key=lambda x: "" if x[1] == "Personal Workspace" else x[0]
+    for _, info in sorted(
+        data.items(), key=lambda x: "" if x[1]["default"] else x[1]["name"]
     ):
-        display_name = name
-        if id == old_id:
-            display_name = f"{name}{selected_marker}"
-
         options.append(
             {
-                "display_name": display_name,
-                "value": {
-                    "workspace_id": id,
-                    "name": name,
-                },
+                "display_name": info["name"] if old_id != info["workspace_id"] else info["name"] + selected_marker,
+                "value": info,
             }
         )
 
@@ -51,7 +39,7 @@ def workspace():
     if selected_option is None:
         return
 
-    user_config.update_workspace(**selected_option)
+    user_config.update_workspace(selected_option["workspace_id"], selected_option["name"])
 
     if old_id != selected_option["workspace_id"]:
         click.secho(

@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.42.X - 2024-05-YZ
+
+### Fixed
+
++ Accomodates the migration of personal workspaces to team workspaces.
+
 ## 2.42.1 - 2024-05-08
 
 ### Fixed

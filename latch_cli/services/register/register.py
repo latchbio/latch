@@ -352,10 +352,9 @@ def register(
         workspaces = get_workspaces()
         ws_name = next(
             (
-                x[1]
+                x[1]["name"]
                 for x in workspaces.items()
                 if x[0] == current_workspace()
-                or (current_workspace() == "" and x[1] == "Personal Workspace")
             ),
             "N/A",
         )
