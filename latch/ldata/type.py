@@ -1,8 +1,14 @@
 from enum import Enum
+from typing import Optional
 
 
 class LatchPathError(RuntimeError):
-    def __init__(self, message: str, remote_path: str = None, acc_id: str = None):
+    def __init__(
+        self,
+        message: str,
+        remote_path: Optional[str] = None,
+        acc_id: Optional[str] = None,
+    ):
         super().__init__(message)
         self.message = message
         self.remote_path = remote_path

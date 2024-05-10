@@ -249,7 +249,7 @@ class _CentromereCtx:
 
                 from ..services.register.utils import import_module_by_path
 
-                meta = pkg_root / "wf" / "__init__.py"
+                meta = pkg_root / "latch_metadata" / "__init__.py"
                 if meta.exists():
                     click.echo(f"Using metadata file {click.style(meta, italic=True)}")
                     import_module_by_path(meta)
