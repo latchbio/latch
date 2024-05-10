@@ -16,7 +16,6 @@ from latch_cli.utils import identifier_from_str
 template = """\
 from dataclasses import dataclass
 from enum import Enum
-import time
 import os
 import subprocess
 import requests
@@ -59,15 +58,12 @@ def initialize() -> str:
 def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
     shared_dir = Path("/nf-workdir")
 
-    print("Copying /root to shared directory...")
-    start = time.time()
     shutil.copytree(
         Path("/root"),
         shared_dir,
         ignore=lambda src, names: ["latch", ".latch"],
         dirs_exist_ok=True,
     )
-    print(f"Finished copying in {{int(time.time() - start)}} seconds")
 
     env = {{
         **os.environ,
