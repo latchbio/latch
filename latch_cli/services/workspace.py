@@ -1,4 +1,4 @@
-from typing import List, TypedDict
+from typing import List, Optional, TypedDict
 
 import click
 from latch_sdk_config.user import user_config
@@ -12,12 +12,7 @@ class WSInfo(TypedDict):
     name: str
 
 
-def workspace():
-    """Opens a terminal user interface in which a user can select the workspace
-    the want to switch to.
-
-    Like `get_executions`, this function should only be called from the CLI.
-    """
+def workspace_tui() -> Optional[WSInfo]:
     data = get_workspaces()
 
     old_id = current_workspace()
@@ -32,22 +27,30 @@ def workspace():
         if id == old_id:
             display_name = f"{name}{selected_marker}"
 
-        options.append(
-            {
-                "display_name": display_name,
-                "value": {
-                    "workspace_id": id,
-                    "name": name,
-                },
-            }
-        )
+        options.append({
+            "display_name": display_name,
+            "value": {
+                "workspace_id": id,
+                "name": name,
+            },
+        })
 
-    selected_option = select_tui(
+    return select_tui(
         title="Select Workspace",
         options=options,
         clear_terminal=False,
     )
 
+
+def workspace():
+    """Opens a terminal user interface in which a user can select the workspace
+    the want to switch to.
+
+    Like `get_executions`, this function should only be called from the CLI.
+    """
+    old_id = current_workspace()
+
+    selected_option = workspace_tui()
     if selected_option is None:
         return
 
