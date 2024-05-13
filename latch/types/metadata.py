@@ -685,9 +685,6 @@ class NextflowMetadata(LatchMetadata):
     name: Optional[str] = None
     """The name of the workflow"""
 
-    docker_metadata: Dict[str, DockerMetadata]
-    """Mapping of registry name -> credentials"""
-
     parameters: Dict[str, NextflowParameter] = field(default_factory=dict)
 
     def __post_init__(self):
