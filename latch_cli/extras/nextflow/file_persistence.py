@@ -247,6 +247,10 @@ def upload_files(
         local_to_remote[local] = remote
         data.parameter["remote"] = remote
 
+    publish_parent = remote_parent
+    if publish_dir is not None:
+        publish_parent = _get_remote(publish_dir)
+
     published_files: List[str] = []
     try:
         with open(".latch/published.json", "r") as f:
@@ -258,8 +262,7 @@ def upload_files(
 
     for file in published_files:
         relative_path = Path(file).relative_to(Path.home())
-        dir = publish_dir.remote_path if publish_dir is not None else remote_parent
-        local_to_remote[file] = urljoins(dir, str(relative_path))
+        local_to_remote[Path(file)] = urljoins(publish_parent, str(relative_path))
 
     for local, remote in local_to_remote.items():
         _upload(local, remote)
