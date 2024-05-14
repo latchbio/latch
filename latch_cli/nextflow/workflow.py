@@ -62,6 +62,7 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
         Path("/root"),
         shared_dir,
         ignore=lambda src, names: ["latch", ".latch"],
+        ignore_dangling_symlinks=True,
         dirs_exist_ok=True,
     )
 
