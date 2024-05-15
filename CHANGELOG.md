@@ -24,7 +24,7 @@ Types of changes
 
 ### Added
 
-+ Support up to 126 cores and 985 GiB of memory in custom tasks
++ Support up to 126 cores and 980 GiB of memory in custom tasks
 
 ## 2.42.1 - 2024-05-08
 

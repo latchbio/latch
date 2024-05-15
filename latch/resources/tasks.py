@@ -377,9 +377,9 @@ class _NGConfig:
 
 taint_data = [
     _NGConfig(30, 120, 2000, "cpu-32-spot"),
-    _NGConfig(94, 176, 4950, "cpu-96-spot"),
-    _NGConfig(62, 490, 4950, "mem-512-spot"),
-    _NGConfig(126, 985, 4950, "mem-1tb"),
+    _NGConfig(94, 176, 4949, "cpu-96-spot"),
+    _NGConfig(62, 490, 4949, "mem-512-spot"),
+    _NGConfig(126, 980, 4949, "mem-1tb"),
 ]
 
 max_cpu = taint_data[-1].max_cpu_schedulable
@@ -451,7 +451,7 @@ def custom_task(
 
     Args:
         cpu: An integer number of cores to request, up to 126 cores
-        memory: An integer number of Gibibytes of RAM to request, up to 985 GiB
+        memory: An integer number of Gibibytes of RAM to request, up to 980 GiB
         storage: An integer number of Gibibytes of storage to request, up to 4949 GiB
     """
     if callable(cpu) or callable(memory) or callable(storage_gib):
