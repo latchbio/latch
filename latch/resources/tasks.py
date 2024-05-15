@@ -38,6 +38,8 @@ from kubernetes.client.models import (
     V1Toleration,
 )
 
+from dataclasses import dataclass
+
 from .dynamic import DynamicTaskConfig
 
 
@@ -365,11 +367,46 @@ def custom_memory_optimized_task(cpu: int, memory: int):
     return functools.partial(task, task_config=task_config)
 
 
+@dataclass
+class _NGConfig:
+    max_cpu_schedulable: int
+    max_memory_schedulable_gib: int
+    max_storage_schedulable_gib: int
+    toleration_value: str
+
+taint_data = [
+    _NGConfig(30, 120, 2000, "cpu-32-spot"),
+    _NGConfig(94, 176, 4950, "cpu-96-spot"),
+    _NGConfig(62, 490, 4950, "mem-512-spot"),
+    _NGConfig(126, 985, 4950, "mem-1tb"),
+]
+
+max_cpu = taint_data[-1].max_cpu_schedulable
+max_memory_gib = taint_data[-1].max_memory_schedulable_gib
+max_memory_gb_ish = int(max_memory_gib * 1.074)
+
+max_storage_gib = taint_data[-1].max_storage_schedulable_gib
+max_storage_gb_ish = int(max_storage_gib * 1.074)
+
 def _custom_task_config(
     cpu: int,
     memory: int,
     storage_gib: int,
 ) -> Pod:
+    target_ng = None
+    for ng in taint_data:
+        if cpu <= ng.max_cpu_schedulable and memory <= ng.max_memory_schedulable_gib and storage_gib <= ng.max_storage_schedulable_gib:
+            target_ng = ng
+            break
+
+    if target_ng is None:
+        raise ValueError(
+            f"custom task request of {cpu} cores, {memory} GiB memory, and {storage_gib}"
+            f" GiB storage exceeds the maximum allowed values of {max_cpu} cores,"
+            f" {max_memory_gib} GiB memory ({max_memory_gb_ish} GB), and {max_storage_gib}"
+            f" GiB storage ({max_storage_gb_ish} GB)"
+        )
+
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
         requests={
@@ -384,84 +421,21 @@ def _custom_task_config(
         },
     )
     primary_container.resources = resources
-    if cpu <= 31 and memory <= 127 and storage_gib <= 1949:
-        task_config = Pod(
-            annotations={
-                "io.kubernetes.cri-o.userns-mode": (
-                    "private:uidmapping=0:1048576:65536;gidmapping=0:1048576:65536"
-                )
-            },
-            pod_spec=V1PodSpec(
-                runtime_class_name="sysbox-runc",
-                containers=[primary_container],
-                tolerations=[
-                    V1Toleration(effect="NoSchedule", key="ng", value="cpu-32-spot")
-                ],
-            ),
-            primary_container_name="primary",
-        )
-    elif cpu <= 95 and memory <= 179 and storage_gib <= 4949:
-        task_config = Pod(
-            annotations={
-                "io.kubernetes.cri-o.userns-mode": (
-                    "private:uidmapping=0:1048576:65536;gidmapping=0:1048576:65536"
-                )
-            },
-            pod_spec=V1PodSpec(
-                runtime_class_name="sysbox-runc",
-                containers=[primary_container],
-                tolerations=[
-                    V1Toleration(effect="NoSchedule", key="ng", value="cpu-96-spot")
-                ],
-            ),
-            primary_container_name="primary",
-        )
-    elif cpu <= 62 and memory <= 490 and storage_gib <= 4949:
-        task_config = Pod(
-            annotations={
-                "io.kubernetes.cri-o.userns-mode": (
-                    "private:uidmapping=0:1048576:65536;gidmapping=0:1048576:65536"
-                )
-            },
-            pod_spec=V1PodSpec(
-                runtime_class_name="sysbox-runc",
-                containers=[primary_container],
-                tolerations=[
-                    V1Toleration(effect="NoSchedule", key="ng", value="mem-512-spot")
-                ],
-            ),
-            primary_container_name="primary",
-        )
-    else:
-        if memory > 490:
-            raise ValueError(
-                f"custom task requires too much RAM: {memory} GiB (max 490 GiB)"
+    return Pod(
+        annotations={
+            "io.kubernetes.cri-o.userns-mode": (
+                "private:uidmapping=0:1048576:65536;gidmapping=0:1048576:65536"
             )
-        elif storage_gib > 4949:
-            raise ValueError(
-                f"custom task requires too much storage: {storage_gib} GiB (max 4949"
-                " GiB)"
-            )
-        elif cpu > 95:
-            raise ValueError(f"custom task requires too many CPU cores: {cpu} (max 95)")
-        elif memory > 179 and cpu > 62:
-            raise ValueError(
-                f"could not resolve cpu for high memory machine: requested {cpu} cores"
-                " (max 62)"
-            )
-        elif cpu > 62 and memory > 179:
-            raise ValueError(
-                f"could not resolve memory for high cpu machine: requested {memory} GiB"
-                " (max 179 GiB)"
-            )
-        else:
-            raise ValueError(
-                f"custom task resource limit is too high: {cpu} (max 95) cpu cores,"
-                f" {memory} GiB (max 179 GiB) memory, or {storage_gib} GiB storage (max"
-                " 4949 GiB)"
-            )
-
-    return task_config
+        },
+        pod_spec=V1PodSpec(
+            runtime_class_name="sysbox-runc",
+            containers=[primary_container],
+            tolerations=[
+                V1Toleration(effect="NoSchedule", key="ng", value=target_ng.toleration_value)
+            ],
+        ),
+        primary_container_name="primary",
+    )
 
 
 def custom_task(
@@ -475,8 +449,8 @@ def custom_task(
     the specified CPU/RAM allocations
 
     Args:
-        cpu: An integer number of cores to request, up to 95 cores
-        memory: An integer number of Gibibytes of RAM to request, up to 490 GiB
+        cpu: An integer number of cores to request, up to 126 cores
+        memory: An integer number of Gibibytes of RAM to request, up to 985 GiB
         storage: An integer number of Gibibytes of storage to request, up to 4949 GiB
     """
     if callable(cpu) or callable(memory) or callable(storage_gib):
