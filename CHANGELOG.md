@@ -16,6 +16,16 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.43.0 - 2024-05-15
+
+### Fixed
+
++ Cleanup toleration assignment
+
+### Added
+
++ Support up to 126 cores and 980 GiB of memory in custom tasks
+
 ## 2.42.1 - 2024-05-08
 
 ### Fixed
