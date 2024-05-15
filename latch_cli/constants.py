@@ -1,23 +1,6 @@
 import re
 from dataclasses import dataclass
-from enum import Enum
-
-
-class Units(int, Enum):
-    KiB = 2**10
-    kB = 10**3
-
-    MiB = 2**20
-    MB = 10**6
-
-    GiB = 2**30
-    GB = 10**9
-
-    TiB = 2**40
-    TB = 10**12
-
-
-units = Units
+from latch.constants import Units
 
 
 @dataclass(frozen=True)
@@ -26,12 +9,12 @@ class LatchConstants:
         "812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:fe0b-main"
     )
 
-    file_max_size: int = 4 * units.MiB
-    file_chunk_size: int = 256 * units.MiB
+    file_max_size: int = 4 * Units.MiB
+    file_chunk_size: int = 256 * Units.MiB
 
     # https://docs.aws.amazon.com/AmazonS3/latest/userguide/qfacts.html
     maximum_upload_parts = 10000
-    maximum_upload_size = 5 * units.TiB
+    maximum_upload_size = 5 * Units.TiB
 
     pkg_name: str = "latch"
     pkg_config: str = ".latch/config"

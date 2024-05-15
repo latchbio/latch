@@ -11,7 +11,7 @@ from latch_sdk_config.latch import config as latch_config
 
 from latch.ldata.type import LDataNodeType
 from latch_cli import tinyrequests
-from latch_cli.constants import Units
+from latch.constants import Units
 from latch_cli.utils import get_auth_header, human_readable_time, with_si_suffix
 from latch_cli.utils.path import normalize_path
 

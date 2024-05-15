@@ -28,6 +28,7 @@ import datetime
 import functools
 from typing import Callable, Union
 from warnings import warn
+from latch.constants import Units
 
 from flytekit import task
 from flytekitplugins.pod import Pod
@@ -383,10 +384,10 @@ taint_data = [
 
 max_cpu = taint_data[-1].max_cpu_schedulable
 max_memory_gib = taint_data[-1].max_memory_schedulable_gib
-max_memory_gb_ish = int(max_memory_gib * 1.074)
+max_memory_gb_ish = int(max_memory_gib * Units.GiB / Units.GB)
 
 max_storage_gib = taint_data[-1].max_storage_schedulable_gib
-max_storage_gb_ish = int(max_storage_gib * 1.074)
+max_storage_gb_ish = int(max_storage_gib * Units.GiB / Units.GB)
 
 def _custom_task_config(
     cpu: int,
