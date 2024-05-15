@@ -32,8 +32,6 @@ from latch.types import metadata
 from flytekit.core.annotation import FlyteAnnotation
 
 import latch_metadata
-{construct_samplesheet_import}
-
 
 @small_task
 def initialize() -> str:
@@ -56,6 +54,7 @@ def initialize() -> str:
 
 {preambles}
 
+{samplesheet_constructors}
 
 @nextflow_runtime_task
 def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
@@ -76,7 +75,7 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
     try:
         subprocess.run(
             [
-                "/root/.latch/bin/nextflow",
+                "/root/nextflow",
                 "run",
                 "{script_dir}",
                 "-work-dir",
@@ -144,12 +143,11 @@ def generate_nextflow_workflow(
 
     parameters = metadata._nextflow_metadata.parameters
 
-    construct_samplesheet_import = ""
-
     flags = []
     defaults: List[Tuple[str, str]] = []
     no_defaults: List[str] = []
     preambles: List[str] = []
+    samplesheet_constructors: List[str] = []
     for param_name, param in parameters.items():
         sig = f"{param_name}: {type_repr(param.type)}"
         if param.default is not None:
@@ -161,14 +159,19 @@ def generate_nextflow_workflow(
             no_defaults.append(sig)
 
         if param.samplesheet:
-            construct_samplesheet_import = (
-                "from latch_metadata.parameters import construct_samplesheet"
+            samplesheet_constructors.append(
+                reindent(
+                    f"""
+                    {param_name}_construct_samplesheet = metadata._nextflow_metadata.parameters[{repr(param_name)}].samplesheet_constructor
+                    """,
+                    0,
+                ),
             )
 
             flags.append(
                 reindent(
                     f"*get_flag({repr(param_name)},"
-                    f" construct_samplesheet({param_name}))",
+                    f" {param_name}_construct_samplesheet({param_name}))",
                     4,
                 )
             )
@@ -180,7 +183,6 @@ def generate_nextflow_workflow(
             preambles.append(preamble)
 
     entrypoint = template.format(
-        construct_samplesheet_import=construct_samplesheet_import,
         workflow_func_name=identifier_from_str(workflow_name),
         script_dir=nf_script.resolve().relative_to(pkg_root.resolve()),
         param_signature_with_defaults=", ".join(
@@ -195,6 +197,7 @@ def generate_nextflow_workflow(
             execution_profile if execution_profile is not None else "standard"
         ),
         preambles="".join(preambles),
+        samplesheet_constructors="\n".join(samplesheet_constructors),
     )
 
     entrypoint_path = pkg_root / "wf" / "entrypoint.py"
