@@ -26,9 +26,9 @@ exported decorators.
 
 import datetime
 import functools
+from dataclasses import dataclass
 from typing import Callable, Union
 from warnings import warn
-from latch.constants import Units
 
 from flytekit import task
 from flytekitplugins.pod import Pod
@@ -39,7 +39,7 @@ from kubernetes.client.models import (
     V1Toleration,
 )
 
-from dataclasses import dataclass
+from latch_cli.constants import Units
 
 from .dynamic import DynamicTaskConfig
 
@@ -375,6 +375,7 @@ class _NGConfig:
     max_storage_schedulable_gib: int
     toleration_value: str
 
+
 taint_data = [
     _NGConfig(30, 120, 2000, "cpu-32-spot"),
     _NGConfig(94, 176, 4949, "cpu-96-spot"),
@@ -389,6 +390,7 @@ max_memory_gb_ish = int(max_memory_gib * Units.GiB / Units.GB)
 max_storage_gib = taint_data[-1].max_storage_schedulable_gib
 max_storage_gb_ish = int(max_storage_gib * Units.GiB / Units.GB)
 
+
 def _custom_task_config(
     cpu: int,
     memory: int,
@@ -396,16 +398,20 @@ def _custom_task_config(
 ) -> Pod:
     target_ng = None
     for ng in taint_data:
-        if cpu <= ng.max_cpu_schedulable and memory <= ng.max_memory_schedulable_gib and storage_gib <= ng.max_storage_schedulable_gib:
+        if (
+            cpu <= ng.max_cpu_schedulable
+            and memory <= ng.max_memory_schedulable_gib
+            and storage_gib <= ng.max_storage_schedulable_gib
+        ):
             target_ng = ng
             break
 
     if target_ng is None:
         raise ValueError(
-            f"custom task request of {cpu} cores, {memory} GiB memory, and {storage_gib}"
-            f" GiB storage exceeds the maximum allowed values of {max_cpu} cores,"
-            f" {max_memory_gib} GiB memory ({max_memory_gb_ish} GB), and {max_storage_gib}"
-            f" GiB storage ({max_storage_gb_ish} GB)"
+            f"custom task request of {cpu} cores, {memory} GiB memory, and"
+            f" {storage_gib} GiB storage exceeds the maximum allowed values of"
+            f" {max_cpu} cores, {max_memory_gib} GiB memory ({max_memory_gb_ish} GB),"
+            f" and {max_storage_gib} GiB storage ({max_storage_gb_ish} GB)"
         )
 
     primary_container = V1Container(name="primary")
@@ -432,7 +438,9 @@ def _custom_task_config(
             runtime_class_name="sysbox-runc",
             containers=[primary_container],
             tolerations=[
-                V1Toleration(effect="NoSchedule", key="ng", value=target_ng.toleration_value)
+                V1Toleration(
+                    effect="NoSchedule", key="ng", value=target_ng.toleration_value
+                )
             ],
         ),
         primary_container_name="primary",
