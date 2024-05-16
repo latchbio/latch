@@ -16,6 +16,14 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.43.2 - 2024-05-16
+
+### Fixed
+
++ Circular import when importing latch constants
+* Snakemake
+  + support for running python scripts inside containers
+
 ## 2.43.1 - 2024-05-15
 
 ### Fixed
