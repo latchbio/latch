@@ -77,7 +77,12 @@ from latch.resources.tasks import _get_large_gpu_pod, _get_small_gpu_pod, custom
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
 from latch.types.metadata import FileMetadata, SnakemakeFileParameter
-from latch_cli.snakemake.config.utils import is_list_type, is_primitive_type, type_repr
+from latch_cli.snakemake.config.utils import (
+    is_list_type,
+    is_primitive_type,
+    is_primitive_value,
+    type_repr,
+)
 from latch_cli.snakemake.utils import reindent
 
 from ..utils import identifier_from_str, identifier_suffix_from_str
@@ -1501,7 +1506,10 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
                 "inputs": named_list_to_json(job.input),
                 "outputs": named_list_to_json(job.output),
                 "params": {
-                    "keyword": {k: str(v) for k, v in job.params.items()},
+                    "keyword": {
+                        k: v if is_primitive_value(v) else str(v)
+                        for k, v in job.params.items()
+                    },
                     "positional": [],
                 },
                 "benchmark": job.benchmark,
