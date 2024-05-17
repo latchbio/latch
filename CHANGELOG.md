@@ -22,6 +22,7 @@ Types of changes
 
 * Snakemake
   + remove conversion of primitive types to string for input `params`
+  + add support for output directories
 
 ## 2.43.2 - 2024-05-16
 
