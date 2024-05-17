@@ -116,6 +116,10 @@ def variable_name_for_file(file: snakemake.io.AnnotatedString):
     return f"r_{identifier_suffix_from_str(file)}"
 
 
+def isdir(var: snakemake.io._IOFile) -> bool:
+    return var is not None and (os.path.isdir(var) or var.is_directory)
+
+
 @dataclass
 class RemoteFile:
     local_path: str
@@ -135,7 +139,7 @@ def snakemake_dag_to_interface(
 
             jobs: List[snakemake.jobs.Job] = dag.file2jobs(desired)
             producer_out: snakemake.io._IOFile = next(x for x in jobs[0].output)
-            if os.path.isdir(producer_out):
+            if isdir(producer_out):
                 outputs[param] = LatchDir
             else:
                 outputs[param] = LatchFile
@@ -157,7 +161,7 @@ def snakemake_dag_to_interface(
             if x not in dep_outputs:
                 param = variable_name_for_file(x)
 
-                if os.path.isdir(x):
+                if isdir(x):
                     inputs[param] = (LatchDir, None)
                 else:
                     inputs[param] = (LatchFile, None)
@@ -205,7 +209,7 @@ def snakemake_dag_to_interface(
                                     format="",
                                     dimensionality=(
                                         BlobType.BlobDimensionality.SINGLE
-                                        if not os.path.isdir(x)
+                                        if not isdir(x)
                                         else BlobType.BlobDimensionality.MULTIPART
                                     ),
                                 )
@@ -821,7 +825,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     param = variable_name_for_file(x)
                     target_file_for_output_param[param] = x
 
-                    if os.path.isdir(x):
+                    if isdir(x):
                         python_outputs[param] = LatchDir
                     else:
                         python_outputs[param] = LatchFile
@@ -834,7 +838,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     param = variable_name_for_file(x)
                     target_file_for_output_param[param] = x
 
-                    if os.path.isdir(x):
+                    if isdir(x):
                         python_outputs[param] = LatchDir
                     else:
                         python_outputs[param] = LatchFile
@@ -848,7 +852,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                             dep_outputs[o] = JobOutputInfo(
                                 jobid=dep.jobid,
                                 output_param_name=variable_name_for_file(o),
-                                type_=LatchDir if os.path.isdir(o) else LatchFile,
+                                type_=LatchDir if isdir(o) else LatchFile,
                             )
 
                     for o in dep.log:
@@ -858,7 +862,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
                             dep_outputs[o] = JobOutputInfo(
                                 jobid=dep.jobid,
                                 output_param_name=variable_name_for_file(o),
-                                type_=LatchDir if os.path.isdir(o) else LatchFile,
+                                type_=LatchDir if isdir(o) else LatchFile,
                             )
 
                 python_inputs: Dict[str, Union[Type[LatchFile], Type[LatchDir]]] = {}
@@ -869,7 +873,7 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
                     dep_out = dep_outputs.get(x)
 
-                    if os.path.isdir(x):
+                    if isdir(x):
                         python_inputs[param] = LatchDir
                     else:
                         python_inputs[param] = LatchFile
@@ -1501,7 +1505,10 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
                 "inputs": named_list_to_json(job.input),
                 "outputs": named_list_to_json(job.output),
                 "params": {
-                    "keyword": {k: str(v) for k, v in job.params.items()},
+                    "keyword": {
+                        k: str(v) if isinstance(v, Path) else v
+                        for k, v in job.params.items()
+                    },
                     "positional": [],
                 },
                 "benchmark": job.benchmark,

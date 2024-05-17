@@ -16,6 +16,14 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.43.3 - 2024-05-16
+
+### Fixed
+
+* Snakemake
+  + remove conversion of primitive types to string for input `params`
+  + add support for output directories
+
 ## 2.43.2 - 2024-05-16
 
 ### Fixed
