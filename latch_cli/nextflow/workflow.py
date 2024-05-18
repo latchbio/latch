@@ -25,7 +25,7 @@ import typing
 import typing_extensions
 
 from latch.resources.workflow import workflow
-from latch.resources.tasks import nextflow_runtime_task, small_task
+from latch.resources.tasks import nextflow_runtime_task, custom_task
 from latch.types.file import LatchFile
 from latch.types.directory import LatchDir, LatchOutputDir
 from latch_cli.nextflow.workflow import get_flag
