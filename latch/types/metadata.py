@@ -483,6 +483,21 @@ class NextflowParameter(Generic[T], LatchParameter):
             self.type = Annotated[self.type, "samplesheet"]
 
 
+@dataclass(frozen=True)
+class NextflowRuntimeResources:
+    """Resources for Nextflow runtime tasks"""
+
+    cpus: Optional[int] = 4
+    """
+    Number of CPUs required for the task
+    """
+    memory: Optional[str] = 8
+    """
+    Memory required for the task (e.g. "1 GB")
+    """
+    storage_gib: Optional[int] = 100
+
+
 @dataclass
 class LatchMetadata:
     """Class for organizing workflow metadata
@@ -684,6 +699,9 @@ _snakemake_metadata: Optional[SnakemakeMetadata] = None
 class NextflowMetadata(LatchMetadata):
     name: Optional[str] = None
     parameters: Dict[str, NextflowParameter] = field(default_factory=dict)
+    runtime_resources: NextflowRuntimeResources = field(
+        default_factory=NextflowRuntimeResources
+    )
 
     def __post_init__(self):
         if self.name is None:

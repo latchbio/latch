@@ -35,7 +35,7 @@ from flytekit.core.annotation import FlyteAnnotation
 import latch_metadata
 
 
-@small_task
+@custom_task(cpu=1, memory=1, storage_gib=10)
 def initialize() -> str:
     token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
     if token is None:
@@ -46,6 +46,9 @@ def initialize() -> str:
     resp = requests.post(
         "http://nf-dispatcher-service.flyte.svc.cluster.local/provision-storage",
         headers=headers,
+        json={{
+            "storage_gib": {storage_gib},
+        }}
     )
     resp.raise_for_status()
     return resp.json()["name"]
@@ -54,7 +57,7 @@ def initialize() -> str:
 {preambles}
 
 
-@nextflow_runtime_task
+@nextflow_runtime_task(cpu={cpu}, memory={memory})
 def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
     shared_dir = Path("/nf-workdir")
 
@@ -139,6 +142,7 @@ def generate_nextflow_workflow(
     assert metadata._nextflow_metadata is not None
 
     parameters = metadata._nextflow_metadata.parameters
+    resources = metadata._nextflow_metadata.runtime_resources
 
     flags = []
     for param_name, param in parameters.items():
@@ -176,6 +180,9 @@ def generate_nextflow_workflow(
             execution_profile if execution_profile is not None else "standard"
         ),
         preambles="\n\n".join(preambles),
+        cpu=resources.cpus,
+        memory=resources.memory,
+        storage_gib=resources.storage_gib,
     )
 
     entrypoint_path = pkg_root / "wf" / "entrypoint.py"

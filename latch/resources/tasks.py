@@ -182,40 +182,6 @@ def _get_small_pod() -> Pod:
     )
 
 
-def _get_nextflow_runtime_pod() -> Pod:
-    primary_container = V1Container(name="primary")
-    resources = V1ResourceRequirements(
-        requests={"cpu": "2", "memory": "4Gi", "ephemeral-storage": "100Gi"},
-        limits={"cpu": "2", "memory": "4Gi", "ephemeral-storage": "100Gi"},
-    )
-    primary_container.resources = resources
-    volume_mounts = [V1VolumeMount(mount_path="/nf-workdir", name="nextflow-workdir")]
-    primary_container.volume_mounts = volume_mounts
-
-    return Pod(
-        annotations={
-            "io.kubernetes.cri-o.userns-mode": (
-                "private:uidmapping=0:1048576:65536;gidmapping=0:1048576:65536"
-            )
-        },
-        pod_spec=V1PodSpec(
-            runtime_class_name="sysbox-runc",
-            service_account_name="rahul-test",
-            containers=[primary_container],
-            volumes=[
-                V1Volume(
-                    name="nextflow-workdir",
-                    persistent_volume_claim=V1PersistentVolumeClaimVolumeSource(
-                        # this value will be injected by flytepropeller
-                        claim_name="nextflow-pvc-placeholder"
-                    ),
-                )
-            ],
-        ),
-        primary_container_name="primary",
-    )
-
-
 large_gpu_task = functools.partial(task, task_config=_get_large_gpu_pod())
 """This task will get scheduled on a large GPU-enabled node.
 
@@ -350,8 +316,6 @@ small_task = functools.partial(task, task_config=_get_small_pod())
      - 0
      - False
 """
-
-nextflow_runtime_task = functools.partial(task, task_config=_get_nextflow_runtime_pod())
 
 
 def custom_memory_optimized_task(cpu: int, memory: int):
@@ -530,3 +494,43 @@ def custom_task(
     return functools.partial(
         task, task_config=_custom_task_config(cpu, memory, storage_gib), timeout=timeout
     )
+
+
+def nextflow_runtime_task(cpu: int, memory: int):
+    primary_container = V1Container(name="primary")
+    resources = V1ResourceRequirements(
+        requests={
+            "cpu": str(cpu),
+            "memory": f"{memory}Gi",
+            "ephemeral-storage": "20Gi",
+        },
+        limits={"cpu": str(cpu), "memory": f"{memory}Gi", "ephemeral-storage": "20Gi"},
+    )
+    primary_container.resources = resources
+    volume_mounts = [V1VolumeMount(mount_path="/nf-workdir", name="nextflow-workdir")]
+    primary_container.volume_mounts = volume_mounts
+
+    task_config = Pod(
+        annotations={
+            "io.kubernetes.cri-o.userns-mode": (
+                "private:uidmapping=0:1048576:65536;gidmapping=0:1048576:65536"
+            )
+        },
+        pod_spec=V1PodSpec(
+            runtime_class_name="sysbox-runc",
+            service_account_name="rahul-test",
+            containers=[primary_container],
+            volumes=[
+                V1Volume(
+                    name="nextflow-workdir",
+                    persistent_volume_claim=V1PersistentVolumeClaimVolumeSource(
+                        # this value will be injected by flytepropeller
+                        claim_name="nextflow-pvc-placeholder"
+                    ),
+                )
+            ],
+        ),
+        primary_container_name="primary",
+    )
+
+    return functools.partial(task, task_config=task_config)
