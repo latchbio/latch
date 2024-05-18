@@ -16,11 +16,37 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.42.X - 2024-05-YZ
+## 2.44.0 - 2024-05-19
 
 ### Fixed
 
 + Accomodates the migration of personal workspaces to team workspaces.
+
+## 2.43.3 - 2024-05-16
+
+### Fixed
+
+* Snakemake
+  + remove conversion of primitive types to string for input `params`
+  + add support for output directories
+
+## 2.43.2 - 2024-05-16
+
+### Fixed
+
++ Circular import when importing latch constants
+* Snakemake
+  + support for running python scripts inside containers
+
+## 2.43.1 - 2024-05-15
+
+### Fixed
+
++ Cleanup toleration assignment
+
+### Added
+
++ Support up to 126 cores and 975 GiB of memory in custom tasks
 
 ## 2.42.1 - 2024-05-08
 
