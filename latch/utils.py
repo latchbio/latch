@@ -1,5 +1,5 @@
 import os
-from typing import Dict
+from typing import Dict, TypedDict
 
 import gql
 import jwt
@@ -39,8 +39,12 @@ def retrieve_or_login() -> str:
         token = login()
     return token
 
+class WSInfo(TypedDict):
+    workspace_id: str
+    name: str
+    default: bool
 
-def get_workspaces() -> Dict[str, str]:
+def get_workspaces() -> Dict[str, WSInfo]:
     """Retrieve workspaces that user can access.
 
     Returns:
@@ -49,7 +53,11 @@ def get_workspaces() -> Dict[str, str]:
     account_id = account_id_from_token(retrieve_or_login())
     res = execute(
         gql.gql("""
-        query GetUserDefaultWorkspace($accountId: BigInt!) {
+        query GetWorkspaces($accountId: BigInt!) {
+            userInfoByAccountId(accountId: $accountId) {
+                id
+                defaultAccount
+            }
             teamInfoByAccountId(accountId: $accountId) {
                 accountId
                 displayName
@@ -75,10 +83,8 @@ def get_workspaces() -> Dict[str, str]:
     owned_teams = res["teamInfos"]["nodes"]
     member_teams = [x["team"] for x in res["teamMembers"]["nodes"]]
 
-    teams = {x["accountId"]: x["displayName"] for x in owned_teams + member_teams + ([res["teamInfoByAccountId"]] if res["teamInfoByAccountId"] is not None else [])}
-
-    if account_id not in teams:
-        teams[account_id] = "Personal Workspace"
+    default_account = res["userInfoByAccountId"]["defaultAccount"] if res["userInfoByAccountId"] is not None else None
+    teams = {x["accountId"]: WSInfo(workspace_id=x["accountId"], name=x["displayName"], default=x["accountId"] == default_account) for x in owned_teams + member_teams + ([res["teamInfoByAccountId"]] if res["teamInfoByAccountId"] is not None else [])}
 
     return teams
 
