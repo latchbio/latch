@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.45.0 - 2024-05-20
+
+### Fixed
+
++ Latch resource limit on mem-512-spot should be 485 Gi instead of 490 Gi
+
 ## 2.44.0 - 2024-05-19
 
 ### Fixed

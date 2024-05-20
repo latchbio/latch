@@ -322,7 +322,7 @@ def custom_memory_optimized_task(cpu: int, memory: int):
     """Returns a custom task configuration requesting
     the specified CPU/RAM allocations. This task
     can utilize fewer cpu cores (62) than `custom_task`s (95)
-    but can use more RAM (up to 490 GiB) than `custom_task`s (up to 179 GiB).
+    but can use more RAM (up to 485 GiB) than `custom_task`s (up to 179 GiB).
     This is ideal for processes which utilize a lot of memory per thread.
     Args:
         cpu: An integer number of cores to request, up to 63 cores
@@ -338,9 +338,9 @@ def custom_memory_optimized_task(cpu: int, memory: int):
         raise ValueError(
             f"custom memory optimized task requires too many CPU cores: {cpu} (max 62)"
         )
-    elif memory > 490:
+    elif memory > 485:
         raise ValueError(
-            f"custom memory optimized task requires too much RAM: {memory} GiB (max 490"
+            f"custom memory optimized task requires too much RAM: {memory} GiB (max 485"
             " GiB)"
         )
 
@@ -379,7 +379,7 @@ class _NGConfig:
 taint_data = [
     _NGConfig(30, 120, 2000, "cpu-32-spot"),
     _NGConfig(94, 176, 4949, "cpu-96-spot"),
-    _NGConfig(62, 490, 4949, "mem-512-spot"),
+    _NGConfig(62, 485, 4949, "mem-512-spot"),
     _NGConfig(126, 975, 4949, "mem-1tb"),
 ]
 
