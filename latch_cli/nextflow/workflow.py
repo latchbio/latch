@@ -59,22 +59,22 @@ def initialize() -> str:
 
 @nextflow_runtime_task(cpu={cpu}, memory={memory})
 def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
-    shared_dir = Path("/nf-workdir")
-
-    shutil.copytree(
-        Path("/root"),
-        shared_dir,
-        ignore=lambda src, names: ["latch", ".latch"],
-        ignore_dangling_symlinks=True,
-        dirs_exist_ok=True,
-    )
-
-    env = {{
-        **os.environ,
-        "NXF_HOME": "/root/.nextflow",
-        "K8_STORAGE_CLAIM_NAME": pvc_name,
-    }}
     try:
+        shared_dir = Path("/nf-workdir")
+
+        shutil.copytree(
+            Path("/root"),
+            shared_dir,
+            ignore=lambda src, names: ["latch", ".latch"],
+            ignore_dangling_symlinks=True,
+            dirs_exist_ok=True,
+        )
+
+        env = {{
+            **os.environ,
+            "NXF_HOME": "/root/.nextflow",
+            "K8_STORAGE_CLAIM_NAME": pvc_name,
+        }}
         subprocess.run(
             [
                 "/root/.latch/bin/nextflow",
@@ -92,8 +92,26 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
     except subprocess.CalledProcessError:
         log = Path("/root/.nextflow.log").read_text()
         print()
+        print("Nextflow execution failed. Dumping .nextflow.log:")
         print(log)
         raise
+    finally:
+        token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
+        if token is None:
+            raise RuntimeError("failed to get execution token")
+
+        print("Finalizing workflow")
+        headers = {{"Authorization": f"Latch-Execution-Token {{token}}"}}
+        resp = requests.post(
+            "http://nf-dispatcher-service.flyte.svc.cluster.local/finalize",
+            headers=headers,
+            json={{
+                "pvc_name": pvc_name,
+            }}
+        )
+        if resp.status_code != 200:
+            print("Failed to finalize workflow:", resp.status_code)
+
 
 
 @workflow(metadata._nextflow_metadata)
