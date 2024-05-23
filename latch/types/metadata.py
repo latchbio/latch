@@ -698,10 +698,23 @@ _snakemake_metadata: Optional[SnakemakeMetadata] = None
 @dataclass
 class NextflowMetadata(LatchMetadata):
     name: Optional[str] = None
+    """
+    Name of the workflow
+    """
     parameters: Dict[str, NextflowParameter] = field(default_factory=dict)
+    """
+    A dictionary mapping parameter names (strings) to `NextflowParameter` objects
+    """
     runtime_resources: NextflowRuntimeResources = field(
         default_factory=NextflowRuntimeResources
     )
+    """
+    Resources (cpu/memory/storage) for Nextflow runtime task
+    """
+    output_dir: Optional[LatchDir] = None
+    """
+    Directory to dump Nextflow logs
+    """
 
     def __post_init__(self):
         if self.name is None:
