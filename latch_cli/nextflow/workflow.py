@@ -102,7 +102,6 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
         if token is None:
             raise RuntimeError("failed to get execution token")
 
-        print("Finalizing workflow")
         headers = {{"Authorization": f"Latch-Execution-Token {{token}}"}}
         resp = requests.post(
             "http://nf-dispatcher-service.flyte.svc.cluster.local/finalize",
