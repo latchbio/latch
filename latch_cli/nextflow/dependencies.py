@@ -37,7 +37,8 @@ def download_nf_jars(pkg_root: Path):
     s3_resource = boto3.resource("s3")
     bucket = s3_resource.Bucket("latch-public")
 
-    objects = list(bucket.objects.filter(Prefix=".nextflow/"))
+    subdir = "nextflow-v2/"
+    objects = list(bucket.objects.filter(Prefix=f"{subdir}.nextflow/"))
 
     click.secho("  Downloading Nextflow binaries: \x1b[?25l", italic=True, nl=False)
 
@@ -49,7 +50,8 @@ def download_nf_jars(pkg_root: Path):
                 url = urljoin(
                     "https://latch-public.s3.us-west-2.amazonaws.com/", obj.key
                 )
-                obj_path = pkg_root / ".latch" / obj.key
+                obj_path = pkg_root / ".latch" / obj.key[len(subdir) :]
+                print(obj_path)
 
                 exec.submit(_do_download, url, obj_path, len(objects), counter, lock)
 
@@ -58,18 +60,6 @@ def download_nf_jars(pkg_root: Path):
 
 
 def ensure_nf_dependencies(pkg_root: Path, *, force_redownload: bool = False):
-    try:
-        subprocess.run(["java", "--version"], check=True, capture_output=True)
-    except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        click.secho(
-            dedent("""\
-            Java is not installed - this is a requirement to run Nextflow.
-            Please install Java and try again.
-            """),
-            fg="red",
-        )
-        raise click.exceptions.Exit(1) from e
-
     nf_executable = pkg_root / ".latch" / "bin" / "nextflow"
     nf_jars = pkg_root / ".latch" / ".nextflow"
 
@@ -80,7 +70,7 @@ def ensure_nf_dependencies(pkg_root: Path, *, force_redownload: bool = False):
 
     if not nf_executable.exists():
         res = tinyrequests.get(
-            "https://latch-public.s3.us-west-2.amazonaws.com/nextflow"
+            "https://latch-public.s3.us-west-2.amazonaws.com/nextflow-v2/nextflow"
         )
         nf_executable.parent.mkdir(parents=True, exist_ok=True)
 
