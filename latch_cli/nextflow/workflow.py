@@ -7,7 +7,7 @@ from typing import Any, List, Optional, Tuple
 import click
 
 import latch.types.metadata as metadata
-from latch.types.directory import LatchDir
+from latch.types.directory import LatchDir, LatchOutputDir
 from latch.types.file import LatchFile
 from latch_cli.snakemake.config.utils import get_preamble, type_repr
 from latch_cli.snakemake.utils import reindent
@@ -176,6 +176,16 @@ def generate_nextflow_workflow(
         if param.default is not None:
             if isinstance(param.default, Enum):
                 defaults.append((sig, param.default))
+            elif param.type in {LatchDir, LatchFile}:
+                defaults.append((
+                    sig,
+                    f"{param.type.__name__}('{param.default._raw_remote_path}')",
+                ))
+            elif param.type is LatchOutputDir:
+                defaults.append((
+                    sig,
+                    f"LatchOutputDir('{param.default._raw_remote_path}')",
+                ))
             else:
                 defaults.append((sig, repr(param.default)))
         else:
@@ -195,7 +205,7 @@ def generate_nextflow_workflow(
         workflow_func_name=identifier_from_str(workflow_name),
         nf_script=nf_script.resolve().relative_to(pkg_root.resolve()),
         param_signature_with_defaults=", ".join(
-            no_defaults + [f"{name}={val}" for name, val in defaults]
+            no_defaults + [f"{name} = {val}" for name, val in defaults]
         ),
         param_signature=", ".join(no_defaults + [name for name, _ in defaults]),
         param_args=", ".join(
