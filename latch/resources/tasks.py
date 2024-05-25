@@ -518,7 +518,7 @@ def nextflow_runtime_task(cpu: int, memory: int):
         },
         pod_spec=V1PodSpec(
             runtime_class_name="sysbox-runc",
-            service_account_name="rahul-test",
+            automount_service_account_token=True,
             containers=[primary_container],
             volumes=[
                 V1Volume(
