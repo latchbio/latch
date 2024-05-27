@@ -99,6 +99,11 @@ class AccountInfoCurrent(TypedDict):
     ldataS3MountConfiguratorRolesByAccountId: LdataS3MountConfiguratorRolesByAccountId
 
 
+# todo(taras): support for gcp and azure mounts
+# skipping now due to time. This decision does not
+# influence correcetness of the CLI and only
+# reduces the set of returned autocomplete
+# suggestions
 @cache
 def _get_known_domains_for_account() -> List[str]:
     aic: AccountInfoCurrent = execute(gql.gql("""

@@ -17,7 +17,7 @@ from typing_extensions import TypeAlias
 
 from latch.ldata.type import LatchPathError, LDataNodeType
 from latch_cli import tinyrequests
-from latch_cli.constants import latch_constants, units
+from latch_cli.constants import Units, latch_constants
 from latch_cli.utils import get_auth_header, urljoins, with_si_suffix
 from latch_cli.utils.path import normalize_path
 
@@ -75,6 +75,8 @@ def upload(
     dest_is_dir = dest_data.type in {
         LDataNodeType.account_root,
         LDataNodeType.mount,
+        LDataNodeType.mount_gcp,
+        LDataNodeType.mount_azure,
         LDataNodeType.dir,
     }
 
@@ -302,7 +304,7 @@ def start_upload(
     content_type, _ = mimetypes.guess_type(src)
     if content_type is None:
         with open(src, "rb") as f:
-            sample = f.read(units.KiB)
+            sample = f.read(Units.KiB)
 
         try:
             sample.decode()

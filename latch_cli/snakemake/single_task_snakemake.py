@@ -318,7 +318,7 @@ def get_docker_cmd(
         # because we cannot be sure where it is located in the container.
         shell_executable = Path(shell_executable).name
 
-    workdir = container_workdir if container_workdir is not None else "/latch"
+    workdir = container_workdir if container_workdir is not None else "/root"
     if '"' in workdir:
         raise ValueError("container_workdir cannot contain double quotes")
 
@@ -326,6 +326,13 @@ def get_docker_cmd(
     if envvars is not None:
         for k, v in envvars.items():
             docker_cmd.extend(["--env", f"{k}={v}"])
+
+    if is_python_script:
+        # mount host snakemake module into container
+        docker_cmd.extend([
+            "--mount",
+            f'type=bind,"src={singularity.SNAKEMAKE_SEARCHPATH}","target={singularity.SNAKEMAKE_MOUNTPOINT}"',
+        ])
 
     # support for containers currently only works with relative input and output
     # paths. This preserves the behavior before the monkey path

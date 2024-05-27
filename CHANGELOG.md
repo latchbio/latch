@@ -16,6 +16,56 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.45.0 - 2024-05-20
+
+### Fixed
+
++ Latch resource limit on mem-512-spot should be 485 Gi instead of 490 Gi
+
+## 2.44.0 - 2024-05-19
+
+### Fixed
+
++ Accomodates the migration of personal workspaces to team workspaces.
+
+## 2.43.3 - 2024-05-16
+
+### Fixed
+
+* Snakemake
+  + remove conversion of primitive types to string for input `params`
+  + add support for output directories
+
+## 2.43.2 - 2024-05-16
+
+### Fixed
+
++ Circular import when importing latch constants
+* Snakemake
+  + support for running python scripts inside containers
+
+## 2.43.1 - 2024-05-15
+
+### Fixed
+
++ Cleanup toleration assignment
+
+### Added
+
++ Support up to 126 cores and 975 GiB of memory in custom tasks
+
+## 2.42.1 - 2024-05-08
+
+### Fixed
+
++ Workflow identifier should be immutable per `latch init`
++ Latch workspace does not display selected workspace when authenticated with workspace token
++ Workspace id determination failing when authenticated with workspace token
+
+## 2.42.0 - 2024-05-02
+
++ Adding support for GCP mount paths
+
 ## 2.41.3 - 2024-04-29
 
 ### Fixed
