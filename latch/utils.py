@@ -57,30 +57,30 @@ def get_workspaces() -> Dict[str, WSInfo]:
     res = execute(
         gql.gql(
             """
-        query GetWorkspaces($accountId: BigInt!) {
-            userInfoByAccountId(accountId: $accountId) {
-                id
-                defaultAccount
-            }
-            teamInfoByAccountId(accountId: $accountId) {
-                accountId
-                displayName
-            }
-            teamInfos(filter: {owner: {accountId: {equalTo: $accountId}}}) {
-                nodes {
+            query GetWorkspaces($accountId: BigInt!) {
+                userInfoByAccountId(accountId: $accountId) {
+                    id
+                    defaultAccount
+                }
+                teamInfoByAccountId(accountId: $accountId) {
                     accountId
                     displayName
                 }
-            }
-            teamMembers(filter: {user: {accountId: {equalTo: $accountId}}}) {
-                nodes {
-                    team {
+                teamInfos(filter: {owner: {accountId: {equalTo: $accountId}}}) {
+                    nodes {
                         accountId
                         displayName
                     }
                 }
-            }
-            orgInfos(filter: { ownerAccountId: { equalTo: $accountId } }) {
+                teamMembers(filter: {user: {accountId: {equalTo: $accountId}}}) {
+                    nodes {
+                        team {
+                            accountId
+                            displayName
+                        }
+                    }
+                }
+                orgInfos(filter: { ownerAccountId: { equalTo: $accountId } }) {
                     nodes {
                         teamInfosByOrgId(filter: { account: { removed: { equalTo: false } } }) {
                             nodes {
@@ -102,7 +102,8 @@ def get_workspaces() -> Dict[str, WSInfo]:
                         }
                     }
                 }
-        }"""
+            }
+        """
         ),
         {"accountId": account_id},
     )
