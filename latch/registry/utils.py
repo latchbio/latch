@@ -210,9 +210,15 @@ def to_python_literal(
     )
 
 
+# same as to_registry_literal except no network request is made for blob types
+# (these are deferred to the end of the parent op so that we can do it in one request)
+
+
 def to_registry_literal(
     python_literal,
     registry_type: RegistryType,
+    *,
+    resolve_paths: bool = True,
 ) -> DBValue:
     if isinstance(python_literal, InvalidValue):
         return {"valid": False, "rawValue": python_literal.raw_value}
@@ -327,47 +333,49 @@ def to_registry_literal(
                 "cannot convert non-blob python literal to registry blob"
             )
 
-        ws_id = current_workspace()
-        if ws_id == "":
-            ws_id = None
+        value = {"remote_path": python_literal.remote_path}
+        if resolve_paths:
+            ws_id = current_workspace()
+            if ws_id == "":
+                ws_id = None
 
-        if ws_id is None:
-            data = execute(
-                gql.gql("""
-                query nodeIdQ($argPath: String!) {
-                    ldataResolvePath(
-                        path: $argPath
-                    ) {
-                        nodeId
-                        path
+            if ws_id is None:
+                data = execute(
+                    gql.gql("""
+                    query nodeIdQ($argPath: String!) {
+                        ldataResolvePath(
+                            path: $argPath
+                        ) {
+                            nodeId
+                            path
+                        }
                     }
-                }
-                """),
-                {"argPath": python_literal.remote_path},
-            )["ldataResolvePath"]
-        else:
-            data = execute(
-                gql.gql("""
-                query nodeIdQ($argPath: String!, $wsId: BigInt!) {
-                    ldataResolvePathExt(
-                        path: $argPath,
-                        accId: $wsId
-                    ) {
-                        nodeId
-                        path
+                    """),
+                    {"argPath": python_literal.remote_path},
+                )["ldataResolvePath"]
+            else:
+                data = execute(
+                    gql.gql("""
+                    query nodeIdQ($argPath: String!, $wsId: BigInt!) {
+                        ldataResolvePathExt(
+                            path: $argPath,
+                            accId: $wsId
+                        ) {
+                            nodeId
+                            path
+                        }
                     }
-                }
-                """),
-                {"argPath": python_literal.remote_path, "wsId": ws_id},
-            )["ldataResolvePathExt"]
+                    """),
+                    {"argPath": python_literal.remote_path, "wsId": ws_id},
+                )["ldataResolvePathExt"]
 
-        if data["path"] is not None and data["path"] != "":
-            # todo(maximsmol): store an invalid value instead?
-            raise RegistryTransformerException(
-                f"could not resolve path: {python_literal.remote_path}"
-            )
+            if data["path"] is not None and data["path"] != "":
+                # todo(maximsmol): store an invalid value instead?
+                raise RegistryTransformerException(
+                    f"could not resolve path: {python_literal.remote_path}"
+                )
 
-        value = {"ldataNodeId": data["nodeId"]}
+            value = {"ldataNodeId": data["nodeId"]}
     else:
         raise RegistryTransformerException(f"malformed registry type: {registry_type}")
 

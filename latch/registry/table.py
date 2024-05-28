@@ -1,3 +1,5 @@
+import sys
+import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import date, datetime
@@ -19,6 +21,7 @@ from typing import (
 )
 
 import gql
+import gql.transport.exceptions
 import graphql.language as l
 import graphql.language.parser as lp
 from latch_sdk_gql.execute import execute
@@ -43,10 +46,17 @@ from latch.registry.types import (
     RegistryPythonValue,
 )
 from latch.registry.upstream_types.types import DBType, RegistryType
-from latch.registry.upstream_types.values import DBValue, EmptyCell
-from latch.registry.utils import to_python_literal, to_python_type, to_registry_literal
+from latch.registry.upstream_types.values import DBValue, EmptyCell, UnresolvedBlobValue
+from latch.registry.utils import (
+    RegistryTransformerException,
+    to_python_literal,
+    to_python_type,
+    to_registry_literal,
+)
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
+from latch.utils import current_workspace
+from latch_cli.utils import human_readable_time
 
 from ..types.json import JsonValue
 
@@ -469,7 +479,9 @@ class TableUpdate:
             if col is None:
                 raise NoSuchColumnError(k)
 
-            db_vals[k] = to_registry_literal(v, col.upstream_type["type"])
+            db_vals[k] = to_registry_literal(
+                v, col.upstream_type["type"], resolve_paths=False
+            )
 
         self._record_mutations.append(_TableRecordsUpsertData(name, db_vals))
 
@@ -496,13 +508,11 @@ class TableUpdate:
 
         args = l.ArgumentNode()
         args.name = _name_node("input")
-        args.value = _json_value(
-            {
-                "argExperimentId": self.table.id,
-                "argNames": names,
-                "argData": _var_node(argDataVar),
-            }
-        )
+        args.value = _json_value({
+            "argExperimentId": self.table.id,
+            "argNames": names,
+            "argData": _var_node(argDataVar),
+        })
 
         res.alias = _name_node(f"upd{len(mutations)}")
         res.arguments = tuple([args])
@@ -537,12 +547,10 @@ class TableUpdate:
 
         args = l.ArgumentNode()
         args.name = _name_node("input")
-        args.value = _json_value(
-            {
-                "argExperimentId": self.table.id,
-                "argNames": names,
-            }
-        )
+        args.value = _json_value({
+            "argExperimentId": self.table.id,
+            "argNames": names,
+        })
 
         res.alias = _name_node(f"upd{len(mutations)}")
         res.arguments = tuple([args])
@@ -690,19 +698,89 @@ class TableUpdate:
 
         args = l.ArgumentNode()
         args.name = _name_node("input")
-        args.value = _json_value(
-            {
-                "argExperimentId": self.table.id,
-                "argKeys": keys,
-                "argTypes": _var_node(argTypesVar),
-            }
-        )
+        args.value = _json_value({
+            "argExperimentId": self.table.id,
+            "argKeys": keys,
+            "argTypes": _var_node(argTypesVar),
+        })
 
         res.alias = _name_node(f"upd{len(mutations)}")
         res.arguments = tuple([args])
 
         mutations.append(res)
         vars[argTypesVar] = (l.parse_type("[JSON]!"), types)
+
+    def _get_unresolved_blobs_in_db_val(
+        self,
+        db_val: DBValue,
+        res: List[UnresolvedBlobValue],
+    ) -> None:
+        if isinstance(db_val, list):
+            for i in range(len(db_val)):
+                self._get_unresolved_blobs_in_db_val(db_val[i], res)
+
+            return
+
+        if not isinstance(db_val, dict):
+            return
+
+        if "tag" in db_val:
+            self._get_unresolved_blobs_in_db_val(db_val["value"], res)
+            return
+
+        if not db_val["valid"] or "rawValue" in db_val:
+            return
+
+        val = db_val["value"]
+
+        if not isinstance(val, dict) or not "remote_path" in val:
+            return
+
+        res.append(val)
+        return
+
+    def _get_unresolved_blobs_in_update(
+        self, update: _TableRecordsUpsertData, res: List[UnresolvedBlobValue]
+    ) -> None:
+        for db_val in update.values.values():
+            self._get_unresolved_blobs_in_db_val(db_val, res)
+
+    def _resolve_all_blobs(self) -> None:
+        unresolved: List[UnresolvedBlobValue] = []
+        for update in self._record_mutations:
+            if not isinstance(update, _TableRecordsUpsertData):
+                continue
+
+            self._get_unresolved_blobs_in_update(update, unresolved)
+
+        if len(unresolved) == 0:
+            return
+
+        try:
+            res = execute(
+                gql.gql("""
+                    query ResolvePaths($argPaths: [String]!) {
+                        fastLdataMultiResolvePath(argPaths: $argPaths)
+                    }
+                    """),
+                {"argPaths": [data["remote_path"] for data in unresolved]},
+            )["fastLdataMultiResolvePath"]
+        except gql.transport.exceptions.TransportQueryError:
+            raise ValueError(
+                """You don't have permission for one or more LData paths in this Table Update.
+                Please ensure you have the correct permissions for all of the paths you are trying to add."""
+            )
+
+        for i, db_val in enumerate(unresolved):
+            data = res[i]
+
+            if data is None:
+                raise RegistryTransformerException(
+                    f"could not resolve path: {db_val['remote_path']}"
+                )
+
+            db_val["ldataNodeId"] = data
+            del db_val["remote_path"]
 
     # transaction
 
@@ -720,6 +798,8 @@ class TableUpdate:
 
         if len(self._record_mutations) == 0:
             return
+
+        self._resolve_all_blobs()
 
         def _add_record_data_selection(cur):
             if isinstance(cur[0], _TableRecordsUpsertData):
