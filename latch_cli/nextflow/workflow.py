@@ -60,12 +60,14 @@ def initialize() -> str:
 
 {preambles}
 
-{samplesheet_constructors}
+{samplesheet_funs}
 
 @nextflow_runtime_task(cpu={cpu}, memory={memory})
 def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
     try:
         shared_dir = Path("/nf-workdir")
+
+{samplesheet_constructors}
 
         shutil.copytree(
             Path("/root"),
@@ -172,7 +174,8 @@ def generate_nextflow_workflow(
     flags = []
     defaults: List[Tuple[str, str]] = []
     no_defaults: List[str] = []
-    preambles: List[str] = []
+    preambles: set[str] = set()
+    samplesheet_funs: List[str] = []
     samplesheet_constructors: List[str] = []
     for param_name, param in parameters.items():
         sig = f"{param_name}: {type_repr(param.type)}"
@@ -195,7 +198,7 @@ def generate_nextflow_workflow(
             no_defaults.append(sig)
 
         if param.samplesheet:
-            samplesheet_constructors.append(
+            samplesheet_funs.append(
                 reindent(
                     f"""
                     {param_name}_construct_samplesheet = metadata._nextflow_metadata.parameters[{repr(param_name)}].samplesheet_constructor
@@ -204,10 +207,17 @@ def generate_nextflow_workflow(
                 ),
             )
 
+            samplesheet_constructors.append(
+                reindent(
+                    f"{param_name}_samplesheet ="
+                    f" {param_name}_construct_samplesheet({param_name})",
+                    2,
+                ),
+            )
+
             flags.append(
                 reindent(
-                    f"*get_flag({repr(param_name)},"
-                    f" {param_name}_construct_samplesheet({param_name}))",
+                    f"*get_flag({repr(param_name)}, {param_name}_samplesheet)",
                     4,
                 )
             )
@@ -215,8 +225,8 @@ def generate_nextflow_workflow(
             flags.append(reindent(f"*get_flag({repr(param_name)}, {param_name})", 4))
 
         preamble = get_preamble(param.type)
-        if len(preamble) > 0:
-            preambles.append(preamble)
+        if len(preamble) > 0 and preamble not in preambles:
+            preambles.add(preamble)
 
     if metadata._nextflow_metadata.output_dir is None:
         output_dir = "latch:///nextflow_outputs"
@@ -238,7 +248,8 @@ def generate_nextflow_workflow(
         execution_profile=(
             execution_profile if execution_profile is not None else "standard"
         ),
-        preambles="\n\n".join(preambles),
+        preambles="\n\n".join(list(preambles)),
+        samplesheet_funs="\n".join(samplesheet_funs),
         samplesheet_constructors="\n".join(samplesheet_constructors),
         cpu=resources.cpus,
         memory=resources.memory,
