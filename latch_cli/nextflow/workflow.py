@@ -1,5 +1,4 @@
-import re
-from dataclasses import fields, is_dataclass
+from dataclasses import asdict, fields, is_dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Any, List, Optional, Tuple
@@ -37,15 +36,15 @@ from flytekit.core.annotation import FlyteAnnotation
 
 import latch_metadata
 
-
 @custom_task(cpu=0.25, memory=0.5, storage_gib=1)
 def initialize() -> str:
     token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
     if token is None:
         raise RuntimeError("failed to get execution token")
 
-    print("Provisioning shared storage volume...")
     headers = {{"Authorization": f"Latch-Execution-Token {{token}}"}}
+
+    print("Provisioning shared storage volume... ", end="")
     resp = requests.post(
         "http://nf-dispatcher-service.flyte.svc.cluster.local/provision-storage",
         headers=headers,
@@ -54,11 +53,14 @@ def initialize() -> str:
         }}
     )
     resp.raise_for_status()
+    print("Done.")
+
     return resp.json()["name"]
 
 
 {preambles}
 
+{samplesheet_constructors}
 
 @nextflow_runtime_task(cpu={cpu}, memory={memory})
 def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
@@ -80,13 +82,15 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
         }}
         subprocess.run(
             [
-                "/root/.latch/bin/nextflow",
+                "/root/nextflow",
                 "run",
                 str(shared_dir / "{nf_script}"),
                 "-work-dir",
                 str(shared_dir),
                 "-profile",
                 "{execution_profile}",
+                "-process.executor",
+                "k8s",
 {params_to_flags}
             ],
             env=env,
@@ -166,12 +170,10 @@ def generate_nextflow_workflow(
     resources = metadata._nextflow_metadata.runtime_resources
 
     flags = []
-    for param_name, param in parameters.items():
-        flags.append(reindent(f"*get_flag({repr(param_name)}, {param_name})", 3))
-
     defaults: List[Tuple[str, str]] = []
     no_defaults: List[str] = []
     preambles: List[str] = []
+    samplesheet_constructors: List[str] = []
     for param_name, param in parameters.items():
         sig = f"{param_name}: {type_repr(param.type)}"
         if param.default is not None:
@@ -191,6 +193,26 @@ def generate_nextflow_workflow(
                 defaults.append((sig, repr(param.default)))
         else:
             no_defaults.append(sig)
+
+        if param.samplesheet:
+            samplesheet_constructors.append(
+                reindent(
+                    f"""
+                    {param_name}_construct_samplesheet = metadata._nextflow_metadata.parameters[{repr(param_name)}].samplesheet_constructor
+                    """,
+                    0,
+                ),
+            )
+
+            flags.append(
+                reindent(
+                    f"*get_flag({repr(param_name)},"
+                    f" {param_name}_construct_samplesheet({param_name}))",
+                    4,
+                )
+            )
+        else:
+            flags.append(reindent(f"*get_flag({repr(param_name)}, {param_name})", 4))
 
         preamble = get_preamble(param.type)
         if len(preamble) > 0:
@@ -217,6 +239,7 @@ def generate_nextflow_workflow(
             execution_profile if execution_profile is not None else "standard"
         ),
         preambles="\n\n".join(preambles),
+        samplesheet_constructors="\n".join(samplesheet_constructors),
         cpu=resources.cpus,
         memory=resources.memory,
         storage_gib=resources.storage_gib,
@@ -228,6 +251,5 @@ def generate_nextflow_workflow(
     entrypoint_path.write_text(entrypoint)
 
     click.secho(
-        f"Nextflow workflow written to {pkg_root / 'wf' / 'entrypoint.py'}",
-        fg="green",
+        f"Nextflow workflow written to {pkg_root / 'wf' / 'entrypoint.py'}", fg="green"
     )

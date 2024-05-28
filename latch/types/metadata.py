@@ -1,21 +1,27 @@
+import csv
+import functools
 import re
-from dataclasses import Field, asdict, dataclass, field
+from dataclasses import Field, asdict, dataclass, field, fields, is_dataclass
 from enum import Enum
 from pathlib import Path
-from textwrap import indent
+from textwrap import dedent, indent
 from typing import (
     Any,
+    Callable,
     ClassVar,
     Collection,
     Dict,
     Generic,
     List,
+    Literal,
     Optional,
     Protocol,
     Tuple,
     Type,
     TypeVar,
     Union,
+    get_args,
+    get_origin,
 )
 
 import click
@@ -477,10 +483,84 @@ class NextflowParameter(Generic[T], LatchParameter):
     The python type of the parameter.
     """
     default: Optional[T] = None
+    """
+    Default value of the parameter
+    """
+
+    samplesheet_type: Literal["csv", "tsv", None] = None
+    """
+    The type of samplesheet to construct from the input parameter.
+
+    Only used if the provided parameter is a samplesheet (samplesheet=True)
+    """
+    samplesheet_constructor: Optional[Callable[[T], Path]] = None
+    """
+    A custom samplesheet constructor.
+
+    Should return the path of the constructed samplesheet. If samplesheet_type is also specified, this takes precedence.
+    Only used if the provided parameter is a samplesheet (samplesheet=True)
+    """
 
     def __post_init__(self):
-        if self.samplesheet is True:
-            self.type = Annotated[self.type, "samplesheet"]
+        if not self.samplesheet or self.samplesheet_constructor is not None:
+            return
+
+        t = self.type
+        if get_origin(t) is not list or not is_dataclass(get_args(t)[0]):
+            click.secho(
+                dedent("""\
+                Samplesheets must be a list of dataclasses.
+                """),
+                fg="red",
+            )
+            raise click.exceptions.Exit(1)
+
+        if self.samplesheet_type is not None:
+            delim = "," if self.samplesheet_type == "csv" else "\t"
+            self.samplesheet_constructor = functools.partial(
+                _samplesheet_constructor, t=get_args(self.type)[0], delim=delim
+            )
+            return
+
+        click.secho(
+            dedent("""\
+            A Samplesheet constructor is required for a samplesheet parameter. Please either provide a value for
+            `samplesheet_type` or provide a custom callable to the `samplesheet_constructor` argument.
+            """),
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
+
+
+DC = TypeVar("DC", bound=_IsDataclass)
+
+
+def _samplesheet_repr(v: Any) -> str:
+    if v is None:
+        return ""
+    if isinstance(v, LatchFile) or isinstance(v, LatchDir):
+        return v.remote_path
+    if isinstance(v, Enum):
+        return getattr(v, "value")
+
+    return str(v)
+
+
+def _samplesheet_constructor(samples: List[DC], t: DC, delim: str = ",") -> Path:
+    samplesheet = Path("samplesheet.csv")
+
+    with open(samplesheet, "w") as f:
+        writer = csv.DictWriter(f, [f.name for f in fields(t)], delimiter=delim)
+        writer.writeheader()
+
+        for sample in samples:
+            row_data = {
+                f.name: _samplesheet_repr(getattr(sample, f.name))
+                for f in fields(sample)
+            }
+            writer.writerow(row_data)
+
+    return samplesheet
 
 
 @dataclass(frozen=True)
