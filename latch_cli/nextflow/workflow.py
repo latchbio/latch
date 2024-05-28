@@ -6,11 +6,11 @@ from typing import Any, List, Optional, Tuple
 import click
 
 import latch.types.metadata as metadata
-from latch.types.directory import LatchDir
+from latch.types.directory import LatchDir, LatchOutputDir
 from latch.types.file import LatchFile
 from latch_cli.snakemake.config.utils import get_preamble, type_repr
 from latch_cli.snakemake.utils import reindent
-from latch_cli.utils import identifier_from_str
+from latch_cli.utils import identifier_from_str, urljoins
 
 template = """\
 from dataclasses import dataclass
@@ -24,16 +24,19 @@ import typing
 import typing_extensions
 
 from latch.resources.workflow import workflow
-from latch.resources.tasks import nextflow_runtime_task, small_task
+from latch.resources.tasks import nextflow_runtime_task, custom_task
 from latch.types.file import LatchFile
 from latch.types.directory import LatchDir, LatchOutputDir
+from latch.ldata.path import LPath
 from latch_cli.nextflow.workflow import get_flag
+from latch_cli.nextflow.utils import _get_execution_name
+from latch_cli.utils import urljoins
 from latch.types import metadata
 from flytekit.core.annotation import FlyteAnnotation
 
 import latch_metadata
 
-@small_task
+@custom_task(cpu=0.25, memory=0.5, storage_gib=1)
 def initialize() -> str:
     token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
     if token is None:
@@ -45,6 +48,9 @@ def initialize() -> str:
     resp = requests.post(
         "http://nf-dispatcher-service.flyte.svc.cluster.local/provision-storage",
         headers=headers,
+        json={{
+            "storage_gib": {storage_gib},
+        }}
     )
     resp.raise_for_status()
     print("Done.")
@@ -56,30 +62,31 @@ def initialize() -> str:
 
 {samplesheet_constructors}
 
-@nextflow_runtime_task
+@nextflow_runtime_task(cpu={cpu}, memory={memory})
 def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
-    workdir = Path("/nf-workdir")
-
-    bin_dir = Path("/root/bin")
-    shared_bin_dir = workdir / "bin"
-    if bin_dir.exists():
-        print("Copying module binaries...")
-        shutil.copytree(bin_dir, shared_bin_dir)
-
-    env = {{
-        **os.environ,
-        "NXF_HOME": "/root/.nextflow",
-        "K8_STORAGE_CLAIM_NAME": pvc_name,
-        "LATCH_SHARED_BIN_DIR": str(shared_bin_dir),
-    }}
     try:
+        shared_dir = Path("/nf-workdir")
+
+        shutil.copytree(
+            Path("/root"),
+            shared_dir,
+            ignore=lambda src, names: ["latch", ".latch"],
+            ignore_dangling_symlinks=True,
+            dirs_exist_ok=True,
+        )
+
+        env = {{
+            **os.environ,
+            "NXF_HOME": "/root/.nextflow",
+            "K8_STORAGE_CLAIM_NAME": pvc_name,
+        }}
         subprocess.run(
             [
                 "/root/nextflow",
                 "run",
-                "{script_dir}",
+                str(shared_dir / "{nf_script}"),
                 "-work-dir",
-                str(workdir),
+                str(shared_dir),
                 "-profile",
                 "{execution_profile}",
                 "-process.executor",
@@ -90,10 +97,27 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
             check=True,
         )
     except subprocess.CalledProcessError:
-        log = Path("/root/.nextflow.log").read_text()
+        remote = LPath(urljoins("{remote_output_dir}", _get_execution_name(), "nextflow.log"))
         print()
-        print(log)
+        print(f"Uploading .nextflow.log to {{remote.path}}")
+        remote.upload_from(Path("/root/.nextflow.log"))
         raise
+    finally:
+        token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
+        if token is None:
+            raise RuntimeError("failed to get execution token")
+
+        headers = {{"Authorization": f"Latch-Execution-Token {{token}}"}}
+        resp = requests.post(
+            "http://nf-dispatcher-service.flyte.svc.cluster.local/finalize",
+            headers=headers,
+            json={{
+                "pvc_name": pvc_name,
+            }}
+        )
+        if resp.status_code != 200:
+            print("Failed to finalize workflow:", resp.status_code)
+
 
 
 @workflow(metadata._nextflow_metadata)
@@ -141,7 +165,9 @@ def generate_nextflow_workflow(
 ):
     assert metadata._nextflow_metadata is not None
 
+    wf_name = metadata._nextflow_metadata.name
     parameters = metadata._nextflow_metadata.parameters
+    resources = metadata._nextflow_metadata.runtime_resources
 
     flags = []
     defaults: List[Tuple[str, str]] = []
@@ -153,6 +179,16 @@ def generate_nextflow_workflow(
         if param.default is not None:
             if isinstance(param.default, Enum):
                 defaults.append((sig, param.default))
+            elif param.type in {LatchDir, LatchFile}:
+                defaults.append((
+                    sig,
+                    f"{param.type.__name__}('{param.default._raw_remote_path}')",
+                ))
+            elif param.type is LatchOutputDir:
+                defaults.append((
+                    sig,
+                    f"LatchOutputDir('{param.default._raw_remote_path}')",
+                ))
             else:
                 defaults.append((sig, repr(param.default)))
         else:
@@ -182,11 +218,17 @@ def generate_nextflow_workflow(
         if len(preamble) > 0:
             preambles.append(preamble)
 
+    if metadata._nextflow_metadata.output_dir is None:
+        output_dir = "latch:///nextflow_outputs"
+    else:
+        output_dir = metadata._nextflow_metadata.output_dir._raw_remote_path
+    output_dir = urljoins(output_dir, wf_name)
+
     entrypoint = template.format(
         workflow_func_name=identifier_from_str(workflow_name),
-        script_dir=nf_script.resolve().relative_to(pkg_root.resolve()),
+        nf_script=nf_script.resolve().relative_to(pkg_root.resolve()),
         param_signature_with_defaults=", ".join(
-            no_defaults + [f"{name}={val}" for name, val in defaults]
+            no_defaults + [f"{name} = {val}" for name, val in defaults]
         ),
         param_signature=", ".join(no_defaults + [name for name, _ in defaults]),
         param_args=", ".join(
@@ -196,8 +238,12 @@ def generate_nextflow_workflow(
         execution_profile=(
             execution_profile if execution_profile is not None else "standard"
         ),
-        preambles="".join(preambles),
+        preambles="\n\n".join(preambles),
         samplesheet_constructors="\n".join(samplesheet_constructors),
+        cpu=resources.cpus,
+        memory=resources.memory,
+        storage_gib=resources.storage_gib,
+        remote_output_dir=output_dir,
     )
 
     entrypoint_path = pkg_root / "wf" / "entrypoint.py"

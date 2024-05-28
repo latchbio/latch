@@ -24,3 +24,5 @@ class LDataNodeType(str, Enum):
     obj = "obj"
     mount = "mount"
     link = "link"
+    mount_gcp = "mount_gcp"
+    mount_azure = "mount_azure"

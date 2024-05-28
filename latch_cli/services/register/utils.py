@@ -116,16 +116,20 @@ def upload_image(ctx: _CentromereCtx, image_name: str) -> List[str]:
 
 
 def serialize_pkg_in_container(
-    ctx: _CentromereCtx, image_name: str, serialize_dir: str
+    ctx: _CentromereCtx, image_name: str, serialize_dir: str, wf_name_override: Optional[str] = None
 ) -> Tuple[List[str], str]:
     assert ctx.dkr_client is not None
+
+    _env = {"LATCH_DKR_REPO": ctx.dkr_repo, "LATCH_VERSION": ctx.version}
+    if wf_name_override is not None:
+        _env["LATCH_WF_NAME_OVERRIDE"] = wf_name_override
 
     _serialize_cmd = ["make", "serialize"]
     container = ctx.dkr_client.create_container(
         f"{ctx.dkr_repo}/{image_name}",
         command=_serialize_cmd,
         volumes=[serialize_dir],
-        environment={"LATCH_DKR_REPO": ctx.dkr_repo, "LATCH_VERSION": ctx.version},
+        environment=_env,
         host_config=ctx.dkr_client.create_host_config(
             binds={
                 serialize_dir: {

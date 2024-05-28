@@ -64,6 +64,8 @@ def download(
         LDataNodeType.account_root,
         LDataNodeType.dir,
         LDataNodeType.mount,
+        LDataNodeType.mount_gcp,
+        LDataNodeType.mount_azure,
     }
 
     if can_have_children:
