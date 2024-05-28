@@ -94,6 +94,7 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
         )
     except subprocess.CalledProcessError:
         remote = LPath(urljoins("{remote_output_dir}", _get_execution_name(), "nextflow.log"))
+        print()
         print(f"Uploading .nextflow.log to {{remote.path}}")
         remote.upload_from(Path("/root/.nextflow.log"))
         raise
