@@ -72,7 +72,7 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
         shutil.copytree(
             Path("/root"),
             shared_dir,
-            ignore=lambda src, names: ["latch", ".latch"],
+            ignore=lambda src, names: ["latch", ".latch", "nextflow", ".nextflow"],
             ignore_dangling_symlinks=True,
             dirs_exist_ok=True,
         )
@@ -97,12 +97,13 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
             ],
             env=env,
             check=True,
+            cwd=str(shared_dir),
         )
     except subprocess.CalledProcessError:
         remote = LPath(urljoins("{remote_output_dir}", _get_execution_name(), "nextflow.log"))
         print()
         print(f"Uploading .nextflow.log to {{remote.path}}")
-        remote.upload_from(Path("/root/.nextflow.log"))
+        remote.upload_from(shared_dir / ".nextflow.log")
         raise
     finally:
         token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
