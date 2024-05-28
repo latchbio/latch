@@ -1,3 +1,4 @@
+import itertools
 import os
 from typing import Dict, TypedDict
 
@@ -39,10 +40,12 @@ def retrieve_or_login() -> str:
         token = login()
     return token
 
+
 class WSInfo(TypedDict):
     workspace_id: str
     name: str
     default: bool
+
 
 def get_workspaces() -> Dict[str, WSInfo]:
     """Retrieve workspaces that user can access.
@@ -52,7 +55,8 @@ def get_workspaces() -> Dict[str, WSInfo]:
     """
     account_id = account_id_from_token(retrieve_or_login())
     res = execute(
-        gql.gql("""
+        gql.gql(
+            """
         query GetWorkspaces($accountId: BigInt!) {
             userInfoByAccountId(accountId: $accountId) {
                 id
@@ -76,15 +80,65 @@ def get_workspaces() -> Dict[str, WSInfo]:
                     }
                 }
             }
-        }"""),
+            orgInfos(filter: { ownerAccountId: { equalTo: $accountId } }) {
+                    nodes {
+                        teamInfosByOrgId(filter: { account: { removed: { equalTo: false } } }) {
+                            nodes {
+                                accountId
+                                displayName
+                            }
+                        }
+                    }
+                }
+                orgMembers(filter: { userAccountId: { equalTo: $accountId } }) {
+                    nodes {
+                        org {
+                            teamInfosByOrgId(filter: { account: { removed: { equalTo: false } } }) {
+                                nodes {
+                                    accountId
+                                    displayName
+                                }
+                            }
+                        }
+                    }
+                }
+        }"""
+        ),
         {"accountId": account_id},
     )
 
     owned_teams = res["teamInfos"]["nodes"]
     member_teams = [x["team"] for x in res["teamMembers"]["nodes"]]
 
-    default_account = res["userInfoByAccountId"]["defaultAccount"] if res["userInfoByAccountId"] is not None else None
-    teams = {x["accountId"]: WSInfo(workspace_id=x["accountId"], name=x["displayName"], default=x["accountId"] == default_account) for x in owned_teams + member_teams + ([res["teamInfoByAccountId"]] if res["teamInfoByAccountId"] is not None else [])}
+    owned_org_teams = [x["teamInfosByOrgId"]["nodes"] for x in res["orgInfos"]["nodes"]]
+    owned_org_teams = list(itertools.chain(*owned_org_teams))
+
+    member_org_teams = [
+        x["org"]["teamInfosByOrgId"]["nodes"] for x in res["orgMembers"]["nodes"]
+    ]
+    member_org_teams = list(itertools.chain(*member_org_teams))
+
+    default_account = (
+        res["userInfoByAccountId"]["defaultAccount"]
+        if res["userInfoByAccountId"] is not None
+        else None
+    )
+    teams = {
+        x["accountId"]: WSInfo(
+            workspace_id=x["accountId"],
+            name=x["displayName"],
+            default=x["accountId"] == default_account,
+        )
+        for x in owned_teams
+        + member_teams
+        + (
+            [res["teamInfoByAccountId"]]
+            if res["teamInfoByAccountId"] is not None
+            else []
+        )
+        + owned_org_teams
+        + member_org_teams
+    }
 
     return teams
 
@@ -98,7 +152,8 @@ def current_workspace() -> str:
     ws = user_config.workspace_id
     if ws == "":
         res = execute(
-            gql.gql("""
+            gql.gql(
+                """
                 query DefaultAccountQuery {
                     accountInfoCurrent {
                         id
@@ -107,7 +162,8 @@ def current_workspace() -> str:
                         }
                     }
                 }
-            """),
+            """
+            ),
         )["accountInfoCurrent"]
 
         default_ws = res["id"]
