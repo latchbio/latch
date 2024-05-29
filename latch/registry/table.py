@@ -49,6 +49,7 @@ from latch.registry.upstream_types.types import DBType, RegistryType
 from latch.registry.upstream_types.values import DBValue, EmptyCell, UnresolvedBlobValue
 from latch.registry.utils import (
     RegistryTransformerException,
+    _get_unresolved_blobs_in_update,
     to_python_literal,
     to_python_type,
     to_registry_literal,
@@ -710,48 +711,13 @@ class TableUpdate:
         mutations.append(res)
         vars[argTypesVar] = (l.parse_type("[JSON]!"), types)
 
-    def _get_unresolved_blobs_in_db_val(
-        self,
-        db_val: DBValue,
-        res: List[UnresolvedBlobValue],
-    ) -> None:
-        if isinstance(db_val, list):
-            for i in range(len(db_val)):
-                self._get_unresolved_blobs_in_db_val(db_val[i], res)
-
-            return
-
-        if not isinstance(db_val, dict):
-            return
-
-        if "tag" in db_val:
-            self._get_unresolved_blobs_in_db_val(db_val["value"], res)
-            return
-
-        if not db_val["valid"] or "rawValue" in db_val:
-            return
-
-        val = db_val["value"]
-
-        if not isinstance(val, dict) or not "remote_path" in val:
-            return
-
-        res.append(val)
-        return
-
-    def _get_unresolved_blobs_in_update(
-        self, update: _TableRecordsUpsertData, res: List[UnresolvedBlobValue]
-    ) -> None:
-        for db_val in update.values.values():
-            self._get_unresolved_blobs_in_db_val(db_val, res)
-
-    def _resolve_all_blobs(self) -> None:
+    def _resolve_upsert_blobs(self) -> None:
         unresolved: List[UnresolvedBlobValue] = []
         for update in self._record_mutations:
             if not isinstance(update, _TableRecordsUpsertData):
                 continue
 
-            self._get_unresolved_blobs_in_update(update, unresolved)
+            _get_unresolved_blobs_in_update(update, unresolved)
 
         if len(unresolved) == 0:
             return
@@ -765,11 +731,11 @@ class TableUpdate:
                     """),
                 {"argPaths": [data["remote_path"] for data in unresolved]},
             )["fastLdataMultiResolvePath"]
-        except gql.transport.exceptions.TransportQueryError:
-            raise ValueError(
-                """You don't have permission for one or more LData paths in this Table Update.
-                Please ensure you have the correct permissions for all of the paths you are trying to add."""
-            )
+        except gql.transport.exceptions.TransportQueryError as e:
+            assert e.errors is not None
+
+            err = e.errors[0]
+            raise ValueError(err["message"]) from e
 
         for i, db_val in enumerate(unresolved):
             data = res[i]
@@ -799,7 +765,7 @@ class TableUpdate:
         if len(self._record_mutations) == 0:
             return
 
-        self._resolve_all_blobs()
+        self._resolve_upsert_blobs()
 
         def _add_record_data_selection(cur):
             if isinstance(cur[0], _TableRecordsUpsertData):

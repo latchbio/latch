@@ -1,7 +1,7 @@
 import json
 from datetime import date, datetime
 from enum import Enum
-from typing import Dict, List, Optional, Type, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Dict, List, Optional, Type, TypeVar, Union, cast
 
 import gql
 from dateutil.parser import parse
@@ -16,10 +16,13 @@ from latch.registry.upstream_types.types import (
     PrimitiveTypeEnum,
     RegistryType,
 )
-from latch.registry.upstream_types.values import DBValue
+from latch.registry.upstream_types.values import DBValue, UnresolvedBlobValue
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
 from latch.utils import current_workspace
+
+if TYPE_CHECKING:
+    from latch.registry.table import _TableRecordsUpsertData
 
 # todo(maximsmol): hopefully, PyLance eventually narrows `TypedDict`` unions using `in`
 # then we can get rid of the casts
@@ -398,3 +401,39 @@ def get_blob_nodetype(
         return LatchDir
 
     return LatchFile
+
+
+def _get_unresolved_blobs_in_db_val(
+    db_val: DBValue,
+    res: List[UnresolvedBlobValue],
+) -> None:
+    if isinstance(db_val, list):
+        for i in range(len(db_val)):
+            _get_unresolved_blobs_in_db_val(db_val[i], res)
+
+        return
+
+    if not isinstance(db_val, dict):
+        return
+
+    if "tag" in db_val:
+        _get_unresolved_blobs_in_db_val(db_val["value"], res)
+        return
+
+    if not db_val["valid"] or "rawValue" in db_val:
+        return
+
+    val = db_val["value"]
+
+    if not isinstance(val, dict) or not "remote_path" in val:
+        return
+
+    res.append(val)
+    return
+
+
+def _get_unresolved_blobs_in_update(
+    update: "_TableRecordsUpsertData", res: List[UnresolvedBlobValue]
+) -> None:
+    for db_val in update.values.values():
+        _get_unresolved_blobs_in_db_val(db_val, res)
