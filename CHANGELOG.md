@@ -16,6 +16,18 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.45.3 - 2024-05-28
+
+### Added
+
++ Support selecting organization workspaces with `latch workspace`
+
+## 2.45.2 - 2024-05-20
+
+### Dependencies
+
++ Bump docker version to fix <https://github.com/docker/docker-py/issues/3256>
+
 ## 2.45.0 - 2024-05-20
 
 ### Fixed
