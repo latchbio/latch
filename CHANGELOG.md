@@ -16,6 +16,14 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.45.4 - 2024-05-29
+
+### Changed
+
++ `TableUpdater.upsert_record` no longer does file path resolution, and instead
+  defers that operation to when the update commits. This drastically speeds up
+  registry table updates to blob-type columns.
+
 ## 2.45.3 - 2024-05-28
 
 ### Added
