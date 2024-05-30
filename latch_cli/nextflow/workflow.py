@@ -72,29 +72,33 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
         shutil.copytree(
             Path("/root"),
             shared_dir,
-            ignore=lambda src, names: ["latch", ".latch", "nextflow", ".nextflow"],
+            ignore=lambda src, names: ["latch", ".latch", "nextflow", ".nextflow", "work", "results"],
             ignore_dangling_symlinks=True,
             dirs_exist_ok=True,
         )
 
+        cmd = [
+            "/root/nextflow",
+            "run",
+            str(shared_dir / "{nf_script}"),
+            "-work-dir",
+            str(shared_dir),
+            "-profile",
+            "{execution_profile}",
+            "-process.executor",
+            "k8s",
+{params_to_flags}
+        ]
+
+        print("Launching Nextflow Runtime")
+        print(cmd, flush=True)
         env = {{
             **os.environ,
             "NXF_HOME": "/root/.nextflow",
             "K8_STORAGE_CLAIM_NAME": pvc_name,
         }}
         subprocess.run(
-            [
-                "/root/nextflow",
-                "run",
-                str(shared_dir / "{nf_script}"),
-                "-work-dir",
-                str(shared_dir),
-                "-profile",
-                "{execution_profile}",
-                "-process.executor",
-                "k8s",
-{params_to_flags}
-            ],
+            cmd,
             env=env,
             check=True,
             cwd=str(shared_dir),
@@ -219,7 +223,7 @@ def generate_nextflow_workflow(
             flags.append(
                 reindent(
                     f"*get_flag({repr(param_name)}, {param_name}_samplesheet)",
-                    4,
+                    2,
                 )
             )
         else:

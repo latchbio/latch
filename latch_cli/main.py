@@ -217,14 +217,7 @@ def dockerfile(pkg_root: str, snakemake: bool = False, nextflow: bool = False):
         )
         raise click.exceptions.Exit(1)
 
-    from latch_cli.docker_utils import generate_dockerfile
-
-    source = Path(pkg_root)
-    dest = source / "Dockerfile"
-    if dest.exists() and not click.confirm(
-        f"Dockerfile already exists at `{dest}`. Overwrite?"
-    ):
-        return
+    from latch_cli.docker_utils import generate_dockerfile, generate_dockerignore
 
     workflow_type = WorkflowType.latchbiosdk
     if snakemake is True:
@@ -232,8 +225,9 @@ def dockerfile(pkg_root: str, snakemake: bool = False, nextflow: bool = False):
     elif nextflow is True:
         workflow_type = WorkflowType.nextflow
 
-    generate_dockerfile(source, dest, wf_type=workflow_type)
-    click.secho(f"Successfully generated dockerfile `{dest}`", fg="green")
+    source = Path(pkg_root)
+    generate_dockerfile(source, wf_type=workflow_type)
+    generate_dockerignore(source, wf_type=workflow_type)
 
 
 @main.command("generate-metadata")

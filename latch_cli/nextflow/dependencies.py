@@ -1,5 +1,4 @@
 import shutil
-import subprocess
 from concurrent.futures import ProcessPoolExecutor
 from ctypes import c_int
 from multiprocessing.managers import SyncManager
@@ -8,9 +7,9 @@ from urllib.parse import urljoin
 
 import boto3
 import click
+from botocore.handlers import disable_signing
 
 from latch_cli import tinyrequests
-from latch_cli.utils import dedent
 
 
 def _do_download(
@@ -35,6 +34,7 @@ def _do_download(
 
 def download_nf_jars(pkg_root: Path):
     s3_resource = boto3.resource("s3")
+    s3_resource.meta.client.meta.events.register("choose-signer.s3.*", disable_signing)
     bucket = s3_resource.Bucket("latch-public")
 
     subdir = "nextflow-v2/"
@@ -51,8 +51,6 @@ def download_nf_jars(pkg_root: Path):
                     "https://latch-public.s3.us-west-2.amazonaws.com/", obj.key
                 )
                 obj_path = pkg_root / ".latch" / obj.key[len(subdir) :]
-                print(obj_path)
-
                 exec.submit(_do_download, url, obj_path, len(objects), counter, lock)
 
     click.echo("\x1b[0K", nl=False)

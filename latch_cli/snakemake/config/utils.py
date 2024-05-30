@@ -221,10 +221,7 @@ def type_repr(t: Type, *, add_namespace: bool = False) -> str:
         args = get_args(t)
 
         if len(args) != 2 or args[1] is not type(None):
-            raise ValueError(
-                "Union types other than Optional are not yet supported in Snakemake"
-                " workflows."
-            )
+            raise ValueError("Union types other than Optional are not yet supported")
 
         return f"typing.Optional[{type_repr(args[0], add_namespace=add_namespace)}]"
 
