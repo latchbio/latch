@@ -1,6 +1,7 @@
-from dataclasses import asdict, fields, is_dataclass
+from dataclasses import fields, is_dataclass
 from enum import Enum
 from pathlib import Path
+from textwrap import dedent
 from typing import Any, List, Optional, Tuple
 
 import click
@@ -85,13 +86,15 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
             str(shared_dir),
             "-profile",
             "{execution_profile}",
-            "-process.executor",
-            "k8s",
+            "-c",
+            "latch.config",
 {params_to_flags}
         ]
 
         print("Launching Nextflow Runtime")
-        print(cmd, flush=True)
+        print(' '.join(cmd))
+        print(flush=True)
+
         env = {{
             **os.environ,
             "NXF_HOME": "/root/.nextflow",
@@ -108,6 +111,8 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
         print()
         print(f"Uploading .nextflow.log to {{remote.path}}")
         remote.upload_from(shared_dir / ".nextflow.log")
+        import time
+        time.sleep(10 * 60)
         raise
     finally:
         token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
@@ -163,6 +168,23 @@ def get_flag(name: str, val: Any) -> List[str]:
         return [flag, str(val)]
 
 
+def generate_nextflow_config(pkg_root: Path):
+    config_path = Path(pkg_root) / "latch.config"
+    config_path.write_text(dedent("""\
+        process {
+            executor = 'k8s'
+        }
+
+        aws {
+            client {
+                anonymous = true
+            }
+        }
+        """))
+
+    click.secho(f"Nextflow Latch config written to {config_path}", fg="green")
+
+
 def generate_nextflow_workflow(
     pkg_root: Path,
     workflow_name: str,
@@ -170,6 +192,8 @@ def generate_nextflow_workflow(
     *,
     execution_profile: Optional[str] = None,
 ):
+    generate_nextflow_config(pkg_root)
+
     assert metadata._nextflow_metadata is not None
 
     wf_name = metadata._nextflow_metadata.name
@@ -266,6 +290,4 @@ def generate_nextflow_workflow(
     entrypoint_path.parent.mkdir(exist_ok=True)
     entrypoint_path.write_text(entrypoint)
 
-    click.secho(
-        f"Nextflow workflow written to {pkg_root / 'wf' / 'entrypoint.py'}", fg="green"
-    )
+    click.secho(f"Nextflow workflow written to {entrypoint_path}", fg="green")
