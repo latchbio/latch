@@ -53,6 +53,20 @@ class PrimitiveBlobValueValid(TypedDict):
 PrimitiveBlobValue: TypeAlias = Union[PrimitiveBlobValueValid, InvalidValue]
 
 
+class UnresolvedBlobValue(TypedDict):
+    remote_path: str
+
+
+class PrimitiveUnresolvedBlobValueValid(TypedDict):
+    value: UnresolvedBlobValue
+    valid: Literal[True]
+
+
+PrimitiveUnresolvedBlobValue: TypeAlias = Union[
+    PrimitiveUnresolvedBlobValueValid, InvalidValue
+]
+
+
 class LinkValue(TypedDict):
     sampleId: str
 
@@ -77,6 +91,7 @@ PrimitiveValue: TypeAlias = Union[
     PrimitiveNumberValue,
     PrimitiveNullValue,
     PrimitiveBlobValue,
+    PrimitiveUnresolvedBlobValue,
     PrimitiveLinkValue,
     PrimitiveEnumValue,
     PrimitiveBooleanValue,

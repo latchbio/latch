@@ -1,7 +1,7 @@
 import json
 from datetime import date, datetime
 from enum import Enum
-from typing import Dict, List, Optional, Type, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Dict, List, Optional, Type, TypeVar, Union, cast
 
 import gql
 from dateutil.parser import parse
@@ -16,10 +16,13 @@ from latch.registry.upstream_types.types import (
     PrimitiveTypeEnum,
     RegistryType,
 )
-from latch.registry.upstream_types.values import DBValue
+from latch.registry.upstream_types.values import DBValue, UnresolvedBlobValue
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
 from latch.utils import current_workspace
+
+if TYPE_CHECKING:
+    from latch.registry.table import _TableRecordsUpsertData
 
 # todo(maximsmol): hopefully, PyLance eventually narrows `TypedDict`` unions using `in`
 # then we can get rid of the casts
@@ -210,9 +213,15 @@ def to_python_literal(
     )
 
 
+# same as to_registry_literal except no network request is made for blob types
+# (these are deferred to the end of the parent op so that we can do it in one request)
+
+
 def to_registry_literal(
     python_literal,
     registry_type: RegistryType,
+    *,
+    resolve_paths: bool = True,
 ) -> DBValue:
     if isinstance(python_literal, InvalidValue):
         return {"valid": False, "rawValue": python_literal.raw_value}
@@ -327,47 +336,49 @@ def to_registry_literal(
                 "cannot convert non-blob python literal to registry blob"
             )
 
-        ws_id = current_workspace()
-        if ws_id == "":
-            ws_id = None
+        value = {"remote_path": python_literal.remote_path}
+        if resolve_paths:
+            ws_id = current_workspace()
+            if ws_id == "":
+                ws_id = None
 
-        if ws_id is None:
-            data = execute(
-                gql.gql("""
-                query nodeIdQ($argPath: String!) {
-                    ldataResolvePath(
-                        path: $argPath
-                    ) {
-                        nodeId
-                        path
+            if ws_id is None:
+                data = execute(
+                    gql.gql("""
+                    query nodeIdQ($argPath: String!) {
+                        ldataResolvePath(
+                            path: $argPath
+                        ) {
+                            nodeId
+                            path
+                        }
                     }
-                }
-                """),
-                {"argPath": python_literal.remote_path},
-            )["ldataResolvePath"]
-        else:
-            data = execute(
-                gql.gql("""
-                query nodeIdQ($argPath: String!, $wsId: BigInt!) {
-                    ldataResolvePathExt(
-                        path: $argPath,
-                        accId: $wsId
-                    ) {
-                        nodeId
-                        path
+                    """),
+                    {"argPath": python_literal.remote_path},
+                )["ldataResolvePath"]
+            else:
+                data = execute(
+                    gql.gql("""
+                    query nodeIdQ($argPath: String!, $wsId: BigInt!) {
+                        ldataResolvePathExt(
+                            path: $argPath,
+                            accId: $wsId
+                        ) {
+                            nodeId
+                            path
+                        }
                     }
-                }
-                """),
-                {"argPath": python_literal.remote_path, "wsId": ws_id},
-            )["ldataResolvePathExt"]
+                    """),
+                    {"argPath": python_literal.remote_path, "wsId": ws_id},
+                )["ldataResolvePathExt"]
 
-        if data["path"] is not None and data["path"] != "":
-            # todo(maximsmol): store an invalid value instead?
-            raise RegistryTransformerException(
-                f"could not resolve path: {python_literal.remote_path}"
-            )
+            if data["path"] is not None and data["path"] != "":
+                # todo(maximsmol): store an invalid value instead?
+                raise RegistryTransformerException(
+                    f"could not resolve path: {python_literal.remote_path}"
+                )
 
-        value = {"ldataNodeId": data["nodeId"]}
+            value = {"ldataNodeId": data["nodeId"]}
     else:
         raise RegistryTransformerException(f"malformed registry type: {registry_type}")
 
@@ -390,3 +401,39 @@ def get_blob_nodetype(
         return LatchDir
 
     return LatchFile
+
+
+def _get_unresolved_blobs_in_db_val(
+    db_val: DBValue,
+    res: List[UnresolvedBlobValue],
+) -> None:
+    if isinstance(db_val, list):
+        for i in range(len(db_val)):
+            _get_unresolved_blobs_in_db_val(db_val[i], res)
+
+        return
+
+    if not isinstance(db_val, dict):
+        return
+
+    if "tag" in db_val:
+        _get_unresolved_blobs_in_db_val(db_val["value"], res)
+        return
+
+    if not db_val["valid"] or "rawValue" in db_val:
+        return
+
+    val = db_val["value"]
+
+    if not isinstance(val, dict) or not "remote_path" in val:
+        return
+
+    res.append(val)
+    return
+
+
+def _get_unresolved_blobs_in_update(
+    update: "_TableRecordsUpsertData", res: List[UnresolvedBlobValue]
+) -> None:
+    for db_val in update.values.values():
+        _get_unresolved_blobs_in_db_val(db_val, res)
