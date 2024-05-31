@@ -114,7 +114,7 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
         if name is None:
             print("Skipping logs upload, failed to get execution name")
         else:
-            remote = LPath(urljoins("{log_dir}", , "nextflow.log"))
+            remote = LPath(urljoins("{log_dir}", name, "nextflow.log"))
             print(f"Uploading .nextflow.log to {{remote.path}}")
             remote.upload_from(shared_dir / ".nextflow.log")
 
