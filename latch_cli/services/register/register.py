@@ -16,9 +16,9 @@ from scp import SCPClient
 
 from latch.utils import current_workspace, get_workspaces
 
-from ...constants import latch_constants
 from ...centromere.ctx import _CentromereCtx
 from ...centromere.utils import MaybeRemoteDir
+from ...constants import latch_constants
 from ...utils import WorkflowType
 from .constants import ANSI_REGEX, MAX_LINES
 from .utils import (
@@ -341,11 +341,7 @@ def register(
 
         workspaces = get_workspaces()
         ws_name = next(
-            (
-                x[1]["name"]
-                for x in workspaces.items()
-                if x[0] == current_workspace()
-            ),
+            (x[1]["name"] for x in workspaces.items() if x[0] == current_workspace()),
             "N/A",
         )
         click.echo(
@@ -410,17 +406,21 @@ def register(
             )
         elif ctx.workflow_type == WorkflowType.nextflow:
             assert ctx.nf_script is not None
+            assert ctx.pkg_root is not None
 
             from ...nextflow.dependencies import ensure_nf_dependencies
             from ...nextflow.workflow import generate_nextflow_workflow
 
             ensure_nf_dependencies(
-                Path(pkg_root), force_redownload=nf_redownload_dependencies
+                ctx.pkg_root, force_redownload=nf_redownload_dependencies
             )
+
+            dest = ctx.pkg_root / "wf" / "entrypoint.py"
+            dest.parent.mkdir(exist_ok=True)
             generate_nextflow_workflow(
                 ctx.pkg_root,
-                ctx.workflow_name,
                 ctx.nf_script,
+                dest,
                 execution_profile=nf_execution_profile,
             )
 

@@ -114,7 +114,7 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
         if name is None:
             print("Skipping logs upload, failed to get execution name")
         else:
-            remote = LPath(urljoins("{log_dir}", , "nextflow.log"))
+            remote = LPath(urljoins("{log_dir}", name, "nextflow.log"))
             print(f"Uploading .nextflow.log to {{remote.path}}")
             remote.upload_from(shared_dir / ".nextflow.log")
 
@@ -192,8 +192,8 @@ def generate_nextflow_config(pkg_root: Path):
 
 def generate_nextflow_workflow(
     pkg_root: Path,
-    workflow_name: str,
     nf_script: Path,
+    dest: Path,
     *,
     execution_profile: Optional[str] = None,
 ):
@@ -202,6 +202,8 @@ def generate_nextflow_workflow(
     assert metadata._nextflow_metadata is not None
 
     wf_name = metadata._nextflow_metadata.name
+    assert wf_name is not None
+
     parameters = metadata._nextflow_metadata.parameters
     resources = metadata._nextflow_metadata.runtime_resources
 
@@ -269,7 +271,7 @@ def generate_nextflow_workflow(
     log_dir = urljoins(log_dir, wf_name)
 
     entrypoint = template.format(
-        workflow_func_name=identifier_from_str(workflow_name),
+        workflow_func_name=identifier_from_str(wf_name),
         nf_script=nf_script.resolve().relative_to(pkg_root.resolve()),
         param_signature_with_defaults=", ".join(
             no_defaults + [f"{name} = {val}" for name, val in defaults]
@@ -291,8 +293,5 @@ def generate_nextflow_workflow(
         log_dir=log_dir,
     )
 
-    entrypoint_path = pkg_root / "wf" / "entrypoint.py"
-    entrypoint_path.parent.mkdir(exist_ok=True)
-    entrypoint_path.write_text(entrypoint)
-
-    click.secho(f"Nextflow workflow written to {entrypoint_path}", fg="green")
+    dest.write_text(entrypoint)
+    click.secho(f"Nextflow workflow written to {dest}", fg="green")
