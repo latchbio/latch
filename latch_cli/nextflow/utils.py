@@ -6,7 +6,7 @@ from latch_sdk_gql.execute import execute
 
 
 def _get_execution_name() -> Optional[str]:
-    token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", None)
+    token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
     if token is None:
         return None
 
@@ -24,4 +24,7 @@ def _get_execution_name() -> Optional[str]:
         {"token": token},
     )["executionCreatorByToken"]
 
-    return res["info"]["displayName"]
+    try:
+        return res["info"]["displayName"]
+    except KeyError:
+        return None

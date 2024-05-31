@@ -117,8 +117,8 @@ class LatchDir(FlyteDirectory):
             self._raw_remote_path = str(path)
             self._remote_directory = self.path
         else:
-            self._raw_remote_path = str(remote_path)
             self._remote_directory = None if remote_path is None else str(remote_path)
+            self._raw_remote_path = self._remote_directory
 
         if kwargs.get("downloader") is not None:
             super().__init__(self.path, kwargs["downloader"], self._remote_directory)

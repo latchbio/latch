@@ -95,11 +95,15 @@ class _CentromereCtx:
             self.dkr_repo = config.dkr_repo
             self.pkg_root = pkg_root.resolve()
 
-            if snakefile and nf_script:
-                raise ValueError(
-                    "Cannot provide both a snakefile and nextflow script to the"
-                    " register command."
+            if snakefile is not None and nf_script is not None:
+                click.secho(
+                    dedent("""
+                        Cannot provide both a snakefile and nextflow script to the
+                        register command.
+                        """),
+                    fg="red",
                 )
+                click.exceptions.Exit(1)
             if snakefile is not None:
                 self.workflow_type = WorkflowType.snakemake
                 self.snakefile = snakefile
@@ -137,6 +141,10 @@ class _CentromereCtx:
                         fg="red",
                     )
                     raise click.exceptions.Exit(1)
+
+                name_path = pkg_root / latch_constants.pkg_workflow_name
+                if name_path.exists():
+                    self.workflow_name = name_path.read_text().strip()
             elif self.workflow_type == WorkflowType.snakemake:
                 assert snakefile is not None
 
@@ -148,10 +156,6 @@ class _CentromereCtx:
                     snakemake_workflow_extractor,
                 )
                 from ..snakemake.utils import load_snakemake_metadata
-
-                name_path = pkg_root / latch_constants.pkg_workflow_name
-                if name_path.exists():
-                    self.workflow_name = name_path.read_text().strip()
 
                 meta_file = load_snakemake_metadata(pkg_root)
                 if meta_file is not None:
@@ -247,7 +251,7 @@ class _CentromereCtx:
                 # name for snakemake
                 self.workflow_name = f"{metadata._snakemake_metadata.name}_jit_register"
             else:
-                assert nf_script is not None
+                assert self.nf_script is not None
 
                 import latch.types.metadata as metadata
 

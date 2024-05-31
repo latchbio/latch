@@ -211,7 +211,7 @@ def dockerfile(pkg_root: str, snakemake: bool = False, nextflow: bool = False):
 
     if snakemake is True and nextflow is True:
         click.secho(
-            f"Please specify only one workflow type to generate metadata for. Use"
+            f"Please specify at most one workflow type to generate metadata for. Use"
             f" either `--snakemake` or `--nextflow`.",
             fg="red",
         )

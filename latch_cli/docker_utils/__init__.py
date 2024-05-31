@@ -307,9 +307,7 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
 
 
 def copy_file_commands(wf_type: WorkflowType) -> List[DockerCmdBlock]:
-    cmd = []
-
-    cmd += [
+    cmd = [
         "",
         "# Copy workflow data (use .dockerignore to skip files)",
         "",
@@ -338,9 +336,6 @@ def copy_file_commands(wf_type: WorkflowType) -> List[DockerCmdBlock]:
 
 
 def generate_dockerignore(pkg_root: Path, *, wf_type: WorkflowType) -> None:
-    if wf_type != WorkflowType.nextflow:
-        return
-
     dest = Path(pkg_root) / ".dockerignore"
     if dest.exists() and not click.confirm(
         f".dockerignore already exists at `{dest}`. Overwrite?"
@@ -348,24 +343,33 @@ def generate_dockerignore(pkg_root: Path, *, wf_type: WorkflowType) -> None:
         return
 
     with Path(".dockerignore").open("w") as f:
-        f.write(".git/\n")
-        f.write(".github/\n")
-        f.write(".nextflow*\n")
-        f.write("work/\n")
-        f.write("results/\n")
-        f.write(".nextflow.log*\n")
+        dest.write_text(dedent("""\
+	        .git
+	        .github
+	    """))
+
+        if wf_type == WorkflowType.nextflow:
+            dest.write_text(dedent("""\
+                .nextflow*
+                .nextflow.log*
+                work/
+                results/
+            """))
 
     click.secho(f"Successfully generated .dockerignore `{dest}`", fg="green")
 
 
 def generate_dockerfile(
-    pkg_root: Path, *, wf_type: WorkflowType = WorkflowType.latchbiosdk
+    pkg_root: Path,
+    *,
+    dest: Path = None,
+    wf_type: WorkflowType = WorkflowType.latchbiosdk,
 ) -> None:
     """Generate a best effort Dockerfile from files in the workflow directory.
 
     Args:
         pkg_root: A path to a workflow directory.
-        dest: The path to write the generated Dockerfile.
+        dest: The path to write the generated Dockerfile. If None, write Dockerfile to the pkg_root.
         wf_type: The type of workflow (eg. snakemake) the Dockerfile is for
 
     Example:
@@ -376,7 +380,8 @@ def generate_dockerfile(
             #   ├── Dockerfile
             #   └── ...
     """
-    dest = pkg_root / "Dockerfile"
+    if dest is None:
+        dest = pkg_root / "Dockerfile"
     if dest.exists() and not click.confirm(
         f"Dockerfile already exists at `{dest}`. Overwrite?"
     ):
@@ -438,6 +443,6 @@ def get_default_dockerfile(pkg_root: Path, *, wf_type: WorkflowType):
 
     if not default_dockerfile.exists():
         default_dockerfile = pkg_root / ".latch" / "Dockerfile"
-        generate_dockerfile(pkg_root, default_dockerfile, wf_type=wf_type)
+        generate_dockerfile(pkg_root, dest=default_dockerfile, wf_type=wf_type)
 
     return default_dockerfile

@@ -376,6 +376,6 @@ def init(
     create_and_write_config(pkg_root, base_image_type)
 
     if expose_dockerfile:
-        generate_dockerfile(pkg_root, pkg_root / "Dockerfile")
+        generate_dockerfile(pkg_root)
 
     return True

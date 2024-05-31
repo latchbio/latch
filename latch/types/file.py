@@ -80,8 +80,8 @@ class LatchFile(FlyteFile):
             self._raw_remote_path = str(path)
             self._remote_path = str(path)
         else:
-            self._raw_remote_path = str(remote_path)
             self._remote_path = None if remote_path is None else str(remote_path)
+            self._raw_remote_path = self._remote_path
 
         if kwargs.get("downloader") is not None:
             super().__init__(self.path, kwargs["downloader"], self._remote_path)

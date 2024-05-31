@@ -507,12 +507,7 @@ class NextflowParameter(Generic[T], LatchParameter):
 
         t = self.type
         if get_origin(t) is not list or not is_dataclass(get_args(t)[0]):
-            click.secho(
-                dedent("""\
-                Samplesheets must be a list of dataclasses.
-                """),
-                fg="red",
-            )
+            click.secho("Samplesheets must be a list of dataclasses.", fg="red")
             raise click.exceptions.Exit(1)
 
         if self.samplesheet_type is not None:
@@ -573,9 +568,12 @@ class NextflowRuntimeResources:
     """
     memory: Optional[str] = 8
     """
-    Memory required for the task (e.g. "1 GB")
+    Memory required for the task in GiB
     """
     storage_gib: Optional[int] = 100
+    """
+    Storage required for the task in GiB
+    """
 
 
 @dataclass
@@ -791,13 +789,17 @@ class NextflowMetadata(LatchMetadata):
     """
     Resources (cpu/memory/storage) for Nextflow runtime task
     """
-    output_dir: Optional[LatchDir] = None
+    log_dir: Optional[LatchDir] = None
     """
     Directory to dump Nextflow logs
     """
 
     def __post_init__(self):
         if self.name is None:
+            if self.display_name is None:
+                click.secho(
+                    "Name or display_name must be provided in metadata", fg="red"
+                )
             self.name = f"nf_{identifier_suffix_from_str(self.display_name.lower())}"
         else:
             self.name = identifier_suffix_from_str(self.name)

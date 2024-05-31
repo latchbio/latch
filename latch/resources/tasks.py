@@ -485,7 +485,7 @@ def nextflow_runtime_task(cpu: int, memory: int):
         requests={
             "cpu": str(cpu),
             "memory": f"{memory}Gi",
-            "ephemeral-storage": "20Gi",
+            "ephemeral-storage": "50Gi",
         },
         limits={"cpu": str(cpu), "memory": f"{memory}Gi", "ephemeral-storage": "20Gi"},
     )
