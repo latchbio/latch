@@ -275,6 +275,60 @@ def generate_metadata(
     )
 
 
+@main.command("generate-entrypoint")
+@click.argument("pkg_root", nargs=1, type=click.Path(exists=True, path_type=Path))
+@click.option(
+    "--nf-script",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Path to a nextflow script to register.",
+)
+@click.option(
+    "--execution-profile",
+    type=str,
+    default=None,
+    help="Set execution profile for Nextflow workflow",
+)
+def generate_entrypoint(
+    pkg_root: Path, nf_script: Path, execution_profile: Optional[str]
+):
+    """Generate a `wf/entrypoint.py` file from a Nextflow workflow"""
+
+    import latch.types.metadata as metadata
+    from latch_cli.nextflow.workflow import generate_nextflow_workflow
+    from latch_cli.services.register.utils import import_module_by_path
+
+    dest = pkg_root / "wf" / "entrypoint.py"
+    dest.parent.mkdir(exist_ok=True)
+
+    if dest.exists() and not click.confirm(
+        f"Nextflow entrypoint already exists at `{dest}`. Overwrite?"
+    ):
+        return
+
+    meta = pkg_root / "latch_metadata" / "__init__.py"
+    if meta.exists():
+        click.echo(f"Using metadata file {click.style(meta, italic=True)}")
+        import_module_by_path(meta)
+
+    if metadata._nextflow_metadata is None:
+        click.secho(
+            dedent("""
+            Failed to generate Nextflow entrypoint.
+            Make sure the project root contains a `latch_metadata/__init__.py`
+            with a `NextflowMetadata` object defined.
+            """),
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
+
+    generate_nextflow_workflow(
+        pkg_root,
+        nf_script,
+        dest,
+        execution_profile=execution_profile,
+    )
+
+
 @main.command("develop")
 @click.argument("pkg_root", nargs=1, type=click.Path(exists=True, path_type=Path))
 @click.option(
