@@ -170,7 +170,9 @@ def _get_flags_for_dataclass(name: str, val: Any) -> List[str]:
 def get_flag(name: str, val: Any) -> List[str]:
     flag = f"--{name}"
 
-    if isinstance(val, bool):
+    if val is None:
+        return []
+    elif isinstance(val, bool):
         return [flag] if val else []
     elif isinstance(val, LatchFile) or isinstance(val, LatchDir):
         if val.remote_path is not None:
