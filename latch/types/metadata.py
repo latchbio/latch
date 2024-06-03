@@ -1,13 +1,32 @@
+import csv
+import functools
 import re
-from dataclasses import Field, asdict, dataclass, field
+from dataclasses import Field, asdict, dataclass, field, fields, is_dataclass
 from enum import Enum
 from pathlib import Path
-from textwrap import indent
-from typing import Any, ClassVar, Dict, List, Optional, Protocol, Tuple, Type, Union
+from textwrap import dedent, indent
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Collection,
+    Dict,
+    Generic,
+    List,
+    Literal,
+    Optional,
+    Protocol,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    get_args,
+    get_origin,
+)
 
 import click
 import yaml
-from typing_extensions import TypeAlias
+from typing_extensions import Annotated, TypeAlias
 
 from latch_cli.snakemake.config.utils import validate_snakemake_type
 from latch_cli.utils import identifier_suffix_from_str
@@ -16,7 +35,6 @@ from .directory import LatchDir
 from .file import LatchFile
 
 
-@dataclass
 class LatchRule:
     """Class describing a rule that a parameter input must follow"""
 
@@ -388,31 +406,33 @@ class _IsDataclass(Protocol):
 
 
 ParameterType: TypeAlias = Union[
-    Type[None],
-    Type[int],
-    Type[float],
-    Type[str],
-    Type[bool],
-    Type[Enum],
-    Type[_IsDataclass],
-    Type[List["ParameterType"]],
-    Type[LatchFile],
-    Type[LatchDir],
+    None,
+    int,
+    float,
+    str,
+    bool,
+    LatchFile,
+    LatchDir,
+    Enum,
+    _IsDataclass,
+    Collection["ParameterType"],
 ]
 
 
+T = TypeVar("T", bound=ParameterType)
+
+
 @dataclass
-class SnakemakeParameter(LatchParameter):
-    type: Optional[ParameterType] = None
+class SnakemakeParameter(Generic[T], LatchParameter):
+    type: Optional[Type[T]] = None
     """
     The python type of the parameter.
     """
-    # todo(ayush): needs to be typed properly
-    default: Optional[Any] = None
+    default: Optional[T] = None
 
 
 @dataclass
-class SnakemakeFileParameter(SnakemakeParameter):
+class SnakemakeFileParameter(SnakemakeParameter[Union[LatchFile, LatchDir]]):
     """
     Deprecated: use `file_metadata` keyword in `SnakemakeMetadata` instead
     """
@@ -453,6 +473,106 @@ class SnakemakeFileMetadata:
     download: bool = False
     """
     If `True`, download the file in the JIT step
+    """
+
+
+@dataclass
+class NextflowParameter(Generic[T], LatchParameter):
+    type: Optional[Type[T]] = None
+    """
+    The python type of the parameter.
+    """
+    default: Optional[T] = None
+    """
+    Default value of the parameter
+    """
+
+    samplesheet_type: Literal["csv", "tsv", None] = None
+    """
+    The type of samplesheet to construct from the input parameter.
+
+    Only used if the provided parameter is a samplesheet (samplesheet=True)
+    """
+    samplesheet_constructor: Optional[Callable[[T], Path]] = None
+    """
+    A custom samplesheet constructor.
+
+    Should return the path of the constructed samplesheet. If samplesheet_type is also specified, this takes precedence.
+    Only used if the provided parameter is a samplesheet (samplesheet=True)
+    """
+
+    def __post_init__(self):
+        if not self.samplesheet or self.samplesheet_constructor is not None:
+            return
+
+        t = self.type
+        if get_origin(t) is not list or not is_dataclass(get_args(t)[0]):
+            click.secho("Samplesheets must be a list of dataclasses.", fg="red")
+            raise click.exceptions.Exit(1)
+
+        if self.samplesheet_type is not None:
+            delim = "," if self.samplesheet_type == "csv" else "\t"
+            self.samplesheet_constructor = functools.partial(
+                _samplesheet_constructor, t=get_args(self.type)[0], delim=delim
+            )
+            return
+
+        click.secho(
+            dedent("""\
+            A Samplesheet constructor is required for a samplesheet parameter. Please either provide a value for
+            `samplesheet_type` or provide a custom callable to the `samplesheet_constructor` argument.
+            """),
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
+
+
+DC = TypeVar("DC", bound=_IsDataclass)
+
+
+def _samplesheet_repr(v: Any) -> str:
+    if v is None:
+        return ""
+    if isinstance(v, LatchFile) or isinstance(v, LatchDir):
+        return v.remote_path
+    if isinstance(v, Enum):
+        return getattr(v, "value")
+
+    return str(v)
+
+
+def _samplesheet_constructor(samples: List[DC], t: DC, delim: str = ",") -> Path:
+    samplesheet = Path("samplesheet.csv")
+
+    with open(samplesheet, "w") as f:
+        writer = csv.DictWriter(f, [f.name for f in fields(t)], delimiter=delim)
+        writer.writeheader()
+
+        for sample in samples:
+            row_data = {
+                f.name: _samplesheet_repr(getattr(sample, f.name))
+                for f in fields(sample)
+            }
+            writer.writerow(row_data)
+
+    return samplesheet
+
+
+@dataclass(frozen=True)
+class NextflowRuntimeResources:
+    """Resources for Nextflow runtime tasks"""
+
+    cpus: Optional[int] = 4
+    """
+    Number of CPUs required for the task
+    """
+    memory: Optional[str] = 8
+    """
+    Memory required for the task in GiB
+    """
+    storage_gib: Optional[int] = 100
+    """
+    Storage required for the task in GiB
     """
 
 
@@ -651,3 +771,41 @@ class SnakemakeMetadata(LatchMetadata):
 
 
 _snakemake_metadata: Optional[SnakemakeMetadata] = None
+
+
+@dataclass
+class NextflowMetadata(LatchMetadata):
+    name: Optional[str] = None
+    """
+    Name of the workflow
+    """
+    parameters: Dict[str, NextflowParameter] = field(default_factory=dict)
+    """
+    A dictionary mapping parameter names (strings) to `NextflowParameter` objects
+    """
+    runtime_resources: NextflowRuntimeResources = field(
+        default_factory=NextflowRuntimeResources
+    )
+    """
+    Resources (cpu/memory/storage) for Nextflow runtime task
+    """
+    log_dir: Optional[LatchDir] = None
+    """
+    Directory to dump Nextflow logs
+    """
+
+    def __post_init__(self):
+        if self.name is None:
+            if self.display_name is None:
+                click.secho(
+                    "Name or display_name must be provided in metadata", fg="red"
+                )
+            self.name = f"nf_{identifier_suffix_from_str(self.display_name.lower())}"
+        else:
+            self.name = identifier_suffix_from_str(self.name)
+
+        global _nextflow_metadata
+        _nextflow_metadata = self
+
+
+_nextflow_metadata: Optional[NextflowMetadata] = None

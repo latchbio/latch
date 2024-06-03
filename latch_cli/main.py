@@ -192,7 +192,15 @@ def init(
     type=bool,
     help="Generate a Dockerfile with arguments needed for Snakemake compatability",
 )
-def dockerfile(pkg_root: str, snakemake: bool = False):
+@click.option(
+    "-n",
+    "--nextflow",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Generate a Dockerfile with arguments needed for Nextflow compatability",
+)
+def dockerfile(pkg_root: str, snakemake: bool = False, nextflow: bool = False):
     """Generates a user editable dockerfile for a workflow and saves under `pkg_root/Dockerfile`.
 
     Visit docs.latch.bio to learn more.
@@ -201,20 +209,30 @@ def dockerfile(pkg_root: str, snakemake: bool = False):
     crash_handler.message = "Failed to generate Dockerfile."
     crash_handler.pkg_root = pkg_root
 
-    from latch_cli.docker_utils import generate_dockerfile
+    if snakemake is True and nextflow is True:
+        click.secho(
+            f"Please specify at most one workflow type to generate metadata for. Use"
+            f" either `--snakemake` or `--nextflow`.",
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
 
-    source = Path(pkg_root)
-    dest = source / "Dockerfile"
-    if dest.exists() and not click.confirm(
-        f"Dockerfile already exists at `{dest}`. Overwrite?"
-    ):
-        return
+    from latch_cli.docker_utils import generate_dockerfile, generate_dockerignore
+
     workflow_type = WorkflowType.latchbiosdk
     if snakemake is True:
         workflow_type = WorkflowType.snakemake
-    generate_dockerfile(source, dest, wf_type=workflow_type)
+    elif nextflow is True:
+        workflow_type = WorkflowType.nextflow
 
-    click.secho(f"Successfully generated dockerfile `{dest}`", fg="green")
+    source = Path(pkg_root)
+    generate_dockerfile(source, wf_type=workflow_type)
+
+    if not click.confirm(
+        f"Generate a .dockerignore?"
+    ):
+        return
+    generate_dockerignore(source, wf_type=workflow_type)
 
 
 @main.command("generate-metadata")
@@ -412,6 +430,25 @@ def execute(
         " provided."
     ),
 )
+@click.option(
+    "--nf-script",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="Path to a nextflow script to register.",
+)
+@click.option(
+    "--redownload-dependencies",
+    type=bool,
+    is_flag=True,
+    default=False,
+    help="Redownload external Nextflow dependencies",
+)
+@click.option(
+    "--execution-profile",
+    type=str,
+    default=None,
+    help="Set execution profile for Nextflow workflow",
+)
 @requires_login
 def register(
     pkg_root: str,
@@ -422,6 +459,9 @@ def register(
     open: bool,
     snakefile: Optional[Path],
     cache_tasks: bool,
+    nf_script: Optional[Path],
+    redownload_dependencies: bool,
+    execution_profile: Optional[str],
 ):
     """Register local workflow code to Latch.
 
@@ -442,6 +482,9 @@ def register(
         skip_confirmation=yes,
         open=open,
         snakefile=snakefile,
+        nf_script=nf_script,
+        nf_redownload_dependencies=redownload_dependencies,
+        nf_execution_profile=execution_profile,
         progress_plain=(docker_progress == "auto" and not sys.stdout.isatty())
         or docker_progress == "plain",
         use_new_centromere=use_new_centromere,

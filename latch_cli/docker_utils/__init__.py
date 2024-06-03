@@ -1,4 +1,5 @@
 import json
+import os
 from dataclasses import dataclass
 from enum import Enum, auto
 from io import TextIOWrapper
@@ -39,7 +40,7 @@ def get_prologue(
         library_name = '"latch[snakemake]"'
     else:
         library_name = "latch"
-    return [
+    directives = [
         "# DO NOT CHANGE",
         f"from {config.base_image}",
         "",
@@ -68,18 +69,15 @@ def get_prologue(
         f"run pip install {library_name}=={config.latch_version}",
         "run mkdir /opt/latch",
     ]
+    if wf_type == WorkflowType.nextflow:
+        directives.append(
+            "run apt-get update && apt-get install -y default-jre-headless"
+        )
+    return directives
 
 
 def get_epilogue(wf_type: WorkflowType = WorkflowType.latchbiosdk) -> List[str]:
     cmds: list[str] = []
-
-    if wf_type == WorkflowType.snakemake:
-        cmds += [
-            "",
-            "# Latch snakemake workflow entrypoint",
-            "# DO NOT CHANGE",
-            "copy .latch/snakemake_jit_entrypoint.py /root/snakemake_jit_entrypoint.py",
-        ]
 
     cmds += [
         "",
@@ -309,14 +307,76 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
     return commands
 
 
+def copy_file_commands(wf_type: WorkflowType) -> List[DockerCmdBlock]:
+    cmd = [
+        "",
+        "# Copy workflow data (use .dockerignore to skip files)",
+        "",
+        "copy . /root/",
+    ]
+
+    if wf_type == WorkflowType.snakemake:
+        cmd += [
+            "",
+            "# Latch snakemake workflow entrypoint",
+            "# DO NOT CHANGE",
+            "",
+            "copy .latch/snakemake_jit_entrypoint.py /root/snakemake_jit_entrypoint.py",
+        ]
+    elif wf_type == WorkflowType.nextflow:
+        cmd += [
+            "",
+            "# Latch nextflow workflow entrypoint",
+            "# DO NOT CHANGE",
+            "",
+            "run ln -s /root/.latch/bin/nextflow /root/nextflow",
+            "run ln -s /root/.latch/.nextflow /root/.nextflow",
+        ]
+
+    return cmd
+
+
+def generate_dockerignore(pkg_root: Path, *, wf_type: WorkflowType) -> None:
+    dest = Path(pkg_root) / ".dockerignore"
+    if dest.exists():
+        if os.path.isdir(dest):
+            click.secho(
+                f".dockerignore already exists at `{dest}` and is a directory.",
+                fg="red",
+            )
+            raise click.exceptions.Exit(1)
+
+        if not click.confirm(f".dockerignore already exists at `{dest}`. Overwrite?"):
+            return
+
+    with Path(".dockerignore").open("w") as f:
+        dest.write_text(dedent("""\
+	        .git
+	        .github
+	    """))
+
+        if wf_type == WorkflowType.nextflow:
+            dest.write_text(dedent("""\
+                .nextflow*
+                .nextflow.log*
+                work/
+                results/
+            """))
+
+    click.secho(f"Successfully generated .dockerignore `{dest}`", fg="green")
+
+
 def generate_dockerfile(
-    pkg_root: Path, outfile: Path, *, wf_type: WorkflowType = WorkflowType.latchbiosdk
+    pkg_root: Path,
+    *,
+    dest: Path = None,
+    wf_type: WorkflowType = WorkflowType.latchbiosdk,
 ) -> None:
     """Generate a best effort Dockerfile from files in the workflow directory.
 
     Args:
         pkg_root: A path to a workflow directory.
-        outfile: The path to write the generated Dockerfile.
+        dest: The path to write the generated Dockerfile. If None, write Dockerfile to the pkg_root.
         wf_type: The type of workflow (eg. snakemake) the Dockerfile is for
 
     Example:
@@ -327,6 +387,12 @@ def generate_dockerfile(
             #   ├── Dockerfile
             #   └── ...
     """
+    if dest is None:
+        dest = pkg_root / "Dockerfile"
+    if dest.exists() and not click.confirm(
+        f"Dockerfile already exists at `{dest}`. Overwrite?"
+    ):
+        return
 
     click.secho("Generating Dockerfile", bold=True)
     try:
@@ -353,7 +419,7 @@ def generate_dockerfile(
     )
     click.echo()
 
-    with outfile.open("w") as f:
+    with dest.open("w") as f:
         f.write("\n".join(get_prologue(config, wf_type)) + "\n\n")
 
         commands = infer_commands(pkg_root)
@@ -366,8 +432,7 @@ def generate_dockerfile(
 
             block.write_block(f)
 
-        f.write("# Copy workflow data (use .dockerignore to skip files)\n")
-        f.write("copy . /root/\n\n")
+        f.write("\n".join(copy_file_commands(wf_type)) + "\n\n")
 
         for block in commands:
             if block.order != DockerCmdBlockOrder.postcopy:
@@ -377,12 +442,14 @@ def generate_dockerfile(
 
         f.write("\n".join(get_epilogue(wf_type)) + "\n")
 
+    click.secho(f"Successfully generated dockerfile `{dest}`", fg="green")
+
 
 def get_default_dockerfile(pkg_root: Path, *, wf_type: WorkflowType):
     default_dockerfile = pkg_root / "Dockerfile"
 
     if not default_dockerfile.exists():
         default_dockerfile = pkg_root / ".latch" / "Dockerfile"
-        generate_dockerfile(pkg_root, default_dockerfile, wf_type=wf_type)
+        generate_dockerfile(pkg_root, dest=default_dockerfile, wf_type=wf_type)
 
     return default_dockerfile
