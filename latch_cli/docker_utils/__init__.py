@@ -1,4 +1,5 @@
 import json
+import os
 from dataclasses import dataclass
 from enum import Enum, auto
 from io import TextIOWrapper
@@ -337,10 +338,16 @@ def copy_file_commands(wf_type: WorkflowType) -> List[DockerCmdBlock]:
 
 def generate_dockerignore(pkg_root: Path, *, wf_type: WorkflowType) -> None:
     dest = Path(pkg_root) / ".dockerignore"
-    if dest.exists() and not click.confirm(
-        f".dockerignore already exists at `{dest}`. Overwrite?"
-    ):
-        return
+    if dest.exists():
+        if os.path.isdir(dest):
+            click.secho(
+                f".dockerignore already exists at `{dest}` and is a directory.",
+                fg="red",
+            )
+            raise click.exceptions.Exit(1)
+
+        if not click.confirm(f".dockerignore already exists at `{dest}`. Overwrite?"):
+            return
 
     with Path(".dockerignore").open("w") as f:
         dest.write_text(dedent("""\

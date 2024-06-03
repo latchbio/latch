@@ -70,10 +70,22 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
 
 {samplesheet_constructors}
 
+        ignore_list = [
+            "latch",
+            ".latch",
+            "nextflow",
+            ".nextflow",
+            "work",
+            "results",
+            "miniconda",
+            "anaconda3",
+            "mambaforge",
+        ]
+
         shutil.copytree(
             Path("/root"),
             shared_dir,
-            ignore=lambda src, names: ["latch", ".latch", "nextflow", ".nextflow", "work", "results"],
+            ignore=lambda src, names: ignore_list,
             ignore_dangling_symlinks=True,
             dirs_exist_ok=True,
         )
@@ -158,7 +170,9 @@ def _get_flags_for_dataclass(name: str, val: Any) -> List[str]:
 def get_flag(name: str, val: Any) -> List[str]:
     flag = f"--{name}"
 
-    if isinstance(val, bool):
+    if val is None:
+        return []
+    elif isinstance(val, bool):
         return [flag] if val else []
     elif isinstance(val, LatchFile) or isinstance(val, LatchDir):
         if val.remote_path is not None:
