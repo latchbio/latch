@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.45.5 - 2024-06-03
+
+### Added
+
++ Support for uploading Nextflow workflows
+
+
 ## 2.45.4 - 2024-05-29
 
 ### Changed
