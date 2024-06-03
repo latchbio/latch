@@ -70,10 +70,22 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
 
 {samplesheet_constructors}
 
+        ignore_list = [
+            "latch",
+            ".latch",
+            "nextflow",
+            ".nextflow",
+            "work",
+            "results",
+            "miniconda",
+            "anaconda3",
+            "mambaforge",
+        ]
+
         shutil.copytree(
             Path("/root"),
             shared_dir,
-            ignore=lambda src, names: ["latch", ".latch", "nextflow", ".nextflow", "work", "results"],
+            ignore=lambda src, names: ignore_list,
             ignore_dangling_symlinks=True,
             dirs_exist_ok=True,
         )

@@ -227,6 +227,11 @@ def dockerfile(pkg_root: str, snakemake: bool = False, nextflow: bool = False):
 
     source = Path(pkg_root)
     generate_dockerfile(source, wf_type=workflow_type)
+
+    if not click.confirm(
+        f"Generate a .dockerignore?"
+    ):
+        return
     generate_dockerignore(source, wf_type=workflow_type)
 
 
