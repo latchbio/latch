@@ -228,9 +228,7 @@ def dockerfile(pkg_root: str, snakemake: bool = False, nextflow: bool = False):
     source = Path(pkg_root)
     generate_dockerfile(source, wf_type=workflow_type)
 
-    if not click.confirm(
-        f"Generate a .dockerignore?"
-    ):
+    if not click.confirm(f"Generate a .dockerignore?"):
         return
     generate_dockerignore(source, wf_type=workflow_type)
 
@@ -247,11 +245,30 @@ def dockerfile(pkg_root: str, snakemake: bool = False, nextflow: bool = False):
     ),
 )
 @click.option(
+    "--snakemake",
+    "-s",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Generate Latch metadata for Snakemake.",
+)
+@click.option(
+    "--nextflow",
+    "-n",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Generate Latch metadata for Nextflow.",
+)
+@click.option(
     "--no-infer-files",
     "-I",
     is_flag=True,
     default=False,
-    help="Don't parse strings with common file extensions as file parameters.",
+    help=(
+        "Don't parse strings with common file extensions as file parameters. Only"
+        " supported for Snakemake workflows."
+    ),
 )
 @click.option(
     "--no-defaults",
@@ -261,18 +278,47 @@ def dockerfile(pkg_root: str, snakemake: bool = False, nextflow: bool = False):
     help="Don't generate defaults for parameters.",
 )
 def generate_metadata(
-    config_file: Path, yes: bool, no_infer_files: bool, no_defaults: bool
+    config_file: Path,
+    snakemake: bool,
+    nextflow: bool,
+    yes: bool,
+    no_infer_files: bool,
+    no_defaults: bool,
 ):
-    """Generate a `latch_metadata.py` file from a Snakemake config file"""
+    """Generate a `latch_metadata.py` file from a config file"""
 
-    from latch_cli.snakemake.config.parser import generate_metadata
+    if snakemake is True and nextflow is True:
+        click.secho(
+            f"Please specify only one workflow type to generate metadata for. Use"
+            f" either `--snakemake` or `--nextflow`.",
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
 
-    generate_metadata(
-        config_file,
-        skip_confirmation=yes,
-        infer_files=not no_infer_files,
-        generate_defaults=not no_defaults,
-    )
+    if snakemake is True:
+        from latch_cli.snakemake.config.parser import generate_metadata
+
+        generate_metadata(
+            config_file,
+            skip_confirmation=yes,
+            infer_files=not no_infer_files,
+            generate_defaults=not no_defaults,
+        )
+    elif nextflow is True:
+        from latch_cli.nextflow.config import generate_metadata
+
+        generate_metadata(
+            config_file,
+            skip_confirmation=yes,
+            generate_defaults=not no_defaults,
+        )
+    else:
+        click.secho(
+            f"Please specify a workflow type to generate metadata for. Use"
+            f" `--snakemake` or `--nextflow`.",
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
 
 
 @main.command("generate-entrypoint")

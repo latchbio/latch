@@ -28,13 +28,19 @@ def get_param_type(details: dict) -> Type:
         return bool
     elif t == "integer":
         return int
+    elif t == "number":
+        return float
 
     return Any
 
 
-def parse_config(pkg_root: Path):
-    schema_f = pkg_root / "nextflow_schema.json"
-    schema: dict = json.loads(schema_f.read_text())
+def generate_metadata(
+    schema_path: Path,
+    *,
+    skip_confirmation: bool = False,
+    generate_defaults: bool = False,
+):
+    schema: dict = json.loads(schema_path.read_text())
 
     display_name: Optional[str] = schema.get("title")
     # rahul: seems like it is convention to use "<pipeline-name> pipeline parameters" for schema title
@@ -42,7 +48,7 @@ def parse_config(pkg_root: Path):
     if display_name is not None and display_name.endswith(suffix):
         display_name = display_name[: -len(suffix)]
 
-    metadata_root = pkg_root / "latch_metadata"
+    metadata_root = Path("latch_metadata")
     if metadata_root.is_file():
         if not click.confirm("A file exists at `latch_metadata`. Delete it?"):
             raise click.exceptions.Exit(0)
@@ -84,16 +90,22 @@ def parse_config(pkg_root: Path):
         section_title = section.get("title")
         required_params = set(section.get("required", []))
 
+        first = True
         for param, details in section.get("properties", {}).items():
             if details.get("hidden", False):
                 continue
+
+            if first:
+                first = False
+            else:
+                section_title = None
 
             t = get_param_type(details)
             if param not in required_params:
                 t = Optional[t]
 
             default = None
-            if t not in {LatchFile, LatchDir}:
+            if generate_defaults and t not in {LatchFile, LatchDir}:
                 default = details.get("default")
 
             desc = details.get("description")
@@ -107,8 +119,12 @@ def parse_config(pkg_root: Path):
                     ),"""))
 
     params_path = metadata_root / "parameters.py"
-    if params_path.exists() and not click.confirm(
-        "File `latch_metadata/parameters.py` already exists. Overwrite?"
+    if (
+        params_path.exists()
+        and not skip_confirmation
+        and not click.confirm(
+            "File `latch_metadata/parameters.py` already exists. Overwrite?"
+        )
     ):
         raise click.exceptions.Exit(0)
 
@@ -133,7 +149,3 @@ def parse_config(pkg_root: Path):
 
             """).replace("__params__", reindent("".join(params), 1)))
     click.secho("Generated `latch_metadata/parameters.py`.", fg="green")
-
-
-if __name__ == "__main__":
-    parse_config(Path("."))
