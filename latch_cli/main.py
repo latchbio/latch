@@ -234,7 +234,9 @@ def dockerfile(pkg_root: str, snakemake: bool = False, nextflow: bool = False):
 
 
 @main.command("generate-metadata")
-@click.argument("config_file", nargs=1, type=click.Path(exists=True, path_type=Path))
+@click.argument(
+    "config_file", nargs=1, type=click.Path(exists=True, path_type=Path, dir_okay=False)
+)
 @click.option(
     "--yes",
     "-y",
