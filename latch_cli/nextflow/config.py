@@ -72,7 +72,7 @@ def parse_config(pkg_root: Path):
                 runtime_resources=NextflowRuntimeResources(
                     cpus=4,
                     memory=8,
-                    disk=100,
+                    storage_gib=100,
                 ),
                 log_dir=LatchDir("latch:///your_log_dir"),
             )
@@ -125,7 +125,7 @@ def parse_config(pkg_root: Path):
 
             # Import these into your `__init__.py` file:
             #
-            # from .parameters import generated_parameters, file_metadata
+            # from .parameters import generated_parameters
 
             generated_parameters = {
             __params__
