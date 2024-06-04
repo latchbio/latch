@@ -170,7 +170,9 @@ def _get_flags_for_dataclass(name: str, val: Any) -> List[str]:
 def get_flag(name: str, val: Any) -> List[str]:
     flag = f"--{name}"
 
-    if isinstance(val, bool):
+    if val is None:
+        return []
+    elif isinstance(val, bool):
         return [flag] if val else []
     elif isinstance(val, LatchFile) or isinstance(val, LatchDir):
         if val.remote_path is not None:
@@ -204,8 +206,8 @@ def generate_nextflow_config(pkg_root: Path):
 
 def generate_nextflow_workflow(
     pkg_root: Path,
-    workflow_name: str,
     nf_script: Path,
+    dest: Path,
     *,
     execution_profile: Optional[str] = None,
 ):
@@ -214,6 +216,8 @@ def generate_nextflow_workflow(
     assert metadata._nextflow_metadata is not None
 
     wf_name = metadata._nextflow_metadata.name
+    assert wf_name is not None
+
     parameters = metadata._nextflow_metadata.parameters
     resources = metadata._nextflow_metadata.runtime_resources
 
@@ -281,7 +285,7 @@ def generate_nextflow_workflow(
     log_dir = urljoins(log_dir, wf_name)
 
     entrypoint = template.format(
-        workflow_func_name=identifier_from_str(workflow_name),
+        workflow_func_name=identifier_from_str(wf_name),
         nf_script=nf_script.resolve().relative_to(pkg_root.resolve()),
         param_signature_with_defaults=", ".join(
             no_defaults + [f"{name} = {val}" for name, val in defaults]
@@ -303,8 +307,5 @@ def generate_nextflow_workflow(
         log_dir=log_dir,
     )
 
-    entrypoint_path = pkg_root / "wf" / "entrypoint.py"
-    entrypoint_path.parent.mkdir(exist_ok=True)
-    entrypoint_path.write_text(entrypoint)
-
-    click.secho(f"Nextflow workflow written to {entrypoint_path}", fg="green")
+    dest.write_text(entrypoint)
+    click.secho(f"Nextflow workflow written to {dest}", fg="green")

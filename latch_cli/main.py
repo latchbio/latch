@@ -228,15 +228,18 @@ def dockerfile(pkg_root: str, snakemake: bool = False, nextflow: bool = False):
     source = Path(pkg_root)
     generate_dockerfile(source, wf_type=workflow_type)
 
-    if not click.confirm(
-        f"Generate a .dockerignore?"
-    ):
+    if not click.confirm(f"Generate a .dockerignore?"):
         return
     generate_dockerignore(source, wf_type=workflow_type)
 
 
 @main.command("generate-metadata")
-@click.argument("config_file", nargs=1, type=click.Path(exists=True, path_type=Path))
+@click.argument(
+    "config_file",
+    required=False,
+    nargs=1,
+    type=click.Path(exists=True, path_type=Path, dir_okay=False),
+)
 @click.option(
     "--yes",
     "-y",
@@ -247,11 +250,30 @@ def dockerfile(pkg_root: str, snakemake: bool = False, nextflow: bool = False):
     ),
 )
 @click.option(
+    "--snakemake",
+    "-s",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Generate Latch metadata for Snakemake.",
+)
+@click.option(
+    "--nextflow",
+    "-n",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Generate Latch metadata for Nextflow.",
+)
+@click.option(
     "--no-infer-files",
     "-I",
     is_flag=True,
     default=False,
-    help="Don't parse strings with common file extensions as file parameters.",
+    help=(
+        "Don't parse strings with common file extensions as file parameters. Only"
+        " supported for Snakemake workflows."
+    ),
 )
 @click.option(
     "--no-defaults",
@@ -261,17 +283,107 @@ def dockerfile(pkg_root: str, snakemake: bool = False, nextflow: bool = False):
     help="Don't generate defaults for parameters.",
 )
 def generate_metadata(
-    config_file: Path, yes: bool, no_infer_files: bool, no_defaults: bool
+    config_file: Optional[Path],
+    snakemake: bool,
+    nextflow: bool,
+    yes: bool,
+    no_infer_files: bool,
+    no_defaults: bool,
 ):
-    """Generate a `latch_metadata.py` file from a Snakemake config file"""
+    """Generate a `latch_metadata.py` file from a config file"""
 
-    from latch_cli.snakemake.config.parser import generate_metadata
+    if snakemake is True and nextflow is True:
+        click.secho(
+            f"Please specify only one workflow type to generate metadata for. Use"
+            f" either `--snakemake` or `--nextflow`.",
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
 
-    generate_metadata(
-        config_file,
-        skip_confirmation=yes,
-        infer_files=not no_infer_files,
-        generate_defaults=not no_defaults,
+    if nextflow is True:
+        from latch_cli.nextflow.config import generate_metadata
+
+        if config_file is None:
+            config_file = Path("nextflow_schema.json")
+
+        generate_metadata(
+            config_file,
+            skip_confirmation=yes,
+            generate_defaults=not no_defaults,
+        )
+    else:
+
+        from latch_cli.snakemake.config.parser import generate_metadata
+
+        if config_file is None:
+            click.secho(
+                dedent("""
+                Please provide a config file for Snakemake workflows:
+                `latch generate-metadata <config_file_path> --snakemake`
+                """),
+                fg="red",
+            )
+            raise click.exceptions.Exit(1)
+
+        generate_metadata(
+            config_file,
+            skip_confirmation=yes,
+            infer_files=not no_infer_files,
+            generate_defaults=not no_defaults,
+        )
+
+
+@main.command("generate-entrypoint")
+@click.argument("pkg_root", nargs=1, type=click.Path(exists=True, path_type=Path))
+@click.option(
+    "--nf-script",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Path to the nextflow entrypoint to register.",
+)
+@click.option(
+    "--execution-profile",
+    type=str,
+    default=None,
+    help="Set execution profile for Nextflow workflow",
+)
+def generate_entrypoint(
+    pkg_root: Path, nf_script: Path, execution_profile: Optional[str]
+):
+    """Generate a `wf/entrypoint.py` file from a Nextflow workflow"""
+
+    import latch.types.metadata as metadata
+    from latch_cli.nextflow.workflow import generate_nextflow_workflow
+    from latch_cli.services.register.utils import import_module_by_path
+
+    dest = pkg_root / "wf" / "entrypoint.py"
+    dest.parent.mkdir(exist_ok=True)
+
+    if dest.exists() and not click.confirm(
+        f"Nextflow entrypoint already exists at `{dest}`. Overwrite?"
+    ):
+        return
+
+    meta = pkg_root / "latch_metadata" / "__init__.py"
+    if meta.exists():
+        click.echo(f"Using metadata file {click.style(meta, italic=True)}")
+        import_module_by_path(meta)
+
+    if metadata._nextflow_metadata is None:
+        click.secho(
+            dedent("""
+            Failed to generate Nextflow entrypoint.
+            Make sure the project root contains a `latch_metadata/__init__.py`
+            with a `NextflowMetadata` object defined.
+            """),
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
+
+    generate_nextflow_workflow(
+        pkg_root,
+        nf_script,
+        dest,
+        execution_profile=execution_profile,
     )
 
 

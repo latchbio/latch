@@ -35,6 +35,7 @@ from .directory import LatchDir
 from .file import LatchFile
 
 
+@dataclass
 class LatchRule:
     """Class describing a rule that a parameter input must follow"""
 
@@ -566,7 +567,7 @@ class NextflowRuntimeResources:
     """
     Number of CPUs required for the task
     """
-    memory: Optional[str] = 8
+    memory: Optional[int] = 8
     """
     Memory required for the task in GiB
     """
