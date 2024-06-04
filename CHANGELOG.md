@@ -16,6 +16,18 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.45.6 - 2024-06-04
+
+### Added
+
+* Nextflow
+  + Support for generating metadata from `nextflow_schema.json`
+  + Command to generate Nextflow entrypoint without registering
+
+### Fixed
+
++ Make `LatchRule` class a dataclass
+
 ## 2.45.5 - 2024-06-03
 
 ### Added
