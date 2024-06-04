@@ -35,6 +35,7 @@ from .directory import LatchDir
 from .file import LatchFile
 
 
+@dataclass
 class LatchRule:
     """Class describing a rule that a parameter input must follow"""
 
