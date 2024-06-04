@@ -350,18 +350,20 @@ def generate_dockerignore(pkg_root: Path, *, wf_type: WorkflowType) -> None:
             return
 
     with Path(".dockerignore").open("w") as f:
-        dest.write_text(dedent("""\
-	        .git
-	        .github
-	    """))
+        files = [
+            ".git",
+            ".github",
+        ]
 
         if wf_type == WorkflowType.nextflow:
-            dest.write_text(dedent("""\
-                .nextflow*
-                .nextflow.log*
-                work/
-                results/
-            """))
+            files.extend([
+                ".nextflow*",
+                ".nextflow.log*",
+                "work/",
+                "results/",
+            ])
+
+        dest.write_text(dedent("\n".join(files) + "\n"))
 
     click.secho(f"Successfully generated .dockerignore `{dest}`", fg="green")
 
