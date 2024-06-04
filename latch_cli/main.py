@@ -235,7 +235,10 @@ def dockerfile(pkg_root: str, snakemake: bool = False, nextflow: bool = False):
 
 @main.command("generate-metadata")
 @click.argument(
-    "config_file", nargs=1, type=click.Path(exists=True, path_type=Path, dir_okay=False)
+    "config_file",
+    required=False,
+    nargs=1,
+    type=click.Path(exists=True, path_type=Path, dir_okay=False),
 )
 @click.option(
     "--yes",
@@ -280,7 +283,7 @@ def dockerfile(pkg_root: str, snakemake: bool = False, nextflow: bool = False):
     help="Don't generate defaults for parameters.",
 )
 def generate_metadata(
-    config_file: Path,
+    config_file: Optional[Path],
     snakemake: bool,
     nextflow: bool,
     yes: bool,
@@ -297,17 +300,11 @@ def generate_metadata(
         )
         raise click.exceptions.Exit(1)
 
-    if snakemake is True:
-        from latch_cli.snakemake.config.parser import generate_metadata
-
-        generate_metadata(
-            config_file,
-            skip_confirmation=yes,
-            infer_files=not no_infer_files,
-            generate_defaults=not no_defaults,
-        )
-    elif nextflow is True:
+    if nextflow is True:
         from latch_cli.nextflow.config import generate_metadata
+
+        if config_file is None:
+            config_file = Path("nextflow_schema.json")
 
         generate_metadata(
             config_file,
@@ -315,12 +312,25 @@ def generate_metadata(
             generate_defaults=not no_defaults,
         )
     else:
-        click.secho(
-            f"Please specify a workflow type to generate metadata for. Use"
-            f" `--snakemake` or `--nextflow`.",
-            fg="red",
+
+        from latch_cli.snakemake.config.parser import generate_metadata
+
+        if config_file is None:
+            click.secho(
+                dedent("""
+                Please provide a config file for Snakemake workflows:
+                `latch generate-metadata <config_file_path> --snakemake`
+                """),
+                fg="red",
+            )
+            raise click.exceptions.Exit(1)
+
+        generate_metadata(
+            config_file,
+            skip_confirmation=yes,
+            infer_files=not no_infer_files,
+            generate_defaults=not no_defaults,
         )
-        raise click.exceptions.Exit(1)
 
 
 @main.command("generate-entrypoint")
@@ -328,61 +338,7 @@ def generate_metadata(
 @click.option(
     "--nf-script",
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
-    help="Path to a nextflow script to register.",
-)
-@click.option(
-    "--execution-profile",
-    type=str,
-    default=None,
-    help="Set execution profile for Nextflow workflow",
-)
-def generate_entrypoint(
-    pkg_root: Path, nf_script: Path, execution_profile: Optional[str]
-):
-    """Generate a `wf/entrypoint.py` file from a Nextflow workflow"""
-
-    import latch.types.metadata as metadata
-    from latch_cli.nextflow.workflow import generate_nextflow_workflow
-    from latch_cli.services.register.utils import import_module_by_path
-
-    dest = pkg_root / "wf" / "entrypoint.py"
-    dest.parent.mkdir(exist_ok=True)
-
-    if dest.exists() and not click.confirm(
-        f"Nextflow entrypoint already exists at `{dest}`. Overwrite?"
-    ):
-        return
-
-    meta = pkg_root / "latch_metadata" / "__init__.py"
-    if meta.exists():
-        click.echo(f"Using metadata file {click.style(meta, italic=True)}")
-        import_module_by_path(meta)
-
-    if metadata._nextflow_metadata is None:
-        click.secho(
-            dedent("""
-            Failed to generate Nextflow entrypoint.
-            Make sure the project root contains a `latch_metadata/__init__.py`
-            with a `NextflowMetadata` object defined.
-            """),
-            fg="red",
-        )
-        raise click.exceptions.Exit(1)
-
-    generate_nextflow_workflow(
-        pkg_root,
-        nf_script,
-        dest,
-        execution_profile=execution_profile,
-    )
-
-
-@main.command("generate-entrypoint")
-@click.argument("pkg_root", nargs=1, type=click.Path(exists=True, path_type=Path))
-@click.option(
-    "--nf-script",
-    type=click.Path(exists=True, dir_okay=False, path_type=Path),
-    help="Path to a nextflow script to register.",
+    help="Path to the nextflow entrypoint to register.",
 )
 @click.option(
     "--execution-profile",

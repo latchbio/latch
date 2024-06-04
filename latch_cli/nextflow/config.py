@@ -50,8 +50,11 @@ def generate_metadata(
 
     metadata_root = Path("latch_metadata")
     if metadata_root.is_file():
-        if not click.confirm("A file exists at `latch_metadata`. Delete it?"):
-            raise click.exceptions.Exit(0)
+        if not click.confirm(
+            "A file already exists at `latch_metadata` and must be deleted. Would you"
+            " like to proceed?"
+        ):
+            return
 
         metadata_root.unlink()
 
@@ -126,7 +129,7 @@ def generate_metadata(
             "File `latch_metadata/parameters.py` already exists. Overwrite?"
         )
     ):
-        raise click.exceptions.Exit(0)
+        return
 
     params_path.write_text(dedent(r"""
             from dataclasses import dataclass
@@ -135,7 +138,7 @@ def generate_metadata(
 
             from flytekit.core.annotation import FlyteAnnotation
 
-            from latch.types.metadata import NextflowParameter, SnakemakeFileParameter
+            from latch.types.metadata import NextflowParameter
             from latch.types.file import LatchFile
             from latch.types.directory import LatchDir
 
