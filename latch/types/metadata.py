@@ -626,8 +626,28 @@ class SnakemakeMetadata(LatchMetadata):
     """
     Number of cores to use for Snakemake tasks (equivalent of Snakemake's `--cores` flag)
     """
+    about_page_content: Optional[Path] = None
+    """
+    Path to a markdown file containing information about the pipeline - rendered in the About page.
+    """
 
     def validate(self):
+        if self.about_page_content is not None:
+            if not self.about_page_content.exists():
+                click.secho(
+                    f"Path to about page documentation ({self.about_page_content})"
+                    " doesn't exist.",
+                    fg="red",
+                )
+                raise click.exceptions.Exit(1)
+
+            if not self.about_page_content.is_file():
+                click.secho(
+                    f"About page documentation ({self.about_page_content}) must be a"
+                    " file.",
+                    fg="red",
+                )
+                raise click.exceptions.Exit(1)
 
         for name, param in self.parameters.items():
             if param.default is None:
@@ -648,6 +668,12 @@ class SnakemakeMetadata(LatchMetadata):
 
         global _snakemake_metadata
         _snakemake_metadata = self
+
+    @property
+    def dict(self):
+        d = super().dict
+        del d["__metadata__"]["about_page_content"]
+        return d
 
 
 _snakemake_metadata: Optional[SnakemakeMetadata] = None
