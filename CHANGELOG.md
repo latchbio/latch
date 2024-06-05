@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.45.7 - 2024-06-04
+
+### Added
+
+* Snakemake
+  * Support for adding About page content from a markdown file
+
 ## 2.45.6 - 2024-06-04
 
 ### Added
