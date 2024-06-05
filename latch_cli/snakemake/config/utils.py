@@ -192,7 +192,7 @@ def parse_value(t: Type, v: JSONValue):
 def is_primitive_type(
     typ: Type,
 ) -> TypeGuard[Union[Type[None], Type[str], Type[bool], Type[int], Type[float]]]:
-    return typ in {Type[None], str, bool, int, float}
+    return typ in {type(None), str, bool, int, float}
 
 
 def is_primitive_value(val: object) -> TypeGuard[Union[None, str, bool, int, float]]:
@@ -221,21 +221,19 @@ def type_repr(t: Type, *, add_namespace: bool = False) -> str:
         args = get_args(t)
 
         if len(args) != 2 or args[1] is not type(None):
-            raise ValueError(
-                "Union types other than Optional are not yet supported in Snakemake"
-                " workflows."
-            )
+            raise ValueError("Union types other than Optional are not yet supported")
 
         return f"typing.Optional[{type_repr(args[0], add_namespace=add_namespace)}]"
 
     if get_origin(t) is Annotated:
         args = get_args(t)
         assert len(args) > 1
-        assert isinstance(args[1], FlyteAnnotation)
-        return (
-            f"typing_extensions.Annotated[{type_repr(args[0], add_namespace=add_namespace)},"
-            f" FlyteAnnotation({repr(args[1].data)})]"
-        )
+        if isinstance(args[1], FlyteAnnotation):
+            return (
+                f"typing_extensions.Annotated[{type_repr(args[0], add_namespace=add_namespace)},"
+                f" FlyteAnnotation({repr(args[1].data)})]"
+            )
+        return type_repr(args[0], add_namespace=add_namespace)
 
     return t.__name__
 
@@ -246,6 +244,16 @@ def dataclass_repr(typ: Type) -> str:
     lines = ["@dataclass", f"class {typ.__name__}:"]
     for f in fields(typ):
         lines.append(f"    {f.name}: {type_repr(f.type)}")
+
+    return "\n".join(lines) + "\n\n\n"
+
+
+def enum_repr(typ: Type) -> str:
+    assert issubclass(typ, Enum), typ
+
+    lines = [f"class {typ.__name__}(Enum):"]
+    for name, val in typ._member_map_.items():
+        lines.append(f"    {name} = {repr(val.value)}")
 
     return "\n".join(lines) + "\n\n\n"
 
@@ -261,6 +269,9 @@ def get_preamble(typ: Type) -> str:
 
     if get_origin(typ) in {Union, list}:
         return "".join([get_preamble(t) for t in get_args(typ)])
+
+    if issubclass(typ, Enum):
+        return enum_repr(typ)
 
     assert is_dataclass(typ), typ
 

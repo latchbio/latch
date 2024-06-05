@@ -138,7 +138,7 @@ def file_metadata_str(typ: Type, value: JSONValue, level: int = 0) -> str:
 
 # todo(ayush): print informative stuff here ala register
 def generate_metadata(
-    config_path: Path,
+    config_path,
     *,
     skip_confirmation: bool = False,
     generate_defaults: bool = False,

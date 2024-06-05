@@ -34,9 +34,12 @@ from flytekit import task
 from flytekitplugins.pod import Pod
 from kubernetes.client.models import (
     V1Container,
+    V1PersistentVolumeClaimVolumeSource,
     V1PodSpec,
     V1ResourceRequirements,
     V1Toleration,
+    V1Volume,
+    V1VolumeMount,
 )
 
 from latch_cli.constants import Units
@@ -474,3 +477,43 @@ def custom_task(
     return functools.partial(
         task, task_config=_custom_task_config(cpu, memory, storage_gib), timeout=timeout
     )
+
+
+def nextflow_runtime_task(cpu: int, memory: int):
+    primary_container = V1Container(name="primary")
+    resources = V1ResourceRequirements(
+        requests={
+            "cpu": str(cpu),
+            "memory": f"{memory}Gi",
+            "ephemeral-storage": "50Gi",
+        },
+        limits={"cpu": str(cpu), "memory": f"{memory}Gi", "ephemeral-storage": "20Gi"},
+    )
+    primary_container.resources = resources
+    volume_mounts = [V1VolumeMount(mount_path="/nf-workdir", name="nextflow-workdir")]
+    primary_container.volume_mounts = volume_mounts
+
+    task_config = Pod(
+        annotations={
+            "io.kubernetes.cri-o.userns-mode": (
+                "private:uidmapping=0:1048576:65536;gidmapping=0:1048576:65536"
+            )
+        },
+        pod_spec=V1PodSpec(
+            runtime_class_name="sysbox-runc",
+            automount_service_account_token=True,
+            containers=[primary_container],
+            volumes=[
+                V1Volume(
+                    name="nextflow-workdir",
+                    persistent_volume_claim=V1PersistentVolumeClaimVolumeSource(
+                        # this value will be injected by flytepropeller
+                        claim_name="nextflow-pvc-placeholder"
+                    ),
+                )
+            ],
+        ),
+        primary_container_name="primary",
+    )
+
+    return functools.partial(task, task_config=task_config)

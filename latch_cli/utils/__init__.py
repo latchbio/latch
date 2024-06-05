@@ -384,6 +384,7 @@ class TemporarySSHCredentials:
 class WorkflowType(Enum):
     latchbiosdk = "latchbiosdk"
     snakemake = "snakemake"
+    nextflow = "nextflow"
 
 
 def identifier_suffix_from_str(x: str) -> str:
