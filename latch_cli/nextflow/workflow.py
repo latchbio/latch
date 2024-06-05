@@ -151,6 +151,10 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
 
 @workflow(metadata._nextflow_metadata)
 def {workflow_func_name}({param_signature_with_defaults}) -> None:
+    \"\"\"
+{docstring}
+    \"\"\"
+
     pvc_name: str = initialize()
     nextflow_runtime(pvc_name=pvc_name, {param_args})
 
@@ -284,8 +288,19 @@ def generate_nextflow_workflow(
         log_dir = metadata._nextflow_metadata.log_dir._raw_remote_path
     log_dir = urljoins(log_dir, wf_name)
 
+    desc = f"Sample Description"
+    if metadata._nextflow_metadata.about_page_path is not None:
+        desc = metadata._nextflow_metadata.about_page_path.read_text()
+
+    display_name = wf_name
+    if metadata._nextflow_metadata.display_name is not None:
+        display_name = metadata._nextflow_metadata.display_name
+
+    docstring = f"{display_name}\n\n{desc}"
+
     entrypoint = template.format(
         workflow_func_name=identifier_from_str(wf_name),
+        docstring=reindent(docstring, 1),
         nf_script=nf_script.resolve().relative_to(pkg_root.resolve()),
         param_signature_with_defaults=", ".join(
             no_defaults + [f"{name} = {val}" for name, val in defaults]

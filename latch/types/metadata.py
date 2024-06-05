@@ -26,7 +26,7 @@ from typing import (
 
 import click
 import yaml
-from typing_extensions import Annotated, TypeAlias
+from typing_extensions import TypeAlias
 
 from latch_cli.snakemake.config.utils import validate_snakemake_type
 from latch_cli.utils import identifier_suffix_from_str
@@ -794,8 +794,38 @@ class NextflowMetadata(LatchMetadata):
     """
     Directory to dump Nextflow logs
     """
+    about_page_path: Optional[Path] = None
+    """
+    Path to a markdown file containing information about the pipeline - rendered in the About page.
+    """
+
+    def validate(self):
+        if self.about_page_path is not None:
+            if not self.about_page_path.exists():
+                click.secho(
+                    f"Path to about page documentation ({self.about_page_path})"
+                    " doesn't exist.",
+                    fg="red",
+                )
+                raise click.exceptions.Exit(1)
+
+            if not self.about_page_path.is_file():
+                click.secho(
+                    f"About page documentation ({self.about_page_path}) must be a"
+                    " file.",
+                    fg="red",
+                )
+                raise click.exceptions.Exit(1)
+
+    @property
+    def dict(self):
+        d = super().dict
+        del d["__metadata__"]["about_page_path"]
+        return d
 
     def __post_init__(self):
+        self.validate()
+
         if self.name is None:
             if self.display_name is None:
                 click.secho(
