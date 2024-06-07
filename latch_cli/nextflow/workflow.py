@@ -9,6 +9,7 @@ import click
 import latch.types.metadata as metadata
 from latch.types.directory import LatchDir, LatchOutputDir
 from latch.types.file import LatchFile
+from latch_cli.nextflow.types import NextflowProcessExecutor
 from latch_cli.snakemake.config.utils import get_preamble, type_repr
 from latch_cli.snakemake.utils import reindent
 from latch_cli.utils import identifier_from_str, urljoins
@@ -198,14 +199,16 @@ def get_flag(name: str, val: Any) -> List[str]:
         return [flag, str(val)]
 
 
-def generate_nextflow_config(pkg_root: Path, process_executor: Optional[str]):
+def generate_nextflow_config(
+    pkg_root: Path, process_executor: Optional[NextflowProcessExecutor]
+):
     if process_executor is None:
-        process_executor = "k8s"
+        process_executor = NextflowProcessExecutor.k8s
 
     config_path = Path(pkg_root) / "latch.config"
     config_path.write_text(dedent(f"""\
         process {{
-            executor = '{process_executor}'
+            executor = '{process_executor.value}'
         }}
 
         aws {{
@@ -224,7 +227,7 @@ def generate_nextflow_workflow(
     dest: Path,
     *,
     execution_profile: Optional[str] = None,
-    process_executor: Optional[str] = None,
+    process_executor: Optional[NextflowProcessExecutor] = None,
 ):
     generate_nextflow_config(pkg_root, process_executor)
 

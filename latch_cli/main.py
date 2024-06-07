@@ -14,6 +14,7 @@ import latch_cli.click_utils
 from latch.ldata._transfer.progress import Progress as _Progress
 from latch_cli.click_utils import EnumChoice
 from latch_cli.exceptions.handler import CrashHandler
+from latch_cli.nextflow.types import NextflowProcessExecutor
 from latch_cli.services.cp.autocomplete import complete as cp_complete
 from latch_cli.services.cp.autocomplete import remote_complete
 from latch_cli.services.init.init import template_flag_to_option
@@ -348,7 +349,7 @@ def generate_metadata(
 )
 @click.option(
     "--process-executor",
-    type=str,
+    type=EnumChoice(NextflowProcessExecutor, case_sensitive=False),
     default=None,
     help="Set process executor for Nextflow workflow",
 )
@@ -356,7 +357,7 @@ def generate_entrypoint(
     pkg_root: Path,
     nf_script: Path,
     execution_profile: Optional[str],
-    process_executor: Optional[str],
+    process_executor: Optional[NextflowProcessExecutor],
 ):
     """Generate a `wf/entrypoint.py` file from a Nextflow workflow"""
 
@@ -573,7 +574,7 @@ def execute(
 )
 @click.option(
     "--process-executor",
-    type=str,
+    type=EnumChoice(NextflowProcessExecutor, case_sensitive=False),
     default=None,
     help="Set process executor for Nextflow workflow",
 )
@@ -590,7 +591,7 @@ def register(
     nf_script: Optional[Path],
     redownload_dependencies: bool,
     execution_profile: Optional[str],
-    process_executor: Optional[str],
+    process_executor: Optional[NextflowProcessExecutor],
 ):
     """Register local workflow code to Latch.
 
@@ -601,6 +602,21 @@ def register(
 
     crash_handler.message = "Unable to register workflow."
     crash_handler.pkg_root = pkg_root
+
+    if nf_script is None and (
+        redownload_dependencies
+        or execution_profile is not None
+        or process_executor is not None
+    ):
+        click.secho(
+            dedent("""
+            Command Invalid:
+            --redownload-dependecies, --execution-profile, and --process-executor flags
+            are only valid when registering a Nextflow workflow.
+            """),
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
 
     from latch_cli.services.register import register
 

@@ -15,19 +15,19 @@ from flytekit.core.workflow import WorkflowBase
 from scp import SCPClient
 
 from latch.utils import current_workspace, get_workspaces
-
-from ...centromere.ctx import _CentromereCtx
-from ...centromere.utils import MaybeRemoteDir
-from ...constants import latch_constants
-from ...utils import WorkflowType
-from .constants import ANSI_REGEX, MAX_LINES
-from .utils import (
+from latch_cli.centromere.ctx import _CentromereCtx
+from latch_cli.centromere.utils import MaybeRemoteDir
+from latch_cli.constants import latch_constants
+from latch_cli.nextflow.types import NextflowProcessExecutor
+from latch_cli.services.register.constants import ANSI_REGEX, MAX_LINES
+from latch_cli.services.register.utils import (
     DockerBuildLogItem,
     build_image,
     register_serialized_pkg,
     serialize_pkg_in_container,
     upload_image,
 )
+from latch_cli.utils import WorkflowType
 
 
 def _delete_lines(num: int):
@@ -264,7 +264,7 @@ def register(
     nf_script: Optional[Path] = None,
     nf_redownload_dependencies: bool = False,
     nf_execution_profile: Optional[str] = None,
-    nf_process_executor: Optional[str] = None,
+    nf_process_executor: Optional[NextflowProcessExecutor] = None,
     progress_plain: bool = False,
     cache_tasks: bool = False,
     use_new_centromere: bool = False,
