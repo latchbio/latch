@@ -198,18 +198,21 @@ def get_flag(name: str, val: Any) -> List[str]:
         return [flag, str(val)]
 
 
-def generate_nextflow_config(pkg_root: Path):
-    config_path = Path(pkg_root) / "latch.config"
-    config_path.write_text(dedent("""\
-        process {
-            executor = 'k8s'
-        }
+def generate_nextflow_config(pkg_root: Path, process_executor: Optional[str]):
+    if process_executor is None:
+        process_executor = "k8s"
 
-        aws {
-            client {
+    config_path = Path(pkg_root) / "latch.config"
+    config_path.write_text(dedent(f"""\
+        process {{
+            executor = '{process_executor}'
+        }}
+
+        aws {{
+            client {{
                 anonymous = true
-            }
-        }
+            }}
+        }}
         """))
 
     click.secho(f"Nextflow Latch config written to {config_path}", fg="green")
@@ -221,8 +224,9 @@ def generate_nextflow_workflow(
     dest: Path,
     *,
     execution_profile: Optional[str] = None,
+    process_executor: Optional[str] = None,
 ):
-    generate_nextflow_config(pkg_root)
+    generate_nextflow_config(pkg_root, process_executor)
 
     assert metadata._nextflow_metadata is not None
 

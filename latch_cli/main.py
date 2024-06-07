@@ -346,8 +346,17 @@ def generate_metadata(
     default=None,
     help="Set execution profile for Nextflow workflow",
 )
+@click.option(
+    "--process-executor",
+    type=str,
+    default=None,
+    help="Set process executor for Nextflow workflow",
+)
 def generate_entrypoint(
-    pkg_root: Path, nf_script: Path, execution_profile: Optional[str]
+    pkg_root: Path,
+    nf_script: Path,
+    execution_profile: Optional[str],
+    process_executor: Optional[str],
 ):
     """Generate a `wf/entrypoint.py` file from a Nextflow workflow"""
 
@@ -384,6 +393,7 @@ def generate_entrypoint(
         nf_script,
         dest,
         execution_profile=execution_profile,
+        process_executor=process_executor,
     )
 
 
@@ -561,6 +571,12 @@ def execute(
     default=None,
     help="Set execution profile for Nextflow workflow",
 )
+@click.option(
+    "--process-executor",
+    type=str,
+    default=None,
+    help="Set process executor for Nextflow workflow",
+)
 @requires_login
 def register(
     pkg_root: str,
@@ -574,6 +590,7 @@ def register(
     nf_script: Optional[Path],
     redownload_dependencies: bool,
     execution_profile: Optional[str],
+    process_executor: Optional[str],
 ):
     """Register local workflow code to Latch.
 
@@ -597,6 +614,7 @@ def register(
         nf_script=nf_script,
         nf_redownload_dependencies=redownload_dependencies,
         nf_execution_profile=execution_profile,
+        nf_process_executor=process_executor,
         progress_plain=(docker_progress == "auto" and not sys.stdout.isatty())
         or docker_progress == "plain",
         use_new_centromere=use_new_centromere,

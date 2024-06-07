@@ -264,6 +264,7 @@ def register(
     nf_script: Optional[Path] = None,
     nf_redownload_dependencies: bool = False,
     nf_execution_profile: Optional[str] = None,
+    nf_process_executor: Optional[str] = None,
     progress_plain: bool = False,
     cache_tasks: bool = False,
     use_new_centromere: bool = False,
@@ -422,6 +423,7 @@ def register(
                 ctx.nf_script,
                 dest,
                 execution_profile=nf_execution_profile,
+                process_executor=nf_process_executor,
             )
 
         click.secho("\nInitializing registration", bold=True)
