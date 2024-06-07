@@ -37,6 +37,13 @@ from flytekit.core.annotation import FlyteAnnotation
 
 import latch_metadata
 
+from latch_cli.services.register.utils import import_module_by_path
+
+meta = Path("latch_metadata") / "__init__.py"
+if meta.exists():
+    import_module_by_path(meta)
+
+
 @custom_task(cpu=0.25, memory=0.5, storage_gib=1)
 def initialize() -> str:
     token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
