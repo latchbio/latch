@@ -560,20 +560,19 @@ def execute(
     help="Path to a nextflow script to register.",
 )
 @click.option(
-    "--redownload-dependencies",
-    type=bool,
-    is_flag=True,
-    default=False,
-    help="Redownload external Nextflow dependencies",
+    "--nf-version",
+    type=str,
+    default=None,
+    help="Version of Nextflow runtime to use",
 )
 @click.option(
-    "--execution-profile",
+    "--nf-execution-profile",
     type=str,
     default=None,
     help="Set execution profile for Nextflow workflow",
 )
 @click.option(
-    "--process-executor",
+    "--nf-process-executor",
     type=EnumChoice(NextflowProcessExecutor, case_sensitive=False),
     default=None,
     help="Set process executor for Nextflow workflow",
@@ -589,9 +588,9 @@ def register(
     snakefile: Optional[Path],
     cache_tasks: bool,
     nf_script: Optional[Path],
-    redownload_dependencies: bool,
-    execution_profile: Optional[str],
-    process_executor: Optional[NextflowProcessExecutor],
+    nf_version: Optional[str],
+    nf_execution_profile: Optional[str],
+    nf_process_executor: Optional[NextflowProcessExecutor],
 ):
     """Register local workflow code to Latch.
 
@@ -604,14 +603,14 @@ def register(
     crash_handler.pkg_root = pkg_root
 
     if nf_script is None and (
-        redownload_dependencies
-        or execution_profile is not None
-        or process_executor is not None
+        nf_version is not None
+        or nf_execution_profile is not None
+        or nf_process_executor is not None
     ):
         click.secho(
             dedent("""
             Command Invalid:
-            --redownload-dependecies, --execution-profile, and --process-executor flags
+            --nf-version, --execution-profile, and --process-executor flags
             are only valid when registering a Nextflow workflow.
             """),
             fg="red",
@@ -628,9 +627,9 @@ def register(
         open=open,
         snakefile=snakefile,
         nf_script=nf_script,
-        nf_redownload_dependencies=redownload_dependencies,
-        nf_execution_profile=execution_profile,
-        nf_process_executor=process_executor,
+        nf_version=nf_version,
+        nf_execution_profile=nf_execution_profile,
+        nf_process_executor=nf_process_executor,
         progress_plain=(docker_progress == "auto" and not sys.stdout.isatty())
         or docker_progress == "plain",
         use_new_centromere=use_new_centromere,

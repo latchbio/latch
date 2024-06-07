@@ -262,7 +262,7 @@ def register(
     skip_confirmation: bool = False,
     snakefile: Optional[Path] = None,
     nf_script: Optional[Path] = None,
-    nf_redownload_dependencies: bool = False,
+    nf_version: Optional[str] = None,
     nf_execution_profile: Optional[str] = None,
     nf_process_executor: Optional[NextflowProcessExecutor] = None,
     progress_plain: bool = False,
@@ -412,9 +412,7 @@ def register(
             from ...nextflow.dependencies import ensure_nf_dependencies
             from ...nextflow.workflow import generate_nextflow_workflow
 
-            ensure_nf_dependencies(
-                ctx.pkg_root, force_redownload=nf_redownload_dependencies
-            )
+            ensure_nf_dependencies(ctx.pkg_root, nf_version=nf_version)
 
             dest = ctx.pkg_root / "wf" / "entrypoint.py"
             dest.parent.mkdir(exist_ok=True)
