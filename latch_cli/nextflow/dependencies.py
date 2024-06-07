@@ -71,7 +71,12 @@ def ensure_nf_dependencies(pkg_root: Path, *, nf_version: Optional[str] = None):
     nf_executable = pkg_root / ".latch" / "bin" / "nextflow"
     nf_jars = pkg_root / ".latch" / ".nextflow"
 
-    if nf_version is None:
+    if nf_version is None and nf_version_path.exists():
+        # rahul: if the version file exists locally and there
+        # was no request for update, don't do anything
+        return
+
+    if nf_version is None or nf_version.lower() == "latest":
         res = tinyrequests.get(
             "https://latch-public.s3.us-west-2.amazonaws.com/nextflow-v2/LATEST"
         )
