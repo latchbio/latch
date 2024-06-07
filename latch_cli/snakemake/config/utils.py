@@ -1,11 +1,9 @@
-from dataclasses import asdict, fields, is_dataclass, make_dataclass
+from dataclasses import fields, is_dataclass, make_dataclass
 from enum import Enum
-from textwrap import dedent
 from typing import Any, Dict, List, Optional, Type, Union, get_args, get_origin
 
-import click
 from flytekit.core.annotation import FlyteAnnotation
-from typing_extensions import Annotated, TypeAlias, TypeGuard, TypeVar
+from typing_extensions import Annotated, TypeAlias, TypeGuard
 
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile

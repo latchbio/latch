@@ -5,7 +5,7 @@ from typing import Any, Optional, Type
 
 import click
 
-from latch.types.directory import LatchDir
+from latch.types.directory import LatchDir, LatchOutputDir
 from latch.types.file import LatchFile
 from latch_cli.snakemake.config.utils import type_repr
 from latch_cli.snakemake.utils import reindent
@@ -103,7 +103,7 @@ def generate_metadata(
             else:
                 section_title = None
 
-            t = get_param_type(details)
+            t = LatchOutputDir if param == "outdir" else get_param_type(details)
             if param not in required_params:
                 t = Optional[t]
 
@@ -140,7 +140,7 @@ def generate_metadata(
 
             from latch.types.metadata import NextflowParameter
             from latch.types.file import LatchFile
-            from latch.types.directory import LatchDir
+            from latch.types.directory import LatchDir, LatchOutputDir
 
             # Import these into your `__init__.py` file:
             #
