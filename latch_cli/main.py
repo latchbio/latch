@@ -14,7 +14,6 @@ import latch_cli.click_utils
 from latch.ldata._transfer.progress import Progress as _Progress
 from latch_cli.click_utils import EnumChoice
 from latch_cli.exceptions.handler import CrashHandler
-from latch_cli.nextflow.types import NextflowProcessExecutor
 from latch_cli.services.cp.autocomplete import complete as cp_complete
 from latch_cli.services.cp.autocomplete import remote_complete
 from latch_cli.services.init.init import template_flag_to_option
@@ -347,17 +346,10 @@ def generate_metadata(
     default=None,
     help="Set execution profile for Nextflow workflow",
 )
-@click.option(
-    "--process-executor",
-    type=EnumChoice(NextflowProcessExecutor, case_sensitive=False),
-    default=None,
-    help="Set process executor for Nextflow workflow",
-)
 def generate_entrypoint(
     pkg_root: Path,
     nf_script: Path,
     execution_profile: Optional[str],
-    process_executor: Optional[NextflowProcessExecutor],
 ):
     """Generate a `wf/entrypoint.py` file from a Nextflow workflow"""
 
@@ -394,7 +386,6 @@ def generate_entrypoint(
         nf_script,
         dest,
         execution_profile=execution_profile,
-        process_executor=process_executor,
     )
 
 
@@ -565,12 +556,6 @@ def execute(
     default=None,
     help="Set execution profile for Nextflow workflow",
 )
-@click.option(
-    "--nf-process-executor",
-    type=EnumChoice(NextflowProcessExecutor, case_sensitive=False),
-    default=None,
-    help="Set process executor for Nextflow workflow",
-)
 @requires_login
 def register(
     pkg_root: str,
@@ -583,7 +568,6 @@ def register(
     cache_tasks: bool,
     nf_script: Optional[Path],
     nf_execution_profile: Optional[str],
-    nf_process_executor: Optional[NextflowProcessExecutor],
 ):
     """Register local workflow code to Latch.
 
@@ -595,15 +579,10 @@ def register(
     crash_handler.message = "Unable to register workflow."
     crash_handler.pkg_root = pkg_root
 
-    if nf_script is None and (
-        nf_execution_profile is not None or nf_process_executor is not None
-    ):
+    if nf_script is None and (nf_execution_profile is not None):
         click.secho(
-            dedent("""
-            Command Invalid:
-            --execution-profile, and --process-executor flags
-            are only valid when registering a Nextflow workflow.
-            """),
+            "Command Invalid: --execution-profile flag is only valid when registering a"
+            " Nextflow workflow.",
             fg="red",
         )
         raise click.exceptions.Exit(1)
@@ -619,7 +598,6 @@ def register(
         snakefile=snakefile,
         nf_script=nf_script,
         nf_execution_profile=nf_execution_profile,
-        nf_process_executor=nf_process_executor,
         progress_plain=(docker_progress == "auto" and not sys.stdout.isatty())
         or docker_progress == "plain",
         use_new_centromere=use_new_centromere,
