@@ -321,9 +321,12 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         name = metadata._snakemake_metadata.name
         self.file_metadata = metadata._snakemake_metadata.file_metadata
 
+        desc = f"Sample Description"
+        if metadata._snakemake_metadata.about_page_content is not None:
+            desc = metadata._snakemake_metadata.about_page_content.read_text()
+
         docstring = Docstring(
-            f"{display_name}\n\nSample Description\n\n"
-            + str(metadata._snakemake_metadata)
+            f"{display_name}\n\n{desc}\n\n" + str(metadata._snakemake_metadata)
         )
         python_interface = Interface(
             {k: (v.type, v.default) for k, v in parameter_metadata.items()},
