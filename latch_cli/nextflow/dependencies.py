@@ -3,6 +3,7 @@ from concurrent.futures import ProcessPoolExecutor
 from ctypes import c_int
 from multiprocessing.managers import SyncManager
 from pathlib import Path
+from typing import Optional
 from urllib.parse import urljoin
 
 import boto3
@@ -10,6 +11,8 @@ import click
 from botocore.handlers import disable_signing
 
 from latch_cli import tinyrequests
+
+target_version = "v1.0.0"
 
 
 def _do_download(
@@ -37,7 +40,7 @@ def download_nf_jars(pkg_root: Path):
     s3_resource.meta.client.meta.events.register("choose-signer.s3.*", disable_signing)
     bucket = s3_resource.Bucket("latch-public")
 
-    subdir = "nextflow-v2/"
+    subdir = f"nextflow-v2/{target_version}/"
     objects = list(bucket.objects.filter(Prefix=f"{subdir}.nextflow/"))
 
     click.secho("  Downloading Nextflow binaries: \x1b[?25l", italic=True, nl=False)
@@ -57,18 +60,30 @@ def download_nf_jars(pkg_root: Path):
     click.secho("Done. \x1b[?25h", italic=True)
 
 
-def ensure_nf_dependencies(pkg_root: Path, *, force_redownload: bool = False):
+def _get_current_version(nf_version_path: Path):
+    if not nf_version_path.exists():
+        return None
+
+    with open(nf_version_path, "r") as f:
+        return f.read().strip()
+
+
+def ensure_nf_dependencies(pkg_root: Path):
+    nf_version_path = pkg_root / ".latch" / "nextflow_version"
     nf_executable = pkg_root / ".latch" / "bin" / "nextflow"
     nf_jars = pkg_root / ".latch" / ".nextflow"
 
-    if force_redownload:
+    current_version = _get_current_version(nf_version_path)
+    if current_version != target_version:
+        click.secho(f"Updating Nextflow to version {target_version}", fg="yellow")
+        nf_version_path.unlink(missing_ok=True)
         nf_executable.unlink(missing_ok=True)
         if nf_jars.exists():
             shutil.rmtree(nf_jars)
 
     if not nf_executable.exists():
         res = tinyrequests.get(
-            "https://latch-public.s3.us-west-2.amazonaws.com/nextflow-v2/nextflow"
+            f"https://latch-public.s3.us-west-2.amazonaws.com/nextflow-v2/{target_version}/nextflow"
         )
         nf_executable.parent.mkdir(parents=True, exist_ok=True)
 
@@ -77,3 +92,6 @@ def ensure_nf_dependencies(pkg_root: Path, *, force_redownload: bool = False):
 
     if not nf_jars.exists():
         download_nf_jars(pkg_root)
+
+    with open(nf_version_path, "w") as f:
+        f.write(target_version)

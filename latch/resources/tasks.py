@@ -479,15 +479,19 @@ def custom_task(
     )
 
 
-def nextflow_runtime_task(cpu: int, memory: int):
+def nextflow_runtime_task(cpu: int, memory: int, storage_gib: int = 50):
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
         requests={
             "cpu": str(cpu),
             "memory": f"{memory}Gi",
-            "ephemeral-storage": "50Gi",
+            "ephemeral-storage": f"{storage_gib}Gi",
         },
-        limits={"cpu": str(cpu), "memory": f"{memory}Gi", "ephemeral-storage": "20Gi"},
+        limits={
+            "cpu": str(cpu),
+            "memory": f"{memory}Gi",
+            "ephemeral-storage": f"{storage_gib}Gi",
+        },
     )
     primary_container.resources = resources
     volume_mounts = [V1VolumeMount(mount_path="/nf-workdir", name="nextflow-workdir")]

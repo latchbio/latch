@@ -347,7 +347,9 @@ def generate_metadata(
     help="Set execution profile for Nextflow workflow",
 )
 def generate_entrypoint(
-    pkg_root: Path, nf_script: Path, execution_profile: Optional[str]
+    pkg_root: Path,
+    nf_script: Path,
+    execution_profile: Optional[str],
 ):
     """Generate a `wf/entrypoint.py` file from a Nextflow workflow"""
 
@@ -549,14 +551,7 @@ def execute(
     help="Path to a nextflow script to register.",
 )
 @click.option(
-    "--redownload-dependencies",
-    type=bool,
-    is_flag=True,
-    default=False,
-    help="Redownload external Nextflow dependencies",
-)
-@click.option(
-    "--execution-profile",
+    "--nf-execution-profile",
     type=str,
     default=None,
     help="Set execution profile for Nextflow workflow",
@@ -572,8 +567,7 @@ def register(
     snakefile: Optional[Path],
     cache_tasks: bool,
     nf_script: Optional[Path],
-    redownload_dependencies: bool,
-    execution_profile: Optional[str],
+    nf_execution_profile: Optional[str],
 ):
     """Register local workflow code to Latch.
 
@@ -585,6 +579,14 @@ def register(
     crash_handler.message = "Unable to register workflow."
     crash_handler.pkg_root = pkg_root
 
+    if nf_script is None and (nf_execution_profile is not None):
+        click.secho(
+            "Command Invalid: --execution-profile flag is only valid when registering a"
+            " Nextflow workflow.",
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
+
     from latch_cli.services.register import register
 
     register(
@@ -595,8 +597,7 @@ def register(
         open=open,
         snakefile=snakefile,
         nf_script=nf_script,
-        nf_redownload_dependencies=redownload_dependencies,
-        nf_execution_profile=execution_profile,
+        nf_execution_profile=nf_execution_profile,
         progress_plain=(docker_progress == "auto" and not sys.stdout.isatty())
         or docker_progress == "plain",
         use_new_centromere=use_new_centromere,
