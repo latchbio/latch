@@ -104,12 +104,13 @@ def generate_metadata(
                 section_title = None
 
             t = LatchOutputDir if param == "outdir" else get_param_type(details)
-            if param not in required_params:
-                t = Optional[t]
 
             default = None
-            if generate_defaults and t not in {LatchFile, LatchDir}:
+            if generate_defaults and t not in {LatchFile, LatchDir, LatchOutputDir}:
                 default = details.get("default")
+
+            if param not in required_params:
+                t = Optional[t]
 
             desc = details.get("description")
 
