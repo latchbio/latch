@@ -16,7 +16,20 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.45.7 - 2024-06-04
+## 2.45.8 - 2024-06-08
+
+### Fixed
+
+* Nextflow
+  + Fix default generation for parameters with type: `typing.Optional[LatchFile,LatchDir]`
+
+## 2.45.7 - 2024-06-07
+
+### Added
+
+* Nextflow
+  + Support for About page
+  + Pin Nextflow version to latch version (deprecate --redownload-dependencies)
 
 ### Added
 
