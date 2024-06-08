@@ -756,7 +756,7 @@ class SnakemakeMetadata(LatchMetadata):
         if self.about_page_content is not None:
             if not self.about_page_content.exists():
                 click.secho(
-                    f"Path to about page documentation ({self.about_page_content})"
+                    f"Path to About page documentation ({self.about_page_content})"
                     " doesn't exist.",
                     fg="red",
                 )
@@ -764,8 +764,8 @@ class SnakemakeMetadata(LatchMetadata):
 
             if not self.about_page_content.is_file():
                 click.secho(
-                    f"About page documentation ({self.about_page_content}) must be a"
-                    " file.",
+                    f"About page documentation ({self.about_page_content}) must be"
+                    " a file.",
                     fg="red",
                 )
                 raise click.exceptions.Exit(1)
@@ -793,6 +793,7 @@ class SnakemakeMetadata(LatchMetadata):
     @property
     def dict(self):
         d = super().dict
+        # ayush: Paths aren't JSON serializable but ribosome doesn't need it anyway so we can just delete it
         del d["__metadata__"]["about_page_content"]
         return d
 
