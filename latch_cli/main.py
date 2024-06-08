@@ -560,12 +560,6 @@ def execute(
     help="Path to a nextflow script to register.",
 )
 @click.option(
-    "--nf-version",
-    type=str,
-    default=None,
-    help="Version of Nextflow runtime to use",
-)
-@click.option(
     "--nf-execution-profile",
     type=str,
     default=None,
@@ -588,7 +582,6 @@ def register(
     snakefile: Optional[Path],
     cache_tasks: bool,
     nf_script: Optional[Path],
-    nf_version: Optional[str],
     nf_execution_profile: Optional[str],
     nf_process_executor: Optional[NextflowProcessExecutor],
 ):
@@ -603,14 +596,12 @@ def register(
     crash_handler.pkg_root = pkg_root
 
     if nf_script is None and (
-        nf_version is not None
-        or nf_execution_profile is not None
-        or nf_process_executor is not None
+        nf_execution_profile is not None or nf_process_executor is not None
     ):
         click.secho(
             dedent("""
             Command Invalid:
-            --nf-version, --execution-profile, and --process-executor flags
+            --execution-profile, and --process-executor flags
             are only valid when registering a Nextflow workflow.
             """),
             fg="red",
@@ -627,7 +618,6 @@ def register(
         open=open,
         snakefile=snakefile,
         nf_script=nf_script,
-        nf_version=nf_version,
         nf_execution_profile=nf_execution_profile,
         nf_process_executor=nf_process_executor,
         progress_plain=(docker_progress == "auto" and not sys.stdout.isatty())

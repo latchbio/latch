@@ -12,6 +12,8 @@ from botocore.handlers import disable_signing
 
 from latch_cli import tinyrequests
 
+target_version = "v1.0.0"
+
 
 def _do_download(
     url: str,
@@ -33,12 +35,12 @@ def _do_download(
         click.echo(f"\x1b[{len(progress_str)}D", nl=False)
 
 
-def download_nf_jars(pkg_root: Path, nf_version: str):
+def download_nf_jars(pkg_root: Path):
     s3_resource = boto3.resource("s3")
     s3_resource.meta.client.meta.events.register("choose-signer.s3.*", disable_signing)
     bucket = s3_resource.Bucket("latch-public")
 
-    subdir = f"nextflow-v2/{nf_version}/"
+    subdir = f"nextflow-v2/{target_version}/"
     objects = list(bucket.objects.filter(Prefix=f"{subdir}.nextflow/"))
 
     click.secho("  Downloading Nextflow binaries: \x1b[?25l", italic=True, nl=False)
@@ -66,26 +68,14 @@ def _get_current_version(nf_version_path: Path):
         return f.read().strip()
 
 
-def ensure_nf_dependencies(pkg_root: Path, *, nf_version: Optional[str] = None):
+def ensure_nf_dependencies(pkg_root: Path):
     nf_version_path = pkg_root / ".latch" / "nextflow_version"
     nf_executable = pkg_root / ".latch" / "bin" / "nextflow"
     nf_jars = pkg_root / ".latch" / ".nextflow"
 
-    if nf_version is None and nf_version_path.exists():
-        # rahul: if the version file exists locally and there
-        # was no request for update, don't do anything
-        return
-
-    if nf_version is None or nf_version.lower() == "latest":
-        res = tinyrequests.get(
-            "https://latch-public.s3.us-west-2.amazonaws.com/nextflow-v2/LATEST"
-        )
-        res.raise_for_status()
-        nf_version = res.content.decode("utf-8").strip()
-
-    current = _get_current_version(nf_version_path)
-    if current != nf_version:
-        click.secho(f"Updating Nextflow to version {nf_version}", fg="yellow")
+    current_version = _get_current_version(nf_version_path)
+    if current_version != target_version:
+        click.secho(f"Updating Nextflow to version {target_version}", fg="yellow")
         nf_version_path.unlink(missing_ok=True)
         nf_executable.unlink(missing_ok=True)
         if nf_jars.exists():
@@ -93,7 +83,7 @@ def ensure_nf_dependencies(pkg_root: Path, *, nf_version: Optional[str] = None):
 
     if not nf_executable.exists():
         res = tinyrequests.get(
-            f"https://latch-public.s3.us-west-2.amazonaws.com/nextflow-v2/{nf_version}/nextflow"
+            f"https://latch-public.s3.us-west-2.amazonaws.com/nextflow-v2/{target_version}/nextflow"
         )
         nf_executable.parent.mkdir(parents=True, exist_ok=True)
 
@@ -101,7 +91,7 @@ def ensure_nf_dependencies(pkg_root: Path, *, nf_version: Optional[str] = None):
         nf_executable.chmod(0o700)
 
     if not nf_jars.exists():
-        download_nf_jars(pkg_root, nf_version)
+        download_nf_jars(pkg_root)
 
     with open(nf_version_path, "w") as f:
-        f.write(nf_version)
+        f.write(target_version)
