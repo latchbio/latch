@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.46.0 - 2024-06-10
+
+### Added
+
+* Nextflow
+  + Bump version from v1.0.0 to v1.0.1 -- resolves upload data corruption
+
 ## 2.45.8 - 2024-06-08
 
 ### Fixed
