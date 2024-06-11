@@ -69,7 +69,9 @@ class Project:
                 """),
             variables={"id": self.id},
         )["catalogProject"]
-        # todo(maximsmol): deal with nonexistent projects
+
+        if data is None:
+            raise RuntimeError(f"Project {self.id} not found")
 
         self._cache.display_name = data["displayName"]
 

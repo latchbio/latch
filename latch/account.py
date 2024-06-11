@@ -121,7 +121,9 @@ class Account:
             """),
             {"ownerId": self.id},
         )["accountInfo"]
-        # todo(maximsmol): deal with nonexistent accounts
+
+        if data is None:
+            raise RuntimeError(f"Account {self.id} not found")
 
         self._cache.catalog_projects = []
         for x in data["catalogProjectsByOwnerId"]["nodes"]:

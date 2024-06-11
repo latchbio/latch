@@ -125,7 +125,9 @@ class Table:
                 """),
             variables={"id": self.id},
         )["catalogExperiment"]
-        # todo(maximsmol): deal with nonexistent tables
+
+        if data is None:
+            raise RuntimeError(f"Table {self.id} not found")
 
         self._cache.project_id = data["projectId"]
         self._cache.display_name = data["displayName"]

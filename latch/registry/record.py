@@ -133,7 +133,9 @@ class Record:
             """),
             {"id": self.id},
         )["catalogSample"]
-        # todo(maximsmol): deal with nonexistent records
+
+        if data is None:
+            raise RuntimeError(f"Record {self.id} not found")
 
         self._cache.table_id = data["experiment"]["id"]
         self._cache.name = data["name"]
