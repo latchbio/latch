@@ -17,9 +17,13 @@ from latch_sdk_gql.execute import execute
 
 from latch.registry.upstream_types.types import DBType
 from latch.registry.upstream_types.values import DBValue
+from latch.utils import NotFoundError, current_workspace
 
 if TYPE_CHECKING:  # avoid circular type imports
     from latch.registry.types import Column, RecordValue
+
+
+class RecordNotFoundError(NotFoundError): ...
 
 
 class NoSuchColumnError(KeyError):
@@ -133,7 +137,11 @@ class Record:
             """),
             {"id": self.id},
         )["catalogSample"]
-        # todo(maximsmol): deal with nonexistent records
+
+        if data is None:
+            raise RecordNotFoundError(
+                f"record does not exist or you lack permissions: id={self.id}"
+            )
 
         self._cache.table_id = data["experiment"]["id"]
         self._cache.name = data["name"]

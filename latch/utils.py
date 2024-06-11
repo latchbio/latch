@@ -55,8 +55,7 @@ def get_workspaces() -> Dict[str, WSInfo]:
     """
     account_id = account_id_from_token(retrieve_or_login())
     res = execute(
-        gql.gql(
-            """
+        gql.gql("""
             query GetWorkspaces($accountId: BigInt!) {
                 userInfoByAccountId(accountId: $accountId) {
                     id
@@ -103,8 +102,7 @@ def get_workspaces() -> Dict[str, WSInfo]:
                     }
                 }
             }
-        """
-        ),
+        """),
         {"accountId": account_id},
     )
 
@@ -153,8 +151,7 @@ def current_workspace() -> str:
     ws = user_config.workspace_id
     if ws == "":
         res = execute(
-            gql.gql(
-                """
+            gql.gql("""
                 query DefaultAccountQuery {
                     accountInfoCurrent {
                         id
@@ -163,8 +160,7 @@ def current_workspace() -> str:
                         }
                     }
                 }
-            """
-            ),
+            """),
         )["accountInfoCurrent"]
 
         default_ws = res["id"]
@@ -177,3 +173,6 @@ def current_workspace() -> str:
             ws = default_ws
 
     return ws
+
+
+class NotFoundError(ValueError): ...

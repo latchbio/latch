@@ -16,7 +16,10 @@ from typing_extensions import Self, TypeAlias
 
 from latch.registry.project import Project
 from latch.registry.table import Table
-from latch.utils import current_workspace
+from latch.utils import NotFoundError, current_workspace
+
+
+class AccountNotFoundError(NotFoundError): ...
 
 
 class _CatalogExperiment(TypedDict):
@@ -121,7 +124,11 @@ class Account:
             """),
             {"ownerId": self.id},
         )["accountInfo"]
-        # todo(maximsmol): deal with nonexistent accounts
+
+        if data is None:
+            raise AccountNotFoundError(
+                f"account does not exist or you lack permissions: id={self.id}"
+            )
 
         self._cache.catalog_projects = []
         for x in data["catalogProjectsByOwnerId"]["nodes"]:
@@ -258,12 +265,10 @@ class AccountUpdate:
 
         args = l.ArgumentNode()
         args.name = _name_node("input")
-        args.value = _json_value(
-            {
-                "argOwnerId": self.account.id,
-                "argDisplayNames": display_names,
-            }
-        )
+        args.value = _json_value({
+            "argOwnerId": self.account.id,
+            "argDisplayNames": display_names,
+        })
 
         res.alias = _name_node(f"upd{len(mutations)}")
         res.arguments = tuple([args])
@@ -299,11 +304,9 @@ class AccountUpdate:
 
         args = l.ArgumentNode()
         args.name = _name_node("input")
-        args.value = _json_value(
-            {
-                "argIds": ids,
-            }
-        )
+        args.value = _json_value({
+            "argIds": ids,
+        })
 
         res.alias = _name_node(f"upd{len(mutations)}")
         res.arguments = tuple([args])

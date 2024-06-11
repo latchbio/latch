@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.46.2 - 2024-06-11
+
+### Added
+
+* New error messages when trying to access registry projects/tables/records that don't exist.
+
 ## 2.46.1 - 2024-06-10
 
 ### Removed
