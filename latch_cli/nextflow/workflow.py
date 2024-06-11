@@ -138,21 +138,6 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
             remote.upload_from(shared_dir / ".nextflow.log")
 
         raise
-    finally:
-        token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
-        if token is None:
-            raise RuntimeError("failed to get execution token")
-
-        headers = {{"Authorization": f"Latch-Execution-Token {{token}}"}}
-        resp = requests.post(
-            "http://nf-dispatcher-service.flyte.svc.cluster.local/finalize",
-            headers=headers,
-            json={{
-                "pvc_name": pvc_name,
-            }}
-        )
-        if resp.status_code != 200:
-            print("Failed to finalize workflow:", resp.status_code)
 
 
 

@@ -16,6 +16,14 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.46.1 - 2024-06-10
+
+### Removed
+
+* Nextflow
+  + Remove /finalize call at end of workflow
+
+
 ## 2.46.0 - 2024-06-10
 
 ### Added
