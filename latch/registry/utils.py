@@ -33,9 +33,6 @@ T = TypeVar("T")
 class RegistryTransformerException(ValueError): ...
 
 
-class RegistryNotFoundError(ValueError): ...
-
-
 def to_python_type(registry_type: RegistryType) -> Type[RegistryPythonValue]:
     if "primitive" in registry_type:
         primitive = cast(PrimitiveType, registry_type)["primitive"]
