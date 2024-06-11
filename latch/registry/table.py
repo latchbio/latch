@@ -81,6 +81,9 @@ class _Cache:
     project_id: Optional[str] = None
 
 
+class TableNotFoundError(ValueError): ...
+
+
 @dataclass(frozen=True)
 class Table:
     """Registry table. Contains :class:`records <latch.registry.record.Record>`.
@@ -125,7 +128,9 @@ class Table:
                 """),
             variables={"id": self.id},
         )["catalogExperiment"]
-        # todo(maximsmol): deal with nonexistent tables
+
+        if data is None:
+            raise TableNotFoundError(f"no such table with id: {self.id}")
 
         self._cache.project_id = data["projectId"]
         self._cache.display_name = data["displayName"]
@@ -243,7 +248,7 @@ class Table:
 
         # todo(maximsmol): because allSamples returns each column as its own
         # row, we can't paginate by samples because we don't know when a sample is finished
-        nodes: List[_AllRecordsNode] = execute(
+        data = execute(
             gql.gql("""
                 query TableQuery($id: BigInt!) {
                     catalogExperiment(id: $id) {
@@ -258,11 +263,13 @@ class Table:
                     }
                 }
                 """),
-            {
-                "id": self.id,
-            },
-        )["catalogExperiment"]["allSamples"]["nodes"]
-        # todo(maximsmol): deal with nonexistent tables
+            {"id": self.id},
+        )["catalogExperiment"]
+
+        if data is None:
+            raise TableNotFoundError(f"no such table with id: {self.id}")
+
+        nodes: List[_AllRecordsNode] = data["allSamples"]["nodes"]
 
         record_names: Dict[str, str] = {}
         record_values: Dict[str, Dict[str, RecordValue]] = {}

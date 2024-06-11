@@ -9,6 +9,7 @@ from latch_sdk_gql.utils import _GqlJsonValue, _json_value, _name_node, _parse_s
 from typing_extensions import TypeAlias
 
 from latch.registry.table import Table
+from latch.utils import current_workspace
 
 
 class _CatalogExperimentNode(TypedDict):
@@ -20,6 +21,9 @@ class _CatalogExperimentNode(TypedDict):
 class _Cache:
     display_name: Optional[str] = None
     tables: Optional[List[Table]] = None
+
+
+class ProjectNotFoundError(ValueError): ...
 
 
 @dataclass(frozen=True)
@@ -69,7 +73,9 @@ class Project:
                 """),
             variables={"id": self.id},
         )["catalogProject"]
-        # todo(maximsmol): deal with nonexistent projects
+
+        if data is None:
+            raise ProjectNotFoundError(f"no such project with id: {self.id}")
 
         self._cache.display_name = data["displayName"]
 
@@ -228,12 +234,10 @@ class ProjectUpdate:
 
         args = l.ArgumentNode()
         args.name = _name_node("input")
-        args.value = _json_value(
-            {
-                "argProjectId": self.project.id,
-                "argDisplayNames": display_names,
-            }
-        )
+        args.value = _json_value({
+            "argProjectId": self.project.id,
+            "argDisplayNames": display_names,
+        })
 
         res.alias = _name_node(f"upd{len(mutations)}")
         res.arguments = tuple([args])
@@ -267,11 +271,9 @@ class ProjectUpdate:
 
         args = l.ArgumentNode()
         args.name = _name_node("input")
-        args.value = _json_value(
-            {
-                "argIds": ids,
-            }
-        )
+        args.value = _json_value({
+            "argIds": ids,
+        })
 
         res.alias = _name_node(f"upd{len(mutations)}")
         res.arguments = tuple([args])
