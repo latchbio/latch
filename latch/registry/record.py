@@ -137,7 +137,6 @@ class Record:
             """),
             {"id": self.id},
         )["catalogSample"]
-        # todo(maximsmol): deal with nonexistent records
 
         if data is None:
             raise RecordNotFoundError(f"not such record with id: {self.id}")
