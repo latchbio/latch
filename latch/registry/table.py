@@ -56,7 +56,7 @@ from latch.registry.utils import (
 )
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
-from latch.utils import current_workspace
+from latch.utils import NotFoundError, current_workspace
 from latch_cli.utils import human_readable_time
 
 from ..types.json import JsonValue
@@ -81,7 +81,7 @@ class _Cache:
     project_id: Optional[str] = None
 
 
-class TableNotFoundError(ValueError): ...
+class TableNotFoundError(NotFoundError): ...
 
 
 @dataclass(frozen=True)
@@ -130,7 +130,9 @@ class Table:
         )["catalogExperiment"]
 
         if data is None:
-            raise TableNotFoundError(f"no such table with id: {self.id}")
+            raise TableNotFoundError(
+                f"table does not exist or you lack permissions: id={self.id}"
+            )
 
         self._cache.project_id = data["projectId"]
         self._cache.display_name = data["displayName"]
@@ -267,7 +269,9 @@ class Table:
         )["catalogExperiment"]
 
         if data is None:
-            raise TableNotFoundError(f"no such table with id: {self.id}")
+            raise TableNotFoundError(
+                f"table does not exist or you lack permissions: id={self.id}"
+            )
 
         nodes: List[_AllRecordsNode] = data["allSamples"]["nodes"]
 

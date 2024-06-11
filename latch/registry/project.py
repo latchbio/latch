@@ -9,7 +9,7 @@ from latch_sdk_gql.utils import _GqlJsonValue, _json_value, _name_node, _parse_s
 from typing_extensions import TypeAlias
 
 from latch.registry.table import Table
-from latch.utils import current_workspace
+from latch.utils import NotFoundError, current_workspace
 
 
 class _CatalogExperimentNode(TypedDict):
@@ -23,7 +23,7 @@ class _Cache:
     tables: Optional[List[Table]] = None
 
 
-class ProjectNotFoundError(ValueError): ...
+class ProjectNotFoundError(NotFoundError): ...
 
 
 @dataclass(frozen=True)
@@ -75,7 +75,9 @@ class Project:
         )["catalogProject"]
 
         if data is None:
-            raise ProjectNotFoundError(f"no such project with id: {self.id}")
+            raise ProjectNotFoundError(
+                f"project does not exist or you lack permissions: id={self.id}"
+            )
 
         self._cache.display_name = data["displayName"]
 

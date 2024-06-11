@@ -16,10 +16,10 @@ from typing_extensions import Self, TypeAlias
 
 from latch.registry.project import Project
 from latch.registry.table import Table
-from latch.utils import current_workspace
+from latch.utils import NotFoundError, current_workspace
 
 
-class AccountNotFoundError(ValueError): ...
+class AccountNotFoundError(NotFoundError): ...
 
 
 class _CatalogExperiment(TypedDict):
@@ -124,10 +124,11 @@ class Account:
             """),
             {"ownerId": self.id},
         )["accountInfo"]
-        # todo(maximsmol): deal with nonexistent accounts
 
         if data is None:
-            raise AccountNotFoundError(f"no such account with id: {self.id}")
+            raise AccountNotFoundError(
+                f"account does not exist or you lack permissions: id={self.id}"
+            )
 
         self._cache.catalog_projects = []
         for x in data["catalogProjectsByOwnerId"]["nodes"]:
