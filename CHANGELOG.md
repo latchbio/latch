@@ -16,13 +16,19 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.46.2 - 2024-06-11
+
+### Fixed
+
+* Registry API
+  + Error messages for accounts, projects, tables, and records which are not found during the `load` call.
+
 ## 2.46.1 - 2024-06-10
 
 ### Removed
 
 * Nextflow
   + Remove /finalize call at end of workflow
-
 
 ## 2.46.0 - 2024-06-10
 
