@@ -16,6 +16,15 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.46.3 - 2024-06-12
+
+### Fixed
+
+* Nextflow
+  + Upload .nextflow.log on success and failure
+  + Add tolerations to nextflow runtime task
+  + Bump nextflow version to v1.0.2
+
 ## 2.46.2 - 2024-06-11
 
 ### Added
