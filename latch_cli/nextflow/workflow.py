@@ -117,6 +117,7 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
         env = {{
             **os.environ,
             "NXF_HOME": "/root/.nextflow",
+            "NXF_OPTS": "-Xms{heap_memory}M -Xmx{memory}G -XX:ActiveProcessorCount={cpu}",
             "K8S_STORAGE_CLAIM_NAME": pvc_name,
             "NXF_DISABLE_CHECK_LATEST": "true",
         }}
@@ -310,6 +311,7 @@ def generate_nextflow_workflow(
         samplesheet_constructors="\n".join(samplesheet_constructors),
         cpu=resources.cpus,
         memory=resources.memory,
+        heap_memory=max(1, int(resources.memory * 1024 * 0.25)),
         storage_gib=resources.storage_gib,
         log_dir=log_dir,
     )
