@@ -117,6 +117,7 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
         env = {{
             **os.environ,
             "NXF_HOME": "/root/.nextflow",
+            "NXF_OPTS": "-Xms{heap_memory}M -Xmx{memory}G -XX:ActiveProcessorCount={cpu}",
             "K8S_STORAGE_CLAIM_NAME": pvc_name,
             "NXF_DISABLE_CHECK_LATEST": "true",
         }}
@@ -126,18 +127,18 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
             check=True,
             cwd=str(shared_dir),
         )
-    except subprocess.CalledProcessError:
+    finally:
         print()
 
-        name = _get_execution_name()
-        if name is None:
-            print("Skipping logs upload, failed to get execution name")
-        else:
-            remote = LPath(urljoins("{log_dir}", name, "nextflow.log"))
-            print(f"Uploading .nextflow.log to {{remote.path}}")
-            remote.upload_from(shared_dir / ".nextflow.log")
-
-        raise
+        nextflow_log = shared_dir / ".nextflow.log"
+        if nextflow_log.exists():
+            name = _get_execution_name()
+            if name is None:
+                print("Skipping logs upload, failed to get execution name")
+            else:
+                remote = LPath(urljoins("{log_dir}", name, "nextflow.log"))
+                print(f"Uploading .nextflow.log to {{remote.path}}")
+                remote.upload_from(nextflow_log)
 
 
 
@@ -310,6 +311,7 @@ def generate_nextflow_workflow(
         samplesheet_constructors="\n".join(samplesheet_constructors),
         cpu=resources.cpus,
         memory=resources.memory,
+        heap_memory=max(1, int(resources.memory * 1024 / 4)),
         storage_gib=resources.storage_gib,
         log_dir=log_dir,
     )
