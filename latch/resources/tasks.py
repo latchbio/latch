@@ -480,44 +480,23 @@ def custom_task(
 
 
 def nextflow_runtime_task(cpu: int, memory: int, storage_gib: int = 50):
-    primary_container = V1Container(name="primary")
-    resources = V1ResourceRequirements(
-        requests={
-            "cpu": str(cpu),
-            "memory": f"{memory}Gi",
-            "ephemeral-storage": f"{storage_gib}Gi",
-        },
-        limits={
-            "cpu": str(cpu),
-            "memory": f"{memory}Gi",
-            "ephemeral-storage": f"{storage_gib}Gi",
-        },
-    )
-    primary_container.resources = resources
-    volume_mounts = [V1VolumeMount(mount_path="/nf-workdir", name="nextflow-workdir")]
-    primary_container.volume_mounts = volume_mounts
+    task_config = _custom_task_config(cpu, memory, storage_gib)
 
-    task_config = Pod(
-        annotations={
-            "io.kubernetes.cri-o.userns-mode": (
-                "private:uidmapping=0:1048576:65536;gidmapping=0:1048576:65536"
-            )
-        },
-        pod_spec=V1PodSpec(
-            runtime_class_name="sysbox-runc",
-            automount_service_account_token=True,
-            containers=[primary_container],
-            volumes=[
-                V1Volume(
-                    name="nextflow-workdir",
-                    persistent_volume_claim=V1PersistentVolumeClaimVolumeSource(
-                        # this value will be injected by flytepropeller
-                        claim_name="nextflow-pvc-placeholder"
-                    ),
-                )
-            ],
-        ),
-        primary_container_name="primary",
-    )
+    task_config.pod_spec.automount_service_account_token = True
+
+    assert len(task_config.pod_spec.containers) == 1
+    task_config.pod_spec.containers[0].volume_mounts = [
+        V1VolumeMount(mount_path="/nf-workdir", name="nextflow-workdir")
+    ]
+
+    task_config.pod_spec.volumes = [
+        V1Volume(
+            name="nextflow-workdir",
+            persistent_volume_claim=V1PersistentVolumeClaimVolumeSource(
+                # this value will be injected by flytepropeller
+                claim_name="nextflow-pvc-placeholder"
+            ),
+        )
+    ]
 
     return functools.partial(task, task_config=task_config)
