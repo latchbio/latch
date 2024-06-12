@@ -311,7 +311,7 @@ def generate_nextflow_workflow(
         samplesheet_constructors="\n".join(samplesheet_constructors),
         cpu=resources.cpus,
         memory=resources.memory,
-        heap_memory=max(1, int(resources.memory * 1024 * 0.25)),
+        heap_memory=max(1, int(resources.memory * 1024 / 4)),
         storage_gib=resources.storage_gib,
         log_dir=log_dir,
     )
