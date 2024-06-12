@@ -127,18 +127,18 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
             check=True,
             cwd=str(shared_dir),
         )
-    except subprocess.CalledProcessError:
+    finally:
         print()
 
-        name = _get_execution_name()
-        if name is None:
-            print("Skipping logs upload, failed to get execution name")
-        else:
-            remote = LPath(urljoins("{log_dir}", name, "nextflow.log"))
-            print(f"Uploading .nextflow.log to {{remote.path}}")
-            remote.upload_from(shared_dir / ".nextflow.log")
-
-        raise
+        nextflow_log = shared_dir / ".nextflow.log"
+        if nextflow_log.exists():
+            name = _get_execution_name()
+            if name is None:
+                print("Skipping logs upload, failed to get execution name")
+            else:
+                remote = LPath(urljoins("{log_dir}", name, "nextflow.log"))
+                print(f"Uploading .nextflow.log to {{remote.path}}")
+                remote.upload_from(nextflow_log)
 
 
 
