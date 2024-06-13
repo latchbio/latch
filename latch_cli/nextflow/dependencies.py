@@ -12,7 +12,7 @@ from botocore.handlers import disable_signing
 
 from latch_cli import tinyrequests
 
-target_version = "v1.0.2"
+target_version = "v1.0.4"
 
 
 def _do_download(

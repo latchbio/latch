@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.46.4 - 2024-06-13
+
+### Fixed
+
+* Nextflow
+  + Bump nextflow version to v1.0.4 -- fixes large file uploads
+
 ## 2.46.3 - 2024-06-12
 
 ### Fixed
