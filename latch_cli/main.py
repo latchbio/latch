@@ -880,7 +880,7 @@ def version(pkg_root: Path):
 
 @nextflow.command("upgrade")
 @click.argument("pkg_root", nargs=1, type=click.Path(exists=True, path_type=Path))
-def generate_entrypoint(
+def upgrade(
     pkg_root: Path,
 ):
     """Download the latest version of Nextflow for the current project."""
@@ -894,6 +894,7 @@ def generate_entrypoint(
 @click.argument("pkg_root", nargs=1, type=click.Path(exists=True, path_type=Path))
 @click.option(
     "--nf-script",
+    required=True,
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     help="Path to the nextflow entrypoint to register.",
 )
@@ -929,7 +930,7 @@ def generate_entrypoint(
 
     if metadata._nextflow_metadata is None:
         click.secho(
-            dedent("""
+            dedent("""\
             Failed to generate Nextflow entrypoint.
             Make sure the project root contains a `latch_metadata/__init__.py`
             with a `NextflowMetadata` object defined.
