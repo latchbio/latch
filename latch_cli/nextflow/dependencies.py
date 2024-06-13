@@ -95,3 +95,5 @@ def ensure_nf_dependencies(pkg_root: Path):
 
     with open(nf_version_path, "w") as f:
         f.write(target_version)
+
+    click.secho(f"Using Nextflow version {target_version}", fg="green")
