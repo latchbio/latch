@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.46.6 - 2024-06-14
+
+### Added
+
+* Nextflow + Snakemake
+  + Add `--metadata-root` option to `latch register`
+
 ## 2.46.5 - 2024-06-13
 
 ### Added
