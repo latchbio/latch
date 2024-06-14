@@ -380,6 +380,11 @@ def generate_metadata(
     type=bool,
     help="Start a develop session for a Snakemake workflow.",
 )
+@click.option(
+    "--metadata-root",
+    type=click.Path(exists=False, path_type=Path, file_okay=False),
+    help="Path to directory containing Latch metadata. Only for Snakemake",
+)
 @requires_login
 def local_development(
     pkg_root: Path,
@@ -388,6 +393,7 @@ def local_development(
     wf_version: Optional[str],
     disable_sync: bool,
     snakemake: bool,
+    metadata_root: Optional[Path],
 ):
     """Develop workflows "locally"
 
@@ -409,7 +415,9 @@ def local_development(
     else:
         from latch_cli.services.local_dev_old import local_development
 
-        local_development(pkg_root.resolve(), snakemake, wf_version, disable_sync)
+        local_development(
+            pkg_root.resolve(), snakemake, wf_version, metadata_root, disable_sync
+        )
 
 
 @main.command("exec")

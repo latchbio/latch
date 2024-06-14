@@ -29,10 +29,15 @@ from latch_cli.tinyrequests import post
 from latch_cli.utils import TemporarySSHCredentials, identifier_suffix_from_str
 
 
-def _get_workflow_name(pkg_root: Path, metadata_root: Path, snakemake: bool) -> str:
+def _get_workflow_name(
+    pkg_root: Path, snakemake: bool, metadata_root: Optional[Path]
+) -> str:
     if snakemake:
         import latch.types.metadata as metadata
         from latch_cli.snakemake.utils import load_snakemake_metadata
+
+        if metadata_root is None:
+            metadata_root = pkg_root / Path("latch_metadata")
 
         load_snakemake_metadata(pkg_root, metadata_root)
         if metadata._snakemake_metadata is None:
@@ -63,7 +68,12 @@ def _get_workflow_name(pkg_root: Path, metadata_root: Path, snakemake: bool) -> 
         raise click.exceptions.Exit(1)
 
 
-def get_image(pkg_root: Path, snakemake: bool, version: Optional[str]) -> str:
+def get_image(
+    pkg_root: Path,
+    snakemake: bool,
+    version: Optional[str],
+    metadata_root: Optional[Path],
+) -> str:
     click.secho("Image name: ", fg="blue", nl=False)
 
     ws_id = current_workspace()
@@ -71,7 +81,7 @@ def get_image(pkg_root: Path, snakemake: bool, version: Optional[str]) -> str:
         ws_id = f"x{ws_id}"
 
     wf_name = identifier_suffix_from_str(
-        _get_workflow_name(pkg_root, snakemake)
+        _get_workflow_name(pkg_root, snakemake, metadata_root)
     ).lower()
     wf_name = docker_image_name_illegal_pat.sub("_", wf_name)
 
@@ -327,11 +337,15 @@ async def _shell_session(
 
 
 async def _run_local_dev_session(
-    pkg_root: Path, snakemake: bool, version: Optional[str], disable_sync: bool
+    pkg_root: Path,
+    snakemake: bool,
+    version: Optional[str],
+    metadata_root: Optional[Path],
+    disable_sync: bool,
 ):
     # hit the endpoint to make sure that a workflow image exists in ecr before
     # doing anything
-    image_name_tagged = get_image(pkg_root, snakemake, version)
+    image_name_tagged = get_image(pkg_root, snakemake, version, metadata_root)
     key_path = pkg_root / ".latch" / "ssh_key"
 
     with TemporarySSHCredentials(key_path) as ssh:
@@ -467,7 +481,11 @@ async def _run_local_dev_session(
 
 
 def local_development(
-    pkg_root: Path, snakemake: bool, wf_version: Optional[str], disable_sync: bool
+    pkg_root: Path,
+    snakemake: bool,
+    wf_version: Optional[str],
+    metadata_root: Optional[Path],
+    disable_sync: bool,
 ):
     """Starts a REPL that allows a user to interactively run tasks to help with
     debugging during workflow development.
@@ -506,4 +524,8 @@ def local_development(
                     mac: brew install rsync
                 """))
 
-    asyncio.run(_run_local_dev_session(pkg_root, snakemake, wf_version, disable_sync))
+    asyncio.run(
+        _run_local_dev_session(
+            pkg_root, snakemake, wf_version, metadata_root, disable_sync
+        )
+    )
