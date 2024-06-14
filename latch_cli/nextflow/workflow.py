@@ -35,14 +35,11 @@ from latch_cli.utils import urljoins
 from latch.types import metadata
 from flytekit.core.annotation import FlyteAnnotation
 
-import latch_metadata
-
 from latch_cli.services.register.utils import import_module_by_path
 
-meta = Path("latch_metadata") / "__init__.py"
-if meta.exists():
-    import_module_by_path(meta)
-
+meta = Path("{metadata_root}") / "__init__.py"
+import_module_by_path(meta)
+import latch_metadata
 
 @custom_task(cpu=0.25, memory=0.5, storage_gib=1)
 def initialize() -> str:
@@ -203,6 +200,7 @@ def generate_nextflow_config(pkg_root: Path):
 
 def generate_nextflow_workflow(
     pkg_root: Path,
+    metadata_root: Path,
     nf_script: Path,
     dest: Path,
     *,
@@ -295,6 +293,7 @@ def generate_nextflow_workflow(
         workflow_func_name=identifier_from_str(wf_name),
         docstring=reindent(docstring, 1),
         nf_script=nf_script.resolve().relative_to(pkg_root.resolve()),
+        metadata_root=str(metadata_root.resolve().relative_to(pkg_root.resolve())),
         param_signature_with_defaults=", ".join(
             no_defaults + [f"{name} = {val}" for name, val in defaults]
         ),

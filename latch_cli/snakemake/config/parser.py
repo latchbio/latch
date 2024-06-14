@@ -138,7 +138,8 @@ def file_metadata_str(typ: Type, value: JSONValue, level: int = 0) -> str:
 
 # todo(ayush): print informative stuff here ala register
 def generate_metadata(
-    config_path,
+    config_path: Path,
+    metadata_root: Path,
     *,
     skip_confirmation: bool = False,
     generate_defaults: bool = False,
@@ -177,9 +178,8 @@ def generate_metadata(
         metadata_str = f"{repr(identifier_from_str(k))}: {metadata_str}"
         file_metadata.append(reindent(metadata_str, 1))
 
-    metadata_root = Path("latch_metadata")
     if metadata_root.is_file():
-        if not click.confirm("A file exists at `latch_metadata`. Delete it?"):
+        if not click.confirm(f"A file exists at `{metadata_root}`. Delete it?"):
             raise click.exceptions.Exit(0)
 
         metadata_root.unlink()
@@ -193,13 +193,13 @@ def generate_metadata(
         if click.confirm(
             "Found legacy `latch_metadata.py` file in current directory. This is"
             " deprecated and will be ignored in future releases. Move to"
-            " `latch_metadata/__init__.py`? (This will not change file contents)"
+            f" `{metadata_path}`? (This will not change file contents)"
         ):
             old_metadata_path.rename(metadata_path)
     elif old_metadata_path.exists() and metadata_path.exists():
         click.secho(
             "Warning: Found both `latch_metadata.py` and"
-            " `latch_metadata/__init__.py` in current directory."
+            f" `{metadata_path}` in current directory."
             " `latch_metadata.py` will be ignored.",
             fg="yellow",
         )
@@ -233,15 +233,13 @@ def generate_metadata(
                 0,
             )
         )
-        click.secho("Generated `latch_metadata/__init__.py`.", fg="green")
+        click.secho(f"Generated `{metadata_path}`.", fg="green")
 
     params_path = metadata_root / Path("parameters.py")
     if (
         params_path.exists()
         and not skip_confirmation
-        and not click.confirm(
-            "File `latch_metadata/parameters.py` already exists. Overwrite?"
-        )
+        and not click.confirm(f"File `{params_path}` already exists. Overwrite?")
     ):
         raise click.exceptions.Exit(0)
 
@@ -278,4 +276,4 @@ def generate_metadata(
         .replace("__params__", "\n".join(params))
         .replace("__file_metadata__", "".join(file_metadata))
     )
-    click.secho("Generated `latch_metadata/parameters.py`.", fg="green")
+    click.secho(f"Generated `{params_path}`.", fg="green")

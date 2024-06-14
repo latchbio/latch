@@ -29,12 +29,12 @@ from latch_cli.tinyrequests import post
 from latch_cli.utils import TemporarySSHCredentials, identifier_suffix_from_str
 
 
-def _get_workflow_name(pkg_root: Path, snakemake: bool) -> str:
+def _get_workflow_name(pkg_root: Path, metadata_root: Path, snakemake: bool) -> str:
     if snakemake:
         import latch.types.metadata as metadata
         from latch_cli.snakemake.utils import load_snakemake_metadata
 
-        load_snakemake_metadata(pkg_root)
+        load_snakemake_metadata(pkg_root, metadata_root)
         if metadata._snakemake_metadata is None:
             click.secho(f"Unable to find latch_metadata in {pkg_root}.", fg="red")
             raise click.exceptions.Exit(1)

@@ -27,7 +27,6 @@ from typing_extensions import Self
 
 import latch.types.metadata as metadata
 
-from ..services.register.utils import import_module_by_path
 from .serialize_utils import (
     EntityCache,
     get_serializable_launch_plan,
@@ -184,12 +183,13 @@ class SnakemakeWorkflowExtractor(Workflow):
 
 def snakemake_workflow_extractor(
     pkg_root: Path,
+    metadata_root: Path,
     snakefile: Path,
     overwrite_config: Optional[Dict[str, Any]] = None,
 ) -> SnakemakeWorkflowExtractor:
     snakefile = snakefile.resolve()
 
-    load_snakemake_metadata(pkg_root)
+    load_snakemake_metadata(pkg_root, metadata_root)
 
     extractor = SnakemakeWorkflowExtractor(
         pkg_root=pkg_root,
@@ -208,6 +208,7 @@ def snakemake_workflow_extractor(
 
 def extract_snakemake_workflow(
     pkg_root: Path,
+    metadata_root: Path,
     snakefile: Path,
     jit_wf_version: str,
     jit_exec_display_name: str,
@@ -215,7 +216,9 @@ def extract_snakemake_workflow(
     overwrite_config: Optional[Dict[str, Any]] = None,
     cache_tasks: bool = False,
 ) -> SnakemakeWorkflow:
-    extractor = snakemake_workflow_extractor(pkg_root, snakefile, overwrite_config)
+    extractor = snakemake_workflow_extractor(
+        pkg_root, metadata_root, snakefile, overwrite_config
+    )
     with extractor:
         dag = extractor.extract_dag()
         wf = SnakemakeWorkflow(
@@ -404,12 +407,15 @@ def generate_snakemake_entrypoint(
 def generate_jit_register_code(
     wf: JITRegisterWorkflow,
     pkg_root: Path,
+    metadata_root: Path,
     snakefile: Path,
     version: str,
     image_name: str,
     account_id: str,
 ) -> Path:
-    code_block = textwrap.dedent(r"""
+    metadata_path = metadata_root.resolve().relative_to(pkg_root.resolve())
+
+    code_block = textwrap.dedent(rf"""
         import json
         import os
         import subprocess
@@ -461,10 +467,11 @@ def generate_jit_register_code(
         from latch.types.directory import LatchDir
         from latch.types.file import LatchFile
 
-        try:
-            import latch_metadata.parameters as latch_metadata
-        except ImportError:
-            import latch_metadata
+        from latch_cli.services.register.utils import import_module_by_path
+
+        meta = Path("{metadata_path}") / "__init__.py"
+        import_module_by_path(meta)
+        import latch_metadata
 
         sys.stdout.reconfigure(line_buffering=True)
         sys.stderr.reconfigure(line_buffering=True)
@@ -473,20 +480,21 @@ def generate_jit_register_code(
         def si_unit(num, base: float = 1000.0):
             for unit in (" ", "k", "M", "G", "T", "P", "E", "Z"):
                 if abs(num) < base:
-                    return f"{num:3.1f}{unit}"
+                    return f"{{num:3.1f}}{{unit}}"
                 num /= base
-            return f"{num:.1f}Y"
+            return f"{{num:.1f}}Y"
 
         def file_name_and_size(x: Path):
             s = x.stat()
 
             if stat.S_ISDIR(s.st_mode):
-                return f"{'D':>8} {x.name}/"
+                return f"{{'D':>8}} {{x.name}}/"
 
-            return f"{si_unit(s.st_size):>7}B {x.name}"
+            return f"{{si_unit(s.st_size):>7}}B {{x.name}}"
 
     """).lstrip()
     code_block += wf.get_fn_code(
+        str(metadata_path),
         snakefile_path_in_container(snakefile, pkg_root),
         image_name,
         wf.remote_output_url,
