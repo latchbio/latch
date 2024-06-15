@@ -247,7 +247,7 @@ class _CentromereCtx:
                         dedent(
                             """
                             Make sure a `latch_metadata` exists in the Snakemake
-                            project root.""",
+                            project root or provide a metadata folder with the `--metadata-root` argument.""",
                         ),
                         fg="red",
                     )
