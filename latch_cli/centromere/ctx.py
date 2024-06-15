@@ -58,6 +58,7 @@ class _CentromereCtx:
     serialize_dir = None
     default_container: _Container
     workflow_type: WorkflowType
+    metadata_root: Optional[Path]
     snakefile: Optional[Path]
     nf_script: Optional[Path]
 
@@ -80,6 +81,7 @@ class _CentromereCtx:
         *,
         disable_auto_version: bool = False,
         remote: bool = False,
+        metadata_root: Optional[Path] = None,
         snakefile: Optional[Path] = None,
         nf_script: Optional[Path] = None,
         use_new_centromere: bool = False,
@@ -157,7 +159,11 @@ class _CentromereCtx:
                 )
                 from ..snakemake.utils import load_snakemake_metadata
 
-                meta_file = load_snakemake_metadata(pkg_root)
+                if metadata_root is None:
+                    metadata_root = pkg_root / "latch_metadata"
+                self.metadata_root = metadata_root
+
+                meta_file = load_snakemake_metadata(pkg_root, metadata_root)
                 if meta_file is not None:
                     click.echo(
                         f"Using metadata file {click.style(meta_file, italic=True)}"
@@ -166,7 +172,7 @@ class _CentromereCtx:
                     new_meta = pkg_root / "latch_metadata" / "__init__.py"
                     click.echo("Trying to extract metadata from the Snakefile")
                     try:
-                        snakemake_workflow_extractor(pkg_root, snakefile)
+                        snakemake_workflow_extractor(pkg_root, metadata_root, snakefile)
                     except (ImportError, FileNotFoundError):
                         traceback.print_exc()
                         click.secho(
@@ -240,8 +246,8 @@ class _CentromereCtx:
                     click.secho(
                         dedent(
                             """
-                        Make sure a `latch_metadata.py` file exists in the Snakemake
-                         project root.""",
+                            Make sure a `latch_metadata` exists in the Snakemake
+                            project root or provide a metadata folder with the `--metadata-root` argument.""",
                         ),
                         fg="red",
                     )
@@ -257,7 +263,11 @@ class _CentromereCtx:
 
                 from ..services.register.utils import import_module_by_path
 
-                meta = pkg_root / "latch_metadata" / "__init__.py"
+                if metadata_root is None:
+                    metadata_root = pkg_root / "latch_metadata"
+                self.metadata_root = metadata_root
+
+                meta = metadata_root / "__init__.py"
                 if meta.exists():
                     click.echo(f"Using metadata file {click.style(meta, italic=True)}")
                     import_module_by_path(meta)

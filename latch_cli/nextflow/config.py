@@ -36,6 +36,7 @@ def get_param_type(details: dict) -> Type:
 
 def generate_metadata(
     schema_path: Path,
+    metadata_root: Path,
     *,
     skip_confirmation: bool = False,
     generate_defaults: bool = False,
@@ -48,10 +49,9 @@ def generate_metadata(
     if display_name is not None and display_name.endswith(suffix):
         display_name = display_name[: -len(suffix)]
 
-    metadata_root = Path("latch_metadata")
     if metadata_root.is_file():
         if not click.confirm(
-            "A file already exists at `latch_metadata` and must be deleted. Would you"
+            f"A file already exists at `{metadata_root}` and must be deleted. Would you"
             " like to proceed?"
         ):
             return
@@ -86,7 +86,7 @@ def generate_metadata(
                 log_dir=LatchDir("latch:///your_log_dir"),
             )
         """))
-        click.secho("Generated `latch_metadata/__init__.py`.", fg="green")
+        click.secho(f"Generated `{metadata_path}`.", fg="green")
 
     params = []
     for section in schema.get("definitions", {}).values():
@@ -126,9 +126,7 @@ def generate_metadata(
     if (
         params_path.exists()
         and not skip_confirmation
-        and not click.confirm(
-            "File `latch_metadata/parameters.py` already exists. Overwrite?"
-        )
+        and not click.confirm(f"File `{params_path}` already exists. Overwrite?")
     ):
         return
 
@@ -152,4 +150,4 @@ def generate_metadata(
             }
 
             """).replace("__params__", reindent("".join(params), 1)))
-    click.secho("Generated `latch_metadata/parameters.py`.", fg="green")
+    click.secho(f"Generated `{params_path}`.", fg="green")

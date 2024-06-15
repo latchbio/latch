@@ -241,13 +241,16 @@ def dockerfile(pkg_root: str, snakemake: bool = False, nextflow: bool = False):
     type=click.Path(exists=True, path_type=Path, dir_okay=False),
 )
 @click.option(
+    "--metadata-root",
+    type=click.Path(exists=False, path_type=Path, file_okay=False),
+    help="Path to directory containing Latch metadata.",
+)
+@click.option(
     "--yes",
     "-y",
     is_flag=True,
     default=False,
-    help=(
-        "Overwrite an existing `latch_metadata/parameters.py` file without confirming."
-    ),
+    help="Overwrite an existing `parameters.py` file without confirming.",
 )
 @click.option(
     "--snakemake",
@@ -284,13 +287,14 @@ def dockerfile(pkg_root: str, snakemake: bool = False, nextflow: bool = False):
 )
 def generate_metadata(
     config_file: Optional[Path],
+    metadata_root: Optional[Path],
     snakemake: bool,
     nextflow: bool,
     yes: bool,
     no_infer_files: bool,
     no_defaults: bool,
 ):
-    """Generate a `latch_metadata.py` file from a config file"""
+    """Generate a `__init__.py` and `parameters.py` file from a config file"""
 
     if snakemake is True and nextflow is True:
         click.secho(
@@ -300,6 +304,9 @@ def generate_metadata(
         )
         raise click.exceptions.Exit(1)
 
+    if metadata_root is None:
+        metadata_root = Path("latch_metadata")
+
     if nextflow is True:
         from latch_cli.nextflow.config import generate_metadata
 
@@ -308,6 +315,7 @@ def generate_metadata(
 
         generate_metadata(
             config_file,
+            metadata_root,
             skip_confirmation=yes,
             generate_defaults=not no_defaults,
         )
@@ -327,6 +335,7 @@ def generate_metadata(
 
         generate_metadata(
             config_file,
+            metadata_root,
             skip_confirmation=yes,
             infer_files=not no_infer_files,
             generate_defaults=not no_defaults,
@@ -371,6 +380,11 @@ def generate_metadata(
     type=bool,
     help="Start a develop session for a Snakemake workflow.",
 )
+@click.option(
+    "--metadata-root",
+    type=click.Path(exists=False, path_type=Path, file_okay=False),
+    help="Path to directory containing Latch metadata. Only for Snakemake",
+)
 @requires_login
 def local_development(
     pkg_root: Path,
@@ -379,6 +393,7 @@ def local_development(
     wf_version: Optional[str],
     disable_sync: bool,
     snakemake: bool,
+    metadata_root: Optional[Path],
 ):
     """Develop workflows "locally"
 
@@ -400,7 +415,9 @@ def local_development(
     else:
         from latch_cli.services.local_dev_old import local_development
 
-        local_development(pkg_root.resolve(), snakemake, wf_version, disable_sync)
+        local_development(
+            pkg_root.resolve(), snakemake, wf_version, metadata_root, disable_sync
+        )
 
 
 @main.command("exec")
@@ -472,6 +489,11 @@ def execute(
     help="Open the registered workflow in the browser.",
 )
 @click.option(
+    "--metadata-root",
+    type=click.Path(exists=False, path_type=Path, file_okay=False),
+    help="Path to directory containing Latch metadata. Only for Nextflow and Snakemake",
+)
+@click.option(
     "--snakefile",
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     default=None,
@@ -508,6 +530,7 @@ def register(
     docker_progress: str,
     yes: bool,
     open: bool,
+    metadata_root: Optional[Path],
     snakefile: Optional[Path],
     cache_tasks: bool,
     nf_script: Optional[Path],
@@ -539,6 +562,7 @@ def register(
         remote=remote,
         skip_confirmation=yes,
         open=open,
+        metadata_root=metadata_root,
         snakefile=snakefile,
         nf_script=nf_script,
         nf_execution_profile=nf_execution_profile,
@@ -893,6 +917,11 @@ def upgrade(
 @nextflow.command("generate-entrypoint")
 @click.argument("pkg_root", nargs=1, type=click.Path(exists=True, path_type=Path))
 @click.option(
+    "--metadata-root",
+    type=click.Path(exists=False, path_type=Path, file_okay=False),
+    help="Path to directory containing Latch metadata.",
+)
+@click.option(
     "--nf-script",
     required=True,
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
@@ -906,6 +935,7 @@ def upgrade(
 )
 def generate_entrypoint(
     pkg_root: Path,
+    metadata_root: Optional[Path],
     nf_script: Path,
     execution_profile: Optional[str],
 ):
@@ -923,16 +953,19 @@ def generate_entrypoint(
     ):
         return
 
-    meta = pkg_root / "latch_metadata" / "__init__.py"
+    if metadata_root is None:
+        metadata_root = pkg_root / "latch_metadata"
+
+    meta = metadata_root / "__init__.py"
     if meta.exists():
         click.echo(f"Using metadata file {click.style(meta, italic=True)}")
         import_module_by_path(meta)
 
     if metadata._nextflow_metadata is None:
         click.secho(
-            dedent("""\
+            dedent(f"""\
             Failed to generate Nextflow entrypoint.
-            Make sure the project root contains a `latch_metadata/__init__.py`
+            Make sure the project root contains a `{meta}`
             with a `NextflowMetadata` object defined.
             """),
             fg="red",
@@ -941,6 +974,7 @@ def generate_entrypoint(
 
     generate_nextflow_workflow(
         pkg_root,
+        metadata_root,
         nf_script,
         dest,
         execution_profile=execution_profile,

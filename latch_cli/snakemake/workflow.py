@@ -544,6 +544,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
     def get_fn_code(
         self,
+        metadata_path: str,
         snakefile_path: str,
         image_name: str,
         remote_output_url: Optional[str],
@@ -625,6 +626,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
             wf = extract_snakemake_workflow(
                 pkg_root,
+                {metadata_path},
                 snakefile,
                 jit_wf_version,
                 jit_exec_display_name,

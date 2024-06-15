@@ -259,6 +259,7 @@ def register(
     remote: bool = False,
     open: bool = False,
     skip_confirmation: bool = False,
+    metadata_root: Optional[Path] = None,
     snakefile: Optional[Path] = None,
     nf_script: Optional[Path] = None,
     nf_execution_profile: Optional[str] = None,
@@ -322,6 +323,7 @@ def register(
         Path(pkg_root),
         disable_auto_version=disable_auto_version,
         remote=remote,
+        metadata_root=metadata_root,
         snakefile=snakefile,
         nf_script=nf_script,
         use_new_centromere=use_new_centromere,
@@ -397,6 +399,7 @@ def register(
             generate_jit_register_code(
                 sm_jit_wf,
                 ctx.pkg_root,
+                ctx.metadata_root,
                 ctx.snakefile,
                 ctx.version,
                 ctx.default_container.image_name,
@@ -415,6 +418,7 @@ def register(
             dest.parent.mkdir(exist_ok=True)
             generate_nextflow_workflow(
                 ctx.pkg_root,
+                ctx.metadata_root,
                 ctx.nf_script,
                 dest,
                 execution_profile=nf_execution_profile,
