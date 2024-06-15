@@ -23,6 +23,11 @@ Types of changes
 * Nextflow + Snakemake
   + Add `--metadata-root` option to `latch register`
 
+### Fixed
+
+* Nextflow
+  + Bump Nextflow version to fix releasing workflow to different workspace
+
 ## 2.46.5 - 2024-06-13
 
 ### Added
