@@ -107,6 +107,9 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
 {params_to_flags}
         ]
 
+        if os.environ.get("NEXTFLOW_RELAUNCH") is not None:
+            cmd.append("-resume")
+
         print("Launching Nextflow Runtime")
         print(' '.join(cmd))
         print(flush=True)
@@ -115,7 +118,6 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
             **os.environ,
             "NXF_HOME": "/root/.nextflow",
             "NXF_OPTS": "-Xms{heap_memory}M -Xmx{memory}G -XX:ActiveProcessorCount={cpu}",
-            "K8S_STORAGE_CLAIM_NAME": pvc_name,
             "NXF_DISABLE_CHECK_LATEST": "true",
         }}
         subprocess.run(
