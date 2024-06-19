@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.46.7 -- 2024-06-19
+
+### Fixed
+
+* Nextflow
+  + Bump Nextflow version to 1.0.8 to add retries on failure
+
 ## 2.46.6 - 2024-06-14
 
 ### Added
