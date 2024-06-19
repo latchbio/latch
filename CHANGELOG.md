@@ -16,12 +16,19 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.46.6 - 2024-06-19
+## 2.46.8 - 2024-06-19
 
 ### Added
 
 * Nextflow
   + Support for relaunching from failed task using `-resume` flag
+
+## 2.46.7 -- 2024-06-19
+
+### Fixed
+
+* Nextflow
+  + Bump Nextflow version to 1.0.8 to add retries on failure
 
 ## 2.46.6 - 2024-06-14
 
