@@ -104,6 +104,7 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
             "{execution_profile}",
             "-c",
             "latch.config",
+            "-resume",
 {params_to_flags}
         ]
 
@@ -115,7 +116,6 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
             **os.environ,
             "NXF_HOME": "/root/.nextflow",
             "NXF_OPTS": "-Xms{heap_memory}M -Xmx{memory}G -XX:ActiveProcessorCount={cpu}",
-            "K8S_STORAGE_CLAIM_NAME": pvc_name,
             "NXF_DISABLE_CHECK_LATEST": "true",
         }}
         subprocess.run(
