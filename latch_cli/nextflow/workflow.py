@@ -115,7 +115,7 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
         env = {{
             **os.environ,
             "NXF_HOME": "/root/.nextflow",
-            "NXF_OPTS": "-Xms{java_heap_mb}M -Xmx{java_mem_mb}M -XX:ActiveProcessorCount={cpu}",
+            "NXF_OPTS": "-Xms{heap_memory}M -Xmx{memory}G -XX:ActiveProcessorCount={cpu}",
             "NXF_DISABLE_CHECK_LATEST": "true",
         }}
         subprocess.run(
@@ -289,8 +289,6 @@ def generate_nextflow_workflow(
 
     docstring = f"{display_name}\n\n{desc}"
 
-    java_mem_mb = int(resources.memory * 1024 * 0.75)
-
     entrypoint = template.format(
         workflow_func_name=identifier_from_str(wf_name),
         docstring=reindent(docstring, 1),
@@ -312,8 +310,7 @@ def generate_nextflow_workflow(
         samplesheet_constructors="\n".join(samplesheet_constructors),
         cpu=resources.cpus,
         memory=resources.memory,
-        java_mem_mb=max(1, java_mem_mb),
-        java_heap_mb=max(1, int(java_mem_mb / 4)),
+        heap_memory=max(1, int(resources.memory * 1024 / 4)),
         storage_gib=resources.storage_gib,
         log_dir=log_dir,
     )
