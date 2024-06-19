@@ -104,11 +104,9 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
             "{execution_profile}",
             "-c",
             "latch.config",
+            "-resume",
 {params_to_flags}
         ]
-
-        if os.environ.get("NEXTFLOW_RELAUNCH") is not None:
-            cmd.append("-resume")
 
         print("Launching Nextflow Runtime")
         print(' '.join(cmd))
