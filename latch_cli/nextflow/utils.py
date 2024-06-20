@@ -24,7 +24,6 @@ def _get_execution_name() -> Optional[str]:
         {"token": token},
     )["executionCreatorByToken"]
 
-    try:
-        return res["info"]["displayName"]
-    except KeyError:
+    if "info" not in res or res["info"] is None:
         return None
+    return res["info"].get("displayName")
