@@ -626,7 +626,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
             wf = extract_snakemake_workflow(
                 pkg_root,
-                {metadata_path},
+                Path("{metadata_path}"),
                 snakefile,
                 jit_wf_version,
                 jit_exec_display_name,

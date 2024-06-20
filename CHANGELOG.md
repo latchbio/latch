@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.46.9 - 2024-06-20
+
+### Fixed
+
+* Snakemake
+  + fix metadata_root param for Snakemake workflows
+
 ## 2.46.8 - 2024-06-19
 
 ### Added
