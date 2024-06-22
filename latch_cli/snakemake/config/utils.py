@@ -135,7 +135,7 @@ def parse_type(
     for k, x in v.items():
         fields[identifier_from_str(k)] = parse_type(
             x,
-            k,
+            f"{name}_{k}",
             infer_files=infer_files,
         )
 
