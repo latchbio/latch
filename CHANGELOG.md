@@ -16,6 +16,17 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.47.1 - 2024-06-22
+
+### Added
+
+* Nextflow version 1.0.11
+
+### Fixed
+
+* Snakemake
+  - fix dataclass name collisions when generating metadata for Snakemake workflows
+
 ## 2.47.0 - 2024-06-20
 
 ### Added
