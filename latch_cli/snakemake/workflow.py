@@ -398,7 +398,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         path: Path,
         download: bool,
         config: bool,
-        param_path: str,
+        param_path: List[Union[str, int]],
     ) -> str:
         code_block = ""
 
@@ -430,9 +430,11 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             """)
 
         if config:
+            param_path_str = self._param_path_str(param_path)
             code_block += dedent(rf"""
                 print(f"Saving parameter value {param} = {str(path)}")
-                overwrite_config[{self._param_path_str(param_path)}] = {repr(str(path))}
+                overwrite_config[{param_path_str}] = {repr(str(path))}
+                overwrite_config['_latchfiles'][{param_path_str}] = {param}.remote_path
                 """)
 
         return code_block
@@ -556,6 +558,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         code_block += reindent(
             rf"""
             overwrite_config = {{}}
+            overwrite_config['_latchfiles'] = {{}}
             local_to_remote_path_mapping = {{}}
 
             """,
