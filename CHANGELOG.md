@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.47.2 - 2024-06-24
+
+### Added
+
+* Snakemake
+  - expose underlying Latch paths in config object
+
 ## 2.47.1 - 2024-06-22
 
 ### Added
