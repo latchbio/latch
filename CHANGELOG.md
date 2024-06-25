@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.47.3 - 2024-06-25
+
+### Added
+
+* Nextflow
+  - bump nf runtime version to 1.1.0
+
 ## 2.47.2 - 2024-06-24
 
 ### Added
