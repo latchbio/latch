@@ -217,7 +217,7 @@ def generate_nextflow_workflow(
     parameters = metadata._nextflow_metadata.parameters
     resources = metadata._nextflow_metadata.runtime_resources
 
-    java_heap_size = resources.memory * 1024 * 0.7
+    java_heap_size = resources.memory * 1024 * 0.75
 
     flags = []
     defaults: List[Tuple[str, str]] = []
@@ -313,8 +313,8 @@ def generate_nextflow_workflow(
         samplesheet_constructors="\n".join(samplesheet_constructors),
         cpu=resources.cpus,
         memory=resources.memory,
-        heap_max=max(1, int(java_heap_size)),
-        heap_initial=max(1, int(java_heap_size / 4)),
+        heap_initial=int(java_heap_size / 4),
+        heap_max=int(java_heap_size),
         storage_gib=resources.storage_gib,
         log_dir=log_dir,
     )
