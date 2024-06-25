@@ -115,8 +115,9 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
         env = {{
             **os.environ,
             "NXF_HOME": "/root/.nextflow",
-            "NXF_OPTS": "-Xms{heap_memory}M -Xmx{memory}G -XX:ActiveProcessorCount={cpu}",
+            "NXF_OPTS": "-Xms{heap_initial}M -Xmx{heap_max}M -XX:ActiveProcessorCount={cpu}",
             "NXF_DISABLE_CHECK_LATEST": "true",
+            "NXF_ENABLE_VIRTUAL_THREADS": "false",
         }}
         subprocess.run(
             cmd,
@@ -216,6 +217,8 @@ def generate_nextflow_workflow(
     parameters = metadata._nextflow_metadata.parameters
     resources = metadata._nextflow_metadata.runtime_resources
 
+    java_heap_size = resources.memory * 1024 * 0.7
+
     flags = []
     defaults: List[Tuple[str, str]] = []
     no_defaults: List[str] = []
@@ -310,7 +313,8 @@ def generate_nextflow_workflow(
         samplesheet_constructors="\n".join(samplesheet_constructors),
         cpu=resources.cpus,
         memory=resources.memory,
-        heap_memory=max(1, int(resources.memory * 1024 / 4)),
+        heap_max=max(1, int(java_heap_size)),
+        heap_initial=max(1, int(java_heap_size / 4)),
         storage_gib=resources.storage_gib,
         log_dir=log_dir,
     )

@@ -828,6 +828,13 @@ class NextflowMetadata(LatchMetadata):
 
     def validate(self):
         if self.about_page_path is not None:
+            if isinstance(self.about_page_path, Path):
+                click.secho(
+                    f"`about_page_path` parameter ({self.about_page_path}) must be a"
+                    " Path object.",
+                    fg="red",
+                )
+
             if not self.about_page_path.exists():
                 click.secho(
                     f"Path to about page documentation ({self.about_page_path})"
