@@ -571,7 +571,7 @@ class NextflowRuntimeResources:
     """
     Memory required for the task in GiB
     """
-    storage_gib: Optional[int] = 100
+    storage_gib: Optional[int] = 50
     """
     Storage required for the task in GiB
     """
