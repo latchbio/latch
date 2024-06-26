@@ -575,6 +575,12 @@ class NextflowRuntimeResources:
     """
     Storage required for the task in GiB
     """
+    storage_keep_alive: Optional[int] = 10
+    """
+    Days to keep shared storage device alive. After the
+    storage device is deleted, Nextflow workflows cannot be
+    relaunched from failed task.
+    """
 
 
 @dataclass
@@ -850,6 +856,13 @@ class NextflowMetadata(LatchMetadata):
                     fg="red",
                 )
                 raise click.exceptions.Exit(1)
+
+        if not 0 <= self.runtime_resources.storage_keep_alive <= 30:
+            click.secho(
+                "storage_keep_alive must be between 0 and 30 days",
+                fg="red",
+            )
+            raise click.exceptions.Exit(1)
 
     @property
     def dict(self):
