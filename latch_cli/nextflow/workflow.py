@@ -53,9 +53,7 @@ def initialize() -> str:
     resp = requests.post(
         "http://nf-dispatcher-service.flyte.svc.cluster.local/provision-storage",
         headers=headers,
-        json={{
-            "storage_gib": {storage_gib},
-        }}
+        json={{}},
     )
     resp.raise_for_status()
     print("Done.")
