@@ -575,7 +575,7 @@ class NextflowRuntimeResources:
     """
     Storage required for the task in GiB
     """
-    storage_keep_alive: Optional[int] = 10
+    storage_keep_alive: Optional[int] = 1
     """
     Days to keep shared storage device alive. After the
     storage device is deleted, Nextflow workflows cannot be
