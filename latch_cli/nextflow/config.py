@@ -82,7 +82,7 @@ def generate_metadata(
                     cpus=4,
                     memory=8,
                     storage_gib=50,
-                    storage_keep_alive=1,
+                    storage_keep_alive=0,
                 ),
                 log_dir=LatchDir("latch:///your_log_dir"),
             )
