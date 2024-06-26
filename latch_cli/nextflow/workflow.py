@@ -54,7 +54,6 @@ def initialize() -> str:
         "http://nf-dispatcher-service.flyte.svc.cluster.local/provision-storage",
         headers=headers,
         json={{
-            "storage_gib": {storage_gib},
             "keep_alive_days": {storage_keep_alive},
         }}
     )

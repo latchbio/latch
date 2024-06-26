@@ -81,7 +81,7 @@ def generate_metadata(
                 runtime_resources=NextflowRuntimeResources(
                     cpus=4,
                     memory=8,
-                    storage_gib=50,
+                    storage_gib=100,
                     storage_keep_alive=0,
                 ),
                 log_dir=LatchDir("latch:///your_log_dir"),
