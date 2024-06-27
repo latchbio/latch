@@ -754,18 +754,10 @@ class SnakemakeMetadata(LatchMetadata):
 
     def validate(self):
         if self.about_page_content is not None:
-            if not self.about_page_content.exists():
+            if isinstance(self.about_page_content, Path):
                 click.secho(
-                    f"Path to About page documentation ({self.about_page_content})"
-                    " doesn't exist.",
-                    fg="red",
-                )
-                raise click.exceptions.Exit(1)
-
-            if not self.about_page_content.is_file():
-                click.secho(
-                    f"About page documentation ({self.about_page_content}) must be"
-                    " a file.",
+                    f"`about_page_content` parameter ({self.about_page_content}) must"
+                    " be a Path object.",
                     fg="red",
                 )
                 raise click.exceptions.Exit(1)
@@ -834,22 +826,6 @@ class NextflowMetadata(LatchMetadata):
                     " Path object.",
                     fg="red",
                 )
-
-            if not self.about_page_path.exists():
-                click.secho(
-                    f"Path to about page documentation ({self.about_page_path})"
-                    " doesn't exist.",
-                    fg="red",
-                )
-                raise click.exceptions.Exit(1)
-
-            if not self.about_page_path.is_file():
-                click.secho(
-                    f"About page documentation ({self.about_page_path}) must be a"
-                    " file.",
-                    fg="red",
-                )
-                raise click.exceptions.Exit(1)
 
     @property
     def dict(self):

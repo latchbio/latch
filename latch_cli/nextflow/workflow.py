@@ -281,8 +281,19 @@ def generate_nextflow_workflow(
     log_dir = urljoins(log_dir, wf_name)
 
     desc = f"Sample Description"
-    if metadata._nextflow_metadata.about_page_path is not None:
-        desc = metadata._nextflow_metadata.about_page_path.read_text()
+    about_page_path = metadata._nextflow_metadata.about_page_path
+    if about_page_path is not None:
+        if about_page_path is not None:
+            if not (about_page_path.exists() and about_page_path.is_file()):
+                click.secho(
+                    dedent(f"""
+                    The about page path provided in the metadata is not a valid file:
+                    {about_page_path}
+                    """),
+                    fg="red",
+                )
+                raise click.exceptions.Exit(1)
+        desc = about_page_path.read_text()
 
     display_name = wf_name
     if metadata._nextflow_metadata.display_name is not None:
