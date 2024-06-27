@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.47.6 - 2024-06-27
+
+### Fixed
+
+* Snakemake + Nextflow
+  - fix about page file validation
+
 ## 2.47.5 - 2024-06-26
 
 ### Fixed
