@@ -754,7 +754,7 @@ class SnakemakeMetadata(LatchMetadata):
 
     def validate(self):
         if self.about_page_content is not None:
-            if isinstance(self.about_page_content, Path):
+            if not isinstance(self.about_page_content, Path):
                 click.secho(
                     f"`about_page_content` parameter ({self.about_page_content}) must"
                     " be a Path object.",
@@ -820,7 +820,7 @@ class NextflowMetadata(LatchMetadata):
 
     def validate(self):
         if self.about_page_path is not None:
-            if isinstance(self.about_page_path, Path):
+            if not isinstance(self.about_page_path, Path):
                 click.secho(
                     f"`about_page_path` parameter ({self.about_page_path}) must be a"
                     " Path object.",
