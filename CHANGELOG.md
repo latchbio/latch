@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.47.7 - 2024-06-28
+
+### Fixed
+
+* Timeout in tinyrequestst
+
 ## 2.47.6 - 2024-06-27
 
 ### Fixed
