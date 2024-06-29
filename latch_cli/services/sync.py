@@ -14,7 +14,7 @@ from latch_sdk_gql.execute import JsonValue, execute
 
 import latch.ldata._transfer.upload as _upl
 from latch.ldata._transfer.utils import get_max_workers
-from latch_cli.utils.path import is_remote_path
+from latch_cli.utils.path import is_remote_path, normalize_path
 
 
 def upload_file(src: Path, dest: str):
@@ -185,7 +185,11 @@ def sync_rec(
             is_dir = stat.S_ISDIR(p_stat.st_mode)
 
             child = dest_children_by_name.get(name)
-            child_dest = f"{dest}/{name}"
+
+            if dest[-1] == "/":
+                child_dest = f"{dest}{name}"
+            else:
+                child_dest = f"{dest}/{name}"
 
             skip = False
             verb = "Uploading"
@@ -350,4 +354,4 @@ def sync(
             )
         click.echo()
 
-    sync_rec(srcs, dest, delete=delete)
+    sync_rec(srcs, normalize_path(dest), delete=delete)
