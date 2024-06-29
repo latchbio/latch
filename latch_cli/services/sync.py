@@ -134,10 +134,10 @@ def sync_rec(
                     indent + f"`{dest}` is in the way of a directory",
                     fg="red",
                 )
-                return []
+                return
 
             click.secho(indent + "Empty directory", dim=True)
-            return []
+            return
 
         if not dest[-1] == "/":
             dest += "/"
@@ -153,7 +153,7 @@ def sync_rec(
             """),
             {"argPath": dest},
         )
-        return []
+        return
 
     if (
         (len(srcs) > 1 or stat.S_ISDIR(list(srcs.values())[0][1].st_mode))
