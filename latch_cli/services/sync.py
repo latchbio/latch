@@ -1,6 +1,7 @@
 import os
 import stat
 import sys
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -12,6 +13,7 @@ from gql.transport.exceptions import TransportQueryError
 from latch_sdk_gql.execute import JsonValue, execute
 
 import latch.ldata._transfer.upload as _upl
+from latch.ldata._transfer.utils import get_max_workers
 from latch_cli.utils.path import is_remote_path
 
 
@@ -177,101 +179,105 @@ def sync_rec(
         else {}
     )
 
-    for name, (p, p_stat) in srcs.items():
-        is_dir = stat.S_ISDIR(p_stat.st_mode)
+    with ProcessPoolExecutor(max_workers=get_max_workers()) as executor:
+        futures = []
+        for name, (p, p_stat) in srcs.items():
+            is_dir = stat.S_ISDIR(p_stat.st_mode)
 
-        child = dest_children_by_name.get(name)
-        child_dest = f"{dest}/{name}"
+            child = dest_children_by_name.get(name)
+            child_dest = f"{dest}/{name}"
 
-        skip = False
-        verb = "Uploading"
-        reason = "new"
-        if child is not None:
-            flt = child["finalLinkTarget"]
-            if flt["type"] == "DIR" and not is_dir:
-                # todo(maximsmol): confirm? pre-check?
-                click.secho(
-                    indent + f"`{dest}` is in the way of a file",
-                    fg="red",
-                )
-                continue
-
-            if flt["type"] != "DIR" and is_dir:
-                # todo(maximsmol): confirm? pre-check?
-                click.secho(
-                    indent + f"`{dest}` is in the way of a directory",
-                    fg="red",
-                )
-                continue
-
-            if flt["type"] == "OBJ":
-                remote_mtime = dp.isoparse(flt["ldataNodeEvents"]["nodes"][0]["time"])
-
-                local_mtime = datetime.fromtimestamp(p_stat.st_mtime).astimezone()
-                if remote_mtime == local_mtime:
-                    verb = "Skipping"
-                    reason = "unmodified"
-                    skip = True
-                elif remote_mtime > local_mtime:
-                    verb = "Skipping"
-                    reason = "older"
-                    skip = True
-                else:
-                    verb = "Uploading"
-                    reason = "updated"
-            else:
-                reason = "existing"
-
-        if verb == "Uploading" and is_dir:
-            verb = "Syncing"
-
-        fg = "bright_blue"
-        dim = None
-        if verb == "Skipping":
-            fg = None
-            dim = True
-
-        click.echo(
-            click.style(
-                indent + verb + " ",
-                fg=fg,
-                dim=dim,
-            )
-            + click.style(
-                reason,
-                underline=True,
-                fg=fg,
-                dim=dim,
-            )
-            + click.style(
-                ": ",
-                fg=fg,
-                dim=dim,
-            )
-            + click.style(
-                str(p)
-                + ("" if not is_dir else "/")
-                + ("" if skip else click.style(" -> ", dim=True) + child_dest),
-                dim=dim,
-            )
-        )
-        if skip:
-            continue
-
-        if is_dir:
-            sub_srcs: Dict[str, Tuple[Path, os.stat_result]] = {}
-            for x in p.iterdir():
-                res = check_src(x, indent=indent + "  ")
-                if res is None:
-                    # todo(maximsmol): pre-check or confirm?
+            skip = False
+            verb = "Uploading"
+            reason = "new"
+            if child is not None:
+                flt = child["finalLinkTarget"]
+                if flt["type"] == "DIR" and not is_dir:
+                    # todo(maximsmol): confirm? pre-check?
+                    click.secho(
+                        indent + f"`{dest}` is in the way of a file",
+                        fg="red",
+                    )
                     continue
 
-                sub_srcs[x.name] = res
-            sync_rec(sub_srcs, child_dest, delete=delete, level=level + 1)
-            continue
+                if flt["type"] != "DIR" and is_dir:
+                    # todo(maximsmol): confirm? pre-check?
+                    click.secho(
+                        indent + f"`{dest}` is in the way of a directory",
+                        fg="red",
+                    )
+                    continue
 
-        # todo(maximsmol): upload in parallel?
-        upload_file(p, child_dest)
+                if flt["type"] == "OBJ":
+                    remote_mtime = dp.isoparse(flt["ldataNodeEvents"]["nodes"][0]["time"])
+
+                    local_mtime = datetime.fromtimestamp(p_stat.st_mtime).astimezone()
+                    if remote_mtime == local_mtime:
+                        verb = "Skipping"
+                        reason = "unmodified"
+                        skip = True
+                    elif remote_mtime > local_mtime:
+                        verb = "Skipping"
+                        reason = "older"
+                        skip = True
+                    else:
+                        verb = "Uploading"
+                        reason = "updated"
+                else:
+                    reason = "existing"
+
+            if verb == "Uploading" and is_dir:
+                verb = "Syncing"
+
+            fg = "bright_blue"
+            dim = None
+            if verb == "Skipping":
+                fg = None
+                dim = True
+
+            click.echo(
+                click.style(
+                    indent + verb + " ",
+                    fg=fg,
+                    dim=dim,
+                )
+                + click.style(
+                    reason,
+                    underline=True,
+                    fg=fg,
+                    dim=dim,
+                )
+                + click.style(
+                    ": ",
+                    fg=fg,
+                    dim=dim,
+                )
+                + click.style(
+                    str(p)
+                    + ("" if not is_dir else "/")
+                    + ("" if skip else click.style(" -> ", dim=True) + child_dest),
+                    dim=dim,
+                )
+            )
+            if skip:
+                continue
+
+            if is_dir:
+                sub_srcs: Dict[str, Tuple[Path, os.stat_result]] = {}
+                for x in p.iterdir():
+                    res = check_src(x, indent=indent + "  ")
+                    if res is None:
+                        # todo(maximsmol): pre-check or confirm?
+                        continue
+
+                    sub_srcs[x.name] = res
+                sync_rec(sub_srcs, child_dest, delete=delete, level=level + 1, max_workers=max_workers)
+                continue
+
+            futures.append(executor.submit(upload_file, p, child_dest))
+
+        for future in as_completed(futures):
+            future.result()
 
     if delete_effective:
         for name, child in dest_children_by_name.items():
@@ -292,7 +298,6 @@ def sync_rec(
                 """),
                 {"argNodeId": child["id"]},
             )
-
 
 def sync(
     srcs_raw: List[str],
