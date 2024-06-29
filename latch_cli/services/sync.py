@@ -57,7 +57,7 @@ def sync_rec(
     delete: bool,
     level: int = 0,
     executor: ProcessPoolExecutor,
-) -> List[Future]:
+):
     # rsync never deletes from the top level destination
     delete_effective = delete and level > 0
     indent = "  " * level
@@ -180,7 +180,6 @@ def sync_rec(
         else {}
     )
 
-    futures: list[Future] = []
     for name, (p, p_stat) in srcs.items():
         is_dir = stat.S_ISDIR(p_stat.st_mode)
 
@@ -275,10 +274,10 @@ def sync_rec(
                     continue
 
                 sub_srcs[x.name] = res
-            futures += sync_rec(sub_srcs, child_dest, delete=delete, level=level + 1, executor=executor)
+            sync_rec(sub_srcs, child_dest, delete=delete, level=level + 1, executor=executor)
             continue
 
-        futures.append(executor.submit(upload_file, p, child_dest))
+        executor.submit(upload_file, p, child_dest)
 
     if delete_effective:
         for name, child in dest_children_by_name.items():
@@ -300,7 +299,6 @@ def sync_rec(
                 {"argNodeId": child["id"]},
             )
 
-    return futures
 
 def sync(
     srcs_raw: List[str],
@@ -354,6 +352,4 @@ def sync(
         click.echo()
 
     with ProcessPoolExecutor(max_workers=get_max_workers()) as executor:
-        futures = sync_rec(srcs, normalize_path(dest), delete=delete, executor=executor)
-        for future in as_completed(futures):
-            future.result()
+        sync_rec(srcs, normalize_path(dest), delete=delete, executor=executor)
