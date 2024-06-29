@@ -271,7 +271,7 @@ def sync_rec(
                         continue
 
                     sub_srcs[x.name] = res
-                sync_rec(sub_srcs, child_dest, delete=delete, level=level + 1, max_workers=max_workers)
+                sync_rec(sub_srcs, child_dest, delete=delete, level=level + 1)
                 continue
 
             futures.append(executor.submit(upload_file, p, child_dest))
