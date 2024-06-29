@@ -16,6 +16,15 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.47.8 - 2024-06-29
+
+### Fixed
+
+* latch sync upload in parallel
+* latch sync missing normalize_path call
+* latch sync cosmetic path display extra slash
+
+
 ## 2.47.7 - 2024-06-28
 
 ### Fixed
