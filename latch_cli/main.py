@@ -863,8 +863,16 @@ def mkdir(remote_directory: str):
     is_flag=True,
     default=False,
 )
+@click.option(
+    "--ignore-existing",
+    help=(
+        "Skip updating files that exist on receiver."
+    ),
+    is_flag=True,
+    default=False,
+)
 @requires_login
-def sync(srcs: List[str], dst: str, delete: bool, ignore_unsyncable: bool):
+def sync(srcs: List[str], dst: str, delete: bool, ignore_unsyncable: bool, ignore_existing: bool):
     """
     Update the contents of a remote directory with local data.
     """
@@ -877,6 +885,7 @@ def sync(srcs: List[str], dst: str, delete: bool, ignore_unsyncable: bool):
         dst,
         delete=delete,
         ignore_unsyncable=ignore_unsyncable,
+        ignore_existing=ignore_existing,
     )
 
 

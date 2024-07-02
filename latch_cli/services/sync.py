@@ -55,6 +55,7 @@ def sync_rec(
     dest: str,
     *,
     delete: bool,
+    ignore_existing: bool,
     level: int = 0,
     executor: ProcessPoolExecutor,
 ):
@@ -232,6 +233,11 @@ def sync_rec(
         if verb == "Uploading" and is_dir:
             verb = "Syncing"
 
+        if ignore_existing and child is not None and not is_dir:
+            verb = "Skipping"
+            reason = "existing"
+            skip = True
+
         fg = "bright_blue"
         dim = None
         if verb == "Skipping":
@@ -274,7 +280,7 @@ def sync_rec(
                     continue
 
                 sub_srcs[x.name] = res
-            sync_rec(sub_srcs, child_dest, delete=delete, level=level + 1, executor=executor)
+            sync_rec(sub_srcs, child_dest, delete=delete, ignore_existing=ignore_existing, level=level + 1, executor=executor)
             continue
 
         executor.submit(upload_file, p, child_dest)
@@ -306,6 +312,7 @@ def sync(
     *,
     delete: bool,
     ignore_unsyncable: bool,
+    ignore_existing: bool,
 ):
     if not is_remote_path(dest):
         click.secho(
@@ -352,4 +359,4 @@ def sync(
         click.echo()
 
     with ProcessPoolExecutor(max_workers=get_max_workers()) as executor:
-        sync_rec(srcs, normalize_path(dest), delete=delete, executor=executor)
+        sync_rec(srcs, normalize_path(dest), delete=delete, ignore_existing=ignore_existing, executor=executor)
