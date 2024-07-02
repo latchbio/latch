@@ -11,8 +11,9 @@ import click
 from botocore.handlers import disable_signing
 
 from latch_cli import tinyrequests
+from latch_cli.constants import latch_constants
 
-target_version = "v1.1.1"
+target_version = latch_constants.nextflow_latest_version
 
 
 def _do_download(

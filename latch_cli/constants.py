@@ -22,6 +22,7 @@ class LatchConstants:
     base_image: str = (
         "812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:fe0b-main"
     )
+    nextflow_latest_version: str = "v1.1.1"
 
     file_max_size: int = 4 * Units.MiB
     file_chunk_size: int = 256 * Units.MiB

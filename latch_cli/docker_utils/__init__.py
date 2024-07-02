@@ -12,7 +12,11 @@ import yaml
 
 from latch_cli.constants import latch_constants
 from latch_cli.utils import WorkflowType
-from latch_cli.workflow_config import LatchWorkflowConfig, create_and_write_config
+from latch_cli.workflow_config import (
+    BaseImageOptions,
+    LatchWorkflowConfig,
+    create_and_write_config,
+)
 
 
 class DockerCmdBlockOrder(str, Enum):
@@ -307,7 +311,7 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
     return commands
 
 
-def copy_file_commands(wf_type: WorkflowType) -> List[DockerCmdBlock]:
+def copy_file_commands(wf_type: WorkflowType) -> List[str]:
     cmd = [
         "",
         "# Copy workflow data (use .dockerignore to skip files)",
@@ -322,15 +326,6 @@ def copy_file_commands(wf_type: WorkflowType) -> List[DockerCmdBlock]:
             "# DO NOT CHANGE",
             "",
             "copy .latch/snakemake_jit_entrypoint.py /root/snakemake_jit_entrypoint.py",
-        ]
-    elif wf_type == WorkflowType.nextflow:
-        cmd += [
-            "",
-            "# Latch nextflow workflow entrypoint",
-            "# DO NOT CHANGE",
-            "",
-            "run ln -s /root/.latch/bin/nextflow /root/nextflow",
-            "run ln -s /root/.latch/.nextflow /root/.nextflow",
         ]
 
     return cmd
@@ -403,7 +398,11 @@ def generate_dockerfile(
     except FileNotFoundError:
         click.secho("Creating a default configuration file")
 
-        create_and_write_config(pkg_root)
+        base_image_type = BaseImageOptions.default
+        if wf_type == WorkflowType.nextflow:
+            base_image_type = BaseImageOptions.nextflow
+
+        create_and_write_config(pkg_root, base_image_type)
         with (pkg_root / latch_constants.pkg_config).open("r") as f:
             config = LatchWorkflowConfig(**json.load(f))
 
