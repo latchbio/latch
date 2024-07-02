@@ -5,7 +5,7 @@ from enum import Enum, auto
 from io import TextIOWrapper
 from pathlib import Path
 from textwrap import dedent
-from typing import List
+from typing import List, Optional
 
 import click
 import yaml
@@ -44,6 +44,7 @@ def get_prologue(
         library_name = '"latch[snakemake]"'
     else:
         library_name = "latch"
+
     directives = [
         "# DO NOT CHANGE",
         f"from {config.base_image}",
@@ -73,10 +74,7 @@ def get_prologue(
         f"run pip install {library_name}=={config.latch_version}",
         "run mkdir /opt/latch",
     ]
-    if wf_type == WorkflowType.nextflow:
-        directives.append(
-            "run apt-get update && apt-get install -y default-jre-headless"
-        )
+
     return directives
 
 
@@ -366,7 +364,7 @@ def generate_dockerignore(pkg_root: Path, *, wf_type: WorkflowType) -> None:
 def generate_dockerfile(
     pkg_root: Path,
     *,
-    dest: Path = None,
+    dest: Optional[Path] = None,
     wf_type: WorkflowType = WorkflowType.latchbiosdk,
 ) -> None:
     """Generate a best effort Dockerfile from files in the workflow directory.
