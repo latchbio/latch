@@ -13,7 +13,7 @@ if cur_ver < (3, 8) or cur_ver > (3, 11):
 
 setup(
     name="latch",
-    version="v2.47.8",
+    version="v2.47.9",
     author_email="kenny@latch.bio",
     description="The Latch SDK",
     packages=find_packages(),
@@ -34,7 +34,7 @@ setup(
         "scp>=0.14.0",
         "boto3>=1.26.0",
         "tqdm>=4.63.0",
-        "lytekit==0.15.8",
+        "lytekit==0.15.9",
         "lytekitplugins-pods==0.6.2",
         "typing-extensions==4.7.1",
         "apscheduler==3.9.1",

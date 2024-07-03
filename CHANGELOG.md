@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.47.9 - 2024-07-02
+
+### Dependencies
+
+* Use `lytekit==0.15.9` which includes retries for file downloads
+
 ## 2.47.8 - 2024-06-29
 
 ### Fixed
@@ -23,7 +29,6 @@ Types of changes
 * latch sync upload in parallel
 * latch sync missing normalize_path call
 * latch sync cosmetic path display extra slash
-
 
 ## 2.47.7 - 2024-06-28
 
