@@ -5,14 +5,18 @@ from enum import Enum, auto
 from io import TextIOWrapper
 from pathlib import Path
 from textwrap import dedent
-from typing import List
+from typing import List, Optional
 
 import click
 import yaml
 
 from latch_cli.constants import latch_constants
 from latch_cli.utils import WorkflowType
-from latch_cli.workflow_config import LatchWorkflowConfig, create_and_write_config
+from latch_cli.workflow_config import (
+    BaseImageOptions,
+    LatchWorkflowConfig,
+    create_and_write_config,
+)
 
 
 class DockerCmdBlockOrder(str, Enum):
@@ -40,6 +44,7 @@ def get_prologue(
         library_name = '"latch[snakemake]"'
     else:
         library_name = "latch"
+
     directives = [
         "# DO NOT CHANGE",
         f"from {config.base_image}",
@@ -69,10 +74,7 @@ def get_prologue(
         f"run pip install {library_name}=={config.latch_version}",
         "run mkdir /opt/latch",
     ]
-    if wf_type == WorkflowType.nextflow:
-        directives.append(
-            "run apt-get update && apt-get install -y default-jre-headless"
-        )
+
     return directives
 
 
@@ -307,7 +309,7 @@ def infer_commands(pkg_root: Path) -> List[DockerCmdBlock]:
     return commands
 
 
-def copy_file_commands(wf_type: WorkflowType) -> List[DockerCmdBlock]:
+def copy_file_commands(wf_type: WorkflowType) -> List[str]:
     cmd = [
         "",
         "# Copy workflow data (use .dockerignore to skip files)",
@@ -322,15 +324,6 @@ def copy_file_commands(wf_type: WorkflowType) -> List[DockerCmdBlock]:
             "# DO NOT CHANGE",
             "",
             "copy .latch/snakemake_jit_entrypoint.py /root/snakemake_jit_entrypoint.py",
-        ]
-    elif wf_type == WorkflowType.nextflow:
-        cmd += [
-            "",
-            "# Latch nextflow workflow entrypoint",
-            "# DO NOT CHANGE",
-            "",
-            "run ln -s /root/.latch/bin/nextflow /root/nextflow",
-            "run ln -s /root/.latch/.nextflow /root/.nextflow",
         ]
 
     return cmd
@@ -371,8 +364,9 @@ def generate_dockerignore(pkg_root: Path, *, wf_type: WorkflowType) -> None:
 def generate_dockerfile(
     pkg_root: Path,
     *,
-    dest: Path = None,
+    dest: Optional[Path] = None,
     wf_type: WorkflowType = WorkflowType.latchbiosdk,
+    overwrite: bool = False,
 ) -> None:
     """Generate a best effort Dockerfile from files in the workflow directory.
 
@@ -391,8 +385,10 @@ def generate_dockerfile(
     """
     if dest is None:
         dest = pkg_root / "Dockerfile"
-    if dest.exists() and not click.confirm(
-        f"Dockerfile already exists at `{dest}`. Overwrite?"
+    if (
+        dest.exists()
+        and not overwrite
+        and not (click.confirm(f"Dockerfile already exists at `{dest}`. Overwrite?"))
     ):
         return
 
@@ -403,7 +399,11 @@ def generate_dockerfile(
     except FileNotFoundError:
         click.secho("Creating a default configuration file")
 
-        create_and_write_config(pkg_root)
+        base_image_type = BaseImageOptions.default
+        if wf_type == WorkflowType.nextflow:
+            base_image_type = BaseImageOptions.nextflow
+
+        create_and_write_config(pkg_root, base_image_type)
         with (pkg_root / latch_constants.pkg_config).open("r") as f:
             config = LatchWorkflowConfig(**json.load(f))
 
@@ -452,6 +452,8 @@ def get_default_dockerfile(pkg_root: Path, *, wf_type: WorkflowType):
 
     if not default_dockerfile.exists():
         default_dockerfile = pkg_root / ".latch" / "Dockerfile"
-        generate_dockerfile(pkg_root, dest=default_dockerfile, wf_type=wf_type)
+        generate_dockerfile(
+            pkg_root, dest=default_dockerfile, wf_type=wf_type, overwrite=True
+        )
 
     return default_dockerfile

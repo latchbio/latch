@@ -16,13 +16,19 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.48.1 - 2024-07-05
+
+### Added
+
+* Nextflow
+  - use nextflow dockerfile instead of downloading the binary directly
+
 ## 2.48.0 - 2024-07-03
 
 ### Added
 
 * Nextflow
   - bump nf runtime version to 1.1.3
-
 
 ## 2.47.9 - 2024-07-02
 

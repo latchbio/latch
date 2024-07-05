@@ -409,10 +409,7 @@ def register(
             assert ctx.nf_script is not None
             assert ctx.pkg_root is not None
 
-            from ...nextflow.dependencies import ensure_nf_dependencies
             from ...nextflow.workflow import generate_nextflow_workflow
-
-            ensure_nf_dependencies(ctx.pkg_root)
 
             dest = ctx.pkg_root / "wf" / "entrypoint.py"
             dest.parent.mkdir(exist_ok=True)

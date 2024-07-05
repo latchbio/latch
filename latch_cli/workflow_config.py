@@ -1,4 +1,5 @@
 import json
+import re
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import Enum
@@ -13,6 +14,7 @@ class BaseImageOptions(str, Enum):
     default = "default"
     cuda = "cuda"
     opencl = "opencl"
+    nextflow = "nextflow"
 
 
 @dataclass(frozen=True)
@@ -35,6 +37,11 @@ def create_and_write_config(
     if base_image_type != BaseImageOptions.default:
         base_image = base_image.replace(
             "latch-base", f"latch-base-{base_image_type.name}"
+        )
+
+    if base_image_type == BaseImageOptions.nextflow:
+        base_image = re.sub(
+            r"([^:]+)$", latch_constants.nextflow_latest_version, base_image
         )
 
     config = LatchWorkflowConfig(
