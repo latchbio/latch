@@ -16,6 +16,34 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.48.0 - 2024-07-03
+
+### Added
+
+* Nextflow
+  - bump nf runtime version to 1.1.3
+
+
+## 2.47.9 - 2024-07-02
+
+### Dependencies
+
+* Use `lytekit==0.15.9` which includes retries for file downloads
+
+## 2.47.8 - 2024-06-29
+
+### Fixed
+
+* latch sync upload in parallel
+* latch sync missing normalize_path call
+* latch sync cosmetic path display extra slash
+
+## 2.47.7 - 2024-06-28
+
+### Fixed
+
+* Timeout in tinyrequestst
+
 ## 2.47.6 - 2024-06-27
 
 ### Fixed

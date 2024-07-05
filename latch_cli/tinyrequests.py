@@ -89,7 +89,7 @@ def _req(
         headers["Content-Type"] = "application/json"
 
     conn = HTTPSConnection(
-        parts.hostname, parts.port if parts.port is not None else 443
+        parts.hostname, parts.port if parts.port is not None else 443, timeout=90
     )
     conn.request(
         method,

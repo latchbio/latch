@@ -1,6 +1,7 @@
 import os
 import stat
 import sys
+from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -12,7 +13,8 @@ from gql.transport.exceptions import TransportQueryError
 from latch_sdk_gql.execute import JsonValue, execute
 
 import latch.ldata._transfer.upload as _upl
-from latch_cli.utils.path import is_remote_path
+from latch.ldata._transfer.utils import get_max_workers
+from latch_cli.utils.path import is_remote_path, normalize_path
 
 
 def upload_file(src: Path, dest: str):
@@ -54,6 +56,7 @@ def sync_rec(
     *,
     delete: bool,
     level: int = 0,
+    executor: ProcessPoolExecutor,
 ):
     # rsync never deletes from the top level destination
     delete_effective = delete and level > 0
@@ -181,7 +184,11 @@ def sync_rec(
         is_dir = stat.S_ISDIR(p_stat.st_mode)
 
         child = dest_children_by_name.get(name)
-        child_dest = f"{dest}/{name}"
+
+        if dest[-1] == "/":
+            child_dest = f"{dest}{name}"
+        else:
+            child_dest = f"{dest}/{name}"
 
         skip = False
         verb = "Uploading"
@@ -267,11 +274,10 @@ def sync_rec(
                     continue
 
                 sub_srcs[x.name] = res
-            sync_rec(sub_srcs, child_dest, delete=delete, level=level + 1)
+            sync_rec(sub_srcs, child_dest, delete=delete, level=level + 1, executor=executor)
             continue
 
-        # todo(maximsmol): upload in parallel?
-        upload_file(p, child_dest)
+        executor.submit(upload_file, p, child_dest)
 
     if delete_effective:
         for name, child in dest_children_by_name.items():
@@ -345,4 +351,5 @@ def sync(
             )
         click.echo()
 
-    sync_rec(srcs, dest, delete=delete)
+    with ProcessPoolExecutor(max_workers=get_max_workers()) as executor:
+        sync_rec(srcs, normalize_path(dest), delete=delete, executor=executor)
