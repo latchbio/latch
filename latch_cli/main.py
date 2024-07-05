@@ -902,18 +902,6 @@ def version(pkg_root: Path):
     click.secho(f"Nextflow version: {version}", fg="green")
 
 
-@nextflow.command("upgrade")
-@click.argument("pkg_root", nargs=1, type=click.Path(exists=True, path_type=Path))
-def upgrade(
-    pkg_root: Path,
-):
-    """Download the latest version of Nextflow for the current project."""
-
-    from latch_cli.nextflow.dependencies import ensure_nf_dependencies
-
-    ensure_nf_dependencies(pkg_root)
-
-
 @nextflow.command("generate-entrypoint")
 @click.argument("pkg_root", nargs=1, type=click.Path(exists=True, path_type=Path))
 @click.option(
