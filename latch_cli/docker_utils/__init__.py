@@ -366,6 +366,7 @@ def generate_dockerfile(
     *,
     dest: Optional[Path] = None,
     wf_type: WorkflowType = WorkflowType.latchbiosdk,
+    overwrite: bool = False,
 ) -> None:
     """Generate a best effort Dockerfile from files in the workflow directory.
 
@@ -384,8 +385,10 @@ def generate_dockerfile(
     """
     if dest is None:
         dest = pkg_root / "Dockerfile"
-    if dest.exists() and not click.confirm(
-        f"Dockerfile already exists at `{dest}`. Overwrite?"
+    if (
+        dest.exists()
+        and not overwrite
+        and not (click.confirm(f"Dockerfile already exists at `{dest}`. Overwrite?"))
     ):
         return
 
@@ -449,6 +452,8 @@ def get_default_dockerfile(pkg_root: Path, *, wf_type: WorkflowType):
 
     if not default_dockerfile.exists():
         default_dockerfile = pkg_root / ".latch" / "Dockerfile"
-        generate_dockerfile(pkg_root, dest=default_dockerfile, wf_type=wf_type)
+        generate_dockerfile(
+            pkg_root, dest=default_dockerfile, wf_type=wf_type, overwrite=True
+        )
 
     return default_dockerfile
