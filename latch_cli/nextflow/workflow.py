@@ -75,6 +75,7 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
         ignore_list = [
             "latch",
             ".latch",
+            ".git",
             "nextflow",
             ".nextflow",
             "work",
@@ -84,13 +85,16 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
             "mambaforge",
         ]
 
-        shutil.copytree(
-            Path("/root"),
-            shared_dir,
-            ignore=lambda src, names: ignore_list,
-            ignore_dangling_symlinks=True,
-            dirs_exist_ok=True,
-        )
+        try:
+            shutil.copytree(
+                Path("/root"),
+                shared_dir,
+                ignore=lambda src, names: ignore_list,
+                ignore_dangling_symlinks=True,
+                dirs_exist_ok=True,
+            )
+        except shutil.Error as e:
+            print(f"WARN: Failed to copy files: {{e}}")
 
         cmd = [
             "/root/nextflow",
