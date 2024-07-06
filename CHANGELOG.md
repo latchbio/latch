@@ -16,6 +16,14 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.48.2 - 2024-07-06
+
+### Added
+
+* Nextflow
+  - ignore `.git` directory when copying /root to workdir
+
+
 ## 2.48.1 - 2024-07-05
 
 ### Added
