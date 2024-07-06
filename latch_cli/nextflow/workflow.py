@@ -75,6 +75,7 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
         ignore_list = [
             "latch",
             ".latch",
+            ".git",
             "nextflow",
             ".nextflow",
             "work",
