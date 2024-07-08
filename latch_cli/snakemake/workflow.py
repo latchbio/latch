@@ -1621,7 +1621,6 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             rf"""
 
             print("\n\n\nRunning snakemake task\n")
-
             try:
                 log_files = {repr(log_files)}
                 try:
@@ -1719,7 +1718,6 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
             finally:
                 ignored_paths = {{".cache", ".snakemake/conda"}}
                 ignored_names = {{".git", ".latch", "__pycache__"}}
-
             """,
             1,
         )
