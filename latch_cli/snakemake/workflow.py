@@ -1658,6 +1658,8 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
                                 print(f"\n\n\n[!] Log file tail died with code {{tail.returncode}}")
 
                     print("\n\n\nDone\n\n\n")
+                except subprocess.CalledProcessError:
+                    sys.exit(1)
                 except Exception as e:
                     print("\n\n\n[!] Failed\n\n\n")
                     raise e

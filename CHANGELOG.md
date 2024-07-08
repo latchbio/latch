@@ -16,6 +16,17 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.48.3 - 2024-07-08
+
+### Added
+
+* Snakemake
+  - Don't throw an exception on subprocess.CalledProcessError, sys.exit(1) instead to avoid polluting stdout with a traceback
+
+### Dependencies
+
+* lytekit `0.15.9` -> `0.15.10` which removes unnecessary prints in exception wrappers
+
 ## 2.48.2 - 2024-07-06
 
 ### Added
