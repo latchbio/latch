@@ -1622,8 +1622,6 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
 
             print("\n\n\nRunning snakemake task\n")
 
-            exception_raised = False
-
             try:
                 log_files = {repr(log_files)}
                 try:
@@ -1661,8 +1659,8 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
                                 print(f"\n\n\n[!] Log file tail died with code {{tail.returncode}}")
 
                     print("\n\n\nDone\n\n\n")
-                except subprocess.CalledProcessError as e:
-                    exception_raised = True
+                except subprocess.CalledProcessError:
+                    sys.exit(1)
                 except Exception as e:
                     print("\n\n\n[!] Failed\n\n\n")
                     raise e
@@ -1722,8 +1720,6 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
                 ignored_paths = {{".cache", ".snakemake/conda"}}
                 ignored_names = {{".git", ".latch", "__pycache__"}}
 
-                if exception_raised:
-                    sys.exit(1)
             """,
             1,
         )
