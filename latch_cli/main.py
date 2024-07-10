@@ -863,8 +863,15 @@ def mkdir(remote_directory: str):
     is_flag=True,
     default=False,
 )
+@click.option(
+    "--cores",
+    help=(
+        "Number of cores to use for parallel syncing."
+    ),
+    type=int,
+)
 @requires_login
-def sync(srcs: List[str], dst: str, delete: bool, ignore_unsyncable: bool):
+def sync(srcs: List[str], dst: str, delete: bool, ignore_unsyncable: bool, cores: Optional[int] = None):
     """
     Update the contents of a remote directory with local data.
     """
@@ -877,6 +884,7 @@ def sync(srcs: List[str], dst: str, delete: bool, ignore_unsyncable: bool):
         dst,
         delete=delete,
         ignore_unsyncable=ignore_unsyncable,
+        cores=cores,
     )
 
 
