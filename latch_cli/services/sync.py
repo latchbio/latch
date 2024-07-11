@@ -212,14 +212,16 @@ def sync_rec(
                 continue
 
             if flt["type"] == "OBJ":
-                remote_mtime = dp.isoparse(flt["ldataNodeEvents"]["nodes"][0]["time"])
+                remote_mtime = None
+                if len(flt["ldataNodeEvents"]["nodes"]) > 0:
+                    remote_mtime = dp.isoparse(flt["ldataNodeEvents"]["nodes"][0]["time"])
 
                 local_mtime = datetime.fromtimestamp(p_stat.st_mtime).astimezone()
-                if remote_mtime == local_mtime:
+                if remote_mtime is not None and remote_mtime == local_mtime:
                     verb = "Skipping"
                     reason = "unmodified"
                     skip = True
-                elif remote_mtime > local_mtime:
+                elif remote_mtime is not None and remote_mtime > local_mtime:
                     verb = "Skipping"
                     reason = "older"
                     skip = True
