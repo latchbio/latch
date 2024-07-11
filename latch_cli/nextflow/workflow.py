@@ -54,7 +54,7 @@ def initialize() -> str:
         "http://nf-dispatcher-service.flyte.svc.cluster.local/provision-storage",
         headers=headers,
         json={{
-            "storage_expiration_days": {storage_expiration_days},
+            "storage_expiration_hours": {storage_expiration_hours},
         }},
     )
     resp.raise_for_status()
@@ -328,7 +328,7 @@ def generate_nextflow_workflow(
         heap_initial=int(java_heap_size / 4),
         heap_max=int(java_heap_size),
         storage_gib=resources.storage_gib,
-        storage_expiration_days=resources.storage_expiration_days,
+        storage_expiration_hours=resources.storage_expiration_hours,
         log_dir=log_dir,
     )
 
