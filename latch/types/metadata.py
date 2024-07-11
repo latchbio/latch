@@ -575,6 +575,11 @@ class NextflowRuntimeResources:
     """
     Storage required for the task in GiB
     """
+    storage_expiration_days: Optional[int] = 0
+    """
+    Number of days after execution that workdir should be retained in EFS.
+    Increasing this number will increase your Nextflow EFS Storage costs.
+    """
 
 
 @dataclass
