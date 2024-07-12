@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.48.8 - 2024-07-12
+
+### Changed
+
+* Nextflow
+  - Update `nextflow` base image to version `v1.1.4`
+
 ## 2.48.7 - 2024-07-11
 
 ### Fixed
@@ -35,7 +42,7 @@ Types of changes
 ### Added
 
 * Snakemake
-  - Don't throw an exception on subprocess.CalledProcessError, sys.exit(1) instead to avoid polluting stdout with a traceback
+  - Don't throw an exception on `subprocess.CalledProcessError`, `sys.exit(1)` instead to avoid polluting stdout with a traceback
 
 ### Dependencies
 
