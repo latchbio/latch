@@ -174,7 +174,7 @@ def sync_rec(
     dest_children_by_name = (
         {
             x["name"]: x
-            for x in (raw["child"] for raw in dest_data["childLdataTreeEdges"]["nodes"])
+            for x in (raw["child"] for raw in dest_data["childLdataTreeEdges"]["nodes"] if raw["child"])
         }
         if dest_data is not None
         else {}
@@ -212,14 +212,16 @@ def sync_rec(
                 continue
 
             if flt["type"] == "OBJ":
-                remote_mtime = dp.isoparse(flt["ldataNodeEvents"]["nodes"][0]["time"])
+                remote_mtime = None
+                if len(flt["ldataNodeEvents"]["nodes"]) > 0:
+                    remote_mtime = dp.isoparse(flt["ldataNodeEvents"]["nodes"][0]["time"])
 
                 local_mtime = datetime.fromtimestamp(p_stat.st_mtime).astimezone()
-                if remote_mtime == local_mtime:
+                if remote_mtime is not None and remote_mtime == local_mtime:
                     verb = "Skipping"
                     reason = "unmodified"
                     skip = True
-                elif remote_mtime > local_mtime:
+                elif remote_mtime is not None and remote_mtime > local_mtime:
                     verb = "Skipping"
                     reason = "older"
                     skip = True
@@ -306,6 +308,7 @@ def sync(
     *,
     delete: bool,
     ignore_unsyncable: bool,
+    cores: Optional[int] = None,
 ):
     if not is_remote_path(dest):
         click.secho(
@@ -351,5 +354,9 @@ def sync(
             )
         click.echo()
 
-    with ProcessPoolExecutor(max_workers=get_max_workers()) as executor:
+    if cores is None:
+        cores = get_max_workers()
+
+    with ProcessPoolExecutor(max_workers=cores) as executor:
         sync_rec(srcs, normalize_path(dest), delete=delete, executor=executor)
+        executor.shutdown(wait=True)

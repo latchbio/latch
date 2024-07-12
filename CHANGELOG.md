@@ -16,6 +16,20 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.48.7 - 2024-07-11
+
+### Fixed
+
+* Sync
+  - Update objects with no ingress event
+
+## 2.48.4 - 2024-07-10
+
+### Added
+
+* Sync
+  - Add option for number of cores
+
 ## 2.48.3 - 2024-07-08
 
 ### Added
