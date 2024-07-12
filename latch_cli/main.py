@@ -190,7 +190,7 @@ def init(
     is_flag=True,
     default=False,
     type=bool,
-    help="Generate a Dockerfile with arguments needed for Snakemake compatability",
+    help="Generate a Dockerfile with arguments needed for Snakemake compatibility",
 )
 @click.option(
     "-n",
@@ -198,7 +198,7 @@ def init(
     is_flag=True,
     default=False,
     type=bool,
-    help="Generate a Dockerfile with arguments needed for Nextflow compatability",
+    help="Generate a Dockerfile with arguments needed for Nextflow compatibility",
 )
 def dockerfile(pkg_root: str, snakemake: bool = False, nextflow: bool = False):
     """Generates a user editable dockerfile for a workflow and saves under `pkg_root/Dockerfile`.
