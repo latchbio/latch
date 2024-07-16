@@ -1215,7 +1215,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
         gpu = limits.get("nvidia_gpu", 0)
 
         # 500 GiB default
-        disk = limits.get("disk_mb", 536870) * 100 * 1000 // 1024 // 1024 / 1024
+        disk = limits.get("disk_mb", 536870) * 1000 * 1000 // 1024 // 1024 / 1024
 
         self._uses_gpu = gpu > 0
         if self._uses_gpu and self.job.container_img_url is not None:
@@ -1285,7 +1285,7 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
                     (
                         "exec 3>&1 4>&2 && latch cp"
                         f' "latch:///.snakemake_latch/workflows/{self.wf.name}/{self.wf.jit_wf_version}/{self.wf.jit_exec_display_name}/entrypoint.py"'
-                        " latch_entrypoint.py && ("
+                        " --progress=none latch_entrypoint.py && ("
                         f" {' '.join(sdk_default_container.args)} 1>&3 2>&4 )"
                     ),
                 ]
@@ -1509,14 +1509,14 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
         if not self.job.is_group():
             snakemake_args.append("--force-use-threads")
 
-        excluded = {"_nodes", "_cores", "tmpdir"}
+        excluded = {"_nodes", "_cores", "tmpdir", "disk"}
         allowed_resources = list(
             filter(lambda x: x[0] not in excluded, self.job.resources.items())
         )
         if len(allowed_resources) > 0:
             snakemake_args.append("--resources")
             for resource, value in allowed_resources:
-                snakemake_args.append(f"{resource}={value}")
+                snakemake_args.append(f"{resource}={repr(value)}")
 
         snakemake_data = {
             "rules": {},
