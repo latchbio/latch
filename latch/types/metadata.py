@@ -463,7 +463,7 @@ class SnakemakeFileParameter(SnakemakeParameter[Union[LatchFile, LatchDir]]):
 
 @dataclass
 class SnakemakeFileMetadata:
-    path: Path
+    path: str
     """
     The local path where the file passed to this parameter will be copied
     """

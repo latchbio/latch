@@ -1210,9 +1210,12 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
 
         limits = self.job.resources
         cores = limits.get("cpus", 4)
-        # convert MB to GiB
+        # convert MB to GiB, 8 GiB default
         mem = limits.get("mem_mb", 8589) * 1000 * 1000 // 1024 // 1024 // 1024
         gpu = limits.get("nvidia_gpu", 0)
+
+        # 500 GiB default
+        disk = limits.get("disk_mb", 536870) * 100 * 1000 // 1024 // 1024 / 1024
 
         self._uses_gpu = gpu > 0
         if self._uses_gpu and self.job.container_img_url is not None:
@@ -1228,7 +1231,9 @@ class SnakemakeJobTask(PythonAutoContainerTask[Pod]):
 
         task_config = None
         if not self._uses_gpu:
-            task_config = custom_task(cpu=cores, memory=mem).keywords["task_config"]
+            task_config = custom_task(cpu=cores, memory=mem, storage_gib=disk).keywords[
+                "task_config"
+            ]
         else:
             if gpu == 1 and cores <= 7 and mem <= 30:
                 task_config = _get_small_gpu_pod()
