@@ -3,7 +3,13 @@ import mimetypes
 import os
 import random
 import time
-from concurrent.futures import Future, ProcessPoolExecutor, as_completed, wait
+from concurrent.futures import (
+    FIRST_EXCEPTION,
+    Future,
+    ProcessPoolExecutor,
+    as_completed,
+    wait,
+)
 from contextlib import closing
 from dataclasses import dataclass
 from http.client import HTTPException
@@ -49,7 +55,7 @@ class UploadJob:
 class UploadResult:
     num_files: int
     total_bytes: int
-    total_time: int
+    total_time: float
 
 
 def upload(
@@ -102,7 +108,7 @@ def upload(
         num_bars = get_max_workers()
         show_total_progress = True
 
-    with ProcessPoolExecutor(max_workers=get_max_workers()) as exec:
+    with ProcessPoolExecutor(max_workers=(get_max_workers())) as exec:
         with TransferStateManager() as man:
             parts_by_src: "PartsBySrcType" = man.dict()
             upload_info_by_src: "UploadInfoBySrcType" = man.dict()
@@ -140,6 +146,8 @@ def upload(
                         )
 
                 num_files = len(jobs)
+
+                print(parts_by_src)
 
                 url_generation_bar: ProgressBars
                 with closing(
@@ -218,7 +226,11 @@ def upload(
                                 )
                             )
 
-                    wait(chunk_futs)
+                    for fut in as_completed(chunk_futs):
+                        exc = fut.exception()
+
+                        if exc is not None:
+                            raise exc
 
                 if progress != Progress.none:
                     print("\x1b[0GFinalizing uploads...")
@@ -261,7 +273,7 @@ def upload(
                                 )
                             )
 
-                        wait(chunk_futs)
+                        wait(chunk_futs, return_when=FIRST_EXCEPTION)
 
                         end_upload(
                             normalized,
@@ -298,12 +310,13 @@ def start_upload(
     if not src.exists():
         raise ValueError(f"could not find {src}: no such file or link")
 
+    resolved = src
     if src.is_symlink():
-        src = src.resolve()
+        resolved = src.resolve()
 
-    content_type, _ = mimetypes.guess_type(src)
+    content_type, _ = mimetypes.guess_type(resolved)
     if content_type is None:
-        with open(src, "rb") as f:
+        with open(resolved, "rb") as f:
             sample = f.read(Units.KiB)
 
         try:
@@ -312,7 +325,7 @@ def start_upload(
         except UnicodeDecodeError:
             content_type = "application/octet-stream"
 
-    file_size = src.stat().st_size
+    file_size = resolved.stat().st_size
     if file_size > latch_constants.maximum_upload_size:
         raise ValueError(
             f"file is {with_si_suffix(file_size)} which exceeds the maximum"
@@ -383,48 +396,60 @@ def upload_file_chunk(
     upload_id: Optional[str] = None,
     dest: Optional[str] = None,
 ) -> CompletedPart:
-    time.sleep(0.1 * random.random())
+    try:
+        time.sleep(0.1 * random.random())
 
-    with open(src, "rb") as f:
-        f.seek(part_size * part_index)
-        data = f.read(part_size)
+        with open(src, "rb") as f:
+            f.seek(part_size * part_index)
+            data = f.read(part_size)
 
-    res = tinyrequests.put(url, data=data)
-    if res.status_code != 200:
-        raise HTTPException(
-            f"failed to upload part {part_index} of {src}: {res.status_code}"
+        res = tinyrequests.put(url, data=data)
+        if res.status_code != 200:
+            raise HTTPException(
+                f"failed to upload part {part_index} of {src}: {res.status_code}"
+            )
+
+        etag = res.headers["ETag"]
+        assert etag is not None, (
+            f"Malformed response from chunk upload for {src}, Part {part_index},"
+            f" Headers: {res.headers}"
         )
 
-    ret = CompletedPart(
-        src=src,
-        etag=res.headers["ETag"],
-        part_number=part_index + 1,
-    )
+        ret = CompletedPart(
+            src=src,
+            etag=etag,
+            part_number=part_index + 1,
+        )
 
-    if parts_by_source is not None:
-        parts_by_source[src].append(ret)
+        if parts_by_source is not None:
+            parts_by_source[src].append(ret)
 
-    if progress_bars is not None:
-        progress_bars.update(pbar_index, len(data))
-        pending_parts = progress_bars.dec_usage(str(src))
+        if progress_bars is not None:
+            progress_bars.update(pbar_index, len(data))
+            pending_parts = progress_bars.dec_usage(str(src))
 
-        if pending_parts == 0:
+            if pending_parts == 0:
+                progress_bars.return_task_bar(pbar_index)
+                progress_bars.update_total_progress(1)
+                progress_bars.write(f"Copied {src}")
+
+                if (
+                    dest is not None
+                    and parts_by_source is not None
+                    and upload_id is not None
+                ):
+                    end_upload(
+                        dest=dest,
+                        upload_id=upload_id,
+                        parts=list(parts_by_source[src]),
+                    )
+
+        return ret
+    except:
+        if progress_bars is not None:
             progress_bars.return_task_bar(pbar_index)
-            progress_bars.update_total_progress(1)
-            progress_bars.write(f"Copied {src}")
 
-            if (
-                dest is not None
-                and parts_by_source is not None
-                and upload_id is not None
-            ):
-                end_upload(
-                    dest=dest,
-                    upload_id=upload_id,
-                    parts=list(parts_by_source[src]),
-                )
-
-    return ret
+        raise
 
 
 def end_upload(
