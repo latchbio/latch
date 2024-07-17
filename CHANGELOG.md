@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.49.1 - 2024-07-17
+
+### Fixed
+
+* `latch cp` bug where directories containing symlinks would hang and not complete uploading
+
 ## 2.49.0 - 2024-07-17
 
 ### Changed
