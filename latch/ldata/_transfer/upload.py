@@ -102,7 +102,7 @@ def upload(
         num_bars = get_max_workers()
         show_total_progress = True
 
-    with ProcessPoolExecutor(max_workers=(get_max_workers())) as exec:
+    with ProcessPoolExecutor(max_workers=get_max_workers()) as exec:
         with TransferStateManager() as man:
             parts_by_src: "PartsBySrcType" = man.dict()
             upload_info_by_src: "UploadInfoBySrcType" = man.dict()
@@ -218,7 +218,10 @@ def upload(
                                 )
                             )
 
-                    wait(chunk_futs)
+                    for fut in as_completed(chunk_futs):
+                        exc = fut.exception()
+                        if exc is not None:
+                            raise exc
 
                 if progress != Progress.none:
                     print("\x1b[0GFinalizing uploads...")
@@ -261,7 +264,10 @@ def upload(
                                 )
                             )
 
-                        wait(chunk_futs)
+                        for fut in as_completed(chunk_futs):
+                            exc = fut.exception()
+                            if exc is not None:
+                                raise exc
 
                         end_upload(
                             normalized,
