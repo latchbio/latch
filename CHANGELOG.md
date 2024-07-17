@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.48.9 - 2024-07-16
+
+### Added
+
+* Nextflow
+  - Make execution profile configurable via UI
+
 ## 2.48.8 - 2024-07-12
 
 ### Changed
