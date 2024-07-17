@@ -809,6 +809,10 @@ class NextflowMetadata(LatchMetadata):
     """
     Resources (cpu/memory/storage) for Nextflow runtime task
     """
+    execution_profiles: List[str] = field(default_factory=list)
+    """
+    Execution config profiles to expose to users in the Latch console
+    """
     log_dir: Optional[LatchDir] = None
     """
     Directory to dump Nextflow logs

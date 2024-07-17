@@ -93,6 +93,15 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
             dirs_exist_ok=True,
         )
 
+        profile_list = {execution_profile}
+        if {configurable_profiles}:
+            profile_list.extend(execution_profiles)
+
+        if len(profile_list) == 0:
+            profile_list.append("standard")
+
+        profiles = ','.join(profile_list)
+
         cmd = [
             "/root/nextflow",
             "run",
@@ -100,7 +109,7 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
             "-work-dir",
             str(shared_dir),
             "-profile",
-            "{execution_profile}",
+            profiles,
             "-c",
             "latch.config",
             "-resume",
@@ -224,6 +233,23 @@ def generate_nextflow_workflow(
     preambles: set[str] = set()
     samplesheet_funs: List[str] = []
     samplesheet_constructors: List[str] = []
+
+    nextflow_task_args = ", ".join(
+        f"{param_name}={param_name}" for param_name in parameters.keys()
+    )
+
+    profile_options = metadata._nextflow_metadata.execution_profiles
+    if len(profile_options) > 0:
+        profiles_var = "execution_profiles"
+
+        execution_profile_enum = "class ExecutionProfile(Enum):\n"
+        for profile in profile_options:
+            execution_profile_enum += f"    {profile} = {repr(profile)}\n"
+
+        no_defaults.append(f"{profiles_var}: list[ExecutionProfile]")
+        nextflow_task_args += f", {profiles_var}={profiles_var}"
+        preambles.add(execution_profile_enum)
+
     for param_name, param in parameters.items():
         sig = f"{param_name}: {type_repr(param.type)}"
         if param.default is not None:
@@ -311,13 +337,12 @@ def generate_nextflow_workflow(
             no_defaults + [f"{name} = {val}" for name, val in defaults]
         ),
         param_signature=", ".join(no_defaults + [name for name, _ in defaults]),
-        param_args=", ".join(
-            f"{param_name}={param_name}" for param_name in parameters.keys()
-        ),
+        param_args=nextflow_task_args,
         params_to_flags=",\n".join(flags),
         execution_profile=(
-            execution_profile if execution_profile is not None else "standard"
+            execution_profile.split(",") if execution_profile is not None else []
         ),
+        configurable_profiles=len(profile_options) > 0,
         preambles="\n\n".join(list(preambles)),
         samplesheet_funs="\n".join(samplesheet_funs),
         samplesheet_constructors="\n".join(samplesheet_constructors),
