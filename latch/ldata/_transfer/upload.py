@@ -147,8 +147,6 @@ def upload(
 
                 num_files = len(jobs)
 
-                print(parts_by_src)
-
                 url_generation_bar: ProgressBars
                 with closing(
                     man.ProgressBars(
@@ -226,11 +224,7 @@ def upload(
                                 )
                             )
 
-                    for fut in as_completed(chunk_futs):
-                        exc = fut.exception()
-
-                        if exc is not None:
-                            raise exc
+                    wait(chunk_futs)
 
                 if progress != Progress.none:
                     print("\x1b[0GFinalizing uploads...")
@@ -273,7 +267,7 @@ def upload(
                                 )
                             )
 
-                        wait(chunk_futs, return_when=FIRST_EXCEPTION)
+                        wait(chunk_futs)
 
                         end_upload(
                             normalized,
@@ -396,6 +390,7 @@ def upload_file_chunk(
     upload_id: Optional[str] = None,
     dest: Optional[str] = None,
 ) -> CompletedPart:
+    # todo(ayush): proper exception handling that aborts everything
     try:
         time.sleep(0.1 * random.random())
 
