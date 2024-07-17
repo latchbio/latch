@@ -3,13 +3,7 @@ import mimetypes
 import os
 import random
 import time
-from concurrent.futures import (
-    FIRST_EXCEPTION,
-    Future,
-    ProcessPoolExecutor,
-    as_completed,
-    wait,
-)
+from concurrent.futures import Future, ProcessPoolExecutor, as_completed, wait
 from contextlib import closing
 from dataclasses import dataclass
 from http.client import HTTPException
