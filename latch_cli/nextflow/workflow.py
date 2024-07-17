@@ -95,7 +95,7 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
 
         profile_list = {execution_profile}
         if {configurable_profiles}:
-            profile_list.extend(execution_profiles)
+            profile_list.extend([p.value for p in execution_profiles])
 
         if len(profile_list) == 0:
             profile_list.append("standard")
