@@ -16,6 +16,20 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.49.0 - 2024-07-17
+
+### Changed
+
+* Nextflow
+  - Update `nextflow` base image to version `v1.1.5`
+
+## 2.48.9 - 2024-07-16
+
+### Added
+
+* Nextflow
+  - Make execution profile configurable via UI
+
 ## 2.48.8 - 2024-07-12
 
 ### Changed
