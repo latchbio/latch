@@ -2,13 +2,14 @@ from dataclasses import fields, is_dataclass
 from enum import Enum
 from pathlib import Path
 from textwrap import dedent
-from typing import Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import click
 
 import latch.types.metadata as metadata
 from latch.types.directory import LatchDir, LatchOutputDir
 from latch.types.file import LatchFile
+from latch.types.metadata import NextflowParameter
 from latch_cli.snakemake.config.utils import get_preamble, type_repr
 from latch_cli.snakemake.utils import reindent
 from latch_cli.utils import identifier_from_str, urljoins
@@ -67,59 +68,60 @@ def initialize() -> str:
 
 @nextflow_runtime_task(cpu={cpu}, memory={memory}, storage_gib={storage_gib})
 def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
-    try:
-        shared_dir = Path("/nf-workdir")
+    shared_dir = Path("/nf-workdir")
 
+{output_shortcuts}
 {samplesheet_constructors}
 
-        ignore_list = [
-            "latch",
-            ".latch",
-            ".git",
-            "nextflow",
-            ".nextflow",
-            "work",
-            "results",
-            "miniconda",
-            "anaconda3",
-            "mambaforge",
-        ]
+    ignore_list = [
+        "latch",
+        ".latch",
+        ".git",
+        "nextflow",
+        ".nextflow",
+        "work",
+        "results",
+        "miniconda",
+        "anaconda3",
+        "mambaforge",
+    ]
 
-        shutil.copytree(
-            Path("/root"),
-            shared_dir,
-            ignore=lambda src, names: ignore_list,
-            ignore_dangling_symlinks=True,
-            dirs_exist_ok=True,
-        )
+    shutil.copytree(
+        Path("/root"),
+        shared_dir,
+        ignore=lambda src, names: ignore_list,
+        ignore_dangling_symlinks=True,
+        dirs_exist_ok=True,
+    )
 
-        profile_list = {execution_profile}
-        if {configurable_profiles}:
-            profile_list.extend([p.value for p in execution_profiles])
+    profile_list = {execution_profile}
+    if {configurable_profiles}:
+        profile_list.extend([p.value for p in execution_profiles])
 
-        if len(profile_list) == 0:
-            profile_list.append("standard")
+    if len(profile_list) == 0:
+        profile_list.append("standard")
 
-        profiles = ','.join(profile_list)
+    profiles = ','.join(profile_list)
 
-        cmd = [
-            "/root/nextflow",
-            "run",
-            str(shared_dir / "{nf_script}"),
-            "-work-dir",
-            str(shared_dir),
-            "-profile",
-            profiles,
-            "-c",
-            "latch.config",
-            "-resume",
+    cmd = [
+        "/root/nextflow",
+        "run",
+        str(shared_dir / "{nf_script}"),
+        "-work-dir",
+        str(shared_dir),
+        "-profile",
+        profiles,
+        "-c",
+        "latch.config",
+        "-resume",
 {params_to_flags}
-        ]
+    ]
 
-        print("Launching Nextflow Runtime")
-        print(' '.join(cmd))
-        print(flush=True)
+    print("Launching Nextflow Runtime")
+    print(' '.join(cmd))
+    print(flush=True)
 
+    try:
         env = {{
             **os.environ,
             "NXF_HOME": "/root/.nextflow",
@@ -205,6 +207,51 @@ def generate_nextflow_config(pkg_root: Path):
         """))
 
     click.secho(f"Nextflow Latch config written to {config_path}", fg="green")
+
+
+def get_output_shortcuts(parameters: Dict[str, NextflowParameter]) -> str:
+    output_shortcuts = [
+        (name, shortcut)
+        for name, param in parameters.items()
+        if param.shortcut_paths is not None
+        for shortcut in param.shortcut_paths
+    ]
+
+    if len(output_shortcuts) == 0:
+        return ""
+
+    code_block = "output_shortcuts = []\n"
+
+    for name, shortcut in output_shortcuts:
+        code_block += dedent(f"""\
+            output_shortcuts.append({{
+                'display_name': '{shortcut.display_name}',
+                'shortcut': os.path.join({name}.remote_path, '{str(shortcut.path).lstrip("/")}'),
+            }})
+            """)
+
+    code_block += dedent(f"""\
+        metadata = {{"output_shortcuts": output_shortcuts}}
+
+        execute(
+            gql.gql(\"""
+                mutation UpdateNfExecutionMetadata(
+                        $argToken: String!,
+                        $argMetadata: JSON!
+
+                ) {{
+                    updateNfExecutionMetadata(
+                        input: {{argToken: $argToken, argMetadata: $argMetadata}}
+                    ) {{
+                        clientMutationId
+                    }}
+                }}
+            \"""),
+            {{"argMetadata":  metadata}},
+        )
+        """)
+
+    return code_block
 
 
 def generate_nextflow_workflow(
@@ -342,6 +389,7 @@ def generate_nextflow_workflow(
         execution_profile=(
             execution_profile.split(",") if execution_profile is not None else []
         ),
+        output_shortcuts=reindent(get_output_shortcuts(parameters), 1),
         configurable_profiles=len(profile_options) > 0,
         preambles="\n\n".join(list(preambles)),
         samplesheet_funs="\n".join(samplesheet_funs),

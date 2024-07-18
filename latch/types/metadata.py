@@ -31,7 +31,7 @@ from typing_extensions import TypeAlias
 from latch_cli.snakemake.config.utils import validate_snakemake_type
 from latch_cli.utils import identifier_suffix_from_str
 
-from .directory import LatchDir
+from .directory import LatchDir, LatchOutputDir
 from .file import LatchFile
 
 
@@ -478,6 +478,18 @@ class SnakemakeFileMetadata:
 
 
 @dataclass
+class ShortcutPath:
+    display_name: str
+    """
+    Name of shortcut as it appears in the Latch Console
+    """
+    path: Path
+    """
+    Sub-path to expose
+    """
+
+
+@dataclass
 class NextflowParameter(Generic[T], LatchParameter):
     type: Optional[Type[T]] = None
     """
@@ -501,8 +513,25 @@ class NextflowParameter(Generic[T], LatchParameter):
     Should return the path of the constructed samplesheet. If samplesheet_type is also specified, this takes precedence.
     Only used if the provided parameter is a samplesheet (samplesheet=True)
     """
+    shortcut_paths: Optional[List[ShortcutPath]] = None
+    """
+    Output paths that will be exposed in the UI as shortcuts. Should be used to
+    expose important workflow outputs to the user.
+
+    Only valid for LatchDir type
+    """
 
     def __post_init__(self):
+        if self.shortcut_paths is not None and self.type not in {
+            LatchDir,
+            LatchOutputDir,
+        }:
+            click.secho(
+                "Shortcut paths can only be defined for LatchDir parameters.",
+                fg="red",
+            )
+            raise click.exceptions.Exit(1)
+
         if not self.samplesheet or self.samplesheet_constructor is not None:
             return
 
