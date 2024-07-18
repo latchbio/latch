@@ -209,47 +209,27 @@ def generate_nextflow_config(pkg_root: Path):
     click.secho(f"Nextflow Latch config written to {config_path}", fg="green")
 
 
-def get_output_shortcuts(parameters: Dict[str, NextflowParameter]) -> str:
+def get_results_code_block(parameters: Dict[str, NextflowParameter]) -> str:
     output_shortcuts = [
-        (name, shortcut)
-        for name, param in parameters.items()
-        if param.shortcut_paths is not None
-        for shortcut in param.shortcut_paths
+        (var_name, sub_path)
+        for var_name, param in parameters.items()
+        if param.results_paths is not None
+        for sub_path in param.results_paths
     ]
 
     if len(output_shortcuts) == 0:
         return ""
 
-    code_block = "output_shortcuts = []\n"
+    code_block = dedent("""
+    from latch.execution import add_results
 
-    for name, shortcut in output_shortcuts:
-        code_block += dedent(f"""\
-            output_shortcuts.append({{
-                'display_name': '{shortcut.display_name}',
-                'shortcut': os.path.join({name}.remote_path, '{str(shortcut.path).lstrip("/")}'),
-            }})
-            """)
+    results = []
+    """)
 
-    code_block += dedent(f"""\
-        metadata = {{"output_shortcuts": output_shortcuts}}
+    for var_name, sub_path in output_shortcuts:
+        code_block += dedent(f"results.append(os.path.join({var_name}.remote_path, '{str(sub_path).lstrip("/")}'))\n")
 
-        execute(
-            gql.gql(\"""
-                mutation UpdateNfExecutionMetadata(
-                        $argToken: String!,
-                        $argMetadata: JSON!
-
-                ) {{
-                    updateNfExecutionMetadata(
-                        input: {{argToken: $argToken, argMetadata: $argMetadata}}
-                    ) {{
-                        clientMutationId
-                    }}
-                }}
-            \"""),
-            {{"argMetadata":  metadata}},
-        )
-        """)
+    code_block += dedent(f"add_results(results)\n")
 
     return code_block
 
@@ -389,7 +369,7 @@ def generate_nextflow_workflow(
         execution_profile=(
             execution_profile.split(",") if execution_profile is not None else []
         ),
-        output_shortcuts=reindent(get_output_shortcuts(parameters), 1),
+        output_shortcuts=reindent(get_results_code_block(parameters), 1),
         configurable_profiles=len(profile_options) > 0,
         preambles="\n\n".join(list(preambles)),
         samplesheet_funs="\n".join(samplesheet_funs),
