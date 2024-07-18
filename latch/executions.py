@@ -125,7 +125,7 @@ def add_results(results: List[str]):
                     $argToken: String!,
                     $argPaths: [String]!
                 ) {
-                    addExecutionResults(
+                    addExecutionResultsByToken(
                         input: {argToken: $argToken, argPaths: $argPaths}}
                     ) {
                         clientMutationId
