@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.49.2 - 2024-07-18
+
+### Added
+
+* Nextflow
+  - Make EFS storage period configurable
+
 ## 2.49.1 - 2024-07-17
 
 ### Fixed
