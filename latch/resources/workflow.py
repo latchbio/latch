@@ -81,16 +81,7 @@ def workflow(
             if meta_param.samplesheet is not True:
                 continue
 
-            annotation = wf_params[name].annotation
-
-            origin = get_origin(annotation)
-            args = get_args(annotation)
-            valid = (
-                origin is not None
-                and issubclass(origin, list)
-                and is_dataclass(args[0])
-            )
-            if not valid:
+            if not _is_valid_samplesheet_parameter_type(wf_param[name]):
                 click.secho(
                     f"parameter marked as samplesheet is not valid: {name} "
                     f"in workflow {f.__name__} must be a list of dataclasses",
@@ -108,3 +99,21 @@ def workflow(
         return _workflow(f, wf_name_override=wf_name_override)
 
     return decorator
+
+
+def _is_valid_samplesheet_parameter_type(parameter: inspect.Parameter) -> bool:
+    """
+    Check if a parameter in the workflow function's signature is annotated with a valid type for a
+    samplesheet LatchParameter.
+    """
+    annotation = parameter.annotation
+
+    origin = get_origin(annotation)
+    args = get_args(annotation)
+    valid = (
+        origin is not None
+        and issubclass(origin, list)
+        and is_dataclass(args[0])
+    )
+
+    return valid
