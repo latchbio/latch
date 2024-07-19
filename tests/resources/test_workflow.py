@@ -34,14 +34,24 @@ class FakeDataclass:
     bar: int
 
 
-@pytest.mark.parametrize(
-    "dtype",
-    [
-        List[FakeDataclass],
-        Optional[List[FakeDataclass]],
-        Union[List[FakeDataclass], None],
+# Enumerate the possible ways to declare a list or optional list of dataclasses
+SAMPLESHEET_TYPES: List[TypeAnnotation] = [
+    List[FakeDataclass],
+    Optional[List[FakeDataclass]],
+    Union[List[FakeDataclass], None],
+]
+
+if sys.version_info >= (3, 10):
+    SAMPLESHEET_TYPES += [
+        list[FakeDataclass],
+        Optional[list[FakeDataclass]],
+        Union[list[FakeDataclass], None],
+        list[FakeDataclass] | None,
+        List[FakeDataclass] | None,
     ]
-)
+
+
+@pytest.mark.parametrize("dtype", SAMPLESHEET_TYPES)
 def test_is_valid_samplesheet_parameter_type(dtype: TypeAnnotation) -> None:
     """
     `_is_valid_samplesheet_parameter_type` should accept a type that is a list of dataclasses, or an
