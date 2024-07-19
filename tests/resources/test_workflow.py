@@ -1,6 +1,5 @@
 import inspect
 import sys
-import typing
 from dataclasses import dataclass
 from typing import List
 from typing import Any
@@ -8,12 +7,12 @@ from typing import Collection, Iterable, Optional, Union, Mapping, Dict, Set, Tu
 
 import pytest
 
-from anno import _is_list_of_dataclasses_type
-from anno import _is_valid_samplesheet_parameter_type
-from anno import _is_optional_type
-from anno import _is_type_annotation
-from anno import _unpack_optional_type
-from anno import TypeAnnotation
+from latch.resources.workflow import _is_list_of_dataclasses_type
+from latch.resources.workflow import _is_valid_samplesheet_parameter_type
+from latch.resources.workflow import _is_optional_type
+from latch.resources.workflow import _is_type_annotation
+from latch.resources.workflow import _unpack_optional_type
+from latch.resources.workflow import TypeAnnotation
 
 PRIMITIVE_TYPES = [int, float, bool, str]
 COLLECTION_TYPES = [List[int], Dict[str, int], Set[int], Tuple[int], Mapping[str, int], Iterable[int], Collection[int]]

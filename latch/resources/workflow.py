@@ -3,7 +3,6 @@ import sys
 import typing
 from dataclasses import is_dataclass
 from textwrap import dedent
-from types import UnionType
 from typing import Any, Callable, Dict, Union, get_args, get_origin
 
 import click
@@ -50,7 +49,6 @@ not and must be considered explicitly.
 TYPE_ANNOTATION_TYPES = (type, typing._GenericAlias, UnionType)  # type: ignore[attr-defined]
 
 
-
 def _generate_metadata(f: Callable) -> LatchMetadata:
     signature = inspect.signature(f)
     metadata = LatchMetadata(f.__name__, LatchAuthor())
@@ -72,7 +70,7 @@ def _inject_metadata(f: Callable, metadata: LatchMetadata) -> None:
 # so that when users call @workflow without any arguments or
 # parentheses, the workflow still serializes as expected
 def workflow(
-    metadata: Union[LatchMetadata, Callable]
+    metadata: Union[LatchMetadata, Callable],
 ) -> Union[PythonFunctionWorkflow, Callable]:
     if isinstance(metadata, Callable):
         f = metadata
@@ -141,9 +139,18 @@ def workflow(
 
 
 def _is_valid_samplesheet_parameter_type(parameter: inspect.Parameter) -> bool:
-    """
-    Check if a parameter in the workflow function's signature is annotated with a valid type for a
-    samplesheet LatchParameter.
+    """Check if a workflow parameter is hinted with a valid type for a samplesheet LatchParameter.
+
+    Currently, a samplesheet LatchParameter must be defined as a list of dataclasses, or as an
+    `Optional` list of dataclasses when the parameter is part of a `ForkBranch`.
+
+    Args:
+        parameter: A parameter from the workflow function's signature.
+
+    Returns:
+        True if the parameter is annotated as a list of dataclasses, or as an `Optional` list of
+        dataclasses.
+        False otherwise.
     """
     annotation = parameter.annotation
 
@@ -151,15 +158,14 @@ def _is_valid_samplesheet_parameter_type(parameter: inspect.Parameter) -> bool:
     if not _is_type_annotation(annotation):
         return False
 
-    return (
-        _is_list_of_dataclasses_type(annotation)
-        or (_is_optional_type(annotation) and _is_list_of_dataclasses_type(_unpack_optional_type(annotation)))
+    return _is_list_of_dataclasses_type(annotation) or (
+        _is_optional_type(annotation)
+        and _is_list_of_dataclasses_type(_unpack_optional_type(annotation))
     )
 
 
 def _is_list_of_dataclasses_type(dtype: TypeAnnotation) -> bool:
-    """
-    Check if the type is a list of dataclasses.
+    """Check if the type is a list of dataclasses.
 
     Args:
         dtype: A type.
@@ -169,10 +175,10 @@ def _is_list_of_dataclasses_type(dtype: TypeAnnotation) -> bool:
         False otherwise.
 
     Raises:
-        TypeError: If the input is not a `type`.
+        TypeError: If the input is not a valid `TypeAnnotation` type (see above).
     """
     if not isinstance(dtype, TYPE_ANNOTATION_TYPES):
-        raise TypeError(f"Expected `type`, got {type(dtype)}: {dtype}")
+        raise TypeError(f"Expected type annotation, got {type(dtype)}: {dtype}")
 
     origin = get_origin(dtype)
     args = get_args(dtype)
@@ -187,8 +193,7 @@ def _is_list_of_dataclasses_type(dtype: TypeAnnotation) -> bool:
 
 
 def _is_optional_type(dtype: TypeAnnotation) -> bool:
-    """
-    Check if a type is `Optional`.
+    """Check if a type is `Optional`.
 
     An optional type may be declared using three syntaxes: `Optional[T]`, `Union[T, None]`, or `T |
     None`. All of these syntaxes is supported by this function.
@@ -201,22 +206,25 @@ def _is_optional_type(dtype: TypeAnnotation) -> bool:
         False otherwise.
 
     Raises:
-        TypeError: If the input is not a `type`.
+        TypeError: If the input is not a valid `TypeAnnotation` type (see above).
     """
     if not isinstance(dtype, TYPE_ANNOTATION_TYPES):
-        raise TypeError(f"Expected `type`, got {type(dtype)}: {dtype}")
+        raise TypeError(f"Expected type annotation, got {type(dtype)}: {dtype}")
 
     origin = get_origin(dtype)
     args = get_args(dtype)
 
     # Optional[T] has `typing.Union` as its origin, but PEP604 syntax (e.g. `int | None`) has
     # `types.UnionType` as its origin.
-    return (origin is Union or origin is UnionType) and len(args) == 2 and type(None) in args
+    return (
+        (origin is Union or origin is UnionType)
+        and len(args) == 2
+        and type(None) in args
+    )
 
 
 def _unpack_optional_type(dtype: TypeAnnotation) -> type:
-    """
-    Given a type of `Optional[T]`, return `T`.
+    """Given a type of `Optional[T]`, return `T`.
 
     Args:
         dtype: A type of `Optional[T]`, `T | None`, or `Union[T, None]`.
@@ -225,14 +233,14 @@ def _unpack_optional_type(dtype: TypeAnnotation) -> type:
         The type `T`.
 
     Raises:
-        TypeError: If the input is not a `type`.
+        TypeError: If the input is not a valid `TypeAnnotation` type (see above).
         ValueError: If the input type is not `Optional[T]`.
     """
     if not isinstance(dtype, TYPE_ANNOTATION_TYPES):
-        raise TypeError(f"Expected `type`, got {type(dtype)}: {dtype}")
+        raise TypeError(f"Expected type annotation, got {type(dtype)}: {dtype}")
 
     if not _is_optional_type(dtype):
-        raise ValueError(f"Expected Optional[T], got {type(dtype)}: {dtype}")
+        raise ValueError(f"Expected `Optional[T]`, got {type(dtype)}: {dtype}")
 
     args = get_args(dtype)
 
@@ -245,26 +253,27 @@ def _unpack_optional_type(dtype: TypeAnnotation) -> type:
     return base_type
 
 
+# NB: `inspect.Parameter.annotation` is typed as `Any`, so here we narrow the type.
 def _is_type_annotation(annotation: Any) -> TypeGuard[TypeAnnotation]:
-    """
-    Check if the annotation on an `inspect.Parameter` instance is a type annotation.
+    """Check if the annotation on an `inspect.Parameter` instance is a type annotation.
 
     If the corresponding parameter **did not** have a type annotation, `annotation` is set to the
-    special class variable `Parameter.empty`.
-
-    NB: `Parameter.empty` itself is a subclass of `type`
-    Otherwise, the annotation is assumed to be a type.
+    special class variable `inspect.Parameter.empty`. Otherwise, the annotation should be a valid
+    type annotation.
 
     Args:
         annotation: The annotation on an `inspect.Parameter` instance.
 
     Returns:
-        True if the annotation is not `Parameter.empty`.
+        True if the type annotation is not `inspect.Parameter.empty`.
         False otherwise.
 
     Raises:
-        TypeError: If the annotation is neither a type nor `Parameter.empty`.
+        TypeError: If the annotation is neither a valid `TypeAnnotation` type (see above) nor
+        `inspect.Parameter.empty`.
     """
+    # NB: `inspect.Parameter.empty` is a subclass of `type`, so this check passes for unannotated
+    # parameters.
     if not isinstance(annotation, TYPE_ANNOTATION_TYPES):
         raise TypeError(f"Annotation must be a type, not {type(annotation).__name__}")
 
