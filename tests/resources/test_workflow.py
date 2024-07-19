@@ -61,6 +61,15 @@ def test_is_valid_samplesheet_parameter_type(dtype: TypeAnnotation) -> None:
     assert _is_valid_samplesheet_parameter_type(parameter) is True
 
 
+@pytest.mark.parametrize("dtype", PRIMITIVE_TYPES + COLLECTION_TYPES + OPTIONAL_TYPES)
+def test_is_valid_samplesheet_parameter_type_rejects_invalid_types(dtype: TypeAnnotation) -> None:
+    """
+    `_is_valid_samplesheet_parameter_type` should reject any other type.
+    """
+    parameter = inspect.Parameter("foo", kind=inspect.Parameter.POSITIONAL_OR_KEYWORD, annotation=dtype)
+    assert _is_valid_samplesheet_parameter_type(parameter) is False
+
+
 def test_is_list_of_dataclasses_type() -> None:
     """
     `_is_list_of_dataclasses_type` should accept a type that is a list of dataclasses.
