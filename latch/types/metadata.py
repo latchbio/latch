@@ -345,6 +345,8 @@ class LatchParameter:
     allowed_tables: Optional[List[int]] = None
     """
     If using the samplesheet component, specify a set of Registry Tables (by ID) to allow selection from.
+    If not provided, all Tables are allowed.
+
     Only has an effect if `samplesheet=True`.
     """
     _custom_ingestion: Optional[str] = None
