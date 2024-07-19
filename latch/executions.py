@@ -108,7 +108,7 @@ def rename_current_execution(name: str):
     )
 
 
-def add_results(results: List[str]):
+def add_execution_results(results: List[str]):
     token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", None)
     if token is None:
         # noop during local execution / testing
@@ -126,7 +126,7 @@ def add_results(results: List[str]):
                     $argPaths: [String]!
                 ) {
                     addExecutionResultsByToken(
-                        input: {argToken: $argToken, argPaths: $argPaths}}
+                        input: {argToken: $argToken, argPaths: $argPaths}
                     ) {
                         clientMutationId
                     }

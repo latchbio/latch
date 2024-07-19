@@ -221,15 +221,18 @@ def get_results_code_block(parameters: Dict[str, NextflowParameter]) -> str:
         return ""
 
     code_block = dedent("""
-    from latch.execution import add_results
+    from latch.executions import add_execution_results
 
     results = []
     """)
 
     for var_name, sub_path in output_shortcuts:
-        code_block += dedent(f"results.append(os.path.join({var_name}.remote_path, '{str(sub_path).lstrip("/")}'))\n")
+        code_block += dedent(
+            f"results.append(os.path.join({var_name}.remote_path,"
+            f" '{str(sub_path).lstrip('/')}'))\n"
+        )
 
-    code_block += dedent(f"add_results(results)\n")
+    code_block += dedent(f"add_execution_results(results)\n")
 
     return code_block
 
