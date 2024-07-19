@@ -342,6 +342,13 @@ class LatchParameter:
     Use samplesheet input UI. Allows importing from Latch Registry.
     Parameter type must be a list of dataclasses
     """
+    allowed_tables: Optional[List[int]] = None
+    """
+    If using the samplesheet component, specify a set of Registry Tables (by ID) to allow selection from.
+    If not provided, all Tables are allowed.
+
+    Only has an effect if `samplesheet=True`.
+    """
     _custom_ingestion: Optional[str] = None
 
     def __str__(self):
@@ -360,6 +367,8 @@ class LatchParameter:
             parameter_dict["batch_table_column"] = True
         if self.samplesheet:
             parameter_dict["samplesheet"] = True
+            if self.allowed_tables is not None:
+                parameter_dict["allowed_tables"] = [str(x) for x in self.allowed_tables]
 
         temp_dict: Dict[str, Any] = {"hidden": self.hidden}
         if self.section_title is not None:

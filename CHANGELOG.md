@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.49.4 - 2024-07-19
+
+### Added
+
+* `allowed_tables` argument to `LatchParameter` to constrain the set of registry tables selectable from a samplesheet parameter
+
 ## 2.49.3 - 2024-07-19
 
 ### Added
