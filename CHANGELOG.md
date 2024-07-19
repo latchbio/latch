@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.49.3 - 2024-07-19
+
+### Added
+
+* Ability to override the target workspace for registration using the `LATCH_WORKSPACE` env variable.
+
 ## 2.49.2 - 2024-07-18
 
 ### Added

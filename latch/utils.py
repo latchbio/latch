@@ -148,29 +148,33 @@ def current_workspace() -> str:
     If the workspace ID is not set, it retrieves the default workspace ID from the user's account.
     If the default workspace ID is not set, it raises a ValueError.
     """
+
+    ws = os.environ.get("LATCH_WORKSPACE")
+    if ws is not None:
+        return ws
+
     ws = user_config.workspace_id
-    if ws == "":
-        res = execute(
-            gql.gql("""
-                query DefaultAccountQuery {
-                    accountInfoCurrent {
-                        id
-                        user {
-                            defaultAccount
-                        }
+    if ws != "":
+        return ws
+
+    res = execute(
+        gql.gql("""
+            query DefaultAccountQuery {
+                accountInfoCurrent {
+                    id
+                    user {
+                        defaultAccount
                     }
                 }
-            """),
-        )["accountInfoCurrent"]
+            }
+        """),
+    )["accountInfoCurrent"]
 
-        default_ws = res["id"]
+    ws = res["id"]
 
-        is_local = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID") is None
-        if is_local and res["user"] is not None:
-            default_ws = res["user"]["defaultAccount"]
-
-        if default_ws is not None:
-            ws = default_ws
+    is_local = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID") is None
+    if is_local and res["user"] is not None:
+        ws = res["user"]["defaultAccount"]
 
     return ws
 
