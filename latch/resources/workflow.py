@@ -180,6 +180,7 @@ def _is_list_of_dataclasses_type(dtype: TypeAnnotation) -> bool:
 
     return (
         origin is not None
+        and inspect.isclass(origin)
         and issubclass(origin, list)
         and len(args) == 1
         and is_dataclass(args[0])
