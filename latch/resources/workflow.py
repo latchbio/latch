@@ -4,6 +4,8 @@ import typing
 from dataclasses import is_dataclass
 from textwrap import dedent
 from typing import Any, Callable, Dict, Union, get_args, get_origin
+from typing_extensions import TypeAlias
+from typing_extensions import TypeGuard
 
 import click
 import os
@@ -15,13 +17,8 @@ from latch_cli.utils import best_effort_display_name
 
 
 if sys.version_info >= (3, 10):
-    from typing import TypeAlias
-    from typing import TypeGuard
     from types import UnionType
 else:
-    from typing_extensions import TypeAlias
-    from typing_extensions import TypeGuard
-
     # NB: `types.UnionType`, available since Python 3.10, is **not** a `type`, but is a class.
     # We declare an empty class here to use in the instance checks below.
     class UnionType:
@@ -118,7 +115,7 @@ def workflow(
             if meta_param.samplesheet is not True:
                 continue
 
-            if not _is_valid_samplesheet_parameter_type(wf_param[name]):
+            if not _is_valid_samplesheet_parameter_type(wf_params[name].annotation):
                 click.secho(
                     f"parameter marked as samplesheet is not valid: {name} "
                     f"in workflow {f.__name__} must be a list of dataclasses",
@@ -138,7 +135,7 @@ def workflow(
     return decorator
 
 
-def _is_valid_samplesheet_parameter_type(parameter: inspect.Parameter) -> bool:
+def _is_valid_samplesheet_parameter_type(annotation: Any) -> TypeGuard[TypeAnnotation]:
     """Check if a workflow parameter is hinted with a valid type for a samplesheet LatchParameter.
 
     Currently, a samplesheet LatchParameter must be defined as a list of dataclasses, or as an
@@ -152,8 +149,6 @@ def _is_valid_samplesheet_parameter_type(parameter: inspect.Parameter) -> bool:
         dataclasses.
         False otherwise.
     """
-    annotation = parameter.annotation
-
     # If the parameter did not have a type annotation, short-circuit and return False
     if not _is_type_annotation(annotation):
         return False
@@ -184,8 +179,7 @@ def _is_list_of_dataclasses_type(dtype: TypeAnnotation) -> bool:
     args = get_args(dtype)
 
     return (
-        not _is_optional_type(dtype)
-        and origin is not None
+        origin is not None
         and issubclass(origin, list)
         and len(args) == 1
         and is_dataclass(args[0])
@@ -217,7 +211,8 @@ def _is_optional_type(dtype: TypeAnnotation) -> bool:
     # Optional[T] has `typing.Union` as its origin, but PEP604 syntax (e.g. `int | None`) has
     # `types.UnionType` as its origin.
     return (
-        (origin is Union or origin is UnionType)
+        origin is not None
+        and (origin is Union or origin is UnionType)
         and len(args) == 2
         and type(None) in args
     )
@@ -242,13 +237,11 @@ def _unpack_optional_type(dtype: TypeAnnotation) -> type:
     if not _is_optional_type(dtype):
         raise ValueError(f"Expected `Optional[T]`, got {type(dtype)}: {dtype}")
 
-    args = get_args(dtype)
-
     # Types declared as `Optional[T]` or `T | None` should have the non-None type as the first
     # argument.  However, it is technically correct for someone to write `None | T`, so we shouldn't
     # make assumptions about the argument ordering. (And I'm not certain the ordering is guaranteed
     # anywhere by Python spec.)
-    base_type = [arg for arg in args if arg is not type(None)][0]
+    base_type = [arg for arg in get_args(dtype) if arg is not type(None)][0]
 
     return base_type
 
