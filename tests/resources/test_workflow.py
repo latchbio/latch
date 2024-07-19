@@ -14,14 +14,17 @@ from latch.resources.workflow import _is_type_annotation
 from latch.resources.workflow import _unpack_optional_type
 from latch.resources.workflow import TypeAnnotation
 
-PRIMITIVE_TYPES = [int, float, bool, str]
-COLLECTION_TYPES = [List[int], Dict[str, int], Set[int], Tuple[int], Mapping[str, int], Iterable[int], Collection[int]]
+PRIMITIVE_TYPES: List[type] = [int, float, bool, str]
+COLLECTION_TYPES: List[TypeAnnotation] = [List[int], Dict[str, int], Set[int], Tuple[int], Mapping[str, int], Iterable[int], Collection[int]]
 
 if sys.version_info >= (3, 10):
     COLLECTION_TYPES += [list[int], dict[str, int], set[int], tuple[int]]
 
-OPTIONAL_TYPES = [Optional[T] for T in (PRIMITIVE_TYPES + COLLECTION_TYPES)]
+OPTIONAL_TYPES: List[TypeAnnotation] = [Optional[T] for T in (PRIMITIVE_TYPES + COLLECTION_TYPES)]
 OPTIONAL_TYPES += [Union[T, None] for T in (PRIMITIVE_TYPES + COLLECTION_TYPES)]
+
+if sys.version_info >= (3, 10):
+    OPTIONAL_TYPES += [T | None for T in (PRIMITIVE_TYPES + COLLECTION_TYPES)]
 
 
 @dataclass
