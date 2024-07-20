@@ -38,13 +38,16 @@ def query_with_retry(
 
 
 def get_max_workers() -> int:
-    try:
-        max_workers = len(os.sched_getaffinity(0)) * 4
-    except AttributeError:
-        cpu = os.cpu_count()
-        if cpu is not None:
-            max_workers = cpu * 4
-        else:
-            max_workers = 16
+    return 4
 
-    return min(max_workers, 16)
+    # todo(ayush): dynamically set workers based on available memory
+    # try:
+    #     max_workers = len(os.sched_getaffinity(0)) * 4
+    # except AttributeError:
+    #     cpu = os.cpu_count()
+    #     if cpu is not None:
+    #         max_workers = cpu * 4
+    #     else:
+    #         max_workers = 16
+
+    # return min(max_workers, 16)

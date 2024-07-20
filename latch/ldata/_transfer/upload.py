@@ -58,6 +58,7 @@ def upload(
     progress: Progress,
     verbose: bool,
     create_parents: bool = False,
+    cores: Optional[int] = None,
 ) -> UploadResult:
     src_path = Path(src)
     if not src_path.exists():
@@ -92,6 +93,9 @@ def upload(
             raise ValueError(f"no such file or directory: {dest}")
         normalized = urljoins(normalized, src_path.name)
 
+    if cores is None:
+        cores = get_max_workers()
+
     if progress == Progress.none:
         num_bars = 0
         show_total_progress = False
@@ -99,10 +103,10 @@ def upload(
         num_bars = 1
         show_total_progress = False
     else:
-        num_bars = get_max_workers()
+        num_bars = cores
         show_total_progress = True
 
-    with ProcessPoolExecutor(max_workers=get_max_workers()) as exec:
+    with ProcessPoolExecutor(max_workers=cores) as exec:
         with TransferStateManager() as man:
             parts_by_src: "PartsBySrcType" = man.dict()
             upload_info_by_src: "UploadInfoBySrcType" = man.dict()

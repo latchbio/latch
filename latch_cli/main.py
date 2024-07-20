@@ -713,6 +713,11 @@ LDATA COMMANDS
     default=False,
     show_default=True,
 )
+@click.option(
+    "--cores",
+    help="Manually specify number of cores to parallelize over",
+    type=int,
+)
 @requires_login
 def cp(
     src: List[str],
@@ -720,8 +725,13 @@ def cp(
     progress: _Progress,
     verbose: bool,
     no_glob: bool,
+    cores: Optional[int] = None,
 ):
-    """Copy files between Latch Data and local, or between two Latch Data locations. Behaves like `cp -R` in Unix. Directories are copied recursively. If any parents of dest do not exist, the copy will fail."""
+    """
+    Copy files between Latch Data and local, or between two Latch Data locations.
+
+    Behaves like `cp -R` in Unix. Directories are copied recursively. If any parents of dest do not exist, the copy will fail.
+    """
     crash_handler.message = f"Unable to copy {src} to {dest}"
     crash_handler.pkg_root = str(Path.cwd())
 
@@ -733,6 +743,7 @@ def cp(
         progress=progress,
         verbose=verbose,
         expand_globs=not no_glob,
+        cores=cores,
     )
 
 
@@ -865,13 +876,17 @@ def mkdir(remote_directory: str):
 )
 @click.option(
     "--cores",
-    help=(
-        "Number of cores to use for parallel syncing."
-    ),
+    help="Number of cores to use for parallel syncing.",
     type=int,
 )
 @requires_login
-def sync(srcs: List[str], dst: str, delete: bool, ignore_unsyncable: bool, cores: Optional[int] = None):
+def sync(
+    srcs: List[str],
+    dst: str,
+    delete: bool,
+    ignore_unsyncable: bool,
+    cores: Optional[int] = None,
+):
     """
     Update the contents of a remote directory with local data.
     """

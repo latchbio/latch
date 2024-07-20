@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.49.5 - 2024-07-20
+
+### Added
+
+* Add `--cores` parameter to `latch cp`
+
 ## 2.49.4 - 2024-07-19
 
 ### Added

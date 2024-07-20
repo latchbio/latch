@@ -1,6 +1,6 @@
 from pathlib import Path
 from textwrap import dedent
-from typing import List
+from typing import List, Optional
 
 import click
 
@@ -43,6 +43,7 @@ def cp(
     progress: Progress,
     verbose: bool,
     expand_globs: bool,
+    cores: Optional[int] = None,
 ):
     dest_remote = is_remote_path(dest)
 
@@ -61,7 +62,9 @@ def cp(
             elif not src_remote and dest_remote:
                 if progress != Progress.none:
                     click.secho(f"Uploading {src}", fg="blue")
-                res = _upload(src, dest, progress=progress, verbose=verbose)
+                res = _upload(
+                    src, dest, progress=progress, verbose=verbose, cores=cores
+                )
                 if progress != Progress.none:
                     click.echo(dedent(f"""
                         {click.style("Upload Complete", fg="green")}
