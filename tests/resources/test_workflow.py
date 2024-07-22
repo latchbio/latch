@@ -50,6 +50,17 @@ if sys.version_info >= (3, 10):
         List[FakeDataclass] | None,
     ]
 
+BAD_SAMPLESHEET_TYPES: List[TypeAnnotation] = PRIMITIVE_TYPES + COLLECTION_TYPES + OPTIONAL_TYPES
+BAD_SAMPLESHEET_TYPES += [
+    Union[List[FakeDataclass], int],
+    Union[Optional[List[FakeDataclass]], int],
+    Optional[Union[List[FakeDataclass], int]],
+    Union[List[FakeDataclass], Optional[int]],
+    Union[Optional[int], List[FakeDataclass]],
+    List[Union[FakeDataclass, int]],
+    List[Optional[FakeDataclass]],
+]
+
 
 @pytest.mark.parametrize("dtype", SAMPLESHEET_TYPES)
 def test_is_valid_samplesheet_parameter_type(dtype: TypeAnnotation) -> None:
@@ -60,7 +71,7 @@ def test_is_valid_samplesheet_parameter_type(dtype: TypeAnnotation) -> None:
     assert _is_valid_samplesheet_parameter_type(dtype) is True
 
 
-@pytest.mark.parametrize("dtype", PRIMITIVE_TYPES + COLLECTION_TYPES + OPTIONAL_TYPES)
+@pytest.mark.parametrize("dtype", BAD_SAMPLESHEET_TYPES)
 def test_is_valid_samplesheet_parameter_type_rejects_invalid_types(dtype: TypeAnnotation) -> None:
     """
     `_is_valid_samplesheet_parameter_type` should reject any other type.

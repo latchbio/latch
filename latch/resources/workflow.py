@@ -1,9 +1,14 @@
 import inspect
 import sys
-import typing
 from dataclasses import is_dataclass
 from textwrap import dedent
-from typing import Any, Callable, Dict, Union, get_args, get_origin
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import Union
+from typing import _GenericAlias  # type: ignore[attr-defined]  # NB: mypy can't see private attrs
+from typing import get_args
+from typing import get_origin
 from typing_extensions import TypeAlias
 from typing_extensions import TypeGuard
 
@@ -25,8 +30,7 @@ else:
         pass
 
 
-# NB: since `_GenericAlias` is a private attribute of the `typing` module, mypy doesn't find it
-TypeAnnotation: TypeAlias = Union[type, typing._GenericAlias, UnionType]  # type: ignore[name-defined]
+TypeAnnotation: TypeAlias = Union[type, _GenericAlias, UnionType]
 """
 A function parameter's type annotation may be any of the following:
     1) `type`, when declaring any of the built-in Python types
@@ -42,8 +46,7 @@ not and must be considered explicitly.
 
 # TODO When dropping support for Python 3.9, deprecate this in favor of performing instance checks
 # directly on the `TypeAnnotation` union type.
-# NB: since `_GenericAlias` is a private attribute of the `typing` module, mypy doesn't find it
-TYPE_ANNOTATION_TYPES = (type, typing._GenericAlias, UnionType)  # type: ignore[attr-defined]
+TYPE_ANNOTATION_TYPES = (type, _GenericAlias, UnionType)  # type: ignore[attr-defined]
 
 
 def _generate_metadata(f: Callable) -> LatchMetadata:
