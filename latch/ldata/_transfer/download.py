@@ -123,7 +123,10 @@ def download(
                 job.dest.parent.mkdir(parents=True, exist_ok=True)
                 confirmed_jobs.append(job)
             except FileExistsError:
-                if confirm_overwrite and click.confirm(
+                if not confirm_overwrite:
+                    continue
+
+                if click.confirm(
                     f"A file already exists at {job.dest.parent}. Overwrite?",
                     default=False,
                 ):

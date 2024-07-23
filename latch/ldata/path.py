@@ -114,7 +114,7 @@ class LPath:
             or data["ldataNode"] is None
             or (data["path"] is not None and data["path"] != "")
         ):
-            raise LatchPathError(f"no such Latch file or directory", self.path)
+            raise LatchPathError("no such Latch file or directory", self.path)
 
         self._clear_cache()
 
@@ -218,7 +218,7 @@ class LPath:
         )["ldataResolvePathData"]
 
         if data is None:
-            raise LatchPathError(f"no such Latch file or directory", {self.path})
+            raise LatchPathError("no such Latch file or directory", {self.path})
         if data["finalLinkTarget"]["type"].lower() not in _dir_types:
             raise ValueError(f"not a directory: {self.path}")
 
