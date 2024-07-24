@@ -125,7 +125,7 @@ def add_execution_results(results: List[str]):
                     $argToken: String!,
                     $argPaths: [String]!
                 ) {
-                    addExecutionResultsByToken(
+                    executionInfoMetadataPublishResults(
                         input: {argToken: $argToken, argPaths: $argPaths}
                     ) {
                         clientMutationId
