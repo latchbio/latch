@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.49.6 - 2024-07-23
+
+### Added
+
+* Ability to publish results to be displayed on executions `Results` page
+
 ## 2.49.5 - 2024-07-20
 
 ### Added
