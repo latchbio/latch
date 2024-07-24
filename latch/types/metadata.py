@@ -31,7 +31,7 @@ from typing_extensions import TypeAlias
 from latch_cli.snakemake.config.utils import validate_snakemake_type
 from latch_cli.utils import identifier_suffix_from_str
 
-from .directory import LatchDir
+from .directory import LatchDir, LatchOutputDir
 from .file import LatchFile
 
 
@@ -510,8 +510,25 @@ class NextflowParameter(Generic[T], LatchParameter):
     Should return the path of the constructed samplesheet. If samplesheet_type is also specified, this takes precedence.
     Only used if the provided parameter is a samplesheet (samplesheet=True)
     """
+    results_paths: Optional[List[Path]] = None
+    """
+    Output sub-paths that will be exposed in the UI under the "Results" tab on the workflow execution page.
+
+    Only valid where the `type` attribute is a LatchDir
+    """
 
     def __post_init__(self):
+        if self.results_paths is not None and self.type not in {
+            LatchDir,
+            LatchOutputDir,
+        }:
+            click.secho(
+                "`results_paths` attribute can only be defined for parameters"
+                " of type `LatchDir`.",
+                fg="red",
+            )
+            raise click.exceptions.Exit(1)
+
         if not self.samplesheet or self.samplesheet_constructor is not None:
             return
 

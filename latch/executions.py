@@ -1,11 +1,14 @@
 import os
 import re
 from dataclasses import dataclass
-from typing import Optional
+from typing import List, Optional, Union
 
 import click
 import gql
 from latch_sdk_gql.execute import execute
+
+from latch.types.directory import LatchDir
+from latch.types.file import LatchFile
 
 pod_name_regex = re.compile(
     r"""
@@ -102,4 +105,32 @@ def rename_current_execution(name: str):
             }
         """),
         {"argName": name, "argToken": token},
+    )
+
+
+def add_execution_results(results: List[str]):
+    token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", None)
+    if token is None:
+        # noop during local execution / testing
+        click.secho(
+            "Running in local execution context - skip adding output results.",
+            dim=True,
+            italic=True,
+        )
+        return
+
+    execute(
+        gql.gql("""
+                mutation addExecutionResults(
+                    $argToken: String!,
+                    $argPaths: [String]!
+                ) {
+                    executionInfoMetadataPublishResults(
+                        input: {argToken: $argToken, argPaths: $argPaths}
+                    ) {
+                        clientMutationId
+                    }
+                }
+            """),
+        {"argToken": token, "argPaths": results},
     )

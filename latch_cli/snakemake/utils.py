@@ -21,6 +21,8 @@ def load_snakemake_metadata(pkg_root: Path, metadata_root: Path) -> Optional[Pat
 
 # todo(maximsmol): use a stateful writer that keeps track of indent level
 def reindent(x: str, level: int) -> str:
+    if len(x) == 0:
+        return x
     if x[0] == "\n":
         x = x[1:]
     return textwrap.indent(textwrap.dedent(x), "    " * level)
