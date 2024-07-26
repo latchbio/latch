@@ -15,6 +15,7 @@ from latch_cli.snakemake.utils import reindent
 from latch_cli.utils import identifier_from_str, urljoins
 
 template = """\
+import sys
 from dataclasses import dataclass
 from enum import Enum
 import os
@@ -123,6 +124,7 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
     print(' '.join(cmd))
     print(flush=True)
 
+    failed = False
     try:
         env = {{
             **os.environ,
@@ -137,6 +139,8 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
             check=True,
             cwd=str(shared_dir),
         )
+    except subprocess.CalledProcessError:
+        failed = True
     finally:
         print()
 
@@ -150,6 +154,8 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
                 print(f"Uploading .nextflow.log to {{remote.path}}")
                 remote.upload_from(nextflow_log)
 
+    if failed:
+        sys.exit(1)
 
 
 @workflow(metadata._nextflow_metadata)
