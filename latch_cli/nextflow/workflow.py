@@ -128,6 +128,7 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
     try:
         env = {{
             **os.environ,
+            "NXF_ANSI_LOG": "false",
             "NXF_HOME": "/root/.nextflow",
             "NXF_OPTS": "-Xms{heap_initial}M -Xmx{heap_max}M -XX:ActiveProcessorCount={cpu}",
             "NXF_DISABLE_CHECK_LATEST": "true",
