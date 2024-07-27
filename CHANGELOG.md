@@ -16,6 +16,14 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.49.7 - 2024-07-26
+
+### Changed
+
+* Nextflow
+  - Cleanup Nextflow logging
+  - Update `nextflow` base image to version `v1.1.6`
+
 ## 2.49.6 - 2024-07-23
 
 ### Added
