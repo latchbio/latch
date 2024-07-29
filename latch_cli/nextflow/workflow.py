@@ -323,7 +323,7 @@ def generate_nextflow_workflow(
                 reindent(
                     f"{param_name}_samplesheet ="
                     f" {param_name}_construct_samplesheet({param_name})",
-                    2,
+                    1,
                 ),
             )
 
