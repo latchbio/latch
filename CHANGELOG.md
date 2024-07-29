@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.49.8 - 2024-07-29
+
+### Fixed
+
+* Nextflow
+  - Indentation error in samplesheet constructor function call
+
 ## 2.49.7 - 2024-07-26
 
 ### Changed
