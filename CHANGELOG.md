@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.49.8 - 2024-08-01
+
+### Fixed
+
+* Better error messages when using `latch exec` on a task that is not yet running
+
 ## 2.49.8 - 2024-07-29
 
 ### Fixed
