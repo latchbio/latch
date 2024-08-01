@@ -7,7 +7,7 @@ import graphql
 from latch_sdk_config.user import user_config
 from latch_sdk_gql.execute import execute
 
-from latch_cli.click_utils import color
+from latch_cli.click_utils import bold, color
 from latch_cli.menus import select_tui
 from latch_cli.utils import current_workspace
 
@@ -38,6 +38,7 @@ egn_fragment = gql.gql("""
         taskExecutionInfos {
             nodes {
                 retry
+                status
             }
         }
         containerInfo(
@@ -94,6 +95,7 @@ class FinalWGN(TypedDict):
 
 class TaskExecutionNode(TypedDict):
     retry: str
+    status: str
 
 
 class TaskExecutionInfos(TypedDict):
@@ -239,11 +241,18 @@ def get_egn_info(
             click.secho(f"Could not find a task with ID {color(egn_id)}.", fg="red")
             raise click.exceptions.Exit(1)
 
-        if res["status"] != "RUNNING":
+        status = res["status"]
+        if (
+            res["taskExecutionInfos"] is not None
+            and len(res["taskExecutionInfos"]["nodes"]) > 0
+        ):
+            status = res["taskExecutionInfos"]["nodes"][-1]["status"]
+
+        if status != "RUNNING":
             click.secho(
                 "The selected task"
-                f" ({color(res['finalWorkflowGraphNode']['taskInfo']['displayName'])})"
-                " is no longer running.",
+                f" ({bold(res['finalWorkflowGraphNode']['taskInfo']['displayName'])})"
+                f" is not running. Current task status: {bold(status)}",
                 fg="red",
             )
             raise click.exceptions.Exit(1)
