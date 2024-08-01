@@ -16,7 +16,7 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.49.8 - 2024-08-01
+## 2.49.9 - 2024-08-01
 
 ### Fixed
 
