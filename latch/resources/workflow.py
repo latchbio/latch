@@ -104,7 +104,7 @@ def workflow(
         if git_hash is not None:
             metadata._non_standard["git_commit_hash"] = git_hash
             metadata._non_standard["git_is_dirty"] = (
-                False if is_dirty is None else bool(is_dirty)
+                False if is_dirty is None else is_dirty == "True"
             )
 
         _inject_metadata(f, metadata)
