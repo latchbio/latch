@@ -22,6 +22,12 @@ Types of changes
 
 * Add git commit information to version string if exists
 
+## 2.49.10 - 2024-08-02
+
+### Fixed
+
+* Pin `cryptography` to remove warning messages when importing paramiko
+
 ## 2.49.9 - 2024-08-01
 
 ### Fixed
