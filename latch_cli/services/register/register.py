@@ -321,7 +321,7 @@ def register(
 
     with _CentromereCtx(
         Path(pkg_root),
-        version_method=version_method,
+        disable_auto_version=disable_auto_version,
         remote=remote,
         metadata_root=metadata_root,
         snakefile=snakefile,

@@ -332,7 +332,7 @@ class _CentromereCtx:
 
                 hash += f"-{hash_directory(self.pkg_root)[:6]}"
 
-                self.version = f"{self.version}-{hash}"
+                self.version = f"{self.version}{hash}"
 
             if self.nucleus_check_version(self.version, self.workflow_name):
                 click.secho(
