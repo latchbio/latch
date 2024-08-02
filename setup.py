@@ -47,6 +47,7 @@ setup(
         "latch-sdk-gql==0.0.6",
         "latch-sdk-config==0.0.4",
         "python-dateutil>=2.8",
+        "GitPython==3.1.40",
         # for old latch develop, to be removed
         "aioconsole==0.6.1",
         "asyncssh==2.13.2",

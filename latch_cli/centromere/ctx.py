@@ -14,6 +14,7 @@ from docker.transport import SSHHTTPAdapter
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteEntities
 from flytekit.core.workflow import PythonFunctionWorkflow
+from git import GitError, Repo
 from latch_sdk_config.latch import config
 
 import latch_cli.tinyrequests as tinyrequests
@@ -31,7 +32,6 @@ from latch_cli.utils import (
     generate_temporary_ssh_credentials,
     hash_directory,
 )
-from latch_cli.workflow_config import AutoVersionMethod
 
 
 @dataclass
@@ -53,7 +53,7 @@ class _CentromereCtx:
     dkr_client: Optional[docker.APIClient] = None
     ssh_client: Optional[paramiko.SSHClient] = None
     pkg_root: Optional[Path] = None  # root
-    version_method: AutoVersionMethod = False
+    disable_auto_version: bool = False
     image_full = None
     version = None
     serialize_dir = None
@@ -83,7 +83,7 @@ class _CentromereCtx:
         self,
         pkg_root: Path,
         *,
-        version_method: AutoVersionMethod = False,
+        disable_auto_version: bool = False,
         remote: bool = False,
         metadata_root: Optional[Path] = None,
         snakefile: Optional[Path] = None,
@@ -92,7 +92,7 @@ class _CentromereCtx:
     ):
         self.use_new_centromere = use_new_centromere
         self.remote = remote
-        self.version_method = version_method
+        self.disable_auto_version = disable_auto_version
 
         try:
             self.token = retrieve_or_login()
@@ -302,8 +302,6 @@ class _CentromereCtx:
                 )
             self.version = self.version.strip()
 
-            from git import GitError, Repo
-
             try:
                 repo = Repo(pkg_root)
                 self.git_commit_hash = repo.head.commit.hexsha
@@ -312,27 +310,16 @@ class _CentromereCtx:
                 pass
             except Exception as e:
                 click.secho(
-                    "WARN: Exception occured while getting git hash from"
+                    "WARN: Exception occurred while getting git hash from"
                     f" {self.pkg_root}: {e}",
                     fg="yellow",
                 )
 
-            if self.version_method != AutoVersionMethod.none:
-                if self.version_method == AutoVersionMethod.directory:
-                    hash = hash_directory(self.pkg_root)[:6]
-                elif self.version_method == AutoVersionMethod.git:
-                    if self.git_commit_hash is None:
-                        click.secho(
-                            dedent(f"""
-                            Failed to extract git commit hash. Please ensure that
-                            the project is a git repository and that the git executable
-                            is available on your PATH.
-                            """),
-                            fg="red",
-                        )
-                        raise click.exceptions.Exit(1)
+            if not self.disable_auto_version:
+                hash = ""
 
-                    hash = self.git_commit_hash[:6]
+                if self.git_commit_hash is not None:
+                    hash += f"-{self.git_commit_hash[:6]}"
                     if self.git_is_dirty:
                         click.secho(
                             dedent("""
@@ -342,6 +329,8 @@ class _CentromereCtx:
                             fg="yellow",
                         )
                         hash += "-wip"
+
+                hash += f"-{hash_directory(self.pkg_root)[:6]}"
 
                 self.version = f"{self.version}-{hash}"
 

@@ -27,7 +27,6 @@ from latch_cli.services.register.utils import (
     upload_image,
 )
 from latch_cli.utils import WorkflowType
-from latch_cli.workflow_config import AutoVersionMethod
 
 
 def _delete_lines(num: int):
@@ -256,7 +255,7 @@ def _recursive_list(directory: Path) -> List[Path]:
 def register(
     pkg_root: str,
     *,
-    version_method: AutoVersionMethod = AutoVersionMethod.directory,
+    disable_auto_version: bool = False,
     remote: bool = False,
     open: bool = False,
     skip_confirmation: bool = False,
