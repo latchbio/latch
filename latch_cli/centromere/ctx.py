@@ -75,6 +75,9 @@ class _CentromereCtx:
     internal_ip: Optional[str] = None
     username: Optional[str] = None
 
+    git_commit_hash: Optional[str] = None
+    git_is_dirty: bool = False
+
     def __init__(
         self,
         pkg_root: Path,
@@ -298,10 +301,42 @@ class _CentromereCtx:
                 )
             self.version = self.version.strip()
 
+            try:
+                from git import GitError, Repo
+
+                repo = Repo(pkg_root)
+                self.git_commit_hash = repo.head.commit.hexsha
+                self.git_is_dirty = repo.is_dirty()
+            except ImportError:
+                # rahul: import will fail if `git` is not installed locally
+                pass
+            except GitError:
+                pass
+            except Exception as e:
+                click.secho(
+                    "WARN: Exception occurred while getting git hash from"
+                    f" {self.pkg_root}: {e}",
+                    fg="yellow",
+                )
+
             if not self.disable_auto_version:
-                hash = hash_directory(self.pkg_root)
-                self.version = f"{self.version}-{hash[:6]}"
-                click.echo(f"  {self.version}\n")
+                hash = ""
+
+                if self.git_commit_hash is not None:
+                    hash += f"-{self.git_commit_hash[:6]}"
+                    if self.git_is_dirty:
+                        click.secho(
+                            dedent("""
+                            The git repository is dirty. The version will be suffixed
+                            with '-wip' until the changes are committed or removed.
+                            """),
+                            fg="yellow",
+                        )
+                        hash += "-wip"
+
+                hash += f"-{hash_directory(self.pkg_root)[:6]}"
+
+                self.version = f"{self.version}{hash}"
 
             if self.nucleus_check_version(self.version, self.workflow_name):
                 click.secho(

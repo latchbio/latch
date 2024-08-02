@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.50.0 - 2024-08-02
+
+### Added
+
+* Add git commit information to version string if exists
+
 ## 2.49.10 - 2024-08-02
 
 ### Fixed

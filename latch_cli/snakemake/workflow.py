@@ -311,7 +311,12 @@ def interface_to_parameters(
 class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
     out_parameter_name = "o0"  # must be "o0"
 
-    def __init__(self, cache_tasks: bool = False):
+    def __init__(
+        self,
+        cache_tasks: bool = False,
+        git_commit_hash: Optional[str] = None,
+        git_is_dirty: bool = False,
+    ):
         self.cache_tasks = cache_tasks
 
         assert metadata._snakemake_metadata is not None
@@ -335,6 +340,15 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 raise click.exceptions.Exit(1)
 
             desc = about_page_path.read_text()
+
+        if git_commit_hash is not None:
+            click.secho(
+                f"Tagging workflow version with git commit {git_commit_hash}", fg="blue"
+            )
+            metadata._snakemake_metadata._non_standard["git_commit_hash"] = (
+                git_commit_hash
+            )
+            metadata._snakemake_metadata._non_standard["git_is_dirty"] = git_is_dirty
 
         docstring = Docstring(
             f"{display_name}\n\n{desc}\n\n" + str(metadata._snakemake_metadata)
@@ -1014,8 +1028,12 @@ class SnakemakeWorkflow(WorkflowBase, ClassStorageTaskResolver):
         return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
 
 
-def build_jit_register_wrapper(cache_tasks: bool = False) -> JITRegisterWorkflow:
-    wrapper_wf = JITRegisterWorkflow(cache_tasks)
+def build_jit_register_wrapper(
+    cache_tasks: bool = False,
+    git_commit_hash: Optional[str] = None,
+    git_is_dirty: bool = False,
+) -> JITRegisterWorkflow:
+    wrapper_wf = JITRegisterWorkflow(cache_tasks, git_commit_hash, git_is_dirty)
     out_parameter_name = wrapper_wf.out_parameter_name
 
     python_interface = wrapper_wf.python_interface

@@ -395,7 +395,9 @@ def register(
             from ...snakemake.serialize import generate_jit_register_code
             from ...snakemake.workflow import build_jit_register_wrapper
 
-            sm_jit_wf = build_jit_register_wrapper(cache_tasks)
+            sm_jit_wf = build_jit_register_wrapper(
+                cache_tasks, ctx.git_commit_hash, ctx.git_is_dirty
+            )
             generate_jit_register_code(
                 sm_jit_wf,
                 ctx.pkg_root,

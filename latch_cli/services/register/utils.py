@@ -19,6 +19,7 @@ from typing import (
 )
 
 import boto3
+import click
 import docker
 import requests
 from latch_sdk_config.latch import config
@@ -116,13 +117,23 @@ def upload_image(ctx: _CentromereCtx, image_name: str) -> List[str]:
 
 
 def serialize_pkg_in_container(
-    ctx: _CentromereCtx, image_name: str, serialize_dir: str, wf_name_override: Optional[str] = None
+    ctx: _CentromereCtx,
+    image_name: str,
+    serialize_dir: str,
+    wf_name_override: Optional[str] = None,
 ) -> Tuple[List[str], str]:
     assert ctx.dkr_client is not None
 
     _env = {"LATCH_DKR_REPO": ctx.dkr_repo, "LATCH_VERSION": ctx.version}
     if wf_name_override is not None:
         _env["LATCH_WF_NAME_OVERRIDE"] = wf_name_override
+
+    if ctx.git_commit_hash is not None:
+        click.secho(
+            f"Tagging workflow version with git commit {ctx.git_commit_hash}", fg="blue"
+        )
+        _env["GIT_COMMIT_HASH"] = ctx.git_commit_hash
+        _env["GIT_IS_DIRTY"] = str(ctx.git_is_dirty)
 
     _serialize_cmd = ["make", "serialize"]
     container = ctx.dkr_client.create_container(
