@@ -31,6 +31,7 @@ from latch_cli.utils import (
     generate_temporary_ssh_credentials,
     hash_directory,
 )
+from latch_cli.workflow_config import AutoVersionMethod
 
 
 @dataclass
@@ -52,7 +53,7 @@ class _CentromereCtx:
     dkr_client: Optional[docker.APIClient] = None
     ssh_client: Optional[paramiko.SSHClient] = None
     pkg_root: Optional[Path] = None  # root
-    disable_auto_version: bool = False
+    version_method: AutoVersionMethod = False
     image_full = None
     version = None
     serialize_dir = None
@@ -75,11 +76,14 @@ class _CentromereCtx:
     internal_ip: Optional[str] = None
     username: Optional[str] = None
 
+    git_commit_hash: Optional[str] = None
+    git_is_dirty: bool = False
+
     def __init__(
         self,
         pkg_root: Path,
         *,
-        disable_auto_version: bool = False,
+        version_method: AutoVersionMethod = False,
         remote: bool = False,
         metadata_root: Optional[Path] = None,
         snakefile: Optional[Path] = None,
@@ -88,7 +92,7 @@ class _CentromereCtx:
     ):
         self.use_new_centromere = use_new_centromere
         self.remote = remote
-        self.disable_auto_version = disable_auto_version
+        self.version_method = version_method
 
         try:
             self.token = retrieve_or_login()
@@ -298,10 +302,48 @@ class _CentromereCtx:
                 )
             self.version = self.version.strip()
 
-            if not self.disable_auto_version:
-                hash = hash_directory(self.pkg_root)
-                self.version = f"{self.version}-{hash[:6]}"
-                click.echo(f"  {self.version}\n")
+            from git import GitError, Repo
+
+            try:
+                repo = Repo(pkg_root)
+                self.git_commit_hash = repo.head.commit.hexsha
+                self.git_is_dirty = repo.is_dirty()
+            except GitError:
+                pass
+            except Exception as e:
+                click.secho(
+                    "WARN: Exception occured while getting git hash from"
+                    f" {self.pkg_root}: {e}",
+                    fg="yellow",
+                )
+
+            if self.version_method != AutoVersionMethod.none:
+                if self.version_method == AutoVersionMethod.directory:
+                    hash = hash_directory(self.pkg_root)[:6]
+                elif self.version_method == AutoVersionMethod.git:
+                    if self.git_commit_hash is None:
+                        click.secho(
+                            dedent(f"""
+                            Failed to extract git commit hash. Please ensure that
+                            the project is a git repository and that the git executable
+                            is available on your PATH.
+                            """),
+                            fg="red",
+                        )
+                        raise click.exceptions.Exit(1)
+
+                    hash = self.git_commit_hash[:6]
+                    if self.git_is_dirty:
+                        click.secho(
+                            dedent("""
+                            The git repository is dirty. The version will be suffixed
+                            with '-wip' until the changes are committed or removed.
+                            """),
+                            fg="yellow",
+                        )
+                        hash += "-wip"
+
+                self.version = f"{self.version}-{hash}"
 
             if self.nucleus_check_version(self.version, self.workflow_name):
                 click.secho(

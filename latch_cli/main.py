@@ -25,7 +25,7 @@ from latch_cli.utils import (
     get_latest_package_version,
     get_local_package_version,
 )
-from latch_cli.workflow_config import BaseImageOptions
+from latch_cli.workflow_config import AutoVersionMethod, BaseImageOptions
 
 latch_cli.click_utils.patch()
 
@@ -456,6 +456,13 @@ def execute(
     ),
 )
 @click.option(
+    "--version-method",
+    help="Method to use when generating the workflow version",
+    type=EnumChoice(AutoVersionMethod, case_sensitive=False),
+    default="directory",
+    show_default=True,
+)
+@click.option(
     "--remote/--no-remote",
     is_flag=True,
     default=True,
@@ -526,6 +533,7 @@ def execute(
 def register(
     pkg_root: str,
     disable_auto_version: bool,
+    version_method: AutoVersionMethod,
     remote: bool,
     docker_progress: str,
     yes: bool,
@@ -554,11 +562,14 @@ def register(
         )
         raise click.exceptions.Exit(1)
 
+    if disable_auto_version:
+        version_method = AutoVersionMethod.none
+
     from latch_cli.services.register import register
 
     register(
         pkg_root,
-        disable_auto_version=disable_auto_version,
+        version_method=version_method,
         remote=remote,
         skip_confirmation=yes,
         open=open,

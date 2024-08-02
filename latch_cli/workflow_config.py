@@ -10,6 +10,12 @@ from pkg_resources import get_distribution
 from latch_cli.constants import latch_constants
 
 
+class AutoVersionMethod(Enum):
+    directory = "directory"
+    git = "git"
+    none = "none"
+
+
 class BaseImageOptions(str, Enum):
     default = "default"
     cuda = "cuda"

@@ -27,6 +27,7 @@ from latch_cli.services.register.utils import (
     upload_image,
 )
 from latch_cli.utils import WorkflowType
+from latch_cli.workflow_config import AutoVersionMethod
 
 
 def _delete_lines(num: int):
@@ -255,7 +256,7 @@ def _recursive_list(directory: Path) -> List[Path]:
 def register(
     pkg_root: str,
     *,
-    disable_auto_version: bool = False,
+    version_method: AutoVersionMethod = AutoVersionMethod.directory,
     remote: bool = False,
     open: bool = False,
     skip_confirmation: bool = False,
@@ -321,7 +322,7 @@ def register(
 
     with _CentromereCtx(
         Path(pkg_root),
-        disable_auto_version=disable_auto_version,
+        version_method=version_method,
         remote=remote,
         metadata_root=metadata_root,
         snakefile=snakefile,
@@ -395,7 +396,9 @@ def register(
             from ...snakemake.serialize import generate_jit_register_code
             from ...snakemake.workflow import build_jit_register_wrapper
 
-            sm_jit_wf = build_jit_register_wrapper(cache_tasks)
+            sm_jit_wf = build_jit_register_wrapper(
+                cache_tasks, ctx.git_commit_hash, ctx.git_is_dirty
+            )
             generate_jit_register_code(
                 sm_jit_wf,
                 ctx.pkg_root,

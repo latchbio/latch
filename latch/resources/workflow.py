@@ -1,10 +1,10 @@
 import inspect
+import os
 from dataclasses import is_dataclass
 from textwrap import dedent
 from typing import Callable, Dict, Union, get_args, get_origin
 
 import click
-import os
 from flytekit import workflow as _workflow
 from flytekit.core.workflow import PythonFunctionWorkflow
 
@@ -97,6 +97,15 @@ def workflow(
                     fg="red",
                 )
                 raise click.exceptions.Exit(1)
+
+        git_hash = os.environ.get("GIT_COMMIT_HASH")
+        is_dirty = os.environ.get("GIT_IS_DIRTY")
+
+        if git_hash is not None:
+            metadata._non_standard["git_commit_hash"] = git_hash
+            metadata._non_standard["git_is_dirty"] = (
+                False if is_dirty is None else bool(is_dirty)
+            )
 
         _inject_metadata(f, metadata)
 
