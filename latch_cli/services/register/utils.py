@@ -124,13 +124,7 @@ def serialize_pkg_in_container(
 ) -> Tuple[List[str], str]:
     assert ctx.dkr_client is not None
 
-    _env = {
-        "LATCH_DKR_REPO": ctx.dkr_repo,
-        "LATCH_VERSION": ctx.version,
-        # rahul: Prevent git import from failing when `git`
-        # executable is not available in the container
-        "GIT_PYTHON_REFRESH": "quiet",
-    }
+    _env = {"LATCH_DKR_REPO": ctx.dkr_repo, "LATCH_VERSION": ctx.version}
     if wf_name_override is not None:
         _env["LATCH_WF_NAME_OVERRIDE"] = wf_name_override
 

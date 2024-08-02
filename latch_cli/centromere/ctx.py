@@ -14,7 +14,6 @@ from docker.transport import SSHHTTPAdapter
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteEntities
 from flytekit.core.workflow import PythonFunctionWorkflow
-from git import GitError, Repo
 from latch_sdk_config.latch import config
 
 import latch_cli.tinyrequests as tinyrequests
@@ -303,9 +302,14 @@ class _CentromereCtx:
             self.version = self.version.strip()
 
             try:
+                from git import GitError, Repo
+
                 repo = Repo(pkg_root)
                 self.git_commit_hash = repo.head.commit.hexsha
                 self.git_is_dirty = repo.is_dirty()
+            except ImportError:
+                # rahul: import will fail if `git` is not installed locally
+                pass
             except GitError:
                 pass
             except Exception as e:
