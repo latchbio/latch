@@ -470,7 +470,9 @@ def generate_jit_register_code(
         from latch_cli.services.register.utils import import_module_by_path
 
         meta = Path("{metadata_path}") / "__init__.py"
-        import_module_by_path(meta)
+        if meta.exists():
+            import_module_by_path(meta)
+
         import latch_metadata
 
         sys.stdout.reconfigure(line_buffering=True)
