@@ -31,6 +31,9 @@ setup(
         "click>=8.0",
         "docker>=7.1.0",
         "paramiko>=3.2.0",
+        # rahul: remove TripleDES deprectation warning by pinning cryptography
+        # https://github.com/paramiko/paramiko/issues/2419
+        "cryptography<43.0.0",
         "scp>=0.14.0",
         "boto3>=1.26.0",
         "tqdm>=4.63.0",
