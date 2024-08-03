@@ -31,6 +31,7 @@ from latch.resources.tasks import nextflow_runtime_task, custom_task
 from latch.types.file import LatchFile
 from latch.types.directory import LatchDir, LatchOutputDir
 from latch.ldata.path import LPath
+from latch.executions import report_nextflow_used_storage
 from latch_cli.nextflow.workflow import get_flag
 from latch_cli.nextflow.utils import _get_execution_name
 from latch_cli.utils import urljoins
@@ -154,6 +155,26 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
                 remote = LPath(urljoins("{log_dir}", name, "nextflow.log"))
                 print(f"Uploading .nextflow.log to {{remote.path}}")
                 remote.upload_from(nextflow_log)
+
+        print("Computing size of workdir... ", end="")
+        try:
+            result = subprocess.run(
+                ['du', '-sb', str(shared_dir)],
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=5 * 60
+            )
+
+            size = int(result.stdout.split()[0])
+            report_nextflow_used_storage(size)
+        except subprocess.TimeoutExpired:
+            print("Failed to compute storage size: Operation timed out after 5 minutes.")
+        except subprocess.CalledProcessError as e:
+            print(f"Failed to compute storage size: {{e.stderr}}")
+        except Exception as e:
+            print(f"Failed to compute storage size: {{e}}")
 
     if failed:
         sys.exit(1)
