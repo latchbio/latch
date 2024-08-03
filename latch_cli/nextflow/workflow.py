@@ -169,6 +169,7 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
 
             size = int(result.stdout.split()[0])
             report_nextflow_used_storage(size)
+            print(f"Done. Workdir size: {{size / 1024 / 1024 / 1024}} GiB")
         except subprocess.TimeoutExpired:
             print("Failed to compute storage size: Operation timed out after 5 minutes.")
         except subprocess.CalledProcessError as e:
