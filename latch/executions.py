@@ -137,7 +137,7 @@ def add_execution_results(results: List[str]):
 
 
 def report_nextflow_used_storage(used_bytes: int):
-    token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", None)
+    token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
     if token is None:
         return
 
