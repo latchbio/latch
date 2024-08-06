@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.50.1 - 2024-08-05
+
+### Added
+
+* Nextflow
+  - Report workdir size on workflow completion
+
 ## 2.50.0 - 2024-08-02
 
 ### Added
