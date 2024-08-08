@@ -1,6 +1,7 @@
 import re
 from pathlib import Path
 from textwrap import dedent
+from typing import Optional
 from urllib.parse import urlparse
 
 import click
@@ -85,8 +86,9 @@ def append_scheme(path: str, *, assume_remote: bool = False) -> str:
 #   latch:///a/b/c => latch://xxx.account/a/b/c
 #   latch://shared/a/b/c => latch://shared.xxx.account/a/b/c
 #   latch://any_other_domain/a/b/c => unchanged
-def append_domain(path: str) -> str:
-    workspace = user_config.workspace_id
+def append_domain(path: str, *, workspace: Optional[int] = None) -> str:
+    if workspace is None:
+        workspace = user_config.workspace_id
 
     parsed = urlparse(path)
     dom = parsed.netloc
@@ -138,13 +140,15 @@ def is_account_relative(path: str) -> bool:
     return match["account_relative"] is not None
 
 
-def normalize_path(path: str, *, assume_remote: bool = False) -> str:
+def normalize_path(
+    path: str, *, assume_remote: bool = False, workspace: Optional[int] = None
+) -> str:
     path = append_scheme(path, assume_remote=assume_remote)
 
     if path.startswith("file://"):
         return path
 
-    return append_domain(path)
+    return append_domain(path, workspace=workspace)
 
 
 auth = re.compile(

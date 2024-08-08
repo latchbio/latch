@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.50.3 - 2024-08-08
+
+### Fixed
+
+* Nextflow
+  - Normalize result paths before publishing results
+
 ## 2.50.2 - 2024-08-07
 
 ### Dependencies
