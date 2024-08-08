@@ -1,14 +1,13 @@
 import os
 import re
 from dataclasses import dataclass
-from typing import List, Optional, Union
+from typing import List, Optional
 
 import click
 import gql
 from latch_sdk_gql.execute import execute
 
-from latch.types.directory import LatchDir
-from latch.types.file import LatchFile
+from latch_cli.utils.path import normalize_path
 
 pod_name_regex = re.compile(
     r"""
@@ -110,7 +109,8 @@ def rename_current_execution(name: str):
 
 def add_execution_results(results: List[str]):
     token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", None)
-    if token is None:
+    workspace_id = os.environ.get("FLYTE_INTERNAL_EXECUTION_PROJECT", None)
+    if token is None or workspace_id is None:
         # noop during local execution / testing
         click.secho(
             "Running in local execution context - skip adding output results.",
@@ -118,6 +118,10 @@ def add_execution_results(results: List[str]):
             italic=True,
         )
         return
+
+    results = [
+        normalize_path(r, workspace=workspace_id, assume_remote=True) for r in results
+    ]
 
     execute(
         gql.gql("""
