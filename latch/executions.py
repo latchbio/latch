@@ -108,8 +108,8 @@ def rename_current_execution(name: str):
 
 
 def add_execution_results(results: List[str]):
-    token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", None)
-    workspace_id = os.environ.get("FLYTE_INTERNAL_EXECUTION_PROJECT", None)
+    token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
+    workspace_id = os.environ.get("FLYTE_INTERNAL_EXECUTION_PROJECT")
     if token is None or workspace_id is None:
         # noop during local execution / testing
         click.secho(

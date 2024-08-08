@@ -23,7 +23,6 @@ Types of changes
 * Nextflow
   - Normalize result paths before publishing results
 
-
 ## 2.50.2 - 2024-08-07
 
 ### Dependencies
