@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.50.5 - 2024-08-12
+
+### Changed
+
+* Fix a bug where GPU template selection wouldn't happen correctly in `latch init`
+
 ## 2.50.4 - 2024-08-09
 
 ### Changed
