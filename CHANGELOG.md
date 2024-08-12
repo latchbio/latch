@@ -18,7 +18,7 @@ Types of changes
 
 ## 2.50.5 - 2024-08-12
 
-### Changed
+### Fixed
 
 * Fix a bug where GPU template selection wouldn't happen correctly in `latch init`
 
