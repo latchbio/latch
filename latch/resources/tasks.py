@@ -47,6 +47,35 @@ from latch_cli.constants import Units
 from .dynamic import DynamicTaskConfig
 
 
+def _get_giant_gpu_pod() -> Pod:
+    """p3.8xlarge on-demand (4x V100 GPUs)"""
+
+    primary_container = V1Container(name="primary")
+    resources = V1ResourceRequirements(
+        requests={
+            "cpu": "32",
+            "memory": "244Gi",
+            "nvidia.com/gpu": "4",
+            "ephemeral-storage": "1500Gi",
+        },
+        limits={
+            "cpu": "32",
+            "memory": "244Gi",
+            "nvidia.com/gpu": "4",
+            "ephemeral-storage": "2000Gi",
+        },
+    )
+    primary_container.resources = resources
+
+    return Pod(
+        pod_spec=V1PodSpec(
+            containers=[primary_container],
+            tolerations=[V1Toleration(effect="NoSchedule", key="ng", value="v100-x4")],
+        ),
+        primary_container_name="primary",
+    )
+
+
 def _get_large_gpu_pod() -> Pod:
     """g5.8xlarge,g5.16xlarge on-demand"""
 
@@ -183,6 +212,9 @@ def _get_small_pod() -> Pod:
         ),
         primary_container_name="primary",
     )
+
+
+giant_gpu_task = functools.partial(task, task_config=_get_giant_gpu_pod())
 
 
 large_gpu_task = functools.partial(task, task_config=_get_large_gpu_pod())
