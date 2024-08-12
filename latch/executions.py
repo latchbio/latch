@@ -1,14 +1,13 @@
 import os
 import re
 from dataclasses import dataclass
-from typing import List, Optional, Union
+from typing import List, Optional
 
 import click
 import gql
 from latch_sdk_gql.execute import execute
 
-from latch.types.directory import LatchDir
-from latch.types.file import LatchFile
+from latch_cli.utils.path import normalize_path
 
 pod_name_regex = re.compile(
     r"""
@@ -109,8 +108,9 @@ def rename_current_execution(name: str):
 
 
 def add_execution_results(results: List[str]):
-    token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", None)
-    if token is None:
+    token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
+    workspace_id = os.environ.get("FLYTE_INTERNAL_EXECUTION_PROJECT")
+    if token is None or workspace_id is None:
         # noop during local execution / testing
         click.secho(
             "Running in local execution context - skip adding output results.",
@@ -119,18 +119,44 @@ def add_execution_results(results: List[str]):
         )
         return
 
+    results = [
+        normalize_path(r, workspace=workspace_id, assume_remote=True) for r in results
+    ]
+
     execute(
         gql.gql("""
-                mutation addExecutionResults(
-                    $argToken: String!,
-                    $argPaths: [String]!
+            mutation addExecutionResults(
+                $argToken: String!,
+                $argPaths: [String]!
+            ) {
+                executionInfoMetadataPublishResults(
+                    input: {argToken: $argToken, argPaths: $argPaths}
                 ) {
-                    executionInfoMetadataPublishResults(
-                        input: {argToken: $argToken, argPaths: $argPaths}
-                    ) {
-                        clientMutationId
-                    }
+                    clientMutationId
                 }
-            """),
+            }
+        """),
         {"argToken": token, "argPaths": results},
+    )
+
+
+def report_nextflow_used_storage(used_bytes: int):
+    token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
+    if token is None:
+        return
+
+    execute(
+        gql.gql("""
+            mutation updateNextflowStorageSize(
+                $argToken: String!,
+                $argUsedStorageBytes: BigInt!
+            ) {
+                nfExecutionInfoUpdateUsedStorageBytes(
+                    input: {argToken: $argToken, argUsedStorageBytes: $argUsedStorageBytes}
+                ) {
+                    clientMutationId
+                }
+            }
+        """),
+        {"argToken": token, "argUsedStorageBytes": used_bytes},
     )

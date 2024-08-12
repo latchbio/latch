@@ -16,6 +16,33 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.50.4 - 2024-08-09
+
+### Changed
+
+* Nextflow
+  - Update `nextflow` base image to version `v1.1.7`
+
+## 2.50.3 - 2024-08-08
+
+### Fixed
+
+* Nextflow
+  - Normalize result paths before publishing results
+
+## 2.50.2 - 2024-08-07
+
+### Dependencies
+
+* lytekit `0.15.10` -> `0.15.11` which parallelizes file downloads from Latch Data
+
+## 2.50.1 - 2024-08-05
+
+### Added
+
+* Nextflow
+  - Report workdir size on workflow completion
+
 ## 2.50.0 - 2024-08-02
 
 ### Added
