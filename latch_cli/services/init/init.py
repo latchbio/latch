@@ -330,17 +330,28 @@ def init(
             )
 
     if template is None:
-        template_func = select_tui(
+        template_choice = select_tui(
             title="Select Workflow Template",
             options=[
-                {"display_name": name, "value": fn} for name, fn in option_map.items()
+                {"display_name": name, "value": (name, fn)}
+                for name, fn in option_map.items()
             ],
         )
+    elif template in template_flag_to_option.keys():
+        choice = template_flag_to_option[template]
+        template_choice = (choice, option_map[choice])
     else:
-        template_func = option_map[template_flag_to_option[template]]
+        click.secho(
+            f"Invalid template choice: {template} - valid choices:"
+            f" {list(template_flag_to_option.keys())}",
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
 
-    if template_func is None:
+    if template_choice is None:
         return False
+
+    (chosen_template, template_func) = template_choice
 
     try:
         pkg_root.mkdir(parents=True)
@@ -359,7 +370,7 @@ def init(
 
     base_image_type = BaseImageOptions[base_image_type_str]
 
-    if template_func == "Empty workflow":
+    if chosen_template == "Empty workflow":
         base_image_type = select_tui(
             title="Select the base docker image to use for the workflow",
             options=[
