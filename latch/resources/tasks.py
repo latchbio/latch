@@ -47,7 +47,36 @@ from latch_cli.constants import Units
 from .dynamic import DynamicTaskConfig
 
 
-def _get_giant_gpu_pod() -> Pod:
+def get_v100_x1_pod() -> Pod:
+    """p3.2xlarge on-demand (1x V100 GPU)"""
+
+    primary_container = V1Container(name="primary")
+    resources = V1ResourceRequirements(
+        requests={
+            "cpu": "8",
+            "memory": "61Gi",
+            "nvidia.com/gpu": "1",
+            "ephemeral-storage": "1500Gi",
+        },
+        limits={
+            "cpu": "8",
+            "memory": "61Gi",
+            "nvidia.com/gpu": "1",
+            "ephemeral-storage": "2000Gi",
+        },
+    )
+    primary_container.resources = resources
+
+    return Pod(
+        pod_spec=V1PodSpec(
+            containers=[primary_container],
+            tolerations=[V1Toleration(effect="NoSchedule", key="ng", value="v100-x1")],
+        ),
+        primary_container_name="primary",
+    )
+
+
+def get_v100_x4_pod() -> Pod:
     """p3.8xlarge on-demand (4x V100 GPUs)"""
 
     primary_container = V1Container(name="primary")
@@ -71,6 +100,35 @@ def _get_giant_gpu_pod() -> Pod:
         pod_spec=V1PodSpec(
             containers=[primary_container],
             tolerations=[V1Toleration(effect="NoSchedule", key="ng", value="v100-x4")],
+        ),
+        primary_container_name="primary",
+    )
+
+
+def get_v100_x8_pod() -> Pod:
+    """p3.16xlarge on-demand (8x V100 GPUs)"""
+
+    primary_container = V1Container(name="primary")
+    resources = V1ResourceRequirements(
+        requests={
+            "cpu": "64",
+            "memory": "488Gi",
+            "nvidia.com/gpu": "8",
+            "ephemeral-storage": "1500Gi",
+        },
+        limits={
+            "cpu": "64",
+            "memory": "488Gi",
+            "nvidia.com/gpu": "8",
+            "ephemeral-storage": "2000Gi",
+        },
+    )
+    primary_container.resources = resources
+
+    return Pod(
+        pod_spec=V1PodSpec(
+            containers=[primary_container],
+            tolerations=[V1Toleration(effect="NoSchedule", key="ng", value="v100-x8")],
         ),
         primary_container_name="primary",
     )
@@ -214,7 +272,9 @@ def _get_small_pod() -> Pod:
     )
 
 
-giant_gpu_task = functools.partial(task, task_config=_get_giant_gpu_pod())
+v100_x1_task = functools.partial(task, task_config=get_v100_x1_pod())
+v100_x4_task = functools.partial(task, task_config=get_v100_x4_pod())
+v100_x8_task = functools.partial(task, task_config=get_v100_x8_pod())
 
 
 large_gpu_task = functools.partial(task, task_config=_get_large_gpu_pod())
