@@ -44,7 +44,16 @@ def cp(
     verbose: bool,
     expand_globs: bool,
     cores: Optional[int] = None,
+    chunk_size_mib: Optional[int] = None,
 ):
+    if chunk_size_mib is not None and chunk_size_mib < 5:
+        click.secho(
+            "The chunk size specified by --chunk-size-mib must be at least 5. You"
+            f" provided `{chunk_size_mib}`",
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
+
     dest_remote = is_remote_path(dest)
 
     for src in srcs:
@@ -63,7 +72,12 @@ def cp(
                 if progress != Progress.none:
                     click.secho(f"Uploading {src}", fg="blue")
                 res = _upload(
-                    src, dest, progress=progress, verbose=verbose, cores=cores
+                    src,
+                    dest,
+                    progress=progress,
+                    verbose=verbose,
+                    cores=cores,
+                    chunk_size_mib=chunk_size_mib,
                 )
                 if progress != Progress.none:
                     click.echo(dedent(f"""
