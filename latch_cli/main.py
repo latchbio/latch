@@ -718,6 +718,11 @@ LDATA COMMANDS
     help="Manually specify number of cores to parallelize over",
     type=int,
 )
+@click.option(
+    "--chunk-size-mib",
+    help="Manually specify the upload chunk size in MiB. Must be >= 5",
+    type=int,
+)
 @requires_login
 def cp(
     src: List[str],
@@ -726,6 +731,7 @@ def cp(
     verbose: bool,
     no_glob: bool,
     cores: Optional[int] = None,
+    chunk_size_mib: Optional[int] = None,
 ):
     """
     Copy files between Latch Data and local, or between two Latch Data locations.
@@ -744,6 +750,7 @@ def cp(
         verbose=verbose,
         expand_globs=not no_glob,
         cores=cores,
+        chunk_size_mib=chunk_size_mib,
     )
 
 

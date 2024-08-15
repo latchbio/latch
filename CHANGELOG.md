@@ -16,6 +16,17 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.50.6 - 2024-08-15
+
+### Added
+
+* The `--chunk-size-mib` to `latch cp` which allows users to configure the chunk size of uploads
+
+### Changed
+
+* Lower the default chunk size for `latch cp` to `64 MiB`
+* `latch cp` now reuses connections for speed
+
 ## 2.50.5 - 2024-08-12
 
 ### Fixed

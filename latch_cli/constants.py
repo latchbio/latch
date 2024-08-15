@@ -25,7 +25,7 @@ class LatchConstants:
     nextflow_latest_version: str = "v1.1.7"
 
     file_max_size: int = 4 * Units.MiB
-    file_chunk_size: int = 256 * Units.MiB
+    file_chunk_size: int = 64 * Units.MiB
 
     # https://docs.aws.amazon.com/AmazonS3/latest/userguide/qfacts.html
     maximum_upload_parts = 10000

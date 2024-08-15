@@ -287,6 +287,9 @@ class _CentromereCtx:
                     raise click.exceptions.Exit(1)
 
                 self.workflow_name = metadata._nextflow_metadata.name
+                name_path = pkg_root / latch_constants.pkg_workflow_name
+                if name_path.exists():
+                    self.workflow_name = name_path.read_text().strip()
 
             assert self.workflow_name is not None
 

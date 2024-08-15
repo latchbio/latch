@@ -59,6 +59,7 @@ def upload(
     verbose: bool,
     create_parents: bool = False,
     cores: Optional[int] = None,
+    chunk_size_mib: Optional[int] = None,
 ) -> UploadResult:
     src_path = Path(src)
     if not src_path.exists():
@@ -168,6 +169,7 @@ def upload(
                                 url_generation_bar,
                                 throttle,
                                 latency_q,
+                                chunk_size_mib,
                             )
                         )
 
@@ -247,7 +249,9 @@ def upload(
                     pbar_index = progress_bars.get_free_task_bar_index()
 
                     start = time.monotonic()
-                    res = start_upload(src_path, normalized)
+                    res = start_upload(
+                        src_path, normalized, chunk_size_mib=chunk_size_mib
+                    )
 
                     if res is not None:
                         progress_bars.set(
@@ -304,6 +308,7 @@ def start_upload(
     progress_bars: Optional[ProgressBars] = None,
     throttle: Optional[Throttle] = None,
     latency_q: Optional["LatencyQueueType"] = None,
+    chunk_size_mib: Optional[int] = None,
 ) -> Optional[StartUploadReturnType]:
     if not src.exists():
         raise ValueError(f"could not find {src}: no such file or link")
@@ -330,12 +335,17 @@ def start_upload(
             " upload size (5TiB)",
         )
 
+    if chunk_size_mib is None:
+        chunk_size = latch_constants.file_chunk_size
+    else:
+        chunk_size = chunk_size_mib * Units.MiB
+
     part_count = min(
         latch_constants.maximum_upload_parts,
-        math.ceil(file_size / latch_constants.file_chunk_size),
+        math.ceil(file_size / chunk_size),
     )
     part_size = max(
-        latch_constants.file_chunk_size,
+        chunk_size,
         math.ceil(file_size / latch_constants.maximum_upload_parts),
     )
 
