@@ -67,6 +67,9 @@ class TinyResponse:
             self._resp.close()
 
 
+_cache: Dict[str, HTTPSConnection] = {}
+
+
 def _req(
     method: str,
     url: str,
@@ -88,16 +91,33 @@ def _req(
         body = _json.dumps(json)
         headers["Content-Type"] = "application/json"
 
-    conn = HTTPSConnection(
-        parts.hostname, parts.port if parts.port is not None else 443, timeout=90
-    )
-    conn.request(
-        method,
-        urlunparse(parts._replace(scheme="", netloc="")),
-        headers=headers,
-        body=body,
-    )
-    resp = conn.getresponse()
+    port = parts.port if parts.port is not None else 443
+    key = f"{parts.hostname}:{port}"
+
+    # ayush: this is not threadsafe (as in the connection could be created
+    # multiple times) but its probably fine
+    if _cache.get(key) is None:
+        _cache[key] = HTTPSConnection(parts.hostname, port, timeout=90)
+
+    retries = 3
+    while True:
+        conn = _cache[key]
+
+        try:
+            conn.request(
+                method,
+                urlunparse(parts._replace(scheme="", netloc="")),
+                headers=headers,
+                body=body,
+            )
+            resp = conn.getresponse()
+            break
+        except ConnectionError as e:
+            _cache[key] = HTTPSConnection(parts.hostname, port, timeout=90)
+
+            retries += 1
+            if retries > 3:
+                raise e
 
     return TinyResponse(resp, url, stream=stream)
 
