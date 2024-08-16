@@ -53,15 +53,15 @@ def get_v100_x1_pod() -> Pod:
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
         requests={
-            "cpu": "8",
-            "memory": "61Gi",
-            "nvidia.com/gpu": "1",
+            "cpu": "7",
+            "memory": "48Gi",
+            "nvidia.com/gpu": 1,
             "ephemeral-storage": "1500Gi",
         },
         limits={
-            "cpu": "8",
-            "memory": "61Gi",
-            "nvidia.com/gpu": "1",
+            "cpu": "7",
+            "memory": "48Gi",
+            "nvidia.com/gpu": 1,
             "ephemeral-storage": "2000Gi",
         },
     )
@@ -72,6 +72,13 @@ def get_v100_x1_pod() -> Pod:
             containers=[primary_container],
             tolerations=[V1Toleration(effect="NoSchedule", key="ng", value="v100-x1")],
         ),
+        annotations={
+            "io.kubernetes.cri-o.userns-mode": (
+                "private:uidmapping=0:1048576:65536;gidmapping=0:1048576:65536"
+            ),
+            "cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
+            "io.kubernetes.cri-o.Devices": "/dev/fuse,/dev/dri/card0,/dev/dri/renderD128,/dev/nvidia0,/dev/nvidiactl,/dev/nvidia-modeset,/dev/nvidia-uvm,/dev/nvidia-uvm-tools,/dev/vga_arbiter",
+        },
         primary_container_name="primary",
     )
 
@@ -82,15 +89,15 @@ def get_v100_x4_pod() -> Pod:
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
         requests={
-            "cpu": "32",
-            "memory": "244Gi",
-            "nvidia.com/gpu": "4",
+            "cpu": "30",
+            "memory": "230Gi",
+            "nvidia.com/gpu": 4,
             "ephemeral-storage": "1500Gi",
         },
         limits={
-            "cpu": "32",
-            "memory": "244Gi",
-            "nvidia.com/gpu": "4",
+            "cpu": "30",
+            "memory": "230Gi",
+            "nvidia.com/gpu": 4,
             "ephemeral-storage": "2000Gi",
         },
     )
@@ -102,6 +109,18 @@ def get_v100_x4_pod() -> Pod:
             tolerations=[V1Toleration(effect="NoSchedule", key="ng", value="v100-x4")],
         ),
         primary_container_name="primary",
+        annotations={
+            "io.kubernetes.cri-o.userns-mode": (
+                "private:uidmapping=0:1048576:65536;gidmapping=0:1048576:65536"
+            ),
+            "cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
+            "io.kubernetes.cri-o.Devices": (
+                "/dev/fuse,/dev/dri/card0,/dev/dri/card1,/dev/dri/card2,/dev/dri/card3,"
+                "/dev/dri/renderD128,/dev/dri/renderD129,/dev/dri/renderD130,/dev/dri/renderD131,"
+                "/dev/nvidia0,/dev/nvidia1,/dev/nvidia2,/dev/nvidia3,"
+                "/dev/nvidiactl,/dev/nvidia-modeset,/dev/nvidia-uvm,/dev/nvidia-uvm-tools,/dev/vga_arbiter"
+            ),
+        },
     )
 
 
@@ -111,15 +130,15 @@ def get_v100_x8_pod() -> Pod:
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
         requests={
-            "cpu": "64",
-            "memory": "488Gi",
-            "nvidia.com/gpu": "8",
+            "cpu": "62",
+            "memory": "400Gi",
+            "nvidia.com/gpu": 8,
             "ephemeral-storage": "1500Gi",
         },
         limits={
-            "cpu": "64",
-            "memory": "488Gi",
-            "nvidia.com/gpu": "8",
+            "cpu": "62",
+            "memory": "400Gi",
+            "nvidia.com/gpu": 8,
             "ephemeral-storage": "2000Gi",
         },
     )
@@ -131,6 +150,18 @@ def get_v100_x8_pod() -> Pod:
             tolerations=[V1Toleration(effect="NoSchedule", key="ng", value="v100-x8")],
         ),
         primary_container_name="primary",
+        annotations={
+            "io.kubernetes.cri-o.userns-mode": (
+                "private:uidmapping=0:1048576:65536;gidmapping=0:1048576:65536"
+            ),
+            "cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
+            "io.kubernetes.cri-o.Devices": (
+                "/dev/fuse,/dev/dri/card0,/dev/dri/card1,/dev/dri/card2,/dev/dri/card3,/dev/dri/card4,/dev/dri/card5,/dev/dri/card6,/dev/dri/card7,"
+                "/dev/dri/renderD128,/dev/dri/renderD129,/dev/dri/renderD130,/dev/dri/renderD131,/dev/dri/renderD132,/dev/dri/renderD133,/dev/dri/renderD134,/dev/dri/renderD135,"
+                "/dev/nvidia0,/dev/nvidia1,/dev/nvidia2,/dev/nvidia3,/dev/nvidia4,/dev/nvidia5,/dev/nvidia6,/dev/nvidia7,"
+                "/dev/nvidiactl,/dev/nvidia-modeset,/dev/nvidia-uvm,/dev/nvidia-uvm-tools,/dev/vga_arbiter"
+            ),
+        },
     )
 
 
