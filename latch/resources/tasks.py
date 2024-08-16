@@ -47,6 +47,124 @@ from latch_cli.constants import Units
 from .dynamic import DynamicTaskConfig
 
 
+def get_v100_x1_pod() -> Pod:
+    """p3.2xlarge on-demand (1x V100 GPU)"""
+
+    primary_container = V1Container(name="primary")
+    resources = V1ResourceRequirements(
+        requests={
+            "cpu": "7",
+            "memory": "48Gi",
+            "nvidia.com/gpu": 1,
+            "ephemeral-storage": "1500Gi",
+        },
+        limits={
+            "cpu": "7",
+            "memory": "48Gi",
+            "nvidia.com/gpu": 1,
+            "ephemeral-storage": "2000Gi",
+        },
+    )
+    primary_container.resources = resources
+
+    return Pod(
+        pod_spec=V1PodSpec(
+            containers=[primary_container],
+            tolerations=[V1Toleration(effect="NoSchedule", key="ng", value="v100-x1")],
+        ),
+        annotations={
+            "io.kubernetes.cri-o.userns-mode": (
+                "private:uidmapping=0:1048576:65536;gidmapping=0:1048576:65536"
+            ),
+            "cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
+            "io.kubernetes.cri-o.Devices": "/dev/fuse,/dev/dri/card0,/dev/dri/renderD128,/dev/nvidia0,/dev/nvidiactl,/dev/nvidia-modeset,/dev/nvidia-uvm,/dev/nvidia-uvm-tools,/dev/vga_arbiter",
+        },
+        primary_container_name="primary",
+    )
+
+
+def get_v100_x4_pod() -> Pod:
+    """p3.8xlarge on-demand (4x V100 GPUs)"""
+
+    primary_container = V1Container(name="primary")
+    resources = V1ResourceRequirements(
+        requests={
+            "cpu": "30",
+            "memory": "230Gi",
+            "nvidia.com/gpu": 4,
+            "ephemeral-storage": "1500Gi",
+        },
+        limits={
+            "cpu": "30",
+            "memory": "230Gi",
+            "nvidia.com/gpu": 4,
+            "ephemeral-storage": "2000Gi",
+        },
+    )
+    primary_container.resources = resources
+
+    return Pod(
+        pod_spec=V1PodSpec(
+            containers=[primary_container],
+            tolerations=[V1Toleration(effect="NoSchedule", key="ng", value="v100-x4")],
+        ),
+        primary_container_name="primary",
+        annotations={
+            "io.kubernetes.cri-o.userns-mode": (
+                "private:uidmapping=0:1048576:65536;gidmapping=0:1048576:65536"
+            ),
+            "cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
+            "io.kubernetes.cri-o.Devices": (
+                "/dev/fuse,/dev/dri/card0,/dev/dri/card1,/dev/dri/card2,/dev/dri/card3,"
+                "/dev/dri/renderD128,/dev/dri/renderD129,/dev/dri/renderD130,/dev/dri/renderD131,"
+                "/dev/nvidia0,/dev/nvidia1,/dev/nvidia2,/dev/nvidia3,"
+                "/dev/nvidiactl,/dev/nvidia-modeset,/dev/nvidia-uvm,/dev/nvidia-uvm-tools,/dev/vga_arbiter"
+            ),
+        },
+    )
+
+
+def get_v100_x8_pod() -> Pod:
+    """p3.16xlarge on-demand (8x V100 GPUs)"""
+
+    primary_container = V1Container(name="primary")
+    resources = V1ResourceRequirements(
+        requests={
+            "cpu": "62",
+            "memory": "400Gi",
+            "nvidia.com/gpu": 8,
+            "ephemeral-storage": "1500Gi",
+        },
+        limits={
+            "cpu": "62",
+            "memory": "400Gi",
+            "nvidia.com/gpu": 8,
+            "ephemeral-storage": "2000Gi",
+        },
+    )
+    primary_container.resources = resources
+
+    return Pod(
+        pod_spec=V1PodSpec(
+            containers=[primary_container],
+            tolerations=[V1Toleration(effect="NoSchedule", key="ng", value="v100-x8")],
+        ),
+        primary_container_name="primary",
+        annotations={
+            "io.kubernetes.cri-o.userns-mode": (
+                "private:uidmapping=0:1048576:65536;gidmapping=0:1048576:65536"
+            ),
+            "cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
+            "io.kubernetes.cri-o.Devices": (
+                "/dev/fuse,/dev/dri/card0,/dev/dri/card1,/dev/dri/card2,/dev/dri/card3,/dev/dri/card4,/dev/dri/card5,/dev/dri/card6,/dev/dri/card7,"
+                "/dev/dri/renderD128,/dev/dri/renderD129,/dev/dri/renderD130,/dev/dri/renderD131,/dev/dri/renderD132,/dev/dri/renderD133,/dev/dri/renderD134,/dev/dri/renderD135,"
+                "/dev/nvidia0,/dev/nvidia1,/dev/nvidia2,/dev/nvidia3,/dev/nvidia4,/dev/nvidia5,/dev/nvidia6,/dev/nvidia7,"
+                "/dev/nvidiactl,/dev/nvidia-modeset,/dev/nvidia-uvm,/dev/nvidia-uvm-tools,/dev/vga_arbiter"
+            ),
+        },
+    )
+
+
 def _get_large_gpu_pod() -> Pod:
     """g5.8xlarge,g5.16xlarge on-demand"""
 
@@ -183,6 +301,11 @@ def _get_small_pod() -> Pod:
         ),
         primary_container_name="primary",
     )
+
+
+v100_x1_task = functools.partial(task, task_config=get_v100_x1_pod())
+v100_x4_task = functools.partial(task, task_config=get_v100_x4_pod())
+v100_x8_task = functools.partial(task, task_config=get_v100_x8_pod())
 
 
 large_gpu_task = functools.partial(task, task_config=_get_large_gpu_pod())

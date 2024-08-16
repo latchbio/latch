@@ -16,6 +16,15 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.51.0 - 2024-08-16
+
+### Added
+
+* New task annotations for V100 GPU enabled nodes
+  * `@v100_x1_task`: 1 V100 GPU
+  * `@v100_x4_task`: 4 V100 GPUs
+  * `@v100_x8_task`: 8 V100 GPUs
+
 ## 2.50.6 - 2024-08-15
 
 ### Added
