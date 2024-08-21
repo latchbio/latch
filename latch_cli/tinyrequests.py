@@ -67,9 +67,6 @@ class TinyResponse:
             self._resp.close()
 
 
-_cache: Dict[str, HTTPSConnection] = {}
-
-
 def _req(
     method: str,
     url: str,
@@ -92,16 +89,15 @@ def _req(
         headers["Content-Type"] = "application/json"
 
     port = parts.port if parts.port is not None else 443
-    key = f"{parts.hostname}:{port}"
 
     # ayush: this is not threadsafe (as in the connection could be created
     # multiple times) but its probably fine
-    if _cache.get(key) is None:
-        _cache[key] = HTTPSConnection(parts.hostname, port, timeout=90)
+
+    # todo(rteqs): removed caching single connections, implement a connection pool instead.
 
     retries = 3
     while True:
-        conn = _cache[key]
+        conn = HTTPSConnection(parts.hostname, port, timeout=90)
 
         try:
             conn.request(
@@ -113,8 +109,6 @@ def _req(
             resp = conn.getresponse()
             break
         except ConnectionError as e:
-            _cache[key] = HTTPSConnection(parts.hostname, port, timeout=90)
-
             retries += 1
             if retries > 3:
                 raise e
@@ -132,8 +126,7 @@ def request(
     stream: bool = False,
     num_retries: int = 3,
 ) -> TinyResponse:
-    """
-    Send HTTP request. Retry on 500s or ConnectionErrors.
+    """Send HTTP request. Retry on 500s or ConnectionErrors.
     Implements exponential backoff between retries.
     """
     err = None
