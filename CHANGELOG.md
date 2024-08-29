@@ -16,6 +16,18 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.51.2 - 2024-08-27
+
+### Fixed
+
+* Bump lytekit version to fix download of empty files
+
+## 2.51.1 - 2024-08-21
+
+### Fixed
+
+* Remove caching from `tinyrequests` module
+
 ## 2.51.0 - 2024-08-16
 
 ### Added
