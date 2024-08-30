@@ -2,38 +2,24 @@ import os
 import sys
 import termios
 import tty
-from typing import Any, Callable, Generic, List, Optional, Tuple, TypeVar
+from functools import wraps
+from typing import Callable, List, Optional, Tuple, TypeVar
 
-from typing_extensions import TypedDict
+from typing_extensions import ParamSpec
 
 from latch_cli.click_utils import AnsiCodes
 
+from . import common
 
-def buffered_print() -> Tuple[Callable, Callable]:
-    buffer = []
-
-    def __print(*args):
-        for arg in args:
-            buffer.append(arg)
-
-    def __show():
-        nonlocal buffer
-        print("".join(buffer), flush=True, end="")
-        buffer = []
-
-    return __print, __show
-
-
-# Allows for exactly one print per render, removing any weird flashing
-# behavior and also speeding things up considerably
-_print, _show = buffered_print()
+P = ParamSpec("P")
+T = TypeVar("T")
 
 
 def clear(k: int):
     """
-    Clear `k` lines below the cursor, returning the cursor to its original position
+    Clear `k` lines below the cursor, returning the cursor to the start of its original line
     """
-    _print(f"\x1b[2K\x1b[1E" * (k) + f"\x1b[{k}F")
+    print(f"\x1b[2K\x1b[1E" * (k) + f"\x1b[{k}F")
 
 
 def draw_box(
@@ -52,15 +38,15 @@ def draw_box(
 
 
 def clear_screen():
-    _print("\x1b[2J")
+    print("\x1b[2J")
 
 
 def remove_cursor():
-    _print("\x1b[?25l")
+    print("\x1b[?25l")
 
 
 def reveal_cursor():
-    _print("\x1b[?25h")
+    print("\x1b[?25h")
 
 
 def move_cursor(pos: Tuple[int, int]):
@@ -70,55 +56,45 @@ def move_cursor(pos: Tuple[int, int]):
     x, y = pos
     if x < 0 or y < 0:
         return
-    _print(f"\x1b[{y};{x}H")
+    print(f"\x1b[{y};{x}H")
 
 
 def move_cursor_up(n: int):
     if n <= 0:
         return
-    _print(f"\x1b[{n}A")
+    print(f"\x1b[{n}A")
 
 
 def line_up(n: int):
     """Moves to the start of the destination line"""
     if n <= 0:
         return
-    _print(f"\x1b[{n}F")
+    print(f"\x1b[{n}F")
 
 
 def move_cursor_down(n: int):
     if n <= 0:
         return
-    _print(f"\x1b[{n}B")
+    print(f"\x1b[{n}B")
 
 
 def line_down(n: int):
     """Moves to the start of the destination line"""
     if n <= 0:
         return
-    _print(f"\x1b[{n}E")
+    print(f"\x1b[{n}E")
 
 
 def move_cursor_right(n: int):
     if n <= 0:
         return
-    _print(f"\x1b[{n}C")
+    print(f"\x1b[{n}C")
 
 
 def move_cursor_left(n: int):
     if n <= 0:
         return
-    _print(f"\x1b[{n}D")
-
-
-def current_cursor_position() -> Tuple[int, int]:
-    res = b""
-    sys.stdout.write("\x1b[6n")
-    sys.stdout.flush()
-    while not res.endswith(b"R"):
-        res += sys.stdin.buffer.read(1)
-    y, x = res.strip(b"\x1b[R").split(b";")
-    return int(x), int(y)
+    print(f"\x1b[{n}D")
 
 
 def draw_vertical_line(
@@ -136,16 +112,16 @@ def draw_vertical_line(
         return
 
     if color is not None:
-        _print(color)
+        print(color)
     sep = "\x1b[1A" if up else "\x1b[1B"
     for i in range(height):
         if i == 0 and make_corner:
             corner = "\u2514" if up else "\u2510"
-            _print(f"{corner}\x1b[1D{sep}")
+            print(f"{corner}\x1b[1D{sep}")
         else:
-            _print(f"\u2502\x1b[1D{sep}")
+            print(f"\u2502\x1b[1D{sep}")
     if color is not None:
-        _print("\x1b[0m")
+        print("\x1b[0m")
 
 
 def draw_horizontal_line(
@@ -163,16 +139,30 @@ def draw_horizontal_line(
         return
 
     if color is not None:
-        _print(color)
+        print(color)
     sep = "\x1b[2D" if left else ""
     for i in range(width):
         if i == 0 and make_corner:
             corner = "\u2518" if left else "\u250c"
-            _print(f"{corner}{sep}")
+            print(f"{corner}{sep}")
         else:
-            _print(f"\u2500{sep}")
+            print(f"\u2500{sep}")
     if color is not None:
-        _print("\x1b[0m")
+        print("\x1b[0m")
+
+
+def raw_input(f: Callable[P, T]) -> Callable[P, T]:
+    @wraps(f)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+        old_settings = termios.tcgetattr(sys.stdin.fileno())
+        tty.setraw(sys.stdin.fileno())
+
+        try:
+            return f(*args, **kwargs)
+        finally:
+            termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, old_settings)
+
+    return wrapper
 
 
 def read_next_byte() -> bytes:
@@ -196,16 +186,9 @@ def read_bytes(num_bytes: int) -> bytes:
     return result
 
 
-T = TypeVar("T")
-
-
-class SelectOption(TypedDict, Generic[T]):
-    display_name: str
-    value: T
-
-
+@raw_input
 def select_tui(
-    title: str, options: List[SelectOption[T]], clear_terminal: bool = True
+    title: str, options: List[common.SelectOption[T]], clear_terminal: bool = True
 ) -> Optional[T]:
     """
     Renders a terminal UI that allows users to select one of the options
@@ -230,7 +213,7 @@ def select_tui(
         if curr_selected < 0 or curr_selected >= len(options):
             curr_selected = 0
 
-        _print(title)
+        print(title)
         line_down(2)
 
         num_lines_rendered = 4  # 4 "extra" lines for header + footer
@@ -246,23 +229,20 @@ def select_tui(
 
                 prefix = indent[:-2] + "> "
 
-                _print(f"{color}{bold}{prefix}{name}{reset}\x1b[1E")
+                print(f"{color}{bold}{prefix}{name}{reset}\x1b[1E")
             else:
-                _print(f"{indent}{name}\x1b[1E")
+                print(f"{indent}{name}\x1b[1E")
             num_lines_rendered += 1
 
         line_down(1)
 
         control_str = "[ARROW-KEYS] Navigate\t[ENTER] Select\t[Q] Quit"
-        _print(control_str)
+        print(control_str)
         line_up(num_lines_rendered - 1)
 
-        _show()
+        common.show()
 
         return num_lines_rendered
-
-    old_settings = termios.tcgetattr(sys.stdin.fileno())
-    tty.setraw(sys.stdin.fileno())
 
     curr_selected = 0
     start_index = 0
@@ -318,5 +298,4 @@ def select_tui(
     finally:
         clear(num_lines_rendered)
         reveal_cursor()
-        _show()
-        termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, old_settings)
+        common.show()

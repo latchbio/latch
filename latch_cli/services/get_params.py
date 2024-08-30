@@ -45,15 +45,8 @@ _primitive_table = {
     bool: False,
 }
 
-# TODO(ayush): fix this to
-# (1) support records,
-# (2) support fully qualified workflow names,
-# (note from kenny) - pretty sure you intend to support the opposite,
-# fqn are supported by default, address when you get to this todo
-# (3) show a message indicating the generated filename,
-# (4) optionally specify the output filename
 
-
+# todo(ayush): delete this - instead potentially generate json from front end
 def get_params(wf_name: str, wf_version: Optional[str] = None):
     """Constructs a parameter map for a workflow given its name and an optional
     version.

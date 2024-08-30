@@ -4,15 +4,14 @@ import json
 import os
 import signal
 import sys
-import termios
-import tty
-from typing import Generic, Literal, Optional, Tuple, TypedDict, TypeVar, Union
+from typing import Literal, Optional, TypedDict, Union
 from urllib.parse import urljoin, urlparse
 
 import websockets.client as websockets
 from latch_sdk_config.latch import NUCLEUS_URL
 from typing_extensions import TypeAlias
 
+from latch_cli.menus import raw_input
 from latch_cli.services.execute.utils import (
     ContainerNode,
     EGNNode,
@@ -174,6 +173,7 @@ async def connect(egn_info: EGNNode, container_info: Optional[ContainerNode]):
             pass
 
 
+@raw_input
 def exec(
     execution_id: Optional[str] = None,
     egn_id: Optional[str] = None,
@@ -186,10 +186,4 @@ def exec(
     egn_info = get_egn_info(execution_info, egn_id)
     container_info = get_container_info(egn_info, container_index)
 
-    old_settings_stdin = termios.tcgetattr(sys.stdin.fileno())
-    tty.setraw(sys.stdin)
-
-    try:
-        asyncio.run(connect(egn_info, container_info))
-    finally:
-        termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, old_settings_stdin)
+    asyncio.run(connect(egn_info, container_info))

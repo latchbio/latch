@@ -1,7 +1,3 @@
-import os
-import sys
-import termios
-import tty
 import webbrowser
 from pathlib import Path
 from typing import List
@@ -50,12 +46,15 @@ def preview(pkg_root: Path):
 
     wf = list(wfs.values())[0]
     if len(wfs) > 1:
-        wf = wfs[
-            _select_workflow_tui(
-                title="Select which workflow to preview",
-                options=list(wfs.keys()),
-            )
-        ]
+        wf = menus.select_tui(
+            title="Select which workflow to preview",
+            options=[
+                menus.SelectOption(display_name=k, value=v) for k, v in wfs.items()
+            ],
+        )
+
+    if wf is None:
+        return
 
     resp = post(
         url=config.api.workflow.preview,
@@ -70,115 +69,3 @@ def preview(pkg_root: Path):
 
     url = f"{config.console_url}/preview/parameters"
     webbrowser.open(url)
-
-
-# TODO(ayush): abstract this logic in a unified interface that all tui commands use
-def _select_workflow_tui(title: str, options: List[str], clear_terminal: bool = True):
-    """
-    Renders a terminal UI that allows users to select one of the options
-    listed in `options`
-
-    Args:
-        title: The title of the selection window.
-        options: A list of names for each of the options.
-        clear_terminal: Whether or not to clear the entire terminal window
-            before displaying - default False
-    """
-
-    if len(options) == 0:
-        raise ValueError("No options given")
-
-    def render(
-        curr_selected: int,
-        start_index: int = 0,
-        max_per_page: int = 10,
-        indent: str = "    ",
-    ) -> int:
-        if curr_selected < 0 or curr_selected >= len(options):
-            curr_selected = 0
-
-        menus._print(title)
-        menus.line_down(2)
-
-        num_lines_rendered = 4  # 4 "extra" lines for header + footer
-
-        for i in range(start_index, start_index + max_per_page):
-            if i >= len(options):
-                break
-            name = options[i]
-            if i == curr_selected:
-                color = "\x1b[38;5;40m"
-                bold = "\x1b[1m"
-                reset = "\x1b[0m"
-                menus._print(f"{indent}{color}{bold}{name}{reset}\x1b[1E")
-            else:
-                menus._print(f"{indent}{name}\x1b[1E")
-            num_lines_rendered += 1
-
-        menus.line_down(1)
-
-        control_str = "[ARROW-KEYS] Navigate\t[ENTER] Select\t[Q] Quit"
-        menus._print(control_str)
-        menus.line_up(num_lines_rendered - 1)
-
-        menus._show()
-
-        return num_lines_rendered
-
-    old_settings = termios.tcgetattr(sys.stdin.fileno())
-    tty.setraw(sys.stdin.fileno())
-
-    curr_selected = 0
-    start_index = 0
-    _, term_height = os.get_terminal_size()
-    menus.remove_cursor()
-
-    if not clear_terminal:
-        _, curs_height = menus.current_cursor_position()
-        max_per_page = term_height - curs_height - 4
-    else:
-        menus.clear_screen()
-        menus.move_cursor((0, 0))
-        max_per_page = term_height - 4
-
-    num_lines_rendered = render(
-        curr_selected,
-        start_index=start_index,
-        max_per_page=max_per_page,
-    )
-
-    try:
-        while True:
-            b = menus.read_bytes(1)
-            if b == b"\r":
-                return options[curr_selected]
-            elif b == b"\x1b":
-                b = menus.read_bytes(2)
-                if b == b"[A":  # Up Arrow
-                    curr_selected = max(curr_selected - 1, 0)
-                    if (
-                        curr_selected - start_index < max_per_page // 2
-                        and start_index > 0
-                    ):
-                        start_index -= 1
-                elif b == b"[B":  # Down Arrow
-                    curr_selected = min(curr_selected + 1, len(options) - 1)
-                    if (
-                        curr_selected - start_index > max_per_page // 2
-                        and start_index < len(options) - max_per_page
-                    ):
-                        start_index += 1
-                else:
-                    continue
-            menus.clear(num_lines_rendered)
-            num_lines_rendered = render(
-                curr_selected,
-                start_index=start_index,
-                max_per_page=max_per_page,
-            )
-    except KeyboardInterrupt: ...
-    finally:
-        menus.clear(num_lines_rendered)
-        menus.reveal_cursor()
-        menus._show()
-        termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, old_settings)
