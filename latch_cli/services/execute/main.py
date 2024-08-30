@@ -4,8 +4,6 @@ import json
 import os
 import signal
 import sys
-import termios
-import tty
 from typing import Generic, Literal, Optional, Tuple, TypedDict, TypeVar, Union
 from urllib.parse import urljoin, urlparse
 
@@ -185,6 +183,9 @@ def exec(
 
     egn_info = get_egn_info(execution_info, egn_id)
     container_info = get_container_info(egn_info, container_index)
+
+    import termios
+    import tty
 
     old_settings_stdin = termios.tcgetattr(sys.stdin.fileno())
     tty.setraw(sys.stdin)

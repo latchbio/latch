@@ -1,8 +1,6 @@
 import os
 import sys
-import termios
 import textwrap
-import tty
 from pathlib import Path
 from typing import Dict, List
 
@@ -50,12 +48,10 @@ def get_executions():
     ]
 
     for execution_data in sorted(data.values(), key=lambda x: -int(x["id"])):
-        options.append(
-            {
-                **execution_data,
-                "workflow_tagged": f'{execution_data["workflow_name"]}/{execution_data["workflow_version"]}',
-            }
-        )
+        options.append({
+            **execution_data,
+            "workflow_tagged": f'{execution_data["workflow_name"]}/{execution_data["workflow_version"]}',
+        })
 
     _all_executions(
         title="All Executions",
@@ -142,6 +138,9 @@ def _all_executions(
         menus._show()
         return max_row_len
 
+    import termios
+    import tty
+
     old_settings = termios.tcgetattr(sys.stdin.fileno())
     tty.setraw(sys.stdin.fileno())
 
@@ -223,7 +222,8 @@ def _all_executions(
                 prev = (curr_selected, hor_index, term_width, term_height)
                 menus.clear_screen()
                 max_row_len = render(curr_selected, hor_index, term_width, term_height)
-    except KeyboardInterrupt: ...
+    except KeyboardInterrupt:
+        ...
     finally:
         menus.clear_screen()
         menus.reveal_cursor()
@@ -316,7 +316,8 @@ def _execution_dashboard(execution_data: Dict[str, str], workflow_graph: Dict):
                 menus.clear_screen()
                 prev = (curr_selected, term_width, term_height)
                 render(curr_selected, term_width, term_height)
-    except KeyboardInterrupt: ...
+    except KeyboardInterrupt:
+        ...
     finally:
         menus.clear_screen()
         menus.move_cursor((0, 0))
@@ -452,7 +453,8 @@ def _log_window(execution_data, fixed_workflow_graph: list, selected: int):
                 menus.clear_screen()
                 prev_term_dims = (vert_index, hor_index, term_width, term_height)
                 render(vert_index, hor_index, term_width, term_height)
-    except KeyboardInterrupt: ...
+    except KeyboardInterrupt:
+        ...
     finally:
         log_sched.shutdown()
         log_file.unlink(missing_ok=True)
@@ -513,7 +515,8 @@ def _abort_modal(execution_data):
             if prev_term_dims != (term_width, term_height):
                 prev_term_dims = (term_width, term_height)
                 render(term_width, term_height)
-    except KeyboardInterrupt: ...
+    except KeyboardInterrupt:
+        ...
     finally:
         menus.clear_screen()
         menus.move_cursor((0, 0))
