@@ -54,7 +54,7 @@ def initialize() -> str:
 
     print("Provisioning shared storage volume... ", end="")
     resp = requests.post(
-        "http://nf-dispatcher-service.flyte.svc.cluster.local/provision-storage",
+        "http://nf-dispatcher-service.flyte.svc.cluster.local/provision-storage-ofs",
         headers=headers,
         json={{
             "storage_expiration_hours": {storage_expiration_hours},
@@ -72,7 +72,11 @@ def initialize() -> str:
 
 @nextflow_runtime_task(cpu={cpu}, memory={memory}, storage_gib={storage_gib})
 def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
-    shared_dir = Path("/nf-workdir")
+    token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
+    if token is None:
+        raise RuntimeError("failed to get execution token")
+
+    shared_dir = Path(f"/nf-workdir/{{token}}")
 
 {output_shortcuts}
 {samplesheet_constructors}
@@ -225,7 +229,9 @@ def get_flag(name: str, val: Any) -> List[str]:
 
 def generate_nextflow_config(pkg_root: Path):
     config_path = Path(pkg_root) / "latch.config"
-    config_path.write_text(dedent("""\
+    config_path.write_text(
+        dedent(
+            """\
         process {
             executor = 'k8s'
         }
@@ -235,7 +241,9 @@ def generate_nextflow_config(pkg_root: Path):
                 anonymous = true
             }
         }
-        """))
+        """
+        )
+    )
 
     click.secho(f"Nextflow Latch config written to {config_path}", fg="green")
 
@@ -251,11 +259,13 @@ def get_results_code_block(parameters: Dict[str, NextflowParameter]) -> str:
     if len(output_shortcuts) == 0:
         return ""
 
-    code_block = dedent("""
+    code_block = dedent(
+        """
     from latch.executions import add_execution_results
 
     results = []
-    """)
+    """
+    )
 
     for var_name, sub_path in output_shortcuts:
         code_block += dedent(
@@ -317,15 +327,19 @@ def generate_nextflow_workflow(
             if isinstance(param.default, Enum):
                 defaults.append((sig, param.default))
             elif param.type in {LatchDir, LatchFile}:
-                defaults.append((
-                    sig,
-                    f"{param.type.__name__}('{param.default._raw_remote_path}')",
-                ))
+                defaults.append(
+                    (
+                        sig,
+                        f"{param.type.__name__}('{param.default._raw_remote_path}')",
+                    )
+                )
             elif param.type is LatchOutputDir:
-                defaults.append((
-                    sig,
-                    f"LatchOutputDir('{param.default._raw_remote_path}')",
-                ))
+                defaults.append(
+                    (
+                        sig,
+                        f"LatchOutputDir('{param.default._raw_remote_path}')",
+                    )
+                )
             else:
                 defaults.append((sig, repr(param.default)))
         else:
@@ -374,10 +388,12 @@ def generate_nextflow_workflow(
         if about_page_path is not None:
             if not (about_page_path.exists() and about_page_path.is_file()):
                 click.secho(
-                    dedent(f"""
+                    dedent(
+                        f"""
                     The about page path provided in the metadata is not a valid file:
                     {about_page_path}
-                    """),
+                    """
+                    ),
                     fg="red",
                 )
                 raise click.exceptions.Exit(1)
