@@ -1,6 +1,5 @@
 import webbrowser
 from pathlib import Path
-from typing import List
 
 from flytekit.core.workflow import PythonFunctionWorkflow
 from google.protobuf.json_format import MessageToJson
