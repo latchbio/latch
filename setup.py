@@ -13,7 +13,7 @@ if cur_ver < (3, 8) or cur_ver > (3, 11):
 
 setup(
     name="latch",
-    version="v2.51.2",
+    version="v2.52.0",
     author_email="kenny@latch.bio",
     description="The Latch SDK",
     packages=find_packages(),
@@ -31,7 +31,7 @@ setup(
         "click>=8.0",
         "docker>=7.1.0",
         "paramiko>=3.2.0",
-        # rahul: remove TripleDES deprectation warning by pinning cryptography
+        # rahul: remove TripleDES deprecation warning by pinning cryptography
         # https://github.com/paramiko/paramiko/issues/2419
         "cryptography<43.0.0",
         "scp>=0.14.0",

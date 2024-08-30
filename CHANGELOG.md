@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.52.0 - 2024-08-30
+
+### Fixed
+
+* Make `latch cp` work on Windows without WSL
+
 ## 2.51.2 - 2024-08-27
 
 ### Fixed

@@ -46,7 +46,8 @@ class ProgressBars:
             get_progress_bar() for _ in range(num_task_bars)
         ]
         self.free_indices = {i for i in range(num_task_bars)}
-        self.task_bar_sema = BoundedSemaphore(num_task_bars)
+        if num_task_bars > 0:
+            self.task_bar_sema = BoundedSemaphore(num_task_bars)
 
         self.usage: Dict[str, int] = {}
 
