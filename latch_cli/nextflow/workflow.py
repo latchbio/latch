@@ -72,7 +72,7 @@ def initialize() -> str:
 
 @nextflow_runtime_task(cpu={cpu}, memory={memory}, storage_gib={storage_gib})
 def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
-    shared_dir = Path(f"/nf-workdir")
+    shared_dir = Path("/nf-workdir")
 
 {output_shortcuts}
 {samplesheet_constructors}
