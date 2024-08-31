@@ -72,11 +72,7 @@ def initialize() -> str:
 
 @nextflow_runtime_task(cpu={cpu}, memory={memory}, storage_gib={storage_gib})
 def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
-    token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
-    if token is None:
-        raise RuntimeError("failed to get execution token")
-
-    shared_dir = Path(f"/nf-workdir/{{token}}")
+    shared_dir = Path(f"/nf-workdir")
 
 {output_shortcuts}
 {samplesheet_constructors}
