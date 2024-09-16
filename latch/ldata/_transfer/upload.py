@@ -16,7 +16,6 @@ from latch_sdk_config.latch import config as latch_config
 from typing_extensions import TypeAlias
 
 from latch.ldata.type import LatchPathError, LDataNodeType
-from latch_cli import tinyrequests
 from latch_cli.constants import Units, latch_constants
 from latch_cli.utils import get_auth_header, urljoins, with_si_suffix
 from latch_cli.utils.path import normalize_path
@@ -25,7 +24,7 @@ from .manager import TransferStateManager
 from .node import get_node_data
 from .progress import Progress, ProgressBars
 from .throttle import Throttle
-from .utils import get_max_workers
+from .utils import get_max_workers, http_session
 
 if TYPE_CHECKING:
     PathQueueType: TypeAlias = "Queue[Optional[Path]]"
@@ -299,9 +298,6 @@ class StartUploadReturnType:
     dest: str
 
 
-MAX_RETRIES = 5
-
-
 def start_upload(
     src: Path,
     dest: str,
@@ -353,7 +349,7 @@ def start_upload(
         time.sleep(throttle.get_delay())
 
     start = time.monotonic()
-    res = tinyrequests.post(
+    res = http_session.post(
         latch_config.api.data.start_upload,
         headers={"Authorization": get_auth_header()},
         json={
@@ -361,7 +357,6 @@ def start_upload(
             "content_type": content_type,
             "part_count": part_count,
         },
-        num_retries=MAX_RETRIES,
     )
     end = time.monotonic()
 
@@ -412,7 +407,7 @@ def upload_file_chunk(
             f.seek(part_size * part_index)
             data = f.read(part_size)
 
-        res = tinyrequests.put(url, data=data)
+        res = http_session.put(url, data=data)
         if res.status_code != 200:
             raise HTTPException(
                 f"failed to upload part {part_index} of {src}: {res.status_code}"
@@ -467,7 +462,7 @@ def end_upload(
     parts: List[CompletedPart],
     progress_bars: Optional[ProgressBars] = None,
 ):
-    res = tinyrequests.post(
+    res = http_session.post(
         latch_config.api.data.end_upload,
         headers={"Authorization": get_auth_header()},
         json={
