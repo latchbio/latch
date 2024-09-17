@@ -1,7 +1,5 @@
 import os
 import sys
-import termios
-import tty
 import webbrowser
 from pathlib import Path
 from typing import List
@@ -125,6 +123,9 @@ def _select_workflow_tui(title: str, options: List[str], clear_terminal: bool = 
 
         return num_lines_rendered
 
+    import termios
+    import tty
+
     old_settings = termios.tcgetattr(sys.stdin.fileno())
     tty.setraw(sys.stdin.fileno())
 
@@ -176,7 +177,8 @@ def _select_workflow_tui(title: str, options: List[str], clear_terminal: bool = 
                 start_index=start_index,
                 max_per_page=max_per_page,
             )
-    except KeyboardInterrupt: ...
+    except KeyboardInterrupt:
+        ...
     finally:
         menus.clear(num_lines_rendered)
         menus.reveal_cursor()

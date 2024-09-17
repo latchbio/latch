@@ -4,10 +4,8 @@ import os
 import signal
 import subprocess
 import sys
-import termios
 import time
 import traceback
-import tty
 from enum import Enum
 from http.client import HTTPException
 from pathlib import Path
@@ -256,6 +254,9 @@ async def _send_resize_message(
 async def _shell_session(
     ws: client.WebSocketClientProtocol,
 ):
+    import termios
+    import tty
+
     old_settings_stdin = termios.tcgetattr(sys.stdin.fileno())
     tty.setraw(sys.stdin)
 

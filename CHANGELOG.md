@@ -16,12 +16,31 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.52.0 - 2024-08-29
+## 2.52.3 - 2024-08-29
 
 ### Changed
 
 * Nextflow
   - Update `nextflow` base image to version `v2.0.0`
+
+## 2.52.2 - 2024-09-04
+
+### Changed
+
+* Nextflow
+  - Update `nextflow` base image to version `v1.1.8`
+
+## 2.52.1 - 2024-08-30
+
+### Fixed
+
+* Move tty and termios imports to enable `latch cp` on Windows
+
+## 2.52.0 - 2024-08-30
+
+### Fixed
+
+* Make `latch cp` work on Windows without WSL
 
 ## 2.51.2 - 2024-08-27
 

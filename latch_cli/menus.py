@@ -1,7 +1,5 @@
 import os
 import sys
-import termios
-import tty
 from typing import Any, Callable, Generic, List, Optional, Tuple, TypeVar
 
 from typing_extensions import TypedDict
@@ -260,6 +258,9 @@ def select_tui(
         _show()
 
         return num_lines_rendered
+
+    import termios
+    import tty
 
     old_settings = termios.tcgetattr(sys.stdin.fileno())
     tty.setraw(sys.stdin.fileno())
