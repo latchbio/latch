@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.52.5 - 2024-09-23
+
+### Changed
+
+* Improve error messaging when registering Nextflow workflows
+
 ## 2.52.4 - 2024-09-19
 
 ### Changed
