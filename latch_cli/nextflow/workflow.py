@@ -273,8 +273,20 @@ def get_results_code_block(parameters: Dict[str, NextflowParameter]) -> str:
 
 
 def get_nextflow_major_version(pkg_root: Path) -> int:
-    with (pkg_root / latch_constants.pkg_config).open("r") as f:
-        config = LatchWorkflowConfig(**json.load(f))
+    try:
+        with (pkg_root / latch_constants.pkg_config).open("r") as f:
+            config = LatchWorkflowConfig(**json.load(f))
+    except FileNotFoundError:
+        click.secho(
+            dedent(f"""
+            Could not find the latch config file at {pkg_root / latch_constants.pkg_config}
+
+            Please check if you package root contains a Dockerfile that was NOT generated
+            by the Latch CLI. If it does, please move it to a subdirectory and try again.
+            """),
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
 
     if "latch-base-nextflow" not in config.base_image:
         return 1

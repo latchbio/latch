@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 from textwrap import dedent
-from typing import Any, Optional, Type
+from typing import Optional, Type, Union
 
 import click
 
@@ -11,10 +11,15 @@ from latch_cli.snakemake.config.utils import type_repr
 from latch_cli.snakemake.utils import reindent
 
 
-def get_param_type(details: dict) -> Type:
+def get_param_type(
+    details: dict,
+) -> Union[
+    Type[str], Type[bool], Type[int], Type[float], Type["LatchFile"], Type["LatchDir"]
+]:
     t = details.get("type")
     if t is None:
-        return Any
+        # rahul: assume string if type is not specified
+        return str
 
     if t == "string":
         format = details.get("format")
@@ -31,7 +36,7 @@ def get_param_type(details: dict) -> Type:
     elif t == "number":
         return float
 
-    return Any
+    return str
 
 
 def generate_metadata(
@@ -108,6 +113,11 @@ def generate_metadata(
             default = None
             if generate_defaults and t not in {LatchFile, LatchDir, LatchOutputDir}:
                 default = details.get("default")
+                if default is not None:
+                    try:
+                        default = t(default)
+                    except ValueError:
+                        pass
 
             if param not in required_params:
                 t = Optional[t]
