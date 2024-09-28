@@ -21,6 +21,7 @@ Types of changes
 ### Changed
 
 * Make OFS the default storage option for Nextflow workflows
+* Bump the `nextflow` base image to `v2.1.2`
 
 ## 2.52.5 - 2024-09-23
 
