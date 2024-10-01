@@ -16,6 +16,33 @@ Types of changes
 
 # Latch SDK Changelog
 
+## v2.53.0 - 2024-09-28
+
+### Changed
+
+* Make OFS the default storage option for Nextflow workflows
+* Bump the `nextflow` base image to `v2.1.2`
+
+## 2.52.5 - 2024-09-23
+
+### Changed
+
+* Improve error messaging when registering Nextflow workflows
+
+## 2.52.4 - 2024-09-19
+
+### Changed
+
+* Nextflow
+  - Fix typo in Nextflow base image
+
+## 2.52.3 - 2024-09-17
+
+### Changed
+
+* Nextflow
+  - Update `nextflow` base image to version `v2.0.0`
+
 ## 2.52.2 - 2024-09-04
 
 ### Changed

@@ -6,6 +6,7 @@ import tempfile
 import time
 import webbrowser
 from pathlib import Path
+from textwrap import dedent
 from typing import Iterable, List, Optional
 
 import click
@@ -228,6 +229,29 @@ def _build_and_serialize(
         exit_status = ctx.dkr_client.wait(container_id)
         if exit_status["StatusCode"] != 0:
             click.secho("\nWorkflow failed to serialize", fg="red", bold=True)
+            if "TypeTransformerFailedError" in "".join(serialize_logs):
+                file_to_update = (
+                    "latch_metadata/parameters.py"
+                    if ctx.workflow_type
+                    in (WorkflowType.nextflow, WorkflowType.snakemake)
+                    else "workflow function"
+                )
+                click.secho(
+                    dedent(f"""
+                    This is likely caused by a type mismatch between the type of one of
+                    your input parameters and the type of the default value for that
+                    parameter.
+
+                    To fix this, ensure that the default value for each parameter matches
+                    the type of the parameter itself in your {file_to_update}.
+
+                    For example, if you have a parameter `x: float` and the default value
+                    `x = 200000`, you will need to update the default value of x to
+                    `200000.0`.
+                    """),
+                    fg="red",
+                )
+
             sys.exit(1)
 
         ctx.dkr_client.remove_container(container_id)

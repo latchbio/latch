@@ -1,3 +1,4 @@
+import json
 from dataclasses import fields, is_dataclass
 from enum import Enum
 from pathlib import Path
@@ -10,9 +11,11 @@ import latch.types.metadata as metadata
 from latch.types.directory import LatchDir, LatchOutputDir
 from latch.types.file import LatchFile
 from latch.types.metadata import NextflowParameter
+from latch_cli.constants import latch_constants
 from latch_cli.snakemake.config.utils import get_preamble, type_repr
 from latch_cli.snakemake.utils import reindent
 from latch_cli.utils import identifier_from_str, urljoins
+from latch_cli.workflow_config import LatchWorkflowConfig
 
 template = """\
 import sys
@@ -54,10 +57,11 @@ def initialize() -> str:
 
     print("Provisioning shared storage volume... ", end="")
     resp = requests.post(
-        "http://nf-dispatcher-service.flyte.svc.cluster.local/provision-storage",
+        "http://nf-dispatcher-service.flyte.svc.cluster.local/provision-storage-ofs",
         headers=headers,
         json={{
             "storage_expiration_hours": {storage_expiration_hours},
+            "version": {nextflow_version},
         }},
     )
     resp.raise_for_status()
@@ -268,6 +272,29 @@ def get_results_code_block(parameters: Dict[str, NextflowParameter]) -> str:
     return code_block
 
 
+def get_nextflow_major_version(pkg_root: Path) -> int:
+    try:
+        with (pkg_root / latch_constants.pkg_config).open("r") as f:
+            config = LatchWorkflowConfig(**json.load(f))
+    except FileNotFoundError:
+        click.secho(
+            dedent(f"""
+            Could not find the latch config file at {pkg_root / latch_constants.pkg_config}
+
+            Please check if you package root contains a Dockerfile that was NOT generated
+            by the Latch CLI. If it does, please move it to a subdirectory and try again.
+            """),
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
+
+    if "latch-base-nextflow" not in config.base_image:
+        return 1
+
+    version = config.base_image.split(":")[-1]
+    return int(version[1])
+
+
 def generate_nextflow_workflow(
     pkg_root: Path,
     metadata_root: Path,
@@ -415,6 +442,7 @@ def generate_nextflow_workflow(
         storage_gib=resources.storage_gib,
         storage_expiration_hours=resources.storage_expiration_hours,
         log_dir=log_dir,
+        nextflow_version=get_nextflow_major_version(pkg_root),
     )
 
     dest.write_text(entrypoint)
