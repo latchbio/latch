@@ -94,7 +94,12 @@ def generate_metadata(
         click.secho(f"Generated `{metadata_path}`.", fg="green")
 
     params = []
-    for section in schema.get("definitions", {}).values():
+
+    defs = schema.get("definitions")
+    if defs is None:
+        defs = schema.get("$defs", {})
+
+    for section in defs.values():
         section_title = section.get("title")
         required_params = set(section.get("required", []))
 

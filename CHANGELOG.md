@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## v2.53.1 - 2024-10-02
+
+### Added
+
+* Nextflow
+  - Add support for $defs keyword for metadata generation
+
 ## v2.53.0 - 2024-09-28
 
 ### Changed
