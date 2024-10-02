@@ -146,8 +146,11 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
             "NXF_OPTS": "-Xms{heap_initial}M -Xmx{heap_max}M -XX:ActiveProcessorCount={cpu}",
             "NXF_DISABLE_CHECK_LATEST": "true",
             "NXF_ENABLE_VIRTUAL_THREADS": "false",
-            "LATCH_LOG_DIR": latch_log_dir,
         }}
+
+        if {upload_command_logs}:
+            env["LATCH_LOG_DIR"] = latch_log_dir
+
         subprocess.run(
             cmd,
             env=env,
@@ -447,6 +450,7 @@ def generate_nextflow_workflow(
         storage_gib=resources.storage_gib,
         storage_expiration_hours=resources.storage_expiration_hours,
         log_dir=log_dir,
+        upload_command_logs=metadata._nextflow_metadata.upload_command_logs,
         nextflow_version=get_nextflow_major_version(pkg_root),
     )
 
