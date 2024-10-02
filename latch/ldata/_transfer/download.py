@@ -10,7 +10,6 @@ import click
 from latch_sdk_config.latch import config as latch_config
 
 from latch.ldata.type import LDataNodeType
-from latch_cli import tinyrequests
 from latch_cli.constants import Units
 from latch_cli.utils import get_auth_header, human_readable_time, with_si_suffix
 from latch_cli.utils.path import normalize_path
@@ -18,7 +17,7 @@ from latch_cli.utils.path import normalize_path
 from .manager import TransferStateManager
 from .node import get_node_data
 from .progress import Progress, ProgressBars, get_free_index
-from .utils import get_max_workers
+from .utils import get_max_workers, http_session
 
 
 class GetSignedUrlData(TypedDict):
@@ -39,7 +38,7 @@ class DownloadJob:
 class DownloadResult:
     num_files: int
     total_bytes: int
-    total_time: int
+    total_time: float
 
 
 def download(
@@ -73,7 +72,7 @@ def download(
     else:
         endpoint = latch_config.api.data.get_signed_url
 
-    res = tinyrequests.post(
+    res = http_session.post(
         endpoint,
         headers={"Authorization": get_auth_header()},
         json={"path": normalized},
@@ -212,7 +211,7 @@ def download_file(
 ) -> int:
     # todo(ayush): benchmark parallelized downloads using the range header
     with open(job.dest, "wb") as f:
-        res = tinyrequests.get(job.signed_url, stream=True)
+        res = http_session.get(job.signed_url, stream=True)
         if res.status_code != 200:
             raise RuntimeError(
                 f"failed to download {job.dest.name}: {res.status_code}:"

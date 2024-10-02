@@ -90,11 +90,6 @@ def _req(
 
     port = parts.port if parts.port is not None else 443
 
-    # ayush: this is not threadsafe (as in the connection could be created
-    # multiple times) but its probably fine
-
-    # todo(rteqs): removed caching single connections, implement a connection pool instead.
-
     retries = 3
     while True:
         conn = HTTPSConnection(parts.hostname, port, timeout=90)
