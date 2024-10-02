@@ -78,6 +78,14 @@ def initialize() -> str:
 def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
     shared_dir = Path("/nf-workdir")
 
+    exec_name = _get_execution_name()
+    if exec_name is None:
+        print("Failed to get execution name.")
+        exec_name = "unknown"
+
+    latch_log_dir = urljoins("{log_dir}", exec_name)
+    print(f"Log directory: {{latch_log_dir}}")
+
 {output_shortcuts}
 {samplesheet_constructors}
 
@@ -138,6 +146,7 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
             "NXF_OPTS": "-Xms{heap_initial}M -Xmx{heap_max}M -XX:ActiveProcessorCount={cpu}",
             "NXF_DISABLE_CHECK_LATEST": "true",
             "NXF_ENABLE_VIRTUAL_THREADS": "false",
+            "LATCH_LOG_DIR": latch_log_dir,
         }}
         subprocess.run(
             cmd,
@@ -152,13 +161,9 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
 
         nextflow_log = shared_dir / ".nextflow.log"
         if nextflow_log.exists():
-            name = _get_execution_name()
-            if name is None:
-                print("Skipping logs upload, failed to get execution name")
-            else:
-                remote = LPath(urljoins("{log_dir}", name, "nextflow.log"))
-                print(f"Uploading .nextflow.log to {{remote.path}}")
-                remote.upload_from(nextflow_log)
+            remote = LPath(urljoins(latch_log_dir, "nextflow.log"))
+            print(f"Uploading .nextflow.log to {{remote.path}}")
+            remote.upload_from(nextflow_log)
 
         print("Computing size of workdir... ", end="")
         try:
