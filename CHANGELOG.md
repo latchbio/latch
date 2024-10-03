@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## v2.53.3 - 2024-10-02
+
+### Added
+
+* Nextflow
+  - Add support for uploading command logs after task execution
+
 ## v2.53.2 - 2024-10-02
 
 ### Changed

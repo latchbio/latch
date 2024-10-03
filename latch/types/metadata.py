@@ -848,6 +848,10 @@ class NextflowMetadata(LatchMetadata):
     """
     Directory to dump Nextflow logs
     """
+    upload_command_logs: bool = False
+    """
+    Upload .command.* logs to Latch Data after each task execution
+    """
     about_page_path: Optional[Path] = None
     """
     Path to a markdown file containing information about the pipeline - rendered in the About page.
