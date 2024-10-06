@@ -23,6 +23,7 @@ from watchfiles import awatch
 
 from latch.utils import current_workspace, retrieve_or_login
 from latch_cli.constants import docker_image_name_illegal_pat
+from latch_cli.menus import raw_input
 from latch_cli.tinyrequests import post
 from latch_cli.utils import TemporarySSHCredentials, identifier_suffix_from_str
 
@@ -251,14 +252,10 @@ async def _send_resize_message(
     )
 
 
+@raw_input
 async def _shell_session(
     ws: client.WebSocketClientProtocol,
 ):
-    import termios
-    import tty
-
-    old_settings_stdin = termios.tcgetattr(sys.stdin.fileno())
-    tty.setraw(sys.stdin)
 
     loop = asyncio.get_event_loop()
     reader = asyncio.StreamReader(loop=loop)
@@ -333,7 +330,6 @@ async def _shell_session(
     except asyncio.CancelledError:
         ...
     finally:
-        termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, old_settings_stdin)
         signal.signal(signal.SIGWINCH, old_sigwinch_handler)
 
 

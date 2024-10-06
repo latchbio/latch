@@ -4,6 +4,7 @@ import textwrap
 from pathlib import Path
 from typing import Dict, List
 
+import click
 from apscheduler.schedulers.background import BackgroundScheduler
 from latch_sdk_config.latch import config
 
@@ -25,6 +26,12 @@ def get_executions():
     This function should only be called from the CLI, as doing so in any other
     setting will likely cause the interface to behave in an unexpected way.
     """
+
+    # todo(ayush): re-implement the other tui fns to work in win32 as well
+    if sys.platform == "win32":
+        click.secho("This function is not supported on Windows systems.", fg="red")
+
+        raise click.exceptions.Exit(1)
 
     token = retrieve_or_login()
     context = current_workspace()
@@ -60,6 +67,7 @@ def get_executions():
     )
 
 
+@menus.raw_input
 def _all_executions(
     title: str,
     column_names: List[str],
@@ -80,7 +88,7 @@ def _all_executions(
     ) -> int:
         # DISCLAIMER : MOST OF THE MAGIC NUMBERS HERE WERE THROUGH TRIAL AND ERROR
 
-        menus.move_cursor((2, 2))
+        menus.vt100.move_cursor((2, 2))
 
         max_per_page = term_height - 5
         vert_index = max(0, curr_selected - max_per_page // 2)
@@ -103,8 +111,8 @@ def _all_executions(
 
         max_row_len = sum(lengths.values()) + column_spacing * (len(column_names) - 1)
 
-        menus._print(title)
-        menus.line_down(2)
+        menus.print(title)
+        menus.vt100.line_down(2)
 
         for i in range(vert_index, vert_index + max_per_page):
             if i >= len(options):
@@ -126,36 +134,30 @@ def _all_executions(
                 reset = "\x1b[0m"
                 row_str = f"{green}{bold}{row_str}{reset}"
 
-            menus.move_cursor_right(3)
-            menus._print(row_str)
-            menus.line_down(1)
+            menus.vt100.move_cursor_right(3)
+            menus.print(row_str)
+            menus.vt100.line_down(1)
 
-        menus.move_cursor((2, term_height - 1))
+        menus.vt100.move_cursor((2, term_height - 1))
         control_str = "[ARROW-KEYS] Navigate\t[ENTER] Select\t[Q] Quit"
-        menus._print(control_str)
-        menus.draw_box((2, 3), term_height - 5, term_width - 4)
+        menus.print(control_str)
+        menus.vt100.draw_box((2, 3), term_height - 5, term_width - 4)
 
-        menus._show()
+        menus.show()
         return max_row_len
-
-    import termios
-    import tty
-
-    old_settings = termios.tcgetattr(sys.stdin.fileno())
-    tty.setraw(sys.stdin.fileno())
 
     curr_selected = hor_index = 0
 
-    menus.remove_cursor()
-    menus.clear_screen()
-    menus.move_cursor((0, 0))
+    menus.vt100.remove_cursor()
+    menus.vt100.clear_screen()
+    menus.vt100.move_cursor((0, 0))
 
     prev = (curr_selected, hor_index, term_width, term_height)
     max_row_len = render(curr_selected, hor_index, term_width, term_height)
 
     try:
         while True:
-            b = menus.read_bytes(1)
+            b = menus.vt100.read_bytes(1)
             term_width, term_height = os.get_terminal_size()
             rerender = False
             if b == b"\r":
@@ -171,7 +173,7 @@ def _all_executions(
                 _execution_dashboard(selected_execution_data, resp.json())
                 rerender = True
             elif b == b"\x1b":
-                b = menus.read_bytes(2)
+                b = menus.vt100.read_bytes(2)
                 if b == b"[A":  # Up Arrow
                     curr_selected = max(0, curr_selected - 1)
                 elif b == b"[B":  # Down Arrow
@@ -183,7 +185,7 @@ def _all_executions(
                     if max_row_len > term_width + 7:
                         hor_index = min(max_row_len - term_width + 7, hor_index + 5)
                 elif b == b"[1":  # Start of SHIFT + arrow keys
-                    b = menus.read_bytes(3)
+                    b = menus.vt100.read_bytes(3)
                     if b == b";2A":  # Up Arrow
                         curr_selected = max(0, curr_selected - 20)
                     elif b == b";2B":  # Down Arrow
@@ -220,16 +222,15 @@ def _all_executions(
                 (curr_selected, hor_index, term_width, term_height) != prev
             ):
                 prev = (curr_selected, hor_index, term_width, term_height)
-                menus.clear_screen()
+                menus.vt100.clear_screen()
                 max_row_len = render(curr_selected, hor_index, term_width, term_height)
     except KeyboardInterrupt:
         ...
     finally:
-        menus.clear_screen()
-        menus.reveal_cursor()
-        menus.move_cursor((0, 0))
-        menus._show()
-        termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, old_settings)
+        menus.vt100.clear_screen()
+        menus.vt100.reveal_cursor()
+        menus.vt100.move_cursor((0, 0))
+        menus.show()
 
 
 def _execution_dashboard(execution_data: Dict[str, str], workflow_graph: Dict):
@@ -237,13 +238,13 @@ def _execution_dashboard(execution_data: Dict[str, str], workflow_graph: Dict):
 
     def render(curr_selected: int, term_width: int, term_height: int):
         # DISCLAIMER : MOST OF THE MAGIC NUMBERS HERE WERE THROUGH TRIAL AND ERROR
-        menus.move_cursor((2, 2))
-        menus._print(
+        menus.vt100.move_cursor((2, 2))
+        menus.print(
             f'{execution_data["display_name"]} - {execution_data["workflow_tagged"]}'
         )
-        menus.draw_box((2, 3), term_height - 5, term_width - 4)
+        menus.vt100.draw_box((2, 3), term_height - 5, term_width - 4)
 
-        menus.move_cursor((2, term_height - 1))
+        menus.vt100.move_cursor((2, term_height - 1))
         instructions = [
             "[ARROW-KEYS] Navigate",
             "[ENTER] View Task Logs",
@@ -252,9 +253,9 @@ def _execution_dashboard(execution_data: Dict[str, str], workflow_graph: Dict):
         if execution_data["status"] == "RUNNING":
             instructions.append("[A] Abort")
         instructions.append("[Q] Back to All Executions")
-        menus._print("\t".join(instructions))
+        menus.print("\t".join(instructions))
 
-        menus.move_cursor((4, 4))
+        menus.vt100.move_cursor((4, 4))
         for i, (_, task) in enumerate(fixed_workflow_graph):
             name, status = task["name"] or task["sub_wf_name"], task["status"]
             row_str = "  ".join([name, status])
@@ -262,14 +263,14 @@ def _execution_dashboard(execution_data: Dict[str, str], workflow_graph: Dict):
                 green = "\x1b[38;5;40m"
                 bold = "\x1b[1m"
                 reset = "\x1b[0m"
-                menus._print(f"{green}{bold}{row_str}{reset}")
+                menus.print(f"{green}{bold}{row_str}{reset}")
             else:
-                menus._print(row_str)
-            menus.line_down(1)
-            menus.move_cursor_right(3)
-        menus._show()
+                menus.print(row_str)
+            menus.vt100.line_down(1)
+            menus.vt100.move_cursor_right(3)
+        menus.show()
 
-    menus.clear_screen()
+    menus.vt100.clear_screen()
 
     try:
         term_width, term_height = os.get_terminal_size()
@@ -278,7 +279,7 @@ def _execution_dashboard(execution_data: Dict[str, str], workflow_graph: Dict):
         render(curr_selected, term_width, term_height)
         prev = (curr_selected, term_width, term_height)
         while True:
-            b = menus.read_bytes(1)
+            b = menus.vt100.read_bytes(1)
             rerender = False
             if b == b"\r":
                 _log_window(execution_data, fixed_workflow_graph, curr_selected)
@@ -290,13 +291,13 @@ def _execution_dashboard(execution_data: Dict[str, str], workflow_graph: Dict):
                 _abort_modal(execution_data)
                 rerender = True
             elif b == b"\x1b":
-                b = menus.read_bytes(2)
+                b = menus.vt100.read_bytes(2)
                 if b == b"[A":  # Up Arrow
                     curr_selected = max(curr_selected - 1, 0)
                 elif b == b"[B":  # Down Arrow
                     curr_selected = min(curr_selected + 1, len(workflow_graph) - 1)
                 elif b == b"[1":  # Start of SHIFT + arrow keys
-                    b = menus.read_bytes(3)
+                    b = menus.vt100.read_bytes(3)
                     if b == b";2A":  # Up Arrow
                         curr_selected = max(0, curr_selected - 20)
                     elif b == b";2B":  # Down Arrow
@@ -313,30 +314,30 @@ def _execution_dashboard(execution_data: Dict[str, str], workflow_graph: Dict):
                 curr_selected = max(curr_selected - 20, 0)
             term_width, term_height = os.get_terminal_size()
             if rerender or (prev != (curr_selected, term_width, term_height)):
-                menus.clear_screen()
+                menus.vt100.clear_screen()
                 prev = (curr_selected, term_width, term_height)
                 render(curr_selected, term_width, term_height)
     except KeyboardInterrupt:
         ...
     finally:
-        menus.clear_screen()
-        menus.move_cursor((0, 0))
-        menus._show()
+        menus.vt100.clear_screen()
+        menus.vt100.move_cursor((0, 0))
+        menus.show()
 
 
 def _loading_screen(text: str):
     # DISCLAIMER : MOST OF THE MAGIC NUMBERS HERE WERE THROUGH TRIAL AND ERROR
     term_width, term_height = os.get_terminal_size()
 
-    menus.clear_screen()
-    menus.draw_box((2, 3), term_height - 5, term_width - 4)
+    menus.vt100.clear_screen()
+    menus.vt100.draw_box((2, 3), term_height - 5, term_width - 4)
 
     x = (term_width - len(text)) // 2
     y = term_height // 2
 
-    menus.move_cursor((x, y))
-    menus._print(text)
-    menus._show()
+    menus.vt100.move_cursor((x, y))
+    menus.print(text)
+    menus.show()
 
 
 def _log_window(execution_data, fixed_workflow_graph: list, selected: int):
@@ -367,13 +368,13 @@ def _log_window(execution_data, fixed_workflow_graph: list, selected: int):
             f.write(resp.json()["message"].replace("\t", "    "))
 
     def render(vert_index, hor_index, term_width, term_height):
-        menus.move_cursor((2, 2))
-        menus._print(
+        menus.vt100.move_cursor((2, 2))
+        menus.print(
             f'{execution_data["display_name"]} - {execution_data["workflow_tagged"]} -'
             f' {selected_task["name"]}'
         )
-        menus.draw_box((2, 3), term_height - 5, term_width - 4)
-        menus.move_cursor((4, 4))
+        menus.vt100.draw_box((2, 3), term_height - 5, term_width - 4)
+        menus.vt100.move_cursor((4, 4))
         with open(log_file, "r") as f:
             for i, line in enumerate(f):
                 if i < vert_index:
@@ -381,17 +382,17 @@ def _log_window(execution_data, fixed_workflow_graph: list, selected: int):
                 elif i > vert_index + term_height - 7:
                     continue
                 line = line.strip("\n\r")
-                menus._print(line[hor_index : hor_index + term_width - 7])
-                menus.line_down(1)
-                menus.move_cursor_right(3)
-        menus.move_cursor((2, term_height - 1))
+                menus.print(line[hor_index : hor_index + term_width - 7])
+                menus.vt100.line_down(1)
+                menus.vt100.move_cursor_right(3)
+        menus.vt100.move_cursor((2, term_height - 1))
         control_str = "[ARROW-KEYS] Navigate\t[Q] Back"
-        menus._print(control_str)
-        menus._show()
+        menus.print(control_str)
+        menus.show()
 
     try:
         term_width, term_height = os.get_terminal_size()
-        menus.clear_screen()
+        menus.vt100.clear_screen()
         get_logs()
 
         log_sched = BackgroundScheduler()
@@ -406,12 +407,12 @@ def _log_window(execution_data, fixed_workflow_graph: list, selected: int):
         render(vert_index, hor_index, term_width, term_height)
         prev_term_dims = (vert_index, hor_index, term_width, term_height)
         while True:
-            b = menus.read_bytes(1)
+            b = menus.vt100.read_bytes(1)
             rerender = False
             if b in (b"r", b"R"):
                 rerender = True
             elif b == b"\x1b":
-                b = menus.read_bytes(2)
+                b = menus.vt100.read_bytes(2)
                 if b == b"[A":  # Up Arrow
                     vert_index = max(0, vert_index - 1)
                 elif b == b"[B":  # Down Arrow
@@ -421,7 +422,7 @@ def _log_window(execution_data, fixed_workflow_graph: list, selected: int):
                 elif b == b"[C":  # Right Arrow
                     hor_index += 5
                 elif b == b"[1":  # Start of SHIFT + arrow keys
-                    b = menus.read_bytes(3)
+                    b = menus.vt100.read_bytes(3)
                     if b == b";2A":  # Up Arrow
                         vert_index = max(0, vert_index - 20)
                     elif b == b";2B":  # Down Arrow
@@ -450,7 +451,7 @@ def _log_window(execution_data, fixed_workflow_graph: list, selected: int):
             if rerender or (
                 prev_term_dims != (vert_index, hor_index, term_width, term_height)
             ):
-                menus.clear_screen()
+                menus.vt100.clear_screen()
                 prev_term_dims = (vert_index, hor_index, term_width, term_height)
                 render(vert_index, hor_index, term_width, term_height)
     except KeyboardInterrupt:
@@ -458,9 +459,9 @@ def _log_window(execution_data, fixed_workflow_graph: list, selected: int):
     finally:
         log_sched.shutdown()
         log_file.unlink(missing_ok=True)
-        menus.clear_screen()
-        menus.move_cursor((0, 0))
-        menus._show()
+        menus.vt100.clear_screen()
+        menus.vt100.move_cursor((0, 0))
+        menus.show()
 
 
 # TODO(ayush): implement this
@@ -471,7 +472,7 @@ def _relaunch_modal(execution_data):
 def _abort_modal(execution_data):
     def render(term_width: int, term_height: int):
         # DISCLAIMER : MOST OF THE MAGIC NUMBERS HERE WERE THROUGH TRIAL AND ERROR
-        menus.clear_screen()
+        menus.vt100.clear_screen()
 
         question = (
             f"Are you sure you want to abort {execution_data['display_name']} "
@@ -484,23 +485,23 @@ def _abort_modal(execution_data):
         x = (term_width - max_line_length) // 2
         y = (term_height - len(lines)) // 2
 
-        menus.draw_box((x - 3, y - 2), len(lines) + 4, max_line_length + 4)
+        menus.vt100.draw_box((x - 3, y - 2), len(lines) + 4, max_line_length + 4)
 
         for i, line in enumerate(lines):
             x = (term_width - len(line)) // 2
-            menus.move_cursor((x, y + i))
-            menus._print(f"{line}")
+            menus.vt100.move_cursor((x, y + i))
+            menus.print(f"{line}")
 
         ctrl_str = "[Y] Yes\t[N] No"
-        menus.move_cursor(((term_width - len(ctrl_str)) // 2, y + len(lines) + 1))
-        menus._print(ctrl_str)
+        menus.vt100.move_cursor(((term_width - len(ctrl_str)) // 2, y + len(lines) + 1))
+        menus.print(ctrl_str)
 
     try:
         term_width, term_height = os.get_terminal_size()
         render(term_width, term_height)
         prev_term_dims = (term_width, term_height)
         while True:
-            b = menus.read_bytes(1)
+            b = menus.vt100.read_bytes(1)
             if b in (b"y", b"Y"):
                 headers = {"Authorization": f"Bearer {retrieve_or_login()}"}
                 resp = post(
@@ -518,5 +519,5 @@ def _abort_modal(execution_data):
     except KeyboardInterrupt:
         ...
     finally:
-        menus.clear_screen()
-        menus.move_cursor((0, 0))
+        menus.vt100.clear_screen()
+        menus.vt100.move_cursor((0, 0))
