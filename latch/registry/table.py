@@ -486,14 +486,21 @@ class TableUpdate:
         cols = self.table.get_columns()
 
         db_vals: Dict[str, DBValue] = {}
+        errs: List[str] = []
         for k, v in values.items():
             col = cols.get(k)
             if col is None:
                 raise NoSuchColumnError(k)
 
-            db_vals[k] = to_registry_literal(
-                v, col.upstream_type["type"], resolve_paths=False
-            )
+            try:
+                db_vals[k] = to_registry_literal(
+                    v, col.upstream_type["type"], resolve_paths=False
+                )
+            except RegistryTransformerException as e:
+                errs.append(f"\tCould not convert field '{k}' with value {v} to type {col.upstream_type['type']}: {e}")
+
+        if len(errs) > 0:
+            raise RegistryTransformerException(f"Could not upsert record {name}:" + "\n".join(errs))
 
         self._record_mutations.append(_TableRecordsUpsertData(name, db_vals))
 
