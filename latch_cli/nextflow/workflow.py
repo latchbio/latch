@@ -242,6 +242,10 @@ def generate_nextflow_config(pkg_root: Path):
             executor = 'k8s'
         }
 
+        k8s {
+            runAsUser = 0
+        }
+
         aws {
             client {
                 anonymous = true
