@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.53.5 - 2024-10-08
+
+### Added
+
+* Nextflow
+  - Run nextflow task pods as root to allow full access to all files in the shared filesystem
+
 ## 2.53.4 - 2024-10-07
 
 ### Added
