@@ -11,8 +11,7 @@ import click
 import tqdm
 
 from ....utils import human_readable_time, urljoins, with_si_suffix
-from ....utils.path import get_path_error, normalize_path
-from ..utils import LDataNodeType, get_node_data
+from ....utils.path import normalize_path
 from .worker import Work, worker
 
 
@@ -33,7 +32,10 @@ def upload(
 
     start = time.monotonic()
 
-    dest_data = get_node_data(dest)
+    from latch.ldata.path import _get_node_data
+    from latch.ldata.type import LDataNodeType
+
+    dest_data = _get_node_data(dest).data[dest]
     dest_is_dir = dest_data.type in {
         LDataNodeType.account_root,
         LDataNodeType.mount,

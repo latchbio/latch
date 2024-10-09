@@ -14,7 +14,6 @@ import tqdm
 from ....utils import get_auth_header, human_readable_time, urljoins, with_si_suffix
 from ....utils.path import normalize_path
 from ..glob import expand_pattern
-from ..utils import LDataNodeType, get_node_data
 from .worker import Work, worker
 
 http_session = requests.Session()
@@ -71,6 +70,7 @@ def download(
         raise click.exceptions.Exit(1)
 
     from latch.ldata.path import _get_node_data
+    from latch.ldata.type import LDataNodeType
 
     all_node_data = _get_node_data(*srcs)
     work_queue = asyncio.Queue[Work]()
