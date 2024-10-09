@@ -6,7 +6,7 @@ class LatchPathError(RuntimeError):
     def __init__(
         self,
         message: str,
-        remote_path: Optional[str] = None,
+        remote_path: str,
         acc_id: Optional[str] = None,
     ):
         super().__init__(message)

@@ -1,4 +1,7 @@
-from typing import List, TypedDict
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
+from enum import Enum
+from typing import List, Optional, TypedDict
 
 try:
     from functools import cache
@@ -101,7 +104,7 @@ class AccountInfoCurrent(TypedDict):
 
 # todo(taras): support for gcp and azure mounts
 # skipping now due to time. This decision does not
-# influence correcetness of the CLI and only
+# influence correctness of the CLI and only
 # reduces the set of returned autocomplete
 # suggestions
 @cache
@@ -162,3 +165,65 @@ def _get_known_domains_for_account() -> List[str]:
     res.extend(f"{x}.mount" for x in buckets)
 
     return res
+
+
+class FinalLinkTarget(TypedDict):
+    id: str
+    name: str
+    type: str
+
+
+class LdataNode(TypedDict):
+    finalLinkTarget: FinalLinkTarget
+
+
+class LdataResolvePathToNode(TypedDict):
+    path: Optional[str]
+    ldataNode: LdataNode
+
+
+class LDataNodeType(str, Enum):
+    account_root = "account_root"
+    dir = "dir"
+    obj = "obj"
+    mount = "mount"
+    link = "link"
+    mount_gcp = "mount_gcp"
+    mount_azure = "mount_azure"
+
+
+@dataclass
+class NodeData:
+    type: LDataNodeType
+    exists: bool
+    name: str
+
+
+def get_node_data(remote: str) -> NodeData:
+    res: Optional[LdataResolvePathToNode] = execute(
+        gql.gql("""
+        query GetNodeData($argPath: String!) {
+            ldataResolvePathToNode(path: $argPath) {
+                path
+                ldataNode {
+                    finalLinkTarget {
+                        id
+                        name
+                        type
+                    }
+                }
+            }
+        }
+    """),
+        {"argPath": remote.rstrip("/")},
+    )["ldataResolvePathToNode"]
+
+    if res is None:
+        raise ValueError("unauthorized")
+
+    exists = res["path"] is None or res["path"] == ""
+
+    flt = res["ldataNode"]["finalLinkTarget"]
+    type = LDataNodeType(flt["type"].lower())
+
+    return NodeData(type, exists, flt["name"])
