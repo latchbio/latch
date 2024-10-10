@@ -159,6 +159,13 @@ def download(
 
                 try:
                     res.parent.mkdir(exist_ok=True, parents=True)
+                    if res.is_dir():
+                        click.echo(
+                            f"Cannot write file to {work_dest / rel} - directory"
+                            " exists."
+                        )
+                        continue
+
                     work_queue.put_nowait(Work(url, work_dest / rel, chunk_size_mib))
                 except (NotADirectoryError, FileExistsError):
                     click.echo(
