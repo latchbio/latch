@@ -4,15 +4,13 @@ import os
 import sys
 from pathlib import Path
 from textwrap import dedent
-from typing import Callable, List, Optional, Tuple, TypeVar, Union
+from typing import Callable, List, Literal, Optional, Tuple, TypeVar, Union
 
 import click
 from packaging.version import parse as parse_version
 from typing_extensions import ParamSpec
 
 import latch_cli.click_utils
-from latch.ldata._transfer.progress import Progress as _Progress
-from latch_cli.click_utils import EnumChoice
 from latch_cli.exceptions.handler import CrashHandler
 from latch_cli.services.cp.autocomplete import complete as cp_complete
 from latch_cli.services.cp.autocomplete import remote_complete
@@ -693,7 +691,7 @@ LDATA COMMANDS
 @click.option(
     "--progress",
     help="Type of progress information to show while copying",
-    type=EnumChoice(_Progress, case_sensitive=False),
+    type=click.Choice(["none", "total", "tasks"]),
     default="tasks",
     show_default=True,
 )
@@ -735,7 +733,7 @@ LDATA COMMANDS
 def cp(
     src: List[str],
     dest: str,
-    progress: _Progress,
+    progress: Literal["none", "total", "tasks"],
     verbose: bool,
     force: bool,
     no_glob: bool,

@@ -22,8 +22,6 @@ def upload(
     cores: Optional[int],
     chunk_size_mib: Optional[int],
 ):
-    from latch.ldata.type import LatchPathError
-
     if cores is None:
         cores = 4
     if chunk_size_mib is None:
@@ -58,7 +56,12 @@ def upload(
             root = normalized
         elif src_path.is_dir():
             if not dest_is_dir:
-                raise LatchPathError("not a directory", dest)
+                click.secho(
+                    f"Failed to upload directory {src_path}: destination {dest} is not"
+                    " a directory",
+                    fg="red",
+                )
+                continue
             if src.endswith("/"):
                 root = normalized
             else:
@@ -83,7 +86,7 @@ def upload(
                     try:
                         total_bytes += rel.resolve().stat().st_size
                     except FileNotFoundError:
-                        print(f"WARNING: file {rel} not found, skipping...")
+                        click.secho(f"File {rel} not found, skipping...", fg="yellow")
                         continue
 
                     num_files += 1

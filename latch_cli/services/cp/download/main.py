@@ -127,13 +127,15 @@ def download(
                     " may be overwritten. Proceed?"
                 )
             ):
-                return
+                continue
 
             try:
                 work_dest.unlink(missing_ok=True)
                 work_queue.put_nowait(Work(gsud["url"], work_dest, chunk_size_mib))
             except OSError:
-                click.echo(f"Cannot write file to {work_dest} - directory exists.")
+                click.secho(
+                    f"Cannot write file to {work_dest} - directory exists.", fg="red"
+                )
 
         else:
             gsurd: GetSignedUrlsRecursiveData = json["data"]
@@ -160,17 +162,19 @@ def download(
                 try:
                     res.parent.mkdir(exist_ok=True, parents=True)
                     if res.is_dir():
-                        click.echo(
+                        click.secho(
                             f"Cannot write file to {work_dest / rel} - directory"
-                            " exists."
+                            " exists.",
+                            fg="red",
                         )
                         continue
 
                     work_queue.put_nowait(Work(url, work_dest / rel, chunk_size_mib))
                 except (NotADirectoryError, FileExistsError):
-                    click.echo(
+                    click.secho(
                         f"Cannot write file to {work_dest / rel} - upstream file"
-                        " exists."
+                        " exists.",
+                        fg="red",
                     )
 
     tbar = tqdm.tqdm(
