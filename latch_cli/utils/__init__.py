@@ -19,7 +19,6 @@ import click
 import jwt
 from latch_sdk_config.user import user_config
 
-from latch.utils import current_workspace
 from latch_cli.click_utils import bold
 from latch_cli.constants import latch_constants
 from latch_cli.tinyrequests import get
@@ -154,6 +153,8 @@ def human_readable_time(t_seconds: float) -> str:
 
 
 def hash_directory(dir_path: Path) -> str:
+    from latch.utils import current_workspace
+
     # todo(maximsmol): store per-file hashes to show which files triggered a version change
     click.secho("Calculating workflow version based on file content hash", bold=True)
     click.secho("  Disable with --disable-auto-version/-d", italic=True, dim=True)

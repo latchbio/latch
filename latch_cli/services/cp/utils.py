@@ -101,7 +101,7 @@ class AccountInfoCurrent(TypedDict):
 
 # todo(taras): support for gcp and azure mounts
 # skipping now due to time. This decision does not
-# influence correcetness of the CLI and only
+# influence correctness of the CLI and only
 # reduces the set of returned autocomplete
 # suggestions
 @cache

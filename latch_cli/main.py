@@ -706,6 +706,14 @@ LDATA COMMANDS
     show_default=True,
 )
 @click.option(
+    "--force",
+    "-f",
+    help="Don't ask to confirm when overwriting files",
+    is_flag=True,
+    default=False,
+    show_default=True,
+)
+@click.option(
     "--no-glob",
     "-G",
     help="Don't expand globs in remote paths",
@@ -729,6 +737,7 @@ def cp(
     dest: str,
     progress: _Progress,
     verbose: bool,
+    force: bool,
     no_glob: bool,
     cores: Optional[int] = None,
     chunk_size_mib: Optional[int] = None,
@@ -747,6 +756,7 @@ def cp(
         src,
         dest,
         progress=progress,
+        force=force,
         verbose=verbose,
         expand_globs=not no_glob,
         cores=cores,
