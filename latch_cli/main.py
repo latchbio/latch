@@ -437,7 +437,7 @@ def execute(
 ):
     """Drops the user into an interactive shell from within a task."""
 
-    from latch_cli.services.execute.main import exec
+    from latch_cli.services.k8s.execute import exec
 
     exec(execution_id=execution_id, egn_id=egn_id, container_index=container_index)
 

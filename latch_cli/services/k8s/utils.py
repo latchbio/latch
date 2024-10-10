@@ -9,7 +9,6 @@ from latch_sdk_gql.execute import execute
 
 from latch_cli.click_utils import bold, color
 from latch_cli.menus import select_tui
-from latch_cli.utils import current_workspace
 
 
 # todo(ayush): put this into latch_sdk_gql
@@ -179,7 +178,7 @@ def get_execution_info(execution_id: Optional[str]) -> ExecutionInfoNode:
             """),
             *fragments,
         ),
-        {"createdBy": current_workspace()},
+        {"createdBy": user_config.workspace_id},
     )["runningExecutions"]
 
     if len(res["nodes"]) == 0:
