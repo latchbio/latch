@@ -47,6 +47,7 @@ def cp(
     *,
     progress: Progress,
     verbose: bool,
+    force: bool,
     expand_globs: bool,
     cores: Optional[int] = None,
     chunk_size_mib: Optional[int] = None,
@@ -70,21 +71,22 @@ def cp(
 
     acc_id = acc_info["id"]
 
-    dest_remote = is_remote_path(dest)
-    srcs_remote = [is_remote_path(src) for src in srcs]
+    dest_is_remote = is_remote_path(dest)
+    srcs_are_remote = [is_remote_path(src) for src in srcs]
 
     try:
-        if not dest_remote and all(srcs_remote):
+        if not dest_is_remote and all(srcs_are_remote):
             download(
                 srcs,
                 Path(dest),
                 progress.name,
                 verbose,
+                force,
                 expand_globs,
                 cores,
                 chunk_size_mib,
             )
-        elif dest_remote and not any(srcs_remote):
+        elif dest_is_remote and not any(srcs_are_remote):
             upload(
                 srcs,
                 dest,
@@ -93,7 +95,7 @@ def cp(
                 cores,
                 chunk_size_mib,
             )
-        elif dest_remote and all(srcs_remote):
+        elif dest_is_remote and all(srcs_are_remote):
             for src in srcs:
                 if expand_globs:
                     [_copy_and_print(p, dest, progress) for p in expand_pattern(src)]

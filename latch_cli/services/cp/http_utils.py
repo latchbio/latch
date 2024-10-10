@@ -11,12 +11,15 @@ P = ParamSpec("P")
 class RetriesExhaustedException(RuntimeError): ...
 
 
+class RateLimitExceeded(RuntimeError): ...
+
+
 class RetryClientSession(aiohttp.ClientSession):
     def __init__(
         self,
         status_list: Optional[List[HTTPStatus]] = None,
-        retries: int = 3,
-        backoff: float = 1,
+        retries: int = 10,
+        backoff: float = 0.1,
         *args,
         **kwargs,
     ):
@@ -45,17 +48,19 @@ class RetryClientSession(aiohttp.ClientSession):
         **kwargs: P.kwargs,
     ) -> aiohttp.ClientResponse:
         error: Optional[Exception] = None
+        last_res: Optional[aiohttp.ClientResponse] = None
 
         cur = 0
         while cur < self.retries:
             if cur > 0:
-                await asyncio.sleep(self.backoff * 2**cur)
+                await asyncio.sleep(max(self.backoff * 2**cur, 10))
 
             cur += 1
 
             try:
                 res = await f(*args, **kwargs)
                 if res.status in self.status_list:
+                    last_res = res
                     continue
 
                 return res
@@ -63,10 +68,14 @@ class RetryClientSession(aiohttp.ClientSession):
                 error = e
                 continue
 
-        if error is None:
-            raise RetriesExhaustedException
+        if last_res is not None:
+            return last_res
 
-        raise error
+        if error is not None:
+            raise error
+
+        # we'll never get here but putting here anyway so the type checker is happy
+        raise RetriesExhaustedException
 
     async def _request(self, *args, **kwargs) -> aiohttp.ClientResponse:
         return await self._with_retry(super()._request, *args, **kwargs)

@@ -42,6 +42,7 @@ def download(
     dest: Path,
     progress: Literal["none", "total", "tasks"],
     verbose: bool,
+    force: bool,
     expand_globs: bool,
     cores: Optional[int],
     chunk_size_mib: Optional[int],
@@ -117,9 +118,13 @@ def download(
             if dest.exists() and dest.is_dir():
                 work_dest = dest / node_data.name
 
-            if work_dest.exists() and not click.confirm(
-                f"Copy destination path {work_dest} already exists and its contents may"
-                " be overwritten. Proceed?"
+            if (
+                work_dest.exists()
+                and not force
+                and not click.confirm(
+                    f"Copy destination path {work_dest} already exists and its contents"
+                    " may be overwritten. Proceed?"
+                )
             ):
                 return
 
@@ -140,6 +145,7 @@ def download(
             if (
                 work_dest.exists()
                 and work_dest.is_dir()
+                and not force
                 and not click.confirm(
                     f"Copy destination path {work_dest} already exists and its contents"
                     " may be overwritten. Proceed?"
@@ -189,8 +195,9 @@ def download(
     tbar.clear()
     total_time = time.monotonic() - start
 
-    click.echo(dedent(f"""\
-        {click.style("Download Complete", fg="green")}
-        {click.style("Time Elapsed:", fg="blue")}     {human_readable_time(total_time)}
-        {click.style("Files Downloaded:", fg="blue")} {total} ({with_si_suffix(total_bytes)})\
-    """))
+    if progress != "none":
+        click.echo(dedent(f"""\
+            {click.style("Download Complete", fg="green")}
+            {click.style("Time Elapsed:", fg="blue")}     {human_readable_time(total_time)}
+            {click.style("Files Downloaded:", fg="blue")} {total} ({with_si_suffix(total_bytes)})\
+        """))

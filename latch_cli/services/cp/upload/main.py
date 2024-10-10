@@ -115,8 +115,9 @@ def upload(
     total.clear()
     total_time = time.monotonic() - start
 
-    click.echo(dedent(f"""\
-        {click.style("Upload Complete", fg="green")}
-        {click.style("Time Elapsed:", fg="blue")}   {human_readable_time(total_time)}
-        {click.style("Files Uploaded:", fg="blue")} {num_files} ({with_si_suffix(total_bytes)})\
-    """))
+    if progress != "none":
+        click.echo(dedent(f"""\
+            {click.style("Upload Complete", fg="green")}
+            {click.style("Time Elapsed:", fg="blue")}   {human_readable_time(total_time)}
+            {click.style("Files Uploaded:", fg="blue")} {num_files} ({with_si_suffix(total_bytes)})\
+        """))

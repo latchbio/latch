@@ -15,7 +15,7 @@ import uvloop
 from latch_cli.constants import Units, latch_constants
 from latch_cli.utils import get_auth_header, with_si_suffix
 
-from ..http_utils import RetryClientSession
+from ..http_utils import RateLimitExceeded, RetryClientSession
 
 
 @dataclass
@@ -53,10 +53,11 @@ async def upload_chunk(
         raise RuntimeError(f"failed to upload part {index} of {src}: {res.content}")
 
     etag = res.headers["ETag"]
-    assert etag is not None, (
-        f"Malformed response from chunk upload for {src}, Part {index},"
-        f" Headers: {res.headers}"
-    )
+    if etag is None:
+        raise RuntimeError(
+            f"Malformed response from chunk upload for {src}, Part {index},"
+            f" Headers: {res.headers}"
+        )
 
     pbar.update(len(data))
 
@@ -111,13 +112,11 @@ async def work_loop(
 
             chunk_size = work.chunk_size_mib * Units.MiB
             if chunk_size < min_part_size:
-                click.secho(
-                    """\
-                    Unable to complete upload - please check your internet connection speed or any firewall settings that may block outbound traffic.\
-                    """,
-                    fg="red",
+                raise RuntimeError(
+                    "Unable to complete upload - please check your internet"
+                    " connection speed or any firewall settings that may block"
+                    " outbound traffic."
                 )
-                raise click.exceptions.Exit(1)
 
             part_count = min(
                 latch_constants.maximum_upload_parts,
@@ -143,6 +142,12 @@ async def work_loop(
                     "part_count": part_count,
                 },
             )
+            if resp.status == 429:
+                raise RateLimitExceeded(
+                    "The service is currently under load and could not complete your"
+                    " request - please try again later."
+                )
+
             resp.raise_for_status()
 
             json_data = await resp.json()
@@ -181,6 +186,12 @@ async def work_loop(
                     ],
                 },
             )
+            if resp.status == 429:
+                raise RateLimitExceeded(
+                    "The service is currently under load and could not complete your"
+                    " request - please try again later."
+                )
+
             resp.raise_for_status()
 
             if print_file_on_completion:
