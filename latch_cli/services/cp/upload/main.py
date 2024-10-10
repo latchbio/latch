@@ -1,5 +1,6 @@
 import asyncio
 import os
+import queue
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -44,7 +45,7 @@ def upload(
         LDataNodeType.dir,
     }
 
-    work_queue = asyncio.Queue[Work]()
+    work_queue = queue.Queue()
     total_bytes = 0
     num_files = 0
 
@@ -74,7 +75,7 @@ def upload(
             num_files += 1
             total_bytes += src_path.resolve().stat().st_size
 
-            work_queue.put_nowait(Work(src_path, root, chunk_size_mib))
+            work_queue.put(Work(src_path, root, chunk_size_mib))
         else:
 
             for dir, _, file_names in os.walk(src_path, followlinks=True):
@@ -90,7 +91,7 @@ def upload(
                     num_files += 1
 
                     remote = urljoins(root, str(rel.relative_to(src_path)))
-                    work_queue.put_nowait(Work(rel, remote, chunk_size_mib))
+                    work_queue.put(Work(rel, remote, chunk_size_mib))
 
     total = tqdm.tqdm(
         total=num_files,

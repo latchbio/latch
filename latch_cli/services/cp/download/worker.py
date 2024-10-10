@@ -1,5 +1,6 @@
 import asyncio
 import os
+import queue
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -37,7 +38,7 @@ async def download_chunk(
 
 
 async def work_loop(
-    work_queue: asyncio.Queue[Work],
+    work_queue: queue.Queue,
     tbar: tqdm.tqdm,
     show_task_progress: bool,
     print_file_on_completion: bool,
@@ -55,8 +56,8 @@ async def work_loop(
     async with RetryClientSession(read_timeout=90, conn_timeout=10) as sess:
         while True:
             try:
-                work = work_queue.get_nowait()
-            except asyncio.QueueEmpty:
+                work: Work = work_queue.get_nowait()
+            except queue.Empty:
                 break
 
             try:
@@ -102,7 +103,7 @@ async def work_loop(
 
 
 def worker(
-    work_queue: asyncio.Queue[Work],
+    work_queue: queue.Queue,
     tbar: tqdm.tqdm,
     show_task_progress: bool,
     print_file_on_completion: bool,

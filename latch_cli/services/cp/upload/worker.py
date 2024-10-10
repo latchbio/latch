@@ -2,6 +2,7 @@ import asyncio
 import math
 import mimetypes
 import os
+import queue
 import random
 from dataclasses import dataclass
 from pathlib import Path
@@ -68,7 +69,7 @@ min_part_size = 5 * Units.MiB
 
 
 async def work_loop(
-    work_queue: asyncio.Queue[Work],
+    work_queue: queue.Queue,
     total_pbar: tqdm.tqdm,
     show_task_progress: bool,
     print_file_on_completion: bool,
@@ -84,8 +85,8 @@ async def work_loop(
     async with RetryClientSession(read_timeout=90, conn_timeout=10) as sess:
         while True:
             try:
-                work = work_queue.get_nowait()
-            except asyncio.QueueEmpty:
+                work: Work = work_queue.get_nowait()
+            except queue.Empty:
                 break
 
             resolved = work.src
@@ -164,10 +165,7 @@ async def work_loop(
                     for index, url in enumerate(data["urls"])
                 ])
             except TimeoutError:
-                await work_queue.put(
-                    Work(work.src, work.dest, work.chunk_size_mib // 2)
-                )
-
+                work_queue.put(Work(work.src, work.dest, work.chunk_size_mib // 2))
                 continue
 
             # exception handling
@@ -204,7 +202,7 @@ async def work_loop(
 
 
 def worker(
-    work_queue: asyncio.Queue[Work],
+    work_queue: queue.Queue,
     total: tqdm.tqdm,
     show_task_progress: bool,
     print_file_on_completion: bool,

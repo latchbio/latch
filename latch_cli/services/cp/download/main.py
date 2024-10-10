@@ -1,4 +1,5 @@
 import asyncio
+import queue
 import shutil
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -74,7 +75,7 @@ def download(
     from latch.ldata.type import LDataNodeType
 
     all_node_data = _get_node_data(*srcs)
-    work_queue = asyncio.Queue[Work]()
+    work_queue = queue.Queue()
     total = 0
 
     if expand_globs:
@@ -133,7 +134,7 @@ def download(
             except OSError:
                 shutil.rmtree(work_dest)
 
-            work_queue.put_nowait(Work(gsud["url"], work_dest, chunk_size_mib))
+            work_queue.put(Work(gsud["url"], work_dest, chunk_size_mib))
         else:
             gsurd: GetSignedUrlsRecursiveData = json["data"]
             total += len(gsurd["urls"])
@@ -169,7 +170,7 @@ def download(
                 # todo(ayush): use only one mkdir call
                 res.parent.mkdir(exist_ok=True, parents=True)
 
-                work_queue.put_nowait(Work(url, work_dest / rel, chunk_size_mib))
+                work_queue.put(Work(url, work_dest / rel, chunk_size_mib))
 
     tbar = tqdm.tqdm(
         total=total,
