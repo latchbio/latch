@@ -61,6 +61,9 @@ ei_fragment = gql.gql("""
         workflow {
             displayName
         }
+        nfExecutionInfoByExecutionId {
+            executionId
+        }
         executionGraphNodesByExecutionId(condition: { status: RUNNING }) {
             nodes {
                 id
@@ -117,11 +120,16 @@ class Workflow(TypedDict):
     displayName: str
 
 
+class NEI(TypedDict):
+    executionId: str
+
+
 class ExecutionInfoNode(TypedDict):
     id: str
     status: str
     displayName: str
     workflow: Workflow
+    nfExecutionInfoByExecutionId: Optional[NEI]
     executionGraphNodesByExecutionId: EGNById
 
 
@@ -129,7 +137,9 @@ class RunningExecutions(TypedDict):
     nodes: List[ExecutionInfoNode]
 
 
-def get_execution_info(execution_id: Optional[str]) -> ExecutionInfoNode:
+def get_execution_info(
+    execution_id: Optional[str], *, nextflow_only: bool = False
+) -> ExecutionInfoNode:
     workspace_str: str = user_config.workspace_name or user_config.workspace_id
 
     if execution_id is not None:
@@ -162,6 +172,14 @@ def get_execution_info(execution_id: Optional[str]) -> ExecutionInfoNode:
             )
             raise click.exceptions.Exit(1)
 
+        if nextflow_only and info["nfExecutionInfoByExecutionId"] is None:
+            click.secho(
+                f"The selected execution ({color(info['displayName'])}) is not a"
+                " Nextflow execution.",
+                fg="red",
+            )
+            raise click.exceptions.Exit(1)
+
         return info
 
     res: RunningExecutions = execute(
@@ -181,32 +199,44 @@ def get_execution_info(execution_id: Optional[str]) -> ExecutionInfoNode:
         {"createdBy": user_config.workspace_id},
     )["runningExecutions"]
 
-    if len(res["nodes"]) == 0:
-        click.secho("You have no executions currently running.", dim=True)
+    nodes = res["nodes"]
+    if nextflow_only:
+        nodes = []
+        for node in res["nodes"]:
+            if node["nfExecutionInfoByExecutionId"] is None:
+                continue
+
+            nodes.append(node)
+
+    if len(nodes) == 0:
+        click.secho(
+            f"You have no {'Nextflow ' if nextflow_only else ''}executions currently"
+            " running.",
+            dim=True,
+        )
         raise click.exceptions.Exit(0)
 
-    if len(res["nodes"]) == 1:
-        execution = res["nodes"][0]
+    if len(nodes) == 1:
+        execution = nodes[0]
         click.secho(
-            "Selecting execution"
+            f"Selecting {'Nextflow ' if nextflow_only else ''}execution"
             f" {color(execution['displayName'])} as it is"
-            " the only"
-            " one currently running in Workspace"
+            " the only one currently running in Workspace"
             f" {color(workspace_str)}.",
         )
 
         return execution
 
     selected_execution = select_tui(
-        "You have multiple executions running in this workspace"
-        f" ({color(workspace_str)}). Which"
-        " execution would you like to inspect?",
+        f"You have multiple {'Nextflow ' if nextflow_only else ''}executions running in"
+        f" this workspace ({color(workspace_str)}). Which execution would you like to"
+        " inspect?",
         [
             {
                 "display_name": f'{x["displayName"]} ({x["workflow"]["displayName"]})',
                 "value": x,
             }
-            for x in res["nodes"]
+            for x in nodes
         ],
         clear_terminal=False,
     )

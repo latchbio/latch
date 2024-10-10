@@ -1,7 +1,5 @@
 import asyncio
-import base64
 import json
-import re
 import secrets
 import sys
 from typing import Optional
@@ -24,10 +22,7 @@ async def connect(execution_id: str, session_id: str):
         close_timeout=0,
         extra_headers={"Authorization": get_auth_header()},
     ) as ws:
-        request = {
-            "execution_id": execution_id,
-            "session_id": session_id,
-        }
+        request = {"execution_id": execution_id, "session_id": session_id}
 
         await ws.send(json.dumps(request))
         await forward_stdio(ws)
@@ -38,7 +33,7 @@ def get_session_id():
 
 
 def attach(execution_id: Optional[str] = None):
-    execution_info = get_execution_info(execution_id)
+    execution_info = get_execution_info(execution_id, nextflow_only=True)
     session_id = get_session_id()
 
     import termios
