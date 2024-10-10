@@ -6,7 +6,7 @@ import queue
 import random
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, TypedDict
+from typing import Iterable, List, TypedDict, TypeVar
 
 import aiohttp
 import click
@@ -17,6 +17,7 @@ from latch_cli.constants import Units, latch_constants
 from latch_cli.utils import get_auth_header, with_si_suffix
 
 from ..http_utils import RateLimitExceeded, RetryClientSession
+from ..utils import chunked
 
 
 @dataclass
@@ -67,9 +68,12 @@ async def upload_chunk(
 
 min_part_size = 5 * Units.MiB
 
+start_upload_sema = asyncio.BoundedSemaphore(2)
+end_upload_sema = asyncio.BoundedSemaphore(2)
 
-async def work_loop(
-    work_queue: queue.Queue,
+
+async def worker(
+    work_queue: asyncio.Queue[Work],
     total_pbar: tqdm.tqdm,
     show_task_progress: bool,
     print_file_on_completion: bool,
@@ -77,6 +81,7 @@ async def work_loop(
     pbar = tqdm.tqdm(
         total=0,
         leave=False,
+        smoothing=0,
         unit="B",
         unit_scale=True,
         disable=not show_task_progress,
@@ -85,8 +90,8 @@ async def work_loop(
     async with RetryClientSession(read_timeout=90, conn_timeout=10) as sess:
         while True:
             try:
-                work: Work = work_queue.get_nowait()
-            except queue.Empty:
+                work = work_queue.get_nowait()
+            except asyncio.QueueEmpty:
                 break
 
             resolved = work.src
@@ -131,9 +136,6 @@ async def work_loop(
             pbar.desc = resolved.name
             pbar.total = file_size
 
-            # jitter to not dos nuc-data
-            await asyncio.sleep(0.1 * random.random())
-
             resp = await sess.post(
                 "https://nucleus.latch.bio/ldata/start-upload",
                 headers={"Authorization": get_auth_header()},
@@ -143,6 +145,7 @@ async def work_loop(
                     "part_count": part_count,
                 },
             )
+
             if resp.status == 429:
                 raise RateLimitExceeded(
                     "The service is currently under load and could not complete your"
@@ -159,16 +162,21 @@ async def work_loop(
                 # file is empty - nothing to do
                 continue
 
+            parts: List[CompletedPart] = []
             try:
-                parts = await asyncio.gather(*[
-                    upload_chunk(sess, resolved, url, index, part_size, pbar)
-                    for index, url in enumerate(data["urls"])
-                ])
+                for pairs in chunked(enumerate(data["urls"])):
+                    parts.extend(
+                        await asyncio.gather(*[
+                            upload_chunk(sess, resolved, url, index, part_size, pbar)
+                            for index, url in pairs
+                        ])
+                    )
             except TimeoutError:
-                work_queue.put(Work(work.src, work.dest, work.chunk_size_mib // 2))
+                await work_queue.put(
+                    Work(work.src, work.dest, work.chunk_size_mib // 2)
+                )
                 continue
 
-            # exception handling
             resp = await sess.post(
                 "https://nucleus.latch.bio/ldata/end-upload",
                 headers={"Authorization": get_auth_header()},
@@ -184,6 +192,7 @@ async def work_loop(
                     ],
                 },
             )
+
             if resp.status == 429:
                 raise RateLimitExceeded(
                     "The service is currently under load and could not complete your"
@@ -201,15 +210,14 @@ async def work_loop(
     pbar.clear()
 
 
-def worker(
-    work_queue: queue.Queue,
+async def run_workers(
+    work_queue: asyncio.Queue[Work],
+    num_workers: int,
     total: tqdm.tqdm,
     show_task_progress: bool,
     print_file_on_completion: bool,
 ):
-    uvloop.install()
-
-    loop = uvloop.new_event_loop()
-    loop.run_until_complete(
-        work_loop(work_queue, total, show_task_progress, print_file_on_completion)
-    )
+    await asyncio.gather(*[
+        worker(work_queue, total, show_task_progress, print_file_on_completion)
+        for _ in range(num_workers)
+    ])

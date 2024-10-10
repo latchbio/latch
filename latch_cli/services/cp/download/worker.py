@@ -2,13 +2,17 @@ import asyncio
 import os
 import queue
 import shutil
+import time
 from dataclasses import dataclass
+from http import HTTPStatus
 from pathlib import Path
 from typing import Awaitable, List
 
 import aiohttp
 import tqdm
 import uvloop
+
+from latch_cli.services.cp.utils import chunked
 
 from ....constants import Units
 from ..http_utils import RetryClientSession
@@ -37,8 +41,8 @@ async def download_chunk(
     pbar.update(os.pwrite(fd, content, start))
 
 
-async def work_loop(
-    work_queue: queue.Queue,
+async def worker(
+    work_queue: asyncio.Queue[Work],
     tbar: tqdm.tqdm,
     show_task_progress: bool,
     print_file_on_completion: bool,
@@ -46,32 +50,37 @@ async def work_loop(
     pbar = tqdm.tqdm(
         total=0,
         leave=False,
+        smoothing=0,
         unit="B",
         unit_scale=True,
         disable=not show_task_progress,
     )
-
     total_bytes = 0
 
-    async with RetryClientSession(read_timeout=90, conn_timeout=10) as sess:
-        while True:
-            try:
-                work: Work = work_queue.get_nowait()
-            except queue.Empty:
-                break
+    try:
+        async with RetryClientSession(read_timeout=90, conn_timeout=10) as sess:
+            while True:
+                try:
+                    work: Work = work_queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    break
 
-            try:
-                if work.dest.exists() and work.dest.is_dir():
-                    shutil.rmtree(work.dest)
+                pbar.reset()
+                pbar.desc = work.dest.name
 
-                async with sess.get(work.url) as res:
-                    total_size = res.content_length
-                    assert total_size is not None
+                res = await sess.get(work.url, headers={"Range": "bytes=0-0"})
+
+                # s3 throws a REQUESTED_RANGE_NOT_SATISFIABLE if the file is empty
+                if res.status == 416:
+                    total_size = 0
+                else:
+                    content_range = res.headers["Content-Range"]
+                    total_size = int(content_range.replace("bytes 0-0/", ""))
+
+                assert total_size is not None
 
                 total_bytes += total_size
-
                 pbar.total = total_size
-                pbar.desc = work.dest.name
 
                 chunk_size = work.chunk_size_mib * Units.MiB
 
@@ -90,27 +99,23 @@ async def work_loop(
                     await asyncio.gather(*coros)
 
                 if print_file_on_completion:
-                    pbar.write(work.dest.name)
+                    pbar.write(str(work.dest))
 
-            except Exception as e:
-                raise Exception(f"{work}: {e}")
+                tbar.update(1)
 
-            pbar.reset()
-            tbar.update(1)
-
-    pbar.clear()
-    return total_bytes
+        return total_bytes
+    finally:
+        pbar.clear()
 
 
-def worker(
-    work_queue: queue.Queue,
+async def run_workers(
+    work_queue: asyncio.Queue[Work],
+    num_workers: int,
     tbar: tqdm.tqdm,
     show_task_progress: bool,
     print_file_on_completion: bool,
-) -> int:
-    uvloop.install()
-
-    loop = uvloop.new_event_loop()
-    return loop.run_until_complete(
-        work_loop(work_queue, tbar, show_task_progress, print_file_on_completion)
-    )
+) -> List[int]:
+    return await asyncio.gather(*[
+        worker(work_queue, tbar, show_task_progress, print_file_on_completion)
+        for _ in range(num_workers)
+    ])

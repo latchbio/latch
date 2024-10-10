@@ -1,19 +1,17 @@
 import asyncio
 import os
-import queue
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass
 from pathlib import Path
 from textwrap import dedent
 from typing import List, Literal, Optional
 
 import click
 import tqdm
+import uvloop
 
 from ....utils import human_readable_time, urljoins, with_si_suffix
 from ....utils.path import normalize_path
-from .worker import Work, worker
+from .worker import Work, run_workers
 
 
 def upload(
@@ -36,7 +34,7 @@ def upload(
     from latch.ldata.path import _get_node_data
     from latch.ldata.type import LDataNodeType
 
-    dest_data = _get_node_data(dest).data[dest]
+    dest_data = _get_node_data(dest, allow_resolve_to_parent=True).data[dest]
     dest_is_dir = dest_data.type in {
         LDataNodeType.account_root,
         LDataNodeType.mount,
@@ -45,7 +43,7 @@ def upload(
         LDataNodeType.dir,
     }
 
-    work_queue = queue.Queue()
+    work_queue = asyncio.Queue[Work]()
     total_bytes = 0
     num_files = 0
 
@@ -56,7 +54,7 @@ def upload(
 
         normalized = normalize_path(dest)
 
-        if not dest_data.exists:
+        if not dest_data.exists():
             root = normalized
         elif src_path.is_dir():
             if not dest_is_dir:
@@ -75,7 +73,7 @@ def upload(
             num_files += 1
             total_bytes += src_path.resolve().stat().st_size
 
-            work_queue.put(Work(src_path, root, chunk_size_mib))
+            work_queue.put_nowait(Work(src_path, root, chunk_size_mib))
         else:
 
             for dir, _, file_names in os.walk(src_path, followlinks=True):
@@ -91,7 +89,7 @@ def upload(
                     num_files += 1
 
                     remote = urljoins(root, str(rel.relative_to(src_path)))
-                    work_queue.put(Work(rel, remote, chunk_size_mib))
+                    work_queue.put_nowait(Work(rel, remote, chunk_size_mib))
 
     total = tqdm.tqdm(
         total=num_files,
@@ -103,15 +101,14 @@ def upload(
         disable=progress == "none",
     )
 
-    workers = min(cores, num_files)
-    with ThreadPoolExecutor(workers) as exec:
-        futs = [
-            exec.submit(worker, work_queue, total, progress == "tasks", verbose)
-            for _ in range(workers)
-        ]
+    num_workers = min(cores, num_files)
 
-    for f in as_completed(futs):
-        f.result()
+    uvloop.install()
+
+    loop = uvloop.new_event_loop()
+    loop.run_until_complete(
+        run_workers(work_queue, num_workers, total, progress == "tasks", verbose)
+    )
 
     total.clear()
     total_time = time.monotonic() - start

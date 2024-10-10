@@ -2,7 +2,6 @@ import asyncio
 import queue
 import shutil
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from textwrap import dedent
 from typing import Dict, List, Literal, Optional, TypedDict
@@ -11,11 +10,12 @@ import click
 import requests
 import requests.adapters
 import tqdm
+import uvloop
 
-from ....utils import get_auth_header, human_readable_time, urljoins, with_si_suffix
+from ....utils import get_auth_header, human_readable_time, with_si_suffix
 from ....utils.path import normalize_path
 from ..glob import expand_pattern
-from .worker import Work, worker
+from .worker import Work, run_workers
 
 http_session = requests.Session()
 
@@ -75,7 +75,7 @@ def download(
     from latch.ldata.type import LDataNodeType
 
     all_node_data = _get_node_data(*srcs)
-    work_queue = queue.Queue()
+    work_queue = asyncio.Queue[Work]()
     total = 0
 
     if expand_globs:
@@ -131,10 +131,10 @@ def download(
 
             try:
                 work_dest.unlink(missing_ok=True)
+                work_queue.put_nowait(Work(gsud["url"], work_dest, chunk_size_mib))
             except OSError:
-                shutil.rmtree(work_dest)
+                click.echo(f"Cannot write file to {work_dest} - directory exists.")
 
-            work_queue.put(Work(gsud["url"], work_dest, chunk_size_mib))
         else:
             gsurd: GetSignedUrlsRecursiveData = json["data"]
             total += len(gsurd["urls"])
@@ -157,20 +157,14 @@ def download(
             for rel, url in gsurd["urls"].items():
                 res = work_dest / rel
 
-                for parent in res.parents:
-                    try:
-                        parent.mkdir(exist_ok=True, parents=True)
-                        break
-                    except NotADirectoryError:  # somewhere up the tree is a file
-                        continue
-                    except FileExistsError:
-                        parent.unlink()
-                        break
-
-                # todo(ayush): use only one mkdir call
-                res.parent.mkdir(exist_ok=True, parents=True)
-
-                work_queue.put(Work(url, work_dest / rel, chunk_size_mib))
+                try:
+                    res.parent.mkdir(exist_ok=True, parents=True)
+                    work_queue.put_nowait(Work(url, work_dest / rel, chunk_size_mib))
+                except (NotADirectoryError, FileExistsError):
+                    click.echo(
+                        f"Cannot write file to {work_dest / rel} - upstream file"
+                        " exists."
+                    )
 
     tbar = tqdm.tqdm(
         total=total,
@@ -182,16 +176,15 @@ def download(
         disable=progress == "none",
     )
 
-    workers = min(total, cores)
-    with ThreadPoolExecutor(workers) as exec:
-        futs = [
-            exec.submit(worker, work_queue, tbar, progress == "tasks", verbose)
-            for _ in range(workers)
-        ]
+    num_workers = min(total, cores)
+    uvloop.install()
 
-    total_bytes = 0
-    for fut in as_completed(futs):
-        total_bytes += fut.result()
+    loop = uvloop.new_event_loop()
+    res = loop.run_until_complete(
+        run_workers(work_queue, num_workers, tbar, progress != "none", verbose)
+    )
+
+    total_bytes = sum(res)
 
     tbar.clear()
     total_time = time.monotonic() - start

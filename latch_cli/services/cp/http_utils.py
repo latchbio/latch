@@ -1,8 +1,9 @@
 import asyncio
 from http import HTTPStatus
-from typing import Awaitable, Callable, List, Optional
+from typing import Awaitable, Callable, Dict, List, Optional
 
 import aiohttp
+import aiohttp.typedefs
 from typing_extensions import ParamSpec
 
 P = ParamSpec("P")
@@ -39,14 +40,21 @@ class RetryClientSession(aiohttp.ClientSession):
         self.retries = retries
         self.backoff = backoff
 
+        self.semas: Dict[aiohttp.typedefs.StrOrURL, asyncio.BoundedSemaphore] = {
+            "https://nucleus.latch.bio/ldata/start-upload": asyncio.BoundedSemaphore(2),
+            "https://nucleus.latch.bio/ldata/end-upload": asyncio.BoundedSemaphore(2),
+        }
+
         super().__init__(*args, **kwargs)
 
-    async def _with_retry(
+    async def _request(
         self,
-        f: Callable[P, Awaitable[aiohttp.ClientResponse]],
-        *args: P.args,
-        **kwargs: P.kwargs,
+        method: str,
+        str_or_url: aiohttp.typedefs.StrOrURL,
+        **kwargs,
     ) -> aiohttp.ClientResponse:
+        sema = self.semas.get(str_or_url)
+
         error: Optional[Exception] = None
         last_res: Optional[aiohttp.ClientResponse] = None
 
@@ -58,7 +66,12 @@ class RetryClientSession(aiohttp.ClientSession):
             cur += 1
 
             try:
-                res = await f(*args, **kwargs)
+                if sema is None:
+                    res = await super()._request(method, str_or_url, **kwargs)
+                else:
+                    async with sema:
+                        res = await super()._request(method, str_or_url, **kwargs)
+
                 if res.status in self.status_list:
                     last_res = res
                     continue
@@ -76,6 +89,3 @@ class RetryClientSession(aiohttp.ClientSession):
 
         # we'll never get here but putting here anyway so the type checker is happy
         raise RetriesExhaustedException
-
-    async def _request(self, *args, **kwargs) -> aiohttp.ClientResponse:
-        return await self._with_retry(super()._request, *args, **kwargs)
