@@ -4,22 +4,10 @@ import json
 import os
 import signal
 import sys
-from typing import Generic, Literal, Optional, Tuple, TypedDict, TypeVar, Union
-from urllib.parse import urljoin, urlparse
+from typing import Literal, TypedDict, Union
 
 import websockets.client as websockets
-from latch_sdk_config.latch import NUCLEUS_URL
 from typing_extensions import TypeAlias
-
-from latch_cli.services.execute.utils import (
-    ContainerNode,
-    EGNNode,
-    ExecutionInfoNode,
-    get_container_info,
-    get_egn_info,
-    get_execution_info,
-)
-from latch_cli.utils import get_auth_header
 
 
 class StdoutResponse(TypedDict):
@@ -125,72 +113,32 @@ async def propagate_resize_events(
         )
 
 
-async def connect(egn_info: EGNNode, container_info: Optional[ContainerNode]):
+async def forward_stdio(ws: websockets.WebSocketClientProtocol):
     loop = asyncio.get_event_loop()
 
-    resize_queue: asyncio.Queue = asyncio.Queue()
-    await resize_queue.put(os.get_terminal_size())
+    resize_event_queue: asyncio.Queue = asyncio.Queue()
+    await resize_event_queue.put(os.get_terminal_size())
 
     loop.add_signal_handler(
         signal.SIGWINCH,
-        lambda: asyncio.create_task(handle_resize(resize_queue)),
+        lambda: asyncio.create_task(handle_resize(resize_event_queue)),
     )
 
     local_stdin, local_stdout = await get_stdio_streams()
 
-    async with websockets.connect(
-        urlparse(urljoin(NUCLEUS_URL, "/workflows/cli/shell"))
-        ._replace(scheme="wss")
-        .geturl(),
-        close_timeout=0,
-        extra_headers={"Authorization": get_auth_header()},
-    ) as ws:
-        request = {
-            "egn_id": egn_info["id"],
-            "container_index": (
-                container_info["index"] if container_info is not None else None
-            ),
-        }
-
-        await ws.send(json.dumps(request))
-
-        # ayush: can't use TaskGroups bc only supported on >= 3.11
-        try:
-            _, pending = await asyncio.wait(
-                [
-                    asyncio.create_task(pipe_from_remote_stdout(ws, local_stdout)),
-                    asyncio.create_task(pipe_to_remote_stdin(ws, local_stdin)),
-                    asyncio.create_task(propagate_resize_events(ws, resize_queue)),
-                ],
-                return_when=asyncio.FIRST_COMPLETED,
-            )
-
-            for unfinished in pending:
-                unfinished.cancel()
-
-        except asyncio.CancelledError:
-            pass
-
-
-def exec(
-    execution_id: Optional[str] = None,
-    egn_id: Optional[str] = None,
-    container_index: Optional[int] = None,
-):
-    execution_info: Optional[ExecutionInfoNode] = None
-    if egn_id is None:
-        execution_info = get_execution_info(execution_id)
-
-    egn_info = get_egn_info(execution_info, egn_id)
-    container_info = get_container_info(egn_info, container_index)
-
-    import termios
-    import tty
-
-    old_settings_stdin = termios.tcgetattr(sys.stdin.fileno())
-    tty.setraw(sys.stdin)
-
+    # ayush: can't use TaskGroups bc only supported on >= 3.11
     try:
-        asyncio.run(connect(egn_info, container_info))
-    finally:
-        termios.tcsetattr(sys.stdin.fileno(), termios.TCSANOW, old_settings_stdin)
+        _, pending = await asyncio.wait(
+            [
+                asyncio.create_task(pipe_from_remote_stdout(ws, local_stdout)),
+                asyncio.create_task(pipe_to_remote_stdin(ws, local_stdin)),
+                asyncio.create_task(propagate_resize_events(ws, resize_event_queue)),
+            ],
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+
+        for unfinished in pending:
+            unfinished.cancel()
+
+    except asyncio.CancelledError:
+        pass
