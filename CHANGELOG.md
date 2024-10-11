@@ -16,6 +16,14 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.53.7 - 2024-10-11
+
+### Added
+
+* Nextflow
+  - Graceful termination for nextflow runtime task to prevent
+    pod from being deleted before flyte can processes
+
 ## 2.53.6 - 2024-10-11
 
 ### Added
