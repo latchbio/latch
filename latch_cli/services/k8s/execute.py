@@ -36,6 +36,21 @@ async def connect(egn_info: EGNNode, container_info: Optional[ContainerNode]):
         }
 
         await ws.send(json.dumps(request))
+        data = await ws.recv()
+
+        msg = ""
+        try:
+            res = json.loads(data)
+            if "error" in res:
+                raise RuntimeError(res["error"])
+        except json.JSONDecodeError:
+            msg = "Unable to connect to pod - internal error."
+        except RuntimeError as e:
+            msg = str(e)
+
+        if msg != "":
+            raise RuntimeError(msg)
+
         await forward_stdio(ws)
 
 
