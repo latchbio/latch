@@ -606,6 +606,8 @@ def nextflow_runtime_task(cpu: int, memory: int, storage_gib: int = 50):
     task_config = _custom_task_config(cpu, memory, storage_gib)
 
     task_config.pod_spec.automount_service_account_token = True
+    # rahul: give flyte enough time to process the task after completion
+    task_config.pod_spec.termination_grace_period_seconds = 120
 
     assert len(task_config.pod_spec.containers) == 1
     task_config.pod_spec.containers[0].volume_mounts = [
