@@ -681,9 +681,13 @@ class LatchMetadata:
     """
     _non_standard: Dict[str, object] = field(default_factory=dict)
 
+    def __post_init__(self):
+        self.workflow_type = "flyte"
+
     @property
     def dict(self):
         metadata_dict = asdict(self)
+        metadata_dict["workflow_type"] = self.workflow_type
         # remove parameters since that will be handled by each parameters' dict() method
         del metadata_dict["parameters"]
         metadata_dict["license"] = {"id": self.license}
@@ -803,6 +807,7 @@ class SnakemakeMetadata(LatchMetadata):
                 raise click.exceptions.Exit(1)
 
     def __post_init__(self):
+        self.workflow_type = "snakemake"
         self.validate()
 
         if self.name is None:
@@ -873,6 +878,7 @@ class NextflowMetadata(LatchMetadata):
         return d
 
     def __post_init__(self):
+        self.workflow_type = "nextflow"
         self.validate()
 
         if self.name is None:
