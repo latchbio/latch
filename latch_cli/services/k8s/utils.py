@@ -61,9 +61,6 @@ ei_fragment = gql.gql("""
         workflow {
             displayName
         }
-        nfExecutionInfoByExecutionId {
-            executionId
-        }
         executionGraphNodesByExecutionId(condition: { status: RUNNING }) {
             nodes {
                 id
@@ -120,16 +117,11 @@ class Workflow(TypedDict):
     displayName: str
 
 
-class NEI(TypedDict):
-    executionId: str
-
-
 class ExecutionInfoNode(TypedDict):
     id: str
     status: str
     displayName: str
     workflow: Workflow
-    nfExecutionInfoByExecutionId: Optional[NEI]
     executionGraphNodesByExecutionId: EGNById
 
 
@@ -137,9 +129,7 @@ class RunningExecutions(TypedDict):
     nodes: List[ExecutionInfoNode]
 
 
-def get_execution_info(
-    execution_id: Optional[str], *, nextflow_only: bool = False
-) -> ExecutionInfoNode:
+def get_execution_info(execution_id: Optional[str]) -> ExecutionInfoNode:
     workspace_str: str = user_config.workspace_name or user_config.workspace_id
 
     if execution_id is not None:
@@ -172,14 +162,6 @@ def get_execution_info(
             )
             raise click.exceptions.Exit(1)
 
-        if nextflow_only and info["nfExecutionInfoByExecutionId"] is None:
-            click.secho(
-                f"The selected execution ({color(info['displayName'])}) is not a"
-                " Nextflow execution.",
-                fg="red",
-            )
-            raise click.exceptions.Exit(1)
-
         return info
 
     res: RunningExecutions = execute(
@@ -200,18 +182,10 @@ def get_execution_info(
     )["runningExecutions"]
 
     nodes = res["nodes"]
-    if nextflow_only:
-        nodes = []
-        for node in res["nodes"]:
-            if node["nfExecutionInfoByExecutionId"] is None:
-                continue
-
-            nodes.append(node)
 
     if len(nodes) == 0:
         click.secho(
-            f"You have no {'Nextflow ' if nextflow_only else ''}executions currently"
-            " running.",
+            f"You have no executions currently running.",
             dim=True,
         )
         raise click.exceptions.Exit(0)
@@ -219,7 +193,7 @@ def get_execution_info(
     if len(nodes) == 1:
         execution = nodes[0]
         click.secho(
-            f"Selecting {'Nextflow ' if nextflow_only else ''}execution"
+            "Selecting execution"
             f" {color(execution['displayName'])} as it is"
             " the only one currently running in Workspace"
             f" {color(workspace_str)}.",
@@ -228,7 +202,7 @@ def get_execution_info(
         return execution
 
     selected_execution = select_tui(
-        f"You have multiple {'Nextflow ' if nextflow_only else ''}executions running in"
+        "You have multiple executions running in"
         f" this workspace ({color(workspace_str)}). Which execution would you like to"
         " inspect?",
         [
@@ -397,3 +371,61 @@ def get_container_info(
         raise click.exceptions.Exit(0)
 
     return selected_container_info
+
+
+class Node(TypedDict):
+    id: str
+    displayName: str
+
+
+class nfAvailablePvcs(TypedDict):
+    nodes: List[Node]
+
+
+def get_pvc_info(execution_id: Optional[str]) -> str:
+    if execution_id is not None:
+        return execution_id
+
+    workspace_str: str = user_config.workspace_name or user_config.workspace_id
+
+    res: nfAvailablePvcs = execute(
+        gql.gql("""
+            query NFWorkdirs($wsId: BigInt!) {
+                nfAvailablePvcs(argWsId: $wsId) {
+                    nodes {
+                        id
+                        displayName
+                    }
+                }
+            }
+        """),
+        {"wsId": user_config.workspace_id},
+    )["nfAvailablePvcs"]
+
+    nodes = res["nodes"]
+
+    if len(nodes) == 0:
+        click.secho(
+            f"You have no available workdirs (all have expired).",
+            dim=True,
+        )
+        raise click.exceptions.Exit(0)
+
+    if len(nodes) == 1:
+        execution = nodes[0]
+        click.secho(
+            f"Selecting execution {color(execution['displayName'])} as it is the only"
+            f" one without an expired workDir in Workspace {color(workspace_str)}.",
+        )
+        return execution["id"]
+
+    selected_execution = select_tui(
+        "You have multiple available workDirs in this workspace"
+        f" ({color(workspace_str)}). Which execution would you like to attach to?",
+        options=[{"display_name": x["displayName"], "value": x["id"]} for x in nodes],
+    )
+    if selected_execution is None:
+        click.secho("No execution selected. Exiting.", dim=True)
+        raise click.exceptions.Exit(0)
+
+    return selected_execution

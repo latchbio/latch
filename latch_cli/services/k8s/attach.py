@@ -10,9 +10,9 @@ import websockets.client as websockets
 import websockets.exceptions as ws_exceptions
 from latch_sdk_config.latch import NUCLEUS_URL
 
-from latch_cli.services.k8s.utils import get_execution_info
 from latch_cli.utils import get_auth_header
 
+from .utils import get_pvc_info
 from .ws_utils import forward_stdio
 
 
@@ -50,7 +50,7 @@ def get_session_id():
 
 
 def attach(execution_id: Optional[str] = None):
-    execution_info = get_execution_info(execution_id, nextflow_only=True)
+    execution_id = get_pvc_info(execution_id)
     session_id = get_session_id()
 
     import termios
@@ -61,7 +61,7 @@ def attach(execution_id: Optional[str] = None):
 
     msg = ""
     try:
-        asyncio.run(connect(execution_info["id"], session_id))
+        asyncio.run(connect(execution_id, session_id))
     except ws_exceptions.ConnectionClosedError as e:
         msg = json.loads(e.reason)["error"]
     except RuntimeError as e:
