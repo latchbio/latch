@@ -16,6 +16,14 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.53.7 - 2024-10-16
+
+### Added
+
+* Nextflow
+  - bump nf runtime version to 2.3.0
+  - use `NXF_ENABLE_FS_SYNC` flag in workflows to enable using sync on task finish
+
 ## 2.53.6 - 2024-10-11
 
 ### Added
