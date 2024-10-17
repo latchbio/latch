@@ -497,7 +497,8 @@ class TableUpdate:
                     v, col.upstream_type["type"], resolve_paths=False
                 )
             except RegistryTransformerException as e:
-                errs.append(f"\tCould not convert field '{k}' with value {v} to type {col.upstream_type['type']}: {e}")
+		# todo(ayush): add a registry_type -> pretty string fn so we aren't printing json here
+                errs.append(f"Error converting field {repr(k)} with value {repr(v)} to type {col.upstream_type['type']}: {e}")
 
         if len(errs) > 0:
             raise RegistryTransformerException(f"Could not upsert record {name}:" + "\n".join(errs))
