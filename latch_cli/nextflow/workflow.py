@@ -146,6 +146,7 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
             "NXF_OPTS": "-Xms{heap_initial}M -Xmx{heap_max}M -XX:ActiveProcessorCount={cpu}",
             "NXF_DISABLE_CHECK_LATEST": "true",
             "NXF_ENABLE_VIRTUAL_THREADS": "false",
+            "NXF_ENABLE_FS_SYNC": "true",
         }}
 
         if {upload_command_logs}:
@@ -240,6 +241,10 @@ def generate_nextflow_config(pkg_root: Path):
     config_path.write_text(dedent("""\
         process {
             executor = 'k8s'
+        }
+
+        k8s {
+            runAsUser = 0
         }
 
         aws {
