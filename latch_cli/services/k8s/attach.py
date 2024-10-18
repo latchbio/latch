@@ -53,6 +53,10 @@ def attach(execution_id: Optional[str] = None):
     execution_id = get_pvc_info(execution_id)
     session_id = get_session_id()
 
+    click.secho(
+        "Attaching to workdir - this may take a few seconds...", dim=True, italic=True
+    )
+
     import termios
     import tty
 

@@ -442,19 +442,6 @@ def execute(
     exec(execution_id=execution_id, egn_id=egn_id, container_index=container_index)
 
 
-@main.command("attach")
-@click.option(
-    "--execution-id", "-e", type=str, help="Optional execution ID to inspect."
-)
-@requires_login
-def attach(execution_id: Optional[str]):
-    """Drops the user into an interactive shell to inspect the workdir of a nextflow execution."""
-
-    from latch_cli.services.k8s.attach import attach
-
-    attach(execution_id)
-
-
 @main.command("register")
 @click.argument("pkg_root", type=click.Path(exists=True, file_okay=False))
 @click.option(
@@ -1010,6 +997,19 @@ def generate_entrypoint(
         dest,
         execution_profile=execution_profile,
     )
+
+
+@nextflow.command("attach")
+@click.option(
+    "--execution-id", "-e", type=str, help="Optional execution ID to inspect."
+)
+@requires_login
+def attach(execution_id: Optional[str]):
+    """Drops the user into an interactive shell to inspect the workdir of a nextflow execution."""
+
+    from latch_cli.services.k8s.attach import attach
+
+    attach(execution_id)
 
 
 """
