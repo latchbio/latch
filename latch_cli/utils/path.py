@@ -1,3 +1,4 @@
+import functools
 import re
 from pathlib import Path
 from textwrap import dedent
@@ -161,6 +162,8 @@ auth = re.compile(
     re.VERBOSE,
 )
 
+_style = functools.partial(click.style, reset=False)
+
 
 def get_path_error(path: str, message: str, acc_id: str) -> str:
     with_scheme = append_scheme(path)
@@ -178,7 +181,7 @@ def get_path_error(path: str, message: str, acc_id: str) -> str:
         auth_type = "Execution Token"
 
     auth_str = (
-        f"{click.style(f'Authorized using:', bold=True, reset=False)} {click.style(auth_type, bold=False, reset=False)}"
+        f"{_style(f'Authorized using:', bold=True)} {_style(auth_type, bold=False)}"
         + "\n"
     )
 
@@ -186,29 +189,32 @@ def get_path_error(path: str, message: str, acc_id: str) -> str:
     ws_name = user_config.workspace_name
 
     resolve_str = (
-        f"{click.style(f'Relative path resolved to:', bold=True, reset=False)} {click.style(normalized, bold=False, reset=False)}"
-        + "\n"
+        f"{_style(f'Relative path resolved to:', bold=True)} {_style(normalized, bold=False)}"
     )
-    ws_str = (
-        f"{click.style(f'Using Workspace:', bold=True, reset=False)} {click.style(ws_id, bold=False, reset=False)}"
-    )
+    ws_str = f"{_style(f'Using Workspace:', bold=True)} {_style(ws_id, bold=False)}"
     if ws_name is not None:
         ws_str = f"{ws_str} ({ws_name})"
-    ws_str += "\n"
 
-    return click.style(
-        f"""
-{click.style(f'{path}: ', bold=True, reset=False)}{click.style(message, bold=False, reset=False)}
-{resolve_str if account_relative else ""}{ws_str if account_relative else ""}
-{auth_str}
-{click.style("Check that:", bold=True, reset=False)}
-{click.style("1. The target object exists", bold=False, reset=False)}
-{click.style(f"2. Account ", bold=False, reset=False)}{click.style(acc_id, bold=True, reset=False)}{click.style(" has permission to view the target object", bold=False, reset=False)}
-{"3. The correct workspace is selected" if account_relative else ""}
+    res = [
+        "".join([_style(f"{path}: ", bold=True), _style(message, bold=False)]),
+        *([resolve_str, ws_str] if account_relative else []),
+        auth_str,
+        _style("Check that:", bold=True),
+        _style("1. The target object exists", bold=False),
+        "".join([
+            _style(f"2. Account ", bold=False),
+            _style(acc_id, bold=True),
+            _style(" has permission to view the target object", bold=False),
+        ]),
+        *(["3. The correct workspace is selected"] if account_relative else []),
+        "",
+        (
+            "For privacy reasons, non-viewable objects and non-existent objects are"
+            " indistinguishable."
+        ),
+    ]
 
-For privacy reasons, non-viewable objects and non-existent objects are indistinguishable""",
-        fg="red",
-    )
+    return click.style("\n".join(res), fg="red")
 
 
 name = re.compile(r"^.*/(?P<name>[^/]+)/?$")
