@@ -13,7 +13,7 @@ if cur_ver < (3, 8) or cur_ver > (3, 11):
 
 setup(
     name="latch",
-    version="v2.53.7.dev1",
+    version="v2.53.7.dev2",
     author_email="kenny@latch.bio",
     description="The Latch SDK",
     packages=find_packages(),
@@ -53,6 +53,9 @@ setup(
         "asyncssh==2.13.2",
         "websockets==11.0.3",
         "watchfiles==0.19.0",
+        # new latch cp
+        "uvloop==0.19.0",
+        "aiohttp==3.9.5",
     ],
     extras_require={
         "snakemake": ["snakemake>=7.18.0, <7.30.2", "pulp >=2.0, <2.8"],
