@@ -437,7 +437,7 @@ def execute(
 ):
     """Drops the user into an interactive shell from within a task."""
 
-    from latch_cli.services.execute.main import exec
+    from latch_cli.services.k8s.execute import exec
 
     exec(execution_id=execution_id, egn_id=egn_id, container_index=container_index)
 
@@ -997,6 +997,19 @@ def generate_entrypoint(
         dest,
         execution_profile=execution_profile,
     )
+
+
+@nextflow.command("attach")
+@click.option(
+    "--execution-id", "-e", type=str, help="Optional execution ID to inspect."
+)
+@requires_login
+def attach(execution_id: Optional[str]):
+    """Drops the user into an interactive shell to inspect the workdir of a nextflow execution."""
+
+    from latch_cli.services.k8s.attach import attach
+
+    attach(execution_id)
 
 
 """

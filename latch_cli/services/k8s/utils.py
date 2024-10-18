@@ -9,7 +9,6 @@ from latch_sdk_gql.execute import execute
 
 from latch_cli.click_utils import bold, color
 from latch_cli.menus import select_tui
-from latch_cli.utils import current_workspace
 
 
 # todo(ayush): put this into latch_sdk_gql
@@ -179,35 +178,39 @@ def get_execution_info(execution_id: Optional[str]) -> ExecutionInfoNode:
             """),
             *fragments,
         ),
-        {"createdBy": current_workspace()},
+        {"createdBy": user_config.workspace_id},
     )["runningExecutions"]
 
-    if len(res["nodes"]) == 0:
-        click.secho("You have no executions currently running.", dim=True)
+    nodes = res["nodes"]
+
+    if len(nodes) == 0:
+        click.secho(
+            f"You have no executions currently running.",
+            dim=True,
+        )
         raise click.exceptions.Exit(0)
 
-    if len(res["nodes"]) == 1:
-        execution = res["nodes"][0]
+    if len(nodes) == 1:
+        execution = nodes[0]
         click.secho(
             "Selecting execution"
             f" {color(execution['displayName'])} as it is"
-            " the only"
-            " one currently running in Workspace"
+            " the only one currently running in Workspace"
             f" {color(workspace_str)}.",
         )
 
         return execution
 
     selected_execution = select_tui(
-        "You have multiple executions running in this workspace"
-        f" ({color(workspace_str)}). Which"
-        " execution would you like to inspect?",
+        "You have multiple executions running in"
+        f" this workspace ({color(workspace_str)}). Which execution would you like to"
+        " inspect?",
         [
             {
                 "display_name": f'{x["displayName"]} ({x["workflow"]["displayName"]})',
                 "value": x,
             }
-            for x in res["nodes"]
+            for x in nodes
         ],
         clear_terminal=False,
     )
@@ -368,3 +371,61 @@ def get_container_info(
         raise click.exceptions.Exit(0)
 
     return selected_container_info
+
+
+class Node(TypedDict):
+    id: str
+    displayName: str
+
+
+class nfAvailablePvcs(TypedDict):
+    nodes: List[Node]
+
+
+def get_pvc_info(execution_id: Optional[str]) -> str:
+    if execution_id is not None:
+        return execution_id
+
+    workspace_str: str = user_config.workspace_name or user_config.workspace_id
+
+    res: nfAvailablePvcs = execute(
+        gql.gql("""
+            query NFWorkdirs($wsId: BigInt!) {
+                nfAvailablePvcs(argWsId: $wsId) {
+                    nodes {
+                        id
+                        displayName
+                    }
+                }
+            }
+        """),
+        {"wsId": user_config.workspace_id},
+    )["nfAvailablePvcs"]
+
+    nodes = res["nodes"]
+
+    if len(nodes) == 0:
+        click.secho(
+            f"You have no available workdirs (all have expired).",
+            dim=True,
+        )
+        raise click.exceptions.Exit(0)
+
+    if len(nodes) == 1:
+        execution = nodes[0]
+        click.secho(
+            f"Selecting execution {color(execution['displayName'])} as it is the only"
+            f" one without an expired workDir in Workspace {color(workspace_str)}.",
+        )
+        return execution["id"]
+
+    selected_execution = select_tui(
+        "You have multiple available workDirs in this workspace"
+        f" ({color(workspace_str)}). Which execution would you like to attach to?",
+        options=[{"display_name": x["displayName"], "value": x["id"]} for x in nodes],
+    )
+    if selected_execution is None:
+        click.secho("No execution selected. Exiting.", dim=True)
+        raise click.exceptions.Exit(0)
+
+    return selected_execution

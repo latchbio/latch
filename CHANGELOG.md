@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.53.8 - 2024-10-18
+
+### Added
+
+* Nextflow
+  - add `latch nextflow attach` command to attach to a nextflow work directory
+
 ## 2.53.7 - 2024-10-16
 
 ### Added
