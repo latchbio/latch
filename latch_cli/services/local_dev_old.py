@@ -22,7 +22,7 @@ from latch_sdk_config.latch import config
 from watchfiles import awatch
 
 from latch.utils import current_workspace, retrieve_or_login
-from latch_cli.constants import docker_image_name_illegal_pat
+from latch_cli.constants import docker_image_name_illegal_pat, latch_constants
 from latch_cli.tinyrequests import post
 from latch_cli.utils import TemporarySSHCredentials, identifier_suffix_from_str
 
@@ -43,6 +43,10 @@ def _get_workflow_name(
             raise click.exceptions.Exit(1)
         return f"{metadata._snakemake_metadata.name}_jit_register"
     else:
+        name_path = pkg_root / latch_constants.pkg_workflow_name
+        if name_path.exists():
+            return name_path.read_text().strip()
+
         from flytekit.core.context_manager import FlyteEntities
         from flytekit.core.workflow import PythonFunctionWorkflow
 
