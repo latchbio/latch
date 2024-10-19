@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.53.9 - 2024-10-18
+
+### Fixed
+
+* Bug in `latch develop` where the workflow name would be parsed incorrectly
+
 ## 2.53.8 - 2024-10-18
 
 ### Added
