@@ -1,5 +1,6 @@
 import builtins
 import contextlib
+import functools
 import os
 import random
 import string
@@ -8,13 +9,14 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from types import ModuleType
-from typing import Iterator, List, Optional
+from typing import Callable, Iterator, List, Optional, TypeVar
 
 import docker
 import paramiko
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.tools import module_loader
+from typing_extensions import ParamSpec
 
 from latch_cli.constants import latch_constants
 
@@ -231,11 +233,22 @@ def _construct_ssh_client(
     return ssh
 
 
+T = TypeVar("T")
+P = ParamSpec("P")
+
+max_retries = 5
+
+
 class MaybeRemoteDir:
     """A temporary directory that exists locally or on a remote machine."""
 
-    def __init__(self, ssh_client: Optional[paramiko.SSHClient] = None):
+    def __init__(
+        self,
+        ssh_client: Optional[paramiko.SSHClient] = None,
+        reconnect_info: Optional[RemoteConnInfo] = None,
+    ):
         self.ssh_client = ssh_client
+        self.reconnect_info = reconnect_info
 
     def __enter__(self):
         return self.create()
@@ -243,7 +256,39 @@ class MaybeRemoteDir:
     def __exit__(self, exc_type, exc_value, tb):
         self.cleanup()
 
+    def with_reconnect(self, f: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T:
+        retries = 0
+
+        while retries <= max_retries:
+            retries += 1
+
+            try:
+                return f(*args, **kwargs)
+            except paramiko.SSHException:
+                if self.ssh_client is None or self.reconnect_info is None:
+                    raise
+
+                pkey = paramiko.PKey.from_path(
+                    path=str(self.reconnect_info.ssh_key_path.resolve())
+                )
+
+                self.ssh_client.load_system_host_keys()
+                self.ssh_client.set_missing_host_key_policy(
+                    paramiko.MissingHostKeyPolicy
+                )
+                self.ssh_client.connect(
+                    self.reconnect_info.ip,
+                    username=self.reconnect_info.username,
+                    pkey=pkey,
+                )
+
     def create(self):
+        return self.with_reconnect(self._create)
+
+    def cleanup(self):
+        return self.with_reconnect(self._cleanup)
+
+    def _create(self):
         if self.ssh_client is None:
             self._tempdir = tempfile.TemporaryDirectory()
             return str(Path(self._tempdir.name).resolve())
@@ -255,7 +300,7 @@ class MaybeRemoteDir:
         self.ssh_client.exec_command(f"mkdir {self._tempdir}")
         return self._tempdir
 
-    def cleanup(self):
+    def _cleanup(self):
         if self.ssh_client is not None:
             self.ssh_client.exec_command(f"rm -rf {self._tempdir}")
             return

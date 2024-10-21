@@ -118,14 +118,80 @@ class _CentromereCtx:
             else:
                 self.workflow_type = WorkflowType.latchbiosdk
 
+            version_file = self.pkg_root / "version"
+            try:
+                self.version = version_file.read_text()
+            except FileNotFoundError:
+                self.version = "0.1.0"
+                version_file.write_text(f"{self.version}\n")
+                click.echo(
+                    f"Created a version file with initial version {self.version}."
+                )
+
+            self.version = self.version.strip()
+
+            try:
+                from git import GitError, Repo
+
+                try:
+                    repo = Repo(pkg_root)
+                    self.git_commit_hash = repo.head.commit.hexsha
+                    self.git_is_dirty = repo.is_dirty()
+                except GitError:
+                    pass
+            except ImportError:
+                # rahul: import will fail if `git` is not installed locally
+                pass
+            except Exception as e:
+                click.secho(
+                    "WARN: Exception occurred while getting git hash from"
+                    f" {self.pkg_root}: {e}",
+                    fg="yellow",
+                )
+
+            if not self.disable_auto_version:
+                hash = ""
+
+                if self.git_commit_hash is not None:
+                    hash += f"-{self.git_commit_hash[:6]}"
+                    if self.git_is_dirty:
+                        click.secho(
+                            dedent("""
+                            The git repository is dirty. The version will be suffixed
+                            with '-wip' until the changes are committed or removed.
+                            """),
+                            fg="yellow",
+                        )
+                        hash += "-wip"
+
+                hash += f"-{hash_directory(self.pkg_root)[:6]}"
+
+                self.version = f"{self.version}{hash}"
+
             self.container_map: Dict[str, _Container] = {}
 
             if self.workflow_type == WorkflowType.latchbiosdk:
                 _import_flyte_objects([self.pkg_root])
+
                 for entity in FlyteEntities.entities:
                     if isinstance(entity, PythonFunctionWorkflow):
                         self.workflow_name = entity.name
+                        break
 
+                if not hasattr(self, "workflow_name"):
+                    click.secho(
+                        dedent("""\
+                        Unable to locate workflow code. If you are a registering a Snakemake project, make sure to pass the Snakefile path with the --snakefile flag.
+                        """),
+                        fg="red",
+                    )
+                    raise click.exceptions.Exit(1)
+
+                name_path = pkg_root / latch_constants.pkg_workflow_name
+                if name_path.exists():
+                    self.workflow_name = name_path.read_text().strip()
+
+                for entity in FlyteEntities.entities:
                     if isinstance(entity, PythonTask):
                         if (
                             hasattr(entity, "dockerfile_path")
@@ -136,20 +202,7 @@ class _CentromereCtx:
                                 image_name=self.task_image_name(entity.name),
                                 pkg_dir=entity.dockerfile_path.parent,
                             )
-                if not hasattr(self, "workflow_name"):
-                    click.secho(
-                        dedent("""
-                                     Unable to locate workflow code. If you
-                                     are a registering a Snakemake project,
-                                     make sure to pass the Snakefile path with
-                                     the --snakefile flag."""),
-                        fg="red",
-                    )
-                    raise click.exceptions.Exit(1)
 
-                name_path = pkg_root / latch_constants.pkg_workflow_name
-                if name_path.exists():
-                    self.workflow_name = name_path.read_text().strip()
             elif self.workflow_type == WorkflowType.snakemake:
                 assert snakefile is not None
 
@@ -293,54 +346,6 @@ class _CentromereCtx:
 
             assert self.workflow_name is not None
 
-            version_file = self.pkg_root / "version"
-            try:
-                self.version = version_file.read_text()
-            except FileNotFoundError:
-                self.version = "0.1.0"
-                version_file.write_text(f"{self.version}\n")
-                click.echo(
-                    f"Created a version file with initial version {self.version}."
-                )
-            self.version = self.version.strip()
-
-            try:
-                from git import GitError, Repo
-
-                repo = Repo(pkg_root)
-                self.git_commit_hash = repo.head.commit.hexsha
-                self.git_is_dirty = repo.is_dirty()
-            except ImportError:
-                # rahul: import will fail if `git` is not installed locally
-                pass
-            except GitError:
-                pass
-            except Exception as e:
-                click.secho(
-                    "WARN: Exception occurred while getting git hash from"
-                    f" {self.pkg_root}: {e}",
-                    fg="yellow",
-                )
-
-            if not self.disable_auto_version:
-                hash = ""
-
-                if self.git_commit_hash is not None:
-                    hash += f"-{self.git_commit_hash[:6]}"
-                    if self.git_is_dirty:
-                        click.secho(
-                            dedent("""
-                            The git repository is dirty. The version will be suffixed
-                            with '-wip' until the changes are committed or removed.
-                            """),
-                            fg="yellow",
-                        )
-                        hash += "-wip"
-
-                hash += f"-{hash_directory(self.pkg_root)[:6]}"
-
-                self.version = f"{self.version}{hash}"
-
             if self.nucleus_check_version(self.version, self.workflow_name):
                 click.secho(
                     f"\nVersion ({self.version}) already exists."
@@ -373,7 +378,7 @@ class _CentromereCtx:
                 else:
                     self.internal_ip, self.username = self.get_old_centromere_info()
 
-                remote_conn_info = RemoteConnInfo(
+                self.remote_conn_info = RemoteConnInfo(
                     ip=self.internal_ip,
                     username=self.username,
                     jump_key_path=self.jump_key_path,
@@ -381,7 +386,7 @@ class _CentromereCtx:
                 )
 
                 ssh_client = _construct_ssh_client(
-                    remote_conn_info, use_gateway=use_new_centromere
+                    self.remote_conn_info, use_gateway=use_new_centromere
                 )
                 self.ssh_client = ssh_client
 

@@ -473,7 +473,10 @@ def register(
             remote_dir_client = None
             if snakefile is None:
                 remote_dir_client = ctx.ssh_client
-            td: str = stack.enter_context(MaybeRemoteDir(remote_dir_client))
+
+            td: str = stack.enter_context(
+                MaybeRemoteDir(remote_dir_client, ctx.remote_conn_info)
+            )
             _build_and_serialize(
                 ctx,
                 ctx.default_container.image_name,
@@ -495,7 +498,9 @@ def register(
             protos = _recursive_list(local_td)
 
             for task_name, container in ctx.container_map.items():
-                task_td = stack.enter_context(MaybeRemoteDir(ctx.ssh_client))
+                task_td = stack.enter_context(
+                    MaybeRemoteDir(ctx.ssh_client, ctx.remote_conn_info)
+                )
                 try:
                     _build_and_serialize(
                         ctx,
@@ -513,10 +518,10 @@ def register(
 
                         assert scp is not None
                         scp.get(
-                            f"{task_td}/*", local_path=str(local_td), recursive=True
+                            f"{task_td}/*",
+                            local_path=str(local_task_td),
+                            recursive=True,
                         )
-
-                        new_protos = _recursive_list(local_td)
                     else:
                         local_task_td = Path(task_td)
 
