@@ -16,6 +16,14 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.53.10 - 2024-10-21
+
+### Fixed
+
+* Bugs when using multiple dockerfiles
+  * Add reconnect for ssh_client operations
+  * move workflow name / version parsing to the start of registration flow
+
 ## 2.53.9 - 2024-10-18
 
 ### Fixed
