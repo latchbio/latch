@@ -1,3 +1,4 @@
+import json
 import sys
 import time
 from contextlib import contextmanager
@@ -76,6 +77,7 @@ class _ColumnNode(TypedDict("_ColumnNodeReserved", {"def": DBValue})):
 
 @dataclass
 class _Cache:
+    read_only: Optional[bool] = None
     display_name: Optional[str] = None
     columns: Optional[Dict[str, Column]] = None
     project_id: Optional[str] = None
@@ -123,6 +125,7 @@ class Table:
                             }
                         }
                         projectId
+                        metadata
                     }
                 }
                 """),
@@ -134,6 +137,13 @@ class Table:
                 f"table does not exist or you lack permissions: id={self.id}"
             )
 
+        try:
+            metadata = data["metadata"]
+            read_only = "benchlingSchemaId" in json.loads(metadata)
+        except (KeyError, TypeError, json.JSONDecodeError):
+            read_only = False
+
+        self._cache.read_only = read_only
         self._cache.project_id = data["projectId"]
         self._cache.display_name = data["displayName"]
 
@@ -232,6 +242,28 @@ class Table:
             self.load()
 
         return self._cache.columns
+
+    @overload
+    def read_only(self, *, load_if_missing: Literal[True] = True) -> bool: ...
+
+    @overload
+    def read_only(self, *, load_if_missing: bool) -> Optional[bool]: ...
+
+    def read_only(self, *, load_if_missing: bool = True) -> Optional[bool]:
+        """Check whether or not this table is read-only
+
+        Args:
+            load_if_missing:
+                If true, :meth:`load` the read_only status if not in cache.
+                If false, return `None` if not in cache.
+
+        Returns:
+            Mapping between column keys and :class:`columns <latch.registry.types.Column>`.
+        """
+        if self._cache.read_only is None and load_if_missing:
+            self.load()
+
+        return self._cache.read_only
 
     def list_records(self, *, page_size: int = 100) -> Iterator[Dict[str, Record]]:
         """List Registry records contained in this table.
@@ -363,6 +395,9 @@ class Table:
         Returns:
             Context manager for the new transaction.
         """
+
+        if self.read_only():
+            raise RuntimeError(f"cannot update read-only table: id={self.id}")
 
         upd = TableUpdate(self)
         yield upd
