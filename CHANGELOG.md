@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.53.11 - 2024-10-31
+
+### Changed
+
+* Pass `@task` arguments through `@custom_task`
+
 ## 2.53.10 - 2024-10-21
 
 ### Fixed

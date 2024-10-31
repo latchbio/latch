@@ -579,6 +579,7 @@ def custom_task(
     *,
     storage_gib: Union[Callable, int] = 500,
     timeout: Union[datetime.timedelta, int] = 0,
+    **kwargs,
 ):
     """Returns a custom task configuration requesting
     the specified CPU/RAM allocations
@@ -598,7 +599,10 @@ def custom_task(
         return functools.partial(task, task_config=task_config, timeout=timeout)
 
     return functools.partial(
-        task, task_config=_custom_task_config(cpu, memory, storage_gib), timeout=timeout
+        task,
+        task_config=_custom_task_config(cpu, memory, storage_gib),
+        timeout=timeout,
+        **kwargs,
     )
 
 
