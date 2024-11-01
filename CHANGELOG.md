@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.53.12 - 2024-11-01
+
+### Changed
+
+* Better error messaging for Snakemake registration errors (Thank you @msto!)
+
 ## 2.53.11 - 2024-10-31
 
 ### Changed
