@@ -178,7 +178,7 @@ class SnakemakeWorkflowExtractor(Workflow):
         # todo(maximsmol): handle specific errors
         # WorkflowError: Failed to open source file /Users/maximsmol/projects/latchbio/latch/test/CGI_WGS_GATK_Pipeline/Snakefiles/CGI_WGS_GATK_Pipeline/Snakefiles/calc_frag_len.smk
         # FileNotFoundError: [Errno 2] No such file or directory: '/Users/maximsmol/projects/latchbio/latch/test/CGI_WGS_GATK_Pipeline/Snakefiles/CGI_WGS_GATK_Pipeline/Snakefiles/calc_frag_len.smk'
-        raise RuntimeError("invalid Snakefile") from value
+        raise RuntimeError(f"invalid Snakefile: {value}") from value
 
 
 def snakemake_workflow_extractor(
