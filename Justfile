@@ -6,6 +6,7 @@ install:
 # Packaging
 
 build:
+  rm -rf dist
   uv build
 
 publish:

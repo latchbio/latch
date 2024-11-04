@@ -7,11 +7,12 @@ include = ["src/**/*.py", "src/latch_cli/services/init/*"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "src/latch_cli" = "latch_cli"
-
+"src/latch_sdk_gql" = "latch_sdk_gql"
+"src/latch_sdk_config" = "latch_sdk_config"
 
 [project]
 name = "latch"
-version = "2.54.0.a1"
+version = "2.54.0.a3"
 description = "The Latch SDK"
 authors = [{ name = "Kenny Workman", email = "kenny@latch.bio" }]
 maintainers = [
@@ -35,20 +36,21 @@ dependencies = [
   "tqdm>=4.63.0",
   "lytekit==0.15.13",
   "lytekitplugins-pods==0.6.2",
-  "typing-extensions==4.7.1",
+  "typing-extensions>=4.12.0",
   "apscheduler>=3.10.0",
   "gql==3.4.0",
   "graphql-core==3.2.3",
   "requests-toolbelt==0.10.1",
-  "latch-sdk-gql==0.0.6",
-  "latch-sdk-config==0.0.4",
   "python-dateutil>=2.8",
   "GitPython==3.1.40",
+
   # for old latch develop, to be removed
   "aioconsole==0.6.1",
   "asyncssh==2.13.2",
   "websockets==11.0.3",
   "watchfiles==0.19.0",
+
+  # marshmallow_jsonschema depends on setuptools but doesn't specify it so we have to do it for them yay :D
   "setuptools>=75.3.0",
 ]
 classifiers = [
