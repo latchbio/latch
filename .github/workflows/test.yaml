@@ -6,7 +6,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.8", "3.9", "3.10", "3.11"]
+        python: ["3.9", "3.10", "3.11", "3.12", "3.13"]
         platform: ["macos-15", "ubuntu-22.04"]
     runs-on: ${{ matrix.platform }}
     steps:
@@ -16,10 +16,7 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python }}
-      - name: Install dev
-        run: |
-          pip install -r dev-requirements.txt
-      - name: Install latch
+      - name: Install
         run: |
           pip install .
       - name: Test
