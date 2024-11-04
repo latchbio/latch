@@ -22,4 +22,6 @@ jobs:
         run: uv sync --dev
 
       - name: Run tests
+        env:
+          TEST_TOKEN: ${{ secrets.TEST_TOKEN }}
         run: uv run pytest -s
