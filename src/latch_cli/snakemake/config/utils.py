@@ -1,11 +1,24 @@
+from __future__ import annotations
+
 from dataclasses import fields, is_dataclass, make_dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Type, Union, get_args, get_origin
+from types import UnionType
+from typing import (
+    Annotated,
+    Any,
+    Dict,
+    List,
+    Optional,
+    Type,
+    Union,
+    get_args,
+    get_origin,
+)
 
 from flytekit.core.annotation import FlyteAnnotation
-from typing_extensions import Annotated, TypeAlias, TypeGuard
+from typing_extensions import TypeAlias, TypeGuard
 
-from latch.types.directory import LatchDir
+from latch.types.directory import LatchDir, LatchOutputDir
 from latch.types.file import LatchFile
 from latch_cli.utils import identifier_from_str
 
@@ -107,19 +120,12 @@ def parse_type(
         return type(v)
 
     if isinstance(v, list):
-        parsed_types = tuple(
-            parse_type(
-                x,
-                name,
-                infer_files=infer_files,
-            )
-            for x in v
-        )
+        parsed_types = tuple(parse_type(x, name, infer_files=infer_files) for x in v)
 
         if len(set(parsed_types)) != 1:
             raise ValueError(
                 "Generic Lists are not supported - please"
-                f" ensure that all elements in {name} are of the same type",
+                f" ensure that all elements in {name} are of the same type"
             )
         typ = parsed_types[0]
         if typ in {LatchFile, LatchDir}:
@@ -134,9 +140,7 @@ def parse_type(
     fields: Dict[str, Type] = {}
     for k, x in v.items():
         fields[identifier_from_str(k)] = parse_type(
-            x,
-            f"{name}_{k}",
-            infer_files=infer_files,
+            x, f"{name}_{k}", infer_files=infer_files
         )
 
     return make_dataclass(identifier_from_str(name), fields.items())
@@ -201,7 +205,10 @@ def is_list_type(typ: Type) -> TypeGuard[Type[List]]:
     return get_origin(typ) is list
 
 
-def type_repr(t: Type, *, add_namespace: bool = False) -> str:
+def type_repr(t: type[Any] | str, *, add_namespace: bool = False) -> str:
+    if isinstance(t, str):
+        return type_repr(eval(t), add_namespace=add_namespace)
+
     if is_primitive_type(t) or t in {LatchFile, LatchDir}:
         return t.__name__
 
@@ -215,9 +222,16 @@ def type_repr(t: Type, *, add_namespace: bool = False) -> str:
 
         return "typing.List"
 
+    if get_origin(t) is dict:
+        args = get_args(t)
+        if len(args) != 2:
+            return "typing.Dict"
+
+        s = ", ".join([type_repr(x, add_namespace=add_namespace) for x in args])
+        return f"typing.Dict[{s}]"
+
     if get_origin(t) is Union:
         args = get_args(t)
-
         if len(args) != 2 or args[1] is not type(None):
             raise ValueError("Union types other than Optional are not yet supported")
 
@@ -227,6 +241,9 @@ def type_repr(t: Type, *, add_namespace: bool = False) -> str:
         args = get_args(t)
         assert len(args) > 1
         if isinstance(args[1], FlyteAnnotation):
+            if "output" in args[1].data:
+                return "LatchOutputDir"
+
             return (
                 f"typing_extensions.Annotated[{type_repr(args[0], add_namespace=add_namespace)},"
                 f" FlyteAnnotation({repr(args[1].data)})]"
@@ -236,7 +253,7 @@ def type_repr(t: Type, *, add_namespace: bool = False) -> str:
     return t.__name__
 
 
-def dataclass_repr(typ: Type) -> str:
+def dataclass_repr(typ: type[Any]) -> str:
     assert is_dataclass(typ)
 
     lines = ["@dataclass", f"class {typ.__name__}:"]
@@ -256,24 +273,45 @@ def enum_repr(typ: Type) -> str:
     return "\n".join(lines) + "\n\n\n"
 
 
-def get_preamble(typ: Type) -> str:
+def get_preamble(typ: type[Any] | str, *, defined_names: set[str] | None = None) -> str:
+    # ayush: some dataclass fields have strings as their types so attempt to eval them here
+    if isinstance(typ, str):
+        try:
+            typ = eval(typ)
+        except Exception:
+            return ""
+
+    assert not isinstance(typ, str)
+
+    if defined_names is None:
+        defined_names = set()
+
     if get_origin(typ) is Annotated:
         args = get_args(typ)
         assert len(args) > 0
-        return get_preamble(args[0])
+        return get_preamble(args[0], defined_names=defined_names)
 
     if is_primitive_type(typ) or typ in {LatchFile, LatchDir}:
         return ""
 
-    if get_origin(typ) in {Union, list}:
-        return "".join([get_preamble(t) for t in get_args(typ)])
+    if get_origin(typ) in {Union, UnionType, list, dict}:
+        return "".join([
+            get_preamble(t, defined_names=defined_names) for t in get_args(typ)
+        ])
+
+    if typ.__name__ in defined_names:
+        return ""
+
+    defined_names.add(typ.__name__)
 
     if issubclass(typ, Enum):
         return enum_repr(typ)
 
     assert is_dataclass(typ), typ
 
-    preamble = "".join([get_preamble(f.type) for f in fields(typ)])
+    preamble = "".join([
+        get_preamble(f.type, defined_names=defined_names) for f in fields(typ)
+    ])
 
     return "".join([preamble, dataclass_repr(typ)])
 
@@ -313,7 +351,7 @@ def validate_snakemake_type(name: str, t: Type, param: Any) -> None:
         if len(args) == 0:
             raise ValueError(
                 "Generic Lists are not supported - please specify a subtype,"
-                " e.g. List[LatchFile]",
+                " e.g. List[LatchFile]"
             )
         list_typ = args[0]
         for i, val in enumerate(param):
@@ -325,3 +363,5 @@ def validate_snakemake_type(name: str, t: Type, param: Any) -> None:
             validate_snakemake_type(
                 f"{name}.{field.name}", field.type, getattr(param, field.name)
             )
+        for i, val in enumerate(param):
+            validate_snakemake_type(f"{name}[{i}]", list_typ, val)

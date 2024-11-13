@@ -14,7 +14,6 @@ from docker.transport import SSHHTTPAdapter
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteEntities
 from flytekit.core.workflow import PythonFunctionWorkflow
-from latch_sdk_config.latch import config
 
 import latch_cli.tinyrequests as tinyrequests
 from latch.utils import account_id_from_token, current_workspace, retrieve_or_login
@@ -26,11 +25,8 @@ from latch_cli.centromere.utils import (
 )
 from latch_cli.constants import docker_image_name_illegal_pat, latch_constants
 from latch_cli.docker_utils import get_default_dockerfile
-from latch_cli.utils import (
-    WorkflowType,
-    generate_temporary_ssh_credentials,
-    hash_directory,
-)
+from latch_cli.utils import WorkflowType, generate_temporary_ssh_credentials, hash_directory
+from latch_sdk_config.latch import config
 
 
 @dataclass
@@ -124,9 +120,7 @@ class _CentromereCtx:
             except FileNotFoundError:
                 self.version = "0.1.0"
                 version_file.write_text(f"{self.version}\n")
-                click.echo(
-                    f"Created a version file with initial version {self.version}."
-                )
+                click.echo(f"Created a version file with initial version {self.version}.")
 
             self.version = self.version.strip()
 
@@ -144,8 +138,7 @@ class _CentromereCtx:
                 pass
             except Exception as e:
                 click.secho(
-                    "WARN: Exception occurred while getting git hash from"
-                    f" {self.pkg_root}: {e}",
+                    f"WARN: Exception occurred while getting git hash from {self.pkg_root}: {e}",
                     fg="yellow",
                 )
 
@@ -221,9 +214,7 @@ class _CentromereCtx:
 
                 meta_file = load_snakemake_metadata(pkg_root, metadata_root)
                 if meta_file is not None:
-                    click.echo(
-                        f"Using metadata file {click.style(meta_file, italic=True)}"
-                    )
+                    click.echo(f"Using metadata file {click.style(meta_file, italic=True)}")
                 else:
                     new_meta = pkg_root / "latch_metadata" / "__init__.py"
                     click.echo("Trying to extract metadata from the Snakefile")
@@ -248,20 +239,11 @@ class _CentromereCtx:
                         )
                         click.secho("\nExample ", fg="red", nl=False)
 
-                        snakemake_metadata_example = get_snakemake_metadata_example(
-                            pkg_root.name
-                        )
+                        snakemake_metadata_example = get_snakemake_metadata_example(pkg_root.name)
                         click.secho(f"`{new_meta}`", bold=True, fg="red", nl=False)
-                        click.secho(
-                            f" file:\n```\n{snakemake_metadata_example}```",
-                            fg="red",
-                        )
+                        click.secho(f" file:\n```\n{snakemake_metadata_example}```", fg="red")
                         if click.confirm(
-                            click.style(
-                                "Generate example metadata file now?",
-                                bold=True,
-                                fg="red",
-                            ),
+                            click.style("Generate example metadata file now?", bold=True, fg="red"),
                             default=True,
                         ):
                             new_meta.write_text(snakemake_metadata_example)
@@ -269,22 +251,14 @@ class _CentromereCtx:
                             import platform
 
                             system = platform.system()
-                            if system in {
-                                "Windows",
-                                "Linux",
-                                "Darwin",
-                            } and click.confirm(
-                                click.style(
-                                    "Open the generated file?", bold=True, fg="red"
-                                ),
+                            if system in {"Windows", "Linux", "Darwin"} and click.confirm(
+                                click.style("Open the generated file?", bold=True, fg="red"),
                                 default=True,
                             ):
                                 import subprocess
 
                                 if system == "Linux":
-                                    res = subprocess.run(
-                                        ["xdg-open", new_meta]
-                                    ).returncode
+                                    res = subprocess.run(["xdg-open", new_meta]).returncode
                                 elif system == "Darwin":
                                     res = subprocess.run(["open", new_meta]).returncode
                                 elif system == "Windows":
@@ -303,7 +277,7 @@ class _CentromereCtx:
                         dedent(
                             """
                             Make sure a `latch_metadata` exists in the Snakemake
-                            project root or provide a metadata folder with the `--metadata-root` argument.""",
+                            project root or provide a metadata folder with the `--metadata-root` argument."""
                         ),
                         fg="red",
                     )
@@ -356,9 +330,7 @@ class _CentromereCtx:
                 sys.exit(1)
 
             self.default_container = _Container(
-                dockerfile=get_default_dockerfile(
-                    self.pkg_root, wf_type=self.workflow_type
-                ),
+                dockerfile=get_default_dockerfile(self.pkg_root, wf_type=self.workflow_type),
                 image_name=self.image_tagged,
                 pkg_dir=self.pkg_root,
             )
@@ -372,9 +344,7 @@ class _CentromereCtx:
                 )
 
                 if use_new_centromere:
-                    self.internal_ip, self.username = (
-                        self.provision_register_deployment()
-                    )
+                    self.internal_ip, self.username = self.provision_register_deployment()
                 else:
                     self.internal_ip, self.username = self.get_old_centromere_info()
 
@@ -402,6 +372,7 @@ class _CentromereCtx:
 
             else:
                 self.dkr_client = _construct_dkr_client()
+                self.remote_conn_info = None
         except (Exception, KeyboardInterrupt) as e:
             self.cleanup()
             raise e
@@ -481,11 +452,7 @@ class _CentromereCtx:
         headers = {"Authorization": f"Bearer {self.token}"}
 
         response = tinyrequests.post(
-            self.latch_provision_url,
-            headers=headers,
-            json={
-                "public_key": self.public_key,
-            },
+            self.latch_provision_url, headers=headers, json={"public_key": self.public_key}
         )
 
         resp = response.json()
@@ -542,20 +509,14 @@ class _CentromereCtx:
 
         headers = {"Authorization": f"Bearer {self.token}"}
         response = tinyrequests.post(
-            self.latch_get_image_url,
-            headers=headers,
-            json={
-                "task_name": task_name,
-            },
+            self.latch_get_image_url, headers=headers, json={"task_name": task_name}
         )
 
         resp = response.json()
         try:
             return resp["image_name"]
         except KeyError as e:
-            raise ValueError(
-                f"Malformed response from request for image url {resp}"
-            ) from e
+            raise ValueError(f"Malformed response from request for image url {resp}") from e
 
     def nucleus_check_version(self, version: str, workflow_name: str) -> bool:
         """Check if version has already been registered for given workflow"""
@@ -569,20 +530,14 @@ class _CentromereCtx:
         response = tinyrequests.post(
             self.latch_check_version_url,
             headers=headers,
-            json={
-                "version": version,
-                "workflow_name": workflow_name,
-                "ws_account_id": ws_id,
-            },
+            json={"version": version, "workflow_name": workflow_name, "ws_account_id": ws_id},
         )
 
         resp = response.json()
         try:
             return resp["exists"]
         except KeyError as e:
-            raise ValueError(
-                f"Malformed response from request for version check {resp}"
-            ) from e
+            raise ValueError(f"Malformed response from request for version check {resp}") from e
 
     def __enter__(self):
         return self
