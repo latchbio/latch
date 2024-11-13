@@ -10,7 +10,7 @@ latch.egg-info
 .env/
 .venv
 
-__pycache__
+**/__pycache__
 
 docs/build
 /.envrc

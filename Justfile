@@ -1,27 +1,25 @@
-local_install:
-  python -m pip install -e .
+# Setup
 
-_clear:
-  rm -rf __pycache__ dist build latch.egg-info
+install:
+  uv sync
 
-_build:
-  python3 setup.py sdist bdist_wheel
+# Packaging
 
-_upload:
-  twine upload dist/* -u __token__ -p $(<credentials/pypi_token)
+build:
+  rm -rf dist
+  uv build
 
-build: _clear _build
+publish:
+  uv publish --token $(<credentials/pypi_token)
+  rm -rf dist
 
-publish: _clear _build _upload _clear
+# Testing
 
-requirements:
-  pip-compile requirements.in
+test:
+  export TEST_TOKEN=$(cat ~/.latch/token) &&\
+    pytest -s tests
 
-doc-requirements:
-  pip-compile doc-requirements.in
-
-dev-requirements:
-  pip-compile dev-requirements.in
+# Docs
 
 build-api-docs:
   rm docs/source/api/*
@@ -30,18 +28,10 @@ build-api-docs:
     -o docs/source/api/ . \
     'latch_cli/services/init/*/**' \
     'latch_cli/snakemake' \
-    'setup.py' \
     'tests/*'
 
 build-docs:
   make --directory docs html
-
-test:
-  export TEST_TOKEN=$(cat ~/.latch/token) &&\
-    pytest -s tests
-
-#
-# Docs build.
 
 git_hash := `git rev-parse --short=4 HEAD`
 git_branch := `inp=$(git rev-parse --abbrev-ref HEAD); echo "${inp//\//--}"`
@@ -55,7 +45,7 @@ docker_image_full := docker_registry + "/" + docker_image_name + ":" + docker_im
   aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin {{docker_registry}}
 
 @docker-build: build
-  docker build -t {{docker_image_full}} . -f Dockerfile-docs
+  docker build -t {{docker_image_full}} . -f Dockerfile.docs
 
 @docker-push:
   docker push {{docker_image_full}}
