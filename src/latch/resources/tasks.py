@@ -296,8 +296,7 @@ def _get_small_pod() -> Pod:
             )
         },
         pod_spec=V1PodSpec(
-            runtime_class_name="sysbox-runc",
-            containers=[primary_container],
+            runtime_class_name="sysbox-runc", containers=[primary_container]
         ),
         primary_container_name="primary",
     )
@@ -517,11 +516,7 @@ max_storage_gib = taint_data[-1].max_storage_schedulable_gib
 max_storage_gb_ish = int(max_storage_gib * Units.GiB / Units.GB)
 
 
-def _custom_task_config(
-    cpu: int,
-    memory: int,
-    storage_gib: int,
-) -> Pod:
+def _custom_task_config(cpu: int, memory: int, storage_gib: int) -> Pod:
     target_ng = None
     for ng in taint_data:
         if (
@@ -591,10 +586,7 @@ def custom_task(
     """
     if callable(cpu) or callable(memory) or callable(storage_gib):
         task_config = DynamicTaskConfig(
-            cpu=cpu,
-            memory=memory,
-            storage=storage_gib,
-            pod_config=_get_small_pod(),
+            cpu=cpu, memory=memory, storage=storage_gib, pod_config=_get_small_pod()
         )
         return functools.partial(task, task_config=task_config, timeout=timeout)
 
@@ -621,6 +613,30 @@ def nextflow_runtime_task(cpu: int, memory: int, storage_gib: int = 50):
             name="nextflow-workdir",
             persistent_volume_claim=V1PersistentVolumeClaimVolumeSource(
                 # this value will be injected by flytepropeller
+                claim_name="nextflow-pvc-placeholder"
+            ),
+        )
+    ]
+
+    return functools.partial(task, task_config=task_config)
+
+
+def snakemake_runtime_task(*, cpu: int, memory: int, storage_gib: int = 50):
+    task_config = _custom_task_config(cpu, memory, storage_gib)
+
+    task_config.pod_spec.automount_service_account_token = True
+
+    assert len(task_config.pod_spec.containers) == 1
+    task_config.pod_spec.containers[0].volume_mounts = [
+        V1VolumeMount(mount_path="/snakemake-workdir", name="snakemake-workdir")
+    ]
+
+    task_config.pod_spec.volumes = [
+        V1Volume(
+            name="snakemake-workdir",
+            persistent_volume_claim=V1PersistentVolumeClaimVolumeSource(
+                # this value will be injected by flytepropeller
+                # ayush: this is also used by snakemake bc why not
                 claim_name="nextflow-pvc-placeholder"
             ),
         )
