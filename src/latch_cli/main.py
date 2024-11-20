@@ -489,6 +489,12 @@ def execute(
     help="Open the registered workflow in the browser.",
 )
 @click.option(
+    "--workflow-module",
+    "-w",
+    type=str,
+    help="Module containing Latch workflow to register. Defaults to `wf`",
+)
+@click.option(
     "--metadata-root",
     type=click.Path(exists=False, path_type=Path, file_okay=False),
     help="Path to directory containing Latch metadata. Only for Nextflow and Snakemake",
@@ -530,6 +536,7 @@ def register(
     docker_progress: str,
     yes: bool,
     open: bool,
+    workflow_module: Optional[str],
     metadata_root: Optional[Path],
     snakefile: Optional[Path],
     cache_tasks: bool,
@@ -562,6 +569,7 @@ def register(
         remote=remote,
         skip_confirmation=yes,
         open=open,
+        wf_module=workflow_module,
         metadata_root=metadata_root,
         snakefile=snakefile,
         nf_script=nf_script,

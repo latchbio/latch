@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.54.0 - 2024-11-20
+
+### Changed
+
+* Add `--workflow-module` flag to specify which workflow module to register with flyte
+
 ## 2.53.12 - 2024-11-01
 
 ### Changed

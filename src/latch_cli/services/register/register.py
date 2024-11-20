@@ -11,10 +11,10 @@ from typing import Iterable, List, Optional
 
 import click
 import gql
-import latch_sdk_gql.execute as l_gql
 from flytekit.core.workflow import WorkflowBase
 from scp import SCPClient
 
+import latch_sdk_gql.execute as l_gql
 from latch.utils import current_workspace, get_workspaces
 from latch_cli.centromere.ctx import _CentromereCtx
 from latch_cli.centromere.utils import MaybeRemoteDir
@@ -283,6 +283,7 @@ def register(
     remote: bool = False,
     open: bool = False,
     skip_confirmation: bool = False,
+    wf_module: Optional[str] = None,
     metadata_root: Optional[Path] = None,
     snakefile: Optional[Path] = None,
     nf_script: Optional[Path] = None,
@@ -347,6 +348,7 @@ def register(
         Path(pkg_root),
         disable_auto_version=disable_auto_version,
         remote=remote,
+        wf_module=wf_module,
         metadata_root=metadata_root,
         snakefile=snakefile,
         nf_script=nf_script,
