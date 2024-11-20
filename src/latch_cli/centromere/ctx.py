@@ -14,7 +14,6 @@ from docker.transport import SSHHTTPAdapter
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteEntities
 from flytekit.core.workflow import PythonFunctionWorkflow
-from latch_sdk_config.latch import config
 
 import latch_cli.tinyrequests as tinyrequests
 from latch.utils import account_id_from_token, current_workspace, retrieve_or_login
@@ -31,6 +30,7 @@ from latch_cli.utils import (
     generate_temporary_ssh_credentials,
     hash_directory,
 )
+from latch_sdk_config.latch import config
 
 
 @dataclass
@@ -58,6 +58,7 @@ class _CentromereCtx:
     serialize_dir = None
     default_container: _Container
     workflow_type: WorkflowType
+    wf_module: str
     metadata_root: Optional[Path]
     snakefile: Optional[Path]
     nf_script: Optional[Path]
@@ -84,6 +85,7 @@ class _CentromereCtx:
         *,
         disable_auto_version: bool = False,
         remote: bool = False,
+        wf_module: Optional[str] = None,
         metadata_root: Optional[Path] = None,
         snakefile: Optional[Path] = None,
         nf_script: Optional[Path] = None,
@@ -92,6 +94,7 @@ class _CentromereCtx:
         self.use_new_centromere = use_new_centromere
         self.remote = remote
         self.disable_auto_version = disable_auto_version
+        self.wf_module = wf_module if wf_module is not None else "wf"
 
         try:
             self.token = retrieve_or_login()
@@ -171,7 +174,21 @@ class _CentromereCtx:
             self.container_map: Dict[str, _Container] = {}
 
             if self.workflow_type == WorkflowType.latchbiosdk:
-                _import_flyte_objects([self.pkg_root])
+                try:
+                    _import_flyte_objects([self.pkg_root], module_name=self.wf_module)
+                except ModuleNotFoundError:
+                    click.secho(
+                        dedent(
+                            f"""
+                            Unable to locate workflow module `{self.wf_module}`. Check that:
+
+                            1. Package `{self.wf_module}` exists in {pkg_root.resolve()}.
+                            2. Package `{self.wf_module}` is an importable Python path (e.g. `workflows.my_workflow`).
+                            3. Any directories in `{self.wf_module}` contain an `__init__.py` file."""
+                        ),
+                        fg="red",
+                    )
+                    raise click.exceptions.Exit(1)
 
                 for entity in FlyteEntities.entities:
                     if isinstance(entity, PythonFunctionWorkflow):

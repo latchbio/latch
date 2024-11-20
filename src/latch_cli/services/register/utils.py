@@ -22,9 +22,9 @@ import boto3
 import click
 import docker
 import requests
-from latch_sdk_config.latch import config
 
 from latch.utils import current_workspace
+from latch_sdk_config.latch import config
 
 if TYPE_CHECKING:
     from ...centromere.ctx import _CentromereCtx
@@ -135,7 +135,11 @@ def serialize_pkg_in_container(
         _env["GIT_COMMIT_HASH"] = ctx.git_commit_hash
         _env["GIT_IS_DIRTY"] = str(ctx.git_is_dirty)
 
-    _serialize_cmd = ["make", "serialize"]
+    _serialize_cmd = [
+        "/bin/sh",
+        "-c",
+        f"sed -i s/workflow_packages=wf/workflow_packages={ctx.wf_module}/g flytekit.config && make serialize",
+    ]
     container = ctx.dkr_client.create_container(
         f"{ctx.dkr_repo}/{image_name}",
         command=_serialize_cmd,
