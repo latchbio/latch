@@ -492,7 +492,7 @@ def execute(
     "--workflow-module",
     "-w",
     type=str,
-    help="Module containing Latch workflow to register",
+    help="Module containing Latch workflow to register. Defaults to `wf`",
 )
 @click.option(
     "--metadata-root",
