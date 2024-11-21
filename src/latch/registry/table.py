@@ -643,20 +643,24 @@ class TableUpdate:
 
                 registry_type = {"primitive": "enum", "members": members}
 
-        if issubclass(type, Enum):
-            members: List[str] = []
-            for f in type:
-                if not isinstance(f.value, str):
-                    raise InvalidColumnTypeError(
-                        key,
-                        type,
-                        f"Enum value for {repr(f.name)} ({repr(f.value)}) is not a"
-                        " string",
-                    )
+        try:
+            # issubclass fails with a TypeError if the arg is not a class, hence the try-except
+            if issubclass(type, Enum):
+                members: List[str] = []
+                for f in type:
+                    if not isinstance(f.value, str):
+                        raise InvalidColumnTypeError(
+                            key,
+                            type,
+                            f"Enum value for {repr(f.name)} ({repr(f.value)}) is not a"
+                            " string",
+                        )
 
-                members.append(f.value)
+                    members.append(f.value)
 
-            registry_type = {"primitive": "enum", "members": members}
+                registry_type = {"primitive": "enum", "members": members}
+        except TypeError:
+            pass
 
         if registry_type is None:
             raise InvalidColumnTypeError(key, type, "Unsupported type")
