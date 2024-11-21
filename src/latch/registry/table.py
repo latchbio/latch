@@ -2,6 +2,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from enum import Enum
+from inspect import isclass
 from typing import (
     Dict,
     Iterator,
@@ -643,24 +644,20 @@ class TableUpdate:
 
                 registry_type = {"primitive": "enum", "members": members}
 
-        try:
-            # issubclass fails with a TypeError if the arg is not a class, hence the try-except
-            if issubclass(type, Enum):
-                members: List[str] = []
-                for f in type:
-                    if not isinstance(f.value, str):
-                        raise InvalidColumnTypeError(
-                            key,
-                            type,
-                            f"Enum value for {repr(f.name)} ({repr(f.value)}) is not a"
-                            " string",
-                        )
+        if isclass(type) and issubclass(type, Enum):
+            members: List[str] = []
+            for f in type:
+                if not isinstance(f.value, str):
+                    raise InvalidColumnTypeError(
+                        key,
+                        type,
+                        f"Enum value for {repr(f.name)} ({repr(f.value)}) is not a"
+                        " string",
+                    )
 
-                    members.append(f.value)
+                members.append(f.value)
 
-                registry_type = {"primitive": "enum", "members": members}
-        except TypeError:
-            pass
+            registry_type = {"primitive": "enum", "members": members}
 
         if registry_type is None:
             raise InvalidColumnTypeError(key, type, "Unsupported type")
