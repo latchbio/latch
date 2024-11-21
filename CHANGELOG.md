@@ -16,9 +16,16 @@ Types of changes
 
 # Latch SDK Changelog
 
+
+## 2.54.2 - 2024-11-21
+
+### Fixed
+
+* `TableUpdater.upsert_column` would fail when trying to create an enum-typed column
+
 ## 2.54.1 - 2024-11-20
 
-### Changed
+### Added
 
 * Add `--workflow-module` flag to specify which workflow module to register with flyte
 
