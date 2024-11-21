@@ -1,4 +1,5 @@
 import atexit
+from datetime import datetime
 import os
 import re
 import shutil
@@ -52,6 +53,7 @@ class _Cache:
     size: Optional[int] = None
     dir_size: Optional[int] = None
     content_type: Optional[str] = None
+    last_modified_time: Optional[datetime] = None
 
 
 @dataclass(frozen=True)
@@ -102,6 +104,16 @@ class LPath:
                                 contentSize
                                 contentType
                             }
+                            ldataNodeEvents(
+                                filter: { type: { equalTo: INGRESS } }
+                                orderBy: TIME_DESC
+                                first: 1
+                            ) {
+                                nodes {
+                                    id
+                                    time
+                                }
+                            }
                         }
                     }
                 }
@@ -132,6 +144,7 @@ class LPath:
             )
             self._cache.content_type = meta["contentType"]
 
+
     def _clear_cache(self):
         self._cache.path = None
         self._cache.node_id = None
@@ -140,6 +153,7 @@ class LPath:
         self._cache.size = None
         self._cache.dir_size = None
         self._cache.content_type = None
+        self._cache.last_modified_time = None
 
     def node_id(self, *, load_if_missing: bool = True) -> Optional[str]:
         match = node_id_regex.match(self.path)
@@ -187,6 +201,11 @@ class LPath:
         if self._cache.content_type is None and load_if_missing:
             self.fetch_metadata()
         return self._cache.content_type
+
+    def last_modified_time(self, *, load_if_missing: bool = True) -> Optional[datetime]:
+        if self._cache.last_modified_time is None and load_if_missing:
+            self.fetch_metadata
+        return self._cache.last_modified_time
 
     def is_dir(self, *, load_if_missing: bool = True) -> bool:
         return self.type(load_if_missing=load_if_missing) in _dir_types
@@ -291,7 +310,7 @@ class LPath:
         self._clear_cache()
 
     def download(
-        self, dst: Optional[Path] = None, *, show_progress_bar: bool = False
+        self, dst: Optional[Path] = None, *, show_progress_bar: bool = False, cache: bool = False
     ) -> Path:
         """Download the file at this instance's path to the given destination.
 
@@ -306,7 +325,14 @@ class LPath:
             _download_idx += 1
             tmp_dir.mkdir(parents=True, exist_ok=True)
             atexit.register(lambda p: shutil.rmtree(p), tmp_dir)
-            dst = tmp_dir / self.name()
+            name = self.name()
+            if name is None:
+                raise Exception("unable get name of ldata node")
+            dst = tmp_dir / name
+
+
+        if cache and dst.exists() and self.last_modified_time is not None and self.last_modified_time <= datetime.fromtimestamp(dst.stat().st_mtime): # type: ignore
+            return dst
 
         _download(
             self.path,
@@ -315,6 +341,7 @@ class LPath:
             verbose=False,
             confirm_overwrite=False,
         )
+
         return dst
 
     def __truediv__(self, other: object) -> "LPath":
