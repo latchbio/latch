@@ -4,6 +4,7 @@ import re
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
+import sys
 from typing import Iterator, Optional, Type
 
 import gql
@@ -320,9 +321,10 @@ class LPath:
                 raise Exception("unable get name of ldata node")
             dst = tmp_dir / name
 
+        not_windows = sys.platform != "win32"
         dst_str = str(dst)
         version_id = self.version_id
-        if cache and dst.exists() and version_id == xattr.getxattr(dst_str, 'user.version_id'):
+        if not not_windows and cache and dst.exists() and version_id == xattr.getxattr(dst_str, 'user.version_id'):
             return dst
 
         _download(
@@ -332,7 +334,9 @@ class LPath:
             verbose=False,
             confirm_overwrite=False,
         )
-        xattr.setxattr(dst_str, 'user.version_id', version_id)
+
+        if not not_windows:
+            xattr.setxattr(dst_str, 'user.version_id', version_id)
 
         return dst
 
