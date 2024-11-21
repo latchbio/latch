@@ -1,5 +1,3 @@
-import sys
-import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import date, datetime
@@ -23,16 +21,6 @@ from typing import (
 import gql
 import gql.transport.exceptions
 import graphql.language as l
-import graphql.language.parser as lp
-from latch_sdk_gql.execute import execute
-from latch_sdk_gql.utils import (
-    _GqlJsonValue,
-    _json_value,
-    _name_node,
-    _parse_selection,
-    _var_def_node,
-    _var_node,
-)
 from typing_extensions import TypeAlias
 
 from latch.registry.record import NoSuchColumnError, Record
@@ -56,8 +44,16 @@ from latch.registry.utils import (
 )
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
-from latch.utils import NotFoundError, current_workspace
-from latch_cli.utils import human_readable_time
+from latch.utils import NotFoundError
+from latch_sdk_gql.execute import execute
+from latch_sdk_gql.utils import (
+    _GqlJsonValue,
+    _json_value,
+    _name_node,
+    _parse_selection,
+    _var_def_node,
+    _var_node,
+)
 
 from ..types.json import JsonValue
 
@@ -400,9 +396,7 @@ class _TableColumnUpsertData:
 
 
 _TableRecordsMutationData: TypeAlias = Union[
-    _TableRecordsUpsertData,
-    _TableRecordsDeleteData,
-    _TableColumnUpsertData,
+    _TableRecordsUpsertData, _TableRecordsDeleteData, _TableColumnUpsertData
 ]
 
 
@@ -435,11 +429,7 @@ class TableUpdate:
     """
 
     _record_mutations: List[_TableRecordsMutationData] = field(
-        default_factory=list,
-        init=False,
-        repr=False,
-        hash=False,
-        compare=False,
+        default_factory=list, init=False, repr=False, hash=False, compare=False
     )
 
     table: Table
@@ -559,10 +549,7 @@ class TableUpdate:
 
         args = l.ArgumentNode()
         args.name = _name_node("input")
-        args.value = _json_value({
-            "argExperimentId": self.table.id,
-            "argNames": names,
-        })
+        args.value = _json_value({"argExperimentId": self.table.id, "argNames": names})
 
         res.alias = _name_node(f"upd{len(mutations)}")
         res.arguments = tuple([args])
@@ -572,11 +559,7 @@ class TableUpdate:
     # upsert column
 
     def upsert_column(
-        self,
-        key: str,
-        type: RegistryPythonType,
-        *,
-        required: bool = False,
+        self, key: str, type: RegistryPythonType, *, required: bool = False
     ):
         """Create a column. Support for updating columns is planned.
 
@@ -658,14 +641,11 @@ class TableUpdate:
                         key, type, f"Enum value {repr(x)} is not a string"
                     )
 
-                registry_type = {
-                    "primitive": "enum",
-                    "members": members,
-                }
+                registry_type = {"primitive": "enum", "members": members}
 
-        if isinstance(type, Enum):
+        if issubclass(type, Enum):
             members: List[str] = []
-            for f in cast(Type[Enum], type):
+            for f in type:
                 if not isinstance(f.value, str):
                     raise InvalidColumnTypeError(
                         key,
@@ -676,10 +656,7 @@ class TableUpdate:
 
                 members.append(f.value)
 
-            registry_type = {
-                "primitive": "enum",
-                "members": members,
-            }
+            registry_type = {"primitive": "enum", "members": members}
 
         if registry_type is None:
             raise InvalidColumnTypeError(key, type, "Unsupported type")
