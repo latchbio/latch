@@ -12,7 +12,7 @@ include = ["src/**/*.py", "src/latch_cli/services/init/*"]
 
 [project]
 name = "latch"
-version = "2.54.1"
+version = "2.54.2"
 description = "The Latch SDK"
 authors = [{ name = "Kenny Workman", email = "kenny@latch.bio" }]
 maintainers = [
@@ -84,12 +84,8 @@ Repository = "https://github.com/latchbio/latch"
 Issues = "https://github.com/latchbio/latch/issues"
 Changelog = "https://github.com/latchbio/latch/blob/main/CHANGELOG.md"
 
-
 [dependency-groups]
-dev = [
-    "ruff>=0.7.0",
-    "pytest>=8.3.3",
-]
+dev = ["ruff>=0.7.0", "pytest>=8.3.3"]
 docs = [
   "sphinx",
   "sphinx-book-theme",
