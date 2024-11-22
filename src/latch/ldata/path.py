@@ -193,9 +193,9 @@ class LPath:
             self.fetch_metadata()
         return self._cache.content_type
 
-    def version_id(self) -> Optional[str]:
-        # note: must always be fetched to keep in sync with db
-        self.fetch_metadata()
+    def version_id(self, *, load_if_missing: bool = True) -> Optional[str]:
+        if self._cache.content_type is None and load_if_missing:
+            self.fetch_metadata()
         return self._cache.version_id
 
     def is_dir(self, *, load_if_missing: bool = True) -> bool:
@@ -323,7 +323,9 @@ class LPath:
 
         not_windows = sys.platform != "win32"
         dst_str = str(dst)
-        version_id = self.version_id
+
+        self._clear_cache()
+        version_id = self.version_id()
         if not not_windows and cache and dst.exists() and version_id == xattr.getxattr(dst_str, 'user.version_id'):
             return dst
 
