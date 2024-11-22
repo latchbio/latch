@@ -194,7 +194,7 @@ class LPath:
         return self._cache.content_type
 
     def version_id(self, *, load_if_missing: bool = True) -> Optional[str]:
-        if self._cache.content_type is None and load_if_missing:
+        if self._cache.version_id is None and load_if_missing:
             self.fetch_metadata()
         return self._cache.version_id
 
