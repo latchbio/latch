@@ -135,6 +135,7 @@ class LPath:
                 None if meta["contentSize"] is None else int(meta["contentSize"])
             )
             self._cache.content_type = meta["contentType"]
+            self._cache.version_id = meta["versionId"]
 
 
     def _clear_cache(self):
@@ -145,6 +146,7 @@ class LPath:
         self._cache.size = None
         self._cache.dir_size = None
         self._cache.content_type = None
+        self._cache.version_id = None
 
     def node_id(self, *, load_if_missing: bool = True) -> Optional[str]:
         match = node_id_regex.match(self.path)
@@ -337,7 +339,7 @@ class LPath:
             confirm_overwrite=False,
         )
 
-        if not not_windows:
+        if not_windows:
             xattr.setxattr(dst_str, 'user.version_id', version_id)
 
         return dst
