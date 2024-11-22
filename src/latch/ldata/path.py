@@ -328,7 +328,7 @@ class LPath:
 
         self._clear_cache()
         version_id = self.version_id()
-        if not_windows and cache and dst.exists() and version_id == xattr.getxattr(dst_str, 'user.version_id'):
+        if not_windows and cache and dst.exists() and version_id == xattr.getxattr(dst_str, 'user.version_id').decode():
             return dst
 
         _download(
