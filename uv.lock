@@ -1023,6 +1023,7 @@ dependencies = [
     { name = "paramiko" },
     { name = "pyjwt" },
     { name = "python-dateutil" },
+    { name = "pyxattr" },
     { name = "requests" },
     { name = "requests-toolbelt" },
     { name = "scp" },
@@ -1075,6 +1076,7 @@ requires-dist = [
     { name = "pulp", marker = "extra == 'snakemake'", specifier = ">=2.0,<2.8" },
     { name = "pyjwt", specifier = ">=0.2.0" },
     { name = "python-dateutil", specifier = ">=2.8" },
+    { name = "pyxattr", specifier = ">=0.8.1" },
     { name = "requests", specifier = ">=2.28.1" },
     { name = "requests-toolbelt", specifier = "==0.10.1" },
     { name = "scp", specifier = ">=0.14.0" },
@@ -1962,6 +1964,12 @@ sdist = { url = "https://files.pythonhosted.org/packages/85/9f/01a1a99704853cb63
 wheels = [
     { url = "https://files.pythonhosted.org/packages/de/3d/8161f7711c017e01ac9f008dfddd9410dff3674334c233bde66e7ba65bbf/pywin32_ctypes-0.2.3-py3-none-any.whl", hash = "sha256:8a1513379d709975552d202d942d9837758905c8d01eb82b8bcc30918929e7b8", size = 30756 },
 ]
+
+[[package]]
+name = "pyxattr"
+version = "0.8.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/97/d1/7b85f2712168dfa26df6471082403013f3f815f3239aee3def17b6fd69ee/pyxattr-0.8.1.tar.gz", hash = "sha256:48c578ecf8ea0bd4351b1752470e301a90a3761c7c21f00f953dcf6d6fa6ee5a", size = 38443 }
 
 [[package]]
 name = "pyyaml"
