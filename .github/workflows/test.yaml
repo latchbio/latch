@@ -6,24 +6,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.8", "3.9", "3.10", "3.11"]
-        platform: ["macos-12", "ubuntu-22.04"]
+        python: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        platform: ["macos-15", "ubuntu-22.04"]
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Setup Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python }}
-      - name: Install dev
-        run: |
-          pip install -r dev-requirements.txt
-      - name: Install latch
-        run: |
-          pip install .
-      - name: Test
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install the project
+        run: uv sync --dev
+
+      - name: Run tests
         env:
           TEST_TOKEN: ${{ secrets.TEST_TOKEN }}
-        run: |
-          pytest -s
+        run: uv run pytest -s

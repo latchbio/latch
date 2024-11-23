@@ -16,6 +16,52 @@ Types of changes
 
 # Latch SDK Changelog
 
+
+## 2.54.2 - 2024-11-21
+
+### Fixed
+
+* `TableUpdater.upsert_column` would fail when trying to create an enum-typed column
+
+## 2.54.1 - 2024-11-20
+
+### Added
+
+* Add `--workflow-module` flag to specify which workflow module to register with flyte
+
+## 2.53.12 - 2024-11-01
+
+### Changed
+
+* Better error messaging for Snakemake registration errors (Thank you @msto!)
+
+## 2.53.11 - 2024-10-31
+
+### Changed
+
+* Pass `@task` arguments through `@custom_task`
+
+## 2.53.10 - 2024-10-21
+
+### Fixed
+
+* Bugs when using multiple dockerfiles
+  * Add reconnect for ssh_client operations
+  * move workflow name / version parsing to the start of registration flow
+
+## 2.53.9 - 2024-10-18
+
+### Fixed
+
+* Bug in `latch develop` where the workflow name would be parsed incorrectly
+
+## 2.53.8 - 2024-10-18
+
+### Added
+
+* Nextflow
+  - add `latch nextflow attach` command to attach to a nextflow work directory
+
 ## 2.53.7 - 2024-10-16
 
 ### Added
