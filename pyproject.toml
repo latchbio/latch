@@ -51,6 +51,7 @@ dependencies = [
   # marshmallow_jsonschema depends on setuptools but doesn't specify it so we have to do it for them yay :D
   "setuptools>=75.3.0",
   "pyxattr>=0.8.1",
+  "orjson>=3.10.12",
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
