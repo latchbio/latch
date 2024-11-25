@@ -16,6 +16,17 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.54.4
+
+## Added
+
+* Plots Artifact dataclasses
+
+## 2.54.3
+
+## Added
+
+* `cache` parameter to `LPath` download method to allow for caching of downloaded files
 
 ## 2.54.2 - 2024-11-21
 
