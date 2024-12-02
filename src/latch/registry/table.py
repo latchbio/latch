@@ -245,70 +245,80 @@ class Table:
 
         cols = self.get_columns()
 
-        # todo(maximsmol): because allSamples returns each column as its own
-        # row, we can't paginate by samples because we don't know when a sample is finished
-        data = execute(
-            gql.gql("""
-                query TableQuery($id: BigInt!) {
-                    catalogExperiment(id: $id) {
-                        allSamples {
-                            nodes {
-                                sampleId
-                                sampleName
-                                sampleDataKey
-                                sampleDataValue
+        offset = 0
+        while True:
+            data = execute(
+                gql.gql("""
+                    query TableQuery(
+                        $id: BigInt!,
+                        $argLimit: BigInt!,
+                        $argOffset: BigInt!
+                    ) {
+                        catalogExperiment(id: $id) {
+                            allSamplesJoinInfoPaginated(
+                                argLimit: $argLimit,
+                                argOffset: $argOffset
+                            ) {
+                                nodes {
+                                    id
+                                    name
+                                    key
+                                    data
+                                }
                             }
                         }
                     }
-                }
                 """),
-            {"id": self.id},
-        )["catalogExperiment"]
+                {"id": self.id, "argLimit": page_size, "argOffset": offset},
+            )["catalogExperiment"]
 
-        if data is None:
-            raise TableNotFoundError(
-                f"table does not exist or you lack permissions: id={self.id}"
-            )
+            if data is None:
+                raise TableNotFoundError(
+                    f"table does not exist or you lack permissions: id={self.id}"
+                )
 
-        nodes: List[_AllRecordsNode] = data["allSamples"]["nodes"]
+            nodes: List[_AllRecordsNode] = data["allSamplesJoinInfoPaginated"]["nodes"]
 
-        record_names: Dict[str, str] = {}
-        record_values: Dict[str, Dict[str, RecordValue]] = {}
+            record_names: Dict[str, str] = {}
+            record_values: Dict[str, Dict[str, RecordValue]] = {}
 
-        for node in nodes:
-            record_names[node["sampleId"]] = node["sampleName"]
-            vals = record_values.setdefault(node["sampleId"], {})
+            for node in nodes:
+                record_names[node["id"]] = node["name"]
+                vals = record_values.setdefault(node["id"], {})
 
-            col = cols.get(node["sampleDataKey"])
-            if col is None:
-                continue
-
-            # todo(maximsmol): in the future, allow storing or yielding values that failed to parse
-            vals[col.key] = to_python_literal(
-                node["sampleDataValue"], col.upstream_type["type"]
-            )
-
-        page: Dict[str, Record] = {}
-        for id, values in record_values.items():
-            for col in cols.values():
-                if col.key in values:
+                col = cols.get(node["key"])
+                if col is None:
                     continue
 
-                if not col.upstream_type["allowEmpty"]:
-                    values[col.key] = InvalidValue("")
+                # todo(maximsmol): in the future, allow storing or yielding values that failed to parse
+                vals[col.key] = to_python_literal(
+                    node["data"], col.upstream_type["type"]
+                )
 
-            cur = Record(id)
-            cur._cache.name = record_names[id]
-            cur._cache.values = values
-            cur._cache.columns = cols
-            page[id] = cur
+            page: Dict[str, Record] = {}
+            for id, values in record_values.items():
+                for col in cols.values():
+                    if col.key in values:
+                        continue
 
-            if len(page) == page_size:
+                    if not col.upstream_type["allowEmpty"]:
+                        values[col.key] = InvalidValue("")
+
+                cur = Record(id)
+                cur._cache.name = record_names[id]
+                cur._cache.values = values
+                cur._cache.columns = cols
+                page[id] = cur
+
+            if len(page) > 0:
                 yield page
-                page = {}
 
-        if len(page) > 0:
-            yield page
+                if len(page) < page_size:
+                    break
+
+                offset += page_size
+            else:
+                break
 
     def get_dataframe(self):
         """Get a pandas DataFrame of all records in this table.

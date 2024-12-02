@@ -16,15 +16,21 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.54.4
+## 2.54.5 - 2024-12-02
 
-## Added
+### Fixed
+
+* Fix pagination in `TableUpdater.list_records` to not OOM when table size is too large
+
+## 2.54.4 - 2024-11-25
+
+### Added
 
 * Plots Artifact dataclasses
 
-## 2.54.3
+## 2.54.3 - 2024-11-25
 
-## Added
+### Added
 
 * `cache` parameter to `LPath` download method to allow for caching of downloaded files
 
