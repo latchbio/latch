@@ -20,6 +20,12 @@ Types of changes
 
 ### Fixed
 
+* Bug in `LPath` download throws an exception when version id is null
+
+## 2.54.4 - 2024-11-25
+
+### Fixed
+
 * Fix pagination in `TableUpdater.list_records` to not OOM when table size is too large
 
 ## 2.54.4 - 2024-11-25
