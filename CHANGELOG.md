@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.54.8 - 2024-12-03
+
+### Added
+
+* Add retry logic to `latch_sdk_gql.execute`
+
 ## 2.54.7 - 2024-12-02
 
 ### Updated
@@ -32,7 +38,7 @@ Types of changes
 
 ### Fixed
 
-* Fix pagination in `TableUpdater.list_records` to not OOM when table size is too large
+* Fix pagination in `TableUpdater.list_records` to not OOM when table size is too large (>250k records)
 
 ## 2.54.4 - 2024-11-25
 
