@@ -16,7 +16,19 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.54.5 - 2024-12-02
+## 2.54.7 - 2024-12-02
+
+### Updated
+
+* Add more ephemeral storage to large GPU pods
+
+## 2.54.6 - 2024-12-02
+
+### Fixed
+
+* Bug in `LPath` download throws an exception when version id is null
+
+## 2.54.5 - 2024-11-25
 
 ### Fixed
 

@@ -2,12 +2,14 @@ import atexit
 import os
 import re
 import shutil
+import sys
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
-import sys
-from typing import Iterator, Optional, Type
+from typing import Optional, Type
 
 import gql
+import xattr
 from flytekit import (
     Blob,
     BlobMetadata,
@@ -19,7 +21,6 @@ from flytekit import (
 )
 from flytekit.extend import TypeEngine, TypeTransformer
 from typing_extensions import Self
-import xattr
 
 from latch.ldata.type import LatchPathError, LDataNodeType
 from latch_cli.utils import urljoins
@@ -69,11 +70,7 @@ class LPath:
     """
 
     _cache: _Cache = field(
-        default_factory=_Cache,
-        init=False,
-        repr=False,
-        hash=False,
-        compare=False,
+        default_factory=_Cache, init=False, repr=False, hash=False, compare=False
     )
 
     path: str
@@ -118,7 +115,7 @@ class LPath:
             or data["ldataNode"] is None
             or (data["path"] is not None and data["path"] != "")
         ):
-            raise LatchPathError(f"no such Latch file or directory", self.path)
+            raise LatchPathError("no such Latch file or directory", self.path)
 
         self._clear_cache()
 
@@ -136,7 +133,6 @@ class LPath:
             )
             self._cache.content_type = meta["contentType"]
             self._cache.version_id = meta["versionId"]
-
 
     def _clear_cache(self):
         self._cache.path = None
@@ -230,7 +226,7 @@ class LPath:
         )["ldataResolvePathData"]
 
         if data is None:
-            raise LatchPathError(f"no such Latch file or directory", {self.path})
+            raise LatchPathError("no such Latch file or directory", self.path)
         if data["finalLinkTarget"]["type"].lower() not in _dir_types:
             raise ValueError(f"not a directory: {self.path}")
 
@@ -303,7 +299,11 @@ class LPath:
         self._clear_cache()
 
     def download(
-        self, dst: Optional[Path] = None, *, show_progress_bar: bool = False, cache: bool = False
+        self,
+        dst: Optional[Path] = None,
+        *,
+        show_progress_bar: bool = False,
+        cache: bool = False,
     ) -> Path:
         """Download the file at this instance's path to the given destination.
 
@@ -328,7 +328,12 @@ class LPath:
 
         self._clear_cache()
         version_id = self.version_id()
-        if not_windows and cache and dst.exists() and version_id == xattr.getxattr(dst_str, 'user.version_id').decode():
+        if (
+            not_windows
+            and cache
+            and dst.exists()
+            and version_id == xattr.getxattr(dst_str, "user.version_id").decode()
+        ):
             return dst
 
         _download(
@@ -339,8 +344,8 @@ class LPath:
             confirm_overwrite=False,
         )
 
-        if not_windows:
-            xattr.setxattr(dst_str, 'user.version_id', version_id)
+        if not_windows and version_id is not None:
+            xattr.setxattr(dst_str, "user.version_id", version_id)
 
         return dst
 
