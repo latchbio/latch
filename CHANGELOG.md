@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.54.9 - 2024-12-03
+
+### Fixed
+
+* Reduced cpu/memory requests to ensure large GPU pods are schedulable
+
 ## 2.54.8 - 2024-12-03
 
 ### Added

@@ -171,14 +171,14 @@ def _get_large_gpu_pod() -> Pod:
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
         requests={
-            "cpu": "64",
-            "memory": "256Gi",
+            "cpu": "63",
+            "memory": "245Gi",
             "nvidia.com/gpu": "1",
             "ephemeral-storage": "4500Gi",
         },
         limits={
-            "cpu": "64",
-            "memory": "256Gi",
+            "cpu": "63",
+            "memory": "245Gi",
             "nvidia.com/gpu": "1",
             "ephemeral-storage": "5000Gi",
         },
