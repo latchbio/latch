@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.54.10 - 2024-12-06
+
+### Updated
+
+* Bump ephemeral storage limits for V100 GPU pods
+
 ## 2.54.9 - 2024-12-03
 
 ### Fixed
