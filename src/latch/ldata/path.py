@@ -27,7 +27,7 @@ from latch_cli.utils import urljoins
 
 from ._transfer.download import download as _download
 from ._transfer.node import get_node_data as _get_node_data
-from ._transfer.progress import Progress as Progress
+from ._transfer.progress import Progress as _Progress
 from ._transfer.remote_copy import remote_copy as _remote_copy
 from ._transfer.upload import upload as _upload
 from ._transfer.utils import query_with_retry
@@ -292,7 +292,7 @@ class LPath:
         _upload(
             os.fspath(src),
             self.path,
-            progress=Progress.tasks if show_progress_bar else Progress.none,
+            progress=_Progress.tasks if show_progress_bar else _Progress.none,
             verbose=False,
             create_parents=True,
         )
@@ -339,7 +339,7 @@ class LPath:
         _download(
             self.path,
             dst,
-            progress=Progress.tasks if show_progress_bar else Progress.none,
+            progress=_Progress.tasks if show_progress_bar else _Progress.none,
             verbose=False,
             confirm_overwrite=False,
         )
