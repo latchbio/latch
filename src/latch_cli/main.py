@@ -7,6 +7,7 @@ from textwrap import dedent
 from typing import Callable, List, Optional, Tuple, TypeVar, Union
 
 import click
+from numpy import add
 from packaging.version import parse as parse_version
 from typing_extensions import ParamSpec
 
@@ -60,12 +61,7 @@ def requires_login(f: Callable[P, T]) -> Callable[P, T]:
     return decorated
 
 
-@click.group(
-    "latch",
-    context_settings={
-        "max_content_width": 160,
-    },
-)
+@click.group("latch", context_settings={"max_content_width": 160})
 @click.version_option(package_name="latch")
 def main():
     """
@@ -136,10 +132,7 @@ WORKFLOW COMMANDS
 @click.option(
     "--template",
     "-t",
-    type=click.Choice(
-        list(template_flag_to_option.keys()),
-        case_sensitive=False,
-    ),
+    type=click.Choice(list(template_flag_to_option.keys()), case_sensitive=False),
 )
 @click.option(
     "--dockerfile",
@@ -152,10 +145,7 @@ WORKFLOW COMMANDS
     "--base-image",
     "-b",
     help="Which base image to use for the Dockerfile.",
-    type=click.Choice(
-        list(BaseImageOptions._member_names_),
-        case_sensitive=False,
-    ),
+    type=click.Choice(list(BaseImageOptions._member_names_), case_sensitive=False),
     default="default",
 )
 def init(
@@ -183,7 +173,9 @@ def init(
 
 
 @main.command("dockerfile")
-@click.argument("pkg_root", type=click.Path(exists=True, file_okay=False))
+@click.argument(
+    "pkg_root", type=click.Path(exists=True, file_okay=False, path_type=Path)
+)
 @click.option(
     "-s",
     "--snakemake",
@@ -200,37 +192,50 @@ def init(
     type=bool,
     help="Generate a Dockerfile with arguments needed for Nextflow compatibility",
 )
-def dockerfile(pkg_root: str, snakemake: bool = False, nextflow: bool = False):
+@click.option(
+    "-c", "--conda", type=click.Path(exists=True, dir_okay=False, path_type=Path)
+)
+def dockerfile(
+    pkg_root: Path,
+    snakemake: bool = False,
+    nextflow: bool = False,
+    conda: Optional[Path] = None,
+):
     """Generates a user editable dockerfile for a workflow and saves under `pkg_root/Dockerfile`.
 
     Visit docs.latch.bio to learn more.
     """
 
-    crash_handler.message = "Failed to generate Dockerfile."
-    crash_handler.pkg_root = pkg_root
-
     if snakemake is True and nextflow is True:
         click.secho(
-            f"Please specify at most one workflow type to generate metadata for. Use"
-            f" either `--snakemake` or `--nextflow`.",
+            "Please specify at most one workflow type to generate metadata for. Use"
+            " either `--snakemake` or `--nextflow`.",
             fg="red",
         )
         raise click.exceptions.Exit(1)
 
-    from latch_cli.docker_utils import generate_dockerfile, generate_dockerignore
+    from latch_cli.docker_utils import DockerfileBuilder, generate_dockerignore
+    from latch_cli.workflow_config import get_or_create_workflow_config
 
     workflow_type = WorkflowType.latchbiosdk
+    base_image = BaseImageOptions.default
     if snakemake is True:
         workflow_type = WorkflowType.snakemake
     elif nextflow is True:
         workflow_type = WorkflowType.nextflow
+        base_image = BaseImageOptions.nextflow
 
-    source = Path(pkg_root)
-    generate_dockerfile(source, wf_type=workflow_type)
+    config = get_or_create_workflow_config(
+        pkg_root=pkg_root, base_image_type=base_image
+    )
 
-    if not click.confirm(f"Generate a .dockerignore?"):
+    builder = DockerfileBuilder(pkg_root, wf_type=workflow_type, config=config)
+    builder.generate()
+
+    if not click.confirm("Generate a .dockerignore?"):
         return
-    generate_dockerignore(source, wf_type=workflow_type)
+
+    generate_dockerignore(pkg_root, wf_type=workflow_type)
 
 
 @main.command("generate-metadata")
@@ -320,7 +325,6 @@ def generate_metadata(
             generate_defaults=not no_defaults,
         )
     else:
-
         from latch_cli.snakemake.config.parser import generate_metadata
 
         if config_file is None:
@@ -352,12 +356,7 @@ def generate_metadata(
     type=bool,
     help="Skip the confirmation dialog.",
 )
-@click.option(
-    "--image",
-    "-i",
-    type=str,
-    help="Image to use for develop session.",
-)
+@click.option("--image", "-i", type=str, help="Image to use for develop session.")
 @click.option(
     "--wf-version",
     "-v",
@@ -610,9 +609,7 @@ def launch(params_file: Path, version: Union[str, None] = None):
 @main.command("get-params")
 @click.argument("wf_name", nargs=1)
 @click.option(
-    "--version",
-    default=None,
-    help="The version of the workflow. Defaults to latest.",
+    "--version", default=None, help="The version of the workflow. Defaults to latest."
 )
 @requires_login
 def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
@@ -722,9 +719,7 @@ LDATA COMMANDS
     show_default=True,
 )
 @click.option(
-    "--cores",
-    help="Manually specify number of cores to parallelize over",
-    type=int,
+    "--cores", help="Manually specify number of cores to parallelize over", type=int
 )
 @click.option(
     "--chunk-size-mib",
@@ -813,10 +808,7 @@ def ls(paths: Tuple[str], group_directories_first: bool):
         if len(paths) > 1:
             click.echo(f"{path}:")
 
-        ls(
-            path,
-            group_directories_first=group_directories_first,
-        )
+        ls(path, group_directories_first=group_directories_first)
 
         if len(paths) > 1:
             click.echo("")
@@ -889,11 +881,7 @@ def mkdir(remote_directory: str):
     is_flag=True,
     default=False,
 )
-@click.option(
-    "--cores",
-    help="Number of cores to use for parallel syncing.",
-    type=int,
-)
+@click.option("--cores", help="Number of cores to use for parallel syncing.", type=int)
 @requires_login
 def sync(
     srcs: List[str],
@@ -909,13 +897,7 @@ def sync(
 
     # todo(maximsmol): remote -> local
     # todo(maximsmol): remote -> remote
-    sync(
-        srcs,
-        dst,
-        delete=delete,
-        ignore_unsyncable=ignore_unsyncable,
-        cores=cores,
-    )
+    sync(srcs, dst, delete=delete, ignore_unsyncable=ignore_unsyncable, cores=cores)
 
 
 """
@@ -999,11 +981,7 @@ def generate_entrypoint(
         raise click.exceptions.Exit(1)
 
     generate_nextflow_workflow(
-        pkg_root,
-        metadata_root,
-        nf_script,
-        dest,
-        execution_profile=execution_profile,
+        pkg_root, metadata_root, nf_script, dest, execution_profile=execution_profile
     )
 
 
