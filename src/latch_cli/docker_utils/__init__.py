@@ -47,49 +47,6 @@ class DockerfileBuilder:
     pip_requirements: Optional[Path] = None
     direnv: Optional[Path] = None
 
-    def __post_init__(self):
-        if self.apt_requirements is None:
-            apt_requirements = self.pkg_root / "system-requirements.txt"
-            if apt_requirements.exists():
-                self.apt_requirements = apt_requirements
-
-        if self.r_env is None:
-            r_env = self.pkg_root / "environment.R"
-            if r_env.exists():
-                self.r_env = r_env
-
-        if self.conda_env is None:
-            conda_env = self.pkg_root / "environment.yml"
-            if not conda_env.exists():
-                conda_env = conda_env.with_suffix("yaml")
-
-            if conda_env.exists():
-                self.conda_env = conda_env
-
-        if self.pyproject is None:
-            pyproject = self.pkg_root / "setup.py"
-            if pyproject.exists():
-                self.pyproject = pyproject
-            else:
-                pyproject = self.pkg_root / "pyproject.toml"
-
-                try:
-                    content = pyproject.read_text()
-                    if "[build-system]" in content:
-                        self.pyproject = pyproject
-                except FileNotFoundError:
-                    pass
-
-        if self.pip_requirements is None:
-            pip_requirements = self.pkg_root / "requirements.txt"
-            if pip_requirements.exists():
-                self.pip_requirements = pip_requirements
-
-        if self.direnv is None:
-            direnv = self.pkg_root / ".env"
-            if direnv.exists():
-                self.direnv = direnv
-
     def get_prologue(self):
         if self.wf_type == WorkflowType.snakemake:
             library_name = '"latch[snakemake]"'
@@ -237,9 +194,9 @@ class DockerfileBuilder:
         )
 
         with self.conda_env.open("rb") as f:
-            conda_env = yaml.safe_load(f)
+            env_content = yaml.safe_load(f)
 
-        env_name = conda_env.get("name", "workflow")
+        env_name = env_content.get("name", self.conda_env.stem)
 
         # todo(maximsmol): install `curl` and other build deps ahead of time once (or in base image)
         self.commands.extend([
@@ -248,7 +205,7 @@ class DockerfileBuilder:
                 commands=[
                     dedent(r"""
                     run apt-get update --yes && \
-                        apt-get install --yes curl && \
+                        apt-get install --yes curl git && \
                         curl \
                             --location \
                             --fail \
@@ -265,14 +222,14 @@ class DockerfileBuilder:
                 comment="Set conda PATH",
                 commands=[
                     "env PATH=/opt/conda/bin:$PATH",
-                    "RUN conda config --set auto_activate_base false",
+                    "run conda config --set auto_activate_base false",
                 ],
                 order=DockerCmdBlockOrder.precopy,
             ),
             DockerCmdBlock(
                 comment="Build conda environment",
                 commands=[
-                    f"copy {self.conda_env.name} /opt/latch/environment.yaml",
+                    f"copy {self.conda_env} /opt/latch/environment.yaml",
                     dedent(rf"""
                     run mamba env create \
                         --file /opt/latch/environment.yaml \
@@ -285,10 +242,12 @@ class DockerfileBuilder:
         ])
 
     def infer_installable_pyproject_commands(self):
+        # from https://peps.python.org/pep-0518/ and https://peps.python.org/pep-0621/
         if self.pyproject is None:
             return
 
-        # from https://peps.python.org/pep-0518/ and https://peps.python.org/pep-0621/
+        rel = self.pyproject.resolve().relative_to(self.pkg_root.resolve())
+
         click.echo(
             " ".join([
                 click.style(f"{self.pyproject.name}:", bold=True),
@@ -298,8 +257,8 @@ class DockerfileBuilder:
 
         self.commands.append(
             DockerCmdBlock(
-                comment="Install python package",
-                commands=["run pip install /root/"],
+                comment=f"Install python package defined by {self.pyproject}",
+                commands=[f"run pip install /root/{rel.parent}"],
                 order=DockerCmdBlockOrder.postcopy,
             )
         )
@@ -310,7 +269,7 @@ class DockerfileBuilder:
 
         click.echo(
             " ".join([
-                click.style(f"{self.pip_requirements.name}.txt:", bold=True),
+                click.style(f"{self.pip_requirements.name}:", bold=True),
                 "Python pip dependencies installation phase",
             ])
         )
@@ -319,7 +278,7 @@ class DockerfileBuilder:
             DockerCmdBlock(
                 comment=f"Install pip dependencies from `{self.pip_requirements}`",
                 commands=[
-                    f"copy{self.pip_requirements} /opt/latch/requirements.txt",
+                    f"copy {self.pip_requirements} /opt/latch/requirements.txt",
                     "run pip install --requirement /opt/latch/requirements.txt",
                 ],
                 order=DockerCmdBlockOrder.precopy,
@@ -396,22 +355,6 @@ class DockerfileBuilder:
 
         click.secho("Generating Dockerfile", bold=True)
 
-        # # todo(ayush): decouple config generation w/ Dockerfile generation
-        # try:
-        #     with (self.pkg_root / latch_constants.pkg_config).open("r") as f:
-        #         config: LatchWorkflowConfig = LatchWorkflowConfig(**json.load(f))
-        # except FileNotFoundError:
-        #     click.secho("Creating a default configuration file")
-
-        #     base_image_type = BaseImageOptions.default
-        #     if self.wf_type == WorkflowType.nextflow:
-        #         base_image_type = BaseImageOptions.nextflow
-
-        #     create_and_write_config(self.pkg_root, base_image_type)
-
-        #     with (self.pkg_root / latch_constants.pkg_config).open("r") as f:
-        #         config = LatchWorkflowConfig(**json.load(f))
-
         click.echo(
             " ".join([
                 click.style("Base image:", fg="bright_blue"),
@@ -431,7 +374,7 @@ class DockerfileBuilder:
         self.get_copy_file_commands()
         self.get_epilogue()
 
-        dockerfile_content = []
+        dockerfile_content: List[str] = []
 
         for order in [
             DockerCmdBlockOrder.precopy,
@@ -442,14 +385,18 @@ class DockerfileBuilder:
                 if command.order != order:
                     continue
 
+                dockerfile_content.append(f"# {command.comment}")
                 dockerfile_content.extend(command.commands)
+                dockerfile_content.append("")
 
         dest.write_text("\n".join(dockerfile_content))
 
         click.secho(f"Successfully generated dockerfile `{dest}`", fg="green")
 
 
-def generate_dockerignore(pkg_root: Path, *, wf_type: WorkflowType) -> None:
+def generate_dockerignore(
+    pkg_root: Path, *, wf_type: WorkflowType, overwrite: bool = False
+) -> None:
     dest = Path(pkg_root) / ".dockerignore"
     if dest.exists():
         if dest.is_dir():
@@ -459,7 +406,9 @@ def generate_dockerignore(pkg_root: Path, *, wf_type: WorkflowType) -> None:
             )
             raise click.exceptions.Exit(1)
 
-        if not click.confirm(f".dockerignore already exists at `{dest}`. Overwrite?"):
+        if not overwrite and not click.confirm(
+            f".dockerignore already exists at `{dest}`. Overwrite?"
+        ):
             return
 
     files = [".git", ".github"]

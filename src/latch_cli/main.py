@@ -7,7 +7,6 @@ from textwrap import dedent
 from typing import Callable, List, Optional, Tuple, TypeVar, Union
 
 import click
-from numpy import add
 from packaging.version import parse as parse_version
 from typing_extensions import ParamSpec
 
@@ -193,13 +192,60 @@ def init(
     help="Generate a Dockerfile with arguments needed for Nextflow compatibility",
 )
 @click.option(
-    "-c", "--conda", type=click.Path(exists=True, dir_okay=False, path_type=Path)
+    "-f",
+    "--force",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Overwrite existing Dockerfile without confirming",
+)
+@click.option(
+    "-a",
+    "--apt-requirements",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Path to a text file containing apt packages to install.",
+)
+@click.option(
+    "-r",
+    "--r-env",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Path to an environment.R file containing R packages to install.",
+)
+@click.option(
+    "-c",
+    "--conda-env",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Path to an environment.yml file to install via conda.",
+)
+@click.option(
+    "-i",
+    "--pyproject",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Path to a setup.py / buildable pyproject.toml file to install.",
+)
+@click.option(
+    "-p",
+    "--pip-requirements",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Path to a requirements.txt file to install via pip.",
+)
+@click.option(
+    "-d",
+    "--direnv",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Path to a direnv file (.env) containing environment variables to inject into the container.",
 )
 def dockerfile(
     pkg_root: Path,
     snakemake: bool = False,
     nextflow: bool = False,
-    conda: Optional[Path] = None,
+    force: bool = False,
+    apt_requirements: Optional[Path] = None,
+    r_env: Optional[Path] = None,
+    conda_env: Optional[Path] = None,
+    pyproject: Optional[Path] = None,
+    pip_requirements: Optional[Path] = None,
+    direnv: Optional[Path] = None,
 ):
     """Generates a user editable dockerfile for a workflow and saves under `pkg_root/Dockerfile`.
 
@@ -229,13 +275,23 @@ def dockerfile(
         pkg_root=pkg_root, base_image_type=base_image
     )
 
-    builder = DockerfileBuilder(pkg_root, wf_type=workflow_type, config=config)
-    builder.generate()
+    builder = DockerfileBuilder(
+        pkg_root,
+        wf_type=workflow_type,
+        config=config,
+        apt_requirements=apt_requirements,
+        r_env=r_env,
+        conda_env=conda_env,
+        pyproject=pyproject,
+        pip_requirements=pip_requirements,
+        direnv=direnv,
+    )
+    builder.generate(overwrite=force)
 
     if not click.confirm("Generate a .dockerignore?"):
         return
 
-    generate_dockerignore(pkg_root, wf_type=workflow_type)
+    generate_dockerignore(pkg_root, wf_type=workflow_type, overwrite=force)
 
 
 @main.command("generate-metadata")
