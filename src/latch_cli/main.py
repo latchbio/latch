@@ -91,7 +91,10 @@ LOGIN COMMANDS
 
 @main.command("login")
 @click.option(
-    "--connection", type=str, default=None, help="Specific AuthO connection name e.g. for SSO."
+    "--connection",
+    type=str,
+    default=None,
+    help="Specific AuthO connection name e.g. for SSO.",
 )
 def login(connection: Optional[str]):
     """Manually login to Latch."""
@@ -169,7 +172,9 @@ def init(
 
 
 @main.command("dockerfile")
-@click.argument("pkg_root", type=click.Path(exists=True, file_okay=False))
+@click.argument(
+    "pkg_root", type=click.Path(exists=True, file_okay=False, path_type=Path)
+)
 @click.option(
     "-s",
     "--snakemake",
@@ -186,37 +191,107 @@ def init(
     type=bool,
     help="Generate a Dockerfile with arguments needed for Nextflow compatibility",
 )
-def dockerfile(pkg_root: str, snakemake: bool = False, nextflow: bool = False):
+@click.option(
+    "-f",
+    "--force",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Overwrite existing Dockerfile without confirming",
+)
+@click.option(
+    "-a",
+    "--apt-requirements",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Path to a text file containing apt packages to install.",
+)
+@click.option(
+    "-r",
+    "--r-env",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Path to an environment.R file containing R packages to install.",
+)
+@click.option(
+    "-c",
+    "--conda-env",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Path to an environment.yml file to install via conda.",
+)
+@click.option(
+    "-i",
+    "--pyproject",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Path to a setup.py / buildable pyproject.toml file to install.",
+)
+@click.option(
+    "-p",
+    "--pip-requirements",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Path to a requirements.txt file to install via pip.",
+)
+@click.option(
+    "-d",
+    "--direnv",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Path to a direnv file (.env) containing environment variables to inject into the container.",
+)
+def dockerfile(
+    pkg_root: Path,
+    snakemake: bool = False,
+    nextflow: bool = False,
+    force: bool = False,
+    apt_requirements: Optional[Path] = None,
+    r_env: Optional[Path] = None,
+    conda_env: Optional[Path] = None,
+    pyproject: Optional[Path] = None,
+    pip_requirements: Optional[Path] = None,
+    direnv: Optional[Path] = None,
+):
     """Generates a user editable dockerfile for a workflow and saves under `pkg_root/Dockerfile`.
 
     Visit docs.latch.bio to learn more.
     """
 
-    crash_handler.message = "Failed to generate Dockerfile."
-    crash_handler.pkg_root = pkg_root
-
     if snakemake is True and nextflow is True:
         click.secho(
-            f"Please specify at most one workflow type to generate metadata for. Use"
-            f" either `--snakemake` or `--nextflow`.",
+            "Please specify at most one workflow type to generate metadata for. Use"
+            " either `--snakemake` or `--nextflow`.",
             fg="red",
         )
         raise click.exceptions.Exit(1)
 
-    from latch_cli.docker_utils import generate_dockerfile, generate_dockerignore
+    from latch_cli.docker_utils import DockerfileBuilder, generate_dockerignore
+    from latch_cli.workflow_config import get_or_create_workflow_config
 
     workflow_type = WorkflowType.latchbiosdk
+    base_image = BaseImageOptions.default
     if snakemake is True:
         workflow_type = WorkflowType.snakemake
     elif nextflow is True:
         workflow_type = WorkflowType.nextflow
+        base_image = BaseImageOptions.nextflow
 
-    source = Path(pkg_root)
-    generate_dockerfile(source, wf_type=workflow_type)
+    config = get_or_create_workflow_config(
+        pkg_root=pkg_root, base_image_type=base_image
+    )
 
-    if not click.confirm(f"Generate a .dockerignore?"):
+    builder = DockerfileBuilder(
+        pkg_root,
+        wf_type=workflow_type,
+        config=config,
+        apt_requirements=apt_requirements,
+        r_env=r_env,
+        conda_env=conda_env,
+        pyproject=pyproject,
+        pip_requirements=pip_requirements,
+        direnv=direnv,
+    )
+    builder.generate(overwrite=force)
+
+    if not click.confirm("Generate a .dockerignore?"):
         return
-    generate_dockerignore(source, wf_type=workflow_type)
+
+    generate_dockerignore(pkg_root, wf_type=workflow_type, overwrite=force)
 
 
 @main.command("generate-metadata")
@@ -300,7 +375,10 @@ def generate_metadata(
             config_file = Path("nextflow_schema.json")
 
         generate_metadata(
-            config_file, metadata_root, skip_confirmation=yes, generate_defaults=not no_defaults
+            config_file,
+            metadata_root,
+            skip_confirmation=yes,
+            generate_defaults=not no_defaults,
         )
     else:
         from latch_cli.snakemake.config.parser import generate_metadata
@@ -327,7 +405,12 @@ def generate_metadata(
 @main.command("develop")
 @click.argument("pkg_root", nargs=1, type=click.Path(exists=True, path_type=Path))
 @click.option(
-    "--yes", "-y", is_flag=True, default=False, type=bool, help="Skip the confirmation dialog."
+    "--yes",
+    "-y",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Skip the confirmation dialog.",
 )
 @click.option("--image", "-i", type=str, help="Image to use for develop session.")
 @click.option(
@@ -379,16 +462,23 @@ def local_development(
         from latch_cli.services.local_dev import local_development
 
         local_development(
-            pkg_root.resolve(), skip_confirm_dialog=yes, size=TaskSize.small_task, image=image
+            pkg_root.resolve(),
+            skip_confirm_dialog=yes,
+            size=TaskSize.small_task,
+            image=image,
         )
     else:
         from latch_cli.services.local_dev_old import local_development
 
-        local_development(pkg_root.resolve(), snakemake, wf_version, metadata_root, disable_sync)
+        local_development(
+            pkg_root.resolve(), snakemake, wf_version, metadata_root, disable_sync
+        )
 
 
 @main.command("exec")
-@click.option("--execution-id", "-e", type=str, help="Optional execution ID to inspect.")
+@click.option(
+    "--execution-id", "-e", type=str, help="Optional execution ID to inspect."
+)
 @click.option("--egn-id", "-g", type=str, help="Optional task execution ID to inspect.")
 @click.option(
     "--container-index",
@@ -397,7 +487,9 @@ def local_development(
     help="Optional container index to inspect (only used for Map Tasks)",
 )
 @requires_login
-def execute(execution_id: Optional[str], egn_id: Optional[str], container_index: Optional[int]):
+def execute(
+    execution_id: Optional[str], egn_id: Optional[str], container_index: Optional[int]
+):
     """Drops the user into an interactive shell from within a task."""
 
     from latch_cli.services.k8s.execute import exec
@@ -435,7 +527,12 @@ def execute(execution_id: Optional[str], egn_id: Optional[str], container_index:
     ),
 )
 @click.option(
-    "-y", "--yes", is_flag=True, default=False, type=bool, help="Skip the confirmation dialog."
+    "-y",
+    "--yes",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Skip the confirmation dialog.",
 )
 @click.option(
     "--open",
@@ -444,6 +541,12 @@ def execute(execution_id: Optional[str], egn_id: Optional[str], container_index:
     default=False,
     type=bool,
     help="Open the registered workflow in the browser.",
+)
+@click.option(
+    "--workflow-module",
+    "-w",
+    type=str,
+    help="Module containing Latch workflow to register. Defaults to `wf`",
 )
 @click.option(
     "--metadata-root",
@@ -462,7 +565,9 @@ def execute(execution_id: Optional[str], egn_id: Optional[str], container_index:
     is_flag=True,
     default=False,
     type=bool,
-    help=("Whether or not to cache snakemake tasks. Ignored if --snakefile is not provided."),
+    help=(
+        "Whether or not to cache snakemake tasks. Ignored if --snakefile is not provided."
+    ),
 )
 @click.option(
     "--nf-script",
@@ -484,6 +589,7 @@ def register(
     docker_progress: str,
     yes: bool,
     open: bool,
+    workflow_module: Optional[str],
     metadata_root: Optional[Path],
     snakefile: Optional[Path],
     cache_tasks: bool,
@@ -516,6 +622,7 @@ def register(
         remote=remote,
         skip_confirmation=yes,
         open=open,
+        wf_module=workflow_module,
         metadata_root=metadata_root,
         snakefile=snakefile,
         nf_script=nf_script,
@@ -530,7 +637,9 @@ def register(
 @main.command("launch")
 @click.argument("params_file", nargs=1, type=click.Path(exists=True))
 @click.option(
-    "--version", default=None, help="The version of the workflow to launch. Defaults to latest."
+    "--version",
+    default=None,
+    help="The version of the workflow to launch. Defaults to latest.",
 )
 @requires_login
 def launch(params_file: Path, version: Union[str, None] = None):
@@ -546,13 +655,16 @@ def launch(params_file: Path, version: Union[str, None] = None):
         version = "latest"
 
     click.secho(
-        f"Successfully launched workflow named {wf_name} with version {version}.", fg="green"
+        f"Successfully launched workflow named {wf_name} with version {version}.",
+        fg="green",
     )
 
 
 @main.command("get-params")
 @click.argument("wf_name", nargs=1)
-@click.option("--version", default=None, help="The version of the workflow. Defaults to latest.")
+@click.option(
+    "--version", default=None, help="The version of the workflow. Defaults to latest."
+)
 @requires_login
 def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
     """Generate a python parameter map for a workflow."""
@@ -573,7 +685,9 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
 
 @main.command("get-wf")
 @click.option(
-    "--name", default=None, help="The name of the workflow to list. Will display all versions"
+    "--name",
+    default=None,
+    help="The name of the workflow to list. Will display all versions",
 )
 @requires_login
 def get_wf(name: Union[str, None] = None):
@@ -593,7 +707,9 @@ def get_wf(name: Union[str, None] = None):
         version_padding = max(version_padding, version_len)
 
     # TODO(ayush): make this much better
-    click.secho(f"ID{id_padding * ' '}\tName{name_padding * ' '}\tVersion{version_padding * ' '}")
+    click.secho(
+        f"ID{id_padding * ' '}\tName{name_padding * ' '}\tVersion{version_padding * ' '}"
+    )
     for wf in wfs:
         click.secho(
             f"{wf[0]}{(id_padding - len(str(wf[0]))) * ' '}\t{wf[1]}{(name_padding - len(wf[1])) * ' '}\t{wf[2]}{(version_padding - len(wf[2])) * ' '}"
@@ -656,9 +772,13 @@ LDATA COMMANDS
     default=False,
     show_default=True,
 )
-@click.option("--cores", help="Manually specify number of cores to parallelize over", type=int)
 @click.option(
-    "--chunk-size-mib", help="Manually specify the upload chunk size in MiB. Must be >= 5", type=int
+    "--cores", help="Manually specify number of cores to parallelize over", type=int
+)
+@click.option(
+    "--chunk-size-mib",
+    help="Manually specify the upload chunk size in MiB. Must be >= 5",
+    type=int,
 )
 @requires_login
 def cp(
@@ -751,7 +871,12 @@ def ls(paths: Tuple[str], group_directories_first: bool):
 @main.command("rmr")
 @click.argument("remote_path", nargs=1, type=str)
 @click.option(
-    "-y", "--yes", is_flag=True, default=False, type=bool, help="Skip the confirmation dialog."
+    "-y",
+    "--yes",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Skip the confirmation dialog.",
 )
 @click.option(
     "--no-glob",
@@ -797,18 +922,27 @@ def mkdir(remote_directory: str):
 @click.argument("srcs", nargs=-1)
 @click.argument("dst", nargs=1)
 @click.option(
-    "--delete", help="Delete extraneous files from destination.", is_flag=True, default=False
+    "--delete",
+    help="Delete extraneous files from destination.",
+    is_flag=True,
+    default=False,
 )
 @click.option(
     "--ignore-unsyncable",
-    help=("Synchronize even if some source paths do not exist or refer to special files."),
+    help=(
+        "Synchronize even if some source paths do not exist or refer to special files."
+    ),
     is_flag=True,
     default=False,
 )
 @click.option("--cores", help="Number of cores to use for parallel syncing.", type=int)
 @requires_login
 def sync(
-    srcs: List[str], dst: str, delete: bool, ignore_unsyncable: bool, cores: Optional[int] = None
+    srcs: List[str],
+    dst: str,
+    delete: bool,
+    ignore_unsyncable: bool,
+    cores: Optional[int] = None,
 ):
     """
     Update the contents of a remote directory with local data.
@@ -861,7 +995,10 @@ def version(pkg_root: Path):
     help="Set execution profile for Nextflow workflow",
 )
 def nf_generate_entrypoint(
-    pkg_root: Path, metadata_root: Optional[Path], nf_script: Path, execution_profile: Optional[str]
+    pkg_root: Path,
+    metadata_root: Optional[Path],
+    nf_script: Path,
+    execution_profile: Optional[str],
 ):
     """Generate a `wf/entrypoint.py` file from a Nextflow workflow"""
 
@@ -900,7 +1037,9 @@ def nf_generate_entrypoint(
 
 
 @nextflow.command("attach")
-@click.option("--execution-id", "-e", type=str, help="Optional execution ID to inspect.")
+@click.option(
+    "--execution-id", "-e", type=str, help="Optional execution ID to inspect."
+)
 @requires_login
 def attach(execution_id: Optional[str]):
     """Drops the user into an interactive shell to inspect the workdir of a nextflow execution."""
@@ -1021,7 +1160,8 @@ def stop_pod(pod_id: Optional[int] = None):
                 err_str = f"Error reading Pod ID from `{id_path}`"
 
             click.secho(
-                f"{err_str} -- please provide a Pod ID as a command line argument.", fg="red"
+                f"{err_str} -- please provide a Pod ID as a command line argument.",
+                fg="red",
             )
             return
 

@@ -2,11 +2,14 @@ import atexit
 import os
 import re
 import shutil
+import sys
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterator, Optional, Type
+from typing import Optional, Type
 
 import gql
+import xattr
 from flytekit import (
     Blob,
     BlobMetadata,
@@ -52,6 +55,7 @@ class _Cache:
     size: Optional[int] = None
     dir_size: Optional[int] = None
     content_type: Optional[str] = None
+    version_id: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -66,11 +70,7 @@ class LPath:
     """
 
     _cache: _Cache = field(
-        default_factory=_Cache,
-        init=False,
-        repr=False,
-        hash=False,
-        compare=False,
+        default_factory=_Cache, init=False, repr=False, hash=False, compare=False
     )
 
     path: str
@@ -101,6 +101,7 @@ class LPath:
                             ldataObjectMeta {
                                 contentSize
                                 contentType
+                                versionId
                             }
                         }
                     }
@@ -114,7 +115,7 @@ class LPath:
             or data["ldataNode"] is None
             or (data["path"] is not None and data["path"] != "")
         ):
-            raise LatchPathError(f"no such Latch file or directory", self.path)
+            raise LatchPathError("no such Latch file or directory", self.path)
 
         self._clear_cache()
 
@@ -131,6 +132,7 @@ class LPath:
                 None if meta["contentSize"] is None else int(meta["contentSize"])
             )
             self._cache.content_type = meta["contentType"]
+            self._cache.version_id = meta["versionId"]
 
     def _clear_cache(self):
         self._cache.path = None
@@ -140,6 +142,7 @@ class LPath:
         self._cache.size = None
         self._cache.dir_size = None
         self._cache.content_type = None
+        self._cache.version_id = None
 
     def node_id(self, *, load_if_missing: bool = True) -> Optional[str]:
         match = node_id_regex.match(self.path)
@@ -188,6 +191,11 @@ class LPath:
             self.fetch_metadata()
         return self._cache.content_type
 
+    def version_id(self, *, load_if_missing: bool = True) -> Optional[str]:
+        if self._cache.version_id is None and load_if_missing:
+            self.fetch_metadata()
+        return self._cache.version_id
+
     def is_dir(self, *, load_if_missing: bool = True) -> bool:
         return self.type(load_if_missing=load_if_missing) in _dir_types
 
@@ -218,7 +226,7 @@ class LPath:
         )["ldataResolvePathData"]
 
         if data is None:
-            raise LatchPathError(f"no such Latch file or directory", {self.path})
+            raise LatchPathError("no such Latch file or directory", self.path)
         if data["finalLinkTarget"]["type"].lower() not in _dir_types:
             raise ValueError(f"not a directory: {self.path}")
 
@@ -291,7 +299,11 @@ class LPath:
         self._clear_cache()
 
     def download(
-        self, dst: Optional[Path] = None, *, show_progress_bar: bool = False
+        self,
+        dst: Optional[Path] = None,
+        *,
+        show_progress_bar: bool = False,
+        cache: bool = False,
     ) -> Path:
         """Download the file at this instance's path to the given destination.
 
@@ -306,7 +318,23 @@ class LPath:
             _download_idx += 1
             tmp_dir.mkdir(parents=True, exist_ok=True)
             atexit.register(lambda p: shutil.rmtree(p), tmp_dir)
-            dst = tmp_dir / self.name()
+            name = self.name()
+            if name is None:
+                raise Exception("unable get name of ldata node")
+            dst = tmp_dir / name
+
+        not_windows = sys.platform != "win32"
+        dst_str = str(dst)
+
+        self._clear_cache()
+        version_id = self.version_id()
+        if (
+            not_windows
+            and cache
+            and dst.exists()
+            and version_id == xattr.getxattr(dst_str, "user.version_id").decode()
+        ):
+            return dst
 
         _download(
             self.path,
@@ -315,6 +343,10 @@ class LPath:
             verbose=False,
             confirm_overwrite=False,
         )
+
+        if not_windows and version_id is not None:
+            xattr.setxattr(dst_str, "user.version_id", version_id)
+
         return dst
 
     def __truediv__(self, other: object) -> "LPath":

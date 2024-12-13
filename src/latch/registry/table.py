@@ -1,9 +1,8 @@
-import sys
-import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from enum import Enum
+from inspect import isclass
 from typing import (
     Dict,
     Iterator,
@@ -23,16 +22,6 @@ from typing import (
 import gql
 import gql.transport.exceptions
 import graphql.language as l
-import graphql.language.parser as lp
-from latch_sdk_gql.execute import execute
-from latch_sdk_gql.utils import (
-    _GqlJsonValue,
-    _json_value,
-    _name_node,
-    _parse_selection,
-    _var_def_node,
-    _var_node,
-)
 from typing_extensions import TypeAlias
 
 from latch.registry.record import NoSuchColumnError, Record
@@ -56,8 +45,16 @@ from latch.registry.utils import (
 )
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
-from latch.utils import NotFoundError, current_workspace
-from latch_cli.utils import human_readable_time
+from latch.utils import NotFoundError
+from latch_sdk_gql.execute import execute
+from latch_sdk_gql.utils import (
+    _GqlJsonValue,
+    _json_value,
+    _name_node,
+    _parse_selection,
+    _var_def_node,
+    _var_node,
+)
 
 from ..types.json import JsonValue
 
@@ -248,70 +245,80 @@ class Table:
 
         cols = self.get_columns()
 
-        # todo(maximsmol): because allSamples returns each column as its own
-        # row, we can't paginate by samples because we don't know when a sample is finished
-        data = execute(
-            gql.gql("""
-                query TableQuery($id: BigInt!) {
-                    catalogExperiment(id: $id) {
-                        allSamples {
-                            nodes {
-                                sampleId
-                                sampleName
-                                sampleDataKey
-                                sampleDataValue
+        offset = 0
+        while True:
+            data = execute(
+                gql.gql("""
+                    query TableQuery(
+                        $id: BigInt!,
+                        $argLimit: BigInt!,
+                        $argOffset: BigInt!
+                    ) {
+                        catalogExperiment(id: $id) {
+                            allSamplesJoinInfoPaginated(
+                                argLimit: $argLimit,
+                                argOffset: $argOffset
+                            ) {
+                                nodes {
+                                    id
+                                    name
+                                    key
+                                    data
+                                }
                             }
                         }
                     }
-                }
                 """),
-            {"id": self.id},
-        )["catalogExperiment"]
+                {"id": self.id, "argLimit": page_size, "argOffset": offset},
+            )["catalogExperiment"]
 
-        if data is None:
-            raise TableNotFoundError(
-                f"table does not exist or you lack permissions: id={self.id}"
-            )
+            if data is None:
+                raise TableNotFoundError(
+                    f"table does not exist or you lack permissions: id={self.id}"
+                )
 
-        nodes: List[_AllRecordsNode] = data["allSamples"]["nodes"]
+            nodes: List[_AllRecordsNode] = data["allSamplesJoinInfoPaginated"]["nodes"]
 
-        record_names: Dict[str, str] = {}
-        record_values: Dict[str, Dict[str, RecordValue]] = {}
+            record_names: Dict[str, str] = {}
+            record_values: Dict[str, Dict[str, RecordValue]] = {}
 
-        for node in nodes:
-            record_names[node["sampleId"]] = node["sampleName"]
-            vals = record_values.setdefault(node["sampleId"], {})
+            for node in nodes:
+                record_names[node["id"]] = node["name"]
+                vals = record_values.setdefault(node["id"], {})
 
-            col = cols.get(node["sampleDataKey"])
-            if col is None:
-                continue
-
-            # todo(maximsmol): in the future, allow storing or yielding values that failed to parse
-            vals[col.key] = to_python_literal(
-                node["sampleDataValue"], col.upstream_type["type"]
-            )
-
-        page: Dict[str, Record] = {}
-        for id, values in record_values.items():
-            for col in cols.values():
-                if col.key in values:
+                col = cols.get(node["key"])
+                if col is None:
                     continue
 
-                if not col.upstream_type["allowEmpty"]:
-                    values[col.key] = InvalidValue("")
+                # todo(maximsmol): in the future, allow storing or yielding values that failed to parse
+                vals[col.key] = to_python_literal(
+                    node["data"], col.upstream_type["type"]
+                )
 
-            cur = Record(id)
-            cur._cache.name = record_names[id]
-            cur._cache.values = values
-            cur._cache.columns = cols
-            page[id] = cur
+            page: Dict[str, Record] = {}
+            for id, values in record_values.items():
+                for col in cols.values():
+                    if col.key in values:
+                        continue
 
-            if len(page) == page_size:
+                    if not col.upstream_type["allowEmpty"]:
+                        values[col.key] = InvalidValue("")
+
+                cur = Record(id)
+                cur._cache.name = record_names[id]
+                cur._cache.values = values
+                cur._cache.columns = cols
+                page[id] = cur
+
+            if len(page) > 0:
                 yield page
-                page = {}
 
-        if len(page) > 0:
-            yield page
+                if len(page) < page_size:
+                    break
+
+                offset += page_size
+            else:
+                break
 
     def get_dataframe(self):
         """Get a pandas DataFrame of all records in this table.
@@ -400,9 +407,7 @@ class _TableColumnUpsertData:
 
 
 _TableRecordsMutationData: TypeAlias = Union[
-    _TableRecordsUpsertData,
-    _TableRecordsDeleteData,
-    _TableColumnUpsertData,
+    _TableRecordsUpsertData, _TableRecordsDeleteData, _TableColumnUpsertData
 ]
 
 
@@ -435,11 +440,7 @@ class TableUpdate:
     """
 
     _record_mutations: List[_TableRecordsMutationData] = field(
-        default_factory=list,
-        init=False,
-        repr=False,
-        hash=False,
-        compare=False,
+        default_factory=list, init=False, repr=False, hash=False, compare=False
     )
 
     table: Table
@@ -559,10 +560,7 @@ class TableUpdate:
 
         args = l.ArgumentNode()
         args.name = _name_node("input")
-        args.value = _json_value({
-            "argExperimentId": self.table.id,
-            "argNames": names,
-        })
+        args.value = _json_value({"argExperimentId": self.table.id, "argNames": names})
 
         res.alias = _name_node(f"upd{len(mutations)}")
         res.arguments = tuple([args])
@@ -572,11 +570,7 @@ class TableUpdate:
     # upsert column
 
     def upsert_column(
-        self,
-        key: str,
-        type: RegistryPythonType,
-        *,
-        required: bool = False,
+        self, key: str, type: RegistryPythonType, *, required: bool = False
     ):
         """Create a column. Support for updating columns is planned.
 
@@ -658,14 +652,11 @@ class TableUpdate:
                         key, type, f"Enum value {repr(x)} is not a string"
                     )
 
-                registry_type = {
-                    "primitive": "enum",
-                    "members": members,
-                }
+                registry_type = {"primitive": "enum", "members": members}
 
-        if isinstance(type, Enum):
+        if isclass(type) and issubclass(type, Enum):
             members: List[str] = []
-            for f in cast(Type[Enum], type):
+            for f in type:
                 if not isinstance(f.value, str):
                     raise InvalidColumnTypeError(
                         key,
@@ -676,10 +667,7 @@ class TableUpdate:
 
                 members.append(f.value)
 
-            registry_type = {
-                "primitive": "enum",
-                "members": members,
-            }
+            registry_type = {"primitive": "enum", "members": members}
 
         if registry_type is None:
             raise InvalidColumnTypeError(key, type, "Unsupported type")

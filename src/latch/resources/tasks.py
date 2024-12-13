@@ -56,13 +56,13 @@ def get_v100_x1_pod() -> Pod:
             "cpu": "7",
             "memory": "48Gi",
             "nvidia.com/gpu": 1,
-            "ephemeral-storage": "1500Gi",
+            "ephemeral-storage": "4500Gi",
         },
         limits={
             "cpu": "7",
             "memory": "48Gi",
             "nvidia.com/gpu": 1,
-            "ephemeral-storage": "2000Gi",
+            "ephemeral-storage": "5000Gi",
         },
     )
     primary_container.resources = resources
@@ -92,13 +92,13 @@ def get_v100_x4_pod() -> Pod:
             "cpu": "30",
             "memory": "230Gi",
             "nvidia.com/gpu": 4,
-            "ephemeral-storage": "1500Gi",
+            "ephemeral-storage": "4500Gi",
         },
         limits={
             "cpu": "30",
             "memory": "230Gi",
             "nvidia.com/gpu": 4,
-            "ephemeral-storage": "2000Gi",
+            "ephemeral-storage": "5000Gi",
         },
     )
     primary_container.resources = resources
@@ -133,13 +133,13 @@ def get_v100_x8_pod() -> Pod:
             "cpu": "62",
             "memory": "400Gi",
             "nvidia.com/gpu": 8,
-            "ephemeral-storage": "1500Gi",
+            "ephemeral-storage": "4500Gi",
         },
         limits={
             "cpu": "62",
             "memory": "400Gi",
             "nvidia.com/gpu": 8,
-            "ephemeral-storage": "2000Gi",
+            "ephemeral-storage": "5000Gi",
         },
     )
     primary_container.resources = resources
@@ -166,21 +166,21 @@ def get_v100_x8_pod() -> Pod:
 
 
 def _get_large_gpu_pod() -> Pod:
-    """g5.8xlarge,g5.16xlarge on-demand"""
+    """g5.16xlarge on-demand"""
 
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
         requests={
-            "cpu": "31",
-            "memory": "120Gi",
+            "cpu": "63",
+            "memory": "245Gi",
             "nvidia.com/gpu": "1",
-            "ephemeral-storage": "1500Gi",
+            "ephemeral-storage": "4500Gi",
         },
         limits={
-            "cpu": "64",
-            "memory": "256Gi",
+            "cpu": "63",
+            "memory": "245Gi",
             "nvidia.com/gpu": "1",
-            "ephemeral-storage": "2000Gi",
+            "ephemeral-storage": "5000Gi",
         },
     )
     primary_container.resources = resources

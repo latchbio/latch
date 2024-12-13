@@ -25,7 +25,11 @@ from latch_cli.centromere.utils import (
 )
 from latch_cli.constants import docker_image_name_illegal_pat, latch_constants
 from latch_cli.docker_utils import get_default_dockerfile
-from latch_cli.utils import WorkflowType, generate_temporary_ssh_credentials, hash_directory
+from latch_cli.utils import (
+    WorkflowType,
+    generate_temporary_ssh_credentials,
+    hash_directory,
+)
 from latch_sdk_config.latch import config
 
 
@@ -36,6 +40,7 @@ class _Container:
     image_name: str
 
 
+# todo(ayush): cleanse this
 class _CentromereCtx:
     """Manages state for interaction with centromere.
 
@@ -54,6 +59,7 @@ class _CentromereCtx:
     serialize_dir = None
     default_container: _Container
     workflow_type: WorkflowType
+    wf_module: str
     metadata_root: Optional[Path]
     snakefile: Optional[Path]
     nf_script: Optional[Path]
@@ -80,6 +86,7 @@ class _CentromereCtx:
         *,
         disable_auto_version: bool = False,
         remote: bool = False,
+        wf_module: Optional[str] = None,
         metadata_root: Optional[Path] = None,
         snakefile: Optional[Path] = None,
         nf_script: Optional[Path] = None,
@@ -88,6 +95,7 @@ class _CentromereCtx:
         self.use_new_centromere = use_new_centromere
         self.remote = remote
         self.disable_auto_version = disable_auto_version
+        self.wf_module = wf_module if wf_module is not None else "wf"
 
         try:
             self.token = retrieve_or_login()
@@ -120,7 +128,9 @@ class _CentromereCtx:
             except FileNotFoundError:
                 self.version = "0.1.0"
                 version_file.write_text(f"{self.version}\n")
-                click.echo(f"Created a version file with initial version {self.version}.")
+                click.echo(
+                    f"Created a version file with initial version {self.version}."
+                )
 
             self.version = self.version.strip()
 
@@ -164,7 +174,21 @@ class _CentromereCtx:
             self.container_map: Dict[str, _Container] = {}
 
             if self.workflow_type == WorkflowType.latchbiosdk:
-                _import_flyte_objects([self.pkg_root])
+                try:
+                    _import_flyte_objects([self.pkg_root], module_name=self.wf_module)
+                except ModuleNotFoundError:
+                    click.secho(
+                        dedent(
+                            f"""
+                            Unable to locate workflow module `{self.wf_module}`. Check that:
+
+                            1. Package `{self.wf_module}` exists in {pkg_root.resolve()}.
+                            2. Package `{self.wf_module}` is an importable Python path (e.g. `workflows.my_workflow`).
+                            3. Any directories in `{self.wf_module}` contain an `__init__.py` file."""
+                        ),
+                        fg="red",
+                    )
+                    raise click.exceptions.Exit(1)
 
                 for entity in FlyteEntities.entities:
                     if isinstance(entity, PythonFunctionWorkflow):
@@ -214,7 +238,9 @@ class _CentromereCtx:
 
                 meta_file = load_snakemake_metadata(pkg_root, metadata_root)
                 if meta_file is not None:
-                    click.echo(f"Using metadata file {click.style(meta_file, italic=True)}")
+                    click.echo(
+                        f"Using metadata file {click.style(meta_file, italic=True)}"
+                    )
                 else:
                     new_meta = pkg_root / "latch_metadata" / "__init__.py"
                     click.echo("Trying to extract metadata from the Snakefile")
@@ -239,11 +265,19 @@ class _CentromereCtx:
                         )
                         click.secho("\nExample ", fg="red", nl=False)
 
-                        snakemake_metadata_example = get_snakemake_metadata_example(pkg_root.name)
+                        snakemake_metadata_example = get_snakemake_metadata_example(
+                            pkg_root.name
+                        )
                         click.secho(f"`{new_meta}`", bold=True, fg="red", nl=False)
-                        click.secho(f" file:\n```\n{snakemake_metadata_example}```", fg="red")
+                        click.secho(
+                            f" file:\n```\n{snakemake_metadata_example}```", fg="red"
+                        )
                         if click.confirm(
-                            click.style("Generate example metadata file now?", bold=True, fg="red"),
+                            click.style(
+                                "Generate example metadata file now?",
+                                bold=True,
+                                fg="red",
+                            ),
                             default=True,
                         ):
                             new_meta.write_text(snakemake_metadata_example)
@@ -251,14 +285,25 @@ class _CentromereCtx:
                             import platform
 
                             system = platform.system()
-                            if system in {"Windows", "Linux", "Darwin"} and click.confirm(
-                                click.style("Open the generated file?", bold=True, fg="red"),
+                            if system in {
+                                "Windows",
+                                "Linux",
+                                "Darwin",
+                            } and click.confirm(
+                                click.style(
+                                    "Open the generated file?", bold=True, fg="red"
+                                ),
                                 default=True,
                             ):
                                 import subprocess
 
                                 if system == "Linux":
-                                    res = subprocess.run(["xdg-open", new_meta]).returncode
+                                    res = subprocess.run(
+                                        [
+                                            "xdg-open",
+                                            new_meta,
+                                        ]
+                                    ).returncode
                                 elif system == "Darwin":
                                     res = subprocess.run(["open", new_meta]).returncode
                                 elif system == "Windows":
@@ -330,7 +375,9 @@ class _CentromereCtx:
                 sys.exit(1)
 
             self.default_container = _Container(
-                dockerfile=get_default_dockerfile(self.pkg_root, wf_type=self.workflow_type),
+                dockerfile=get_default_dockerfile(
+                    self.pkg_root, wf_type=self.workflow_type
+                ),
                 image_name=self.image_tagged,
                 pkg_dir=self.pkg_root,
             )
@@ -344,7 +391,9 @@ class _CentromereCtx:
                 )
 
                 if use_new_centromere:
-                    self.internal_ip, self.username = self.provision_register_deployment()
+                    self.internal_ip, self.username = (
+                        self.provision_register_deployment()
+                    )
                 else:
                     self.internal_ip, self.username = self.get_old_centromere_info()
 
@@ -452,7 +501,9 @@ class _CentromereCtx:
         headers = {"Authorization": f"Bearer {self.token}"}
 
         response = tinyrequests.post(
-            self.latch_provision_url, headers=headers, json={"public_key": self.public_key}
+            self.latch_provision_url,
+            headers=headers,
+            json={"public_key": self.public_key},
         )
 
         resp = response.json()
@@ -516,7 +567,9 @@ class _CentromereCtx:
         try:
             return resp["image_name"]
         except KeyError as e:
-            raise ValueError(f"Malformed response from request for image url {resp}") from e
+            raise ValueError(
+                f"Malformed response from request for image url {resp}"
+            ) from e
 
     def nucleus_check_version(self, version: str, workflow_name: str) -> bool:
         """Check if version has already been registered for given workflow"""
@@ -530,14 +583,20 @@ class _CentromereCtx:
         response = tinyrequests.post(
             self.latch_check_version_url,
             headers=headers,
-            json={"version": version, "workflow_name": workflow_name, "ws_account_id": ws_id},
+            json={
+                "version": version,
+                "workflow_name": workflow_name,
+                "ws_account_id": ws_id,
+            },
         )
 
         resp = response.json()
         try:
             return resp["exists"]
         except KeyError as e:
-            raise ValueError(f"Malformed response from request for version check {resp}") from e
+            raise ValueError(
+                f"Malformed response from request for version check {resp}"
+            ) from e
 
     def __enter__(self):
         return self

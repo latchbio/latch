@@ -16,6 +16,79 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.55.0 - 2024-12-13
+
+### Changed
+
+* `latch dockerfile` now accepts explicit options for files containing
+  * apt deps
+  * conda deps
+  * r deps
+  * pip deps
+  * pyproject.toml / setup.py
+  * .env
+* `latch dockerfile` no longer does implicit dependency inferrence based on the presence of special files in the project root directory - now all dependency files need to be passed explicitly in the command line.
+
+## 2.54.10 - 2024-12-06
+
+### Changed
+
+* Bump ephemeral storage limits for V100 GPU pods
+
+## 2.54.9 - 2024-12-03
+
+### Fixed
+
+* Reduced cpu/memory requests to ensure large GPU pods are schedulable
+
+## 2.54.8 - 2024-12-03
+
+### Added
+
+* Add retry logic to `latch_sdk_gql.execute`
+
+## 2.54.7 - 2024-12-02
+
+### Changed
+
+* Add more ephemeral storage to large GPU pods
+
+## 2.54.6 - 2024-12-02
+
+### Fixed
+
+* Bug in `LPath` download throws an exception when version id is null
+
+## 2.54.5 - 2024-11-25
+
+### Fixed
+
+* Fix pagination in `TableUpdater.list_records` to not OOM when table size is too large (>250k records)
+
+## 2.54.4 - 2024-11-25
+
+### Added
+
+* Plots Artifact dataclasses
+
+## 2.54.3 - 2024-11-25
+
+### Added
+
+* `cache` parameter to `LPath` download method to allow for caching of downloaded files
+
+## 2.54.2 - 2024-11-21
+
+### Fixed
+
+* `TableUpdater.upsert_column` would fail when trying to create an enum-typed column
+
+## 2.54.1 - 2024-11-20
+
+### Added
+
+* Add `--workflow-module` flag to specify which workflow module to register with flyte
+
 ## 2.53.12 - 2024-11-01
 
 ### Changed
