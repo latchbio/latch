@@ -627,3 +627,88 @@ def nextflow_runtime_task(cpu: int, memory: int, storage_gib: int = 50):
     ]
 
     return functools.partial(task, task_config=task_config)
+
+
+@dataclass
+class _L40sGPUInstanceSpec:
+    type: str
+    cpu: int
+    memory: int
+    gpus: int
+
+
+def l40s_gpu_task(cpu: int, memory: int, gpus: int, **kwargs):
+    """Creates a task configuration for L40s GPU instances.
+
+    Will choose the smallest instance that satisfies the resource requirements and will assign the entire instance to the task.
+
+    Args:
+        cpu: Number of vCPUs requested (4-96)
+        memory: Memory in GiB requested (32-768)
+        gpus: Number of GPUs requested (1 or 4)
+    """
+    instance_specs: list[_L40sGPUInstanceSpec] = [
+        _L40sGPUInstanceSpec(type="g6e.xlarge", cpu=4, memory=32, gpus=1),
+        _L40sGPUInstanceSpec(type="g6e.2xlarge", cpu=8, memory=64, gpus=1),
+        _L40sGPUInstanceSpec(type="g6e.4xlarge", cpu=16, memory=128, gpus=1),
+        _L40sGPUInstanceSpec(type="g6e.8xlarge", cpu=32, memory=256, gpus=1),
+        _L40sGPUInstanceSpec(type="g6e.12xlarge", cpu=48, memory=384, gpus=1),
+        _L40sGPUInstanceSpec(type="g6e.16xlarge", cpu=64, memory=512, gpus=4),
+        _L40sGPUInstanceSpec(type="g6e.24xlarge", cpu=96, memory=768, gpus=4),
+        # _L40sGPUInstanceSpec(type="g6e.48xlarge", cpu=192, memory=1536, gpus=8),
+        # # todo(aidan): add 48xlarge instance (need to debug why does not join cluster)
+    ]
+
+    selected_instance = None
+    for spec in instance_specs:
+        if (cpu <= spec.cpu and 
+            memory <= spec.memory and 
+            gpus <= spec.gpus):
+            selected_instance = spec
+            break
+
+    if not selected_instance:
+        raise ValueError(
+            f"No instance type available for requested resources: "
+            f"{cpu} vCPUs, {memory} GiB RAM, {gpus} GPUs. "
+            f"Maximum available: 96 vCPUs, 768 GiB RAM, 4 GPUs"
+        )
+
+    primary_container = V1Container(name="primary")
+    resources = V1ResourceRequirements(
+        requests={
+            "cpu": str(selected_instance.cpu - 2),
+            "memory": f"{selected_instance.memory - 4}Gi",
+            "nvidia.com/gpu": str(selected_instance.gpus),
+            "ephemeral-storage": "4500Gi",
+        },
+        limits={
+            "cpu": str(selected_instance.cpu),
+            "memory": f"{selected_instance.memory}Gi",
+            "nvidia.com/gpu": str(selected_instance.gpus),
+            "ephemeral-storage": "5000Gi",
+        },
+    )
+    primary_container.resources = resources
+
+    pod_config = Pod(
+        pod_spec=V1PodSpec(
+            containers=[primary_container],
+            tolerations=[
+                V1Toleration(
+                    effect="NoSchedule",
+                    key="ng",
+                    value=selected_instance.type
+                )
+            ],
+        ),
+        primary_container_name="primary",
+        annotations={
+            "io.kubernetes.cri-o.userns-mode": (
+                "private:uidmapping=0:1048576:65536;gidmapping=0:1048576:65536"
+            ),
+            "cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
+        },
+    )
+
+    return functools.partial(task, task_config=pod_config, **kwargs)

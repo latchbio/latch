@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.54.11 - 2024-12-13
+
+### Added
+
+* Add `l40s_gpu_task` to request L40s GPU instances
+
 ## 2.54.10 - 2024-12-06
 
 ### Updated
