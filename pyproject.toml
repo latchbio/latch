@@ -12,7 +12,7 @@ include = ["src/**/*.py", "src/latch_cli/services/init/*"]
 
 [project]
 name = "latch"
-version = "2.54.10"
+version = "2.55.0"
 description = "The Latch SDK"
 authors = [{ name = "Kenny Workman", email = "kenny@latch.bio" }]
 maintainers = [
@@ -170,6 +170,9 @@ ignore = [
 
   "ANN101",
   "ANN102",
+  "ANN201",
+  "ANN202",
+  "ANN204",
 
   "E402",
   "E501",
@@ -178,10 +181,11 @@ ignore = [
   "C408",
   "C901",
 
+  "FA100",
+
   "T201",
   "T203",
 
-  "D415",
 
   "SIM108",
 
@@ -198,6 +202,8 @@ ignore = [
   "D105",
   "D106",
   "D107",
+  "D202",
+  "D415",
 
   "TRY003",
   "TRY300",
@@ -206,6 +212,8 @@ ignore = [
   "FLY002",
 
   "PERF203",
+
+  "PLC0415",
 
   "PLW2901",
   "PLW0603",
@@ -229,6 +237,7 @@ ignore = [
 
   "PD901",
 
+  "UP006",
   "UP040",
 
   "SIM112",

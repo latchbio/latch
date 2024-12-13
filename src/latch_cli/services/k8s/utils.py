@@ -4,11 +4,11 @@ from typing import List, Optional, TypedDict
 import click
 import gql
 import graphql
-from latch_sdk_config.user import user_config
-from latch_sdk_gql.execute import execute
 
 from latch_cli.click_utils import bold, color
 from latch_cli.menus import select_tui
+from latch_sdk_config.user import user_config
+from latch_sdk_gql.execute import execute
 
 
 # todo(ayush): put this into latch_sdk_gql
@@ -184,10 +184,7 @@ def get_execution_info(execution_id: Optional[str]) -> ExecutionInfoNode:
     nodes = res["nodes"]
 
     if len(nodes) == 0:
-        click.secho(
-            f"You have no executions currently running.",
-            dim=True,
-        )
+        click.secho(f"You have no executions currently running.", dim=True)
         raise click.exceptions.Exit(0)
 
     if len(nodes) == 1:
@@ -196,7 +193,7 @@ def get_execution_info(execution_id: Optional[str]) -> ExecutionInfoNode:
             "Selecting execution"
             f" {color(execution['displayName'])} as it is"
             " the only one currently running in Workspace"
-            f" {color(workspace_str)}.",
+            f" {color(workspace_str)}."
         )
 
         return execution
@@ -207,7 +204,7 @@ def get_execution_info(execution_id: Optional[str]) -> ExecutionInfoNode:
         " inspect?",
         [
             {
-                "display_name": f'{x["displayName"]} ({x["workflow"]["displayName"]})',
+                "display_name": f"{x['displayName']} ({x['workflow']['displayName']})",
                 "value": x,
             }
             for x in nodes
@@ -262,7 +259,7 @@ def get_egn_info(
 
         click.secho(
             "Selecting task"
-            f" {color(res['finalWorkflowGraphNode']['taskInfo']['displayName'])}.",
+            f" {color(res['finalWorkflowGraphNode']['taskInfo']['displayName'])}."
         )
 
         return res
@@ -289,7 +286,7 @@ def get_egn_info(
             "Selecting task"
             f" {color(node['finalWorkflowGraphNode']['taskInfo']['displayName'])} as"
             " it is the only one running in Execution"
-            f" {color(execution_info['displayName'])}.",
+            f" {color(execution_info['displayName'])}."
         )
 
         return egn_nodes[0]
@@ -315,7 +312,7 @@ def get_egn_info(
 
     click.secho(
         "Selecting task"
-        f" {color(selected_egn_node['finalWorkflowGraphNode']['taskInfo']['displayName'])}.",
+        f" {color(selected_egn_node['finalWorkflowGraphNode']['taskInfo']['displayName'])}."
     )
 
     return selected_egn_node
@@ -360,7 +357,7 @@ def get_container_info(
         f" ({color(egn_info['finalWorkflowGraphNode']['taskInfo']['displayName'])}) has"
         " multiple running containers. Which one would you like to inspect?",
         [
-            {"display_name": f'Container {x["index"]}', "value": x}
+            {"display_name": f"Container {x['index']}", "value": x}
             for x in container_infos
         ],
         clear_terminal=False,
@@ -378,7 +375,7 @@ class Node(TypedDict):
     displayName: str
 
 
-class nfAvailablePvcs(TypedDict):
+class NFAvailablePvcs(TypedDict):
     nodes: List[Node]
 
 
@@ -388,7 +385,7 @@ def get_pvc_info(execution_id: Optional[str]) -> str:
 
     workspace_str: str = user_config.workspace_name or user_config.workspace_id
 
-    res: nfAvailablePvcs = execute(
+    res: NFAvailablePvcs = execute(
         gql.gql("""
             query NFWorkdirs($wsId: BigInt!) {
                 nfAvailablePvcs(argWsId: $wsId) {
@@ -403,19 +400,17 @@ def get_pvc_info(execution_id: Optional[str]) -> str:
     )["nfAvailablePvcs"]
 
     nodes = res["nodes"]
+    nodes = sorted(nodes, key=lambda node: -int(node["id"]))
 
     if len(nodes) == 0:
-        click.secho(
-            f"You have no available workdirs (all have expired).",
-            dim=True,
-        )
+        click.secho("You have no available workdirs (all have expired).", dim=True)
         raise click.exceptions.Exit(0)
 
     if len(nodes) == 1:
         execution = nodes[0]
         click.secho(
             f"Selecting execution {color(execution['displayName'])} as it is the only"
-            f" one without an expired workDir in Workspace {color(workspace_str)}.",
+            f" one without an expired workDir in Workspace {color(workspace_str)}."
         )
         return execution["id"]
 
