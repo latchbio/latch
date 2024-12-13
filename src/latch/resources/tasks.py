@@ -661,9 +661,6 @@ def _get_l40s_pod(instance_type: str, cpu: int, memory: int, gpus: int) -> Pod:
         ),
         primary_container_name="primary",
         annotations={
-            "io.kubernetes.cri-o.userns-mode": (
-                "private:uidmapping=0:1048576:65536;gidmapping=0:1048576:65536"
-            ),
             "cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
         },
     )
