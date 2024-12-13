@@ -629,76 +629,33 @@ def nextflow_runtime_task(cpu: int, memory: int, storage_gib: int = 50):
     return functools.partial(task, task_config=task_config)
 
 
-@dataclass
-class _L40sGPUInstanceSpec:
-    type: str
-    cpu: int
-    memory: int
-    gpus: int
-
-
-def l40s_gpu_task(cpu: int, memory: int, gpus: int, **kwargs):
-    """Creates a task configuration for L40s GPU instances.
-
-    Will choose the smallest instance that satisfies the resource requirements and will assign the entire instance to the task.
-
-    Args:
-        cpu: Number of vCPUs requested (4-96)
-        memory: Memory in GiB requested (32-768)
-        gpus: Number of GPUs requested (1 or 4)
-    """
-    instance_specs: list[_L40sGPUInstanceSpec] = [
-        _L40sGPUInstanceSpec(type="g6e.xlarge", cpu=4, memory=32, gpus=1),
-        _L40sGPUInstanceSpec(type="g6e.2xlarge", cpu=8, memory=64, gpus=1),
-        _L40sGPUInstanceSpec(type="g6e.4xlarge", cpu=16, memory=128, gpus=1),
-        _L40sGPUInstanceSpec(type="g6e.8xlarge", cpu=32, memory=256, gpus=1),
-        _L40sGPUInstanceSpec(type="g6e.12xlarge", cpu=48, memory=384, gpus=1),
-        _L40sGPUInstanceSpec(type="g6e.16xlarge", cpu=64, memory=512, gpus=4),
-        _L40sGPUInstanceSpec(type="g6e.24xlarge", cpu=96, memory=768, gpus=4),
-        # _L40sGPUInstanceSpec(type="g6e.48xlarge", cpu=192, memory=1536, gpus=8),
-        # # todo(aidan): add 48xlarge instance (need to debug why does not join cluster)
-    ]
-
-    selected_instance = None
-    for spec in instance_specs:
-        if (cpu <= spec.cpu and 
-            memory <= spec.memory and 
-            gpus <= spec.gpus):
-            selected_instance = spec
-            break
-
-    if not selected_instance:
-        raise ValueError(
-            f"No instance type available for requested resources: "
-            f"{cpu} vCPUs, {memory} GiB RAM, {gpus} GPUs. "
-            f"Maximum available: 96 vCPUs, 768 GiB RAM, 4 GPUs"
-        )
-
+def _get_l40s_pod(instance_type: str, cpu: int, memory: int, gpus: int) -> Pod:
+    """Helper function to create L40s GPU pod configurations."""
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
         requests={
-            "cpu": str(selected_instance.cpu - 2),
-            "memory": f"{selected_instance.memory - 4}Gi",
-            "nvidia.com/gpu": str(selected_instance.gpus),
+            "cpu": str(cpu - 2),  # Reserve 2 cores for system processes
+            "memory": f"{memory - 4}Gi",  # Reserve 4GB for system processes
+            "nvidia.com/gpu": str(gpus),
             "ephemeral-storage": "4500Gi",
         },
         limits={
-            "cpu": str(selected_instance.cpu),
-            "memory": f"{selected_instance.memory}Gi",
-            "nvidia.com/gpu": str(selected_instance.gpus),
+            "cpu": str(cpu),
+            "memory": f"{memory}Gi",
+            "nvidia.com/gpu": str(gpus),
             "ephemeral-storage": "5000Gi",
         },
     )
     primary_container.resources = resources
 
-    pod_config = Pod(
+    return Pod(
         pod_spec=V1PodSpec(
             containers=[primary_container],
             tolerations=[
                 V1Toleration(
                     effect="NoSchedule",
                     key="ng",
-                    value=selected_instance.type
+                    value=instance_type
                 )
             ],
         ),
@@ -711,4 +668,52 @@ def l40s_gpu_task(cpu: int, memory: int, gpus: int, **kwargs):
         },
     )
 
-    return functools.partial(task, task_config=pod_config, **kwargs)
+
+g6e_xlarge_task = functools.partial(
+    task,
+    task_config=_get_l40s_pod("g6e.xlarge", cpu=4, memory=32, gpus=1)
+)
+"""4 vCPUs, 32 GiB RAM, 1 L40s GPU"""
+
+g6e_2xlarge_task = functools.partial(
+    task,
+    task_config=_get_l40s_pod("g6e.2xlarge", cpu=8, memory=64, gpus=1)
+)
+"""8 vCPUs, 64 GiB RAM, 1 L40s GPU"""
+
+g6e_4xlarge_task = functools.partial(
+    task,
+    task_config=_get_l40s_pod("g6e.4xlarge", cpu=16, memory=128, gpus=1)
+)
+"""16 vCPUs, 128 GiB RAM, 1 L40s GPU"""
+
+g6e_8xlarge_task = functools.partial(
+    task,
+    task_config=_get_l40s_pod("g6e.8xlarge", cpu=32, memory=256, gpus=1)
+)
+"""32 vCPUs, 256 GiB RAM, 1 L40s GPU"""
+
+g6e_12xlarge_task = functools.partial(
+    task,
+    task_config=_get_l40s_pod("g6e.12xlarge", cpu=48, memory=384, gpus=1)
+)
+"""48 vCPUs, 384 GiB RAM, 1 L40s GPU"""
+
+g6e_16xlarge_task = functools.partial(
+    task,
+    task_config=_get_l40s_pod("g6e.16xlarge", cpu=64, memory=512, gpus=4)
+)
+"""64 vCPUs, 512 GiB RAM, 4 L40s GPUs"""
+
+g6e_24xlarge_task = functools.partial(
+    task,
+    task_config=_get_l40s_pod("g6e.24xlarge", cpu=96, memory=768, gpus=4)
+)
+"""96 vCPUs, 768 GiB RAM, 4 L40s GPUs"""
+
+"""
+g6e_48xlarge_task = functools.partial(
+    task,
+    task_config=_get_l40s_pod("g6e.48xlarge", cpu=192, memory=1536, gpus=8)
+)
+192 vCPUs, 1536 GiB RAM, 8 L40s GPUs"""
