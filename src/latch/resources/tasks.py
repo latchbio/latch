@@ -668,49 +668,49 @@ def _get_l40s_pod(instance_type: str, cpu: int, memory: int, gpus: int) -> Pod:
 
 g6e_xlarge_task = functools.partial(
     task,
-    task_config=_get_l40s_pod("g6e.xlarge", cpu=4, memory=32, gpus=1)
+    task_config=_get_l40s_pod("g6e-xlarge", cpu=4, memory=32, gpus=1)
 )
 """4 vCPUs, 32 GiB RAM, 1 L40s GPU"""
 
 g6e_2xlarge_task = functools.partial(
     task,
-    task_config=_get_l40s_pod("g6e.2xlarge", cpu=8, memory=64, gpus=1)
+    task_config=_get_l40s_pod("g6e-2xlarge", cpu=8, memory=64, gpus=1)
 )
 """8 vCPUs, 64 GiB RAM, 1 L40s GPU"""
 
 g6e_4xlarge_task = functools.partial(
     task,
-    task_config=_get_l40s_pod("g6e.4xlarge", cpu=16, memory=128, gpus=1)
+    task_config=_get_l40s_pod("g6e-4xlarge", cpu=16, memory=128, gpus=1)
 )
 """16 vCPUs, 128 GiB RAM, 1 L40s GPU"""
 
 g6e_8xlarge_task = functools.partial(
     task,
-    task_config=_get_l40s_pod("g6e.8xlarge", cpu=32, memory=256, gpus=1)
+    task_config=_get_l40s_pod("g6e-8xlarge", cpu=32, memory=256, gpus=1)
 )
 """32 vCPUs, 256 GiB RAM, 1 L40s GPU"""
 
 g6e_12xlarge_task = functools.partial(
     task,
-    task_config=_get_l40s_pod("g6e.12xlarge", cpu=48, memory=384, gpus=1)
+    task_config=_get_l40s_pod("g6e-12xlarge", cpu=48, memory=384, gpus=1)
 )
 """48 vCPUs, 384 GiB RAM, 1 L40s GPU"""
 
 g6e_16xlarge_task = functools.partial(
     task,
-    task_config=_get_l40s_pod("g6e.16xlarge", cpu=64, memory=512, gpus=4)
+    task_config=_get_l40s_pod("g6e-16xlarge", cpu=64, memory=512, gpus=4)
 )
 """64 vCPUs, 512 GiB RAM, 4 L40s GPUs"""
 
 g6e_24xlarge_task = functools.partial(
     task,
-    task_config=_get_l40s_pod("g6e.24xlarge", cpu=96, memory=768, gpus=4)
+    task_config=_get_l40s_pod("g6e-24xlarge", cpu=96, memory=768, gpus=4)
 )
 """96 vCPUs, 768 GiB RAM, 4 L40s GPUs"""
 
 """
 g6e_48xlarge_task = functools.partial(
     task,
-    task_config=_get_l40s_pod("g6e.48xlarge", cpu=192, memory=1536, gpus=8)
+    task_config=_get_l40s_pod("g6e-48xlarge", cpu=192, memory=1536, gpus=8)
 )
 192 vCPUs, 1536 GiB RAM, 8 L40s GPUs"""
