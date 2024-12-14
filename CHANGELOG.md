@@ -22,6 +22,10 @@ Types of changes
 
 * Add `g6e_xlarge_task`, `g6e_2xlarge_task`, `g6e_4xlarge_task`, `g6e_8xlarge_task`, `g6e_12xlarge_task`, `g6e_16xlarge_task`, and `g6e_24xlarge_task` to request G6e GPU instances.
 
+### Updated
+
+* Update latch base image to 'cb01-main'
+
 ## 2.54.10 - 2024-12-06
 
 ### Updated
