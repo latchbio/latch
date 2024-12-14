@@ -39,7 +39,6 @@ Types of changes
   * .env
 * `latch dockerfile` no longer does implicit dependency inferrence based on the presence of special files in the project root directory - now all dependency files need to be passed explicitly in the command line.
 
-
 ## 2.54.10 - 2024-12-06
 
 ### Changed
