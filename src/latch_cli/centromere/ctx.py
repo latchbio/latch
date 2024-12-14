@@ -40,6 +40,7 @@ class _Container:
     image_name: str
 
 
+# todo(ayush): cleanse this
 class _CentromereCtx:
     """Manages state for interaction with centromere.
 
@@ -270,8 +271,7 @@ class _CentromereCtx:
                         )
                         click.secho(f"`{new_meta}`", bold=True, fg="red", nl=False)
                         click.secho(
-                            f" file:\n```\n{snakemake_metadata_example}```",
-                            fg="red",
+                            f" file:\n```\n{snakemake_metadata_example}```", fg="red"
                         )
                         if click.confirm(
                             click.style(
@@ -299,9 +299,10 @@ class _CentromereCtx:
                                 import subprocess
 
                                 if system == "Linux":
-                                    res = subprocess.run(
-                                        ["xdg-open", new_meta]
-                                    ).returncode
+                                    res = subprocess.run([
+                                        "xdg-open",
+                                        new_meta,
+                                    ]).returncode
                                 elif system == "Darwin":
                                     res = subprocess.run(["open", new_meta]).returncode
                                 elif system == "Windows":
@@ -320,7 +321,7 @@ class _CentromereCtx:
                         dedent(
                             """
                             Make sure a `latch_metadata` exists in the Snakemake
-                            project root or provide a metadata folder with the `--metadata-root` argument.""",
+                            project root or provide a metadata folder with the `--metadata-root` argument."""
                         ),
                         fg="red",
                     )
@@ -500,9 +501,7 @@ class _CentromereCtx:
         response = tinyrequests.post(
             self.latch_provision_url,
             headers=headers,
-            json={
-                "public_key": self.public_key,
-            },
+            json={"public_key": self.public_key},
         )
 
         resp = response.json()
@@ -559,11 +558,7 @@ class _CentromereCtx:
 
         headers = {"Authorization": f"Bearer {self.token}"}
         response = tinyrequests.post(
-            self.latch_get_image_url,
-            headers=headers,
-            json={
-                "task_name": task_name,
-            },
+            self.latch_get_image_url, headers=headers, json={"task_name": task_name}
         )
 
         resp = response.json()

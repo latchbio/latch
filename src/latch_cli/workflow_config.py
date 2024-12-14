@@ -1,10 +1,11 @@
 import json
 import re
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 
+import click
 from pkg_resources import get_distribution
 
 from latch_cli.constants import latch_constants
@@ -29,9 +30,18 @@ class LatchWorkflowConfig:
     """Timestamp of the `latch init` call"""
 
 
-def create_and_write_config(
+def get_or_create_workflow_config(
     pkg_root: Path, base_image_type: BaseImageOptions = BaseImageOptions.default
-):
+) -> LatchWorkflowConfig:
+    config_path = pkg_root / latch_constants.pkg_config
+    if config_path.exists() and config_path.is_file():
+        try:
+            return LatchWorkflowConfig(**json.loads(config_path.read_text()))
+        except json.JSONDecodeError:
+            click.secho(
+                f"Unable to load config from {config_path}, regenerating", dim=True
+            )
+
     base_image = latch_constants.base_image
 
     if base_image_type != BaseImageOptions.default:
@@ -47,10 +57,12 @@ def create_and_write_config(
     config = LatchWorkflowConfig(
         latch_version=get_distribution("latch").version,
         base_image=base_image,
-        date=datetime.now().isoformat(),
+        date=datetime.now(timezone.utc).isoformat(),
     )
 
     (pkg_root / ".latch").mkdir(exist_ok=True)
 
     with (pkg_root / latch_constants.pkg_config).open("w") as f:
         f.write(json.dumps(asdict(config)))
+
+    return config

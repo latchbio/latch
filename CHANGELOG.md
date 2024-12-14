@@ -16,7 +16,7 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.55.1 - 2024-12-13
+## 2.55.1 - 2024-12-14
 
 ### Added
 
@@ -26,9 +26,23 @@ Types of changes
 
 * Update latch base image to 'cb01-main'
 
+## 2.55.0 - 2024-12-13
+
+### Changed
+
+* `latch dockerfile` now accepts explicit options for files containing
+  * apt deps
+  * conda deps
+  * r deps
+  * pip deps
+  * pyproject.toml / setup.py
+  * .env
+* `latch dockerfile` no longer does implicit dependency inferrence based on the presence of special files in the project root directory - now all dependency files need to be passed explicitly in the command line.
+
+
 ## 2.54.10 - 2024-12-06
 
-### Updated
+### Changed
 
 * Bump ephemeral storage limits for V100 GPU pods
 
@@ -46,7 +60,7 @@ Types of changes
 
 ## 2.54.7 - 2024-12-02
 
-### Updated
+### Changed
 
 * Add more ephemeral storage to large GPU pods
 
