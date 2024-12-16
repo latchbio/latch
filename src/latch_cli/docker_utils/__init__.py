@@ -290,10 +290,7 @@ class DockerfileBuilder:
             return
 
         click.echo(
-            " ".join([
-                click.style(f"{self.direnv.name}:", bold=True),
-                "Environment variable setup",
-            ])
+            " ".join([click.style(f"{self.direnv.name}:", bold=True), "Environment variable setup"])
         )
         envs: list[str] = []
         for line in self.direnv.read_text().splitlines():
@@ -323,15 +320,6 @@ class DockerfileBuilder:
     def get_copy_file_commands(self):
         cmd = ["copy . /root/"]
 
-        if self.wf_type == WorkflowType.snakemake:
-            cmd.extend([
-                "",
-                "# Latch snakemake workflow entrypoint",
-                "# DO NOT CHANGE",
-                "",
-                "copy .latch/snakemake_jit_entrypoint.py /root/snakemake_jit_entrypoint.py",
-            ])
-
         self.commands.append(
             DockerCmdBlock(
                 comment="Copy workflow data (use .dockerignore to skip files)",
@@ -347,20 +335,13 @@ class DockerfileBuilder:
         if (
             dest.exists()
             and not overwrite
-            and not (
-                click.confirm(f"Dockerfile already exists at `{dest}`. Overwrite?")
-            )
+            and not (click.confirm(f"Dockerfile already exists at `{dest}`. Overwrite?"))
         ):
             return
 
         click.secho("Generating Dockerfile", bold=True)
 
-        click.echo(
-            " ".join([
-                click.style("Base image:", fg="bright_blue"),
-                self.config.base_image,
-            ])
-        )
+        click.echo(" ".join([click.style("Base image:", fg="bright_blue"), self.config.base_image]))
         click.echo(
             " ".join([
                 click.style("Latch SDK version:", fg="bright_blue"),
@@ -400,10 +381,7 @@ def generate_dockerignore(
     dest = Path(pkg_root) / ".dockerignore"
     if dest.exists():
         if dest.is_dir():
-            click.secho(
-                f".dockerignore already exists at `{dest}` and is a directory.",
-                fg="red",
-            )
+            click.secho(f".dockerignore already exists at `{dest}` and is a directory.", fg="red")
             raise click.exceptions.Exit(1)
 
         if not overwrite and not click.confirm(
