@@ -18,15 +18,15 @@ if TYPE_CHECKING:
 class SnakemakeRuntimeResources:
     """Resources for Snakemake runtime tasks"""
 
-    cpus: int = 4
+    cpus: int = 1
     """
     Number of CPUs required for the task
     """
-    memory: int = 8
+    memory: int = 2
     """
     Memory required for the task in GiB
     """
-    storage_gib: int = 100
+    storage_gib: int = 50
     """
     Storage required for the task in GiB
     """
@@ -42,14 +42,10 @@ class SnakemakeV2Metadata(LatchMetadata):
     """
     Path to a markdown file containing information about the pipeline - rendered in the About page.
     """
-    runtime_resources: SnakemakeRuntimeResources = field(
-        default_factory=SnakemakeRuntimeResources
-    )
+    runtime_resources: SnakemakeRuntimeResources = field(default_factory=SnakemakeRuntimeResources)
 
     def validate(self):
-        if self.about_page_path is not None and not isinstance(
-            self.about_page_path, Path
-        ):  # type: ignore
+        if self.about_page_path is not None and not isinstance(self.about_page_path, Path):
             click.secho(
                 f"SnakemakeV2Metadata.about_page_path ({self.about_page_path}) must be a"
                 " `Path` object.",
@@ -60,9 +56,7 @@ class SnakemakeV2Metadata(LatchMetadata):
     def __post_init__(self):
         self.validate()
 
-        self.name = identifier_suffix_from_str(
-            f"snakemake_v2_{self.display_name}".lower()
-        )
+        self.name = identifier_suffix_from_str(f"snakemake_v2_{self.display_name}".lower())
 
         global _snakemake_v2_metadata
         _snakemake_v2_metadata = self

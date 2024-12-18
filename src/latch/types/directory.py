@@ -9,11 +9,7 @@ from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.models.literals import Literal
-from flytekit.types.directory.types import (
-    FlyteDirectory,
-    FlyteDirToMultipartBlobTransformer,
-)
-from latch_sdk_gql.execute import execute
+from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
 from typing_extensions import Annotated
 
 from latch.ldata.path import LPath
@@ -21,6 +17,7 @@ from latch.types.file import LatchFile
 from latch.types.utils import format_path, is_valid_url
 from latch_cli.utils import urljoins
 from latch_cli.utils.path import normalize_path
+from latch_sdk_gql.execute import execute
 
 
 class IterdirChild(TypedDict):
@@ -93,10 +90,7 @@ class LatchDir(FlyteDirectory):
     """
 
     def __init__(
-        self,
-        path: Union[str, PathLike],
-        remote_path: Optional[PathLike] = None,
-        **kwargs,
+        self, path: Union[str, PathLike], remote_path: Optional[PathLike] = None, **kwargs
     ):
         if path is None:
             raise ValueError("Unable to instantiate LatchDir with None")
@@ -136,9 +130,7 @@ class LatchDir(FlyteDirectory):
                     self._idempotent_set_path()
 
                     return ctx.file_access.get_data(
-                        self._remote_directory,
-                        self.path,
-                        is_multipart=True,
+                        self._remote_directory, self.path, is_multipart=True
                     )
 
             super().__init__(self.path, downloader, self._remote_directory)
@@ -252,10 +244,7 @@ class LatchDir(FlyteDirectory):
         if self.remote_path is None:
             return f"LatchDir({repr(format_path(self.local_path))})"
 
-        return (
-            f"LatchDir({repr(self.path)},"
-            f" remote_path={repr( format_path(self.remote_path))})"
-        )
+        return f"LatchDir({repr(self.path)}, remote_path={repr(format_path(self.remote_path))})"
 
     def __str__(self):
         if self.remote_path is None:
@@ -264,12 +253,7 @@ class LatchDir(FlyteDirectory):
         return f"LatchDir({format_path(self.remote_path)})"
 
 
-LatchOutputDir = Annotated[
-    LatchDir,
-    FlyteAnnotation(
-        {"output": True},
-    ),
-]
+LatchOutputDir = Annotated[LatchDir, FlyteAnnotation({"output": True})]
 """A LatchDir tagged as the output of some workflow.
 
 The Latch Console uses this metadata to avoid checking for existence of the
@@ -284,24 +268,17 @@ class LatchDirPathTransformer(FlyteDirToMultipartBlobTransformer):
         TypeTransformer.__init__(self, name="LatchDirPath", t=LatchDir)
 
     def to_python_value(
-        self,
-        ctx: FlyteContext,
-        lv: Literal,
-        expected_python_type: Union[Type[LatchDir], PathLike],
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Union[Type[LatchDir], PathLike]
     ) -> FlyteDirectory:
         uri = lv.scalar.blob.uri
         if expected_python_type is PathLike:
-            raise TypeError(
-                "Casting from Pathlike to LatchDir is currently not supported."
-            )
+            raise TypeError("Casting from Pathlike to LatchDir is currently not supported.")
 
         while get_origin(expected_python_type) == Annotated:
             expected_python_type = get_args(expected_python_type)[0]
 
         if not issubclass(expected_python_type, LatchDir):
-            raise TypeError(
-                f"Neither os.PathLike nor LatchDir specified {expected_python_type}"
-            )
+            raise TypeError(f"Neither os.PathLike nor LatchDir specified {expected_python_type}")
 
         # This is a local file path, like /usr/local/my_file, don't mess with it. Certainly, downloading it doesn't
         # make any sense.

@@ -11,12 +11,12 @@ from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.models.literals import Literal
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
-from latch_sdk_gql.execute import execute
 from typing_extensions import Annotated
 
 from latch.ldata.path import LPath
 from latch.types.utils import format_path, is_absolute_node_path, is_valid_url
 from latch_cli.utils.path import normalize_path
+from latch_sdk_gql.execute import execute
 
 
 class LatchFile(FlyteFile):
@@ -115,9 +115,7 @@ class LatchFile(FlyteFile):
                     self._idempotent_set_path(local_path_hint)
 
                     return ctx.file_access.get_data(
-                        self._remote_path,
-                        self.path,
-                        is_multipart=False,
+                        self._remote_path, self.path, is_multipart=False
                     )
 
             super().__init__(self.path, downloader, self._remote_path)
@@ -162,10 +160,7 @@ class LatchFile(FlyteFile):
         if self.remote_path is None:
             return f"LatchFile({repr(format_path(self.local_path))})"
 
-        return (
-            f"LatchFile({repr(self.path)},"
-            f" remote_path={repr(format_path(self.remote_path))})"
-        )
+        return f"LatchFile({repr(self.path)}, remote_path={repr(format_path(self.remote_path))})"
 
     def __str__(self):
         if self.remote_path is None:
@@ -173,12 +168,7 @@ class LatchFile(FlyteFile):
         return f"LatchFile({format_path(self.remote_path)})"
 
 
-LatchOutputFile = Annotated[
-    LatchFile,
-    FlyteAnnotation(
-        {"output": True},
-    ),
-]
+LatchOutputFile = Annotated[LatchFile, FlyteAnnotation({"output": True})]
 """A LatchFile tagged as the output of some workflow.
 
 The Latch Console uses this metadata to avoid checking for existence of the
@@ -193,21 +183,14 @@ class LatchFilePathTransformer(FlyteFilePathTransformer):
         TypeTransformer.__init__(self, name="LatchFilePath", t=LatchFile)
 
     def to_python_value(
-        self,
-        ctx: FlyteContext,
-        lv: Literal,
-        expected_python_type: Union[Type[LatchFile], PathLike],
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Union[Type[LatchFile], PathLike]
     ) -> LatchFile:
         uri = lv.scalar.blob.uri
         if expected_python_type is PathLike:
-            raise TypeError(
-                "Casting from Pathlike to LatchFile is currently not supported."
-            )
+            raise TypeError("Casting from Pathlike to LatchFile is currently not supported.")
 
         if not issubclass(expected_python_type, LatchFile):
-            raise TypeError(
-                f"Neither os.PathLike nor LatchFile specified {expected_python_type}"
-            )
+            raise TypeError(f"Neither os.PathLike nor LatchFile specified {expected_python_type}")
 
         # This is a local file path, like /usr/local/my_file, don't mess with it. Certainly, downloading it doesn't
         # make any sense.
