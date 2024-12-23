@@ -94,6 +94,8 @@ def snakemake_runtime(pvc_name: str, {parameters}):
         str(config_path),
         "--executor",
         "latch",
+        "--default-storage-provider",
+        "latch",
         "--jobs",
         "1000",
     ]

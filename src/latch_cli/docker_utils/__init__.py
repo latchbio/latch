@@ -48,11 +48,6 @@ class DockerfileBuilder:
     direnv: Optional[Path] = None
 
     def get_prologue(self):
-        if self.wf_type == WorkflowType.snakemake:
-            library_name = '"latch[snakemake]"'
-        else:
-            library_name = "latch"
-
         self.commands.append(
             DockerCmdBlock(
                 comment="Prologue",
@@ -79,21 +74,25 @@ class DockerfileBuilder:
                     "env LANG='en_US.UTF-8'",
                     "",
                     "arg DEBIAN_FRONTEND=noninteractive",
-                    "",
-                    "# Latch SDK",
-                    "# DO NOT REMOVE",
-                    f"run pip install {library_name}=={self.config.latch_version}",
-                    "run mkdir /opt/latch",
                 ],
                 order=DockerCmdBlockOrder.precopy,
             )
         )
 
     def get_epilogue(self):
+        if self.wf_type == WorkflowType.snakemake:
+            library_name = '"latch[snakemake]"'
+        else:
+            library_name = "latch"
+
         self.commands.append(
             DockerCmdBlock(
                 comment="Epilogue",
                 commands=[
+                    "",
+                    "# Latch SDK",
+                    "# DO NOT REMOVE",
+                    f"run pip install {library_name}=={self.config.latch_version}",
                     "",
                     "# Latch workflow registration metadata",
                     "# DO NOT CHANGE",
