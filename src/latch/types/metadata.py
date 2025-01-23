@@ -545,10 +545,12 @@ class NextflowParameter(Generic[T], LatchParameter):
             return
 
         click.secho(
-            dedent("""\
+            dedent(
+                """\
             A Samplesheet constructor is required for a samplesheet parameter. Please either provide a value for
             `samplesheet_type` or provide a custom callable to the `samplesheet_constructor` argument.
-            """),
+            """
+            ),
             fg="red",
         )
         raise click.exceptions.Exit(1)
@@ -601,10 +603,10 @@ class NextflowRuntimeResources:
     """
     Storage required for the task in GiB
     """
-    storage_expiration_hours: int = 0
+    storage_expiration_hours: int = 7 * 24
     """
-    Number of hours after execution failure that workdir should be retained in EFS.
-    Warning: Increasing this number will increase your Nextflow EFS Storage costs.
+    Number of hours after execution failure that workdir should be retained in EFS/OFS.
+    Warning: Increasing this number will increase your Nextflow Storage costs.
     """
 
 

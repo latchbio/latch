@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.55.3 - 2025-01-23
+
+### Changed
+
+* Update default `storage_expiration_hours` to 7 days
+
 ## 2.55.2 - 2025-01-09
 
 ### Changed
