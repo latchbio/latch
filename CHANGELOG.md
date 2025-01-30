@@ -16,6 +16,28 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.55.3 - 2025-01-23
+
+### Changed
+
+* Update default `storage_expiration_hours` to 7 days
+
+## 2.55.2 - 2025-01-09
+
+### Changed
+
+* Update error messaging and docstring for `latch preview`
+
+## 2.55.1 - 2024-12-14
+
+### Added
+
+* Add `g6e_xlarge_task`, `g6e_2xlarge_task`, `g6e_4xlarge_task`, `g6e_8xlarge_task`, `g6e_12xlarge_task`, `g6e_16xlarge_task`, and `g6e_24xlarge_task` to request G6e GPU instances.
+
+### Changed
+
+* Update latch base image to 'cb01-main'
+
 ## 2.55.0 - 2024-12-13
 
 ### Changed

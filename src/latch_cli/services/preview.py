@@ -4,14 +4,15 @@ import webbrowser
 from pathlib import Path
 from typing import List
 
+import click
 from flytekit.core.workflow import PythonFunctionWorkflow
 from google.protobuf.json_format import MessageToJson
-from latch_sdk_config.latch import config
 
 import latch_cli.menus as menus
 from latch.utils import current_workspace, retrieve_or_login
 from latch_cli.centromere.utils import _import_flyte_objects
 from latch_cli.tinyrequests import post
+from latch_sdk_config.latch import config
 
 
 # TODO(ayush): make this import the `wf` directory and use the package root
@@ -28,7 +29,7 @@ def preview(pkg_root: Path):
             preview. The path can be absolute or relative.
 
     Example:
-        >>> preview("wf.__init__.alphafold_wf")
+        >>> preview("alphafold_wf")
     """
 
     try:
@@ -38,22 +39,27 @@ def preview(pkg_root: Path):
             for flyte_obj in module.__dict__.values():
                 if isinstance(flyte_obj, PythonFunctionWorkflow):
                     wfs[flyte_obj.name] = flyte_obj
-        if len(wfs) == 0:
-            raise ValueError(f"Unable to find a workflow definition in {pkg_root}")
-    except ImportError as e:
-        raise ValueError(
-            f"Unable to find {e.name} - make sure that all necessary packages"
-            " are installed and you have the correct function name."
-        )
 
-    wf = list(wfs.values())[0]
+        if len(wfs) == 0:
+            click.secho(f"Unable to find a workflow definition in {pkg_root}", fg="red")
+            raise click.exceptions.Exit(1)
+    except ImportError as e:
+        click.secho(
+            f"Unable to find {e.name} - make sure that all necessary packages"
+            " are installed and you have the correct function name.",
+            fg="red",
+        )
+        raise click.exceptions.Exit(1) from e
+
+    wf = next(iter(wfs.values()))
     if len(wfs) > 1:
-        wf = wfs[
-            _select_workflow_tui(
-                title="Select which workflow to preview",
-                options=list(wfs.keys()),
-            )
-        ]
+        choice = _select_workflow_tui(
+            title="Select which workflow to preview", options=list(wfs.keys())
+        )
+        if choice is None:
+            raise click.Abort
+
+        wf = wfs[choice]
 
     resp = post(
         url=config.api.workflow.preview,
@@ -143,9 +149,7 @@ def _select_workflow_tui(title: str, options: List[str], clear_terminal: bool = 
         max_per_page = term_height - 4
 
     num_lines_rendered = render(
-        curr_selected,
-        start_index=start_index,
-        max_per_page=max_per_page,
+        curr_selected, start_index=start_index, max_per_page=max_per_page
     )
 
     try:
@@ -173,9 +177,7 @@ def _select_workflow_tui(title: str, options: List[str], clear_terminal: bool = 
                     continue
             menus.clear(num_lines_rendered)
             num_lines_rendered = render(
-                curr_selected,
-                start_index=start_index,
-                max_per_page=max_per_page,
+                curr_selected, start_index=start_index, max_per_page=max_per_page
             )
     except KeyboardInterrupt:
         ...

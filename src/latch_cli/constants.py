@@ -20,7 +20,7 @@ class Units(int, Enum):
 @dataclass(frozen=True)
 class LatchConstants:
     base_image: str = (
-        "812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:fe0b-main"
+        "812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:cb01-main"
     )
     nextflow_latest_version: str = "v2.3.0"
 
