@@ -11,17 +11,14 @@ import docker
 import paramiko
 import paramiko.util
 from docker.transport import SSHHTTPAdapter
-from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import FlyteEntities
-from flytekit.core.workflow import PythonFunctionWorkflow
 
 import latch_cli.tinyrequests as tinyrequests
 from latch.utils import account_id_from_token, current_workspace, retrieve_or_login
+from latch_cli.centromere.ast_parsing import get_flyte_objects
 from latch_cli.centromere.utils import (
     RemoteConnInfo,
     _construct_dkr_client,
     _construct_ssh_client,
-    _import_flyte_objects,
 )
 from latch_cli.constants import docker_image_name_illegal_pat, latch_constants
 from latch_cli.docker_utils import get_default_dockerfile
@@ -176,8 +173,8 @@ class _CentromereCtx:
 
             if self.workflow_type == WorkflowType.latchbiosdk:
                 try:
-                    _import_flyte_objects([self.pkg_root], module_name=self.wf_module)
-                except ModuleNotFoundError:
+                    flyte_objects = get_flyte_objects(self.pkg_root / self.wf_module)
+                except ModuleNotFoundError as e:
                     click.secho(
                         dedent(
                             f"""
@@ -189,14 +186,23 @@ class _CentromereCtx:
                         ),
                         fg="red",
                     )
-                    raise click.exceptions.Exit(1)
+                    raise click.exceptions.Exit(1) from e
 
-                for entity in FlyteEntities.entities:
-                    if isinstance(entity, PythonFunctionWorkflow):
-                        self.workflow_name = entity.name
+                wf_name: Optional[str] = None
+
+                name_path = pkg_root / latch_constants.pkg_workflow_name
+                if name_path.exists():
+                    wf_name = name_path.read_text().strip()
+
+                if wf_name is None:
+                    for obj in flyte_objects:
+                        if obj.type != "workflow":
+                            continue
+
+                        wf_name = obj.name
                         break
 
-                if not hasattr(self, "workflow_name"):
+                if wf_name is None:
                     click.secho(
                         dedent("""\
                         Unable to locate workflow code. If you are a registering a Snakemake project, make sure to pass the Snakefile path with the --snakefile flag.
@@ -205,21 +211,17 @@ class _CentromereCtx:
                     )
                     raise click.exceptions.Exit(1)
 
-                name_path = pkg_root / latch_constants.pkg_workflow_name
-                if name_path.exists():
-                    self.workflow_name = name_path.read_text().strip()
+                self.workflow_name = wf_name
 
-                for entity in FlyteEntities.entities:
-                    if isinstance(entity, PythonTask):
-                        if (
-                            hasattr(entity, "dockerfile_path")
-                            and entity.dockerfile_path is not None
-                        ):
-                            self.container_map[entity.name] = _Container(
-                                dockerfile=entity.dockerfile_path,
-                                image_name=self.task_image_name(entity.name),
-                                pkg_dir=entity.dockerfile_path.parent,
-                            )
+                for obj in flyte_objects:
+                    if obj.type != "task" or obj.dockerfile is None:
+                        continue
+
+                    self.container_map[obj.name] = _Container(
+                        dockerfile=obj.dockerfile,
+                        image_name=self.task_image_name(obj.name),
+                        pkg_dir=obj.dockerfile.parent,
+                    )
 
             elif self.workflow_type == WorkflowType.snakemake:
                 assert snakefile is not None
