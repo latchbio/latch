@@ -1005,7 +1005,7 @@ wheels = [
 
 [[package]]
 name = "latch"
-version = "2.54.10"
+version = "2.55.3"
 source = { editable = "." }
 dependencies = [
     { name = "aioconsole" },
@@ -1018,6 +1018,7 @@ dependencies = [
     { name = "gql" },
     { name = "graphql-core" },
     { name = "kubernetes" },
+    { name = "latch-persistence" },
     { name = "lytekit" },
     { name = "lytekitplugins-pods" },
     { name = "orjson" },
@@ -1070,6 +1071,7 @@ requires-dist = [
     { name = "gql", specifier = "==3.4.0" },
     { name = "graphql-core", specifier = "==3.2.3" },
     { name = "kubernetes", specifier = ">=24.2.0" },
+    { name = "latch-persistence", specifier = ">=0.1.1" },
     { name = "lytekit", specifier = "==0.15.13" },
     { name = "lytekitplugins-pods", specifier = "==0.6.2" },
     { name = "orjson", specifier = ">=3.10.12" },
@@ -1102,6 +1104,18 @@ docs = [
     { name = "sphinx-book-theme" },
     { name = "sphinx-click" },
     { name = "sphinx-copybutton" },
+]
+
+[[package]]
+name = "latch-persistence"
+version = "0.1.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1c/55/452b5d23c0f9c161fff5f36d4a2e735027455a6a1ecb454c5ed84a9da697/latch_persistence-0.1.1.tar.gz", hash = "sha256:692de1b744f99b3ab50db32d49ab8ec9fedbdf4f1008e1f4251c5460e0683168", size = 9447 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6f/ee/6713d9174e9e7e18c3c750b767cb2564c15f757fe8673b91d43f430a06e6/latch_persistence-0.1.1-py3-none-any.whl", hash = "sha256:0565978613a9d6d006a21b6a13349bbf78f7a3b6b02dc61dab120567192582cc", size = 5446 },
 ]
 
 [[package]]
