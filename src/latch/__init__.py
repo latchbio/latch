@@ -4,6 +4,11 @@ A commandline toolchain to define and register serverless workflows with the
 Latch platform.
 """
 
+import os
+import sys
+import traceback
+from pathlib import Path
+
 from latch.functions.messages import message
 from latch.functions.operators import (
     combine,
@@ -20,13 +25,13 @@ from latch.resources.reference_workflow import workflow_reference
 from latch.resources.tasks import (
     custom_memory_optimized_task,
     custom_task,
-    g6e_xlarge_task,
     g6e_2xlarge_task,
     g6e_4xlarge_task,
     g6e_8xlarge_task,
     g6e_12xlarge_task,
     g6e_16xlarge_task,
     g6e_24xlarge_task,
+    g6e_xlarge_task,
     large_gpu_task,
     large_task,
     medium_task,
@@ -34,3 +39,16 @@ from latch.resources.tasks import (
     small_task,
 )
 from latch.resources.workflow import workflow
+
+
+def _except_hook(type, value, tb):
+    traceback_path = Path(os.environ.get("latch_traceback_path", "~/traceback.txt"))
+    traceback_path.parent.mkdir(exist_ok=True)
+
+    with traceback_path.open("w") as f:
+        traceback.print_tb(tb, file=f)
+
+    return sys.__excepthook__(type, value, tb)
+
+
+sys.excepthook = _except_hook
