@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.56.0 - 2025-02-10
+
+### Changed
+
+* Update `LPath` to use `latch_persistence` instead of `latch cp` infrastructure
+  * allows for dramatic download speed ups due to multiprocessing the downloads into chunks
+
 ## 2.55.3 - 2025-01-23
 
 ### Changed
