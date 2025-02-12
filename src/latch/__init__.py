@@ -26,6 +26,7 @@ from latch.resources.tasks import (
     g6e_12xlarge_task,
     g6e_16xlarge_task,
     g6e_24xlarge_task,
+    g6e_48xlarge_task,
     g6e_xlarge_task,
     large_gpu_task,
     large_task,

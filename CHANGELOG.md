@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.56.1 - 2025-02-11
+
+### Added
+
+* Add `g6e_48xlarge_task` to request 8x L40s GPU instances.
+
 ## 2.56.0 - 2025-02-10
 
 ### Changed

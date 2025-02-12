@@ -712,9 +712,9 @@ g6e_24xlarge_task = functools.partial(
 )
 """96 vCPUs, 768 GiB RAM, 4 L40s GPUs"""
 
-"""
+
 g6e_48xlarge_task = functools.partial(
     task,
     task_config=_get_l40s_pod("g6e-48xlarge", cpu=192, memory_gib=1536, gpus=8)
 )
-192 vCPUs, 1536 GiB RAM, 8 L40s GPUs"""
+"""192 vCPUs, 1536 GiB RAM, 8 L40s GPUs"""
