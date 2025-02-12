@@ -39,16 +39,3 @@ from latch.resources.tasks import (
     small_task,
 )
 from latch.resources.workflow import workflow
-
-
-def _except_hook(type, value, tb):
-    traceback_path = Path(os.environ.get("latch_traceback_path", "~/traceback.txt"))
-    traceback_path.parent.mkdir(exist_ok=True)
-
-    with traceback_path.open("w") as f:
-        traceback.print_tb(tb, file=f)
-
-    return sys.__excepthook__(type, value, tb)
-
-
-sys.excepthook = _except_hook
