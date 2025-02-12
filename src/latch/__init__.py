@@ -4,11 +4,6 @@ A commandline toolchain to define and register serverless workflows with the
 Latch platform.
 """
 
-import os
-import sys
-import traceback
-from pathlib import Path
-
 from latch.functions.messages import message
 from latch.functions.operators import (
     combine,
