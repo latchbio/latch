@@ -20,7 +20,6 @@ from latch.resources.reference_workflow import workflow_reference
 from latch.resources.tasks import (
     custom_memory_optimized_task,
     custom_task,
-    g6e_xlarge_task,
     g6e_2xlarge_task,
     g6e_4xlarge_task,
     g6e_8xlarge_task,
@@ -28,6 +27,7 @@ from latch.resources.tasks import (
     g6e_16xlarge_task,
     g6e_24xlarge_task,
     g6e_48xlarge_task,
+    g6e_xlarge_task,
     large_gpu_task,
     large_task,
     medium_task,
