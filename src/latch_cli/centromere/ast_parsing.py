@@ -6,6 +6,8 @@ from typing import Literal, Optional
 
 import click
 
+from latch.resources import tasks
+
 
 @dataclass
 class FlyteObject:
@@ -14,33 +16,7 @@ class FlyteObject:
     dockerfile: Optional[Path] = None
 
 
-def is_task_decorator(decorator_name: str) -> bool:
-    return decorator_name in {
-        # og
-        "small_task",
-        "medium_task",
-        "large_task",
-        # og gpu
-        "small_gpu_task",
-        "large_gpu_task",
-        # custom
-        "custom_task",
-        "custom_memory_optimized_task",
-        # nf
-        "nextflow_runtime_task",
-        # l40s gpu
-        "g6e_xlarge_task",
-        "g6e_2xlarge_task",
-        "g6e_4xlarge_task",
-        "g6e_8xlarge_task",
-        "g6e_12xlarge_task",
-        "g6e_16xlarge_task",
-        "g6e_24xlarge_task",
-        # v100 gpu
-        "v100_x1_task",
-        "v100_x4_task",
-        "v100_x8_task",
-    }
+task_decorators = set(filter(lambda x: x.endswith("task"), tasks.__dict__.keys()))
 
 
 class Visitor(ast.NodeVisitor):
@@ -52,18 +28,21 @@ class Visitor(ast.NodeVisitor):
         if len(node.decorator_list) == 0:
             return self.generic_visit(node)
 
+        # todo(ayush):
+        # 1. support ast.Attribute (@latch.tasks.small_task)
+        # 2. normalize to fqn before checking whether or not its a task decorator
         for decorator in node.decorator_list:
             if isinstance(decorator, ast.Name):
                 if decorator.id == "workflow":
                     self.flyte_objects.append(FlyteObject("workflow", node.name))
-                elif is_task_decorator(decorator.id):
+                elif decorator.id in task_decorators:
                     self.flyte_objects.append(FlyteObject("task", node.name))
 
             elif isinstance(decorator, ast.Call):
                 func = decorator.func
                 assert isinstance(func, ast.Name)
 
-                if not is_task_decorator(func.id) and func.id != "workflow":
+                if func.id not in task_decorators and func.id != "workflow":
                     continue
 
                 if func.id == "workflow":
@@ -113,7 +92,7 @@ def get_flyte_objects(file: Path) -> list[FlyteObject]:
     if file.suffix != ".py":
         return res
 
-    v = Visitor(file.resolve())
+    v = Visitor(file)
 
     try:
         parsed = ast.parse(file.read_text(), filename=file)
