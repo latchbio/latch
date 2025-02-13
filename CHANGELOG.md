@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.56.3 - 2025-02-13
+
+### Dependencies
+
+* Bump version of `latch-persistence`
+
 ## 2.56.2 - 2025-02-12
 
 ### Dependencies

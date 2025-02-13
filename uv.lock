@@ -1005,7 +1005,7 @@ wheels = [
 
 [[package]]
 name = "latch"
-version = "2.55.3"
+version = "2.56.3"
 source = { editable = "." }
 dependencies = [
     { name = "aioconsole" },
@@ -1071,9 +1071,9 @@ requires-dist = [
     { name = "gql", specifier = "==3.4.0" },
     { name = "graphql-core", specifier = "==3.2.3" },
     { name = "kubernetes", specifier = ">=24.2.0" },
-    { name = "latch-persistence", specifier = ">=0.1.1" },
-    { name = "lytekit", specifier = "==0.15.13" },
-    { name = "lytekitplugins-pods", specifier = "==0.6.2" },
+    { name = "latch-persistence", specifier = ">=0.1.2" },
+    { name = "lytekit", specifier = "==0.15.24" },
+    { name = "lytekitplugins-pods", specifier = "==0.7.1" },
     { name = "orjson", specifier = ">=3.10.12" },
     { name = "pandas", marker = "extra == 'pandas'", specifier = ">=2.0.0" },
     { name = "paramiko", specifier = ">=3.4.0" },
@@ -1108,14 +1108,14 @@ docs = [
 
 [[package]]
 name = "latch-persistence"
-version = "0.1.1"
+version = "0.1.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1c/55/452b5d23c0f9c161fff5f36d4a2e735027455a6a1ecb454c5ed84a9da697/latch_persistence-0.1.1.tar.gz", hash = "sha256:692de1b744f99b3ab50db32d49ab8ec9fedbdf4f1008e1f4251c5460e0683168", size = 9447 }
+sdist = { url = "https://files.pythonhosted.org/packages/0d/9f/2239e5eabb73588071b8713ae362f053472fc4eafe72b96a98b294a46120/latch_persistence-0.1.2.tar.gz", hash = "sha256:7143cbf3028374812556906f056f9b27d91fc8b8340c0860ecf56dd9127676c3", size = 4341787 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6f/ee/6713d9174e9e7e18c3c750b767cb2564c15f757fe8673b91d43f430a06e6/latch_persistence-0.1.1-py3-none-any.whl", hash = "sha256:0565978613a9d6d006a21b6a13349bbf78f7a3b6b02dc61dab120567192582cc", size = 5446 },
+    { url = "https://files.pythonhosted.org/packages/04/f3/274a9d3bb2866d0d9e275173e6ece6495989434d3255af149420aca41e16/latch_persistence-0.1.2-py3-none-any.whl", hash = "sha256:e82cf2510c8d92238a5fc8064567cfe2dc230a2bd6b7a5b109e82fefc56f6290", size = 5688 },
 ]
 
 [[package]]
@@ -1134,7 +1134,7 @@ wheels = [
 
 [[package]]
 name = "lytekit"
-version = "0.15.13"
+version = "0.15.24"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -1151,6 +1151,7 @@ dependencies = [
     { name = "grpcio-status" },
     { name = "jsonschema" },
     { name = "keyring" },
+    { name = "latch-persistence" },
     { name = "lyteidl" },
     { name = "marshmallow-enum" },
     { name = "marshmallow-jsonschema" },
@@ -1170,22 +1171,22 @@ dependencies = [
     { name = "wheel" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0a/54/20266d5b9bfe6fa56fe5a0366f8bb550e18e4ecb635ed8e7b27774a297f9/lytekit-0.15.13.tar.gz", hash = "sha256:147449e255d3bbc13d6f7a39f32f18c891295f38f9bc7e0f9754f546c8aa3a69", size = 295586 }
+sdist = { url = "https://files.pythonhosted.org/packages/d6/8a/77efe3f48c5fc87eb0dc31946aea87d7adfa6dbaa84d809527ef32a06412/lytekit-0.15.24.tar.gz", hash = "sha256:4f6ca2e010833c9fd396c935b78f9a008492ff572ab9e1cfdfa9fa57f38adb48", size = 292918 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ea/3f/d9bbd2b97eddeae3e7a86abde1f7444cca9b6a578a71f6fa8a3a53c791f6/lytekit-0.15.13-py3-none-any.whl", hash = "sha256:4565a4df2a3cad2aadc02f325923eddf55672921884a839ce7cfeb10ba4cec38", size = 389398 },
+    { url = "https://files.pythonhosted.org/packages/f9/c0/58e88c6059c4a17f62f5451b1271d2a7b24fbfade008f2da9c5757b2a6fc/lytekit-0.15.24-py3-none-any.whl", hash = "sha256:0a2a93014e907dbd69d5e446af6126e7b8f5677ee87672a412683acb298f7a23", size = 385752 },
 ]
 
 [[package]]
 name = "lytekitplugins-pods"
-version = "0.6.2"
+version = "0.7.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "kubernetes" },
     { name = "lytekit" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ba/11/297946ccea7aa1c9dc29109a046eac73eb0e67e8f8fb84b417e71b8310e1/lytekitplugins-pods-0.6.2.tar.gz", hash = "sha256:5d7572f4c0e57bf4637bc7249ecde3f8dde790d46bf4b4a101a88bb490a39fc6", size = 6269 }
+sdist = { url = "https://files.pythonhosted.org/packages/74/7f/f558938d3970d9d8dba9db21bdae15fc93ed1d209538fa0caec155d6f957/lytekitplugins-pods-0.7.1.tar.gz", hash = "sha256:80c0eab36c968e10c7849bd5fd84f48c358684c2aa916bf35e178304738d68d3", size = 6301 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8a/23/c195a0a214986e67a730e2003af98c96f9a36ff78b2fe5f441f373e25e37/lytekitplugins_pods-0.6.2-py3-none-any.whl", hash = "sha256:1a919b4d2b2ef0f91d96105efbf3d64dec724d760ebaaeb53f6fb07518af0fd1", size = 4290 },
+    { url = "https://files.pythonhosted.org/packages/82/f9/9ae2b856fc3bd2f6f346829619345b53e9f88e40829670c5bca062821001/lytekitplugins_pods-0.7.1-py3-none-any.whl", hash = "sha256:2adbe86a5bd97c9519553d0cb6710166b63b661d9b86bda16ab2df745d4d791b", size = 4269 },
 ]
 
 [[package]]
