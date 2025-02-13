@@ -8,6 +8,7 @@ from latch.ldata._transfer.download import download as _download
 from latch.ldata._transfer.progress import Progress
 from latch.ldata._transfer.remote_copy import remote_copy as _remote_copy
 from latch.ldata._transfer.upload import upload as _upload
+from latch.ldata.path import LPath
 from latch.ldata.type import LatchPathError
 from latch_cli.services.cp.glob import expand_pattern
 from latch_cli.utils import human_readable_time, with_si_suffix
@@ -94,6 +95,37 @@ def cp(
                 raise ValueError(
                     dedent(f"""
                     `latch cp` cannot be used for purely local file copying.
+
+                    Please ensure at least one of your arguments is a remote path (beginning with `latch://`)
+                    """).strip("\n"),
+                )
+        except LatchPathError as e:
+            click.secho(get_path_error(e.remote_path, e.message, e.acc_id), fg="red")
+            raise click.exceptions.Exit(1) from e
+        except Exception as e:
+            click.secho(str(e), fg="red")
+            raise click.exceptions.Exit(1) from e
+
+def cp_fast(
+    srcs: List[str],
+    dest: str,
+):
+    dest_remote = is_remote_path(dest)
+
+    for src in srcs:
+        src_remote = is_remote_path(src)
+
+        try:
+            if src_remote and not dest_remote:
+                LPath(src).download(Path(dest))
+            elif not src_remote and dest_remote:
+                LPath(dest).upload_from(Path(src))
+            elif src_remote and dest_remote:
+                LPath(src).copy_to(LPath(dest))
+            else:
+                raise ValueError(
+                    dedent(f"""
+                    `latch cp-fast` cannot be used for purely local file copying.
 
                     Please ensure at least one of your arguments is a remote path (beginning with `latch://`)
                     """).strip("\n"),

@@ -812,6 +812,23 @@ def cp(
         chunk_size_mib=chunk_size_mib,
     )
 
+@main.command("cp-fast")
+@click.argument("src", shell_complete=cp_complete, nargs=-1)
+@click.argument("dest", shell_complete=cp_complete, nargs=1)
+@requires_login
+def cp_fast(
+    src: List[str],
+    dest: str,
+):
+    """
+    Fast copy of files between Latch Data and local, or between two Latch Data locations.
+    """
+    crash_handler.message = f"Unable to copy {src} to {dest}"
+    crash_handler.pkg_root = str(Path.cwd())
+
+    from latch_cli.services.cp.main import cp_fast
+
+    cp_fast(src, dest)
 
 @main.command("mv")
 @click.argument("src", shell_complete=remote_complete, nargs=1)
