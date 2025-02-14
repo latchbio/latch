@@ -16,11 +16,17 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.56.4 - 2025-02-14
+
+### Dependencies
+
+* Bump version of `latch-persistence` (larger connection pool to suppress warning from urllib3 and perhaps improve performance)
+
 ## 2.56.3 - 2025-02-13
 
 ### Dependencies
 
-* Bump version of `latch-persistence`
+* Bump version of `latch-persistence` (parallelize uploads over single file)
 
 ## 2.56.2 - 2025-02-12
 
