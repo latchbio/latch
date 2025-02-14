@@ -35,3 +35,6 @@ from latch.resources.tasks import (
     small_task,
 )
 from latch.resources.workflow import workflow
+
+import urllib3
+urllib3.disable_warnings()
