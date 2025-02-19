@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.56.5 - 2025-02-19
+
+### Dependencies
+
+* `lytekit` -> `0.15.26` and `lytekitplugins-pods` -> `0.7.3`
+
 ## 2.56.4 - 2025-02-14
 
 ### Dependencies
