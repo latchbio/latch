@@ -22,13 +22,14 @@ task_decorators = set(filter(lambda x: x.endswith("task"), tasks.__dict__.keys()
 class Visitor(ast.NodeVisitor):
     def __init__(self, file: Path):
         self.file = file
+        self.module_name = file.with_suffix("")
         self.flyte_objects: list[FlyteObject] = []
 
     def visit_FunctionDef(self, node: ast.FunctionDef):
         if len(node.decorator_list) == 0:
             return self.generic_visit(node)
 
-        # todo(ayush):
+        # todo(ayush): |
         # 1. support ast.Attribute (@latch.tasks.small_task)
         # 2. normalize to fqn before checking whether or not its a task decorator
         for decorator in node.decorator_list:
