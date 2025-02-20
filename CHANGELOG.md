@@ -16,6 +16,10 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.56.5 - 2025-02-20
+
+* Fix bug in `LPath` where `download` with `cache=True` set would fail on a file already present on the file system without the user.version_id xattr
+
 ## 2.56.5 - 2025-02-19
 
 ### Dependencies
