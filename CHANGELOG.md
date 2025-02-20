@@ -16,7 +16,15 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.56.5 - 2025-02-20
+## 2.56.7 - 2025-02-20
+
+### Dependencies
+
+* `lytekitplugins-pods` -> `0.7.4` and `latch-persistence` -> `0.1.4`
+
+## 2.56.6 - 2025-02-20
+
+### Fixed
 
 * Fix bug in `LPath` where `download` with `cache=True` set would fail on a file already present on the file system without the user.version_id xattr
 
