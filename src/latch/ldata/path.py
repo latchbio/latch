@@ -1,5 +1,4 @@
 import atexit
-import os
 import re
 import shutil
 import sys
@@ -348,9 +347,9 @@ class LPath:
             not_windows
             and cache
             and dst.exists()
-            and xattr.list(dst_str) is not None
-            and "user.version_id" in xattr.list(dst_str)
-            and version_id == xattr.get(dst_str, "user.version_id").decode()
+            and xattr.listxattr(dst_str) is not None
+            and "user.version_id" in xattr.listxattr(dst_str)
+            and version_id == xattr.getxattr(dst_str, "user.version_id").decode()
         ):
             return dst
 
