@@ -26,6 +26,7 @@ from latch_cli.utils import (
     WorkflowType,
     generate_temporary_ssh_credentials,
     hash_directory,
+    identifier_suffix_from_str,
 )
 from latch_sdk_config.latch import config
 
@@ -35,6 +36,9 @@ class _Container:
     dockerfile: Path
     pkg_dir: Path
     image_name: str
+
+    def __post_init__(self):
+        print(self)
 
 
 # todo(ayush): cleanse this
@@ -216,6 +220,19 @@ class _CentromereCtx:
                 for obj in flyte_objects:
                     if obj.type != "task" or obj.dockerfile is None:
                         continue
+
+                    dockerfile = self.pkg_root / obj.dockerfile
+
+                    if not dockerfile.exists():
+                        click.secho(
+                            f"""\
+                            The `dockerfile` value (provided {obj.dockerfile}, resolved to {dockerfile}) for task `{obj.name}` does not exist.
+                            Note that relative paths are resolved with respect to the parent directory of the file.\
+                            """,
+                            fg="red",
+                        )
+
+                        raise click.exceptions.Exit(1)
 
                     self.container_map[obj.name] = _Container(
                         dockerfile=obj.dockerfile,
@@ -440,8 +457,6 @@ class _CentromereCtx:
         else:
             account_id = self.account_id
 
-        from ..utils import identifier_suffix_from_str
-
         wf_name = identifier_suffix_from_str(self.workflow_name).lower()
         wf_name = docker_image_name_illegal_pat.sub("_", wf_name)
 
@@ -481,6 +496,9 @@ class _CentromereCtx:
         return f"{self.image}:{self.version}"
 
     def task_image_name(self, task_name: str) -> str:
+        task_name = identifier_suffix_from_str(task_name).lower()
+        task_name = docker_image_name_illegal_pat.sub("_", task_name)
+
         return f"{self.image}:{task_name}-{self.version}"
 
     @property

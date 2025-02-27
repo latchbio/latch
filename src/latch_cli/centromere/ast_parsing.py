@@ -23,9 +23,9 @@ task_decorators = set(filter(lambda x: x.endswith("task"), tasks.__dict__.keys()
 
 
 class Visitor(ast.NodeVisitor):
-    def __init__(self, file: Path):
+    def __init__(self, file: Path, module_name: str):
         self.file = file
-        self.module_name = str(file.with_suffix("")).replace(os.pathsep, ".")
+        self.module_name = module_name
         self.flyte_objects: list[FlyteObject] = []
 
     # todo(ayush): skip defs that arent run on import
@@ -33,17 +33,19 @@ class Visitor(ast.NodeVisitor):
         if len(node.decorator_list) == 0:
             return self.generic_visit(node)
 
-        name = f"{self.module_name}.{node.name}"
+        fqn = f"{self.module_name}.{node.name}"
+        # fqn = node.name
 
         # todo(ayush): |
         # 1. support ast.Attribute (@latch.tasks.small_task)
         # 2. normalize to fqn before checking whether or not its a task decorator
+        # 3. save fully qualified name for tasks (need to parse based on import graph)
         for decorator in node.decorator_list:
             if isinstance(decorator, ast.Name):
                 if decorator.id == "workflow":
-                    self.flyte_objects.append(FlyteObject("workflow", name))
+                    self.flyte_objects.append(FlyteObject("workflow", fqn))
                 elif decorator.id in task_decorators:
-                    self.flyte_objects.append(FlyteObject("task", name))
+                    self.flyte_objects.append(FlyteObject("task", fqn))
 
             elif isinstance(decorator, ast.Call):
                 func = decorator.func
@@ -53,7 +55,7 @@ class Visitor(ast.NodeVisitor):
                     continue
 
                 if func.id == "workflow":
-                    self.flyte_objects.append(FlyteObject("workflow", name))
+                    self.flyte_objects.append(FlyteObject("workflow", fqn))
                     continue
 
                 # note(ayush): this only works if `dockerfile` is a keyword arg - if someone
@@ -65,11 +67,11 @@ class Visitor(ast.NodeVisitor):
                         continue
 
                     try:
-                        provided: str = ast.literal_eval(kw.value)
+                        dockerfile = Path(ast.literal_eval(kw.value))
                     except ValueError as e:
                         click.secho(
                             dedent(f"""\
-                                There was an issue parsing the `dockerfile` argument for task `{name}` in {self.file}.
+                                There was an issue parsing the `dockerfile` argument for task `{fqn}` in {self.file}.
                                 Note that values passed to `dockerfile` must be string literals.
                             """),
                             fg="red",
@@ -77,28 +79,15 @@ class Visitor(ast.NodeVisitor):
 
                         raise click.exceptions.Exit(1) from e
 
-                    dockerfile = self.file.parent / provided
-
-                    if not dockerfile.exists():
-                        click.secho(
-                            f"""\
-                            The `dockerfile` value (provided {provided}, resolved to {dockerfile}) for task `{name}` in {self.file} does not exist.
-                            Note that relative paths are resolved with respect to the parent directory of the file.\
-                            """,
-                            fg="red",
-                        )
-
-                        raise click.exceptions.Exit(1)
-
-                self.flyte_objects.append(FlyteObject("task", name, dockerfile))
+                self.flyte_objects.append(FlyteObject("task", fqn, dockerfile))
 
         return self.generic_visit(node)
 
 
-def get_flyte_objects(p: Path) -> list[FlyteObject]:
+def get_flyte_objects(module: Path) -> list[FlyteObject]:
     res: list[FlyteObject] = []
     queue: Queue[Path] = Queue()
-    queue.put(p)
+    queue.put(module)
 
     while not queue.empty():
         file = queue.get()
@@ -114,7 +103,11 @@ def get_flyte_objects(p: Path) -> list[FlyteObject]:
         if file.suffix != ".py":
             continue
 
-        v = Visitor(file)
+        module_name = str(file.with_suffix("").relative_to(module.parent)).replace(
+            os.sep, "."
+        )
+
+        v = Visitor(file, module_name)
 
         try:
             parsed = ast.parse(file.read_text(), filename=file)

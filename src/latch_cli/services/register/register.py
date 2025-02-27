@@ -359,9 +359,10 @@ def register(
 
         # todo(maximsmol): we really want the workflow display name here
         click.echo(
-            " ".join(
-                [click.style("Workflow name:", fg="bright_blue"), ctx.workflow_name]
-            )
+            " ".join([
+                click.style("Workflow name:", fg="bright_blue"),
+                ctx.workflow_name,
+            ])
         )
         click.echo(" ".join([click.style("Version:", fg="bright_blue"), ctx.version]))
 
@@ -392,15 +393,17 @@ def register(
         )
         if ctx.workflow_type == WorkflowType.snakemake:
             click.echo(
-                " ".join(
-                    [click.style("Snakefile:", fg="bright_blue"), str(ctx.snakefile)]
-                )
+                " ".join([
+                    click.style("Snakefile:", fg="bright_blue"),
+                    str(ctx.snakefile),
+                ])
             )
         elif ctx.workflow_type == WorkflowType.nextflow:
             click.echo(
-                " ".join(
-                    [click.style("NF script:", fg="bright_blue"), str(ctx.nf_script)]
-                )
+                " ".join([
+                    click.style("NF script:", fg="bright_blue"),
+                    str(ctx.nf_script),
+                ])
             )
 
         if use_new_centromere:
@@ -532,7 +535,7 @@ def register(
                     try:
                         split_task_name = task_name.split(".")
                         task_name = ".".join(
-                            split_task_name[split_task_name.index("wf") :]
+                            split_task_name[split_task_name.index(ctx.wf_module) :]
                         )
                         for new_proto in new_protos:
                             if task_name in new_proto.name:
