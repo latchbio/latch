@@ -408,7 +408,7 @@ name = "click"
 version = "8.1.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "colorama", marker = "platform_system == 'Windows'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/96/d3/f04c7bfcf5c1862a2a5b845c6b2b360488cf47af55dfa79c98f6a6bf98b5/click-8.1.7.tar.gz", hash = "sha256:ca9853ad459e787e2192211578cc907e7594e294c7ccc834310722b41b9ca6de", size = 336121 }
 wheels = [
@@ -536,6 +536,9 @@ name = "datrie"
 version = "0.8.2"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/9d/fe/db74bd405d515f06657f11ad529878fd389576dca4812bea6f98d9b31574/datrie-0.8.2.tar.gz", hash = "sha256:525b08f638d5cf6115df6ccd818e5a01298cd230b2dac91c8ff2e6499d18765d", size = 63278 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/44/02/53f0cf0bf0cd629ba6c2cc13f2f9db24323459e9c19463783d890a540a96/datrie-0.8.2-pp273-pypy_73-win32.whl", hash = "sha256:b07bd5fdfc3399a6dab86d6e35c72b1dbd598e80c97509c7c7518ab8774d3fda", size = 91292 },
+]
 
 [[package]]
 name = "decorator"
@@ -1002,7 +1005,7 @@ wheels = [
 
 [[package]]
 name = "latch"
-version = "2.56.6"
+version = "2.56.10"
 source = { editable = "." }
 dependencies = [
     { name = "aioconsole" },
@@ -1068,9 +1071,9 @@ requires-dist = [
     { name = "gql", specifier = "==3.4.0" },
     { name = "graphql-core", specifier = "==3.2.3" },
     { name = "kubernetes", specifier = ">=24.2.0" },
-    { name = "latch-persistence", specifier = ">=0.1.3" },
-    { name = "lytekit", specifier = "==0.15.26" },
-    { name = "lytekitplugins-pods", specifier = "==0.7.3" },
+    { name = "latch-persistence", specifier = ">=0.1.5" },
+    { name = "lytekit", specifier = "==0.15.28" },
+    { name = "lytekitplugins-pods", specifier = "==0.7.4" },
     { name = "orjson", specifier = ">=3.10.12" },
     { name = "pandas", marker = "extra == 'pandas'", specifier = ">=2.0.0" },
     { name = "paramiko", specifier = ">=3.4.0" },
@@ -1105,14 +1108,14 @@ docs = [
 
 [[package]]
 name = "latch-persistence"
-version = "0.1.3"
+version = "0.1.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/15/c2/cee34a09f829a046195399ae7c36cc0775496f7f73051726385827f0960f/latch_persistence-0.1.3.tar.gz", hash = "sha256:3703e58c809f8cf42105cd4514c44510cb0849c914acb2be32a3a42c9176b295", size = 4337586 }
+sdist = { url = "https://files.pythonhosted.org/packages/30/14/d8ff86ac5bce604396aba3da3419c976d75d5df942bfb844218dcce24f69/latch_persistence-0.1.5.tar.gz", hash = "sha256:2a96cf54777549ee6b682015de84083e518e36f2308fb45c1d62e607669f979c", size = 13441 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/10/6d/75f2eb8e84804269112cbe14082e0e90cfc109dad588d8f73eef5a3ef938/latch_persistence-0.1.3-py3-none-any.whl", hash = "sha256:8bb582733259513b18566c3062eaae527a66eebd8913f31e5a3040924b542464", size = 5706 },
+    { url = "https://files.pythonhosted.org/packages/fb/24/8a59d89803852b1308c9f265bbcee8fe9108c9edad4fd130f2c81e747dfa/latch_persistence-0.1.5-py3-none-any.whl", hash = "sha256:27802166844d8e95a335b48aa3f226d609492b53f7401e13d099fba39c7f9807", size = 11689 },
 ]
 
 [[package]]
@@ -1131,7 +1134,7 @@ wheels = [
 
 [[package]]
 name = "lytekit"
-version = "0.15.26"
+version = "0.15.28"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -1169,22 +1172,22 @@ dependencies = [
     { name = "wheel" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4f/21/6e57a4b09092066a476f2e2863f5d0dbad441901e91c1a7b4a2bfef1c537/lytekit-0.15.26.tar.gz", hash = "sha256:9d7069f4e424c63cef9e7a42b43f7b2ccd6c0d179f5fece24a54df444def859f", size = 292684 }
+sdist = { url = "https://files.pythonhosted.org/packages/21/14/9fc90dd03dbf3921036e830083adc2dcd88c60690b451d5857f7583bce2a/lytekit-0.15.28.tar.gz", hash = "sha256:37fb835cc6bb6f3ad9b8e493b6c751c29ba50541cc94f831ba267132556a9da5", size = 293243 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/55/3e/f2cc8470e70460c8843c61ceaa9a80bb7ef3b4ce61a60e06cc0e0f33591e/lytekit-0.15.26-py3-none-any.whl", hash = "sha256:9207f06885fa8dad4611645a3cc835b7b6c2c22e049f0ffd818648645b9354df", size = 354995 },
+    { url = "https://files.pythonhosted.org/packages/1d/39/2d0c24472751aa0ded66e043f59c6db51d64a292deb43e78b4e441d87615/lytekit-0.15.28-py3-none-any.whl", hash = "sha256:7f33f71bf7f6497a6ea355540cf7c2b82ff5b9a2dbd5810eae475d7a0abcbc25", size = 385950 },
 ]
 
 [[package]]
 name = "lytekitplugins-pods"
-version = "0.7.3"
+version = "0.7.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "kubernetes" },
     { name = "lytekit" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4d/47/2c89084b9d027b551e1d55495cd70dcf82f9edd4551f9dcba136038679b4/lytekitplugins-pods-0.7.3.tar.gz", hash = "sha256:abe3f47f677d83993b8d3f4d5eb86239247034e8bc7e7d9e81e1b52578d7eb83", size = 6323 }
+sdist = { url = "https://files.pythonhosted.org/packages/12/73/23cfa980f378c152601b9239d705406f0490a68997aedea9c018ff6ac780/lytekitplugins-pods-0.7.4.tar.gz", hash = "sha256:c641ce23ea528c847a80730590c211a3105b958cfe3c4da36f23b3d8cdc3f63d", size = 10337 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/03/30/c0abd606ae9a2807b22834e9c48d279d157eccad9a5060a917dcda3f7f8a/lytekitplugins_pods-0.7.3-py3-none-any.whl", hash = "sha256:5e4b960ac048f56812f42d8c69a866b6d75a7bda2c6deb4f2ba02a6b270d0c94", size = 4309 },
+    { url = "https://files.pythonhosted.org/packages/61/de/00155a1dd076249bea980cff064db5df576d7dfdcc4e2ee7338364c529e4/lytekitplugins_pods-0.7.4-py3-none-any.whl", hash = "sha256:374560cbfbff36e728ec5cc5749691fe1ca4c51f512ba09040ce499a7fab61ae", size = 8478 },
 ]
 
 [[package]]
@@ -2787,7 +2790,7 @@ name = "tqdm"
 version = "4.66.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "colorama", marker = "platform_system == 'Windows'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/e9/34/bef135b27fe1864993a5284ad001157ee9b5538e859ac90f5b0e8cc8c9ec/tqdm-4.66.6.tar.gz", hash = "sha256:4bdd694238bef1485ce839d67967ab50af8f9272aab687c0d7702a01da0be090", size = 169533 }
 wheels = [
@@ -2848,7 +2851,7 @@ name = "tzlocal"
 version = "5.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "tzdata", marker = "sys_platform == 'win32'" },
+    { name = "tzdata", marker = "platform_system == 'Windows'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/04/d3/c19d65ae67636fe63953b20c2e4a8ced4497ea232c43ff8d01db16de8dc0/tzlocal-5.2.tar.gz", hash = "sha256:8d399205578f1a9342816409cc1e46a93ebd5755e39ea2d85334bea911bf0e6e", size = 30201 }
 wheels = [
