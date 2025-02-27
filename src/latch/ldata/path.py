@@ -1,5 +1,4 @@
 import atexit
-import os
 import re
 import shutil
 import sys
@@ -218,7 +217,7 @@ class LPath:
                 ldataResolvePathData(argPath: $argPath) {
                     finalLinkTarget {
                         type
-                        childLdataTreeEdges(filter: { child: { removed: { equalTo: false } } }) {
+                        childLdataTreeEdges(filter: { child: { removed: { equalTo: false }, pending: { equalTo: false }, copiedFrom: { isNull: true } } }) {
                             nodes {
                                 child {
                                     name
@@ -348,6 +347,8 @@ class LPath:
             not_windows
             and cache
             and dst.exists()
+            and xattr.listxattr(dst_str) is not None
+            and "user.version_id" in xattr.listxattr(dst_str)
             and version_id == xattr.getxattr(dst_str, "user.version_id").decode()
         ):
             return dst

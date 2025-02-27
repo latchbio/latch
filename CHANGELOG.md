@@ -16,6 +16,54 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.56.10 - 2025-02-26
+
+### Dependencies
+
+* `lytekit` -> `0.15.28`
+
+## 2.56.9 - 2025-02-26
+
+### Fixed
+
+* Fix bug in `LPath` where `iterdir` will return pending and copy-in-progress files
+
+## 2.56.8 - 2025-02-20
+
+### Dependencies
+
+* `lytekit` -> `0.15.27`
+
+## 2.56.7 - 2025-02-20
+
+### Dependencies
+
+* `lytekitplugins-pods` -> `0.7.4` and `latch-persistence` -> `0.1.4`
+
+## 2.56.6 - 2025-02-20
+
+### Fixed
+
+* Fix bug in `LPath` where `download` with `cache=True` set would fail on a file already present on the file system without the user.version_id xattr
+
+## 2.56.5 - 2025-02-19
+
+### Dependencies
+
+* `lytekit` -> `0.15.26` and `lytekitplugins-pods` -> `0.7.3`
+
+## 2.56.4 - 2025-02-14
+
+### Dependencies
+
+* Bump version of `latch-persistence` (larger connection pool to suppress warning from urllib3 and perhaps improve performance)
+
+## 2.56.3 - 2025-02-13
+
+### Dependencies
+
+* Bump version of `latch-persistence` (parallelize uploads over single file)
+
 ## 2.56.2 - 2025-02-12
 
 ### Dependencies
