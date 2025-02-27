@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.56.9 - 2025-02-26
+
+### Fixed
+
+* Fix bug in `LPath` where `iterdir` will return pending and copy-in-progress files
+
 ## 2.56.8 - 2025-02-20
 
 ### Dependencies

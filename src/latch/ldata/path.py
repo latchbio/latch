@@ -217,7 +217,7 @@ class LPath:
                 ldataResolvePathData(argPath: $argPath) {
                     finalLinkTarget {
                         type
-                        childLdataTreeEdges(filter: { child: { removed: { equalTo: false } } }) {
+                        childLdataTreeEdges(filter: { child: { removed: { equalTo: false }, pending: { equalTo: false }, copiedFrom: { isNull: true } } }) {
                             nodes {
                                 child {
                                     name
