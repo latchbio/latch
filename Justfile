@@ -1,10 +1,6 @@
 # Setup
 
 install:
-  rm -rf \
-    .venv/lib/python3.12/site-packages/latch_cli \
-    .venv/lib/python3.12/site-packages/latch_sdk_config \
-    .venv/lib/python3.12/site-packages/latch_sdk_gql
   uv sync --no-cache --frozen
 
 # Packaging

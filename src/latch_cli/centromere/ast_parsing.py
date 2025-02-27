@@ -34,7 +34,6 @@ class Visitor(ast.NodeVisitor):
             return self.generic_visit(node)
 
         fqn = f"{self.module_name}.{node.name}"
-        # fqn = node.name
 
         # todo(ayush): |
         # 1. support ast.Attribute (@latch.tasks.small_task)

@@ -37,9 +37,6 @@ class _Container:
     pkg_dir: Path
     image_name: str
 
-    def __post_init__(self):
-        print(self)
-
 
 # todo(ayush): cleanse this
 class _CentromereCtx:
@@ -227,7 +224,7 @@ class _CentromereCtx:
                         click.secho(
                             f"""\
                             The `dockerfile` value (provided {obj.dockerfile}, resolved to {dockerfile}) for task `{obj.name}` does not exist.
-                            Note that relative paths are resolved with respect to the parent directory of the file.\
+                            Note that relative paths are resolved with respect to the package root.\
                             """,
                             fg="red",
                         )
