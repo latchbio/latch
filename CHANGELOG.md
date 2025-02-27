@@ -16,6 +16,15 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.57.0 - 2024-02-27
+
+### Changed
+
+* During registration, we no longer execute workflow code outside of a container to check for syntax errors / parse out task-specific Dockerfiles as this was error prone. We now only parse the code into an AST to check for syntax errors, and inspect the AST to pull out any task specific `dockerfile` arguments.
+* This is a breaking change for users that use the `dockerfile` argument for the `task` decorator:
+  * Old behavior: `dockerfile` accepts a `pathlib.Path` argument which will be resolved against the current working directory
+  * New behavior: `dockerfile` must be a `str` literal (no variable values or expressions) - this is so that we can pull it out from the AST without executing anything
+
 ## 2.56.10 - 2025-02-26
 
 ### Dependencies
