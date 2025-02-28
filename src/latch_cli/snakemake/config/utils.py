@@ -1,29 +1,24 @@
 from __future__ import annotations
 
+import sys
 from dataclasses import fields, is_dataclass, make_dataclass
 from enum import Enum
-from types import UnionType
-from typing import (
-    Annotated,
-    Any,
-    Dict,
-    List,
-    Optional,
-    Type,
-    Union,
-    get_args,
-    get_origin,
-)
+from typing import Annotated, Any, Dict, List, Optional, Type, Union, get_args, get_origin
 
 from flytekit.core.annotation import FlyteAnnotation
 from typing_extensions import TypeAlias, TypeGuard
 
-from latch.types.directory import LatchDir, LatchOutputDir
+from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
 from latch_cli.utils import identifier_from_str
 
 JSONValue: TypeAlias = Union[int, str, bool, float, None, List["JSONValue"], "JSONDict"]
 JSONDict: TypeAlias = Dict[str, "JSONValue"]
+
+if sys.version_info >= (3, 10):
+    from types import UnionType
+else:
+    UnionType = Union
 
 # ayush: yoinked from console
 valid_extensions = {
@@ -104,9 +99,7 @@ valid_extensions = {
 }
 
 
-def parse_type(
-    v: JSONValue, name: Optional[str] = None, *, infer_files: bool = False
-) -> Type:
+def parse_type(v: JSONValue, name: Optional[str] = None, *, infer_files: bool = False) -> Type:
     if v is None:
         return str
 
@@ -139,9 +132,7 @@ def parse_type(
 
     fields: Dict[str, Type] = {}
     for k, x in v.items():
-        fields[identifier_from_str(k)] = parse_type(
-            x, f"{name}_{k}", infer_files=infer_files
-        )
+        fields[identifier_from_str(k)] = parse_type(x, f"{name}_{k}", infer_files=infer_files)
 
     return make_dataclass(identifier_from_str(name), fields.items())
 
@@ -295,9 +286,7 @@ def get_preamble(typ: type[Any] | str, *, defined_names: set[str] | None = None)
         return ""
 
     if get_origin(typ) in {Union, UnionType, list, dict}:
-        return "".join([
-            get_preamble(t, defined_names=defined_names) for t in get_args(typ)
-        ])
+        return "".join([get_preamble(t, defined_names=defined_names) for t in get_args(typ)])
 
     if typ.__name__ in defined_names:
         return ""
@@ -309,9 +298,7 @@ def get_preamble(typ: type[Any] | str, *, defined_names: set[str] | None = None)
 
     assert is_dataclass(typ), typ
 
-    preamble = "".join([
-        get_preamble(f.type, defined_names=defined_names) for f in fields(typ)
-    ])
+    preamble = "".join([get_preamble(f.type, defined_names=defined_names) for f in fields(typ)])
 
     return "".join([preamble, dataclass_repr(typ)])
 
@@ -350,8 +337,7 @@ def validate_snakemake_type(name: str, t: Type, param: Any) -> None:
         args = get_args(t)
         if len(args) == 0:
             raise ValueError(
-                "Generic Lists are not supported - please specify a subtype,"
-                " e.g. List[LatchFile]"
+                "Generic Lists are not supported - please specify a subtype, e.g. List[LatchFile]"
             )
         list_typ = args[0]
         for i, val in enumerate(param):
@@ -360,8 +346,6 @@ def validate_snakemake_type(name: str, t: Type, param: Any) -> None:
     else:
         assert is_dataclass(t)
         for field in fields(t):
-            validate_snakemake_type(
-                f"{name}.{field.name}", field.type, getattr(param, field.name)
-            )
+            validate_snakemake_type(f"{name}.{field.name}", field.type, getattr(param, field.name))
         for i, val in enumerate(param):
             validate_snakemake_type(f"{name}[{i}]", list_typ, val)

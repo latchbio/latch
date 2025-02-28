@@ -1006,13 +1006,7 @@ wheels = [
 
 [[package]]
 name = "latch"
-<<<<<<< HEAD
-version = "2.54.0a8"
-||||||| 5493f7e
-version = "2.54.10"
-=======
 version = "2.56.10"
->>>>>>> aa8a34f82fa2d04b7c2576c97c9a559532668df3
 source = { editable = "." }
 dependencies = [
     { name = "aioconsole" },
@@ -1078,17 +1072,9 @@ requires-dist = [
     { name = "gql", specifier = ">=3.5.0,<4.0.0" },
     { name = "graphql-core", specifier = "==3.2.3" },
     { name = "kubernetes", specifier = ">=24.2.0" },
-<<<<<<< HEAD
-    { name = "lytekit", specifier = "==0.15.14" },
-    { name = "lytekitplugins-pods", specifier = "==0.6.2" },
-||||||| 5493f7e
-    { name = "lytekit", specifier = "==0.15.13" },
-    { name = "lytekitplugins-pods", specifier = "==0.6.2" },
-=======
     { name = "latch-persistence", specifier = ">=0.1.5" },
     { name = "lytekit", specifier = "==0.15.28" },
     { name = "lytekitplugins-pods", specifier = "==0.7.4" },
->>>>>>> aa8a34f82fa2d04b7c2576c97c9a559532668df3
     { name = "orjson", specifier = ">=3.10.12" },
     { name = "pandas", marker = "extra == 'pandas'", specifier = ">=2.0.0" },
     { name = "paramiko", specifier = ">=3.4.0" },
@@ -1122,21 +1108,6 @@ docs = [
 ]
 
 [[package]]
-<<<<<<< HEAD
-name = "latch-persistence"
-version = "0.1.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "requests" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/8e/e0/a6f8427a9b1e6d9bce808b6ad7acfc98e67f08d5f6e9b4311090a2df1c1a/latch_persistence-0.1.0.tar.gz", hash = "sha256:527b01a5986871cb954bb69fd1d5134402304b7529dedf7096ac97ab3dd6e827", size = 9380 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/73/92/d1669cbaa7184dc73523e6874e4f2ab79fb7104a621597e9fdff82db35b2/latch_persistence-0.1.0-py3-none-any.whl", hash = "sha256:ab6fff7fe7c48f960caf55474810b465803f920eb6245c80c73ec8e3dd333046", size = 5371 },
-]
-
-[[package]]
-||||||| 5493f7e
-=======
 name = "latch-persistence"
 version = "0.1.5"
 source = { registry = "https://pypi.org/simple" }
@@ -1149,7 +1120,6 @@ wheels = [
 ]
 
 [[package]]
->>>>>>> aa8a34f82fa2d04b7c2576c97c9a559532668df3
 name = "lyteidl"
 version = "0.2.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1165,13 +1135,7 @@ wheels = [
 
 [[package]]
 name = "lytekit"
-<<<<<<< HEAD
-version = "0.15.14"
-||||||| 5493f7e
-version = "0.15.13"
-=======
 version = "0.15.28"
->>>>>>> aa8a34f82fa2d04b7c2576c97c9a559532668df3
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -1209,21 +1173,9 @@ dependencies = [
     { name = "wheel" },
     { name = "wrapt" },
 ]
-<<<<<<< HEAD
-sdist = { url = "https://files.pythonhosted.org/packages/6a/15/c205b4adfcfe65fd01b21365d7f02f9c8e25e6a8554a26419f30275ad374/lytekit-0.15.14.tar.gz", hash = "sha256:92c7662a3cb8d38fe670397183ae517d2b2e175ad43c3949bbc3d1363b604046", size = 292268 }
-||||||| 5493f7e
-sdist = { url = "https://files.pythonhosted.org/packages/0a/54/20266d5b9bfe6fa56fe5a0366f8bb550e18e4ecb635ed8e7b27774a297f9/lytekit-0.15.13.tar.gz", hash = "sha256:147449e255d3bbc13d6f7a39f32f18c891295f38f9bc7e0f9754f546c8aa3a69", size = 295586 }
-=======
 sdist = { url = "https://files.pythonhosted.org/packages/21/14/9fc90dd03dbf3921036e830083adc2dcd88c60690b451d5857f7583bce2a/lytekit-0.15.28.tar.gz", hash = "sha256:37fb835cc6bb6f3ad9b8e493b6c751c29ba50541cc94f831ba267132556a9da5", size = 293243 }
->>>>>>> aa8a34f82fa2d04b7c2576c97c9a559532668df3
 wheels = [
-<<<<<<< HEAD
-    { url = "https://files.pythonhosted.org/packages/d0/13/a90708989e90b274f3d1ac13425ad6d7de3ab77d58cbe1c6ae1d00c878d5/lytekit-0.15.14-py3-none-any.whl", hash = "sha256:9e207b532df63d644c7d17a878337cb160b190b7322de9a7407857a1b104e185", size = 385453 },
-||||||| 5493f7e
-    { url = "https://files.pythonhosted.org/packages/ea/3f/d9bbd2b97eddeae3e7a86abde1f7444cca9b6a578a71f6fa8a3a53c791f6/lytekit-0.15.13-py3-none-any.whl", hash = "sha256:4565a4df2a3cad2aadc02f325923eddf55672921884a839ce7cfeb10ba4cec38", size = 389398 },
-=======
     { url = "https://files.pythonhosted.org/packages/1d/39/2d0c24472751aa0ded66e043f59c6db51d64a292deb43e78b4e441d87615/lytekit-0.15.28-py3-none-any.whl", hash = "sha256:7f33f71bf7f6497a6ea355540cf7c2b82ff5b9a2dbd5810eae475d7a0abcbc25", size = 385950 },
->>>>>>> aa8a34f82fa2d04b7c2576c97c9a559532668df3
 ]
 
 [[package]]
