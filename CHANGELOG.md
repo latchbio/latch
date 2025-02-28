@@ -16,6 +16,82 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.57.0 - 2024-02-27
+
+### Changed
+
+* During registration, we no longer execute workflow code outside of a container to check for syntax errors / parse out task-specific Dockerfiles as this was error prone. We now only parse the code into an AST to check for syntax errors, and inspect the AST to pull out any task specific `dockerfile` arguments.
+* This is a breaking change for users that use the `dockerfile` argument for the `task` decorator:
+  * Old behavior: `dockerfile` accepts a `pathlib.Path` argument which will be resolved against the current working directory
+  * New behavior: `dockerfile` must be a `str` literal (no variable values or expressions) - this is so that we can pull it out from the AST without executing anything
+
+## 2.56.10 - 2025-02-26
+
+### Dependencies
+
+* `lytekit` -> `0.15.28`
+
+## 2.56.9 - 2025-02-26
+
+### Fixed
+
+* Fix bug in `LPath` where `iterdir` will return pending and copy-in-progress files
+
+## 2.56.8 - 2025-02-20
+
+### Dependencies
+
+* `lytekit` -> `0.15.27`
+
+## 2.56.7 - 2025-02-20
+
+### Dependencies
+
+* `lytekitplugins-pods` -> `0.7.4` and `latch-persistence` -> `0.1.4`
+
+## 2.56.6 - 2025-02-20
+
+### Fixed
+
+* Fix bug in `LPath` where `download` with `cache=True` set would fail on a file already present on the file system without the user.version_id xattr
+
+## 2.56.5 - 2025-02-19
+
+### Dependencies
+
+* `lytekit` -> `0.15.26` and `lytekitplugins-pods` -> `0.7.3`
+
+## 2.56.4 - 2025-02-14
+
+### Dependencies
+
+* Bump version of `latch-persistence` (larger connection pool to suppress warning from urllib3 and perhaps improve performance)
+
+## 2.56.3 - 2025-02-13
+
+### Dependencies
+
+* Bump version of `latch-persistence` (parallelize uploads over single file)
+
+## 2.56.2 - 2025-02-12
+
+### Dependencies
+
+* Bump versions of `lytekit` and `lytekitplugins-pods`
+
+## 2.56.1 - 2025-02-11
+
+### Added
+
+* Add `g6e_48xlarge_task` to request 8x L40s GPU instances.
+
+## 2.56.0 - 2025-02-10
+
+### Changed
+
+* Update `LPath` to use `latch_persistence` instead of `latch cp` infrastructure
+  * allows for dramatic download speed ups due to multiprocessing the downloads into chunks
+
 ## 2.55.3 - 2025-01-23
 
 ### Changed

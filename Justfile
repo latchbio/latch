@@ -1,7 +1,7 @@
 # Setup
 
 install:
-  uv sync --group dev --group docs
+  uv sync --group dev --group docs --no-cache --frozen
 
 # Packaging
 

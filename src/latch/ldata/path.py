@@ -1,8 +1,8 @@
 import atexit
-import os
 import re
 import shutil
 import sys
+import warnings
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -20,16 +20,13 @@ from flytekit import (
     Scalar,
 )
 from flytekit.extend import TypeEngine, TypeTransformer
-from typing_extensions import Self
+from latch_persistence import LatchPersistence
 
 from latch.ldata.type import LatchPathError, LDataNodeType
 from latch_cli.utils import urljoins
 
-from ._transfer.download import download as _download
 from ._transfer.node import get_node_data as _get_node_data
-from ._transfer.progress import Progress as _Progress
 from ._transfer.remote_copy import remote_copy as _remote_copy
-from ._transfer.upload import upload as _upload
 from ._transfer.utils import query_with_retry
 
 node_id_regex = re.compile(r"^latch://(?P<id>[0-9]+)\.node$")
@@ -71,6 +68,14 @@ class LPath:
 
     _cache: _Cache = field(
         default_factory=_Cache, init=False, repr=False, hash=False, compare=False
+    )
+
+    _persistence: LatchPersistence = field(
+        default_factory=LatchPersistence,
+        init=False,
+        repr=False,
+        hash=False,
+        compare=False,
     )
 
     path: str
@@ -199,7 +204,7 @@ class LPath:
     def is_dir(self, *, load_if_missing: bool = True) -> bool:
         return self.type(load_if_missing=load_if_missing) in _dir_types
 
-    def iterdir(self) -> Iterator[Self]:
+    def iterdir(self) -> Iterator["LPath"]:
         """Yield LPaths objects contained within the directory.
 
         Should only be called on directories. Does not recursively list directories.
@@ -212,7 +217,7 @@ class LPath:
                 ldataResolvePathData(argPath: $argPath) {
                     finalLinkTarget {
                         type
-                        childLdataTreeEdges(filter: { child: { removed: { equalTo: false } } }) {
+                        childLdataTreeEdges(filter: { child: { removed: { equalTo: false }, pending: { equalTo: false }, copiedFrom: { isNull: true } } }) {
                             nodes {
                                 child {
                                     name
@@ -289,13 +294,17 @@ class LPath:
         src: The source path.
         show_progress_bar: Whether to show a progress bar during the upload.
         """
-        _upload(
-            os.fspath(src),
-            self.path,
-            progress=_Progress.tasks if show_progress_bar else _Progress.none,
-            verbose=False,
-            create_parents=True,
-        )
+        if show_progress_bar:
+            warnings.warn(
+                "argument `show_progress_bar` is deprecated and will be removed in a future release of `latch`.",
+                stacklevel=2,
+            )
+
+        if src.is_dir():
+            self._persistence.upload_directory(str(src), self.path)
+        else:
+            self._persistence.upload(str(src), self.path)
+
         self._clear_cache()
 
     def download(
@@ -312,6 +321,12 @@ class LPath:
             downloaded there. The temprary directory is deleted when the program exits.
         show_progress_bar: Whether to show a progress bar during the download.
         """
+        if show_progress_bar:
+            warnings.warn(
+                "argument `show_progress_bar` is deprecated and will be removed in a future release of `latch`.",
+                stacklevel=2,
+            )
+
         if dst is None:
             global _download_idx
             tmp_dir = Path.home() / ".latch" / "lpath" / str(_download_idx)
@@ -332,17 +347,16 @@ class LPath:
             not_windows
             and cache
             and dst.exists()
+            and xattr.listxattr(dst_str) is not None
+            and "user.version_id" in xattr.listxattr(dst_str)
             and version_id == xattr.getxattr(dst_str, "user.version_id").decode()
         ):
             return dst
 
-        _download(
-            self.path,
-            dst,
-            progress=_Progress.tasks if show_progress_bar else _Progress.none,
-            verbose=False,
-            confirm_overwrite=False,
-        )
+        if self.is_dir():
+            self._persistence.download_directory(self.path, str(dst))
+        else:
+            self._persistence.download(self.path, str(dst))
 
         if not_windows and version_id is not None:
             xattr.setxattr(dst_str, "user.version_id", version_id)

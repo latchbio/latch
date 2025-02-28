@@ -12,7 +12,7 @@ include = ["src/**/*.py", "src/latch_cli/services/init/*"]
 
 [project]
 name = "latch"
-version = "2.55.3.a2"
+version = "2.57.0"
 description = "The Latch SDK"
 authors = [{ name = "Kenny Workman", email = "kenny@latch.bio" }]
 maintainers = [
@@ -23,7 +23,6 @@ maintainers = [
 readme = "README.md"
 license = { file = "LICENSE" }
 
-requires-python = ">=3.9"
 dependencies = [
   "kubernetes>=24.2.0",
   "pyjwt>=0.2.0",
@@ -34,8 +33,8 @@ dependencies = [
   "scp>=0.14.0",
   "boto3>=1.26.0",
   "tqdm>=4.63.0",
-  "lytekit==0.15.17",
-  "lytekitplugins-pods==0.6.2",
+  "lytekit==0.15.28",
+  "lytekitplugins-pods==0.7.4",
   "typing-extensions>=4.12.0",
   "apscheduler>=3.10.0",
   "gql>=3.5.0,<4.0.0",
@@ -52,7 +51,9 @@ dependencies = [
   "setuptools>=75.3.0",
   "pyxattr>=0.8.1",
   "orjson>=3.10.12",
+  "latch-persistence>=0.1.5",
 ]
+requires-python = ">=3.9"
 classifiers = [
   "Development Status :: 4 - Beta",
 

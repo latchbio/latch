@@ -1006,7 +1006,13 @@ wheels = [
 
 [[package]]
 name = "latch"
+<<<<<<< HEAD
 version = "2.54.0a8"
+||||||| 5493f7e
+version = "2.54.10"
+=======
+version = "2.56.10"
+>>>>>>> aa8a34f82fa2d04b7c2576c97c9a559532668df3
 source = { editable = "." }
 dependencies = [
     { name = "aioconsole" },
@@ -1019,6 +1025,7 @@ dependencies = [
     { name = "gql" },
     { name = "graphql-core" },
     { name = "kubernetes" },
+    { name = "latch-persistence" },
     { name = "lytekit" },
     { name = "lytekitplugins-pods" },
     { name = "orjson" },
@@ -1071,8 +1078,17 @@ requires-dist = [
     { name = "gql", specifier = ">=3.5.0,<4.0.0" },
     { name = "graphql-core", specifier = "==3.2.3" },
     { name = "kubernetes", specifier = ">=24.2.0" },
+<<<<<<< HEAD
     { name = "lytekit", specifier = "==0.15.14" },
     { name = "lytekitplugins-pods", specifier = "==0.6.2" },
+||||||| 5493f7e
+    { name = "lytekit", specifier = "==0.15.13" },
+    { name = "lytekitplugins-pods", specifier = "==0.6.2" },
+=======
+    { name = "latch-persistence", specifier = ">=0.1.5" },
+    { name = "lytekit", specifier = "==0.15.28" },
+    { name = "lytekitplugins-pods", specifier = "==0.7.4" },
+>>>>>>> aa8a34f82fa2d04b7c2576c97c9a559532668df3
     { name = "orjson", specifier = ">=3.10.12" },
     { name = "pandas", marker = "extra == 'pandas'", specifier = ">=2.0.0" },
     { name = "paramiko", specifier = ">=3.4.0" },
@@ -1106,6 +1122,7 @@ docs = [
 ]
 
 [[package]]
+<<<<<<< HEAD
 name = "latch-persistence"
 version = "0.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1118,6 +1135,21 @@ wheels = [
 ]
 
 [[package]]
+||||||| 5493f7e
+=======
+name = "latch-persistence"
+version = "0.1.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/30/14/d8ff86ac5bce604396aba3da3419c976d75d5df942bfb844218dcce24f69/latch_persistence-0.1.5.tar.gz", hash = "sha256:2a96cf54777549ee6b682015de84083e518e36f2308fb45c1d62e607669f979c", size = 13441 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fb/24/8a59d89803852b1308c9f265bbcee8fe9108c9edad4fd130f2c81e747dfa/latch_persistence-0.1.5-py3-none-any.whl", hash = "sha256:27802166844d8e95a335b48aa3f226d609492b53f7401e13d099fba39c7f9807", size = 11689 },
+]
+
+[[package]]
+>>>>>>> aa8a34f82fa2d04b7c2576c97c9a559532668df3
 name = "lyteidl"
 version = "0.2.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1133,7 +1165,13 @@ wheels = [
 
 [[package]]
 name = "lytekit"
+<<<<<<< HEAD
 version = "0.15.14"
+||||||| 5493f7e
+version = "0.15.13"
+=======
+version = "0.15.28"
+>>>>>>> aa8a34f82fa2d04b7c2576c97c9a559532668df3
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -1154,6 +1192,7 @@ dependencies = [
     { name = "lyteidl" },
     { name = "marshmallow-enum" },
     { name = "marshmallow-jsonschema" },
+    { name = "memory-profiler" },
     { name = "natsort" },
     { name = "protobuf" },
     { name = "python-dateutil" },
@@ -1170,22 +1209,34 @@ dependencies = [
     { name = "wheel" },
     { name = "wrapt" },
 ]
+<<<<<<< HEAD
 sdist = { url = "https://files.pythonhosted.org/packages/6a/15/c205b4adfcfe65fd01b21365d7f02f9c8e25e6a8554a26419f30275ad374/lytekit-0.15.14.tar.gz", hash = "sha256:92c7662a3cb8d38fe670397183ae517d2b2e175ad43c3949bbc3d1363b604046", size = 292268 }
+||||||| 5493f7e
+sdist = { url = "https://files.pythonhosted.org/packages/0a/54/20266d5b9bfe6fa56fe5a0366f8bb550e18e4ecb635ed8e7b27774a297f9/lytekit-0.15.13.tar.gz", hash = "sha256:147449e255d3bbc13d6f7a39f32f18c891295f38f9bc7e0f9754f546c8aa3a69", size = 295586 }
+=======
+sdist = { url = "https://files.pythonhosted.org/packages/21/14/9fc90dd03dbf3921036e830083adc2dcd88c60690b451d5857f7583bce2a/lytekit-0.15.28.tar.gz", hash = "sha256:37fb835cc6bb6f3ad9b8e493b6c751c29ba50541cc94f831ba267132556a9da5", size = 293243 }
+>>>>>>> aa8a34f82fa2d04b7c2576c97c9a559532668df3
 wheels = [
+<<<<<<< HEAD
     { url = "https://files.pythonhosted.org/packages/d0/13/a90708989e90b274f3d1ac13425ad6d7de3ab77d58cbe1c6ae1d00c878d5/lytekit-0.15.14-py3-none-any.whl", hash = "sha256:9e207b532df63d644c7d17a878337cb160b190b7322de9a7407857a1b104e185", size = 385453 },
+||||||| 5493f7e
+    { url = "https://files.pythonhosted.org/packages/ea/3f/d9bbd2b97eddeae3e7a86abde1f7444cca9b6a578a71f6fa8a3a53c791f6/lytekit-0.15.13-py3-none-any.whl", hash = "sha256:4565a4df2a3cad2aadc02f325923eddf55672921884a839ce7cfeb10ba4cec38", size = 389398 },
+=======
+    { url = "https://files.pythonhosted.org/packages/1d/39/2d0c24472751aa0ded66e043f59c6db51d64a292deb43e78b4e441d87615/lytekit-0.15.28-py3-none-any.whl", hash = "sha256:7f33f71bf7f6497a6ea355540cf7c2b82ff5b9a2dbd5810eae475d7a0abcbc25", size = 385950 },
+>>>>>>> aa8a34f82fa2d04b7c2576c97c9a559532668df3
 ]
 
 [[package]]
 name = "lytekitplugins-pods"
-version = "0.6.2"
+version = "0.7.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "kubernetes" },
     { name = "lytekit" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ba/11/297946ccea7aa1c9dc29109a046eac73eb0e67e8f8fb84b417e71b8310e1/lytekitplugins-pods-0.6.2.tar.gz", hash = "sha256:5d7572f4c0e57bf4637bc7249ecde3f8dde790d46bf4b4a101a88bb490a39fc6", size = 6269 }
+sdist = { url = "https://files.pythonhosted.org/packages/12/73/23cfa980f378c152601b9239d705406f0490a68997aedea9c018ff6ac780/lytekitplugins-pods-0.7.4.tar.gz", hash = "sha256:c641ce23ea528c847a80730590c211a3105b958cfe3c4da36f23b3d8cdc3f63d", size = 10337 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8a/23/c195a0a214986e67a730e2003af98c96f9a36ff78b2fe5f441f373e25e37/lytekitplugins_pods-0.6.2-py3-none-any.whl", hash = "sha256:1a919b4d2b2ef0f91d96105efbf3d64dec724d760ebaaeb53f6fb07518af0fd1", size = 4290 },
+    { url = "https://files.pythonhosted.org/packages/61/de/00155a1dd076249bea980cff064db5df576d7dfdcc4e2ee7338364c529e4/lytekitplugins_pods-0.7.4-py3-none-any.whl", hash = "sha256:374560cbfbff36e728ec5cc5749691fe1ca4c51f512ba09040ce499a7fab61ae", size = 8478 },
 ]
 
 [[package]]
@@ -1323,6 +1374,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d6/54/cfe61301667036ec958cb99bd3efefba235e65cdeb9c84d24a8293ba1d90/mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba", size = 8729 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8", size = 9979 },
+]
+
+[[package]]
+name = "memory-profiler"
+version = "0.61.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "psutil" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b2/88/e1907e1ca3488f2d9507ca8b0ae1add7b1cd5d3ca2bc8e5b329382ea2c7b/memory_profiler-0.61.0.tar.gz", hash = "sha256:4e5b73d7864a1d1292fb76a03e82a3e78ef934d06828a698d9dada76da2067b0", size = 35935 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/49/26/aaca612a0634ceede20682e692a6c55e35a94c21ba36b807cc40fe910ae1/memory_profiler-0.61.0-py3-none-any.whl", hash = "sha256:400348e61031e3942ad4d4109d18753b2fb08c2f6fb8290671c5513a34182d84", size = 31803 },
 ]
 
 [[package]]
