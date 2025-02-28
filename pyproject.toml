@@ -22,6 +22,7 @@ maintainers = [
 
 readme = "README.md"
 license = { file = "LICENSE" }
+requires-python = ">=3.9"
 
 dependencies = [
   "kubernetes>=24.2.0",
@@ -53,7 +54,6 @@ dependencies = [
   "orjson>=3.10.12",
   "latch-persistence>=0.1.5",
 ]
-requires-python = ">=3.9"
 classifiers = [
   "Development Status :: 4 - Beta",
 
