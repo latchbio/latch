@@ -1,4 +1,3 @@
-# todo(ayush): consolidate this into latch-snakemake
 from __future__ import annotations
 
 from dataclasses import dataclass, field
