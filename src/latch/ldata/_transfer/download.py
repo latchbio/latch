@@ -82,6 +82,10 @@ def download(
         err = res.json()["error"]
         msg = f"failed to fetch presigned url(s) for path {src}"
         if res.status_code == 400:
+            if err == "Node does not exist or signer lacks permissions":
+                raise RuntimeError(
+                    f"{msg}: Either the data does not exist, or you lack the necessary permissions to download it. Contact your administrator."
+                )
             raise ValueError(f"{msg}: download request invalid: {err}")
         if res.status_code == 401:
             raise RuntimeError(f"authorization token invalid: {err}")
