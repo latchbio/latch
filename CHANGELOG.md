@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.57.1 - 2024-03-07
+
+### Changed
+
+* Improved error message when `latch cp` fails due to permissions errors.
+
 ## 2.57.0 - 2024-02-27
 
 ### Changed
