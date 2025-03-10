@@ -22,8 +22,8 @@ maintainers = [
 
 readme = "README.md"
 license = { file = "LICENSE" }
-
 requires-python = ">=3.9"
+
 dependencies = [
   "kubernetes>=24.2.0",
   "pyjwt>=0.2.0",
@@ -38,9 +38,9 @@ dependencies = [
   "lytekitplugins-pods==0.7.4",
   "typing-extensions>=4.12.0",
   "apscheduler>=3.10.0",
-  "gql==3.4.0",
+  "gql>=3.5.0,<4.0.0",
   "graphql-core==3.2.3",
-  "requests-toolbelt==0.10.1",
+  "requests-toolbelt>=1.0.0,<2.0.0",
   "python-dateutil>=2.8",
   "GitPython==3.1.40",
   # for old latch develop, to be removed
@@ -98,11 +98,10 @@ docs = [
 ]
 
 [tool.ruff]
+line-length = 100
 target-version = "py39"
 
 [tool.ruff.lint]
-preview = true
-
 pydocstyle = { convention = "google" }
 extend-select = [
   "F",
