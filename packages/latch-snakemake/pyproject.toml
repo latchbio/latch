@@ -1,12 +1,12 @@
 [project]
 name = "latch-snakemake"
-version = "2.57.0"
+version = "2.57.2"
 description = "Add your description here"
 readme = "README.md"
 authors = [{ name = "Ayush Kamat", email = "ayush@latch.bio" }]
 requires-python = ">=3.11"
 dependencies = [
-    "latch==2.57.0",
+    "latch==2.57.2",
     "snakemake",
     "snakemake-storage-plugin-latch==0.1.10",
     "snakemake-executor-plugin-latch==0.1.8",
