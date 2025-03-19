@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.57.3 - 2024-03-19
+
+### Fixed
+
+* Use Nextflow base image when generating Dockerfile for a Nextflow workflow.
+
 ## 2.57.2 - 2024-03-07
 
 ### Changed
