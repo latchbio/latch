@@ -29,11 +29,13 @@ class LaunchPlan:
     def __init__(
         self, workflow: WorkflowBase, name: str, default_params: Dict[str, Any]
     ):
-        try:
+        try:  # noqa: SIM105
             _LaunchPlan.create(
                 f"{workflow.__module__}.{workflow.name}.{name}",
                 workflow,
                 default_params,
             )
-        except AssertionError:  # if the launchplan already exists, the `create` method throws an AssertionError
+
+        # if the launchplan already exists, the `create` method throws an AssertionError
+        except AssertionError:
             pass
