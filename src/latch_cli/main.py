@@ -601,6 +601,10 @@ def register(
     """Register local workflow code to Latch.
 
     Visit docs.latch.bio to learn more.
+
+    # Exit codes
+    1 - Registration failure
+    2 - Workflow already registered
     """
 
     use_new_centromere = os.environ.get("LATCH_REGISTER_BETA") is not None
