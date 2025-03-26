@@ -192,10 +192,8 @@ def _get_workflow_interface(
 def _launch_workflow(token: str, wf_id: str, params: dict) -> bool:
     """Launch the workflow of given id with parameter map.
 
-    Return True if success
+    Return True if success, raises appropriate exceptions on failure.
     """
-
-    # TODO (kenny) - pull out to consolidated requests class
     # Server sometimes stalls on requests with python user-agent
     headers = {
         "Authorization": f"Bearer {token}",
@@ -213,17 +211,57 @@ def _launch_workflow(token: str, wf_id: str, params: dict) -> bool:
     url = config.api.execution.create
 
     response = requests.post(url, headers=headers, json=_interface_request)
+    response_data = response.json()
+
+    def extract_error_message(data: dict) -> str:
+        if "error" in data:
+            error = data["error"]
+            source = error.get("source", "unknown")
+
+            error_data = error.get("data", {})
+            message = (
+                error_data.get("stderr") or
+                error_data.get("message") or
+                str(error_data)
+            )
+
+            if isinstance(message, str):
+                error_lines = [line for line in message.split("\n") if "Error:" in line]
+                if error_lines:
+                    message = error_lines[-1].replace("Error:", "").strip()
+
+            return f"({source}): {message}"
+        return str(data)
+
+    if response.status_code != 200:
+        print("\nRaw server response:")
+        print(response_data)
 
     if response.status_code == 403:
         raise PermissionError(
             "You need access to the latch sdk beta ~ join the waitlist @"
             " https://latch.bio/sdk"
         )
-    elif response.status_code == 401:
+    if response.status_code == 401:
         raise ValueError(
             "your token has expired - please run latch login to refresh your token and"
             " try again."
         )
-    wf_interface_resp = response.json()
+    if response.status_code == 429:
+        error_msg = extract_error_message(response_data)
+        print(f"\nFormatted error message: {error_msg}")
+        raise RuntimeError(f"Rate limit reached - {error_msg}")
+    if response.status_code == 400:
+        error_msg = extract_error_message(response_data)
+        print(f"\nFormatted error message: {error_msg}")
+        raise ValueError(f"Workflow launch failed - {error_msg}")
+    if response.status_code != 200:
+        error_msg = extract_error_message(response_data)
+        print(f"\nFormatted error message: {error_msg}")
+        raise RuntimeError(f"Server error (HTTP {response.status_code}) - {error_msg}")
+    if "error" in response_data or response_data.get("status") != "Successfully launched workflow":
+        error_msg = extract_error_message(response_data)
+        print(f"\nFormatted error message: {error_msg}")
+        raise RuntimeError(f"Workflow launch failed - {error_msg}")
 
-    return wf_interface_resp.get("success") is True
+    return True

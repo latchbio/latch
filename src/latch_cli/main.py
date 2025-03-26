@@ -2,6 +2,7 @@
 
 import os
 import sys
+import traceback
 from pathlib import Path
 from textwrap import dedent
 from typing import Callable, List, Optional, Tuple, TypeVar, Union
@@ -647,12 +648,14 @@ def register(
 def launch(params_file: Path, version: Union[str, None] = None):
     """Launch a workflow using a python parameter map."""
 
-    crash_handler.message = f"Unable to launch workflow"
-    crash_handler.pkg_root = str(Path.cwd())
-
     from latch_cli.services.launch import launch
 
-    wf_name = launch(params_file, version)
+    try:
+        wf_name = launch(params_file, version)
+    except Exception as e:
+        traceback.print_exc()
+        raise click.exceptions.Exit(1) from e
+
     if version is None:
         version = "latest"
 
