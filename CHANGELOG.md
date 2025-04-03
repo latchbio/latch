@@ -16,6 +16,25 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.58.1 - 2024-04-03
+
+### Fixed
+
+* `latch register --workflow-module` treating `.` separated python paths as file paths
+
+## 2.58.0 - 2024-03-26
+
+### Fixed
+
+* `latch launch` error messages being suppressed
+* `g6e-12xlarge` GPU instance type incorrect GPU annotation (1 -> 4 L40s GPUs)
+
+## 2.57.3 - 2024-03-19
+
+### Fixed
+
+* Use Nextflow base image when generating Dockerfile for a Nextflow workflow.
+
 ## 2.57.2 - 2024-03-07
 
 ### Changed

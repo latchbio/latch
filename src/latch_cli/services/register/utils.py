@@ -110,9 +110,7 @@ def build_image(
 def upload_image(ctx: _CentromereCtx, image_name: str) -> List[str]:
     assert ctx.dkr_client is not None
     return ctx.dkr_client.push(
-        repository=f"{ctx.dkr_repo}/{image_name}",
-        stream=True,
-        decode=True,
+        repository=f"{ctx.dkr_repo}/{image_name}", stream=True, decode=True
     )
 
 
@@ -123,6 +121,8 @@ def serialize_pkg_in_container(
     wf_name_override: Optional[str] = None,
 ) -> Tuple[List[str], str]:
     assert ctx.dkr_client is not None
+    assert ctx.dkr_repo is not None
+    assert ctx.version is not None
 
     _env = {"LATCH_DKR_REPO": ctx.dkr_repo, "LATCH_VERSION": ctx.version}
     if wf_name_override is not None:
@@ -146,12 +146,7 @@ def serialize_pkg_in_container(
         volumes=[serialize_dir],
         environment=_env,
         host_config=ctx.dkr_client.create_host_config(
-            binds={
-                serialize_dir: {
-                    "bind": "/tmp/output",
-                    "mode": "rw",
-                },
-            }
+            binds={serialize_dir: {"bind": "/tmp/output", "mode": "rw"}}  # noqa: S108
         ),
     )
     container_id = typing.cast(str, container.get("Id"))
@@ -191,9 +186,7 @@ def register_serialized_pkg(
             serialize_files[fh.name] = fh
 
         response = requests.post(
-            latch_register_url,
-            headers=headers,
-            files=serialize_files,
+            latch_register_url, headers=headers, files=serialize_files
         )
         response.raise_for_status()
         return response.json()

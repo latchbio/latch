@@ -95,6 +95,15 @@ class _CentromereCtx:
         self.disable_auto_version = disable_auto_version
         self.wf_module = wf_module if wf_module is not None else "wf"
 
+        if self.wf_module.startswith("."):
+            click.secho(
+                dedent(f"""\
+                Workflow module `{self.wf_module}` must be absolute (i.e. must not start with `.`)
+                """),
+                fg="red",
+            )
+            raise click.exceptions.Exit(1)
+
         try:
             self.token = retrieve_or_login()
             self.account_id = current_workspace()
@@ -173,17 +182,20 @@ class _CentromereCtx:
             self.container_map: Dict[str, _Container] = {}
 
             if self.workflow_type == WorkflowType.latchbiosdk:
+                # fixme(ayush): this sucks
+                module_path = pkg_root / Path(self.wf_module.replace(".", "/"))
+
                 try:
-                    flyte_objects = get_flyte_objects(self.pkg_root / self.wf_module)
+                    flyte_objects = get_flyte_objects(module_path)
                 except ModuleNotFoundError as e:
                     click.secho(
                         dedent(
                             f"""
-                            Unable to locate workflow module `{self.wf_module}`. Check that:
+                            Unable to locate workflow module `{self.wf_module}` in `{self.pkg_root.resolve()}`. Check that:
 
-                            1. Package `{self.wf_module}` exists in {pkg_root.resolve()}.
-                            2. Package `{self.wf_module}` is an importable Python path (e.g. `workflows.my_workflow`).
-                            3. Any directories in `{self.wf_module}` contain an `__init__.py` file."""
+                            1. {module_path} exists.
+                            2. Package `{self.wf_module}` is an absolute importable Python path (e.g. `workflows.my_workflow`).
+                            3. All directories in `{module_path}` contain an `__init__.py` file."""
                         ),
                         fg="red",
                     )
