@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.58.2 - 2024-04-03
+
+### Fixed
+
+* Fix issue where `LaunchPlan`s would not be interpreted correctly in custom workflow modules
+
 ## 2.58.1 - 2024-04-03
 
 ### Fixed
