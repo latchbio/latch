@@ -1,7 +1,7 @@
-from typing import Any, Dict
+from typing import Any
 
 from flytekit.core.launch_plan import LaunchPlan as _LaunchPlan
-from flytekit.core.workflow import WorkflowBase
+from flytekit.core.workflow import PythonFunctionWorkflow
 
 
 class LaunchPlan:
@@ -27,11 +27,14 @@ class LaunchPlan:
     """
 
     def __init__(
-        self, workflow: WorkflowBase, name: str, default_params: Dict[str, Any]
+        self,
+        workflow: PythonFunctionWorkflow,
+        name: str,
+        default_params: dict[str, Any],
     ):
         try:  # noqa: SIM105
             _LaunchPlan.create(
-                f"{workflow.__module__}.{workflow.name}.{name}",
+                f"{workflow.__module__}.{workflow.__name__}.{name}",
                 workflow,
                 default_params,
             )
