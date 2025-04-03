@@ -195,7 +195,7 @@ class _CentromereCtx:
 
                             1. {module_path} exists.
                             2. Package `{self.wf_module}` is an absolute importable Python path (e.g. `workflows.my_workflow`).
-                            3. Any directories in `{module_path}` contain an `__init__.py` file."""
+                            3. All directories in `{module_path}` contain an `__init__.py` file."""
                         ),
                         fg="red",
                     )
