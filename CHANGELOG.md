@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.58.1 - 2024-04-03
+
+### Fixed
+
+* `latch register --workflow-module` treating `.` separated python paths as file paths
+
 ## 2.58.0 - 2024-03-26
 
 ### Fixed
