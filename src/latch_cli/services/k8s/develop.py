@@ -34,12 +34,24 @@ if TYPE_CHECKING:
 max_polls = 1800
 
 
+# not going to allow most of these for now
 class InstanceSize(str, Enum):
     small_task = "small_task"
     medium_task = "medium_task"
-    large_task = "large_task"
+    # large_task = "large_task"
     small_gpu_task = "small_gpu_task"
-    large_gpu_task = "large_gpu_task"
+    # large_gpu_task = "large_gpu_task"
+    # v100_x1_task = "v100_x1_task"
+    # v100_x4_task = "v100_x4_task"
+    # v100_x8_task = "v100_x8_task"
+    # g6e_xlarge_task = "g6e_xlarge_task"
+    # g6e_2xlarge_task = "g6e_2xlarge_task"
+    # g6e_4xlarge_task = "g6e_4xlarge_task"
+    # g6e_8xlarge_task = "g6e_8xlarge_task"
+    # g6e_12xlarge_task = "g6e_12xlarge_task"
+    # g6e_16xlarge_task = "g6e_16xlarge_task"
+    # g6e_24xlarge_task = "g6e_24xlarge_task"
+    # g6e_48xlarge_task = "g6e_48xlarge_task"
 
 
 human_readable_task_sizes: dict[str, InstanceSize] = {
@@ -282,13 +294,12 @@ def local_development(
             )
             raise click.exceptions.Exit(1) from e
 
-    if image is None and wf_version is None:
-        image_info = get_image_info(pkg_root)
-    elif image is None:
-        assert wf_version is not None
+    if image is not None:
+        image_info = ImageInfo.from_str(image)
+    elif wf_version is not None:
         image_info = ImageInfo(get_image_name(pkg_root), wf_version)
     else:
-        image_info = ImageInfo.from_str(image)
+        image_info = get_image_info(pkg_root)
 
     click.secho("Initiating local development session", fg="blue")
     click.echo(click.style("Selected image: ", fg="blue") + image_info.image)
