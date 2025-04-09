@@ -413,7 +413,6 @@ def generate_metadata(
     type=bool,
     help="Skip the confirmation dialog.",
 )
-@click.option("--image", "-i", type=str, help="Image to use for develop session.")
 @click.option(
     "--wf-version",
     "-v",
@@ -453,7 +452,6 @@ def generate_metadata(
 def local_development(
     pkg_root: Path,
     yes: bool,
-    image: Optional[str],
     wf_version: Optional[str],
     disable_sync: bool,
     snakemake: bool,
@@ -482,7 +480,6 @@ def local_development(
         pkg_root.resolve(),
         skip_confirm_dialog=yes,
         size=instance_size,
-        image=image,
         wf_version=wf_version,
         disable_sync=disable_sync,
     )

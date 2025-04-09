@@ -2,19 +2,15 @@ from __future__ import annotations
 
 import asyncio
 import json
-import re
 import subprocess  # noqa: S404
 import sys
-from dataclasses import dataclass
 from enum import Enum
-from textwrap import dedent
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin, urlparse
 
 import click
 import gql
 import websockets.client as websockets
-from typing_extensions import Self
 
 from latch.utils import current_workspace
 from latch_sdk_config.latch import NUCLEUS_URL
@@ -54,24 +50,6 @@ class InstanceSize(str, Enum):
     # g6e_48xlarge_task = "g6e_48xlarge_task"
 
 
-@dataclass
-class ImageInfo:
-    image: str
-    version: str
-
-    __expr = re.compile(
-        r"^(?:812206152185.dkr.ecr.us-west-2.amazonaws.com/)?(?P<image>[^:]+):(?P<version>[^:]+)"
-    )
-
-    @classmethod
-    def from_str(cls, image_str: str) -> Self:
-        match = cls.__expr.match(image_str)
-        if match is None:
-            raise ValueError(f"invalid image name: {image_str}")
-
-        return cls(match["image"], match["version"])
-
-
 def workflow_name(pkg_root: Path) -> str:
     name_path = pkg_root / latch_constants.pkg_workflow_name
     if not name_path.exists():
@@ -84,7 +62,7 @@ def workflow_name(pkg_root: Path) -> str:
     return name_path.read_text().strip()
 
 
-def get_image_name(pkg_root: Path) -> str:
+def get_image(pkg_root: Path) -> str:
     ws_id = current_workspace()
     wf_name = workflow_name(pkg_root)
 
@@ -99,7 +77,7 @@ def get_image_name(pkg_root: Path) -> str:
     return f"{prefix}_{suffix}"
 
 
-def get_image_info(pkg_root: Path) -> ImageInfo:
+def get_latest_registered_version(pkg_root: Path) -> str:
     ws_id = current_workspace()
 
     wf_name = workflow_name(pkg_root)
@@ -127,9 +105,7 @@ def get_image_info(pkg_root: Path) -> ImageInfo:
         )
         raise click.exceptions.Exit(1)
 
-    latest_version = res["nodes"][0]["version"]
-
-    return ImageInfo(get_image_name(pkg_root), latest_version)
+    return res["nodes"][0]["version"]
 
 
 async def rsync(pkg_root: Path, ip: str):
@@ -151,7 +127,6 @@ async def rsync(pkg_root: Path, ip: str):
             stderr=subprocess.DEVNULL,
         )
 
-        # todo(ayush): use inotify or something instead of running on a fixed interval
         await asyncio.sleep(0.5)
 
 
@@ -264,7 +239,6 @@ def local_development(
     *,
     size: InstanceSize,
     skip_confirm_dialog: bool,
-    image: str | None,
     wf_version: str | None,
     disable_sync: bool,
 ):
@@ -283,15 +257,13 @@ def local_development(
             )
             raise click.exceptions.Exit(1) from e
 
-    if image is not None:
-        image_info = ImageInfo.from_str(image)
-    elif wf_version is not None:
-        image_info = ImageInfo(get_image_name(pkg_root), wf_version)
-    else:
-        image_info = get_image_info(pkg_root)
+    image = get_image(pkg_root)
+    if wf_version is None:
+        wf_version = get_latest_registered_version(pkg_root)
 
     click.secho("Initiating local development session", fg="blue")
-    click.echo(click.style("Selected image: ", fg="blue") + image_info.image)
+    click.echo(click.style("Selected image: ", fg="blue") + image)
+    click.echo(click.style("Selected version: ", fg="blue") + wf_version)
     click.echo(click.style("Selected instance size: ", fg="blue") + size)
 
     if skip_confirm_dialog:
@@ -307,12 +279,5 @@ def local_development(
         )
 
         asyncio.run(
-            session(
-                pkg_root,
-                image_info.image,
-                image_info.version,
-                ssh.public_key,
-                size,
-                disable_sync,
-            )
+            session(pkg_root, image, wf_version, ssh.public_key, size, disable_sync)
         )
