@@ -54,13 +54,6 @@ class InstanceSize(str, Enum):
     # g6e_48xlarge_task = "g6e_48xlarge_task"
 
 
-human_readable_task_sizes: dict[str, InstanceSize] = {
-    "Small Task": InstanceSize.small_task,
-    "Medium Task": InstanceSize.medium_task,
-    "Small GPU Task": InstanceSize.small_gpu_task,
-}
-
-
 @dataclass
 class ImageInfo:
     image: str
@@ -285,11 +278,7 @@ def local_development(
             )
         except FileNotFoundError as e:
             click.secho(
-                dedent("""\
-                rsync is required for latch develop. Please install rsync and try again
-                    linux: apt install rsync
-                    mac: brew install rsync
-                """),
+                "`rsync` could not be found. Please either install `rsync` or run `latch develop` without it using `--disable-sync`.",
                 fg="red",
             )
             raise click.exceptions.Exit(1) from e
