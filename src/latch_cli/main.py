@@ -18,7 +18,7 @@ from latch_cli.exceptions.handler import CrashHandler
 from latch_cli.services.cp.autocomplete import complete as cp_complete
 from latch_cli.services.cp.autocomplete import remote_complete
 from latch_cli.services.init.init import template_flag_to_option
-from latch_cli.services.local_dev import TaskSize
+from latch_cli.services.k8s.develop import InstanceSize
 from latch_cli.utils import (
     AuthenticationError,
     WorkflowType,
@@ -441,6 +441,14 @@ def generate_metadata(
     type=click.Path(exists=False, path_type=Path, file_okay=False),
     help="Path to directory containing Latch metadata. Only for Snakemake",
 )
+@click.option(
+    "--instance-size",
+    "--size",
+    "-s",
+    type=EnumChoice(InstanceSize, case_sensitive=False),
+    default=InstanceSize.small_task,
+    help="Size of machine to provision for develop session",
+)
 @requires_login
 def local_development(
     pkg_root: Path,
@@ -450,6 +458,7 @@ def local_development(
     disable_sync: bool,
     snakemake: bool,
     metadata_root: Optional[Path],
+    instance_size: InstanceSize,
 ):
     """Develop workflows "locally"
 
@@ -459,21 +468,24 @@ def local_development(
     crash_handler.message = "Error during local development session"
     crash_handler.pkg_root = str(pkg_root)
 
-    if os.environ.get("LATCH_DEVELOP_BETA") is not None:
-        from latch_cli.services.local_dev import local_development
-
-        local_development(
-            pkg_root.resolve(),
-            skip_confirm_dialog=yes,
-            size=TaskSize.small_task,
-            image=image,
-        )
-    else:
+    # todo(ayush): purge
+    if snakemake:
         from latch_cli.services.local_dev_old import local_development
 
-        local_development(
+        return local_development(
             pkg_root.resolve(), snakemake, wf_version, metadata_root, disable_sync
         )
+
+    from latch_cli.services.k8s.develop import local_development
+
+    return local_development(
+        pkg_root.resolve(),
+        skip_confirm_dialog=yes,
+        size=instance_size,
+        image=image,
+        wf_version=wf_version,
+        disable_sync=disable_sync,
+    )
 
 
 @main.command("exec")
