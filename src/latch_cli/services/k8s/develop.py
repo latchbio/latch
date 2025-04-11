@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import shlex
 import subprocess  # noqa: S404
 import sys
 from enum import Enum
@@ -36,11 +37,11 @@ class InstanceSize(str, Enum):
     medium_task = "medium_task"
     # large_task = "large_task"
     small_gpu_task = "small_gpu_task"
-    # large_gpu_task = "large_gpu_task"
-    # v100_x1_task = "v100_x1_task"
+    large_gpu_task = "large_gpu_task"
+    v100_x1_task = "v100_x1_task"
     # v100_x4_task = "v100_x4_task"
     # v100_x8_task = "v100_x8_task"
-    # g6e_xlarge_task = "g6e_xlarge_task"
+    g6e_xlarge_task = "g6e_xlarge_task"
     # g6e_2xlarge_task = "g6e_2xlarge_task"
     # g6e_4xlarge_task = "g6e_4xlarge_task"
     # g6e_8xlarge_task = "g6e_8xlarge_task"
@@ -109,12 +110,26 @@ def get_latest_registered_version(pkg_root: Path) -> str:
 
 
 async def rsync(pkg_root: Path, ip: str):
-    ssh_command = "ssh -o CheckHostIP=no -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -o ServerAliveCountMax=5 -J root@a1fd7b5d7b5824b46b8671207e1124b6-610912349.us-west-2.elb.amazonaws.com"
+    ssh_command = shlex.quote(
+        shlex.join([
+            "ssh",
+            "-o",
+            "CheckHostIP=no",
+            "-o",
+            "StrictHostKeyChecking=no",
+            "-o",
+            "ServerAliveInterval=30",
+            "-o",
+            "ServerAliveCountMax=5",
+            "-J",
+            f"root@{latch_constants.ssh_forwarder_elb_host}",
+        ])
+    )
 
     while True:
         await asyncio.create_subprocess_shell(
             "rsync"
-            f' --rsh="{ssh_command}"'
+            f" --rsh={ssh_command}"
             " --compress"
             " --recursive"
             " --links"
@@ -160,7 +175,7 @@ async def print_status_message(queue: asyncio.Queue[dict[str, str]]) -> None:
         idx += 1
         idx %= 4
 
-        click.secho(f"\x1b[2K\r{icon} {message}", dim=True, nl=False)
+        click.secho(f"\x1b[2K\r{message} {icon}", dim=True, nl=False)
 
         await asyncio.sleep(0.25)
 
@@ -210,10 +225,16 @@ async def session(
 
         _ = json.loads(await conn.recv())
 
+        # hide cursor
+        click.echo("\x1b[?25l", nl=False)
+
         q = asyncio.Queue[dict[str, str]]()
         ip, _ = await asyncio.gather(
             monitor_pod_status(conn, q), print_status_message(q)
         )
+
+        # clear + show cursor
+        click.echo("\x1b[2K\r\x1b[?25h", nl=False)
 
         import termios
         import tty
