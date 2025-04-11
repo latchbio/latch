@@ -12,7 +12,7 @@ include = ["src/**/*.py", "src/latch_cli/services/init/*"]
 
 [project]
 name = "latch"
-version = "2.58.2"
+version = "2.58.3"
 description = "The Latch SDK"
 authors = [{ name = "Kenny Workman", email = "kenny@latch.bio" }]
 maintainers = [
@@ -192,6 +192,7 @@ ignore = [
 
   "S101",
   "S603",
+  "S607",
 
   "N807",
 
