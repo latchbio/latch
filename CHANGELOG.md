@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.59.0 - 2024-04-11
+
+### Added
+
+* New backend for `latch develop` which allows users to choose which instance they want to develop in (allowing, e.g. GPU enabled development)
+
 ## 2.58.2 - 2024-04-03
 
 ### Fixed
