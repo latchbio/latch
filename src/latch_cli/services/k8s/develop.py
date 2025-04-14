@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import shlex
 import subprocess  # noqa: S404
 import sys
@@ -110,37 +111,47 @@ def get_latest_registered_version(pkg_root: Path) -> str:
 
 
 async def rsync(pkg_root: Path, ip: str):
-    ssh_command = shlex.quote(
-        shlex.join([
-            "ssh",
-            "-o",
-            "CheckHostIP=no",
-            "-o",
-            "StrictHostKeyChecking=no",
-            "-o",
-            "ServerAliveInterval=30",
-            "-o",
-            "ServerAliveCountMax=5",
-            "-J",
-            f"root@{latch_constants.ssh_forwarder_elb_host}",
-        ])
-    )
+    ssh_command = shlex.join([
+        "ssh",
+        "-o",
+        "CheckHostIP=no",
+        "-o",
+        "StrictHostKeyChecking=no",
+        "-o",
+        "ServerAliveInterval=30",
+        "-o",
+        "ServerAliveCountMax=5",
+        "-J",
+        f"root@{latch_constants.ssh_forwarder_elb_host}",
+    ])
+
+    rsync_command: list[str] = [
+        "rsync",
+        f'--rsh="{ssh_command}"',
+        "--compress",
+        "--recursive",
+        "--links",
+        "--times",
+        "--devices",
+        "--specials",
+    ]
+
+    if (pkg_root / ".gitignore").exists():
+        rsync_command.extend(["--exclude-from", str(pkg_root / ".gitignore")])
+
+    if (pkg_root / ".dockerignore").exists():
+        rsync_command.extend(["--exclude-from", str(pkg_root / ".dockerignore")])
+
+    rsync_command.extend([f"{pkg_root}/", f"root@{ip}:/root/"])
 
     while True:
-        await asyncio.create_subprocess_shell(
-            "rsync"
-            f" --rsh={ssh_command}"
-            " --compress"
-            " --recursive"
-            " --links"
-            " --times"
-            " --devices"
-            " --specials"
-            f" {pkg_root}/"
-            f" root@{ip}:/root/",
+        proc = await asyncio.create_subprocess_shell(
+            " ".join(rsync_command),
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            env=os.environ,
         )
+        await proc.communicate()
 
         await asyncio.sleep(0.5)
 

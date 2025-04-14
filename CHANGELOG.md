@@ -16,6 +16,16 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.59.1 - 2024-04-14
+
+### Fixed
+
+* Bug in `latch develop` where rsync processes would not wait for the previous to complete before spawning
+
+### Changed
+
+* rsync in `latch develop` now respects both `.gitignore` and `.dockerignore` exclusion rules
+
 ## 2.59.0 - 2024-04-11
 
 ### Added
