@@ -353,6 +353,7 @@ def register(
         snakefile=snakefile,
         nf_script=nf_script,
         use_new_centromere=use_new_centromere,
+        overwrite=skip_confirmation,
     ) as ctx:
         assert ctx.workflow_name is not None, "Unable to determine workflow name"
         assert ctx.version is not None, "Unable to determine workflow version"
