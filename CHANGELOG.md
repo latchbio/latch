@@ -16,6 +16,22 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.59.2 - 2024-04-18
+
+### Fixed
+
+* `latch register` asks for file overwrite confirmation when run with `--yes`
+
+### Changed
+
+* `latch register` returns an exit code of `2` on duplicate registration
+
+
+### Dependencies
+
+* `gql` upgraded to `3.5.0`
+* `requests-toolbelt` upgraded to `1.0.0`
+
 ## 2.59.1 - 2024-04-14
 
 ### Fixed
