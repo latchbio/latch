@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any
 
 from flytekit.core.launch_plan import LaunchPlan as _LaunchPlan
@@ -31,12 +33,16 @@ class LaunchPlan:
         workflow: PythonFunctionWorkflow,
         name: str,
         default_params: dict[str, Any],
+        description: str | None = None,
     ):
         try:  # noqa: SIM105
             _LaunchPlan.create(
                 f"{workflow.__module__}.{workflow.__name__}.{name}",
                 workflow,
                 default_params,
+                annotations={
+                    "description": description,
+                }
             )
 
         # if the launchplan already exists, the `create` method throws an AssertionError
