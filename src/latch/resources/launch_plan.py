@@ -4,7 +4,7 @@ from typing import Any
 
 from flytekit.core.launch_plan import LaunchPlan as _LaunchPlan
 from flytekit.core.workflow import PythonFunctionWorkflow
-from flytekit.core.annotation import FlyteAnnotation
+from flytekit.models.common import Labels
 
 
 class LaunchPlan:
@@ -40,10 +40,8 @@ class LaunchPlan:
             _LaunchPlan.create(
                 f"{workflow.__module__}.{workflow.__name__}.{name}",
                 workflow,
-                {
-                    **default_params,
-                    "__description": description,
-                },
+                default_params,
+                labels=Labels({"description": description}),
             )
 
         # if the launchplan already exists, the `create` method throws an AssertionError
