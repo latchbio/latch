@@ -555,7 +555,7 @@ def execute(
 )
 @click.option(
     "--mark-as-release",
-    "-r",
+    "-m",
     is_flag=True,
     default=False,
     type=bool,
