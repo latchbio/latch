@@ -20,7 +20,7 @@ Types of changes
 
 ### Fixed
 
-* `latch register` asks for file overwrite confirmation when run with `--yes`
+* `latch register` no longer asks for file overwrite confirmation when run with `--yes`
 
 ### Changed
 
