@@ -26,7 +26,6 @@ Types of changes
 
 * `latch register` returns an exit code of `2` on duplicate registration
 
-
 ### Dependencies
 
 * `gql` upgraded to `3.5.0`
