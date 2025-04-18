@@ -40,6 +40,7 @@ class LaunchPlan:
         workflow: PythonFunctionWorkflow,
         name: str,
         default_params: dict[str, Any],
+        *,
         description: str | None = None,
     ):
         labels = {}
