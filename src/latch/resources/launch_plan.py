@@ -43,7 +43,7 @@ class LaunchPlan:
         description: str | None = None,
     ):
         labels = {}
-        if description:
+        if description is not None:
             labels["description"] = b62encode(description)
 
         try:  # noqa: SIM105
