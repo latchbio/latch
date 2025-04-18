@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.61.0 - 2025-04-18
+
+### Added
+
+* description field to `LaunchPlan`
+
 ## 2.60.0 - 2025-04-18
 
 ### Added
