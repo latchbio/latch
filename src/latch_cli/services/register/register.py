@@ -175,7 +175,7 @@ def _print_reg_resp(resp, image):
             error_code = 2
 
         click.secho(f"\n{error_str}", fg="red", bold=True)
-        sys.exit(error_code)
+        raise click.exceptions.Exit(error_code)
     elif not "Successfully registered file" in resp["stdout"]:
         click.secho(
             f"\nVersion ({version}) already exists."
@@ -183,7 +183,7 @@ def _print_reg_resp(resp, image):
             fg="red",
             bold=True,
         )
-        sys.exit(2)
+        raise click.exceptions.Exit(2)
 
     click.echo(resp.get("stdout"))
 
