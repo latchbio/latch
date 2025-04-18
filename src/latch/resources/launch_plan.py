@@ -4,6 +4,7 @@ from typing import Any
 
 from flytekit.core.launch_plan import LaunchPlan as _LaunchPlan
 from flytekit.core.workflow import PythonFunctionWorkflow
+from flytekit.core.annotation import FlyteAnnotation
 
 
 class LaunchPlan:
@@ -40,9 +41,9 @@ class LaunchPlan:
                 f"{workflow.__module__}.{workflow.__name__}.{name}",
                 workflow,
                 default_params,
-                annotations={
-                    "description": description,
-                }
+                annotations=FlyteAnnotation(
+                    {"description": description},
+                ),
             )
 
         # if the launchplan already exists, the `create` method throws an AssertionError
