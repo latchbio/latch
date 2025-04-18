@@ -40,10 +40,10 @@ class LaunchPlan:
             _LaunchPlan.create(
                 f"{workflow.__module__}.{workflow.__name__}.{name}",
                 workflow,
-                default_params,
-                annotations=FlyteAnnotation(
-                    {"description": description},
-                ),
+                {
+                    **default_params,
+                    "__description": description,
+                },
             )
 
         # if the launchplan already exists, the `create` method throws an AssertionError
