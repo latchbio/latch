@@ -626,7 +626,9 @@ def register(
                     l_gql.execute(
                         gql.gql("""
                         mutation MarkWorkflowAsRelease($id: BigInt!) {
-                            updateWorkflowInfo(input: {patch: {isRelease: true}, id: $id})
+                            updateWorkflowInfo(input: {patch: {isRelease: true}, id: $id}) {
+                                clientMutationId
+                            }
                         }
                         """),
                         {
