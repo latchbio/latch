@@ -293,6 +293,7 @@ def register(
     progress_plain: bool = False,
     cache_tasks: bool = False,
     use_new_centromere: bool = False,
+    mark_as_release: bool = False,
 ):
     """Registers a workflow, defined as python code, with Latch.
 
@@ -620,6 +621,21 @@ def register(
                 wf_id = wf_infos[0]["id"]
                 url = f"https://console.latch.bio/workflows/{wf_id}"
                 click.secho(url, fg="green")
+
+                if mark_as_release:
+                    l_gql.execute(
+                        gql.gql("""
+                        mutation MarkWorkflowAsRelease($id: BigInt!) {
+                            updateWorkflowInfo(input: {patch: {isRelease: true}, id: $id}) {
+                                clientMutationId
+                            }
+                        }
+                        """),
+                        {
+                            "id": wf_id,
+                        },
+                    )
+                    click.secho("Workflow marked as release", fg="green")
 
                 if open:
                     webbrowser.open(url)

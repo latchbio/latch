@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.60.0 - 2025-04-18
+
+### Added
+
+* `latch register --mark-as-release` flag
+
 ## 2.59.2 - 2025-04-18
 
 ### Fixed

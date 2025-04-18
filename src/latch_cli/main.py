@@ -554,6 +554,14 @@ def execute(
     help="Open the registered workflow in the browser.",
 )
 @click.option(
+    "--mark-as-release",
+    "-m",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Mark the registered workflow as a release.",
+)
+@click.option(
     "--workflow-module",
     "-w",
     type=str,
@@ -607,6 +615,7 @@ def register(
     cache_tasks: bool,
     nf_script: Optional[Path],
     nf_execution_profile: Optional[str],
+    mark_as_release: bool,
 ):
     """Register local workflow code to Latch.
 
@@ -647,6 +656,7 @@ def register(
         or docker_progress == "plain",
         use_new_centromere=use_new_centromere,
         cache_tasks=cache_tasks,
+        mark_as_release=mark_as_release,
     )
 
 
