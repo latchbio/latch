@@ -635,7 +635,7 @@ def register(
                             "id": wf_id,
                         },
                     )
-                    click.secho("Workflow marked as release.", fg="green")
+                    click.secho("Workflow marked as release", fg="green")
 
                 if open:
                     webbrowser.open(url)
