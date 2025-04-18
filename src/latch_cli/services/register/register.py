@@ -166,14 +166,16 @@ def _print_reg_resp(resp, image):
 
                 error_str += line + "\n"
 
+        error_code = 1
         if "task with different structure already exists" in error_str:
             error_str = (
                 f"Version {version} already exists. Make sure that you've saved any"
                 " changes you made."
             )
+            error_code = 2
 
         click.secho(f"\n{error_str}", fg="red", bold=True)
-        sys.exit(1)
+        sys.exit(error_code)
     elif not "Successfully registered file" in resp["stdout"]:
         click.secho(
             f"\nVersion ({version}) already exists."
@@ -181,7 +183,7 @@ def _print_reg_resp(resp, image):
             fg="red",
             bold=True,
         )
-        sys.exit(1)
+        sys.exit(2)
 
     click.echo(resp.get("stdout"))
 
