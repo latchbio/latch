@@ -5,7 +5,7 @@ from typing import Any
 
 from flytekit.core.launch_plan import LaunchPlan as _LaunchPlan
 from flytekit.core.workflow import PythonFunctionWorkflow
-from flytekit.models.common import Labels
+from flytekit.models.common import Annotations
 
 
 def b62encode(plain: str) -> str:
@@ -52,7 +52,7 @@ class LaunchPlan:
                 f"{workflow.__module__}.{workflow.__name__}.{name}",
                 workflow,
                 default_params,
-                labels=Labels(labels),
+                annotations=Annotations(labels),
             )
 
         # if the launchplan already exists, the `create` method throws an AssertionError
