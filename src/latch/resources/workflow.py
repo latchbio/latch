@@ -26,6 +26,10 @@ def _inject_metadata(f: Callable, metadata: LatchMetadata) -> None:
     if f.__doc__ is None:
         f.__doc__ = f"{f.__name__}\n\nSample Description"
     short_desc, long_desc = f.__doc__.split("\n", 1)
+
+    if metadata.about_page_path is not None:
+        long_desc = metadata.about_page_path.read_text()
+
     f.__doc__ = f"{short_desc}\n{dedent(long_desc)}\n\n" + str(metadata)
 
 
@@ -33,7 +37,7 @@ def _inject_metadata(f: Callable, metadata: LatchMetadata) -> None:
 # so that when users call @workflow without any arguments or
 # parentheses, the workflow still serializes as expected
 def workflow(
-    metadata: Union[LatchMetadata, Callable]
+    metadata: Union[LatchMetadata, Callable],
 ) -> Union[PythonFunctionWorkflow, Callable]:
     if isinstance(metadata, Callable):
         f = metadata
