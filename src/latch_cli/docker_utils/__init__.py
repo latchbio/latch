@@ -425,7 +425,7 @@ def generate_dockerignore(
     click.secho(f"Successfully generated .dockerignore `{dest}`", fg="green")
 
 
-def get_default_dockerfile(pkg_root: Path, *, wf_type: WorkflowType):
+def get_default_dockerfile(pkg_root: Path, *, wf_type: WorkflowType, overwrite: bool = False):
     default_dockerfile = pkg_root / "Dockerfile"
 
     config = get_or_create_workflow_config(
@@ -439,6 +439,6 @@ def get_default_dockerfile(pkg_root: Path, *, wf_type: WorkflowType):
         default_dockerfile = pkg_root / ".latch" / "Dockerfile"
 
         builder = DockerfileBuilder(pkg_root, config, wf_type)
-        builder.generate(dest=default_dockerfile)
+        builder.generate(dest=default_dockerfile, overwrite=overwrite)
 
     return default_dockerfile

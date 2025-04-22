@@ -16,7 +16,34 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.59.1 - 2024-04-14
+## 2.61.0 - 2025-04-18
+
+### Added
+
+* description field to `LaunchPlan`
+
+## 2.60.0 - 2025-04-18
+
+### Added
+
+* `latch register --mark-as-release` flag
+
+## 2.59.2 - 2025-04-18
+
+### Fixed
+
+* `latch register` no longer asks for file overwrite confirmation when run with `--yes`
+
+### Changed
+
+* `latch register` returns an exit code of `2` on duplicate registration
+
+### Dependencies
+
+* `gql` upgraded to `3.5.0`
+* `requests-toolbelt` upgraded to `1.0.0`
+
+## 2.59.1 - 2025-04-14
 
 ### Fixed
 
@@ -26,50 +53,50 @@ Types of changes
 
 * rsync in `latch develop` now respects both `.gitignore` and `.dockerignore` exclusion rules
 
-## 2.59.0 - 2024-04-11
+## 2.59.0 - 2025-04-11
 
 ### Added
 
 * New backend for `latch develop` which allows users to choose which instance they want to develop in (allowing, e.g. GPU enabled development)
 
-## 2.58.2 - 2024-04-03
+## 2.58.2 - 2025-04-03
 
 ### Fixed
 
 * Fix issue where `LaunchPlan`s would not be interpreted correctly in custom workflow modules
 
-## 2.58.1 - 2024-04-03
+## 2.58.1 - 2025-04-03
 
 ### Fixed
 
 * `latch register --workflow-module` treating `.` separated python paths as file paths
 
-## 2.58.0 - 2024-03-26
+## 2.58.0 - 2025-03-26
 
 ### Fixed
 
 * `latch launch` error messages being suppressed
 * `g6e-12xlarge` GPU instance type incorrect GPU annotation (1 -> 4 L40s GPUs)
 
-## 2.57.3 - 2024-03-19
+## 2.57.3 - 2025-03-19
 
 ### Fixed
 
 * Use Nextflow base image when generating Dockerfile for a Nextflow workflow.
 
-## 2.57.2 - 2024-03-07
+## 2.57.2 - 2025-03-07
 
 ### Changed
 
 * Fixed error message when `latch cp` fails due to permissions errors.
 
-## 2.57.1 - 2024-03-07
+## 2.57.1 - 2025-03-07
 
 ### Changed
 
 * Improved error message when `latch cp` fails due to permissions errors.
 
-## 2.57.0 - 2024-02-27
+## 2.57.0 - 2025-02-27
 
 ### Changed
 

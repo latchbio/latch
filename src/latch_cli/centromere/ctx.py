@@ -89,6 +89,7 @@ class _CentromereCtx:
         snakefile: Optional[Path] = None,
         nf_script: Optional[Path] = None,
         use_new_centromere: bool = False,
+        overwrite: bool = False,
     ):
         self.use_new_centromere = use_new_centromere
         self.remote = remote
@@ -403,7 +404,7 @@ class _CentromereCtx:
 
             self.default_container = _Container(
                 dockerfile=get_default_dockerfile(
-                    self.pkg_root, wf_type=self.workflow_type
+                    self.pkg_root, wf_type=self.workflow_type, overwrite=overwrite
                 ),
                 image_name=self.image_tagged,
                 pkg_dir=self.pkg_root,
