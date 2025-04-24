@@ -16,6 +16,16 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.61.0 - 2025-04-24
+
+### Added
+
+* `py.typed` files in all packages
+
+### Fixed
+
+* Bug where `about.md` would not be read on register even if configured
+
 ## 2.61.0 - 2025-04-18
 
 ### Added
