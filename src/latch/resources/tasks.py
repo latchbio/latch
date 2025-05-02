@@ -606,6 +606,36 @@ def custom_task(
     )
 
 
+def lustre_setup_task():
+    primary_container = V1Container(
+        name="primary",
+        resources=V1ResourceRequirements(
+            requests={"cpu": "500m", "memory": "500Mi"},
+            limits={"cpu": "500m", "memory": "500Mi"},
+        ),
+        volume_mounts=[
+            V1VolumeMount(mount_path="/nf-workdir", name="nextflow-workdir")
+        ],
+    )
+
+    task_config = Pod(
+        pod_spec=V1PodSpec(
+            containers=[primary_container],
+            volumes=[
+                V1Volume(
+                    name="nextflow-workdir",
+                    persistent_volume_claim=V1PersistentVolumeClaimVolumeSource(
+                        claim_name="nextflow-pvc-placeholder"
+                    ),
+                )
+            ],
+        ),
+        primary_container_name="primary",
+    )
+
+    return functools.partial(task, task_config=task_config)
+
+
 def nextflow_runtime_task(cpu: int, memory: int, storage_gib: int = 50):
     task_config = _custom_task_config(cpu, memory, storage_gib)
 
