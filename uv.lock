@@ -717,16 +717,17 @@ wheels = [
 
 [[package]]
 name = "gql"
-version = "3.4.0"
+version = "3.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "anyio" },
     { name = "backoff" },
     { name = "graphql-core" },
     { name = "yarl" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f6/1e/e7f0231f05127466a1fc63c4a9e69a95676f4729a80f1c3b5106e5c42cf9/gql-3.4.0.tar.gz", hash = "sha256:ca81aa8314fa88a8c57dd1ce34941278e0c352d762eb721edcba0387829ea7c0", size = 151663 }
+sdist = { url = "https://files.pythonhosted.org/packages/3d/85/feda24b33adcc6c8463a62a8e2ca2cc3425dc6d687388ff728ceae231204/gql-3.5.0.tar.gz", hash = "sha256:ccb9c5db543682b28f577069950488218ed65d4ac70bb03b6929aaadaf636de9", size = 179939 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1c/08/28d4a370e7f63a679ab754804af39c0c0e3959621f90cb51a43e591ba0ea/gql-3.4.0-py2.py3-none-any.whl", hash = "sha256:59c8a0b8f0a2f3b0b2ff970c94de86f82f65cb1da3340bfe57143e5f7ea82f71", size = 65151 },
+    { url = "https://files.pythonhosted.org/packages/74/fb/01a200e1c31b79690427c8e983014e4220d2652b4372a46fe4598e1d7a8e/gql-3.5.0-py2.py3-none-any.whl", hash = "sha256:70dda5694a5b194a8441f077aa5fb70cc94e4ec08016117523f013680901ecb7", size = 74001 },
 ]
 
 [[package]]
@@ -1005,7 +1006,7 @@ wheels = [
 
 [[package]]
 name = "latch"
-version = "2.56.10"
+version = "2.59.1"
 source = { editable = "." }
 dependencies = [
     { name = "aioconsole" },
@@ -1068,7 +1069,7 @@ requires-dist = [
     { name = "click", specifier = ">=8.0" },
     { name = "docker", specifier = ">=7.1.0" },
     { name = "gitpython", specifier = "==3.1.40" },
-    { name = "gql", specifier = "==3.4.0" },
+    { name = "gql", specifier = "==3.5.0" },
     { name = "graphql-core", specifier = "==3.2.3" },
     { name = "kubernetes", specifier = ">=24.2.0" },
     { name = "latch-persistence", specifier = ">=0.1.5" },
@@ -1082,7 +1083,7 @@ requires-dist = [
     { name = "python-dateutil", specifier = ">=2.8" },
     { name = "pyxattr", specifier = ">=0.8.1" },
     { name = "requests", specifier = ">=2.28.1" },
-    { name = "requests-toolbelt", specifier = "==0.10.1" },
+    { name = "requests-toolbelt", specifier = "==1.0.0" },
     { name = "scp", specifier = ">=0.14.0" },
     { name = "setuptools", specifier = ">=75.3.0" },
     { name = "snakemake", marker = "extra == 'snakemake'", specifier = ">=7.18.0,<7.30.2" },
@@ -2251,14 +2252,14 @@ wheels = [
 
 [[package]]
 name = "requests-toolbelt"
-version = "0.10.1"
+version = "1.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0c/4c/07f01c6ac44f7784fa399137fbc8d0cdc1b5d35304e8c0f278ad82105b58/requests-toolbelt-0.10.1.tar.gz", hash = "sha256:62e09f7ff5ccbda92772a29f394a49c3ad6cb181d568b1337626b2abb628a63d", size = 208956 }
+sdist = { url = "https://files.pythonhosted.org/packages/f3/61/d7545dafb7ac2230c70d38d31cbfe4cc64f7144dc41f6e4e4b78ecd9f5bb/requests-toolbelt-1.0.0.tar.gz", hash = "sha256:7681a0a3d047012b5bdc0ee37d7f8f07ebe76ab08caeccfc3921ce23c88d5bc6", size = 206888 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/05/d3/bf87a36bff1cb88fd30a509fd366c70ec30676517ee791b2f77e0e29817a/requests_toolbelt-0.10.1-py2.py3-none-any.whl", hash = "sha256:18565aa58116d9951ac39baa288d3adb5b3ff975c4f25eee78555d89e8f247f7", size = 54525 },
+    { url = "https://files.pythonhosted.org/packages/3f/51/d4db610ef29373b879047326cbf6fa98b6c1969d6f6dc423279de2b1be2c/requests_toolbelt-1.0.0-py2.py3-none-any.whl", hash = "sha256:cccfdd665f0a24fcf4726e690f65639d272bb0637b9b92dfd91a5568ccf6bd06", size = 54481 },
 ]
 
 [[package]]

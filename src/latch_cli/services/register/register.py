@@ -166,14 +166,16 @@ def _print_reg_resp(resp, image):
 
                 error_str += line + "\n"
 
+        error_code = 1
         if "task with different structure already exists" in error_str:
             error_str = (
                 f"Version {version} already exists. Make sure that you've saved any"
                 " changes you made."
             )
+            error_code = 2
 
         click.secho(f"\n{error_str}", fg="red", bold=True)
-        sys.exit(1)
+        raise click.exceptions.Exit(error_code)
     elif not "Successfully registered file" in resp["stdout"]:
         click.secho(
             f"\nVersion ({version}) already exists."
@@ -181,7 +183,7 @@ def _print_reg_resp(resp, image):
             fg="red",
             bold=True,
         )
-        sys.exit(1)
+        raise click.exceptions.Exit(2)
 
     click.echo(resp.get("stdout"))
 
@@ -291,6 +293,7 @@ def register(
     progress_plain: bool = False,
     cache_tasks: bool = False,
     use_new_centromere: bool = False,
+    mark_as_release: bool = False,
 ):
     """Registers a workflow, defined as python code, with Latch.
 
@@ -353,6 +356,7 @@ def register(
         snakefile=snakefile,
         nf_script=nf_script,
         use_new_centromere=use_new_centromere,
+        overwrite=skip_confirmation,
     ) as ctx:
         assert ctx.workflow_name is not None, "Unable to determine workflow name"
         assert ctx.version is not None, "Unable to determine workflow version"
@@ -617,6 +621,21 @@ def register(
                 wf_id = wf_infos[0]["id"]
                 url = f"https://console.latch.bio/workflows/{wf_id}"
                 click.secho(url, fg="green")
+
+                if mark_as_release:
+                    l_gql.execute(
+                        gql.gql("""
+                        mutation MarkWorkflowAsRelease($id: BigInt!) {
+                            updateWorkflowInfo(input: {patch: {isRelease: true}, id: $id}) {
+                                clientMutationId
+                            }
+                        }
+                        """),
+                        {
+                            "id": wf_id,
+                        },
+                    )
+                    click.secho("Workflow marked as release", fg="green")
 
                 if open:
                     webbrowser.open(url)
