@@ -30,7 +30,7 @@ import typing
 import typing_extensions
 
 from latch.resources.workflow import workflow
-from latch.resources.tasks import nextflow_runtime_task, custom_task, lustre_setup_task
+from latch.resources.tasks import nextflow_runtime_task, custom_task
 from latch.types.file import LatchFile
 from latch.types.directory import LatchDir, LatchOutputDir
 from latch.ldata.path import LPath

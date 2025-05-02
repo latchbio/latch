@@ -621,9 +621,6 @@ def lustre_setup_task():
     task_config = Pod(
         pod_spec=V1PodSpec(
             containers=[primary_container],
-            tolerations=[
-                V1Toleration(effect="NoSchedule", key="ng", value="cpu-32-spot")
-            ],
             volumes=[
                 V1Volume(
                     name="nextflow-workdir",
