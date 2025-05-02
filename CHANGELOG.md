@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.59.2 - 2024-05-02
+
+### Fixed
+
+* Add support for using Lustre storage with Nextflow workflows
+
 ## 2.59.1 - 2024-04-14
 
 ### Fixed
