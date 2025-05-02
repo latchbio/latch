@@ -103,14 +103,14 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
         "mambaforge",
     }}
 
-    for p in os.listdir(root_dir):
-        if p in to_ignore:
+    for p in root_dir.iterdir():
+        if p.name in to_ignore:
             continue
 
-        src = root_dir / p
-        target = shared_dir / p
+        src = root_dir / p.name
+        target = shared_dir / p.name
 
-        if os.path.isdir(src):
+        if p.is_dir():
             shutil.copytree(
                 src,
                 target,
