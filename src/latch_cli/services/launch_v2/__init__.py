@@ -1,21 +1,19 @@
 """Service to launch a workflow."""
 
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 import google.protobuf.json_format as gpjson
-from flyteidl.core import interface_pb2 as _interface_pb2
-from flyteidl.core import literals_pb2 as _literals_pb2
 from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.interface import Interface, transform_inputs_to_parameters
 from flytekit.core.promise import translate_inputs_to_literals
-from flytekit.models import literals as _literals
-from flytekit.models.interface import VariableMap
+from flytekit.core.workflow import PythonFunctionWorkflow
 
 from latch.utils import retrieve_or_login
 from latch_cli.services.launch_v2.interface import get_workflow_interface
 from latch_cli.services.launch_v2.launch import launch_workflow
 
 
-def launch(*, wf_name: str, params: dict[str, Any], version: Optional[str] = None) -> str:
+def launch(*, workflow: PythonFunctionWorkflow, wf_name: str, params: dict[str, Any], version: Optional[str] = None) -> int:
     """Launches a (versioned) workflow with parameters specified in python.
 
     Using a parameter map written in python (this can be generated for you with
@@ -26,47 +24,35 @@ def launch(*, wf_name: str, params: dict[str, Any], version: Optional[str] = Non
     specified workflow.
 
     Args:
+        workflow: The workflow to launch.
         wf_name: The name of the workflow to launch.
         params: A dictionary of parameters to pass to the workflow.
         version: An optional workflow version to launch, defaulting to latest.
 
     Returns:
         Execution ID of the launched workflow.
-
-    Example:
-        >>> launch(wf_name="wf.__init__.assemble_and_sort", params_dict={"x": 1, "y": 2})
-            # Launches an execution of `wf.__init__.assemble_and_sort` with the
-            # parameters specified in the referenced file.
     """
 
     token = retrieve_or_login()
-
-    wf_id, wf_interface, wf_default_params = get_workflow_interface(token, wf_name, version)
 
     ctx = FlyteContextManager.current_context()
     if ctx is None:
         raise ValueError("No context found")
 
-    wf_interface_pb2 = gpjson.ParseDict(wf_interface, _interface_pb2.VariableMap())
-    flyte_interface_types = VariableMap.from_flyte_idl(wf_interface_pb2)
+    for key, t in workflow.python_interface.inputs.items():
+        if key not in params and key not in workflow.python_interface.default_inputs_as_kwargs:
+            if hasattr(t, "__origin__") and t.__origin__ is Union and type(None) in t.__args__:
+                params[key] = None
+            else:
+                raise ValueError(f"Required parameter '{key}' not provided in params")
 
-    literals = translate_inputs_to_literals(
+    fixed_literals = translate_inputs_to_literals(
         ctx,
         incoming_values=params,
-        flyte_interface_types=flyte_interface_types.variables,
-        native_types={
-            k: type(v) for k, v in params.items()
-        },
+        flyte_interface_types=workflow.interface.inputs,
+        native_types=workflow.python_interface.inputs,
     )
 
-    param_defaults: dict[str, Any] = wf_default_params["parameters"]
+    wf_id, _, _ = get_workflow_interface(token, wf_name, version)
 
-    for key, default_value in param_defaults.items():
-        if key not in literals:
-            default = default_value.get("default")
-            if default is not None:
-                literals[key] = _literals.Literal.from_flyte_idl(gpjson.ParseDict(default, _literals_pb2.Literal()))
-
-    launch_workflow(token, wf_id, literals)
-
-    return wf_name
+    return launch_workflow(token, wf_id, {k: gpjson.MessageToDict(v.to_flyte_idl()) for k, v in fixed_literals.items()})

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any
 
 from latch.utils import current_workspace
@@ -6,7 +8,7 @@ from latch_sdk_config.latch import config
 from .interface import session
 
 
-def launch_workflow(token: str, wf_id: int, params: dict[str, Any]) -> bool:
+def launch_workflow(token: str, wf_id: int, params: dict[str, Any]) -> int:
     """Launch the workflow of given id with parameter map.
 
     Return True if success, raises appropriate exceptions on failure.
@@ -79,6 +81,8 @@ def launch_workflow(token: str, wf_id: int, params: dict[str, Any]) -> bool:
         print(f"\nFormatted error message: {error_msg}")
         raise RuntimeError(f"Workflow launch failed - {error_msg}")
 
-    print("response_data", response_data)
+    execution_id = response_data.get("metadata", {}).get("execution_id")
+    if execution_id is None:
+        raise RuntimeError("Workflow launch failed - no execution id returned")
 
-    return True
+    return execution_id
