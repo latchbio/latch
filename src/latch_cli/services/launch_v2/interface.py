@@ -44,9 +44,9 @@ def get_workflow_interface(
         wf_interface_resp.get("default_params"),
     )
     if wf_interface is None or wf_id is None or wf_default_params is None:
-        raise ValueError(
-            "Could not find interface. Nucleus returned a malformed JSON response -"
-            f" {wf_interface_resp}"
-        )
+        message = wf_interface_resp.get("error", {}).get("data", {}).get("message", None)
+        if message is None:
+            message = f"Could not get interface for workflow {wf_name} {version}"
+        raise ValueError(message)
 
     return int(wf_id), wf_interface, wf_default_params

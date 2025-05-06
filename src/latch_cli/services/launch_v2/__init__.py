@@ -1,10 +1,9 @@
 """Service to launch a workflow."""
 
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, Callable
 
 import google.protobuf.json_format as gpjson
 from flytekit.core.context_manager import FlyteContextManager
-from flytekit.core.interface import Interface, transform_inputs_to_parameters
 from flytekit.core.promise import translate_inputs_to_literals
 from flytekit.core.workflow import PythonFunctionWorkflow
 
@@ -13,15 +12,11 @@ from latch_cli.services.launch_v2.interface import get_workflow_interface
 from latch_cli.services.launch_v2.launch import launch_workflow
 
 
-def launch(*, workflow: PythonFunctionWorkflow, wf_name: str, params: dict[str, Any], version: Optional[str] = None) -> int:
-    """Launches a (versioned) workflow with parameters specified in python.
+def launch(*, workflow: Callable[..., Any], wf_name: str, params: dict[str, Any], version: Optional[str] = None) -> int:
+    """Launch the workflow defined by the function signature with the parameters specified in params.
 
-    Using a parameter map written in python (this can be generated for you with
-    `get_params`), this function will launch the workflow specified in the file
-    using the parameters therein. This function also accepts an optional
-    `version` parameter to further specify the workflow to be run. If it is not
-    provided, this function will default to running the latest version of the
-    specified workflow.
+    If version is provided, the specified version of the workflow will be launched. Launching old versions of the workflow
+    may fail if the workflow interface has changed.
 
     Args:
         workflow: The workflow to launch.
@@ -33,11 +28,10 @@ def launch(*, workflow: PythonFunctionWorkflow, wf_name: str, params: dict[str, 
         Execution ID of the launched workflow.
     """
 
-    token = retrieve_or_login()
+    if not isinstance(workflow, PythonFunctionWorkflow):
+        raise TypeError("Workflow must be a PythonFunctionWorkflow")
 
-    ctx = FlyteContextManager.current_context()
-    if ctx is None:
-        raise ValueError("No context found")
+    token = retrieve_or_login()
 
     for key, t in workflow.python_interface.inputs.items():
         if key not in params and key not in workflow.python_interface.default_inputs_as_kwargs:
@@ -45,6 +39,9 @@ def launch(*, workflow: PythonFunctionWorkflow, wf_name: str, params: dict[str, 
                 params[key] = None
             else:
                 raise ValueError(f"Required parameter '{key}' not provided in params")
+
+    ctx = FlyteContextManager.current_context()
+    assert ctx is not None
 
     fixed_literals = translate_inputs_to_literals(
         ctx,
