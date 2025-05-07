@@ -17,14 +17,14 @@ from latch_cli.services.launch_v2.launch import launch_workflow
 
 
 def launch(*, wf_name: str, params: dict[str, Any], version: Optional[str] = None) -> int:
-    """Launch the workflow defined by the function signature with the parameters specified in params.
+    """Create an execution of workflow `wf_name` with version `version` and parameters `params`.
 
-    If version is provided, the specified version of the workflow will be launched. Launching old versions of the workflow
-    may fail if the workflow interface has changed.
+    If version is not provided, the latest version of the workflow will be launched.
+
+    This command is not backwards compatible with workflows registered with latch version < 2.62.0 in the container.
 
     Args:
-        workflow: The workflow to launch.
-        wf_name: The name of the workflow to launch.
+        wf_name: Name of workflow to launch (see `.latch/workflow_name` in the workflow directory).
         params: A dictionary of parameters to pass to the workflow.
         version: An optional workflow version to launch, defaulting to latest.
 
