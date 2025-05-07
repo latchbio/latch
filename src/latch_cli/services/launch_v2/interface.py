@@ -1,6 +1,4 @@
-from __future__ import annotations
-
-from typing import Any
+from typing import Any, Optional
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -23,7 +21,7 @@ session.mount("https://", adapter)
 
 
 def get_workflow_interface(
-    token: str, wf_name: str, version: str | None = None
+    token: str, wf_name: str, version: Optional[str] = None
 ) -> tuple[int, dict[str, Any], dict[str, Any]]:
     """Retrieves the set of idl parameter values for a given workflow by name.
 
