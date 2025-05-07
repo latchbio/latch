@@ -1,18 +1,22 @@
 """Service to launch a workflow."""
 
-from typing import Any, Optional, Union, Callable
+import base64
+import json
+from typing import Any, Optional, Union
 
+import cloudpickle
 import google.protobuf.json_format as gpjson
+from flyteidl.core import interface_pb2 as _interface_pb2
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.promise import translate_inputs_to_literals
-from flytekit.core.workflow import PythonFunctionWorkflow
+from flytekit.models.interface import Variable, VariableMap
 
 from latch.utils import retrieve_or_login
 from latch_cli.services.launch_v2.interface import get_workflow_interface
 from latch_cli.services.launch_v2.launch import launch_workflow
 
 
-def launch(*, workflow: Callable[..., Any], wf_name: str, params: dict[str, Any], version: Optional[str] = None) -> int:
+def launch(*, wf_name: str, params: dict[str, Any], version: Optional[str] = None) -> int:
     """Launch the workflow defined by the function signature with the parameters specified in params.
 
     If version is provided, the specified version of the workflow will be launched. Launching old versions of the workflow
@@ -27,18 +31,29 @@ def launch(*, workflow: Callable[..., Any], wf_name: str, params: dict[str, Any]
     Returns:
         Execution ID of the launched workflow.
     """
-
-    if not isinstance(workflow, PythonFunctionWorkflow):
-        raise TypeError("Workflow must be a PythonFunctionWorkflow")
-
     token = retrieve_or_login()
 
-    for key, t in workflow.python_interface.inputs.items():
-        if key not in params and key not in workflow.python_interface.default_inputs_as_kwargs:
-            if hasattr(t, "__origin__") and t.__origin__ is Union and type(None) in t.__args__:
-                params[key] = None
-            else:
-                raise ValueError(f"Required parameter '{key}' not provided in params")
+    wf_id, interface, _ = get_workflow_interface(token, wf_name, version)
+
+    flyte_interface_types: dict[str, Variable] = VariableMap.from_flyte_idl(gpjson.ParseDict(interface, _interface_pb2.VariableMap())).variables
+
+    python_interface_with_defaults: Union[dict[str, tuple[type, Any]], None] = None
+    for v in flyte_interface_types.values():
+        description: dict[str, Any] = json.loads(v.description)
+        if description.get("idx") != 0:
+            continue
+
+        raw_python_interface_with_defaults = description.get("python_interface_with_defaults")
+        if raw_python_interface_with_defaults is not None:
+            python_interface_with_defaults = cloudpickle.loads(base64.b64decode(raw_python_interface_with_defaults))
+            break
+
+    if python_interface_with_defaults is None:
+        raise ValueError("No python interface found -- re-register workflow with latest latch version in workflow Dockerfile")
+
+    print("flyte_interface_types")
+    print(flyte_interface_types)
+    return 1
 
     ctx = FlyteContextManager.current_context()
     assert ctx is not None
@@ -46,10 +61,9 @@ def launch(*, workflow: Callable[..., Any], wf_name: str, params: dict[str, Any]
     fixed_literals = translate_inputs_to_literals(
         ctx,
         incoming_values=params,
-        flyte_interface_types=workflow.interface.inputs,
-        native_types=workflow.python_interface.inputs,
+        flyte_interface_types=flyte_interface_types,
+        native_types=_unpickled,
     )
 
-    wf_id, _, _ = get_workflow_interface(token, wf_name, version)
 
     return launch_workflow(token, wf_id, {k: gpjson.MessageToDict(v.to_flyte_idl()) for k, v in fixed_literals.items()})
