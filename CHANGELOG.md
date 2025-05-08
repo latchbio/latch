@@ -20,7 +20,7 @@ Types of changes
 
 ### Added
 
-* Beta release of the function `launch` in `latch_cli.services.launch_v2` which supports launching workflows registered with latch version >= 2.62.0 in the container using python parameter maps.
+* Beta release of the function `launch` in `latch_cli.services.launch.launch_v2` which supports launching workflows registered with latch version >= 2.62.0 in the workflow environment using python parameter maps.
 
 ## 2.61.2 - 2024-05-02
 
