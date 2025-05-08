@@ -671,7 +671,7 @@ def register(
 def launch(params_file: Path, version: Union[str, None] = None):
     """Launch a workflow using a python parameter map."""
 
-    from latch_cli.services.launch import launch
+    from latch_cli.services.launch.launch import launch
 
     try:
         wf_name = launch(params_file, version)
