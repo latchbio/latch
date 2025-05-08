@@ -562,6 +562,15 @@ wheels = [
 ]
 
 [[package]]
+name = "dill"
+version = "0.4.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/12/80/630b4b88364e9a8c8c5797f4602d0f76ef820909ee32f0bacb9f90654042/dill-0.4.0.tar.gz", hash = "sha256:0633f1d2df477324f53a895b02c901fb961bdbf65a17122586ea7019292cbcf0", size = 186976 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/50/3d/9373ad9c56321fdab5b41197068e1d8c25883b3fea29dd361f9b55116869/dill-0.4.0-py3-none-any.whl", hash = "sha256:44f54bf6412c2c8464c14e8243eb163690a9800dbe2c367330883b19c7561049", size = 119668 },
+]
+
+[[package]]
 name = "diskcache"
 version = "5.6.3"
 source = { registry = "https://pypi.org/simple" }
@@ -1006,7 +1015,7 @@ wheels = [
 
 [[package]]
 name = "latch"
-version = "2.59.1"
+version = "2.62.0"
 source = { editable = "." }
 dependencies = [
     { name = "aioconsole" },
@@ -1014,6 +1023,7 @@ dependencies = [
     { name = "asyncssh" },
     { name = "boto3" },
     { name = "click" },
+    { name = "dill" },
     { name = "docker" },
     { name = "gitpython" },
     { name = "gql" },
@@ -1067,6 +1077,7 @@ requires-dist = [
     { name = "asyncssh", specifier = "==2.13.2" },
     { name = "boto3", specifier = ">=1.26.0" },
     { name = "click", specifier = ">=8.0" },
+    { name = "dill", specifier = ">=0.4.0" },
     { name = "docker", specifier = ">=7.1.0" },
     { name = "gitpython", specifier = "==3.1.40" },
     { name = "gql", specifier = "==3.5.0" },

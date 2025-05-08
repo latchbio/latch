@@ -4,7 +4,7 @@ import base64
 import json
 from typing import Any, Optional, Union
 
-import cloudpickle
+import dill
 import google.protobuf.json_format as gpjson
 from flyteidl.core import interface_pb2 as _interface_pb2
 from flytekit.core.context_manager import FlyteContextManager
@@ -45,7 +45,7 @@ def launch(*, wf_name: str, params: dict[str, Any], version: Optional[str] = Non
 
         raw_python_interface_with_defaults = description.get("__workflow_meta__", {}).get("meta", {}).get("python_interface")
         if raw_python_interface_with_defaults is not None:
-            python_interface_with_defaults = cloudpickle.loads(base64.b64decode(raw_python_interface_with_defaults))
+            python_interface_with_defaults = dill.loads(base64.b64decode(raw_python_interface_with_defaults))  # noqa: S301
             break
 
     if python_interface_with_defaults is None:
