@@ -1,7 +1,7 @@
 import base64
 import json
 from json.decoder import JSONDecodeError
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, get_args, get_origin
 
 import dill
 import google.protobuf.json_format as gpjson
@@ -61,7 +61,7 @@ def launch(*, wf_name: str, params: dict[str, Any], version: Optional[str] = Non
             continue
 
         t = v[0]
-        if hasattr(t, "__origin__") and t.__origin__ is Union and type(None) in t.__args__:
+        if get_origin(t) is Union and type(None) in get_args(t):
             params[k] = None
         else:
             raise ValueError(f"Required parameter '{k}' not provided in params")
