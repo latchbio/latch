@@ -17,8 +17,8 @@ from flytekit.models.types import LiteralType
 
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
-from latch.utils import retrieve_or_login
-from latch_cli.services.launch_v2 import get_workflow_interface
+from latch.utils import current_workspace
+from latch_cli.services.launch.interface import get_workflow_interface
 
 
 class _Unsupported: ...
@@ -74,9 +74,8 @@ def get_params(wf_name: str, wf_version: Optional[str] = None):
             # contains a template parameter map.
     """
 
-    token = retrieve_or_login()
     _, wf_interface, wf_default_params = get_workflow_interface(
-        token, wf_name, wf_version
+        current_workspace(), wf_name, wf_version
     )
 
     params = {}

@@ -10,10 +10,10 @@ from flyteidl.core.types_pb2 import LiteralType
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
 
-from latch.utils import retrieve_or_login
+from latch.utils import current_workspace
 
-from .launch_v2.interface import get_workflow_interface
-from .launch_v2.launch import launch_workflow
+from .interface import get_workflow_interface
+from .launch_v2 import launch_workflow
 
 
 def launch(params_file: Path, version: Optional[str] = None) -> str:
@@ -42,8 +42,6 @@ def launch(params_file: Path, version: Optional[str] = None) -> str:
             # parameters specified in the referenced file.
     """
 
-    token = retrieve_or_login()
-
     with open(params_file, "r") as pf:
         param_code = pf.read()
         spec = importlib.util.spec_from_loader("wf_params", loader=None)
@@ -67,7 +65,9 @@ def launch(params_file: Path, version: Optional[str] = None) -> str:
             f" key with the workflow name exists in the dictionary."
         )
 
-    wf_id, wf_interface, _ = get_workflow_interface(token, wf_name, version)
+    workspace_id = current_workspace()
+
+    wf_id, wf_interface, _ = get_workflow_interface(workspace_id, wf_name, version)
 
     wf_vars = wf_interface["variables"]
     wf_literals = {}
@@ -87,7 +87,7 @@ def launch(params_file: Path, version: Optional[str] = None) -> str:
 
             wf_literals[key] = gpjson.MessageToDict(python_type_literal.to_flyte_idl())
 
-    launch_workflow(token, wf_id, wf_literals)
+    launch_workflow(workspace_id, wf_id, wf_literals)
     return wf_name
 
 

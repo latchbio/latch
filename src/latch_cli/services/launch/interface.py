@@ -1,40 +1,29 @@
+from json.decoder import JSONDecodeError
 from typing import Any, Optional
 
-import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry  # type: ignore  # noqa: PGH003
-
-from latch.utils import current_workspace
+from latch_cli import tinyrequests
+from latch_cli.utils import get_auth_header
 from latch_sdk_config.latch import config
-
-session = requests.Session()
-retries = 5
-retry = Retry(
-    total=retries,
-    read=retries,
-    connect=retries,
-    method_whitelist=False,
-)
-adapter = HTTPAdapter(max_retries=retry)
-session.mount("http://", adapter)
-session.mount("https://", adapter)
 
 
 def get_workflow_interface(
-    token: str, wf_name: str, version: Optional[str] = None
-) -> tuple[int, dict[str, Any], dict[str, Any]]:
+    target_account_id: str, wf_name: str, version: Optional[str] = None
+) -> tuple[str, dict[str, Any], dict[str, Any]]:
     """Retrieves the set of idl parameter values for a given workflow by name.
 
     Returns workflow id, interface, and default parameters.
     """
 
-    response = session.post(config.api.workflow.interface, headers={"Authorization": f"Bearer {token}"}, json={
+    response = tinyrequests.post(config.api.workflow.interface, headers={"Authorization": get_auth_header()}, json={
         "workflow_name": wf_name,
         "version": version,
-        "ws_account_id": current_workspace(),
+        "ws_account_id": target_account_id,
     })
 
-    wf_interface_resp: dict[str, Any] = response.json()
+    try:
+        wf_interface_resp: dict[str, Any] = response.json()
+    except JSONDecodeError as e:
+        raise RuntimeError(f"Could not parse response as JSON: ({response.status_code}) {response}") from e
 
     wf_id, wf_interface, wf_default_params = (
         wf_interface_resp.get("id"),
@@ -47,4 +36,4 @@ def get_workflow_interface(
             message = f"Could not get interface for workflow {wf_name} {version}"
         raise ValueError(message)
 
-    return int(wf_id), wf_interface, wf_default_params
+    return str(wf_id), wf_interface, wf_default_params
