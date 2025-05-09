@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.62.1 - 2025-05-09
+
+### Fixed
+
+* Better error messages when dill cannot unpickle and when types do not match for `launch` in `latch_cli.services.launch.launch_v2`
+
 ## 2.62.0 - 2025-05-08
 
 ### Added

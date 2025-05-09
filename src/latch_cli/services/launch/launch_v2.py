@@ -8,6 +8,7 @@ import google.protobuf.json_format as gpjson
 from flyteidl.core import interface_pb2 as _interface_pb2
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.promise import translate_inputs_to_literals
+from flytekit.core.type_engine import TypeTransformerFailedError
 from flytekit.models.interface import Variable, VariableMap
 
 from latch.utils import current_workspace
@@ -46,11 +47,14 @@ def launch(*, wf_name: str, params: dict[str, Any], version: Optional[str] = Non
 
         raw_python_interface_with_defaults = description.get("__workflow_meta__", {}).get("meta", {}).get("python_interface")
         if raw_python_interface_with_defaults is not None:
-            python_interface_with_defaults = dill.loads(base64.b64decode(raw_python_interface_with_defaults))  # noqa: S301
+            try:
+                python_interface_with_defaults = dill.loads(base64.b64decode(raw_python_interface_with_defaults))  # noqa: S301
+            except dill.UnpicklingError as e:
+                raise ValueError("Failed to decode the workflow python interface -- ensure your python version matches the version in the workflow environment") from e
             break
 
     if python_interface_with_defaults is None:
-        raise ValueError("No python interface found -- re-register workflow with latch version >= 2.62.0 in workflow Dockerfile")
+        raise ValueError("No python interface found -- re-register workflow with latch version >= 2.62.0 in workflow environment")
 
     for k, v in python_interface_with_defaults.items():
         if k in params:
@@ -69,14 +73,19 @@ def launch(*, wf_name: str, params: dict[str, Any], version: Optional[str] = Non
     ctx = FlyteContextManager.current_context()
     assert ctx is not None
 
-    fixed_literals = translate_inputs_to_literals(
-        ctx,
-        incoming_values=params,
-        flyte_interface_types=flyte_interface_types,
-        native_types={
-            k: v[0] for k, v in python_interface_with_defaults.items()
-        },
-    )
+    try:
+        fixed_literals = translate_inputs_to_literals(
+            ctx,
+            incoming_values=params,
+            flyte_interface_types=flyte_interface_types,
+            native_types={
+                k: v[0] for k, v in python_interface_with_defaults.items()
+            },
+        )
+    except TypeTransformerFailedError as e:
+        if "is not an instance of" in str(e):
+            raise ValueError("Failed to translate inputs to literals -- ensure you are importing the same classes used in the workflow function header") from e
+        raise
 
     return launch_workflow(target_account_id, wf_id, {k: gpjson.MessageToDict(v.to_flyte_idl()) for k, v in fixed_literals.items()})
 
