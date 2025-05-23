@@ -12,7 +12,7 @@ include = ["src/**/*.py", "src/latch_cli/services/init/*"]
 
 [project]
 name = "latch"
-version = "2.62.1.a1"
+version = "2.62.1.a2"
 description = "The Latch SDK"
 authors = [{ name = "Kenny Workman", email = "kenny@latch.bio" }]
 maintainers = [
@@ -77,7 +77,7 @@ classifiers = [
 pandas = ["pandas>=2.0.0"]
 snakemake = [
   "snakemake",
-  "snakemake-storage-plugin-latch==0.1.10",
+  "snakemake-storage-plugin-latch==0.1.11",
   "snakemake-executor-plugin-latch==0.1.9",
 ]
 
