@@ -74,7 +74,11 @@ classifiers = [
 
 [project.optional-dependencies]
 pandas = ["pandas>=2.0.0"]
-snakemake = ["snakemake>=7.18.0,<7.30.2", "pulp>=2.0,<2.8"]
+snakemake = [
+  "snakemake",
+  "snakemake-storage-plugin-latch==0.1.10",
+  "snakemake-executor-plugin-latch==0.1.8",
+]
 
 [project.scripts]
 latch = "latch_cli.main:main"
