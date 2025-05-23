@@ -156,8 +156,7 @@ class _CentromereCtx:
                 pass
             except Exception as e:
                 click.secho(
-                    "WARN: Exception occurred while getting git hash from"
-                    f" {self.pkg_root}: {e}",
+                    f"WARN: Exception occurred while getting git hash from {self.pkg_root}: {e}",
                     fg="yellow",
                 )
 
@@ -328,10 +327,12 @@ class _CentromereCtx:
                                 import subprocess
 
                                 if system == "Linux":
-                                    res = subprocess.run([
-                                        "xdg-open",
-                                        new_meta,
-                                    ]).returncode
+                                    res = subprocess.run(
+                                        [
+                                            "xdg-open",
+                                            new_meta,
+                                        ]
+                                    ).returncode
                                 elif system == "Darwin":
                                     res = subprocess.run(["open", new_meta]).returncode
                                 elif system == "Windows":
@@ -449,6 +450,7 @@ class _CentromereCtx:
 
             else:
                 self.dkr_client = _construct_dkr_client()
+                self.remote_conn_info = None
         except (Exception, KeyboardInterrupt) as e:
             self.cleanup()
             raise e
