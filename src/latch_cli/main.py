@@ -2,6 +2,7 @@
 
 import os
 import sys
+import traceback
 from pathlib import Path
 from textwrap import dedent
 from typing import Callable, List, Optional, Tuple, TypeVar, Union
@@ -17,7 +18,7 @@ from latch_cli.exceptions.handler import CrashHandler
 from latch_cli.services.cp.autocomplete import complete as cp_complete
 from latch_cli.services.cp.autocomplete import remote_complete
 from latch_cli.services.init.init import template_flag_to_option
-from latch_cli.services.local_dev import TaskSize
+from latch_cli.services.k8s.develop import InstanceSize
 from latch_cli.utils import (
     AuthenticationError,
     WorkflowType,
@@ -412,7 +413,6 @@ def generate_metadata(
     type=bool,
     help="Skip the confirmation dialog.",
 )
-@click.option("--image", "-i", type=str, help="Image to use for develop session.")
 @click.option(
     "--wf-version",
     "-v",
@@ -440,15 +440,23 @@ def generate_metadata(
     type=click.Path(exists=False, path_type=Path, file_okay=False),
     help="Path to directory containing Latch metadata. Only for Snakemake",
 )
+@click.option(
+    "--instance-size",
+    "--size",
+    "-s",
+    type=EnumChoice(InstanceSize, case_sensitive=False),
+    default=InstanceSize.small_task,
+    help="Size of machine to provision for develop session",
+)
 @requires_login
 def local_development(
     pkg_root: Path,
     yes: bool,
-    image: Optional[str],
     wf_version: Optional[str],
     disable_sync: bool,
     snakemake: bool,
     metadata_root: Optional[Path],
+    instance_size: InstanceSize,
 ):
     """Develop workflows "locally"
 
@@ -458,21 +466,23 @@ def local_development(
     crash_handler.message = "Error during local development session"
     crash_handler.pkg_root = str(pkg_root)
 
-    if os.environ.get("LATCH_DEVELOP_BETA") is not None:
-        from latch_cli.services.local_dev import local_development
-
-        local_development(
-            pkg_root.resolve(),
-            skip_confirm_dialog=yes,
-            size=TaskSize.small_task,
-            image=image,
-        )
-    else:
+    # todo(ayush): purge
+    if snakemake:
         from latch_cli.services.local_dev_old import local_development
 
-        local_development(
+        return local_development(
             pkg_root.resolve(), snakemake, wf_version, metadata_root, disable_sync
         )
+
+    from latch_cli.services.k8s.develop import local_development
+
+    return local_development(
+        pkg_root.resolve(),
+        skip_confirm_dialog=yes,
+        size=instance_size,
+        wf_version=wf_version,
+        disable_sync=disable_sync,
+    )
 
 
 @main.command("exec")
@@ -543,6 +553,14 @@ def execute(
     help="Open the registered workflow in the browser.",
 )
 @click.option(
+    "--mark-as-release",
+    "-m",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Mark the registered workflow as a release.",
+)
+@click.option(
     "--workflow-module",
     "-w",
     type=str,
@@ -595,10 +613,15 @@ def register(
     cache_tasks: bool,
     nf_script: Optional[Path],
     nf_execution_profile: Optional[str],
+    mark_as_release: bool,
 ):
     """Register local workflow code to Latch.
 
     Visit docs.latch.bio to learn more.
+
+    # Exit codes
+    1 - Registration failure
+    2 - Workflow already registered
     """
 
     use_new_centromere = os.environ.get("LATCH_REGISTER_BETA") is not None
@@ -631,6 +654,7 @@ def register(
         or docker_progress == "plain",
         use_new_centromere=use_new_centromere,
         cache_tasks=cache_tasks,
+        mark_as_release=mark_as_release,
     )
 
 
@@ -645,12 +669,14 @@ def register(
 def launch(params_file: Path, version: Union[str, None] = None):
     """Launch a workflow using a python parameter map."""
 
-    crash_handler.message = f"Unable to launch workflow"
-    crash_handler.pkg_root = str(Path.cwd())
+    from latch_cli.services.launch.launch import launch
 
-    from latch_cli.services.launch import launch
+    try:
+        wf_name = launch(params_file, version)
+    except Exception as e:
+        traceback.print_exc()
+        raise click.exceptions.Exit(1) from e
 
-    wf_name = launch(params_file, version)
     if version is None:
         version = "latest"
 

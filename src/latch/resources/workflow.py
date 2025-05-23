@@ -1,3 +1,4 @@
+import base64
 import inspect
 import os
 from dataclasses import is_dataclass
@@ -5,7 +6,9 @@ from textwrap import dedent
 from typing import Callable, Dict, Union, get_args, get_origin
 
 import click
+import dill
 from flytekit import workflow as _workflow
+from flytekit.core.interface import transform_function_to_interface
 from flytekit.core.workflow import PythonFunctionWorkflow
 
 from latch.types.metadata import LatchAuthor, LatchMetadata, LatchParameter
@@ -26,6 +29,10 @@ def _inject_metadata(f: Callable, metadata: LatchMetadata) -> None:
     if f.__doc__ is None:
         f.__doc__ = f"{f.__name__}\n\nSample Description"
     short_desc, long_desc = f.__doc__.split("\n", 1)
+
+    if metadata.about_page_path is not None:
+        long_desc = metadata.about_page_path.read_text()
+
     f.__doc__ = f"{short_desc}\n{dedent(long_desc)}\n\n" + str(metadata)
 
 
@@ -33,7 +40,7 @@ def _inject_metadata(f: Callable, metadata: LatchMetadata) -> None:
 # so that when users call @workflow without any arguments or
 # parentheses, the workflow still serializes as expected
 def workflow(
-    metadata: Union[LatchMetadata, Callable]
+    metadata: Union[LatchMetadata, Callable],
 ) -> Union[PythonFunctionWorkflow, Callable]:
     if isinstance(metadata, Callable):
         f = metadata
@@ -100,6 +107,8 @@ def workflow(
 
         git_hash = os.environ.get("GIT_COMMIT_HASH")
         is_dirty = os.environ.get("GIT_IS_DIRTY")
+
+        metadata._non_standard["python_interface"] = base64.b64encode(dill.dumps(transform_function_to_interface(f).inputs_with_defaults)).decode("ascii")
 
         if git_hash is not None:
             metadata._non_standard["git_commit_hash"] = git_hash

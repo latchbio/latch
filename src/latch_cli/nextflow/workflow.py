@@ -76,6 +76,7 @@ def initialize() -> str:
 
 @nextflow_runtime_task(cpu={cpu}, memory={memory}, storage_gib={storage_gib})
 def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
+    root_dir = Path("/root")
     shared_dir = Path("/nf-workdir")
 
     exec_name = _get_execution_name()
@@ -89,7 +90,7 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
 {output_shortcuts}
 {samplesheet_constructors}
 
-    ignore_list = [
+    to_ignore = {{
         "latch",
         ".latch",
         ".git",
@@ -100,15 +101,24 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
         "miniconda",
         "anaconda3",
         "mambaforge",
-    ]
+    }}
 
-    shutil.copytree(
-        Path("/root"),
-        shared_dir,
-        ignore=lambda src, names: ignore_list,
-        ignore_dangling_symlinks=True,
-        dirs_exist_ok=True,
-    )
+    for p in root_dir.iterdir():
+        if p.name in to_ignore:
+            continue
+
+        src = root_dir / p.name
+        target = shared_dir / p.name
+
+        if p.is_dir():
+            shutil.copytree(
+                src,
+                target,
+                ignore_dangling_symlinks=True,
+                dirs_exist_ok=True,
+            )
+        else:
+            shutil.copy2(src, target)
 
     profile_list = {execution_profile}
     if {configurable_profiles}:

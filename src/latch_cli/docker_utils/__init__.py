@@ -9,7 +9,11 @@ import click
 import yaml
 
 from latch_cli.utils import WorkflowType
-from latch_cli.workflow_config import LatchWorkflowConfig, get_or_create_workflow_config
+from latch_cli.workflow_config import (
+    BaseImageOptions,
+    LatchWorkflowConfig,
+    get_or_create_workflow_config,
+)
 
 
 class DockerCmdBlockOrder(str, Enum):
@@ -398,16 +402,20 @@ def generate_dockerignore(
     click.secho(f"Successfully generated .dockerignore `{dest}`", fg="green")
 
 
-def get_default_dockerfile(pkg_root: Path, *, wf_type: WorkflowType):
+def get_default_dockerfile(pkg_root: Path, *, wf_type: WorkflowType, overwrite: bool = False):
     default_dockerfile = pkg_root / "Dockerfile"
 
-    # shitty: assumption that config is already there so base image will be ignored
-    config = get_or_create_workflow_config(pkg_root=pkg_root)
+    config = get_or_create_workflow_config(
+        pkg_root=pkg_root,
+        base_image_type=BaseImageOptions.nextflow
+        if wf_type == WorkflowType.nextflow
+        else BaseImageOptions.default,
+    )
 
     if not default_dockerfile.exists():
         default_dockerfile = pkg_root / ".latch" / "Dockerfile"
 
         builder = DockerfileBuilder(pkg_root, config, wf_type)
-        builder.generate(dest=default_dockerfile)
+        builder.generate(dest=default_dockerfile, overwrite=overwrite)
 
     return default_dockerfile

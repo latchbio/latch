@@ -396,7 +396,11 @@ class LatchParameter:
         appearance_dict["file_type"] = (
             "ANY"
             if self.allow_file and self.allow_dir
-            else "FILE" if self.allow_file else "DIR" if self.allow_dir else "NONE"
+            else "FILE"
+            if self.allow_file
+            else "DIR"
+            if self.allow_dir
+            else "NONE"
         )
 
         parameter_dict["appearance"] = appearance_dict
@@ -447,12 +451,7 @@ class SnakemakeFileParameter(SnakemakeParameter[Union[LatchFile, LatchDir]]):
     Deprecated: use `file_metadata` keyword in `SnakemakeMetadata` instead
     """
 
-    type: Optional[
-        Union[
-            Type[LatchFile],
-            Type[LatchDir],
-        ]
-    ] = None
+    type: Optional[Union[Type[LatchFile], Type[LatchDir]]] = None
     """
     The python type of the parameter.
     """
@@ -683,6 +682,21 @@ class LatchMetadata:
     """
     _non_standard: Dict[str, object] = field(default_factory=dict)
 
+    about_page_path: Optional[Path] = None
+    """
+    Path to a markdown file containing information about the pipeline - rendered in the About page.
+    """
+
+    def validate(self):
+        if self.about_page_path is not None and not isinstance(
+            self.about_page_path, Path
+        ):
+            click.secho(
+                f"`about_page_path` parameter ({self.about_page_path}) must be a"
+                " Path object.",
+                fg="red",
+            )
+
     @property
     def dict(self):
         metadata_dict = asdict(self)
@@ -854,19 +868,6 @@ class NextflowMetadata(LatchMetadata):
     """
     Upload .command.* logs to Latch Data after each task execution
     """
-    about_page_path: Optional[Path] = None
-    """
-    Path to a markdown file containing information about the pipeline - rendered in the About page.
-    """
-
-    def validate(self):
-        if self.about_page_path is not None:
-            if not isinstance(self.about_page_path, Path):
-                click.secho(
-                    f"`about_page_path` parameter ({self.about_page_path}) must be a"
-                    " Path object.",
-                    fg="red",
-                )
 
     @property
     def dict(self):

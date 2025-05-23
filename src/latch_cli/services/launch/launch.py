@@ -3,18 +3,17 @@
 import importlib.util
 import typing
 from pathlib import Path
-from typing import Optional, Tuple, Union
+from typing import Optional
 
 import google.protobuf.json_format as gpjson
-import requests
 from flyteidl.core.types_pb2 import LiteralType
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
-from latch_sdk_config.latch import config
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 
-from latch.utils import current_workspace, retrieve_or_login
+from latch.utils import current_workspace
+
+from .interface import get_workflow_interface
+from .launch_v2 import launch_workflow
 
 
 def launch(params_file: Path, version: Optional[str] = None) -> str:
@@ -43,8 +42,6 @@ def launch(params_file: Path, version: Optional[str] = None) -> str:
             # parameters specified in the referenced file.
     """
 
-    token = retrieve_or_login()
-
     with open(params_file, "r") as pf:
         param_code = pf.read()
         spec = importlib.util.spec_from_loader("wf_params", loader=None)
@@ -68,7 +65,9 @@ def launch(params_file: Path, version: Optional[str] = None) -> str:
             f" key with the workflow name exists in the dictionary."
         )
 
-    wf_id, wf_interface, _ = _get_workflow_interface(token, wf_name, version)
+    workspace_id = current_workspace()
+
+    wf_id, wf_interface, _ = get_workflow_interface(workspace_id, wf_name, version)
 
     wf_vars = wf_interface["variables"]
     wf_literals = {}
@@ -88,7 +87,7 @@ def launch(params_file: Path, version: Optional[str] = None) -> str:
 
             wf_literals[key] = gpjson.MessageToDict(python_type_literal.to_flyte_idl())
 
-    _launch_workflow(token, wf_id, wf_literals)
+    launch_workflow(workspace_id, wf_id, wf_literals)
     return wf_name
 
 
@@ -129,101 +128,3 @@ def _guess_python_type(v: any) -> typing.T:
     # TODO: maps, Records, future complex types
 
     return type(v)
-
-
-def _get_workflow_interface(
-    token: str, wf_name: str, version: Union[None, str]
-) -> Tuple[int, dict]:
-    """Retrieves the set of idl parameter values for a given workflow by name.
-
-    Returns workflow id + interface as JSON string.
-    """
-
-    headers = {"Authorization": f"Bearer {token}"}
-    _interface_request = {
-        "workflow_name": wf_name,
-        "version": version,
-        "ws_account_id": current_workspace(),
-    }
-
-    url = config.api.workflow.interface
-
-    # TODO(ayush) - figure out why timeout within this endpoint only.
-    session = requests.Session()
-    retries = 5
-    retry = Retry(
-        total=retries,
-        read=retries,
-        connect=retries,
-        method_whitelist=False,
-    )
-    adapter = HTTPAdapter(max_retries=retry)
-    session.mount("http://", adapter)
-    session.mount("https://", adapter)
-
-    response = session.post(url, headers=headers, json=_interface_request)
-
-    wf_interface_resp = response.json()
-
-    wf_id, wf_interface, wf_default_params = (
-        wf_interface_resp.get("id"),
-        wf_interface_resp.get("interface"),
-        wf_interface_resp.get("default_params"),
-    )
-    if wf_interface is None:
-        raise ValueError(
-            "Could not find interface. Nucleus returned a malformed JSON response -"
-            f" {wf_interface_resp}"
-        )
-    if wf_id is None:
-        raise ValueError(
-            "Could not find wf ID. Nucleus returned a malformed JSON response -"
-            f" {wf_interface_resp}"
-        )
-    if wf_default_params is None:
-        raise ValueError(
-            "Could not find wf default parameters. Nucleus returned a malformed JSON"
-            f" response - {wf_interface_resp}"
-        )
-
-    return int(wf_id), wf_interface, wf_default_params
-
-
-def _launch_workflow(token: str, wf_id: str, params: dict) -> bool:
-    """Launch the workflow of given id with parameter map.
-
-    Return True if success
-    """
-
-    # TODO (kenny) - pull out to consolidated requests class
-    # Server sometimes stalls on requests with python user-agent
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like"
-            " Gecko) Chrome/72.0.3626.119 Safari/537.36"
-        ),
-    }
-
-    _interface_request = {
-        "workflow_id": str(wf_id),
-        "params": params,
-        "ws_account_id": current_workspace(),
-    }
-    url = config.api.execution.create
-
-    response = requests.post(url, headers=headers, json=_interface_request)
-
-    if response.status_code == 403:
-        raise PermissionError(
-            "You need access to the latch sdk beta ~ join the waitlist @"
-            " https://latch.bio/sdk"
-        )
-    elif response.status_code == 401:
-        raise ValueError(
-            "your token has expired - please run latch login to refresh your token and"
-            " try again."
-        )
-    wf_interface_resp = response.json()
-
-    return wf_interface_resp.get("success") is True

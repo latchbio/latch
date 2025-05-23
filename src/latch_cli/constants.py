@@ -47,6 +47,10 @@ class LatchConstants:
     centromere_poll_timeout: int = 18000
     centromere_keepalive_interval: int = 30
 
+    ssh_forwarder_elb_host: str = (
+        "a1fd7b5d7b5824b46b8671207e1124b6-610912349.us-west-2.elb.amazonaws.com"
+    )
+
 
 latch_constants = LatchConstants()
 

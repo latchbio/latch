@@ -12,7 +12,7 @@ include = ["src/**/*.py", "src/latch_cli/services/init/*"]
 
 [project]
 name = "latch"
-version = "2.57.2"
+version = "2.62.1"
 description = "The Latch SDK"
 authors = [{ name = "Kenny Workman", email = "kenny@latch.bio" }]
 maintainers = [
@@ -38,9 +38,9 @@ dependencies = [
   "lytekitplugins-pods==0.7.4",
   "typing-extensions>=4.12.0",
   "apscheduler>=3.10.0",
-  "gql>=3.5.0,<4.0.0",
+  "gql==3.5.0",
   "graphql-core==3.2.3",
-  "requests-toolbelt>=1.0.0,<2.0.0",
+  "requests-toolbelt==1.0.0",
   "python-dateutil>=2.8",
   "GitPython==3.1.40",
   # for old latch develop, to be removed
@@ -53,6 +53,7 @@ dependencies = [
   "pyxattr>=0.8.1",
   "orjson>=3.10.12",
   "latch-persistence>=0.1.5",
+  "dill>=0.4.0",
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -195,6 +196,7 @@ ignore = [
 
   "S101",
   "S603",
+  "S607",
 
   "N807",
 

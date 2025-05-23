@@ -17,12 +17,12 @@ from urllib.parse import urljoin
 
 import click
 import jwt
-from latch_sdk_config.user import user_config
 
 from latch.utils import current_workspace
 from latch_cli.click_utils import bold
 from latch_cli.constants import latch_constants
 from latch_cli.tinyrequests import get
+from latch_sdk_config.user import user_config
 
 # todo(ayush): need a better way to check if "latch" has been appended to urllib
 if "latch" not in urllib.parse.uses_netloc:
@@ -257,10 +257,12 @@ def generate_temporary_ssh_credentials(
             subprocess.run(cmd, check=True)
         except subprocess.CalledProcessError as e:
             click.secho(
-                dedent(f"""
+                dedent(
+                    f"""
                     There was a problem creating temporary SSH credentials. Please ensure
                     that `{bold("ssh-keygen")}` is installed and available in your PATH.
-                """.strip()),
+                """.strip()
+                ),
                 fg="red",
             )
 
@@ -276,14 +278,16 @@ def generate_temporary_ssh_credentials(
             subprocess.run(cmd, check=True, stderr=subprocess.DEVNULL)
         except subprocess.CalledProcessError as e:
             click.secho(
-                dedent(f"""
+                dedent(
+                    f"""
                     There was an issue adding temporary SSH credentials to your SSH Agent.
                     Please activate your SSH Agent by running
 
                         {bold("$ eval `ssh-agent -s`")}
 
                     in your terminal.
-                """.strip()),
+                """.strip()
+                ),
                 fg="red",
             )
 
@@ -295,10 +299,12 @@ def generate_temporary_ssh_credentials(
         out = subprocess.run(cmd, check=True, capture_output=True)
     except subprocess.CalledProcessError as e:
         click.secho(
-            dedent(f"""
+            dedent(
+                f"""
                 There was a problem decoding your temporary credentials. Please ensure
                 that `{bold("ssh-keygen")}` is installed and available in your PATH.
-            """.strip()),
+            """.strip()
+            ),
             fg="red",
         )
 
@@ -355,9 +361,7 @@ class TemporarySSHCredentials:
             and self._ssh_key_path.with_suffix(".pub").exists()
         ):
             subprocess.run(
-                ["ssh-add", "-d", self._ssh_key_path],
-                check=True,
-                capture_output=True,
+                ["ssh-add", "-d", self._ssh_key_path], check=True, capture_output=True
             )
         self._ssh_key_path.unlink(missing_ok=True)
         self._ssh_key_path.with_suffix(".pub").unlink(missing_ok=True)
@@ -365,13 +369,13 @@ class TemporarySSHCredentials:
     @property
     def public_key(self):
         self.generate()
+        assert self._public_key is not None
         return self._public_key
 
     @property
     def private_key(self):
         self.generate()
-        with open(self._ssh_key_path, "r") as f:
-            return f.read()
+        return self._ssh_key_path.read_text()
 
     def __enter__(self):
         self.generate()
