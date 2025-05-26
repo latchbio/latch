@@ -348,9 +348,7 @@ def start_upload(
         pod_id = Path("/root/.latch/id").read_text("utf-8")
         ingress_source = {"pod_id": pod_id}
     except FileNotFoundError:
-        sdk_token = user_config.token
-        if sdk_token != "":
-            ingress_source = {"sdk_token": sdk_token}
+        pass
 
     payload = {
         "path": dest,
