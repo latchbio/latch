@@ -360,7 +360,7 @@ def start_upload(
             {
                 "ingress_event_data": {
                     "purpose": json.dumps({
-                        "method": "latch cp",
+                        "method": "latch-cp",
                         "source": ingress_source,
                     })
                 }

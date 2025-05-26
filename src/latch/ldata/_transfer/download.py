@@ -90,7 +90,7 @@ def download(
             {
                 "egress_event_data": {
                     "purpose": json.dumps({
-                        "method": "latch cp",
+                        "method": "latch-cp",
                         "source": egress_source,
                     })
                 }
