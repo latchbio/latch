@@ -82,24 +82,18 @@ def download(
     except FileNotFoundError:
         pass
 
-    payload = {
-        "path": normalized,
-        **(
-            {
-                "egress_event_data": {
-                    "purpose": json.dumps({
-                        "method": "latch-cp",
-                        "source": egress_source,
-                    })
-                }
-            }
-            if egress_source is not None
-            else {}
-        ),
-    }
-
     res = http_session.post(
-        endpoint, headers={"Authorization": get_auth_header()}, json=payload
+        endpoint,
+        headers={"Authorization": get_auth_header()},
+        json={
+            "path": normalized,
+            "egress_event_data": {
+                "purpose": json.dumps({
+                    "method": "latch-cli",
+                    **({"source": egress_source} if egress_source is not None else {}),
+                })
+            },
+        },
     )
 
     if res.status_code != 200:

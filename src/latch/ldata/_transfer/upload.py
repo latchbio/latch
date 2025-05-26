@@ -350,29 +350,23 @@ def start_upload(
     except FileNotFoundError:
         pass
 
-    payload = {
-        "path": dest,
-        "content_type": content_type,
-        "part_count": part_count,
-        **(
-            {
-                "ingress_event_data": {
-                    "purpose": json.dumps({
-                        "method": "latch-cp",
-                        "source": ingress_source,
-                    })
-                }
-            }
-            if ingress_source is not None
-            else {}
-        ),
-    }
-
     start = time.monotonic()
     res = http_session.post(
         latch_config.api.data.start_upload,
         headers={"Authorization": get_auth_header()},
-        json=payload,
+        json={
+            "path": dest,
+            "content_type": content_type,
+            "part_count": part_count,
+            "ingress_event_data": {
+                "purpose": json.dumps({
+                    "method": "latch-cli",
+                    **(
+                        {"source": ingress_source} if ingress_source is not None else {}
+                    ),
+                })
+            },
+        },
     )
     end = time.monotonic()
 
