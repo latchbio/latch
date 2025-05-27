@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.62.2 - 2025-05-27
+
+### Changed
+
+* Expand data provenance when available by providing a latch pod ID for uploads and downloads.
+
 ## 2.62.1 - 2025-05-09
 
 ### Fixed
