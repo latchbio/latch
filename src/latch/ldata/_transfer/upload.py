@@ -1,3 +1,4 @@
+import json
 import math
 import mimetypes
 import os
@@ -12,13 +13,14 @@ from pathlib import Path
 from queue import Queue
 from typing import TYPE_CHECKING, List, Optional, TypedDict
 
-from latch_sdk_config.latch import config as latch_config
 from typing_extensions import TypeAlias
 
 from latch.ldata.type import LatchPathError, LDataNodeType
 from latch_cli.constants import Units, latch_constants
 from latch_cli.utils import get_auth_header, urljoins, with_si_suffix
 from latch_cli.utils.path import normalize_path
+from latch_sdk_config.latch import config as latch_config
+from latch_sdk_config.user import user_config
 
 from .manager import TransferStateManager
 from .node import get_node_data
@@ -106,6 +108,14 @@ def upload(
         num_bars = cores
         show_total_progress = True
 
+    ingress_source: Optional[dict[str, str]] = None
+
+    try:
+        pod_id = Path("/root/.latch/id").read_text("utf-8")
+        ingress_source = {"pod_id": pod_id}
+    except FileNotFoundError:
+        pass
+
     with ProcessPoolExecutor(max_workers=cores) as exec:
         with TransferStateManager() as man:
             parts_by_src: "PartsBySrcType" = man.dict()
@@ -137,8 +147,7 @@ def upload(
                             UploadJob(
                                 rel_path,
                                 urljoins(
-                                    normalized,
-                                    str(rel_path.relative_to(src_path)),
+                                    normalized, str(rel_path.relative_to(src_path))
                                 ),
                             )
                         )
@@ -147,16 +156,13 @@ def upload(
 
                 url_generation_bar: ProgressBars
                 with closing(
-                    man.ProgressBars(
-                        0,
-                        show_total_progress=(progress != Progress.none),
-                    )
+                    man.ProgressBars(0, show_total_progress=(progress != Progress.none))
                 ) as url_generation_bar:
                     url_generation_bar.set_total(num_files, "Generating URLs")
 
-                    start_upload_futs: List[Future[Optional[StartUploadReturnType]]] = (
-                        []
-                    )
+                    start_upload_futs: List[
+                        Future[Optional[StartUploadReturnType]]
+                    ] = []
 
                     start = time.monotonic()
                     for job in jobs:
@@ -169,6 +175,7 @@ def upload(
                                 throttle,
                                 latency_q,
                                 chunk_size_mib,
+                                ingress_source,
                             )
                         )
 
@@ -201,9 +208,7 @@ def upload(
 
                         pbar_index = chunk_upload_bars.get_free_task_bar_index()
                         chunk_upload_bars.set(
-                            pbar_index,
-                            res.src.stat().st_size,
-                            res.src.name,
+                            pbar_index, res.src.stat().st_size, res.src.name
                         )
                         chunk_upload_bars.set_usage(str(res.src), res.part_count)
 
@@ -220,6 +225,7 @@ def upload(
                                     parts_by_source=parts_by_src,
                                     upload_id=res.upload_id,
                                     dest=res.dest,
+                                    ingress_source=ingress_source,
                                 )
                             )
 
@@ -249,7 +255,10 @@ def upload(
 
                     start = time.monotonic()
                     res = start_upload(
-                        src_path, normalized, chunk_size_mib=chunk_size_mib
+                        src_path,
+                        normalized,
+                        chunk_size_mib=chunk_size_mib,
+                        ingress_source=ingress_source,
                     )
 
                     if res is not None:
@@ -280,6 +289,7 @@ def upload(
                             normalized,
                             res.upload_id,
                             [fut.result() for fut in chunk_futs],
+                            ingress_source=ingress_source,
                         )
 
     end = time.monotonic()
@@ -305,6 +315,7 @@ def start_upload(
     throttle: Optional[Throttle] = None,
     latency_q: Optional["LatencyQueueType"] = None,
     chunk_size_mib: Optional[int] = None,
+    ingress_source: Optional[dict[str, str]] = None,
 ) -> Optional[StartUploadReturnType]:
     if not src.exists():
         raise ValueError(f"could not find {src}: no such file or link")
@@ -328,7 +339,7 @@ def start_upload(
     if file_size > latch_constants.maximum_upload_size:
         raise ValueError(
             f"file is {with_si_suffix(file_size)} which exceeds the maximum"
-            " upload size (5TiB)",
+            " upload size (5TiB)"
         )
 
     if chunk_size_mib is None:
@@ -337,12 +348,10 @@ def start_upload(
         chunk_size = chunk_size_mib * Units.MiB
 
     part_count = min(
-        latch_constants.maximum_upload_parts,
-        math.ceil(file_size / chunk_size),
+        latch_constants.maximum_upload_parts, math.ceil(file_size / chunk_size)
     )
     part_size = max(
-        chunk_size,
-        math.ceil(file_size / latch_constants.maximum_upload_parts),
+        chunk_size, math.ceil(file_size / latch_constants.maximum_upload_parts)
     )
 
     if throttle is not None:
@@ -356,6 +365,14 @@ def start_upload(
             "path": dest,
             "content_type": content_type,
             "part_count": part_count,
+            "ingress_event_data": {
+                "purpose": json.dumps({
+                    "method": "latch-cli",
+                    **(
+                        {"source": ingress_source} if ingress_source is not None else {}
+                    ),
+                })
+            },
         },
     )
     end = time.monotonic()
@@ -398,6 +415,7 @@ def upload_file_chunk(
     parts_by_source: Optional["PartsBySrcType"] = None,
     upload_id: Optional[str] = None,
     dest: Optional[str] = None,
+    ingress_source: Optional[dict[str, str]] = None,
 ) -> CompletedPart:
     # todo(ayush): proper exception handling that aborts everything
     try:
@@ -419,11 +437,7 @@ def upload_file_chunk(
             f" Headers: {res.headers}"
         )
 
-        ret = CompletedPart(
-            src=src,
-            etag=etag,
-            part_number=part_index + 1,
-        )
+        ret = CompletedPart(src=src, etag=etag, part_number=part_index + 1)
 
         if parts_by_source is not None:
             parts_by_source[src].append(ret)
@@ -446,6 +460,7 @@ def upload_file_chunk(
                         dest=dest,
                         upload_id=upload_id,
                         parts=list(parts_by_source[src]),
+                        ingress_source=ingress_source,
                     )
 
         return ret
@@ -461,6 +476,7 @@ def end_upload(
     upload_id: str,
     parts: List[CompletedPart],
     progress_bars: Optional[ProgressBars] = None,
+    ingress_source: Optional[dict[str, str]] = None,
 ):
     res = http_session.post(
         latch_config.api.data.end_upload,
@@ -469,12 +485,16 @@ def end_upload(
             "path": dest,
             "upload_id": upload_id,
             "parts": [
-                {
-                    "ETag": part.etag,
-                    "PartNumber": part.part_number,
-                }
-                for part in parts
+                {"ETag": part.etag, "PartNumber": part.part_number} for part in parts
             ],
+            "ingress_event_data": {
+                "purpose": json.dumps({
+                    "method": "latch-cli",
+                    **(
+                        {"source": ingress_source} if ingress_source is not None else {}
+                    ),
+                })
+            },
         },
     )
 
