@@ -108,6 +108,14 @@ def upload(
         num_bars = cores
         show_total_progress = True
 
+    ingress_source: Optional[dict[str, str]] = None
+
+    try:
+        pod_id = Path("/root/.latch/id").read_text("utf-8")
+        ingress_source = {"pod_id": pod_id}
+    except FileNotFoundError:
+        pass
+
     with ProcessPoolExecutor(max_workers=cores) as exec:
         with TransferStateManager() as man:
             parts_by_src: "PartsBySrcType" = man.dict()
@@ -167,6 +175,7 @@ def upload(
                                 throttle,
                                 latency_q,
                                 chunk_size_mib,
+                                ingress_source,
                             )
                         )
 
@@ -216,6 +225,7 @@ def upload(
                                     parts_by_source=parts_by_src,
                                     upload_id=res.upload_id,
                                     dest=res.dest,
+                                    ingress_source=ingress_source,
                                 )
                             )
 
@@ -245,7 +255,10 @@ def upload(
 
                     start = time.monotonic()
                     res = start_upload(
-                        src_path, normalized, chunk_size_mib=chunk_size_mib
+                        src_path,
+                        normalized,
+                        chunk_size_mib=chunk_size_mib,
+                        ingress_source=ingress_source,
                     )
 
                     if res is not None:
@@ -276,6 +289,7 @@ def upload(
                             normalized,
                             res.upload_id,
                             [fut.result() for fut in chunk_futs],
+                            ingress_source=ingress_source,
                         )
 
     end = time.monotonic()
@@ -301,6 +315,7 @@ def start_upload(
     throttle: Optional[Throttle] = None,
     latency_q: Optional["LatencyQueueType"] = None,
     chunk_size_mib: Optional[int] = None,
+    ingress_source: Optional[dict[str, str]] = None,
 ) -> Optional[StartUploadReturnType]:
     if not src.exists():
         raise ValueError(f"could not find {src}: no such file or link")
@@ -341,14 +356,6 @@ def start_upload(
 
     if throttle is not None:
         time.sleep(throttle.get_delay())
-
-    ingress_source: Optional[dict[str, str]] = None
-
-    try:
-        pod_id = Path("/root/.latch/id").read_text("utf-8")
-        ingress_source = {"pod_id": pod_id}
-    except FileNotFoundError:
-        pass
 
     start = time.monotonic()
     res = http_session.post(
@@ -408,6 +415,7 @@ def upload_file_chunk(
     parts_by_source: Optional["PartsBySrcType"] = None,
     upload_id: Optional[str] = None,
     dest: Optional[str] = None,
+    ingress_source: Optional[dict[str, str]] = None,
 ) -> CompletedPart:
     # todo(ayush): proper exception handling that aborts everything
     try:
@@ -449,7 +457,10 @@ def upload_file_chunk(
                     and upload_id is not None
                 ):
                     end_upload(
-                        dest=dest, upload_id=upload_id, parts=list(parts_by_source[src])
+                        dest=dest,
+                        upload_id=upload_id,
+                        parts=list(parts_by_source[src]),
+                        ingress_source=ingress_source,
                     )
 
         return ret
@@ -465,6 +476,7 @@ def end_upload(
     upload_id: str,
     parts: List[CompletedPart],
     progress_bars: Optional[ProgressBars] = None,
+    ingress_source: Optional[dict[str, str]] = None,
 ):
     res = http_session.post(
         latch_config.api.data.end_upload,
@@ -475,6 +487,14 @@ def end_upload(
             "parts": [
                 {"ETag": part.etag, "PartNumber": part.part_number} for part in parts
             ],
+            "ingress_event_data": {
+                "purpose": json.dumps({
+                    "method": "latch-cli",
+                    **(
+                        {"source": ingress_source} if ingress_source is not None else {}
+                    ),
+                })
+            },
         },
     )
 
