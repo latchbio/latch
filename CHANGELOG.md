@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.62.3 - 2025-05-29
+
+### Fixed
+
+* LPath download caching -- need to search with bytes, not string
+
 ## 2.62.2 - 2025-05-27
 
 ### Changed

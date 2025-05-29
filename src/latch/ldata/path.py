@@ -343,13 +343,15 @@ class LPath:
 
         self._clear_cache()
         version_id = self.version_id()
+        version_xattr = b"user.version_id"
+
         if (
             not_windows
             and cache
             and dst.exists()
             and xattr.listxattr(dst_str) is not None
-            and "user.version_id" in xattr.listxattr(dst_str)
-            and version_id == xattr.getxattr(dst_str, "user.version_id").decode()
+            and version_xattr in xattr.listxattr(dst_str)
+            and version_id == xattr.getxattr(dst_str, version_xattr).decode()
         ):
             return dst
 
@@ -359,7 +361,7 @@ class LPath:
             self._persistence.download(self.path, str(dst))
 
         if not_windows and version_id is not None:
-            xattr.setxattr(dst_str, "user.version_id", version_id)
+            xattr.setxattr(dst_str, version_xattr, version_id)
 
         return dst
 
