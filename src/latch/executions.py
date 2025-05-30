@@ -170,9 +170,13 @@ class ExecutionMetadata:
     workflow_name: str
     workflow_version: str
 
+    @property
+    def url(self) -> str:
+        return f"https://console.latch.bio/workflows/{self.workflow_id}/executions/{self.execution_id}"
+
 
 def get_execution_metadata(token: Optional[str] = None) -> ExecutionMetadata:
-    if token == None:
+    if token is None:
         token = os.environ.get("FLYTE_INTERNAL_EXECUTION_TOKEN")
 
     if token is None or token == "":
