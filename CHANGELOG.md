@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.63.0 - 2025-05-30
+
+### Added
+
+* `latch.executions.get_execution_metadata` for getting metadata about the running execution
+
 ## 2.62.3 - 2025-05-29
 
 ### Fixed
