@@ -5,9 +5,9 @@ from typing import List, Optional
 
 import click
 import gql
-from latch_sdk_gql.execute import execute
 
 from latch_cli.utils.path import normalize_path
+from latch_sdk_gql.execute import execute
 
 pod_name_regex = re.compile(
     r"""
@@ -159,4 +159,57 @@ def report_nextflow_used_storage(used_bytes: int):
             }
         """),
         {"argToken": token, "argUsedStorageBytes": used_bytes},
+    )
+
+
+@dataclass
+class ExecutionMetadata:
+    execution_id: str
+    execution_name: str
+    workflow_id: str
+    workflow_name: str
+    workflow_version: str
+
+
+def get_execution_metadata(token: Optional[str] = None) -> ExecutionMetadata:
+    if token == None:
+        token = os.environ.get("FLYTE_INTERNAL_EXECUTION_TOKEN")
+
+    if token is None or token == "":
+        raise RuntimeError(
+            "get_execution_metadata can only be called from within a running execution"
+        )
+
+    res = execute(
+        gql.gql(
+            """
+            query GetExecutionMetadata($token: String!) {
+                executionCreatorByToken(token: $token) {
+                    info {
+                        id
+                        displayName
+                        workflow {
+                            id
+                            displayName
+                            version
+                        }
+                    }
+                }
+            }
+            """
+        ),
+        {"token": token},
+    )["executionCreatorByToken"]
+
+    if res is None:
+        raise ValueError("execution token is not valid")
+
+    info = res["info"]
+
+    return ExecutionMetadata(
+        execution_id=info["id"],
+        execution_name=info["displayName"],
+        workflow_id=info["workflow"]["id"],
+        workflow_name=info["workflow"]["displayName"],
+        workflow_version=info["workflow"]["version"],
     )
