@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.63.1 - 2025-05-30
+
+### Fixed
+
+* Bug in `latch.executions.get_execution_metadata` where the wrong environment variable name was used
+
 ## 2.63.0 - 2025-05-30
 
 ### Added

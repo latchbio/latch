@@ -177,7 +177,7 @@ class ExecutionMetadata:
 
 def get_execution_metadata(token: Optional[str] = None) -> ExecutionMetadata:
     if token is None:
-        token = os.environ.get("FLYTE_INTERNAL_EXECUTION_TOKEN")
+        token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
 
     if token is None or token == "":
         raise RuntimeError(
