@@ -37,7 +37,7 @@ def launch_from_launch_plan(*, wf_name: str, lp_name: str, version: Optional[str
 
     lp_params: Optional[str] = wf_interface_resp.get("data", {}).get("default_inputs")
     if lp_params is None:
-        raise ValueError("Could not get launch plan parameters")
+        raise ValueError("Could not get LaunchPlan parameters")
 
     lp_params_map: dict[str, Parameter] = ParameterMap.from_flyte_idl(gpjson.ParseDict(json.loads(lp_params), _interface_pb2.ParameterMap())).parameters
 
