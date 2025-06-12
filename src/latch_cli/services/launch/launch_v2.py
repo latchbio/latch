@@ -27,26 +27,23 @@ def launch_from_launch_plan(*, wf_name: str, lp_name: str, version: Optional[str
     default_params_map: dict[str, Parameter] = ParameterMap.from_flyte_idl(gpjson.ParseDict(default_params, _interface_pb2.ParameterMap())).parameters
     parameter_interface: dict[str, Variable] = VariableMap.from_flyte_idl(gpjson.ParseDict(interface, _interface_pb2.VariableMap())).variables
 
-    query_lp_default = gql.gql(
-        """
-        query LaunchPlanDefaultInputs($workflowId: BigInt!, $namePattern: String!) {
-            lpInfos(
-                filter: {
-                    workflowId: { equalTo: $workflowId },
-                    name: { like: $namePattern }
-                },
-                first: 1
-            ) {
-                nodes {
-                    defaultInputs
+    lp_default_resp: dict[str, Any] = execute(
+        gql.gql(
+            """
+            query LaunchPlanDefaultInputs($workflowId: BigInt!, $namePattern: String!) {
+                lpInfos(
+                    filter: {
+                        workflowId: { equalTo: $workflowId },
+                        name: { like: $namePattern }
+                    }
+                ) {
+                    nodes {
+                        defaultInputs
+                    }
                 }
             }
-        }
-        """
-    )
-
-    lp_default_resp: dict[str, Any] = execute(
-        query_lp_default,
+            """
+        ),
         {
             "workflowId": wf_id,
             "namePattern": f"%.{lp_name}",
@@ -56,6 +53,9 @@ def launch_from_launch_plan(*, wf_name: str, lp_name: str, version: Optional[str
     lp_nodes = lp_default_resp.get("lpInfos", {}).get("nodes", [])
     if len(lp_nodes) == 0:
         raise ValueError(f"launchplan `{lp_name}` not found for workflow `{wf_name}` (id `{wf_id}`)")
+
+    if len(lp_nodes) > 1:
+        raise ValueError(f"multiple launchplans with name `{lp_name}` found for workflow `{wf_name}` (id `{wf_id}`)")
 
     lp_params_map: dict[str, Parameter] = ParameterMap.from_flyte_idl(
         gpjson.ParseDict(json.loads(lp_nodes[0].get("defaultInputs")), _interface_pb2.ParameterMap())
