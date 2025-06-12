@@ -5,17 +5,92 @@ from typing import Any, Optional, Union, get_args, get_origin
 
 import dill
 import google.protobuf.json_format as gpjson
+import gql
 from flyteidl.core import interface_pb2 as _interface_pb2
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.promise import translate_inputs_to_literals
 from flytekit.core.type_engine import TypeTransformerFailedError
-from flytekit.models.interface import Variable, VariableMap
+from flytekit.models.interface import Parameter, ParameterMap, Variable, VariableMap
 
 from latch.utils import current_workspace
 from latch_cli import tinyrequests
 from latch_cli.services.launch.interface import get_workflow_interface
 from latch_cli.utils import get_auth_header
 from latch_sdk_config.latch import config
+from latch_sdk_gql.execute import execute
+
+
+def launch_from_launch_plan(*, wf_name: str, lp_name: str, version: Optional[str] = None) -> int:
+    target_account_id = current_workspace()
+
+    wf_id, interface, default_params = get_workflow_interface(target_account_id, wf_name, version)
+    default_params_map: dict[str, Parameter] = ParameterMap.from_flyte_idl(gpjson.ParseDict(default_params, _interface_pb2.ParameterMap())).parameters
+    parameter_interface: dict[str, Variable] = VariableMap.from_flyte_idl(gpjson.ParseDict(interface, _interface_pb2.VariableMap())).variables
+
+    lp_default_resp: dict[str, Any] = execute(
+        gql.gql(
+            """
+            query LaunchPlanDefaultInputs($workflowId: BigInt!, $namePattern: String!) {
+                lpInfos(
+                    filter: {
+                        workflowId: { equalTo: $workflowId },
+                        name: { like: $namePattern }
+                    }
+                ) {
+                    nodes {
+                        defaultInputs
+                    }
+                }
+            }
+            """
+        ),
+        {
+            "workflowId": wf_id,
+            "namePattern": f"%.{lp_name}",
+        },
+    )
+
+    lp_nodes = lp_default_resp.get("lpInfos", {}).get("nodes", [])
+    if len(lp_nodes) == 0:
+        raise ValueError(f"launchplan `{lp_name}` not found for workflow `{wf_name}` (id `{wf_id}`)")
+
+    if len(lp_nodes) > 1:
+        raise ValueError(f"multiple launchplans with name `{lp_name}` found for workflow `{wf_name}` (id `{wf_id}`)")
+
+    lp_params_map: dict[str, Parameter] = ParameterMap.from_flyte_idl(
+        gpjson.ParseDict(json.loads(lp_nodes[0].get("defaultInputs")), _interface_pb2.ParameterMap())
+    ).parameters
+
+    combined_params_map: dict[str, Any] = {}
+
+    for k in parameter_interface:
+        if k in lp_params_map:
+            lp_param = lp_params_map[k].default
+            if lp_param is not None:
+                combined_params_map[k] = gpjson.MessageToDict(lp_param.to_flyte_idl())
+                continue
+
+        default_param = default_params_map.get(k)
+        if default_param is not None:
+            default_param_literal = default_param.default
+            if default_param_literal is not None:
+                combined_params_map[k] = gpjson.MessageToDict(default_param_literal.to_flyte_idl())
+                continue
+
+        combined_params_map[k] = {
+            "scalar": {
+                "union": {
+                    "value": {
+                        "scalar": {
+                            "noneType": {},
+                        },
+                    },
+                    "type": {"simple": "NONE", "structure": {"tag": "none"}},
+                },
+            },
+        }
+
+    return launch_workflow(target_account_id, wf_id, combined_params_map)
 
 
 def launch(*, wf_name: str, params: dict[str, Any], version: Optional[str] = None) -> int:
