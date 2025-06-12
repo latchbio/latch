@@ -42,6 +42,7 @@ class _WorkflowAPI:
     register: str = "/sdk/register-workflow"
     list: str = "/sdk/get-wf"
     interface: str = "/sdk/wf-interface"
+    launch_plan: str = "/workflows/get-launchplan"
     graph: str = "/sdk/get-workflow-graph"
     check_version: str = "/sdk/check-workflow-version"
     get_latest: str = "/sdk/get-latest-version-new"

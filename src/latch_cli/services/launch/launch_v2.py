@@ -9,13 +9,68 @@ from flyteidl.core import interface_pb2 as _interface_pb2
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.promise import translate_inputs_to_literals
 from flytekit.core.type_engine import TypeTransformerFailedError
-from flytekit.models.interface import Variable, VariableMap
+from flytekit.models.interface import Parameter, ParameterMap, Variable, VariableMap
 
+from latch.idl.core.literals import Literal
 from latch.utils import current_workspace
 from latch_cli import tinyrequests
 from latch_cli.services.launch.interface import get_workflow_interface
 from latch_cli.utils import get_auth_header
 from latch_sdk_config.latch import config
+
+
+def launch_from_launch_plan(*, wf_name: str, lp_id: int, version: Optional[str] = None) -> int:
+    target_account_id = current_workspace()
+
+    wf_id, interface, default_params = get_workflow_interface(target_account_id, wf_name, version)
+    default_params_map: dict[str, Parameter] = ParameterMap.from_flyte_idl(gpjson.ParseDict(default_params, _interface_pb2.ParameterMap())).parameters
+    parameter_interface: dict[str, Variable] = VariableMap.from_flyte_idl(gpjson.ParseDict(interface, _interface_pb2.VariableMap())).variables
+
+    response = tinyrequests.post(config.api.workflow.launch_plan, headers={"Authorization": get_auth_header()}, json={
+        "launchplan_id": lp_id,
+    })
+
+    try:
+        wf_interface_resp: dict[str, Any] = response.json()
+    except JSONDecodeError as e:
+        raise RuntimeError(f"Could not parse response as JSON: ({response.status_code}) {response}") from e
+
+    lp_params: Optional[str] = wf_interface_resp.get("data", {}).get("default_inputs")
+    if lp_params is None:
+        raise ValueError("Could not get launch plan parameters")
+
+    lp_params_map: dict[str, Parameter] = ParameterMap.from_flyte_idl(gpjson.ParseDict(json.loads(lp_params), _interface_pb2.ParameterMap())).parameters
+
+    combined_params_map: dict[str, Any] = {}
+
+    for k in parameter_interface:
+        if k in lp_params_map:
+            lp_param: Optional[Literal] = lp_params_map[k].default
+            if lp_param is not None:
+                combined_params_map[k] = gpjson.MessageToDict(lp_param.to_flyte_idl())
+                continue
+
+        default_param = default_params_map.get(k)
+        if default_param is not None:
+            default_param_literal: Optional[Literal] = default_param.default
+            if default_param_literal is not None:
+                combined_params_map[k] = gpjson.MessageToDict(default_param_literal.to_flyte_idl())
+                continue
+
+        combined_params_map[k] = {
+            "scalar": {
+                "union": {
+                    "value": {
+                        "scalar": {
+                            "noneType": {},
+                        },
+                    },
+                    "type": {"simple": "NONE", "structure": {"tag": "none"}},
+                },
+            },
+        }
+
+    return launch_workflow(target_account_id, wf_id, combined_params_map)
 
 
 def launch(*, wf_name: str, params: dict[str, Any], version: Optional[str] = None) -> int:
