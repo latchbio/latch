@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.64.0 - 2025-06-12
+
+### Added
+
+* Beta release of the function `launch_from_launch_plan` in `latch_cli.services.launch.launch_v2` which supports launching workflows from a LaunchPlan name.
+
 ## 2.63.1 - 2025-05-30
 
 ### Fixed
