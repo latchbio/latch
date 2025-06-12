@@ -27,45 +27,38 @@ def launch_from_launch_plan(*, wf_name: str, lp_name: str, version: Optional[str
     default_params_map: dict[str, Parameter] = ParameterMap.from_flyte_idl(gpjson.ParseDict(default_params, _interface_pb2.ParameterMap())).parameters
     parameter_interface: dict[str, Variable] = VariableMap.from_flyte_idl(gpjson.ParseDict(interface, _interface_pb2.VariableMap())).variables
 
-    query_lp_infos = gql.gql(
+    query_lp_default = gql.gql(
         """
-        query LaunchPlanInfos($workflowId: BigInt!) {
-            lpInfos(filter: { workflowId: { equalTo: $workflowId } }) {
+        query LaunchPlanDefaultInputs($workflowId: BigInt!, $namePattern: String!) {
+            lpInfos(
+                filter: {
+                    workflowId: { equalTo: $workflowId },
+                    name: { like: $namePattern }
+                },
+                first: 1
+            ) {
                 nodes {
-                    id
-                    name
+                    defaultInputs
                 }
             }
         }
         """
     )
-    lp_infos_resp: dict[str, Any] = execute(query_lp_infos, {"workflowId": wf_id})
-    lp_nodes = lp_infos_resp.get("lpInfos", {}).get("nodes", [])
 
-    target_lp_id: Optional[str] = None
-    for node in lp_nodes:
-        qualified_name: str = node.get("name", "")
-        user_given_name: str = qualified_name.split(".")[-1]
-        if user_given_name == lp_name:
-            target_lp_id = node.get("id")
-            break
-
-    if target_lp_id is None:
-        raise ValueError(f"LaunchPlan with name `{lp_name}` not found for workflow with id `{wf_id}`")
-
-    query_lp_defaults = gql.gql(
-        """
-        query LaunchPlanDefaultInputs($lpInfoId: BigInt!) {
-            lpInfo(id: $lpInfoId) {
-                defaultInputs
-            }
-        }
-        """
+    lp_default_resp: dict[str, Any] = execute(
+        query_lp_default,
+        {
+            "workflowId": wf_id,
+            "namePattern": f"%.{lp_name}",
+        },
     )
-    lp_params: str = execute(query_lp_defaults, {"lpInfoId": target_lp_id}).get("lpInfo", {}).get("defaultInputs")
+
+    lp_nodes = lp_default_resp.get("lpInfos", {}).get("nodes", [])
+    if len(lp_nodes) == 0:
+        raise ValueError(f"launchplan `{lp_name}` not found for workflow `{wf_name}` (id `{wf_id}`)")
 
     lp_params_map: dict[str, Parameter] = ParameterMap.from_flyte_idl(
-        gpjson.ParseDict(json.loads(lp_params), _interface_pb2.ParameterMap())
+        gpjson.ParseDict(json.loads(lp_nodes[0].get("defaultInputs")), _interface_pb2.ParameterMap())
     ).parameters
 
     combined_params_map: dict[str, Any] = {}
