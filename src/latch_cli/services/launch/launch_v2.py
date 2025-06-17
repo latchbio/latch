@@ -322,6 +322,8 @@ def to_python_literal(literal: Literal) -> Any:
     if literal.map is not None:
         return {k: to_python_literal(v) for k, v in literal.map.literals.items()}
 
+    # todo(rteqs): record
+
     return None
 
 
