@@ -113,7 +113,7 @@ def upload(
     try:
         pod_id = Path("/root/.latch/id").read_text("utf-8")
         ingress_source = {"pod_id": pod_id}
-    except (FileNotFoundError, PermissionError):
+    except OSError:
         pass
 
     with ProcessPoolExecutor(max_workers=cores) as exec:
