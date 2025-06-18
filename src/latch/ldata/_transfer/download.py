@@ -79,7 +79,7 @@ def download(
     try:
         pod_id = Path("/root/.latch/id").read_text("utf-8")
         egress_source = {"pod_id": pod_id}
-    except FileNotFoundError:
+    except (FileNotFoundError, PermissionError):
         pass
 
     res = http_session.post(
