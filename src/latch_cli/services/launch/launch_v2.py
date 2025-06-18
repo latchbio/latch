@@ -2,7 +2,7 @@ import base64
 import json
 import typing
 from json.decoder import JSONDecodeError
-from typing import Any, Literal, Optional, Union, get_args, get_origin
+from typing import Any, Optional, Union, get_args, get_origin
 
 import dill
 import flyteidl.core.literals_pb2 as pb
@@ -11,9 +11,9 @@ import gql
 from flyteidl.core import interface_pb2 as _interface_pb2
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.promise import translate_inputs_to_literals
-from flytekit.core.type_engine import TypeTransformerFailedError
+from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.models.interface import Parameter, ParameterMap, Variable, VariableMap
-from flytekit.models.literals import Literal, LiteralMap
+from flytekit.models.literals import LiteralMap
 
 from latch.utils import current_workspace
 from latch_cli import tinyrequests
@@ -131,16 +131,16 @@ def launch(
     ).variables
 
     python_interface_with_defaults: Union[dict[str, tuple[type, Any]], None] = None
+    python_outputs: Union[dict[str, type], None] = None
+
     for v in flyte_interface_types.values():
         description: dict[str, Any] = json.loads(v.description)
         if description.get("idx") != 0:
             continue
 
-        raw_python_interface_with_defaults = (
-            description.get("__workflow_meta__", {})
-            .get("meta", {})
-            .get("python_interface")
-        )
+        meta = description.get("__workflow_meta__", {}).get("meta", {})
+
+        raw_python_interface_with_defaults = meta.get("python_interface")
         if raw_python_interface_with_defaults is not None:
             try:
                 python_interface_with_defaults = dill.loads(
@@ -152,9 +152,24 @@ def launch(
                 ) from e
             break
 
+        raw_python_outputs = meta.get("python_outputs")
+        if raw_python_outputs is not None:
+            try:
+                python_outputs = dill.loads(base64.b64decode(raw_python_outputs))
+            except dill.UnpicklingError as e:
+                raise ValueError(
+                    "Failed to decode the workflow python output -- ensure your python version matches the version in the workflow environment"
+                ) from e
+            break
+
     if python_interface_with_defaults is None:
         raise ValueError(
             "No python interface found -- re-register workflow with latch version >= 2.62.0 in workflow environment"
+        )
+
+    if python_outputs is None:
+        raise ValueError(
+            "No python outputs found -- re-register workflow with latch version >= 2.65.0 in workflow environment"
         )
 
     for k, v in python_interface_with_defaults.items():
@@ -192,10 +207,17 @@ def launch(
         target_account_id,
         wf_id,
         {k: gpjson.MessageToDict(v.to_flyte_idl()) for k, v in fixed_literals.items()},
+        python_outputs,
     )
 
 
-def launch_workflow(target_account_id: str, wf_id: str, params: dict[str, Any]) -> int:
+def launch_workflow(
+    target_account_id: str,
+    wf_id: str,
+    params: dict[str, Any],
+    python_outputs: dict[str, type]
+    | None = None,  # todo(rteqs): figure out what to do for launch plan
+) -> int:
     """Launch the workflow of given id with parameter map.
 
     Return exeuction id if success, raises appropriate exceptions on failure.
@@ -279,56 +301,8 @@ def launch_workflow(target_account_id: str, wf_id: str, params: dict[str, Any]) 
     if execution_id is None:
         raise RuntimeError("Workflow launch failed - no execution id returned")
 
+    # return Execution(execution_id=execution_id, python_outputs=python_outputs)
     return execution_id
-
-
-def to_python_literal(literal: Literal) -> Any:
-    scalar = literal.scalar
-    if scalar is not None:
-        if scalar.none_type is not None:
-            return None
-
-        primitive = scalar.primitive
-        if primitive is not None:
-            if primitive.integer is not None:
-                return int(primitive.integer)
-
-            if primitive.float_value is not None:
-                return float(primitive.float_value)
-
-            if primitive.boolean is not None:
-                return bool(primitive.boolean)
-
-            if primitive.string_value is not None:
-                return str(primitive.string_value)
-
-        binary = scalar.binary
-        if binary is not None:
-            return bytes(binary)
-
-        # todo(rteqs): union / generic
-
-        blob = scalar.blob
-        if blob is not None:
-            uri = blob.uri
-            if is_remote_path(uri):
-                return LPath(uri)
-
-            return gpjson.MessageToDict(blob.to_flyte_idl())
-
-    if literal.collection is not None:
-        return [to_python_literal(item) for item in literal.collection.literals]
-
-    if literal.map is not None:
-        return {k: to_python_literal(v) for k, v in literal.map.literals.items()}
-
-    # todo(rteqs): record
-
-    return None
-
-
-def literal_map_to_python_literal(literal: LiteralMap) -> Any:
-    return {k: to_python_literal(v) for k, v in literal.literals.items()}
 
 
 ExecutionStatus = typing.Literal[
@@ -346,11 +320,12 @@ ExecutionStatus = typing.Literal[
 
 
 class Execution:
-    # todo(rteqs): figure out how to get after launching execution token
-    def __init__(self, execution_id: str, execution_token: str) -> None:
+    def __init__(self, execution_id: str, python_outputs: dict[str, type]) -> None:
         self.execution_id = execution_id
-        self.execution_token = str
+        self.python_outputs = python_outputs
+
         self.status: ExecutionStatus = "UNDEFINED"
+
         self.output: Union[dict[str, Any], None] = None
         self.outputs_url: Union[str, None] = None
 
@@ -373,7 +348,6 @@ class Execution:
         self.status = execution_info.get("status")
         self.outputs_url = execution_info.get("outputs_url")
 
-    # todo(rteqs): better typing
     def get_outputs(self) -> dict[str, Any]:
         if self.output is not None:
             return self.output
@@ -410,8 +384,22 @@ class Execution:
 
         output_pb = pb.LiteralMap()
         output_pb.ParseFromString(output_data)
-        output = LiteralMap.from_flyte_idl(output_pb)
+        output_idl = LiteralMap.from_flyte_idl(output_pb)
 
-        # todo(rteqs): validate with output schema?
+        output_literals = output_idl.literals
+        output: dict[str, Any] = {}
 
-        return literal_map_to_python_literal(output)
+        ctx = FlyteContextManager.current_context()
+        assert ctx is not None
+
+        for k, t in self.python_outputs.items():
+            if k not in output_literals:
+                if get_origin(t) is Union and type(None) in get_args(t):
+                    output[k] = None
+                else:
+                    raise ValueError(f"Required parameter '{k}' not provided in params")
+
+            else:
+                output[k] = TypeEngine.to_python_value(ctx, output_literals[k], t)
+
+        return output

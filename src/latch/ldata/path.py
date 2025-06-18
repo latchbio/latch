@@ -405,5 +405,12 @@ class LPathTransformer(TypeTransformer[LPath]):
     ):
         return LPath(path=lv.scalar.blob.uri)
 
+    def guess_python_type(self, literal_type: LiteralType) -> type[LPath]:
+        if literal_type.blob is not None and is_remote_path(literal_type.blob.uri):
+            return LPath
+
+
+        raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
+
 
 TypeEngine.register(LPathTransformer())
