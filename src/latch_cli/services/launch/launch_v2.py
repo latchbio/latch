@@ -1,9 +1,11 @@
+import asyncio
 import base64
 import json
 import time
-import typing
+from collections.abc import Generator
+from dataclasses import dataclass
 from json.decoder import JSONDecodeError
-from typing import Any, Optional, Union, get_args, get_origin
+from typing import Any, Literal, Optional, Union, get_args, get_origin
 from urllib.parse import urljoin
 
 import dill
@@ -24,7 +26,7 @@ from latch_cli.utils import get_auth_header
 from latch_sdk_config.latch import NUCLEUS_URL, config
 from latch_sdk_gql.execute import execute
 
-ExecutionStatus = typing.Literal[
+ExecutionStatus = Literal[
     "UNDEFINED",
     "QUEUED",
     "RUNNING",
@@ -41,15 +43,100 @@ ExecutionStatus = typing.Literal[
 class MissingParameterError(ValueError): ...
 
 
+@dataclass(frozen=True)
+class CompletedExecution:
+    id: str
+    output: dict[str, Any]
+
+
+#   ldata_ingress: list[LPath]
+
+
+def process_output(outputs_url: str, python_outputs: dict[str, type]) -> dict[str, Any]:
+    res = tinyrequests.post(
+        urljoin(NUCLEUS_URL, "/ldata/get-flyte-metadata-signed-url"),
+        headers={"Authorization": get_auth_header()},
+        json={"s3_uri": outputs_url, "action": "get_object"},
+    )
+
+    res.raise_for_status()
+    data = res.json()
+
+    presigned_url = data.get("data", {}).get("url")
+    assert presigned_url is not None
+
+    output_res = tinyrequests.get(presigned_url)
+    output_res.raise_for_status()
+    output_data = output_res.content
+
+    output_pb = pb.LiteralMap()
+    output_pb.ParseFromString(output_data)
+    output_idl = LiteralMap.from_flyte_idl(output_pb)
+
+    output_literals = output_idl.literals
+    output: dict[str, Any] = {}
+
+    ctx = FlyteContextManager.current_context()
+    assert ctx is not None
+
+    for k, t in python_outputs.items():
+        if k in output_literals:
+            output[k] = TypeEngine.to_python_value(ctx, output_literals[k], t)
+
+        elif get_origin(t) is Union and type(None) in get_args(t):
+            output[k] = None
+
+        else:
+            raise MissingParameterError(
+                f"Required parameter '{k}' not provided in params"
+            )
+
+    return output
+
+
+@dataclass
 class Execution:
-    def __init__(self, execution_id: str, python_outputs: dict[str, type]) -> None:
-        self.id = execution_id
-        self.python_outputs = python_outputs
+    id: str
+    python_outputs: dict[str, type]
+    status: ExecutionStatus = "UNDEFINED"
+    outputs_url: Union[str, None] = None
 
-        self.status: ExecutionStatus = "UNDEFINED"
+    def poll(self) -> Generator[None, Any, None]:
+        res: dict[str, Any] = execute(
+            gql.gql(
+                """
+                query GetExecutionStatus($executionId: BigInt!) {
+                    executionInfo(id: $executionId) {
+                        id
+                        status
+                        outputsUrl
+                    }
+                }
+                """
+            ),
+            {"executionId": self.id},
+        )
 
-        self.output: Union[dict[str, Any], None] = None
-        self.outputs_url: Union[str, None] = None
+        execution_info = res.get("executionInfo", {})
+        self.status = execution_info.get("status", "UNDEFINED")
+        self.outputs_url = execution_info.get("outputsUrl")
+
+        yield
+
+    async def wait(self) -> Union[CompletedExecution, None]:
+        for _ in self.poll():
+            if self.status == "SUCCEEDED" and self.outputs_url is not None:
+                return CompletedExecution(
+                    id=self.id,
+                    output=process_output(self.outputs_url, self.python_outputs),
+                )
+
+            if self.status in {"FAILED", "ABORTED"}:
+                return None
+
+            await asyncio.sleep(1)
+
+        return None
 
     def poll_status(self) -> None:
         execution_succeeded = (
@@ -76,53 +163,6 @@ class Execution:
             self.status = execution_info.get("status")
             self.outputs_url = execution_info.get("outputsUrl")
             time.sleep(1)
-
-    def get_outputs(self) -> dict[str, Any]:
-        if self.output is not None:
-            return self.output
-
-        if self.status != "SUCCEEDED" or self.outputs_url is None:
-            raise ValueError("workflow non successful")
-
-        res = tinyrequests.post(
-            urljoin(NUCLEUS_URL, "/ldata/get-flyte-metadata-signed-url"),
-            headers={"Authorization": get_auth_header()},
-            json={"s3_uri": self.outputs_url, "action": "get_object"},
-        )
-
-        res.raise_for_status()
-        data = res.json()
-
-        presigned_url = data.get("data", {}).get("url")
-        assert presigned_url is not None
-
-        output_res = tinyrequests.get(presigned_url)
-        output_res.raise_for_status()
-        output_data = output_res.content
-
-        output_pb = pb.LiteralMap()
-        output_pb.ParseFromString(output_data)
-        output_idl = LiteralMap.from_flyte_idl(output_pb)
-
-        output_literals = output_idl.literals
-        output: dict[str, Any] = {}
-
-        ctx = FlyteContextManager.current_context()
-        assert ctx is not None
-
-        for k, t in self.python_outputs.items():
-            if k in output_literals:
-                output[k] = TypeEngine.to_python_value(ctx, output_literals[k], t)
-
-            elif get_origin(t) is Union and type(None) in get_args(t):
-                output[k] = None
-
-            else:
-                raise MissingParameterError(
-                    f"Required parameter '{k}' not provided in params"
-                )
-
-        return output
 
 
 def launch_from_launch_plan(
@@ -420,4 +460,4 @@ def launch_workflow(
     if execution_id is None:
         raise RuntimeError("Workflow launch failed - no execution id returned")
 
-    return Execution(execution_id=execution_id, python_outputs=python_outputs)
+    return Execution(id=execution_id, python_outputs=python_outputs)
