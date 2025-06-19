@@ -30,7 +30,6 @@ class _DataAPI:
 
     get_signed_url: str = "/ldata/get-signed-url"
     get_signed_urls_recursive: str = "/ldata/get-signed-urls-recursive"
-    get_flyte_metadata_signed_url: str = "/ldata/get-flyte-metadata-signed-url"
     start_upload: str = "/ldata/start-upload"
     end_upload: str = "/ldata/end-upload"
 

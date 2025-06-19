@@ -4,6 +4,7 @@ import time
 import typing
 from json.decoder import JSONDecodeError
 from typing import Any, Optional, Union, get_args, get_origin
+from urllib.parse import urljoin
 
 import dill
 import flyteidl.core.literals_pb2 as pb
@@ -20,7 +21,7 @@ from latch.utils import current_workspace
 from latch_cli import tinyrequests
 from latch_cli.services.launch.interface import get_workflow_interface
 from latch_cli.utils import get_auth_header
-from latch_sdk_config.latch import config
+from latch_sdk_config.latch import NUCLEUS_URL, config
 from latch_sdk_gql.execute import execute
 
 ExecutionStatus = typing.Literal[
@@ -37,9 +38,12 @@ ExecutionStatus = typing.Literal[
 ]
 
 
+class MissingParameterError(ValueError): ...
+
+
 class Execution:
     def __init__(self, execution_id: str, python_outputs: dict[str, type]) -> None:
-        self.execution_id = execution_id
+        self.id = execution_id
         self.python_outputs = python_outputs
 
         self.status: ExecutionStatus = "UNDEFINED"
@@ -47,12 +51,13 @@ class Execution:
         self.output: Union[dict[str, Any], None] = None
         self.outputs_url: Union[str, None] = None
 
-    @property
-    def id(self) -> str:
-        return self.execution_id
-
     def poll_status(self) -> None:
-        while self.status != "SUCCEEDED" or self.outputs_url is None:
+        execution_succeeded = (
+            self.status == "SUCCEEDED" and self.outputs_url is not None
+        )
+        execution_failed = self.status in {"ABORTED", "FAILED", "SKIPPED"}
+
+        while not execution_succeeded and not execution_failed:
             res: dict[str, Any] = execute(
                 gql.gql(
                     """
@@ -65,7 +70,7 @@ class Execution:
                     }
                     """
                 ),
-                {"executionId": self.execution_id},
+                {"executionId": self.id},
             )
             execution_info = res.get("executionInfo", {})
             self.status = execution_info.get("status")
@@ -80,31 +85,20 @@ class Execution:
             raise ValueError("workflow non successful")
 
         res = tinyrequests.post(
-            config.api.data.get_flyte_metadata_signed_url,
+            urljoin(NUCLEUS_URL, "/ldata/get-flyte-metadata-signed-url"),
             headers={"Authorization": get_auth_header()},
             json={"s3_uri": self.outputs_url, "action": "get_object"},
         )
 
-        try:
-            data = res.json()
-        except JSONDecodeError as e:
-            raise RuntimeError(
-                f"Could not parse response as JSON: ({res.status_code}) {res}"
-            ) from e
-
-        if res.status_code != 200:
-            print("Error")
-            print(data)
-            return {}
+        res.raise_for_status()
+        data = res.json()
 
         presigned_url = data.get("data", {}).get("url")
-        output_res = tinyrequests.get(presigned_url)
-        output_data = output_res.content
+        assert presigned_url is not None
 
-        if output_res.status_code != 200:
-            print("Error")
-            print(output_data)
-            return {}
+        output_res = tinyrequests.get(presigned_url)
+        output_res.raise_for_status()
+        output_data = output_res.content
 
         output_pb = pb.LiteralMap()
         output_pb.ParseFromString(output_data)
@@ -117,14 +111,16 @@ class Execution:
         assert ctx is not None
 
         for k, t in self.python_outputs.items():
-            if k not in output_literals:
-                if get_origin(t) is Union and type(None) in get_args(t):
-                    output[k] = None
-                else:
-                    raise ValueError(f"Required parameter '{k}' not provided in params")
+            if k in output_literals:
+                output[k] = TypeEngine.to_python_value(ctx, output_literals[k], t)
+
+            elif get_origin(t) is Union and type(None) in get_args(t):
+                output[k] = None
 
             else:
-                output[k] = TypeEngine.to_python_value(ctx, output_literals[k], t)
+                raise MissingParameterError(
+                    f"Required parameter '{k}' not provided in params"
+                )
 
         return output
 
@@ -221,7 +217,7 @@ def launch_from_launch_plan(
             try:
                 python_outputs = dill.loads(base64.b64decode(raw_python_outputs))
             except dill.UnpicklingError as e:
-                raise ValueError(
+                raise RuntimeError(
                     "Failed to decode the workflow python output -- ensure your python version matches the version in the workflow environment"
                 ) from e
             break
@@ -272,34 +268,28 @@ def launch(
         meta = description.get("__workflow_meta__", {}).get("meta", {})
 
         raw_python_interface_with_defaults = meta.get("python_interface")
-        if raw_python_interface_with_defaults is not None:
+        raw_python_outputs = meta.get("python_outputs")
+
+        if (
+            raw_python_interface_with_defaults is not None
+            and raw_python_outputs is not None
+        ):
             try:
                 python_interface_with_defaults = dill.loads(
                     base64.b64decode(raw_python_interface_with_defaults)
                 )
+                python_outputs = dill.loads(base64.b64decode(raw_python_outputs))
+
             except dill.UnpicklingError as e:
-                raise ValueError(
-                    "Failed to decode the workflow python interface -- ensure your python version matches the version in the workflow environment"
+                raise RuntimeError(
+                    "Failed to decode the workflow python interface / outputs. Ensure your python version matches the version in the workflow environment"
                 ) from e
 
-        raw_python_outputs = meta.get("python_outputs")
-        if raw_python_outputs is not None:
-            try:
-                python_outputs = dill.loads(base64.b64decode(raw_python_outputs))
-            except dill.UnpicklingError as e:
-                raise ValueError(
-                    "Failed to decode the workflow python output -- ensure your python version matches the version in the workflow environment"
-                ) from e
             break
 
-    if python_interface_with_defaults is None:
-        raise ValueError(
-            "No python interface found -- re-register workflow with latch version >= 2.62.0 in workflow environment"
-        )
-
-    if python_outputs is None:
-        raise ValueError(
-            "No python outputs found -- re-register workflow with latch version >= 2.65.0 in workflow environment"
+    if python_interface_with_defaults is None or python_outputs is None:
+        raise RuntimeError(
+            "Missing python interface / outputs in workflow metadata. Re-register workflow with latch version >= 2.65.0 in workflow environment"
         )
 
     for k, v in python_interface_with_defaults.items():
@@ -329,7 +319,7 @@ def launch(
     except TypeTransformerFailedError as e:
         if "is not an instance of" in str(e):
             raise ValueError(
-                "Failed to translate inputs to literals -- ensure you are importing the same classes used in the workflow function header"
+                "Failed to translate inputs to literals. Ensure you are importing the same classes used in the workflow function header"
             ) from e
         raise
 
@@ -349,7 +339,7 @@ def launch_workflow(
 ) -> Execution:
     """Launch the workflow of given id with parameter map.
 
-    Return exeuction id if success, raises appropriate exceptions on failure.
+    Returns: exeuction ID
     """
     response = tinyrequests.post(
         config.api.execution.create,
