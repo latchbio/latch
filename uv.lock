@@ -1013,7 +1013,7 @@ wheels = [
 
 [[package]]
 name = "latch"
-version = "2.65.1a5"
+version = "2.65.1"
 source = { editable = "." }
 dependencies = [
     { name = "aioconsole" },
