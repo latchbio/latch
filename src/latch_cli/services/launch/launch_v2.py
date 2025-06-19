@@ -1,7 +1,6 @@
 import asyncio
 import base64
 import json
-import time
 from collections.abc import Generator
 from dataclasses import dataclass
 from json.decoder import JSONDecodeError
@@ -19,6 +18,7 @@ from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.models.interface import Parameter, ParameterMap, Variable, VariableMap
 from flytekit.models.literals import LiteralMap
 
+from latch.ldata.path import LPath
 from latch.utils import current_workspace
 from latch_cli import tinyrequests
 from latch_cli.services.launch.interface import get_workflow_interface
@@ -41,15 +41,6 @@ ExecutionStatus = Literal[
 
 
 class MissingParameterError(ValueError): ...
-
-
-@dataclass(frozen=True)
-class CompletedExecution:
-    id: str
-    output: dict[str, Any]
-
-
-#   ldata_ingress: list[LPath]
 
 
 def process_output(outputs_url: str, python_outputs: dict[str, type]) -> dict[str, Any]:
@@ -94,12 +85,54 @@ def process_output(outputs_url: str, python_outputs: dict[str, type]) -> dict[st
     return output
 
 
+def get_ingress_data(flytedb_id: str) -> list[LPath]:
+    query_res: dict[str, Any] = execute(
+        gql.gql(
+            """
+            query ExecutionIngressTag($flytedbId: BigInt!) {
+                ldataNodeEvents(
+                    condition: { causeExecutionFlytedbId: $flytedbId }
+                    filter: { type: { equalTo: INGRESS } }
+                ) {
+                    nodes {
+                    id
+                    ldataNode {
+                        id
+                    }
+                    }
+                }
+            }
+            """
+        ),
+        {"flytedbId": flytedb_id},
+    )
+
+    nodes = query_res.get("ldataNodeEvents", {}).get("nodes", [])
+    res: list[LPath] = []
+    for n in nodes:
+        ldata_node_id: Union[str, None] = n.get("ldataNode", {}).get("id")
+        if ldata_node_id is None:
+            continue
+
+        res.append(LPath(f"latch://{ldata_node_id}.node"))
+
+    return res
+
+
+@dataclass(frozen=True)
+class CompletedExecution:
+    id: str
+    output: dict[str, Any]
+    ingress_data: list[LPath]
+
+
 @dataclass
 class Execution:
     id: str
     python_outputs: dict[str, type]
     status: ExecutionStatus = "UNDEFINED"
     outputs_url: Union[str, None] = None
+    flytedb_id: Union[str, None] = None
 
     def poll(self) -> Generator[None, Any, None]:
         res: dict[str, Any] = execute(
@@ -108,6 +141,7 @@ class Execution:
                 query GetExecutionStatus($executionId: BigInt!) {
                     executionInfo(id: $executionId) {
                         id
+                        flytedbId
                         status
                         outputsUrl
                     }
@@ -120,15 +154,21 @@ class Execution:
         execution_info = res.get("executionInfo", {})
         self.status = execution_info.get("status", "UNDEFINED")
         self.outputs_url = execution_info.get("outputsUrl")
+        self.flytedb_id = execution_info.get("flytedbId")
 
         yield
 
     async def wait(self) -> Union[CompletedExecution, None]:
         for _ in self.poll():
-            if self.status == "SUCCEEDED" and self.outputs_url is not None:
+            if (
+                self.status == "SUCCEEDED"
+                and self.outputs_url is not None
+                and self.flytedb_id is not None
+            ):
                 return CompletedExecution(
                     id=self.id,
                     output=process_output(self.outputs_url, self.python_outputs),
+                    ingress_data=get_ingress_data(self.flytedb_id),
                 )
 
             if self.status in {"FAILED", "ABORTED"}:
@@ -137,32 +177,6 @@ class Execution:
             await asyncio.sleep(1)
 
         return None
-
-    def poll_status(self) -> None:
-        execution_succeeded = (
-            self.status == "SUCCEEDED" and self.outputs_url is not None
-        )
-        execution_failed = self.status in {"ABORTED", "FAILED", "SKIPPED"}
-
-        while not execution_succeeded and not execution_failed:
-            res: dict[str, Any] = execute(
-                gql.gql(
-                    """
-                    query GetExecutionStatus($executionId: BigInt!) {
-                        executionInfo(id: $executionId) {
-                            id
-                            status
-                            outputsUrl
-                        }
-                    }
-                    """
-                ),
-                {"executionId": self.id},
-            )
-            execution_info = res.get("executionInfo", {})
-            self.status = execution_info.get("status")
-            self.outputs_url = execution_info.get("outputsUrl")
-            time.sleep(1)
 
 
 def launch_from_launch_plan(
