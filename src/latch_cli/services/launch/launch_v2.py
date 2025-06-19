@@ -135,28 +135,29 @@ class Execution:
     flytedb_id: Union[str, None] = None
 
     def poll(self) -> Generator[None, Any, None]:
-        res: dict[str, Any] = execute(
-            gql.gql(
-                """
-                query GetExecutionStatus($executionId: BigInt!) {
-                    executionInfo(id: $executionId) {
-                        id
-                        flytedbId
-                        status
-                        outputsUrl
+        while True:
+            res: dict[str, Any] = execute(
+                gql.gql(
+                    """
+                    query GetExecutionStatus($executionId: BigInt!) {
+                        executionInfo(id: $executionId) {
+                            id
+                            flytedbId
+                            status
+                            outputsUrl
+                        }
                     }
-                }
-                """
-            ),
-            {"executionId": self.id},
-        )
+                    """
+                ),
+                {"executionId": self.id},
+            )
 
-        execution_info = res.get("executionInfo", {})
-        self.status = execution_info.get("status", "UNDEFINED")
-        self.outputs_url = execution_info.get("outputsUrl")
-        self.flytedb_id = execution_info.get("flytedbId")
+            execution_info = res.get("executionInfo", {})
+            self.status = execution_info.get("status", "UNDEFINED")
+            self.outputs_url = execution_info.get("outputsUrl")
+            self.flytedb_id = execution_info.get("flytedbId")
 
-        yield
+            yield
 
     async def wait(self) -> Union[CompletedExecution, None]:
         for _ in self.poll():
