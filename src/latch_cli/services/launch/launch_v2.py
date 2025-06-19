@@ -22,10 +22,113 @@ from latch_cli.utils import get_auth_header
 from latch_sdk_config.latch import config
 from latch_sdk_gql.execute import execute
 
+ExecutionStatus = typing.Literal[
+    "UNDEFINED",
+    "QUEUED",
+    "RUNNING",
+    "SUCCEEDED",
+    "ABORTED",
+    "FAILED",
+    "INITIALIZING",
+    "WAITING_FOR_RESOURCES",
+    "SKIPPED",
+    "ABORTING",
+]
+
+
+class Execution:
+    def __init__(self, execution_id: str, python_outputs: dict[str, type]) -> None:
+        self.execution_id = execution_id
+        self.python_outputs = python_outputs
+
+        self.status: ExecutionStatus = "UNDEFINED"
+
+        self.output: Union[dict[str, Any], None] = None
+        self.outputs_url: Union[str, None] = None
+
+    @property
+    def id(self) -> str:
+        return self.execution_id
+
+    def poll_status(self) -> None:
+        res: dict[str, Any] = execute(
+            gql.gql(
+                """
+                query GetExecutionStatus($executionId: BigInt!) {
+                    executionInfo(id: $executionId) {
+                        id
+                        status
+                        outputsUrl
+                    }
+                }
+                """
+            ),
+            {"executionId": self.execution_id},
+        )
+        execution_info = res.get("executionInfo", {})
+        self.status = execution_info.get("status")
+        self.outputs_url = execution_info.get("outputs_url")
+
+    def get_outputs(self) -> dict[str, Any]:
+        if self.output is not None:
+            return self.output
+
+        if self.status != "SUCCEEDED" or self.outputs_url is None:
+            raise ValueError("workflow non successful")
+
+        res = tinyrequests.post(
+            config.api.data.get_flyte_metadata_signed_url,
+            headers={"Authorization": get_auth_header()},
+            json={"s3_uri": {self.outputs_url}, "action": "get_object"},
+        )
+
+        try:
+            data = res.json()
+        except JSONDecodeError as e:
+            raise RuntimeError(
+                f"Could not parse response as JSON: ({res.status_code}) {res}"
+            ) from e
+
+        if res.status_code != 200:
+            print("Error")
+            print(data)
+            return {}
+
+        presigned_url = data.get("data", {}).get("url")
+        output_res = tinyrequests.get(presigned_url)
+        output_data = output_res.content
+
+        if output_res.status_code != 200:
+            print("Error")
+            print(output_data)
+            return {}
+
+        output_pb = pb.LiteralMap()
+        output_pb.ParseFromString(output_data)
+        output_idl = LiteralMap.from_flyte_idl(output_pb)
+
+        output_literals = output_idl.literals
+        output: dict[str, Any] = {}
+
+        ctx = FlyteContextManager.current_context()
+        assert ctx is not None
+
+        for k, t in self.python_outputs.items():
+            if k not in output_literals:
+                if get_origin(t) is Union and type(None) in get_args(t):
+                    output[k] = None
+                else:
+                    raise ValueError(f"Required parameter '{k}' not provided in params")
+
+            else:
+                output[k] = TypeEngine.to_python_value(ctx, output_literals[k], t)
+
+        return output
+
 
 def launch_from_launch_plan(
     *, wf_name: str, lp_name: str, version: Optional[str] = None
-) -> int:
+) -> Execution:
     target_account_id = current_workspace()
 
     wf_id, interface, default_params = get_workflow_interface(
@@ -77,7 +180,9 @@ def launch_from_launch_plan(
 
     combined_params_map: dict[str, Any] = {}
 
-    for k in parameter_interface:
+    python_outputs: Union[dict[str, type], None] = None
+
+    for k, v in parameter_interface.items():
         if k in lp_params_map:
             lp_param = lp_params_map[k].default
             if lp_param is not None:
@@ -102,12 +207,35 @@ def launch_from_launch_plan(
             }
         }
 
-    return launch_workflow(target_account_id, wf_id, combined_params_map)
+        description: dict[str, Any] = json.loads(v.description)
+        if description.get("idx") != 0:
+            continue
+
+        meta = description.get("__workflow_meta__", {}).get("meta", {})
+
+        raw_python_outputs = meta.get("python_outputs")
+        if raw_python_outputs is not None:
+            try:
+                python_outputs = dill.loads(base64.b64decode(raw_python_outputs))
+            except dill.UnpicklingError as e:
+                raise ValueError(
+                    "Failed to decode the workflow python output -- ensure your python version matches the version in the workflow environment"
+                ) from e
+            break
+
+    if python_outputs is None:
+        raise ValueError(
+            "No python outputs found -- re-register workflow with latch version >= 2.65.0 in workflow environment"
+        )
+
+    return launch_workflow(
+        target_account_id, wf_id, combined_params_map, python_outputs
+    )
 
 
 def launch(
     *, wf_name: str, params: dict[str, Any], version: Optional[str] = None
-) -> int:
+) -> Execution:
     """Create an execution of workflow `wf_name` with version `version` and parameters `params`.
 
     If version is not provided, the latest version of the workflow will be launched.
@@ -215,9 +343,8 @@ def launch_workflow(
     target_account_id: str,
     wf_id: str,
     params: dict[str, Any],
-    python_outputs: dict[str, type]
-    | None = None,  # todo(rteqs): figure out what to do for launch plan
-) -> int:
+    python_outputs: dict[str, type],
+) -> Execution:
     """Launch the workflow of given id with parameter map.
 
     Return exeuction id if success, raises appropriate exceptions on failure.
@@ -301,105 +428,4 @@ def launch_workflow(
     if execution_id is None:
         raise RuntimeError("Workflow launch failed - no execution id returned")
 
-    # return Execution(execution_id=execution_id, python_outputs=python_outputs)
-    return execution_id
-
-
-ExecutionStatus = typing.Literal[
-    "UNDEFINED",
-    "QUEUED",
-    "RUNNING",
-    "SUCCEEDED",
-    "ABORTED",
-    "FAILED",
-    "INITIALIZING",
-    "WAITING_FOR_RESOURCES",
-    "SKIPPED",
-    "ABORTING",
-]
-
-
-class Execution:
-    def __init__(self, execution_id: str, python_outputs: dict[str, type]) -> None:
-        self.execution_id = execution_id
-        self.python_outputs = python_outputs
-
-        self.status: ExecutionStatus = "UNDEFINED"
-
-        self.output: Union[dict[str, Any], None] = None
-        self.outputs_url: Union[str, None] = None
-
-    def poll_status(self) -> None:
-        res: dict[str, Any] = execute(
-            gql.gql(
-                """
-                query GetExecutionStatus($executionId: BigInt!) {
-                    executionInfo(id: $executionId) {
-                        id
-                        status
-                        outputsUrl
-                    }
-                }
-                """
-            ),
-            {"executionId": self.execution_id},
-        )
-        execution_info = res.get("executionInfo", {})
-        self.status = execution_info.get("status")
-        self.outputs_url = execution_info.get("outputs_url")
-
-    def get_outputs(self) -> dict[str, Any]:
-        if self.output is not None:
-            return self.output
-
-        if self.status != "SUCCEEDED" or self.outputs_url is None:
-            raise ValueError("workflow non successful")
-
-        res = tinyrequests.post(
-            config.api.data.get_flyte_metadata_signed_url,
-            headers={"Authorization": get_auth_header()},
-            json={"s3_uri": {self.outputs_url}, "action": "get_object"},
-        )
-
-        try:
-            data = res.json()
-        except JSONDecodeError as e:
-            raise RuntimeError(
-                f"Could not parse response as JSON: ({res.status_code}) {res}"
-            ) from e
-
-        if res.status_code != 200:
-            print("Error")
-            print(data)
-            return {}
-
-        presigned_url = data.get("data", {}).get("url")
-        output_res = tinyrequests.get(presigned_url)
-        output_data = output_res.content
-
-        if output_res.status_code != 200:
-            print("Error")
-            print(output_data)
-            return {}
-
-        output_pb = pb.LiteralMap()
-        output_pb.ParseFromString(output_data)
-        output_idl = LiteralMap.from_flyte_idl(output_pb)
-
-        output_literals = output_idl.literals
-        output: dict[str, Any] = {}
-
-        ctx = FlyteContextManager.current_context()
-        assert ctx is not None
-
-        for k, t in self.python_outputs.items():
-            if k not in output_literals:
-                if get_origin(t) is Union and type(None) in get_args(t):
-                    output[k] = None
-                else:
-                    raise ValueError(f"Required parameter '{k}' not provided in params")
-
-            else:
-                output[k] = TypeEngine.to_python_value(ctx, output_literals[k], t)
-
-        return output
+    return Execution(execution_id=execution_id, python_outputs=python_outputs)
