@@ -109,6 +109,7 @@ def workflow(
         is_dirty = os.environ.get("GIT_IS_DIRTY")
 
         interface = transform_function_to_interface(f)
+        print(interface)
 
         metadata._non_standard["python_interface"] = base64.b64encode(
             dill.dumps(interface.inputs_with_defaults)

@@ -1,5 +1,6 @@
 import base64
 import json
+import time
 import typing
 from json.decoder import JSONDecodeError
 from typing import Any, Optional, Union, get_args, get_origin
@@ -51,23 +52,25 @@ class Execution:
         return self.execution_id
 
     def poll_status(self) -> None:
-        res: dict[str, Any] = execute(
-            gql.gql(
-                """
-                query GetExecutionStatus($executionId: BigInt!) {
-                    executionInfo(id: $executionId) {
-                        id
-                        status
-                        outputsUrl
+        while self.status != "SUCCEEDED" or self.outputs_url is None:
+            res: dict[str, Any] = execute(
+                gql.gql(
+                    """
+                    query GetExecutionStatus($executionId: BigInt!) {
+                        executionInfo(id: $executionId) {
+                            id
+                            status
+                            outputsUrl
+                        }
                     }
-                }
-                """
-            ),
-            {"executionId": self.execution_id},
-        )
-        execution_info = res.get("executionInfo", {})
-        self.status = execution_info.get("status")
-        self.outputs_url = execution_info.get("outputs_url")
+                    """
+                ),
+                {"executionId": self.execution_id},
+            )
+            execution_info = res.get("executionInfo", {})
+            self.status = execution_info.get("status")
+            self.outputs_url = execution_info.get("outputsUrl")
+            time.sleep(1)
 
     def get_outputs(self) -> dict[str, Any]:
         if self.output is not None:
@@ -79,7 +82,7 @@ class Execution:
         res = tinyrequests.post(
             config.api.data.get_flyte_metadata_signed_url,
             headers={"Authorization": get_auth_header()},
-            json={"s3_uri": {self.outputs_url}, "action": "get_object"},
+            json={"s3_uri": self.outputs_url, "action": "get_object"},
         )
 
         try:
@@ -278,7 +281,6 @@ def launch(
                 raise ValueError(
                     "Failed to decode the workflow python interface -- ensure your python version matches the version in the workflow environment"
                 ) from e
-            break
 
         raw_python_outputs = meta.get("python_outputs")
         if raw_python_outputs is not None:
