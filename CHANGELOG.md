@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.64.1 - 2025-06-18
+
+### Fixed
+
+* Uploading or downloading data (LPath, latch cp, latch sync) in context where user does not have access to `/root` results in `Permission Denied`
+
+
 ## 2.64.0 - 2025-06-12
 
 ### Added
