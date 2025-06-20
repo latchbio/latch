@@ -95,10 +95,10 @@ def get_ingress_data(flytedb_id: str) -> list[LPath]:
                     filter: { type: { equalTo: INGRESS } }
                 ) {
                     nodes {
-                    id
-                    ldataNode {
                         id
-                    }
+                        ldataNode {
+                            id
+                        }
                     }
                 }
             }
@@ -394,7 +394,7 @@ def launch_workflow(
 ) -> Execution:
     """Launch the workflow of given id with parameter map.
 
-    Returns: exeuction ID
+    Returns: execution ID
     """
     response = tinyrequests.post(
         config.api.execution.create,
