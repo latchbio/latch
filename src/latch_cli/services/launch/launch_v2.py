@@ -124,6 +124,7 @@ class CompletedExecution:
     id: str
     output: dict[str, Any]
     ingress_data: list[LPath]
+    status: ExecutionStatus
 
 
 @dataclass
@@ -161,19 +162,24 @@ class Execution:
 
     async def wait(self) -> Union[CompletedExecution, None]:
         for _ in self.poll():
-            if (
-                self.status == "SUCCEEDED"
-                and self.outputs_url is not None
-                and self.flytedb_id is not None
-            ):
+            if self.flytedb_id is None:
+                continue
+
+            if self.status == "SUCCEEDED" and self.outputs_url is not None:
                 return CompletedExecution(
                     id=self.id,
                     output=process_output(self.outputs_url, self.python_outputs),
                     ingress_data=get_ingress_data(self.flytedb_id),
+                    status=self.status,
                 )
 
             if self.status in {"FAILED", "ABORTED"}:
-                return None
+                return CompletedExecution(
+                    id=self.id,
+                    output={},
+                    ingress_data=get_ingress_data(self.flytedb_id),
+                    status=self.status,
+                )
 
             await asyncio.sleep(1)
 
