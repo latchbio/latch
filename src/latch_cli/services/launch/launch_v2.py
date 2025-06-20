@@ -1,31 +1,205 @@
+import asyncio
 import base64
 import json
+from collections.abc import Generator
+from dataclasses import dataclass
 from json.decoder import JSONDecodeError
-from typing import Any, Optional, Union, get_args, get_origin
+from typing import Any, Literal, Optional, Union, get_args, get_origin
+from urllib.parse import urljoin
 
 import dill
+import flyteidl.core.literals_pb2 as pb
 import google.protobuf.json_format as gpjson
 import gql
 from flyteidl.core import interface_pb2 as _interface_pb2
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.promise import translate_inputs_to_literals
-from flytekit.core.type_engine import TypeTransformerFailedError
+from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.models.interface import Parameter, ParameterMap, Variable, VariableMap
+from flytekit.models.literals import LiteralMap
 
+from latch.ldata.path import LPath
 from latch.utils import current_workspace
 from latch_cli import tinyrequests
 from latch_cli.services.launch.interface import get_workflow_interface
 from latch_cli.utils import get_auth_header
-from latch_sdk_config.latch import config
+from latch_sdk_config.latch import NUCLEUS_URL, config
 from latch_sdk_gql.execute import execute
 
+ExecutionStatus = Literal[
+    "UNDEFINED",
+    "QUEUED",
+    "RUNNING",
+    "SUCCEEDED",
+    "ABORTED",
+    "FAILED",
+    "INITIALIZING",
+    "WAITING_FOR_RESOURCES",
+    "SKIPPED",
+    "ABORTING",
+]
 
-def launch_from_launch_plan(*, wf_name: str, lp_name: str, version: Optional[str] = None) -> int:
+
+class MissingParameterError(ValueError): ...
+
+
+def process_output(outputs_url: str, python_outputs: dict[str, type]) -> dict[str, Any]:
+    res = tinyrequests.post(
+        urljoin(NUCLEUS_URL, "/ldata/get-flyte-metadata-signed-url"),
+        headers={"Authorization": get_auth_header()},
+        json={"s3_uri": outputs_url, "action": "get_object"},
+    )
+
+    res.raise_for_status()
+    data = res.json()
+
+    presigned_url = data.get("data", {}).get("url")
+    assert presigned_url is not None
+
+    output_res = tinyrequests.get(presigned_url)
+    output_res.raise_for_status()
+    output_data = output_res.content
+
+    output_pb = pb.LiteralMap()
+    output_pb.ParseFromString(output_data)
+    output_idl = LiteralMap.from_flyte_idl(output_pb)
+
+    output_literals = output_idl.literals
+    output: dict[str, Any] = {}
+
+    ctx = FlyteContextManager.current_context()
+    assert ctx is not None
+
+    for k, t in python_outputs.items():
+        if k in output_literals:
+            output[k] = TypeEngine.to_python_value(ctx, output_literals[k], t)
+
+        elif get_origin(t) is Union and type(None) in get_args(t):
+            output[k] = None
+
+        else:
+            raise MissingParameterError(
+                f"Required parameter '{k}' not provided in params"
+            )
+
+    return output
+
+
+def get_ingress_data(flytedb_id: str) -> list[LPath]:
+    query_res: dict[str, Any] = execute(
+        gql.gql(
+            """
+            query ExecutionIngressTag($flytedbId: BigInt!) {
+                ldataNodeEvents(
+                    condition: { causeExecutionFlytedbId: $flytedbId }
+                    filter: { type: { equalTo: INGRESS } }
+                ) {
+                    nodes {
+                        id
+                        ldataNode {
+                            id
+                        }
+                    }
+                }
+            }
+            """
+        ),
+        {"flytedbId": flytedb_id},
+    )
+
+    nodes = query_res.get("ldataNodeEvents", {}).get("nodes", [])
+    res: list[LPath] = []
+    for n in nodes:
+        ldata_node_id: Union[str, None] = n.get("ldataNode", {}).get("id")
+        if ldata_node_id is None:
+            continue
+
+        res.append(LPath(f"latch://{ldata_node_id}.node"))
+
+    return res
+
+
+@dataclass(frozen=True)
+class CompletedExecution:
+    id: str
+    output: dict[str, Any]
+    ingress_data: list[LPath]
+    status: ExecutionStatus
+
+
+@dataclass
+class Execution:
+    id: str
+    python_outputs: dict[str, type]
+    status: ExecutionStatus = "UNDEFINED"
+    outputs_url: Union[str, None] = None
+    flytedb_id: Union[str, None] = None
+
+    def poll(self) -> Generator[None, Any, None]:
+        while True:
+            res: dict[str, Any] = execute(
+                gql.gql(
+                    """
+                    query GetExecutionStatus($executionId: BigInt!) {
+                        executionInfo(id: $executionId) {
+                            id
+                            flytedbId
+                            status
+                            outputsUrl
+                        }
+                    }
+                    """
+                ),
+                {"executionId": self.id},
+            )
+
+            execution_info = res.get("executionInfo", {})
+            self.status = execution_info.get("status", "UNDEFINED")
+            self.outputs_url = execution_info.get("outputsUrl")
+            self.flytedb_id = execution_info.get("flytedbId")
+
+            yield
+
+    async def wait(self) -> Union[CompletedExecution, None]:
+        for _ in self.poll():
+            if self.flytedb_id is None:
+                continue
+
+            if self.status == "SUCCEEDED" and self.outputs_url is not None:
+                return CompletedExecution(
+                    id=self.id,
+                    output=process_output(self.outputs_url, self.python_outputs),
+                    ingress_data=get_ingress_data(self.flytedb_id),
+                    status=self.status,
+                )
+
+            if self.status in {"FAILED", "ABORTED"}:
+                return CompletedExecution(
+                    id=self.id,
+                    output={},
+                    ingress_data=get_ingress_data(self.flytedb_id),
+                    status=self.status,
+                )
+
+            await asyncio.sleep(1)
+
+        return None
+
+
+def launch_from_launch_plan(
+    *, wf_name: str, lp_name: str, version: Optional[str] = None
+) -> Execution:
     target_account_id = current_workspace()
 
-    wf_id, interface, default_params = get_workflow_interface(target_account_id, wf_name, version)
-    default_params_map: dict[str, Parameter] = ParameterMap.from_flyte_idl(gpjson.ParseDict(default_params, _interface_pb2.ParameterMap())).parameters
-    parameter_interface: dict[str, Variable] = VariableMap.from_flyte_idl(gpjson.ParseDict(interface, _interface_pb2.VariableMap())).variables
+    wf_id, interface, default_params = get_workflow_interface(
+        target_account_id, wf_name, version
+    )
+    default_params_map: dict[str, Parameter] = ParameterMap.from_flyte_idl(
+        gpjson.ParseDict(default_params, _interface_pb2.ParameterMap())
+    ).parameters
+    parameter_interface: dict[str, Variable] = VariableMap.from_flyte_idl(
+        gpjson.ParseDict(interface, _interface_pb2.VariableMap())
+    ).variables
 
     lp_default_resp: dict[str, Any] = execute(
         gql.gql(
@@ -44,26 +218,31 @@ def launch_from_launch_plan(*, wf_name: str, lp_name: str, version: Optional[str
             }
             """
         ),
-        {
-            "workflowId": wf_id,
-            "namePattern": f"%.{lp_name}",
-        },
+        {"workflowId": wf_id, "namePattern": f"%.{lp_name}"},
     )
 
     lp_nodes = lp_default_resp.get("lpInfos", {}).get("nodes", [])
     if len(lp_nodes) == 0:
-        raise ValueError(f"launchplan `{lp_name}` not found for workflow `{wf_name}` (id `{wf_id}`)")
+        raise ValueError(
+            f"launchplan `{lp_name}` not found for workflow `{wf_name}` (id `{wf_id}`)"
+        )
 
     if len(lp_nodes) > 1:
-        raise ValueError(f"multiple launchplans with name `{lp_name}` found for workflow `{wf_name}` (id `{wf_id}`)")
+        raise ValueError(
+            f"multiple launchplans with name `{lp_name}` found for workflow `{wf_name}` (id `{wf_id}`)"
+        )
 
     lp_params_map: dict[str, Parameter] = ParameterMap.from_flyte_idl(
-        gpjson.ParseDict(json.loads(lp_nodes[0].get("defaultInputs")), _interface_pb2.ParameterMap())
+        gpjson.ParseDict(
+            json.loads(lp_nodes[0].get("defaultInputs")), _interface_pb2.ParameterMap()
+        )
     ).parameters
 
     combined_params_map: dict[str, Any] = {}
 
-    for k in parameter_interface:
+    python_outputs: Union[dict[str, type], None] = None
+
+    for k, v in parameter_interface.items():
         if k in lp_params_map:
             lp_param = lp_params_map[k].default
             if lp_param is not None:
@@ -74,26 +253,49 @@ def launch_from_launch_plan(*, wf_name: str, lp_name: str, version: Optional[str
         if default_param is not None:
             default_param_literal = default_param.default
             if default_param_literal is not None:
-                combined_params_map[k] = gpjson.MessageToDict(default_param_literal.to_flyte_idl())
+                combined_params_map[k] = gpjson.MessageToDict(
+                    default_param_literal.to_flyte_idl()
+                )
                 continue
 
         combined_params_map[k] = {
             "scalar": {
                 "union": {
-                    "value": {
-                        "scalar": {
-                            "noneType": {},
-                        },
-                    },
+                    "value": {"scalar": {"noneType": {}}},
                     "type": {"simple": "NONE", "structure": {"tag": "none"}},
-                },
-            },
+                }
+            }
         }
 
-    return launch_workflow(target_account_id, wf_id, combined_params_map)
+        description: dict[str, Any] = json.loads(v.description)
+        if description.get("idx") != 0:
+            continue
+
+        meta = description.get("__workflow_meta__", {}).get("meta", {})
+
+        raw_python_outputs = meta.get("python_outputs")
+        if raw_python_outputs is not None:
+            try:
+                python_outputs = dill.loads(base64.b64decode(raw_python_outputs))
+            except dill.UnpicklingError as e:
+                raise RuntimeError(
+                    "Failed to decode the workflow python output -- ensure your python version matches the version in the workflow environment"
+                ) from e
+            break
+
+    if python_outputs is None:
+        raise ValueError(
+            "No python outputs found -- re-register workflow with latch version >= 2.65.0 in workflow environment"
+        )
+
+    return launch_workflow(
+        target_account_id, wf_id, combined_params_map, python_outputs
+    )
 
 
-def launch(*, wf_name: str, params: dict[str, Any], version: Optional[str] = None) -> int:
+def launch(
+    *, wf_name: str, params: dict[str, Any], version: Optional[str] = None
+) -> Execution:
     """Create an execution of workflow `wf_name` with version `version` and parameters `params`.
 
     If version is not provided, the latest version of the workflow will be launched.
@@ -112,24 +314,44 @@ def launch(*, wf_name: str, params: dict[str, Any], version: Optional[str] = Non
 
     wf_id, interface, _ = get_workflow_interface(target_account_id, wf_name, version)
 
-    flyte_interface_types: dict[str, Variable] = VariableMap.from_flyte_idl(gpjson.ParseDict(interface, _interface_pb2.VariableMap())).variables
+    flyte_interface_types: dict[str, Variable] = VariableMap.from_flyte_idl(
+        gpjson.ParseDict(interface, _interface_pb2.VariableMap())
+    ).variables
 
     python_interface_with_defaults: Union[dict[str, tuple[type, Any]], None] = None
+    python_outputs: Union[dict[str, type], None] = None
+
     for v in flyte_interface_types.values():
         description: dict[str, Any] = json.loads(v.description)
         if description.get("idx") != 0:
             continue
 
-        raw_python_interface_with_defaults = description.get("__workflow_meta__", {}).get("meta", {}).get("python_interface")
-        if raw_python_interface_with_defaults is not None:
+        meta = description.get("__workflow_meta__", {}).get("meta", {})
+
+        raw_python_interface_with_defaults = meta.get("python_interface")
+        raw_python_outputs = meta.get("python_outputs")
+
+        if (
+            raw_python_interface_with_defaults is not None
+            and raw_python_outputs is not None
+        ):
             try:
-                python_interface_with_defaults = dill.loads(base64.b64decode(raw_python_interface_with_defaults))  # noqa: S301
+                python_interface_with_defaults = dill.loads(
+                    base64.b64decode(raw_python_interface_with_defaults)
+                )
+                python_outputs = dill.loads(base64.b64decode(raw_python_outputs))
+
             except dill.UnpicklingError as e:
-                raise ValueError("Failed to decode the workflow python interface -- ensure your python version matches the version in the workflow environment") from e
+                raise RuntimeError(
+                    "Failed to decode the workflow python interface / outputs. Ensure your python version matches the version in the workflow environment"
+                ) from e
+
             break
 
-    if python_interface_with_defaults is None:
-        raise ValueError("No python interface found -- re-register workflow with latch version >= 2.62.0 in workflow environment")
+    if python_interface_with_defaults is None or python_outputs is None:
+        raise RuntimeError(
+            "Missing python interface / outputs in workflow metadata. Re-register workflow with latch version >= 2.65.0 in workflow environment"
+        )
 
     for k, v in python_interface_with_defaults.items():
         if k in params:
@@ -153,22 +375,32 @@ def launch(*, wf_name: str, params: dict[str, Any], version: Optional[str] = Non
             ctx,
             incoming_values=params,
             flyte_interface_types=flyte_interface_types,
-            native_types={
-                k: v[0] for k, v in python_interface_with_defaults.items()
-            },
+            native_types={k: v[0] for k, v in python_interface_with_defaults.items()},
         )
     except TypeTransformerFailedError as e:
         if "is not an instance of" in str(e):
-            raise ValueError("Failed to translate inputs to literals -- ensure you are importing the same classes used in the workflow function header") from e
+            raise ValueError(
+                "Failed to translate inputs to literals. Ensure you are importing the same classes used in the workflow function header"
+            ) from e
         raise
 
-    return launch_workflow(target_account_id, wf_id, {k: gpjson.MessageToDict(v.to_flyte_idl()) for k, v in fixed_literals.items()})
+    return launch_workflow(
+        target_account_id,
+        wf_id,
+        {k: gpjson.MessageToDict(v.to_flyte_idl()) for k, v in fixed_literals.items()},
+        python_outputs,
+    )
 
 
-def launch_workflow(target_account_id: str, wf_id: str, params: dict[str, Any]) -> int:
+def launch_workflow(
+    target_account_id: str,
+    wf_id: str,
+    params: dict[str, Any],
+    python_outputs: dict[str, type],
+) -> Execution:
     """Launch the workflow of given id with parameter map.
 
-    Return True if success, raises appropriate exceptions on failure.
+    Returns: execution ID
     """
     response = tinyrequests.post(
         config.api.execution.create,
@@ -189,7 +421,9 @@ def launch_workflow(target_account_id: str, wf_id: str, params: dict[str, Any]) 
     try:
         response_data = response.json()
     except JSONDecodeError as e:
-        raise RuntimeError(f"Could not parse response as JSON: ({response.status_code}) {response}") from e
+        raise RuntimeError(
+            f"Could not parse response as JSON: ({response.status_code}) {response}"
+        ) from e
 
     def extract_error_message(data: dict[str, Any]) -> str:
         if "error" in data:
@@ -198,9 +432,7 @@ def launch_workflow(target_account_id: str, wf_id: str, params: dict[str, Any]) 
 
             error_data = error.get("data", {})
             message = (
-                error_data.get("stderr") or
-                error_data.get("message") or
-                str(error_data)
+                error_data.get("stderr") or error_data.get("message") or str(error_data)
             )
 
             if isinstance(message, str):
@@ -237,7 +469,10 @@ def launch_workflow(target_account_id: str, wf_id: str, params: dict[str, Any]) 
         error_msg = extract_error_message(response_data)
         print(f"\nFormatted error message: {error_msg}")
         raise RuntimeError(f"Server error (HTTP {response.status_code}) - {error_msg}")
-    if "error" in response_data or response_data.get("status") != "Successfully launched workflow":
+    if (
+        "error" in response_data
+        or response_data.get("status") != "Successfully launched workflow"
+    ):
         error_msg = extract_error_message(response_data)
         print(f"\nFormatted error message: {error_msg}")
         raise RuntimeError(f"Workflow launch failed - {error_msg}")
@@ -246,4 +481,4 @@ def launch_workflow(target_account_id: str, wf_id: str, params: dict[str, Any]) 
     if execution_id is None:
         raise RuntimeError("Workflow launch failed - no execution id returned")
 
-    return execution_id
+    return Execution(id=execution_id, python_outputs=python_outputs)

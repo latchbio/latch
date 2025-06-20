@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.65.1 - 2025-06-18
+
+### Added
+
+* `launch_from_launch_plan` and `launch` in `launch_v2` now return an Execution dataclass which allows user to wait on the execution output once execution succeeds
+
 ## 2.64.1 - 2025-06-18
 
 ### Fixed
