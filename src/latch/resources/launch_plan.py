@@ -47,6 +47,9 @@ class LaunchPlan:
         if description is not None:
             labels["description"] = b62encode(description)
 
+        if "." in name:
+            raise ValueError("LaunchPlan name cannot contain the '.' character")
+
         try:  # noqa: SIM105
             _LaunchPlan.create(
                 f"{workflow.__module__}.{workflow.__name__}.{name}",
