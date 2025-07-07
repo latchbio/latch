@@ -153,31 +153,36 @@ def human_readable_time(t_seconds: float) -> str:
     return " ".join(x)
 
 
-def hash_directory(dir_path: Path) -> str:
+def hash_directory(dir_path: Path, *, silent: bool = False) -> str:
     # todo(maximsmol): store per-file hashes to show which files triggered a version change
-    click.secho("Calculating workflow version based on file content hash", bold=True)
-    click.secho("  Disable with --disable-auto-version/-d", italic=True, dim=True)
+    if not silent:
+        click.secho(
+            "Calculating workflow version based on file content hash", bold=True
+        )
+        click.secho("  Disable with --disable-auto-version/-d", italic=True, dim=True)
 
     m = hashlib.new("sha256")
     m.update(current_workspace().encode("utf-8"))
 
-    ignore_file = dir_path / ".dockerignore"
     exclude: List[str] = ["/.latch", ".git"]
-    try:
-        with ignore_file.open("r") as f:
-            click.secho("  Using .dockerignore", italic=True)
+    for file in [".dockerignore", ".gitignore"]:
+        ignore_file = dir_path / file
+        try:
+            with ignore_file.open("r") as f:
+                if not silent:
+                    click.secho(f"  Using {file}", italic=True)
 
-            for l in f:
-                l = l.strip()
+                for l in f:
+                    l = l.strip()
 
-                if l == "":
-                    continue
-                if l[0] == "#":
-                    continue
+                    if l == "":
+                        continue
+                    if l[0] == "#":
+                        continue
 
-                exclude.append(l)
-    except FileNotFoundError:
-        ...
+                    exclude.append(l)
+        except FileNotFoundError:
+            ...
 
     from docker.utils import exclude_paths
 
@@ -196,21 +201,23 @@ def hash_directory(dir_path: Path) -> str:
 
         file_size = p_stat.st_size
         if not stat.S_ISREG(p_stat.st_mode):
-            click.secho(
-                f"{p.relative_to(dir_path.resolve())} is not a regular file."
-                " Ignoring contents",
-                fg="yellow",
-                bold=True,
-            )
+            if not silent:
+                click.secho(
+                    f"{p.relative_to(dir_path.resolve())} is not a regular file."
+                    " Ignoring contents",
+                    fg="yellow",
+                    bold=True,
+                )
             continue
 
         if file_size > latch_constants.file_max_size:
-            click.secho(
-                f"{p.relative_to(dir_path.resolve())} is too large"
-                f" ({with_si_suffix(file_size)}) to checksum. Ignoring contents",
-                fg="yellow",
-                bold=True,
-            )
+            if not silent:
+                click.secho(
+                    f"{p.resolve().relative_to(dir_path.resolve())} is too large"
+                    f" ({with_si_suffix(file_size)}) to checksum. Ignoring contents",
+                    fg="yellow",
+                    bold=True,
+                )
             continue
 
         m.update(p.read_bytes())

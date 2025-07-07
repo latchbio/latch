@@ -1141,7 +1141,7 @@ def nf_register(
 
     version_file = pkg_root / "version"
     try:
-        version_base = version_file.read_text()
+        version_base = version_file.read_text().strip()
     except OSError:
         if not yes and not click.confirm(
             "Could not find a `version` file in the package root. One will be created. Proceed?"
@@ -1165,15 +1165,18 @@ def nf_register(
 
             try:
                 repo = Repo(pkg_root)
-                components.append(repo.head.commit.hexsha)
-                click.echo(
-                    f"Tagging version with git commit {repo.head.commit.hexsha}."
+                sha = repo.head.commit.hexsha[:6]
+                components.append(sha)
+                click.echo(f"Tagging version with git commit {sha}.")
+                click.secho(
+                    "  Disable with --disable-git-version/-G", dim=True, italic=True
                 )
 
                 if repo.is_dirty():
                     components.append("wip")
-                    click.echo(
-                        "Tagging version with 'wip' as the repo contains uncommitted changes."
+                    click.secho(
+                        "  Repo contains uncommitted changes - tagging version with `wip`",
+                        italic=True,
                     )
             except GitError:
                 pass
@@ -1181,15 +1184,21 @@ def nf_register(
             pass
 
     if not disable_auto_version:
-        sha = hash_directory(pkg_root)[:6]
+        sha = hash_directory(pkg_root, silent=True)[:6]
         components.append(sha)
         click.echo(f"Tagging version with directory checksum {sha}.")
+        click.secho("  Disable with --disable-auto-version/-d", dim=True, italic=True)
 
     version = "-".join(components)
 
+    click.echo()
+
     # >>> Display Name parsing
 
-    workflow_name_file = pkg_root / ".latch" / "workflow_name"
+    dotfile_root = pkg_root / ".latch"
+    dotfile_root.mkdir(exist_ok=True)
+
+    workflow_name_file = dotfile_root / "workflow_name"
     try:
         workflow_name = workflow_name_file.read_text()
     except OSError:
@@ -1202,6 +1211,7 @@ def nf_register(
 
         workflow_name_file.write_text(workflow_name)
         click.echo("Stored workflow name in .latch/workflow_name.")
+        click.echo()
 
     assert isinstance(workflow_name, str)
 
@@ -1216,6 +1226,8 @@ def nf_register(
     if not yes and not click.confirm("Start registration?"):
         click.secho("Cancelled", bold=True)
         return
+
+    click.echo()
 
     register(
         pkg_root,

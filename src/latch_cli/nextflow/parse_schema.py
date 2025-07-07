@@ -1,4 +1,5 @@
 import json
+from dataclasses import dataclass
 from pathlib import Path
 from textwrap import indent
 from typing import Generic, Literal, Optional, TypedDict, TypeVar, Union
@@ -29,6 +30,7 @@ class CommonMetadata(TypedDict):
     title: NotRequired[str]
     description: NotRequired[str]
     help_text: NotRequired[str]
+    errorMessage: NotRequired[str]
     required: bool
 
 
@@ -66,6 +68,7 @@ EnumT = TypeVar("EnumT", str, int, float)
 
 class NfEnumType(TypedDict, Generic[EnumT]):
     type: Literal["enum"]
+    flavor: Literal["string", "integer", "number"]
     values: list[EnumT]
     default: NotRequired[EnumT]
     metadata: NotRequired[CommonMetadata]
@@ -94,7 +97,7 @@ class NfSamplesheetType(TypedDict):
 
 class NfBlobType(TypedDict):
     type: Literal["blob"]
-    node_type: Literal["obj", "dir", "any"]
+    node_type: Literal["file", "dir", "any"]
     metadata: NotRequired[CommonMetadata]
     regex: NotRequired[str]
 
@@ -119,7 +122,7 @@ def get_common_metadata(
 ) -> CommonMetadata:
     ret: CommonMetadata = {"required": param_name in required_set}
 
-    for x in ["title", "description", "help_text"]:
+    for x in ["title", "description", "help_text", "errorMessage"]:
         if x not in properties:
             continue
 
@@ -141,7 +144,6 @@ def parse_string(
 
     assert format is None or isinstance(format, str)
     assert regex is None or isinstance(regex, str)
-    assert default is None or isinstance(default, str)
 
     # todo(ayush): treating glob as a string for now
     if format is None or format == "file-path-pattern":
@@ -152,21 +154,28 @@ def parse_string(
             **({"default": default} if default is not None else {}),
         )
 
-    assert format in {"file-path", "directory-path", "path"}
+    assert format in {"uri", "file-path", "directory-path", "path"}
 
     if "schema" in properties and format == "file-path":
         schema_ref = properties["schema"]
         assert isinstance(schema_ref, str)
+        assert default is None or isinstance(default, list)
+
+        parse_res = parse_samplesheet_schema(Path(schema_ref))
+        default = parse_res.default
 
         return NfSamplesheetType(
             type="samplesheet",
             metadata=metadata,
-            schema=parse_samplesheet_schema(Path(schema_ref)),
+            schema=parse_res.schema,
+            **({} if default is None else {"default": default}),
         )
 
-    node_type: Literal["obj", "dir", "any"] = "any"
+    assert default is None or isinstance(default, str)
+
+    node_type: Literal["file", "dir", "any"] = "any"
     if format == "file-path":
-        node_type = "obj"
+        node_type = "file"
     if format == "directory-path":
         node_type = "dir"
 
@@ -214,9 +223,9 @@ def parse_float(
     max = properties.get("maximum")
     default = properties.get("default")
 
-    assert min is None or isinstance(min, float)
-    assert max is None or isinstance(max, float)
-    assert default is None or isinstance(default, float)
+    assert min is None or isinstance(min, (int, float))
+    assert max is None or isinstance(max, (int, float))
+    assert default is None or isinstance(default, (int, float))
 
     return NfFloatType(
         type="number",
@@ -247,7 +256,9 @@ def parse_bool(
 def parse_enum(
     param_name: str, properties: dict[str, object], required_set: set[str]
 ) -> Union[NfEnumType[str], NfEnumType[int], NfEnumType[float]]:
-    assert properties["type"] in {"string", "number", "integer"}
+    typ = properties["type"]
+
+    assert typ in {"string", "number", "integer"}
     assert "enum" in properties
 
     metadata = get_common_metadata(param_name, properties, required_set)
@@ -260,6 +271,7 @@ def parse_enum(
     # todo(ayush): fix type errors here
     return NfEnumType(
         type="enum",
+        flavor=typ,
         values=values,
         metadata=metadata,
         **({"default": default} if default is not None else {}),
@@ -346,12 +358,21 @@ def parse(
         if "enum" in properties:
             typ = "enum"
 
-        raise SchemaParsingError(f"error parsing {typ!r} type entry", [e]) from e
+        raise SchemaParsingError(
+            f"error parsing {param_name!r}: invalid {typ!r} type entry {properties!r}",
+            [e],
+        ) from e
 
     raise ValueError(f"unknown type: {typ!r}")
 
 
-def parse_samplesheet_schema(schema_path: Path) -> dict[str, NfType]:
+@dataclass
+class ParseSamplesheetRes:
+    schema: dict[str, NfType]
+    default: Optional[list[dict]] = None
+
+
+def parse_samplesheet_schema(schema_path: Path) -> ParseSamplesheetRes:
     try:
         schema_contents = json.loads(schema_path.read_text())
     except OSError as e:
@@ -364,7 +385,7 @@ def parse_samplesheet_schema(schema_path: Path) -> dict[str, NfType]:
     # schema is the samplesheet schema
     array = parse_array("", schema_contents, set())
 
-    return array["items"]["properties"]
+    return ParseSamplesheetRes(array["items"]["properties"], array.get("default"))
 
 
 def parse_schema(schema_path: Path) -> dict[str, NfType]:

@@ -133,7 +133,11 @@ def register(pkg_root: Path, *, config: RegisterConfig):
                     "workflow_display_name": config.display_name,
                     "workflow_name": config.display_name,
                     "version": config.version,
-                    "param_metadata": json.dumps(param_spec),
+                    "param_metadata": json.dumps({
+                        "parameters": param_spec,
+                        # ayush: takes advantage of the fact that python dicts preserve insertion order
+                        "key_order": list(param_spec),
+                    }),
                     "script_path": str(config.script_path),
                     "part_count": part_count,
                 },
@@ -209,10 +213,16 @@ def register(pkg_root: Path, *, config: RegisterConfig):
             click.secho(
                 dedent(f"""\
                 Successfully registered workflow.
-
                 URL: https://console.latch.bio/workflows/{workflow_id}
                 """).strip(),
                 fg="green",
             )
     finally:
         os.chdir(old_cwd)
+
+
+if __name__ == "__main__":
+    register(
+        Path("/Users/ayush/Desktop/workflows/rnaseq"),
+        config=RegisterConfig("nf-core/rnaseq", "0.0.0", Path("main.nf"), True),
+    )
