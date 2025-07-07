@@ -1082,10 +1082,6 @@ def attach(execution_id: Optional[str]):
     attach(execution_id)
 
 
-# -y, --yes: no confirmation
-# -a, --all, --no-ignore: don't ignore files from .dockerignore/.gitignore
-
-
 @nextflow.command("register")
 @click.argument(
     "pkg_root", type=click.Path(exists=True, file_okay=False, path_type=Path)

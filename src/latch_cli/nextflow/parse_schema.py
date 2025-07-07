@@ -11,7 +11,7 @@ from typing_extensions import NotRequired, TypeAlias
 # todo(ayush): lots of type errors here, don't think any are that serious but would like to fix eventually
 
 
-class SchemaParsingError(Exception):
+class SchemaParsingError(RuntimeError):
     def __init__(self, msg: str, children: Optional[list[Exception]] = None):
         self.msg = msg
         self.children = children

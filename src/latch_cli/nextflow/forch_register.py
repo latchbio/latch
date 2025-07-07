@@ -179,7 +179,6 @@ def register(pkg_root: Path, *, config: RegisterConfig):
                         raise click.exceptions.Exit(1)
 
                     etag = res.headers["ETag"]
-
                     if etag is None:
                         click.secho(
                             f"Malformed response from chunk upload part {idx}: {res.content}"
@@ -219,10 +218,3 @@ def register(pkg_root: Path, *, config: RegisterConfig):
             )
     finally:
         os.chdir(old_cwd)
-
-
-if __name__ == "__main__":
-    register(
-        Path("/Users/ayush/Desktop/workflows/rnaseq"),
-        config=RegisterConfig("nf-core/rnaseq", "0.0.0", Path("main.nf"), True),
-    )
