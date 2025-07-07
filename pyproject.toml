@@ -12,13 +12,10 @@ include = ["src/**/*.py", "src/latch_cli/services/init/*"]
 
 [project]
 name = "latch"
-version = "2.65.1"
+version = "2.65.2"
 description = "The Latch SDK"
 authors = [{ name = "Kenny Workman", email = "kenny@latch.bio" }]
-maintainers = [
-  { name = "Ayush Kamat", email = "ayush@latch.bio" },
-  { name = "Rahul Desai", email = "rahul@latch.bio" },
-]
+maintainers = [{ name = "Ayush Kamat", email = "ayush@latch.bio" }]
 
 readme = "README.md"
 license = { file = "LICENSE" }

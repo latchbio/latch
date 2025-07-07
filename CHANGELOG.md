@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.65.2 - 2025-07-07
+
+### Added
+
+* `latch nextflow register` mvp for registering nextflow workflows to run outside of flyte
+
 ## 2.65.1 - 2025-06-18
 
 ### Added
