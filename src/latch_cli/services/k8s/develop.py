@@ -110,7 +110,9 @@ def get_latest_registered_version(pkg_root: Path) -> str:
     return res["nodes"][0]["version"]
 
 
-async def rsync(pkg_root: Path, ip: str):
+async def rsync(
+    pkg_root: Path, ip: str, *, forwarder: str = latch_constants.ssh_forwarder_elb_host
+):
     ssh_command = shlex.join([
         "ssh",
         "-o",
@@ -122,7 +124,7 @@ async def rsync(pkg_root: Path, ip: str):
         "-o",
         "ServerAliveCountMax=5",
         "-J",
-        f"root@{latch_constants.ssh_forwarder_elb_host}",
+        f"root@{forwarder}",
     ])
 
     rsync_command: list[str] = [
@@ -273,6 +275,7 @@ def local_development(
     skip_confirm_dialog: bool,
     wf_version: str | None,
     disable_sync: bool,
+    use_forch: bool = False,
 ):
     if not disable_sync:
         # ensure that rsync is installed
@@ -307,9 +310,19 @@ def local_development(
     with TemporarySSHCredentials(pkg_root / ".latch" / "ssh_key") as ssh:
         click.echo(
             "Starting local development session. This may take a few minutes for larger/GPU-enabled"
-            " instances.\n"
+            " instances."
         )
 
+        if use_forch:
+            from ..forch.develop import forch_develop
+
+            click.secho("Using forch orchestrator\n")
+            forch_develop(
+                pkg_root, image, wf_version, ssh.public_key, size, disable_sync
+            )
+            return
+
+        click.echo()
         asyncio.run(
             session(pkg_root, image, wf_version, ssh.public_key, size, disable_sync)
         )

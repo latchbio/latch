@@ -1,3 +1,4 @@
+import asyncio
 import os
 
 try:
@@ -60,6 +61,26 @@ def execute(
                 raise
 
             time.sleep(backoff * 2**retries)
+            retries += 1
+
+
+async def execute_async(
+    document: DocumentNode,
+    variables: Optional[Dict[str, JsonValue]] = None,
+    *,
+    max_retries: int = 5,
+    backoff: float = 0.1,
+):
+    client = _get_client()
+    retries = 0
+    while True:
+        try:
+            return await client.execute_async(document, variables)
+        except Exception:
+            if retries >= max_retries:
+                raise
+
+            await asyncio.sleep(backoff * 2**retries)
             retries += 1
 
 

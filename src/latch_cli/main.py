@@ -450,6 +450,15 @@ def generate_metadata(
     default=InstanceSize.small_task,
     help="Size of machine to provision for develop session",
 )
+@click.option(
+    "--use-forch",
+    "--forch",
+    "-f",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Use the experimental Forch Orchestrator to provision the develop session",
+)
 @requires_login
 def local_development(
     pkg_root: Path,
@@ -459,6 +468,7 @@ def local_development(
     snakemake: bool,
     metadata_root: Optional[Path],
     instance_size: InstanceSize,
+    use_forch: bool,
 ):
     """Develop workflows "locally"
 
@@ -484,6 +494,7 @@ def local_development(
         size=instance_size,
         wf_version=wf_version,
         disable_sync=disable_sync,
+        use_forch=use_forch,
     )
 
 
