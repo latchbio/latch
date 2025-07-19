@@ -201,6 +201,14 @@ class LPath:
             self.fetch_metadata()
         return self._cache.version_id
 
+    def exists(self) -> bool:
+        """True if the Latch path points to an existing object, directory, or mount."""
+        try:
+            self.fetch_metadata()
+            return True
+        except LatchPathError:
+            return False
+
     def is_dir(self, *, load_if_missing: bool = True) -> bool:
         return self.type(load_if_missing=load_if_missing) in _dir_types
 
