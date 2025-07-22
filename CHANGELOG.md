@@ -16,6 +16,14 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.65.3 - 2025-07-07
+
+### Fixed
+
+* Bugs in `latch nextflow register`:
+  * workflow code tarball would be corrupted
+  * could have duplicate workflow versions
+
 ## 2.65.2 - 2025-07-07
 
 ### Added

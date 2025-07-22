@@ -8,6 +8,7 @@ from textwrap import dedent
 from typing import Callable, List, Optional, Tuple, TypeVar, Union
 
 import click
+import gql
 from packaging.version import parse as parse_version
 from typing_extensions import ParamSpec
 
@@ -29,6 +30,7 @@ from latch_cli.utils import (
     hash_directory,
 )
 from latch_cli.workflow_config import BaseImageOptions
+from latch_sdk_gql.execute import execute as gql_execute
 
 latch_cli.click_utils.patch()
 
@@ -1218,6 +1220,44 @@ def nf_register(
         {click.style("Workspace", fg="bright_blue")}: {current_workspace()}
         """).strip()
     )
+
+    click.echo()
+
+    res = gql_execute(
+        gql.gql("""
+            query WorkflowVersionExistenceCheck(
+                $argWorkspaceId: BigInt!
+                $argWorkflowName: String!
+                $argWorkflowVersion: String!
+            ) {
+                workflowInfos(
+                    condition: {
+                        name: $argWorkflowName
+                        version: $argWorkflowVersion
+                        ownerId: $argWorkspaceId
+                    }
+                ) {
+                    totalCount
+                }
+            }
+        """),
+        {
+            "argWorkspaceId": current_workspace(),
+            "argWorkflowName": workflow_name,
+            "argWorkflowVersion": version,
+        },
+    )["workflowInfos"]
+
+    if int(res["totalCount"]) > 0:
+        click.secho(
+            dedent(f"""
+            Workflow {workflow_name}:{version} already exists in this workspace.
+
+            Please update either the `.latch/workflow_name` or `version` file(s) and re-register.
+            """).strip(),
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
 
     if not yes and not click.confirm("Start registration?"):
         click.secho("Cancelled", bold=True)
