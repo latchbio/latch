@@ -6,7 +6,7 @@ import os
 import shlex
 import subprocess  # noqa: S404
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import TYPE_CHECKING, Optional
 from urllib.parse import urljoin, urlparse
@@ -15,6 +15,7 @@ import click
 import dateutil.parser as dp
 import gql
 import websockets.client as websockets
+from croniter import datetime_to_timestamp
 
 from latch.utils import current_workspace
 from latch_sdk_config.latch import NUCLEUS_URL
@@ -126,7 +127,7 @@ def get_latest_registered_version(pkg_root: Path) -> str:
         )
         raise click.exceptions.Exit(1)
 
-    latest_creation_time = 0
+    latest_creation_time = datetime.fromtimestamp(0, tz=timezone.utc)
     latest_version: Optional[str] = None
 
     for x in [registered, staging]:
@@ -134,10 +135,10 @@ def get_latest_registered_version(pkg_root: Path) -> str:
             continue
 
         t = dp.isoparse(x[0]["creationTime"])
-        if latest_creation_time >= t.timestamp():
+        if latest_creation_time >= t:
             continue
 
-        latest_creation_time = t.timestamp()
+        latest_creation_time = t
         latest_version = x[0]["version"]
 
     assert latest_version is not None
