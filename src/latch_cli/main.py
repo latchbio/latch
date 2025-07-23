@@ -605,6 +605,16 @@ def execute(
     default=None,
     help="Set execution profile for Nextflow workflow",
 )
+@click.option(
+    "--staging",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help=(
+        "Register the workflow in staging mode - the workflow will not show up in the console but "
+        "will be available to develop sessions."
+    ),
+)
 @requires_login
 def register(
     pkg_root: str,
@@ -620,6 +630,7 @@ def register(
     nf_script: Optional[Path],
     nf_execution_profile: Optional[str],
     mark_as_release: bool,
+    staging: bool,
 ):
     """Register local workflow code to Latch.
 
@@ -629,6 +640,20 @@ def register(
     1 - Registration failure
     2 - Workflow already registered
     """
+
+    if staging:
+        from .services.register.staging import register_staging
+
+        register_staging(
+            Path(pkg_root),
+            disable_auto_version=disable_auto_version,
+            disable_git_version=disable_auto_version,  # todo(ayush): have this apply to normal register too
+            remote=remote,
+            skip_confirmation=yes,
+            wf_module=workflow_module,
+            progress_plain=(docker_progress == "auto" and not sys.stdout.isatty())
+            or docker_progress == "plain",
+        )
 
     use_new_centromere = os.environ.get("LATCH_REGISTER_BETA") is not None
 

@@ -6,11 +6,13 @@ import os
 import shlex
 import subprocess  # noqa: S404
 import sys
+from datetime import datetime
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 from urllib.parse import urljoin, urlparse
 
 import click
+import dateutil.parser as dp
 import gql
 import websockets.client as websockets
 
@@ -87,12 +89,26 @@ def get_latest_registered_version(pkg_root: Path) -> str:
     res = execute(
         gql.gql("""
         query LatestVersion($wsId: BigInt!, $name: String!) {
+            latchDevelopStagingImages(
+                filter: {
+                    ownerId: { equalTo: $wsId }
+                    workflowName: { equalTo: $name }
+                }
+                orderBy: CREATION_TIME_DESC
+                first: 1
+            ) {
+                nodes {
+                    version
+                    creationTime
+                }
+            }
             workflowInfosLatestVersionInAccount(
                 argOwnerId: $wsId
                 filter: {name: {equalTo: $name}}
             ) {
                 nodes {
                     version
+                    creationTime: creationDate
                 }
             }
         }
@@ -100,14 +116,33 @@ def get_latest_registered_version(pkg_root: Path) -> str:
         {"wsId": ws_id, "name": wf_name},
     )["workflowInfosLatestVersionInAccount"]
 
-    if len(res["nodes"]) != 1:
+    registered = res["workflowInfosLatestVersionInAccount"]["nodes"]
+    staging = res["latchDevelopStagingImages"]["nodes"]
+
+    if len(registered) == 0 and len(staging) == 0:
         click.secho(
             "Unable to find a registered workflow version - please make sure you have registered your workflow first.",
             fg="red",
         )
         raise click.exceptions.Exit(1)
 
-    return res["nodes"][0]["version"]
+    latest_creation_time = 0
+    latest_version: Optional[str] = None
+
+    for x in [registered, staging]:
+        if len(x) == 0:
+            continue
+
+        t = dp.isoparse(x[0]["creationTime"])
+        if latest_creation_time >= t.timestamp():
+            continue
+
+        latest_creation_time = t.timestamp()
+        latest_version = x[0]["version"]
+
+    assert latest_version is not None
+
+    return latest_version
 
 
 async def rsync(pkg_root: Path, ip: str):

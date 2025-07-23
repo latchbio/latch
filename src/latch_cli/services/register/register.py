@@ -65,49 +65,59 @@ def print_and_write_build_logs(
     pkg_root: Path,
     *,
     progress_plain: bool = False,
+    write_build_logs: bool = True,
 ):
-    click.secho(f"Building Docker image", bold=True)
+    click.secho("Building Docker image", bold=True)
 
     logs_path = pkg_root / ".latch" / ".logs" / image
     logs_path.mkdir(parents=True, exist_ok=True)
 
-    click.echo(f"  Writing log to {click.style(logs_path, italic=True)}\n")
+    if write_build_logs:
+        click.echo(f"  Writing log to {click.style(logs_path, italic=True)}\n")
 
     with (logs_path / "docker-build-logs.txt").open("w") as save_file:
+
+        def write(s: str):
+            if not write_build_logs:
+                return
+
+            save_file.write(s)
+
         cur_lines: list[str] = []
 
         for x in build_logs:
             # for dockerfile parse errors
             message = x.get("message")
             if message is not None:
-                save_file.write(f"{message}\n")
+                write(message)
                 raise ValueError(message)
 
             lines = x.get("stream")
             error = x.get("error")
             if error is not None:
-                save_file.write(f"{error}\n")
+                write(error)
                 click.secho(f"Error when building image:\n{error}", fg="red", bold=True)
                 sys.exit(1)
 
             if lines is not None:
-                save_file.write(f"{lines}\n")
+                write(lines)
 
-                if not progress_plain:
-                    for line in lines.split("\n"):
-                        curr_terminal_width = shutil.get_terminal_size()[0]
-
-                        if len(line) > curr_terminal_width:
-                            line = line[: curr_terminal_width - 3] + "..."
-
-                        if docker_build_step_pat.match(line):
-                            _delete_lines(len(cur_lines))
-                            cur_lines = []
-                            click.secho(line, fg="blue")
-                        else:
-                            cur_lines = _print_window(cur_lines, line)
-                else:
+                if progress_plain:
                     click.echo(lines, nl=False)
+                    continue
+
+                for line in lines.split("\n"):
+                    term_width = shutil.get_terminal_size()[0]
+
+                    if len(line) > term_width:
+                        line = line[: term_width - 3] + "..."
+
+                    if docker_build_step_pat.match(line):
+                        _delete_lines(len(cur_lines))
+                        cur_lines = []
+                        click.secho(line, fg="blue")
+                    else:
+                        cur_lines = _print_window(cur_lines, line)
 
         if not progress_plain:
             _delete_lines(len(cur_lines))
@@ -631,9 +641,7 @@ def register(
                             }
                         }
                         """),
-                        {
-                            "id": wf_id,
-                        },
+                        {"id": wf_id},
                     )
                     click.secho("Workflow marked as release", fg="green")
 
