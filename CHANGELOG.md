@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.65.4 - 2025-07-07
+
+### Added
+
+* `latch register --staging` for creating docker images for workflows without actually registering the workflow with Flyte.
+
 ## 2.65.3 - 2025-07-07
 
 ### Fixed
