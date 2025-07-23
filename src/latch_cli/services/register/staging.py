@@ -12,6 +12,7 @@ import boto3.session
 import click
 import docker
 import docker.errors
+import gql
 import paramiko
 from docker.transport import SSHHTTPAdapter
 
@@ -19,6 +20,7 @@ from latch.utils import current_workspace
 from latch_cli import tinyrequests
 from latch_cli.docker_utils import get_default_dockerfile
 from latch_sdk_config.latch import NUCLEUS_URL, config
+from latch_sdk_gql.execute import execute
 
 from ...centromere.ast_parsing import get_flyte_objects
 from ...constants import docker_image_name_illegal_pat, latch_constants
@@ -314,6 +316,30 @@ def register_staging(
 
     click.echo()
 
+    res = execute(
+        gql.gql("""
+        query LatestVersion($wsId: BigInt!, $name: String!, $version: String!) {
+            latchDevelopStagingImages(
+                filter: {
+                    ownerId: { equalTo: $wsId }
+                    workflowName: { equalTo: $name }
+                    version: { equalTo: $version }
+                }
+            ) {
+                totalCount
+            }
+        }
+        """),
+        {"wsId": current_workspace(), "name": wf_name, "version": version},
+    )
+
+    if res["latchDevelopStagingImages"]["totalCount"] != 0:
+        click.secho(
+            f"Version `{version}` already exists for workflow `{wf_name}` in workspace `{current_workspace()}`. ",
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
+
     if not skip_confirmation:
         if not click.confirm("Start registration?"):
             click.secho("Cancelled", bold=True)
@@ -335,9 +361,39 @@ def register_staging(
         remote_register(
             pkg_root, image, version, dockerfile_path, progress_plain=progress_plain
         )
-        return
+    else:
+        client = get_local_docker_client()
 
-    client = get_local_docker_client()
-    dbnp(
-        client, pkg_root, image, version, dockerfile_path, progress_plain=progress_plain
+        dbnp(
+            client,
+            pkg_root,
+            image,
+            version,
+            dockerfile_path,
+            progress_plain=progress_plain,
+        )
+
+    execute(
+        gql.gql("""
+        mutation AddStagingImage(
+            $wsId: BigInt!
+            $workflowName: String!
+            $version: String!
+        ) {
+            createLatchDevelopStagingImage(
+                input: {
+                    latchDevelopStagingImage: {
+                        ownerId: $wsId
+                        workflowName: $workflowName
+                        version: $version
+                    }
+                }
+            ) {
+                clientMutationId
+            }
+        }
+        """),
+        {"wsId": current_workspace(), "workflowName": wf_name, "version": version},
     )
+
+    click.secho("Successfully staged workflow.", fg="green")

@@ -114,7 +114,7 @@ def get_latest_registered_version(pkg_root: Path) -> str:
         }
         """),
         {"wsId": ws_id, "name": wf_name},
-    )["workflowInfosLatestVersionInAccount"]
+    )
 
     registered = res["workflowInfosLatestVersionInAccount"]["nodes"]
     staging = res["latchDevelopStagingImages"]["nodes"]

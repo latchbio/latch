@@ -655,6 +655,8 @@ def register(
             or docker_progress == "plain",
         )
 
+        return
+
     use_new_centromere = os.environ.get("LATCH_REGISTER_BETA") is not None
 
     crash_handler.message = "Unable to register workflow."
