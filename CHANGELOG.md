@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.65.6 - 2025-07-23
+
+### Fixed
+
+* Invalid registry array literals were not parsed properly
+
 ## 2.65.5 - 2025-07-23
 
 ### Added
