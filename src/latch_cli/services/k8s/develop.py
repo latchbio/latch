@@ -15,7 +15,6 @@ import click
 import dateutil.parser as dp
 import gql
 import websockets.client as websockets
-from croniter import datetime_to_timestamp
 
 from latch.utils import current_workspace
 from latch_sdk_config.latch import NUCLEUS_URL
@@ -39,7 +38,7 @@ max_polls = 1800
 class InstanceSize(str, Enum):
     small_task = "small_task"
     medium_task = "medium_task"
-    # large_task = "large_task"
+    large_task = "large_task"
     small_gpu_task = "small_gpu_task"
     large_gpu_task = "large_gpu_task"
     v100_x1_task = "v100_x1_task"

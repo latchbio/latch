@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.65.5 - 2025-07-23
+
+### Added
+
+* Enable using `large_task` with `latch develop -s`.
+
 ## 2.65.4 - 2025-07-23
 
 ### Added
