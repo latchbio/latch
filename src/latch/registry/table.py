@@ -60,10 +60,10 @@ from ..types.json import JsonValue
 
 
 class _AllRecordsNode(TypedDict):
-    sampleId: str
-    sampleName: str
-    sampleDataKey: str
-    sampleDataValue: DBValue
+    id: str
+    name: str
+    key: str
+    data: DBValue
 
 
 class _ColumnNode(TypedDict("_ColumnNodeReserved", {"def": DBValue})):

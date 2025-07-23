@@ -5,8 +5,6 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Type, TypeVar, Union, ca
 
 import gql
 from dateutil.parser import parse
-from latch_sdk_config.user import user_config
-from latch_sdk_gql.execute import execute
 
 from latch.registry.record import Record
 from latch.registry.types import InvalidValue, RegistryPythonValue
@@ -20,6 +18,8 @@ from latch.registry.upstream_types.values import DBValue, UnresolvedBlobValue
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
 from latch.utils import current_workspace
+from latch_sdk_config.user import user_config
+from latch_sdk_gql.execute import execute
 
 if TYPE_CHECKING:
     from latch.registry.table import _TableRecordsUpsertData
@@ -70,9 +70,7 @@ def to_python_type(registry_type: RegistryType) -> Type[RegistryPythonValue]:
             variants.append(
                 # todo(maximsmol): allow specifying the exact variant we want
                 # or preserving it when round-tripping?
-                to_python_type(
-                    variant,
-                ),
+                to_python_type(variant)
             )
         return Union[tuple(variants)]
 
@@ -81,12 +79,12 @@ def to_python_type(registry_type: RegistryType) -> Type[RegistryPythonValue]:
     )
 
 
-def to_python_literal(
-    registry_literal: DBValue,
-    registry_type: RegistryType,
-):
+def to_python_literal(registry_literal: DBValue, registry_type: RegistryType):
     if "array" in registry_type:
         if type(registry_literal) is not list:
+            if "valid" in registry_literal and not registry_literal["valid"]:
+                return InvalidValue(registry_literal["rawValue"])
+
             raise RegistryTransformerException(
                 f"{registry_literal} is not a list so it cannot be converted into a"
                 " list"
@@ -218,10 +216,7 @@ def to_python_literal(
 
 
 def to_registry_literal(
-    python_literal,
-    registry_type: RegistryType,
-    *,
-    resolve_paths: bool = True,
+    python_literal, registry_type: RegistryType, *, resolve_paths: bool = True
 ) -> DBValue:
     if isinstance(python_literal, InvalidValue):
         return {"valid": False, "rawValue": python_literal.raw_value}
@@ -404,8 +399,7 @@ def get_blob_nodetype(
 
 
 def _get_unresolved_blobs_in_db_val(
-    db_val: DBValue,
-    res: List[UnresolvedBlobValue],
+    db_val: DBValue, res: List[UnresolvedBlobValue]
 ) -> None:
     if isinstance(db_val, list):
         for i in range(len(db_val)):
