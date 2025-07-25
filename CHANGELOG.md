@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.65.7 - 2025-07-23
+
+### Fixed
+
+* Bug in `latch register --staging` where images could not be pulled correctly
+
 ## 2.65.6 - 2025-07-23
 
 ### Fixed

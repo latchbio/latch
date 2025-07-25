@@ -10,6 +10,7 @@ from urllib.parse import urljoin
 import boto3.session
 import click
 import docker
+import docker.auth
 import docker.errors
 import gql
 import paramiko
@@ -125,6 +126,9 @@ def dbnp(
     progress_plain: bool,
 ):
     credentials = get_credentials(image)
+    client._auth_configs = docker.auth.AuthConfig({  # noqa: SLF001
+        "auths": {config.dkr_repo: asdict(credentials)}
+    })
 
     build_logs: Iterable[DockerBuildLogItem] = client.build(
         path=str(pkg_root),
