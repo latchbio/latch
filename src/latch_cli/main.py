@@ -700,7 +700,17 @@ def register(
 )
 @requires_login
 def launch(params_file: Path, version: Union[str, None] = None):
-    """Launch a workflow using a python parameter map."""
+    """[DEPRECATED] Launch a workflow using a python parameter map.
+
+    This command requires parameters in an obscure pre-serialized format which
+    is not properly documented or easy to create by hand.
+
+    To programmatically launch a workflow, use the SDK API:
+    https://wiki.latch.bio/workflows/sdk/testing-and-debugging-a-workflow/programmatic-execution
+
+    CLI relaunch may be reimplemented in the future, so please let us know if this
+    would be useful for you.
+    """
 
     from latch_cli.services.launch.launch import launch
 
@@ -726,7 +736,17 @@ def launch(params_file: Path, version: Union[str, None] = None):
 )
 @requires_login
 def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
-    """Generate a python parameter map for a workflow."""
+    """[DEPRECATED] Generate a python parameter map for a workflow.
+
+    This command will not work properly with workflows using complicated types
+    because it is not able to use Python typing information.
+
+    To programmatically launch a workflow, use the SDK API:
+    https://wiki.latch.bio/workflows/sdk/testing-and-debugging-a-workflow/programmatic-execution
+
+    CLI relaunch may be reimplemented in the future, so please let us know if this
+    would be useful for you.
+    """
     crash_handler.message = "Unable to generate param map for workflow"
     crash_handler.pkg_root = str(Path.cwd())
 
