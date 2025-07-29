@@ -712,6 +712,11 @@ def launch(params_file: Path, version: Union[str, None] = None):
     would be useful for you.
     """
 
+    click.secho(
+        "`latch launch` is deprecated. See `latch launch --help` for details and alternatives.",
+        fg="yellow",
+    )
+
     from latch_cli.services.launch.launch import launch
 
     try:
@@ -747,6 +752,11 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
     CLI relaunch may be reimplemented in the future, so please let us know if this
     would be useful for you.
     """
+    click.secho(
+        "`latch get-params` is deprecated and frequently broken. See `latch launch --help` for details and alternatives.",
+        fg="yellow",
+    )
+
     crash_handler.message = "Unable to generate param map for workflow"
     crash_handler.pkg_root = str(Path.cwd())
 
