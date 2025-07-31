@@ -93,8 +93,6 @@ def workflow(
             origin = get_origin(annotation)
             args = get_args(annotation)
 
-            click.echo(origin, args, get_origin(args[0]))
-
             if origin is None or not issubclass(origin, list) or len(args) != 1:
                 click.secho(
                     f"parameter marked as samplesheet is not valid: {name} "
