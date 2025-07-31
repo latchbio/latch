@@ -92,10 +92,20 @@ def workflow(
 
             origin = get_origin(annotation)
             args = get_args(annotation)
-            valid = (
-                origin is not None
-                and issubclass(origin, list)
-                and is_dataclass(args[0])
+
+            click.echo(origin, args, get_origin(args[0]))
+
+            if origin is None or not issubclass(origin, list) or len(args) != 1:
+                click.secho(
+                    f"parameter marked as samplesheet is not valid: {name} "
+                    f"in workflow {f.__name__} must be a list of dataclasses",
+                    fg="red",
+                )
+                raise click.exceptions.Exit(1)
+
+            arg_origin = get_origin(args[0])
+            valid = is_dataclass(args[0]) or (
+                arg_origin is not None and is_dataclass(arg_origin)
             )
             if not valid:
                 click.secho(
