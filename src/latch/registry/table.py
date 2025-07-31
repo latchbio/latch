@@ -19,6 +19,7 @@ from typing import (
     overload,
 )
 
+import dateutil.parser as dp
 import gql
 import gql.transport.exceptions
 import graphql.language as l
@@ -61,7 +62,6 @@ from ..types.json import JsonValue
 
 class _AllRecordsNode(TypedDict):
     id: str
-    name: str
     key: str
     data: DBValue
 
@@ -69,6 +69,29 @@ class _AllRecordsNode(TypedDict):
 class _ColumnNode(TypedDict("_ColumnNodeReserved", {"def": DBValue})):
     key: str
     type: DBType
+
+
+class _CatalogEvent(TypedDict):
+    time: str
+
+
+class _CatalogEventsConnection(TypedDict):
+    nodes: list[_CatalogEvent]
+
+
+class _RecordMetaNode(TypedDict):
+    id: str
+    name: str
+    creationTime: str
+    catalogEventsBySampleId: _CatalogEventsConnection
+
+
+@dataclass
+class RecordMeta:
+    id: str
+    name: str
+    creation_time: datetime
+    last_updated: datetime
 
 
 @dataclass
@@ -250,40 +273,66 @@ class Table:
             data = execute(
                 gql.gql("""
                     query TableQuery(
-                        $id: BigInt!,
-                        $argLimit: BigInt!,
+                        $id: BigInt!
+                        $argLimit: BigInt!
                         $argOffset: BigInt!
+
+                        # fixme(ayush): BigInt! type is not compatible with the builtin `first` and
+                        # `offset` arguments which only take Int!
+                        $argLimitInt: Int!
+                        $argOffsetInt: Int!
                     ) {
                         catalogExperiment(id: $id) {
-                            allSamplesJoinInfoPaginated(
-                                argLimit: $argLimit,
-                                argOffset: $argOffset
-                            ) {
+                            allSamplesJoinInfoPaginated(argLimit: $argLimit, argOffset: $argOffset) {
                                 nodes {
                                     id
-                                    name
                                     key
                                     data
                                 }
                             }
                         }
+                        catalogSamples(
+                            condition: { experimentId: $id, removed: false }
+                            first: $argLimitInt
+                            offset: $argOffsetInt
+                            orderBy: ID_ASC
+                        ) {
+                            nodes {
+                                id
+                                name
+                                creationTime
+                                catalogEventsBySampleId(first: 1, orderBy: TIME_DESC) {
+                                    nodes {
+                                        time
+                                    }
+                                }
+                            }
+                        }
                     }
                 """),
-                {"id": self.id, "argLimit": page_size, "argOffset": offset},
-            )["catalogExperiment"]
+                {
+                    "id": self.id,
+                    "argLimit": page_size,
+                    "argLimitInt": page_size,
+                    "argOffset": offset,
+                    "argOffsetInt": offset,
+                },
+            )
 
             if data is None:
                 raise TableNotFoundError(
                     f"table does not exist or you lack permissions: id={self.id}"
                 )
 
-            nodes: List[_AllRecordsNode] = data["allSamplesJoinInfoPaginated"]["nodes"]
+            data_nodes: List[_AllRecordsNode] = data["catalogExperiment"][
+                "allSamplesJoinInfoPaginated"
+            ]["nodes"]
+            meta_nodes: list[_RecordMetaNode] = data["catalogSamples"]["nodes"]
 
-            record_names: Dict[str, str] = {}
+            record_meta: dict[str, RecordMeta] = {}
             record_values: Dict[str, Dict[str, RecordValue]] = {}
 
-            for node in nodes:
-                record_names[node["id"]] = node["name"]
+            for node in data_nodes:
                 vals = record_values.setdefault(node["id"], {})
 
                 col = cols.get(node["key"])
@@ -296,7 +345,17 @@ class Table:
                 )
 
             page: Dict[str, Record] = {}
-            for id, values in record_values.items():
+            for node in meta_nodes:
+                creation_time = dp.isoparse(node["creationTime"])
+
+                events = node["catalogEventsBySampleId"]["nodes"]
+                last_updated = dp.isoparse(node["creationTime"])
+                if len(events) > 0:
+                    last_updated = dp.isoparse(events[0]["time"])
+
+                values = record_values.get(node["id"])
+                assert values is not None
+
                 for col in cols.values():
                     if col.key in values:
                         continue
@@ -304,11 +363,15 @@ class Table:
                     if not col.upstream_type["allowEmpty"]:
                         values[col.key] = InvalidValue("")
 
-                cur = Record(id)
-                cur._cache.name = record_names[id]
+                cur = Record(node["id"])
+
+                cur._cache.name = node["name"]
+                cur._cache.creation_time = creation_time
+                cur._cache.last_updated = last_updated
                 cur._cache.values = values
                 cur._cache.columns = cols
-                page[id] = cur
+
+                page[node["id"]] = cur
 
             if len(page) > 0:
                 yield page
