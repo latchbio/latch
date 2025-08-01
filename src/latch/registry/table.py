@@ -19,6 +19,7 @@ from typing import (
     overload,
 )
 
+import dateutil.parser as dp
 import gql
 import gql.transport.exceptions
 import graphql.language as l
@@ -62,6 +63,8 @@ from ..types.json import JsonValue
 class _AllRecordsNode(TypedDict):
     id: str
     name: str
+    creationTime: str
+    lastUpdated: str
     key: str
     data: DBValue
 
@@ -69,6 +72,14 @@ class _AllRecordsNode(TypedDict):
 class _ColumnNode(TypedDict("_ColumnNodeReserved", {"def": DBValue})):
     key: str
     type: DBType
+
+
+@dataclass
+class RecordMeta:
+    id: str
+    name: str
+    creation_time: datetime
+    last_updated: datetime
 
 
 @dataclass
@@ -262,6 +273,8 @@ class Table:
                                 nodes {
                                     id
                                     name
+                                    creationTime
+                                    lastUpdated
                                     key
                                     data
                                 }
@@ -279,11 +292,16 @@ class Table:
 
             nodes: List[_AllRecordsNode] = data["allSamplesJoinInfoPaginated"]["nodes"]
 
-            record_names: Dict[str, str] = {}
+            record_meta: Dict[str, RecordMeta] = {}
             record_values: Dict[str, Dict[str, RecordValue]] = {}
 
             for node in nodes:
-                record_names[node["id"]] = node["name"]
+                record_meta[node["id"]] = RecordMeta(
+                    node["id"],
+                    node["name"],
+                    dp.isoparse(node["creationTime"]),
+                    dp.isoparse(node["lastUpdated"]),
+                )
                 vals = record_values.setdefault(node["id"], {})
 
                 col = cols.get(node["key"])
@@ -304,8 +322,12 @@ class Table:
                     if not col.upstream_type["allowEmpty"]:
                         values[col.key] = InvalidValue("")
 
+                meta = record_meta[id]
+
                 cur = Record(id)
-                cur._cache.name = record_names[id]
+                cur._cache.name = meta.name
+                cur._cache.creation_time = meta.creation_time
+                cur._cache.last_updated = meta.last_updated
                 cur._cache.values = values
                 cur._cache.columns = cols
                 page[id] = cur

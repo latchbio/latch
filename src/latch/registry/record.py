@@ -1,5 +1,6 @@
 from __future__ import annotations  # avoid circular type imports
 
+import datetime
 from dataclasses import dataclass, field
 from typing import (
     TYPE_CHECKING,
@@ -12,12 +13,13 @@ from typing import (
     overload,
 )
 
+import dateutil.parser as dp
 import gql
-from latch_sdk_gql.execute import execute
 
 from latch.registry.upstream_types.types import DBType
 from latch.registry.upstream_types.values import DBValue
 from latch.utils import NotFoundError, current_workspace
+from latch_sdk_gql.execute import execute
 
 if TYPE_CHECKING:  # avoid circular type imports
     from latch.registry.types import Column, RecordValue
@@ -64,9 +66,19 @@ class _ColumnDataConnection(TypedDict):
     nodes: List[_ColumnDataNode]
 
 
+class CatalogEvent(TypedDict):
+    time: str
+
+
+class _CatalogEventsConnection(TypedDict):
+    nodes: list[CatalogEvent]
+
+
 class _CatalogSample(TypedDict):
     id: str
     name: str
+    creationTime: str
+    catalogEventsBySampleId: _CatalogEventsConnection
     experiment: _CatalogExperiment
     catalogSampleColumnDataBySampleId: _ColumnDataConnection
 
@@ -77,6 +89,8 @@ class _Cache:
 
     table_id: Optional[str] = None
     name: Optional[str] = None
+    creation_time: Optional[datetime.datetime] = None
+    last_updated: Optional[datetime.datetime] = None
     columns: Optional[Dict[str, Column]] = None
     values: Optional[Dict[str, RecordValue]] = None
 
@@ -116,6 +130,12 @@ class Record:
                 catalogSample(id: $id) {
                     id
                     name
+                    creationTime
+                    catalogEventsBySampleId(orderBy: TIME_DESC, first: 1) {
+                        nodes {
+                            time
+                        }
+                    }
                     catalogSampleColumnDataBySampleId {
                         nodes {
                             key
@@ -145,6 +165,12 @@ class Record:
 
         self._cache.table_id = data["experiment"]["id"]
         self._cache.name = data["name"]
+        self._cache.creation_time = dp.isoparse(data["creationTime"])
+
+        events = data["catalogEventsBySampleId"]["nodes"]
+        self._cache.last_updated = dp.isoparse(data["creationTime"])
+        if len(events) > 0:
+            self._cache.last_updated = dp.isoparse(events[0]["time"])
 
         typeNodes = data["experiment"][
             "catalogExperimentColumnDefinitionsByExperimentId"
@@ -206,6 +232,62 @@ class Record:
 
         return self._cache.table_id
 
+    @overload
+    def get_creation_time(
+        self, *, load_if_missing: Literal[True] = True
+    ) -> datetime.datetime: ...
+
+    @overload
+    def get_creation_time(
+        self, *, load_if_missing: bool
+    ) -> Optional[datetime.datetime]: ...
+
+    def get_creation_time(
+        self, *, load_if_missing: bool = True
+    ) -> Optional[datetime.datetime]:
+        """Get the creation time of this record.
+
+        Args:
+            load_if_missing:
+                If true, :meth:`load` the creation time if not in cache.
+                If false, return `None` if not in cache.
+
+        Returns:
+            Creation time of this record.
+        """
+        if self._cache.creation_time is None and load_if_missing:
+            self.load()
+
+        return self._cache.creation_time
+
+    @overload
+    def get_last_updated(
+        self, *, load_if_missing: Literal[True] = True
+    ) -> datetime.datetime: ...
+
+    @overload
+    def get_last_updated(
+        self, *, load_if_missing: bool
+    ) -> Optional[datetime.datetime]: ...
+
+    def get_last_updated(
+        self, *, load_if_missing: bool = True
+    ) -> Optional[datetime.datetime]:
+        """Get the time of the last update of this record.
+
+        Args:
+            load_if_missing:
+                If true, :meth:`load` the time of the last update if not in cache.
+                If false, return `None` if not in cache.
+
+        Returns:
+            The last time this record was modified.
+        """
+        if self._cache.last_updated is None and load_if_missing:
+            self.load()
+
+        return self._cache.last_updated
+
     # get_name
 
     @overload
@@ -237,22 +319,14 @@ class Record:
 
     @overload
     def get_columns(
-        self,
-        *,
-        load_if_missing: Literal[True] = True,
+        self, *, load_if_missing: Literal[True] = True
     ) -> Dict[str, Column]: ...
 
     @overload
-    def get_columns(
-        self,
-        *,
-        load_if_missing: bool,
-    ) -> Optional[Dict[str, Column]]: ...
+    def get_columns(self, *, load_if_missing: bool) -> Optional[Dict[str, Column]]: ...
 
     def get_columns(
-        self,
-        *,
-        load_if_missing: bool = True,
+        self, *, load_if_missing: bool = True
     ) -> Optional[Dict[str, Column]]:
         """Get the columns of this record's table.
 
@@ -273,22 +347,16 @@ class Record:
 
     @overload
     def get_values(
-        self,
-        *,
-        load_if_missing: Literal[True] = True,
+        self, *, load_if_missing: Literal[True] = True
     ) -> Dict[str, RecordValue]: ...
 
     @overload
     def get_values(
-        self,
-        *,
-        load_if_missing: bool,
+        self, *, load_if_missing: bool
     ) -> Optional[Dict[str, RecordValue]]: ...
 
     def get_values(
-        self,
-        *,
-        load_if_missing: bool = True,
+        self, *, load_if_missing: bool = True
     ) -> Optional[Dict[str, RecordValue]]:
         """Get this record's values.
 

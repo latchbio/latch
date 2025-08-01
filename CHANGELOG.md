@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.66.0 - 2025-08-01
+
+### Added
+
+* `SamplesheetItem` object that allows samplesheet parameters to refer back to their Registry record of origin (if they were pulled in from Registry)
+* `Record` objects now have access to their `creation_time` and `last_updated` timestamps using the getter functions `get_creation_time()` and `get_last_updated()`
+
 ## 2.65.7 - 2025-07-23
 
 ### Fixed
