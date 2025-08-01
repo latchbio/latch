@@ -138,19 +138,7 @@ class SamplesheetItemTypeTransformer(TypeTransformer[SamplesheetItem[T]]):
             raise TypeTransformerFailedError("SamplesheetItem missing 'record_id' key")
 
         data_type = get_args(expected_python_type)[0]
-
-        by_name: dict[str, RecordField] = {}
-        for field in data_literal.record.fields:
-            by_name[field.key] = field
-
-        python_values: dict[str, object] = {}
-        for f in fields(data_type):
-            if f.name not in by_name:
-                raise TypeTransformerFailedError(f"field {f.name!r} missing in record")
-
-            python_values[f.name] = TypeEngine.to_python_value(
-                ctx, by_name[f.name].value, f.type
-            )
+        data = TypeEngine.to_python_value(ctx, data_literal, data_type)
 
         record_id: Optional[str] = TypeEngine.to_python_value(
             ctx, record_literal, Optional[str]
@@ -160,7 +148,7 @@ class SamplesheetItemTypeTransformer(TypeTransformer[SamplesheetItem[T]]):
         if record_id is not None:
             record = RegistryRecord(id=record_id)
 
-        return expected_python_type(data=data_type(**python_values), record=record)
+        return expected_python_type(data=data, record=record)
 
 
 TypeEngine.register(SamplesheetItemTypeTransformer())
