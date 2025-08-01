@@ -253,7 +253,7 @@ class Record:
                 If false, return `None` if not in cache.
 
         Returns:
-            Name of this record.
+            Creation time of this record.
         """
         if self._cache.creation_time is None and load_if_missing:
             self.load()
@@ -273,15 +273,15 @@ class Record:
     def get_last_updated(
         self, *, load_if_missing: bool = True
     ) -> Optional[datetime.datetime]:
-        """Get the creation time of this record.
+        """Get the time of the last update of this record.
 
         Args:
             load_if_missing:
-                If true, :meth:`load` the creation time if not in cache.
+                If true, :meth:`load` the time of the last update if not in cache.
                 If false, return `None` if not in cache.
 
         Returns:
-            Name of this record.
+            The last time this record was modified.
         """
         if self._cache.last_updated is None and load_if_missing:
             self.load()
