@@ -1,4 +1,4 @@
-from dataclasses import Field, dataclass, fields, is_dataclass
+from dataclasses import Field, dataclass, is_dataclass
 from typing import ClassVar, Generic, Optional, Protocol, TypeVar, get_args, get_origin
 
 from flytekit.core.context_manager import FlyteContext
@@ -54,16 +54,12 @@ class SamplesheetItemTypeTransformer(TypeTransformer[SamplesheetItem[T]]):
     def get_literal_type(self, t: type[SamplesheetItem[T]]) -> LiteralType:
         a = get_args(t)
 
-        record_id_type = TypeEngine.to_literal_type(Optional[str])
-        record_id_type._annotation = TypeAnnotation(
-            annotations={"attach_record_id": True}
-        )
-
         return LiteralType(
             record_type=RecordType([
                 RecordFieldType("data", TypeEngine.to_literal_type(a[0])),
-                RecordFieldType("record_id", record_id_type),
-            ])
+                RecordFieldType("record_id", TypeEngine.to_literal_type(Optional[str])),
+            ]),
+            annotation=TypeAnnotation({"samplesheet_item_with_record_id": True}),
         )
 
     def to_literal(

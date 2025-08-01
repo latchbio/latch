@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.66.1 - 2025-08-01
+
+### Fixed
+
+* Bug where type annotations for `SamplesheetItem` were not being created correctly
+
 ## 2.66.0 - 2025-08-01
 
 ### Added
