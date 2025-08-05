@@ -1,23 +1,23 @@
+import json
 import os
 import sys
 import webbrowser
 from pathlib import Path
-from typing import List
 
 import click
+import gql
+from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow
+from flytekit.models.interface import Variable
 from google.protobuf.json_format import MessageToJson
 
-import latch_cli.menus as menus
-from latch.utils import current_workspace, retrieve_or_login
-from latch_cli.centromere.utils import _import_flyte_objects
-from latch_cli.tinyrequests import post
-from latch_sdk_config.latch import config
+from latch.utils import current_workspace
+from latch_cli import menus
+from latch_cli.centromere.utils import import_flyte_objects
+from latch_sdk_gql.execute import execute
 
 
-# TODO(ayush): make this import the `wf` directory and use the package root
-# instead of the workflow name. also redo the frontend, also make it open the
-# page
 def preview(pkg_root: Path):
     """Generate a preview of the parameter interface for a workflow.
 
@@ -33,7 +33,7 @@ def preview(pkg_root: Path):
     """
 
     try:
-        modules = _import_flyte_objects([pkg_root.resolve()])
+        modules = import_flyte_objects([pkg_root.resolve()])
         wfs: dict[str, PythonFunctionWorkflow] = {}
         for module in modules:
             for flyte_obj in module.__dict__.values():
@@ -61,26 +61,47 @@ def preview(pkg_root: Path):
 
         wf = wfs[choice]
 
-    resp = post(
-        url=config.api.workflow.preview,
-        headers={"Authorization": f"Bearer {retrieve_or_login()}"},
-        json={
-            "workflow_ui_preview": MessageToJson(wf.interface.to_flyte_idl().inputs),
-            "ws_account_id": current_workspace(),
+    ctx = FlyteContextManager.current_context()
+    assert ctx is not None
+
+    for param_name, x in wf.python_interface.inputs_with_defaults.items():
+        if not isinstance(x, tuple):
+            continue
+
+        typ, default = x
+        literal = TypeEngine.to_literal(
+            ctx, default, typ, TypeEngine.to_literal_type(typ)
+        )
+
+        cur = wf.interface.inputs[param_name]
+
+        desc = json.loads(cur.description)
+        desc["default"] = json.loads(MessageToJson(literal.to_flyte_idl()))
+
+        wf.interface.inputs[param_name] = Variable(cur.type, json.dumps(desc))
+
+    execute(
+        gql.gql("""
+            mutation UpdatePreview($accountId: BigInt!, $inputs: String!) {
+                upsertWorkflowPreview(
+                    input: { argAccountId: $accountId, argInputs: $inputs }
+                ) {
+                    clientMutationId
+                }
+            }
+        """),
+        {
+            "accountId": current_workspace(),
+            "inputs": MessageToJson(wf.interface.to_flyte_idl().inputs),
         },
     )
 
-    resp.raise_for_status()
-
-    url = f"{config.console_url}/preview/parameters"
-    webbrowser.open(url)
+    webbrowser.open("https://console.latch.bio/preview/parameters")
 
 
 # TODO(ayush): abstract this logic in a unified interface that all tui commands use
-def _select_workflow_tui(title: str, options: List[str], clear_terminal: bool = True):
-    """
-    Renders a terminal UI that allows users to select one of the options
-    listed in `options`
+def _select_workflow_tui(title: str, options: list[str], clear_terminal: bool = True):
+    """Renders a terminal UI that allows users to select one of the options listed in `options`
 
     Args:
         title: The title of the selection window.
