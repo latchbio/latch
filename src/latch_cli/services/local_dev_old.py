@@ -50,9 +50,9 @@ def _get_workflow_name(
         from flytekit.core.context_manager import FlyteEntities
         from flytekit.core.workflow import PythonFunctionWorkflow
 
-        from latch_cli.centromere.utils import _import_flyte_objects
+        from latch_cli.centromere.utils import import_flyte_objects
 
-        _import_flyte_objects([pkg_root])
+        import_flyte_objects([pkg_root])
         for entity in FlyteEntities.entities:
             if isinstance(entity, PythonFunctionWorkflow):
                 return entity.name

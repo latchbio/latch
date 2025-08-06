@@ -38,7 +38,7 @@ def _add_sys_paths(paths: List[Path]) -> Iterator[None]:
             sys.path.remove(p)
 
 
-def _import_flyte_objects(paths: List[Path], module_name: str = "wf"):
+def import_flyte_objects(paths: List[Path], module_name: str = "wf"):
     from flytekit.core.context_manager import FlyteContext, FlyteContextManager
     from flytekit.core.data_persistence import FileAccessProvider
     from flytekit.tools import module_loader

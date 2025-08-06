@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.66.2 - 2025-08-06
+
+### Fixed
+
+* Bug where `latch preview` would not correctly parse default parameters
+
 ## 2.66.1 - 2025-08-01
 
 ### Fixed
