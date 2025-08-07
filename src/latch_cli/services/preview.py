@@ -7,7 +7,7 @@ from pathlib import Path
 import click
 import gql
 from flytekit.core.context_manager import FlyteContextManager
-from flytekit.core.type_engine import TypeEngine
+from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.core.workflow import PythonFunctionWorkflow
 from flytekit.models.interface import Variable
 from google.protobuf.json_format import MessageToJson
@@ -69,9 +69,12 @@ def preview(pkg_root: Path):
             continue
 
         typ, default = x
-        literal = TypeEngine.to_literal(
-            ctx, default, typ, TypeEngine.to_literal_type(typ)
-        )
+        try:
+            literal = TypeEngine.to_literal(
+                ctx, default, typ, TypeEngine.to_literal_type(typ)
+            )
+        except TypeTransformerFailedError:
+            continue
 
         cur = wf.interface.inputs[param_name]
 
