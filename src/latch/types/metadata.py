@@ -406,10 +406,7 @@ class LatchParameter:
         parameter_dict["appearance"] = appearance_dict
 
         if len(self.rules) > 0:
-            rules = []
-            for rule in self.rules:
-                rules.append(rule.dict)
-            parameter_dict["rules"] = rules
+            parameter_dict["rules"] = [rule.dict for rule in self.rules]
 
         return {"__metadata__": parameter_dict}
 
@@ -868,6 +865,7 @@ class NextflowMetadata(LatchMetadata):
     """
     Upload .command.* logs to Latch Data after each task execution
     """
+    unpack_parameters: bool = False
 
     @property
     def dict(self):
@@ -876,6 +874,19 @@ class NextflowMetadata(LatchMetadata):
         return d
 
     def __post_init__(self):
+        if self.unpack_parameters:
+            if len(self.parameters) != 1:
+                raise ValueError(
+                    "If `unpack_parameters` is provided, the Metadata must have a single dataclass parameter"
+                )
+
+            param = next(iter(self.parameters.values()))
+
+            if not is_dataclass(param.type):
+                raise ValueError(
+                    "If `unpack_parameters` is provided, the Metadata must have a single dataclass parameter"
+                )
+
         self.validate()
 
         if self.name is None:
@@ -889,6 +900,9 @@ class NextflowMetadata(LatchMetadata):
 
         global _nextflow_metadata
         _nextflow_metadata = self
+
+    def __str__(self):
+        cur = super().__str__()
 
 
 _nextflow_metadata: Optional[NextflowMetadata] = None

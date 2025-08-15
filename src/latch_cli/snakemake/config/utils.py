@@ -1,5 +1,6 @@
-from dataclasses import fields, is_dataclass, make_dataclass
+from dataclasses import MISSING, Field, field, fields, is_dataclass, make_dataclass
 from enum import Enum
+from types import MappingProxyType
 from typing import Any, Dict, List, Optional, Type, Union, get_args, get_origin
 
 from flytekit.core.annotation import FlyteAnnotation
@@ -107,19 +108,12 @@ def parse_type(
         return type(v)
 
     if isinstance(v, list):
-        parsed_types = tuple(
-            parse_type(
-                x,
-                name,
-                infer_files=infer_files,
-            )
-            for x in v
-        )
+        parsed_types = tuple(parse_type(x, name, infer_files=infer_files) for x in v)
 
         if len(set(parsed_types)) != 1:
             raise ValueError(
                 "Generic Lists are not supported - please"
-                f" ensure that all elements in {name} are of the same type",
+                f" ensure that all elements in {name} are of the same type"
             )
         typ = parsed_types[0]
         if typ in {LatchFile, LatchDir}:
@@ -134,9 +128,7 @@ def parse_type(
     fields: Dict[str, Type] = {}
     for k, x in v.items():
         fields[identifier_from_str(k)] = parse_type(
-            x,
-            f"{name}_{k}",
-            infer_files=infer_files,
+            x, f"{name}_{k}", infer_files=infer_files
         )
 
     return make_dataclass(identifier_from_str(name), fields.items())
@@ -236,12 +228,37 @@ def type_repr(t: Type, *, add_namespace: bool = False) -> str:
     return t.__name__
 
 
+def value_repr(v: object) -> str:
+    if isinstance(v, Enum):
+        return f"{type(v).__qualname__}.{v.name}"
+
+    return repr(v)
+
+
+def field_repr(f: Field[object]) -> str:
+    args = {}
+
+    # todo(ayush): also support basic default_factory values
+    if f.default is not MISSING:
+        args["default"] = f.default
+    if len(f.metadata) > 0:
+        args["metadata"] = dict(f.metadata)
+
+    suffix = ""
+    if len(args) > 0:
+        suffix = (
+            f" = field({', '.join(f'{k}={value_repr(v)}' for k, v in args.items())})"
+        )
+
+    return f"{f.name}: {type_repr(f.type)}{suffix}"
+
+
 def dataclass_repr(typ: Type) -> str:
     assert is_dataclass(typ)
 
     lines = ["@dataclass", f"class {typ.__name__}:"]
     for f in fields(typ):
-        lines.append(f"    {f.name}: {type_repr(f.type)}")
+        lines.append(f"    {field_repr(f)}")
 
     return "\n".join(lines) + "\n\n\n"
 
@@ -313,7 +330,7 @@ def validate_snakemake_type(name: str, t: Type, param: Any) -> None:
         if len(args) == 0:
             raise ValueError(
                 "Generic Lists are not supported - please specify a subtype,"
-                " e.g. List[LatchFile]",
+                " e.g. List[LatchFile]"
             )
         list_typ = args[0]
         for i, val in enumerate(param):

@@ -1,12 +1,12 @@
 import base64
 import contextlib
-import importlib.machinery as im
 import importlib.util as iu
 import io
 import os
 import sys
 import typing
 from pathlib import Path
+from types import ModuleType
 from typing import (
     TYPE_CHECKING,
     Dict,
@@ -192,7 +192,9 @@ def register_serialized_pkg(
         return response.json()
 
 
-def import_module_by_path(x: Path, *, module_name: str = "latch_metadata"):
+def import_module_by_path(
+    x: Path, *, module_name: str = "latch_metadata"
+) -> ModuleType:
     spec = iu.spec_from_file_location(module_name, x)
     assert spec is not None
     assert spec.loader is not None
