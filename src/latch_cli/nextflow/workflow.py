@@ -1,16 +1,27 @@
 import json
-from dataclasses import fields, is_dataclass
+from dataclasses import Field, fields, is_dataclass
 from enum import Enum
 from pathlib import Path
 from textwrap import dedent
-from typing import Any, Dict, List, Optional, Tuple
+from typing import (
+    Annotated,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    TypeVar,
+    get_args,
+    get_origin,
+)
 
 import click
+from flytekit.core.annotation import FlyteAnnotation
 
-import latch.types.metadata as metadata
+from latch.types import metadata
 from latch.types.directory import LatchDir, LatchOutputDir
 from latch.types.file import LatchFile
-from latch.types.metadata import NextflowParameter
 from latch_cli.constants import latch_constants
 from latch_cli.snakemake.config.utils import get_preamble, type_repr
 from latch_cli.snakemake.utils import reindent
@@ -29,13 +40,13 @@ from pathlib import Path
 import typing
 import typing_extensions
 
-from latch.resources.workflow import workflow
+from latch.resources.workflow import nextflow_workflow
 from latch.resources.tasks import nextflow_runtime_task, custom_task
 from latch.types.file import LatchFile
 from latch.types.directory import LatchDir, LatchOutputDir
 from latch.ldata.path import LPath
 from latch.executions import report_nextflow_used_storage
-from latch_cli.nextflow.workflow import get_flag
+from latch_cli.nextflow.workflow import flags_from_args
 from latch_cli.nextflow.utils import _get_execution_name
 from latch_cli.utils import urljoins
 from latch.types import metadata
@@ -61,7 +72,7 @@ def initialize() -> str:
         headers=headers,
         json={{
             "storage_expiration_hours": {storage_expiration_hours},
-            "version": {nextflow_version},
+            "version": 2,
         }},
     )
     resp.raise_for_status()
@@ -70,12 +81,8 @@ def initialize() -> str:
     return resp.json()["name"]
 
 
-{preambles}
-
-{samplesheet_funs}
-
 @nextflow_runtime_task(cpu={cpu}, memory={memory}, storage_gib={storage_gib})
-def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
+def nextflow_runtime(pvc_name: str, args: latch_metadata.WorkflowArgsType) -> None:
     root_dir = Path("/root")
     shared_dir = Path("/nf-workdir")
 
@@ -88,7 +95,6 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
     print(f"Log directory: {{latch_log_dir}}")
 
 {output_shortcuts}
-{samplesheet_constructors}
 
     to_ignore = {{
         "latch",
@@ -121,9 +127,6 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
             shutil.copy2(src, target)
 
     profile_list = {execution_profile}
-    if {configurable_profiles}:
-        profile_list.extend([p.value for p in execution_profiles])
-
     if len(profile_list) == 0:
         profile_list.append("standard")
 
@@ -140,7 +143,7 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
         "-c",
         "latch.config",
         "-resume",
-{params_to_flags}
+        *flags_from_args(args, shared_dir),
     ]
 
     print("Launching Nextflow Runtime")
@@ -204,14 +207,14 @@ def nextflow_runtime(pvc_name: str, {param_signature}) -> None:
         sys.exit(1)
 
 
-@workflow(metadata._nextflow_metadata)
-def {workflow_func_name}({param_signature_with_defaults}) -> None:
+@nextflow_workflow(metadata._nextflow_metadata)
+def {workflow_func_name}(args: latch_metadata.WorkflowArgsType) -> None:
     \"\"\"
 {docstring}
     \"\"\"
 
     pvc_name: str = initialize()
-    nextflow_runtime(pvc_name=pvc_name, {param_args})
+    nextflow_runtime(pvc_name=pvc_name, args=args)
 
 """
 
@@ -231,24 +234,90 @@ def get_flag(name: str, val: Any) -> List[str]:
 
     if val is None:
         return []
-    elif isinstance(val, bool):
+    if isinstance(val, bool):
         return [flag] if val else []
-    elif isinstance(val, LatchFile) or isinstance(val, LatchDir):
+    if isinstance(val, (LatchFile, LatchDir)):
         if val.remote_path is not None:
             return [flag, val.remote_path]
 
         return [flag, str(val.path)]
-    elif is_dataclass(val):
+    if is_dataclass(val):
         return _get_flags_for_dataclass(name, val)
-    elif isinstance(val, Enum):
-        return [flag, getattr(val, "value")]
-    else:
-        return [flag, str(val)]
+    if isinstance(val, Enum):
+        return [flag, val.value]
+
+    return [flag, str(val)]
+
+
+def is_samplesheet_parameter(f: Field[object]) -> bool:
+    origin = get_origin(f.type)
+    if origin is not Annotated:
+        return False
+
+    args = get_args(f.type)
+    assert len(args) > 1
+
+    ann = args[1]
+    if not isinstance(ann, FlyteAnnotation):
+        return False
+
+    return ann.data.get("samplesheet", False)
+
+
+T = TypeVar("T")
+
+
+def get_flag_ext(
+    f: Field[object],
+    value: object,
+    shared_dir: Path,
+    samplesheet_constructor: Callable[
+        [list[T], type[T]], Path
+    ] = metadata.default_samplesheet_constructor,
+) -> list[str]:
+    if not is_samplesheet_parameter(f):
+        return get_flag(f.name, value)
+
+    # f.type = Annotated[List[Dataclass]]
+    ann_args = get_args(f.type)
+    assert len(ann_args) == 2
+
+    list_typ = ann_args[0]
+    list_args = get_args(list_typ)
+    assert len(list_args) == 1
+
+    output_path = shared_dir / f"{f.name}_samplesheet.csv"
+    res = samplesheet_constructor(value, list_args[0])
+    output_path.write_text(res.read_text())
+    res.unlink()
+
+    return [f"--{f.name}", str(output_path)]
+
+
+def flags_from_args(
+    args: object,
+    shared_dir: Path,
+    *,
+    # todo(ayush): support samplesheet constructors per parameter
+    samplesheet_constructor: Callable[
+        [list[T], type[T]], Path
+    ] = metadata.default_samplesheet_constructor,
+) -> list[str]:
+    assert is_dataclass(args)
+
+    flags = []
+    for f in fields(args):
+        flags.extend(
+            get_flag_ext(f, getattr(args, f.name), shared_dir, samplesheet_constructor)
+        )
+
+    return flags
 
 
 def generate_nextflow_config(pkg_root: Path):
     config_path = Path(pkg_root) / "latch.config"
-    config_path.write_text(dedent("""\
+    config_path.write_text(
+        dedent("""\
         process {
             executor = 'k8s'
         }
@@ -262,12 +331,13 @@ def generate_nextflow_config(pkg_root: Path):
                 anonymous = true
             }
         }
-        """))
+        """)
+    )
 
     click.secho(f"Nextflow Latch config written to {config_path}", fg="green")
 
 
-def get_results_code_block(parameters: Dict[str, NextflowParameter]) -> str:
+def get_results_code_block(parameters: Dict[str, metadata.NextflowParameter]) -> str:
     output_shortcuts = [
         (var_name, sub_path)
         for var_name, param in parameters.items()
@@ -338,80 +408,6 @@ def generate_nextflow_workflow(
 
     java_heap_size = resources.memory * 1024 * 0.75
 
-    flags = []
-    defaults: List[Tuple[str, str]] = []
-    no_defaults: List[str] = []
-    preambles: set[str] = set()
-    samplesheet_funs: List[str] = []
-    samplesheet_constructors: List[str] = []
-
-    nextflow_task_args = ", ".join(
-        f"{param_name}={param_name}" for param_name in parameters.keys()
-    )
-
-    profile_options = metadata._nextflow_metadata.execution_profiles
-    if len(profile_options) > 0:
-        profiles_var = "execution_profiles"
-
-        execution_profile_enum = "class ExecutionProfile(Enum):\n"
-        for profile in profile_options:
-            execution_profile_enum += f"    {profile} = {repr(profile)}\n"
-
-        no_defaults.append(f"{profiles_var}: list[ExecutionProfile]")
-        nextflow_task_args += f", {profiles_var}={profiles_var}"
-        preambles.add(execution_profile_enum)
-
-    for param_name, param in parameters.items():
-        sig = f"{param_name}: {type_repr(param.type)}"
-        if param.default is not None:
-            if isinstance(param.default, Enum):
-                defaults.append((sig, param.default))
-            elif param.type in {LatchDir, LatchFile}:
-                defaults.append((
-                    sig,
-                    f"{param.type.__name__}('{param.default._raw_remote_path}')",
-                ))
-            elif param.type is LatchOutputDir:
-                defaults.append((
-                    sig,
-                    f"LatchOutputDir('{param.default._raw_remote_path}')",
-                ))
-            else:
-                defaults.append((sig, repr(param.default)))
-        else:
-            no_defaults.append(sig)
-
-        if param.samplesheet:
-            samplesheet_funs.append(
-                reindent(
-                    f"""
-                    {param_name}_construct_samplesheet = metadata._nextflow_metadata.parameters[{repr(param_name)}].samplesheet_constructor
-                    """,
-                    0,
-                ),
-            )
-
-            samplesheet_constructors.append(
-                reindent(
-                    f"{param_name}_samplesheet ="
-                    f" {param_name}_construct_samplesheet({param_name})",
-                    1,
-                ),
-            )
-
-            flags.append(
-                reindent(
-                    f"*get_flag({repr(param_name)}, {param_name}_samplesheet)",
-                    2,
-                )
-            )
-        else:
-            flags.append(reindent(f"*get_flag({repr(param_name)}, {param_name})", 4))
-
-        preamble = get_preamble(param.type)
-        if len(preamble) > 0 and preamble not in preambles:
-            preambles.add(preamble)
-
     if metadata._nextflow_metadata.log_dir is None:
         log_dir = "latch:///nextflow_logs"
     else:
@@ -444,20 +440,10 @@ def generate_nextflow_workflow(
         docstring=reindent(docstring, 1),
         nf_script=nf_script.resolve().relative_to(pkg_root.resolve()),
         metadata_root=str(metadata_root.resolve().relative_to(pkg_root.resolve())),
-        param_signature_with_defaults=", ".join(
-            no_defaults + [f"{name} = {val}" for name, val in defaults]
-        ),
-        param_signature=", ".join(no_defaults + [name for name, _ in defaults]),
-        param_args=nextflow_task_args,
-        params_to_flags=",\n".join(flags),
         execution_profile=(
             execution_profile.split(",") if execution_profile is not None else []
         ),
         output_shortcuts=reindent(get_results_code_block(parameters), 1),
-        configurable_profiles=len(profile_options) > 0,
-        preambles="\n\n".join(list(preambles)),
-        samplesheet_funs="\n".join(samplesheet_funs),
-        samplesheet_constructors="\n".join(samplesheet_constructors),
         cpu=resources.cpus,
         memory=resources.memory,
         heap_initial=int(java_heap_size / 4),
@@ -466,7 +452,6 @@ def generate_nextflow_workflow(
         storage_expiration_hours=resources.storage_expiration_hours,
         log_dir=log_dir,
         upload_command_logs=metadata._nextflow_metadata.upload_command_logs,
-        nextflow_version=get_nextflow_major_version(pkg_root),
     )
 
     dest.write_text(entrypoint)

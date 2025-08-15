@@ -1,6 +1,14 @@
 import json
 import re
-from dataclasses import Field, dataclass, field, make_dataclass
+from dataclasses import (
+    MISSING,
+    Field,
+    dataclass,
+    field,
+    fields,
+    is_dataclass,
+    make_dataclass,
+)
 from enum import Enum
 from pathlib import Path
 from textwrap import dedent
@@ -9,14 +17,14 @@ from typing import Annotated, Optional, TypeVar, Union
 import click
 import google.protobuf.json_format as gpjson
 from flytekit.core.annotation import FlyteAnnotation
-from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
 
 from latch.ldata.path import LPath
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
-from latch_cli.snakemake.config.utils import dataclass_repr, get_preamble, type_repr
-from latch_cli.snakemake.utils import reindent
+from latch_cli.services.register.utils import import_module_by_path
+from latch_cli.snakemake.config.utils import dataclass_repr, get_preamble
 from latch_cli.utils import best_effort_display_name, identifier_from_str
 
 from .parse_schema import NfType, parse_schema
@@ -45,6 +53,41 @@ def as_python_type(typ: type[T], value: object) -> T:
             return value
 
     return value
+
+
+def get_field_type(
+    ctx: FlyteContext, idx: int, name: str, props: NfType
+) -> tuple[str, type, Field[object]]:
+    if not name.isidentifier():
+        name = f"param_{idx}"
+
+    inner = get_python_type_inner(name, props)
+    python_typ = inner if props.get("metadata", {}).get("required") else Optional[inner]
+
+    # todo(ayush): defaults don't really work if the dataclass is nested but that isn't
+    # supported by the nf-schema spec (however that has never stopped nf-core developers)
+    args = {"metadata": {}}
+    default_value = None
+    if "default" in props:
+        args["default"] = as_python_type(inner, props["default"])
+        default_value = gpjson.MessageToDict(
+            TypeEngine.to_literal(
+                ctx, args["default"], python_typ, TypeEngine.to_literal_type(python_typ)
+            ).to_flyte_idl()
+        )
+
+    annotated = Annotated[
+        python_typ,
+        FlyteAnnotation({
+            "display_name": best_effort_display_name(name),
+            "default": default_value,
+            "samplesheet": props["type"] == "samplesheet",
+            "output": name == "outdir",
+            **props.get("metadata", {}),
+        }),
+    ]
+
+    return name, annotated, field(**args)
 
 
 def get_python_type_inner(
@@ -78,44 +121,13 @@ def get_python_type_inner(
         defaults: list[Union[tuple[str, type], tuple[str, type, Field[object]]]] = []
 
         for idx, (f, props) in enumerate(typ["properties"].items()):
-            name = f
-            if not name.isidentifier():
-                name = f"param_{idx}"
+            name, annotated, field_obj = get_field_type(ctx, idx, f, props)
 
-            inner = get_python_type_inner(name, props)
-            python_typ = (
-                inner if props.get("metadata", {}).get("required") else Optional[inner]
-            )
-
-            # todo(ayush): defaults don't really work if the dataclass is nested but that isn't
-            # supported by the nf-schema spec (however that has never stopped nf-core developers)
-            args = {"metadata": {"flag": f}}
-            default_value = None
             append_to = no_defaults
-            if "default" in props:
-                args["default"] = as_python_type(inner, props["default"])
-                default_value = gpjson.MessageToDict(
-                    TypeEngine.to_literal(
-                        ctx,
-                        args["default"],
-                        python_typ,
-                        TypeEngine.to_literal_type(python_typ),
-                    ).to_flyte_idl()
-                )
+            if field_obj.default is not MISSING:
                 append_to = defaults
 
-            annotated = Annotated[
-                python_typ,
-                FlyteAnnotation({
-                    "display_name": best_effort_display_name(f),
-                    "default": default_value,
-                    "samplesheet": props["type"] == "samplesheet",
-                    "output": f == "outdir",
-                    **props.get("metadata", {}),
-                }),
-            ]
-
-            append_to.append((name, annotated, field(**args)))
+            append_to.append((name, annotated, field_obj))
 
         return make_dataclass(
             best_effort_title_case(f"{param_name} Type"), no_defaults + defaults
@@ -150,6 +162,11 @@ def get_python_type(
         return inner
 
     return Optional[inner]
+
+
+dc_expr = re.compile(
+    r"@dataclass\nclass WorkflowArgsType:\n(?:(    [^\n]+\n)+)", re.MULTILINE
+)
 
 
 def generate_metadata(
@@ -208,7 +225,6 @@ def generate_metadata(
         )
         click.secho(f"Generated {metadata_path}.", fg="green")
 
-    params = []
     preambles = []
 
     schema = parse_schema(schema_path, strict=False)
@@ -216,33 +232,61 @@ def generate_metadata(
     for param_name, typ in schema.items():
         py_type = get_python_type(param_name, typ)
         preambles.append(get_preamble(py_type))
-        params.append(
-            dedent(f"""
-            {param_name!r}: NextflowParameter(
-                type={type_repr(py_type)},
-                description={typ.get("metadata", {}).get("description")!r},
-            ),""")
-        )
 
     params_path = metadata_root / "parameters.py"
-    if (
-        params_path.exists()
-        and not skip_confirmation
-        and not click.confirm(f"File `{params_path}` already exists. Overwrite?")
-    ):
-        return
+    if params_path.exists():
+        if not skip_confirmation and not click.confirm(
+            f"File `{params_path}` already exists. Changes will be made to it. Is this ok?"
+        ):
+            return
+
+        params_content = params_path.read_text()
+
+        match = dc_expr.search(params_content)
+
+        if match is not None:
+            ctx = FlyteContextManager.current_context()
+            assert ctx is not None
+
+            mod = import_module_by_path(metadata_root / "__init__.py")
+            cur_args = getattr(mod, "WorkflowArgsType", None)
+
+            assert is_dataclass(cur_args)
+            existing_fields = {f.name for f in fields(cur_args)}
+
+            new_fields = [(f.name, f.type, f) for f in fields(cur_args)]
+            idx = len(existing_fields)
+            for param_name, typ in schema.items():
+                print(param_name)
+                if param_name in existing_fields:
+                    continue
+
+                new_fields.append(get_field_type(ctx, idx, param_name, typ))
+                idx += 1
+
+            if idx == len(existing_fields):
+                click.secho("No new parameters added. File unchanged.", fg="green")
+                return
+
+            new_fields.sort(key=lambda f: 0 if f[2].default is MISSING else 1)
+
+            new_dc = make_dataclass("WorkflowArgsType", new_fields)
+            params_path.write_text(dc_expr.sub(dataclass_repr(new_dc), params_content))
+            click.secho(f"Successfully modified `{params_path}`.", fg="green")
+            return
 
     params_path.write_text(
-        dedent(r"""
+        dedent("""\
             import typing
             from dataclasses import dataclass, field
             from enum import Enum
 
             import typing_extensions
             from flytekit.core.annotation import FlyteAnnotation
-            from latch.types.metadata import NextflowParameter
+
+            from latch.types.directory import LatchDir
             from latch.types.file import LatchFile
-            from latch.types.directory import LatchDir, LatchOutputDir
+            from latch.types.metadata import NextflowParameter
 
             # Import these into your `__init__.py` file:
             #
@@ -250,13 +294,12 @@ def generate_metadata(
 
             __preambles__
 
-            generated_parameters = {
-            __params__
-            }
-
             __dataclass__
+
+            generated_parameters = {
+                "args": NextflowParameter(type=WorkflowArgsType)
+            }
             """)
-        .replace("__params__", reindent("".join(params), 1))
         .replace("__preambles__", "".join(preambles))
         .replace(
             "__dataclass__",

@@ -536,7 +536,7 @@ class NextflowParameter(Generic[T], LatchParameter):
         if self.samplesheet_type is not None:
             delim = "," if self.samplesheet_type == "csv" else "\t"
             self.samplesheet_constructor = functools.partial(
-                _samplesheet_constructor, t=get_args(self.type)[0], delim=delim
+                default_samplesheet_constructor, t=get_args(self.type)[0], delim=delim
             )
             return
 
@@ -566,10 +566,10 @@ def _samplesheet_repr(v: Any) -> str:
     return str(v)
 
 
-def _samplesheet_constructor(samples: List[DC], t: DC, delim: str = ",") -> Path:
+def default_samplesheet_constructor(samples: List[DC], t: DC, delim: str = ",") -> Path:
     samplesheet = Path("samplesheet.csv")
 
-    with open(samplesheet, "w") as f:
+    with samplesheet.open("w") as f:
         writer = csv.DictWriter(f, [f.name for f in fields(t)], delimiter=delim)
         writer.writeheader()
 
@@ -865,7 +865,6 @@ class NextflowMetadata(LatchMetadata):
     """
     Upload .command.* logs to Latch Data after each task execution
     """
-    unpack_parameters: bool = False
 
     @property
     def dict(self):
@@ -874,19 +873,6 @@ class NextflowMetadata(LatchMetadata):
         return d
 
     def __post_init__(self):
-        if self.unpack_parameters:
-            if len(self.parameters) != 1:
-                raise ValueError(
-                    "If `unpack_parameters` is provided, the Metadata must have a single dataclass parameter"
-                )
-
-            param = next(iter(self.parameters.values()))
-
-            if not is_dataclass(param.type):
-                raise ValueError(
-                    "If `unpack_parameters` is provided, the Metadata must have a single dataclass parameter"
-                )
-
         self.validate()
 
         if self.name is None:
@@ -900,9 +886,6 @@ class NextflowMetadata(LatchMetadata):
 
         global _nextflow_metadata
         _nextflow_metadata = self
-
-    def __str__(self):
-        cur = super().__str__()
 
 
 _nextflow_metadata: Optional[NextflowMetadata] = None
