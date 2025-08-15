@@ -379,12 +379,7 @@ def generate_metadata(
         if config_file is None:
             config_file = Path("nextflow_schema.json")
 
-        generate_metadata(
-            config_file,
-            metadata_root,
-            skip_confirmation=yes,
-            generate_defaults=not no_defaults,
-        )
+        generate_metadata(config_file, metadata_root, skip_confirmation=yes)
     else:
         from latch_cli.snakemake.config.parser import generate_metadata
 

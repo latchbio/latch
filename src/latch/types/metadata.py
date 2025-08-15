@@ -406,10 +406,7 @@ class LatchParameter:
         parameter_dict["appearance"] = appearance_dict
 
         if len(self.rules) > 0:
-            rules = []
-            for rule in self.rules:
-                rules.append(rule.dict)
-            parameter_dict["rules"] = rules
+            parameter_dict["rules"] = [rule.dict for rule in self.rules]
 
         return {"__metadata__": parameter_dict}
 
@@ -539,7 +536,7 @@ class NextflowParameter(Generic[T], LatchParameter):
         if self.samplesheet_type is not None:
             delim = "," if self.samplesheet_type == "csv" else "\t"
             self.samplesheet_constructor = functools.partial(
-                _samplesheet_constructor, t=get_args(self.type)[0], delim=delim
+                default_samplesheet_constructor, t=get_args(self.type)[0], delim=delim
             )
             return
 
@@ -569,10 +566,10 @@ def _samplesheet_repr(v: Any) -> str:
     return str(v)
 
 
-def _samplesheet_constructor(samples: List[DC], t: DC, delim: str = ",") -> Path:
+def default_samplesheet_constructor(samples: List[DC], t: DC, delim: str = ",") -> Path:
     samplesheet = Path("samplesheet.csv")
 
-    with open(samplesheet, "w") as f:
+    with samplesheet.open("w") as f:
         writer = csv.DictWriter(f, [f.name for f in fields(t)], delimiter=delim)
         writer.writeheader()
 

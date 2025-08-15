@@ -11,7 +11,12 @@ from flytekit import workflow as _workflow
 from flytekit.core.interface import transform_function_to_interface
 from flytekit.core.workflow import PythonFunctionWorkflow
 
-from latch.types.metadata import LatchAuthor, LatchMetadata, LatchParameter
+from latch.types.metadata import (
+    LatchAuthor,
+    LatchMetadata,
+    LatchParameter,
+    NextflowMetadata,
+)
 from latch_cli.utils import best_effort_display_name
 
 
@@ -141,3 +146,11 @@ def workflow(
         return _workflow(f, wf_name_override=wf_name_override)
 
     return decorator
+
+
+def nextflow_workflow(
+    metadata: NextflowMetadata,
+) -> Callable[[Callable], PythonFunctionWorkflow]:
+    metadata._non_standard["unpack_records"] = True
+
+    return workflow(metadata)
