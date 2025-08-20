@@ -1118,6 +1118,8 @@ def generate_entrypoint(
     if destination is None:
         destination = pkg_root / "wf" / "custom_entrypoint.py"
 
+    destination = destination.with_suffix(".py")
+
     if not yes and not click.confirm(
         f"Will generate an entrypoint at {destination}. Proceed?"
     ):
