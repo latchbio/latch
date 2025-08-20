@@ -304,6 +304,7 @@ def register(
     cache_tasks: bool = False,
     use_new_centromere: bool = False,
     mark_as_release: bool = False,
+    dockerfile_path: Optional[Path] = None,
 ):
     """Registers a workflow, defined as python code, with Latch.
 
@@ -367,6 +368,7 @@ def register(
         nf_script=nf_script,
         use_new_centromere=use_new_centromere,
         overwrite=skip_confirmation,
+        dockerfile_path=dockerfile_path,
     ) as ctx:
         assert ctx.workflow_name is not None, "Unable to determine workflow name"
         assert ctx.version is not None, "Unable to determine workflow version"
