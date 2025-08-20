@@ -211,14 +211,12 @@ def register_staging(
     skip_confirmation: bool = False,
     wf_module: Optional[str] = None,
     progress_plain: bool = False,
+    dockerfile_path: Optional[Path] = None,
 ):
     wf_module = wf_module if wf_module is not None else "wf"
     module_path = pkg_root / Path(wf_module.replace(".", "/"))
 
-    dockerfile_path = pkg_root / "Dockerfile"
-    if not dockerfile_path.exists():
-        dockerfile_path = pkg_root / ".latch" / "Dockerfile"
-    if not dockerfile_path.exists():
+    if dockerfile_path is None:
         dockerfile_path = get_default_dockerfile(
             pkg_root, wf_type=WorkflowType.latchbiosdk
         )
