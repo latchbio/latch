@@ -97,8 +97,6 @@ class _CentromereCtx:
         self.disable_auto_version = disable_auto_version
         self.wf_module = wf_module if wf_module is not None else "wf"
 
-        self.custom_dockerfile_path = dockerfile_path
-
         if self.wf_module.startswith("."):
             click.secho(
                 dedent(f"""\
