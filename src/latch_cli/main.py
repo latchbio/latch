@@ -1090,11 +1090,24 @@ def version(pkg_root: Path):
     default=None,
     help="Set execution profile for Nextflow workflow",
 )
+@click.option(
+    "--destination",
+    "-d",
+    type=click.Path(path_type=Path),
+    default=None,
+    help=(
+        "Where to write the entrypoint file. Defaults to wf/custom_entrypoint.py. If the filename "
+        "does not end with a .py suffix, one will be appended."
+    ),
+)
+@click.option("--yes", "-y", is_flag=True, help="Skip the confirmation dialog.")
 def generate_entrypoint(
     pkg_root: Path,
     metadata_root: Optional[Path],
     nf_script: Path,
     execution_profile: Optional[str],
+    destination: Optional[Path],
+    yes: bool,
 ):
     """Generate a `wf/entrypoint.py` file from a Nextflow workflow"""
 
@@ -1102,11 +1115,24 @@ def generate_entrypoint(
     from latch_cli.nextflow.workflow import generate_nextflow_workflow
     from latch_cli.services.register.utils import import_module_by_path
 
-    dest = pkg_root / "wf" / "custom_entrypoint.py"
-    dest.parent.mkdir(exist_ok=True)
+    if destination is None:
+        destination = pkg_root / "wf" / "custom_entrypoint.py"
 
-    if dest.exists() and not click.confirm(
-        f"Nextflow entrypoint already exists at `{dest}`. Overwrite?"
+    destination = destination.with_suffix(".py")
+
+    if not yes and not click.confirm(
+        f"Will generate an entrypoint at {destination}. Proceed?"
+    ):
+        raise click.exceptions.Abort
+
+    destination.parent.mkdir(exist_ok=True)
+
+    if (
+        not yes
+        and destination.exists()
+        and not click.confirm(
+            f"Nextflow entrypoint already exists at `{destination}`. Overwrite?"
+        )
     ):
         return
 
@@ -1130,7 +1156,11 @@ def generate_entrypoint(
         raise click.exceptions.Exit(1)
 
     generate_nextflow_workflow(
-        pkg_root, metadata_root, nf_script, dest, execution_profile=execution_profile
+        pkg_root,
+        metadata_root,
+        nf_script,
+        destination,
+        execution_profile=execution_profile,
     )
 
 
