@@ -37,7 +37,7 @@ class CommonMetadata(TypedDict):
 class NfStringType(TypedDict):
     type: Literal["string"]
     default: NotRequired[str]
-    metadata: NotRequired[CommonMetadata]
+    metadata: CommonMetadata
     regex: NotRequired[str]
 
 
@@ -46,7 +46,7 @@ class NfIntegerType(TypedDict):
     default: NotRequired[int]
     min: NotRequired[int]
     max: NotRequired[int]
-    metadata: NotRequired[CommonMetadata]
+    metadata: CommonMetadata
 
 
 class NfFloatType(TypedDict):
@@ -54,13 +54,13 @@ class NfFloatType(TypedDict):
     default: NotRequired[float]
     min: NotRequired[float]
     max: NotRequired[float]
-    metadata: NotRequired[CommonMetadata]
+    metadata: CommonMetadata
 
 
 class NfBooleanType(TypedDict):
     type: Literal["boolean"]
     default: NotRequired[bool]
-    metadata: NotRequired[CommonMetadata]
+    metadata: CommonMetadata
 
 
 EnumT = TypeVar("EnumT", str, int, float)
@@ -71,34 +71,34 @@ class NfEnumType(TypedDict, Generic[EnumT]):
     flavor: Literal["string", "integer", "number"]
     values: list[EnumT]
     default: NotRequired[EnumT]
-    metadata: NotRequired[CommonMetadata]
+    metadata: CommonMetadata
 
 
 class NfArrayType(TypedDict):
     type: Literal["array"]
     default: NotRequired[list]
     items: "NfType"
-    metadata: NotRequired[CommonMetadata]
+    metadata: CommonMetadata
 
 
 class NfObjectType(TypedDict):
     type: Literal["object"]
     default: NotRequired[dict]
     properties: dict[str, "NfType"]
-    metadata: NotRequired[CommonMetadata]
+    metadata: CommonMetadata
 
 
 class NfSamplesheetType(TypedDict):
     type: Literal["samplesheet"]
     default: NotRequired[list[dict]]
-    metadata: NotRequired[CommonMetadata]
+    metadata: CommonMetadata
     schema: dict[str, "NfType"]
 
 
 class NfBlobType(TypedDict):
     type: Literal["blob"]
     node_type: Literal["file", "dir", "any"]
-    metadata: NotRequired[CommonMetadata]
+    metadata: CommonMetadata
     regex: NotRequired[str]
 
 

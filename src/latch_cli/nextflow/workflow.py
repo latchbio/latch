@@ -3,27 +3,16 @@ from dataclasses import Field, fields, is_dataclass
 from enum import Enum
 from pathlib import Path
 from textwrap import dedent
-from typing import (
-    Annotated,
-    Any,
-    Callable,
-    Dict,
-    List,
-    Optional,
-    Tuple,
-    TypeVar,
-    get_args,
-    get_origin,
-)
+from typing import Annotated, Callable, Optional, TypeVar, get_args, get_origin
 
 import click
 from flytekit.core.annotation import FlyteAnnotation
 
 from latch.types import metadata
-from latch.types.directory import LatchDir, LatchOutputDir
+from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
+from latch.types.samplesheet_item import SamplesheetItem
 from latch_cli.constants import latch_constants
-from latch_cli.snakemake.config.utils import get_preamble, type_repr
 from latch_cli.snakemake.utils import reindent
 from latch_cli.utils import identifier_from_str, urljoins
 from latch_cli.workflow_config import LatchWorkflowConfig
@@ -219,7 +208,7 @@ def {workflow_func_name}(args: latch_metadata.WorkflowArgsType) -> None:
 """
 
 
-def _get_flags_for_dataclass(name: str, val: Any) -> List[str]:
+def _get_flags_for_dataclass(name: str, val: object) -> list[str]:
     assert is_dataclass(val)
 
     flags = []
@@ -229,7 +218,7 @@ def _get_flags_for_dataclass(name: str, val: Any) -> List[str]:
     return flags
 
 
-def get_flag(name: str, val: Any) -> List[str]:
+def get_flag(name: str, val: object) -> list[str]:
     flag = f"--{name}"
 
     if val is None:
@@ -286,6 +275,12 @@ def get_flag_ext(
     list_args = get_args(list_typ)
     assert len(list_args) == 1
 
+    item_type = list_args[0]
+    if item_type is SamplesheetItem:
+        item_args = get_args(item_type)
+        assert len(item_args) == 1
+        item_type = item_args[0]
+
     output_path = shared_dir / f"{f.name}_samplesheet.csv"
     res = samplesheet_constructor(value, list_args[0])
     output_path.write_text(res.read_text())
@@ -337,7 +332,7 @@ def generate_nextflow_config(pkg_root: Path):
     click.secho(f"Nextflow Latch config written to {config_path}", fg="green")
 
 
-def get_results_code_block(parameters: Dict[str, metadata.NextflowParameter]) -> str:
+def get_results_code_block(parameters: dict[str, metadata.NextflowParameter]) -> str:
     output_shortcuts = [
         (var_name, sub_path)
         for var_name, param in parameters.items()

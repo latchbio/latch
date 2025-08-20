@@ -1,13 +1,25 @@
 from dataclasses import MISSING, Field, field, fields, is_dataclass, make_dataclass
 from enum import Enum
 from types import MappingProxyType
-from typing import Any, Dict, List, Optional, Type, Union, get_args, get_origin
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Type,
+    Union,
+    get_args,
+    get_origin,
+)
 
 from flytekit.core.annotation import FlyteAnnotation
 from typing_extensions import Annotated, TypeAlias, TypeGuard
 
+from latch.ldata.path import LPath
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
+from latch.types.samplesheet_item import SamplesheetItem
 from latch_cli.utils import identifier_from_str
 
 JSONValue: TypeAlias = Union[int, str, bool, float, None, List["JSONValue"], "JSONDict"]
@@ -197,11 +209,19 @@ def type_repr(t: Type, *, add_namespace: bool = False) -> str:
     if is_primitive_type(t) or t in {LatchFile, LatchDir}:
         return t.__name__
 
-    if get_origin(t) is None:
+    origin = get_origin(t)
+    args = get_args(t)
+
+    if origin is None:
         return f"{'latch_metadata.' if add_namespace else ''}{t.__name__}"
 
+    if origin is SamplesheetItem:
+        if len(args) > 0:
+            return f"SamplesheetItem[{type_repr(args[0], add_namespace=add_namespace)}]"
+
+        return "SamplesheetItem"
+
     if get_origin(t) is list:
-        args = get_args(t)
         if len(args) > 0:
             return f"typing.List[{type_repr(args[0], add_namespace=add_namespace)}]"
 
@@ -229,6 +249,11 @@ def type_repr(t: Type, *, add_namespace: bool = False) -> str:
 
 
 def value_repr(v: object) -> str:
+    # todo(ayush): beg for forgiveness
+    if isinstance(v, Callable):
+        output = v()
+        return f"lambda: {output!r}"
+
     if isinstance(v, Enum):
         return f"{type(v).__qualname__}.{v.name}"
 
@@ -241,6 +266,8 @@ def field_repr(f: Field[object]) -> str:
     # todo(ayush): also support basic default_factory values
     if f.default is not MISSING:
         args["default"] = f.default
+    if f.default_factory is not MISSING:
+        args["default_factory"] = f.default_factory
     if len(f.metadata) > 0:
         args["metadata"] = dict(f.metadata)
 
@@ -279,10 +306,10 @@ def get_preamble(typ: Type) -> str:
         assert len(args) > 0
         return get_preamble(args[0])
 
-    if is_primitive_type(typ) or typ in {LatchFile, LatchDir}:
+    if is_primitive_type(typ) or typ in {LatchFile, LatchDir, LPath}:
         return ""
 
-    if get_origin(typ) in {Union, list}:
+    if get_origin(typ) in {Union, list, SamplesheetItem}:
         return "".join([get_preamble(t) for t in get_args(typ)])
 
     if issubclass(typ, Enum):
@@ -296,8 +323,8 @@ def get_preamble(typ: Type) -> str:
 
 
 def validate_snakemake_type(name: str, t: Type, param: Any) -> None:
-    if t is type(None):
-        return param is None
+    if t is type(None) and param is not None:
+        raise ValueError("parameter of type `NoneType` must be None")
 
     elif is_primitive_type(t) or t in {LatchFile, LatchDir}:
         if param is None:
