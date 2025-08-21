@@ -90,6 +90,7 @@ class _CentromereCtx:
         nf_script: Optional[Path] = None,
         use_new_centromere: bool = False,
         overwrite: bool = False,
+        dockerfile_path: Optional[Path] = None,
     ):
         self.use_new_centromere = use_new_centromere
         self.remote = remote
@@ -403,7 +404,9 @@ class _CentromereCtx:
                 sys.exit(1)
 
             self.default_container = _Container(
-                dockerfile=get_default_dockerfile(
+                dockerfile=dockerfile_path
+                if dockerfile_path is not None
+                else get_default_dockerfile(
                     self.pkg_root, wf_type=self.workflow_type, overwrite=overwrite
                 ),
                 image_name=self.image_tagged,

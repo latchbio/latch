@@ -1,3 +1,4 @@
+# ruff: noqa: FBT001, FBT002
 """Entrypoints to service functions through a latch_cli."""
 
 import os
@@ -5,7 +6,7 @@ import sys
 import traceback
 from pathlib import Path
 from textwrap import dedent
-from typing import Callable, List, Optional, Tuple, TypeVar, Union
+from typing import Callable, Optional, TypeVar, Union
 
 import click
 import gql
@@ -13,7 +14,7 @@ from packaging.version import parse as parse_version
 from typing_extensions import ParamSpec
 
 import latch_cli.click_utils
-from latch.ldata._transfer.progress import Progress as _Progress
+from latch.ldata._transfer.progress import Progress as _Progress  # noqa: PLC2701
 from latch.utils import current_workspace
 from latch_cli.click_utils import EnumChoice
 from latch_cli.exceptions.handler import CrashHandler
@@ -68,10 +69,8 @@ def requires_login(f: Callable[P, T]) -> Callable[P, T]:
 @click.group("latch", context_settings={"max_content_width": 160})
 @click.version_option(package_name="latch")
 def main():
-    """
-    Collection of command line tools for using the Latch SDK and
-    interacting with the Latch platform.
-    """
+    """Collection of command line tools for using the Latch SDK and interacting with the Latch platform."""
+
     if os.environ.get("LATCH_SKIP_VERSION_CHECK") is not None:
         return
 
@@ -364,8 +363,10 @@ def generate_metadata(
 
     if snakemake is True and nextflow is True:
         click.secho(
-            f"Please specify only one workflow type to generate metadata for. Use"
-            f" either `--snakemake` or `--nextflow`.",
+            (
+                "Please specify only one workflow type to generate metadata for. Use"
+                " either `--snakemake` or `--nextflow`."
+            ),
             fg="red",
         )
         raise click.exceptions.Exit(1)
@@ -501,9 +502,9 @@ def execute(
 ):
     """Drops the user into an interactive shell from within a task."""
 
-    from latch_cli.services.k8s.execute import exec
+    from latch_cli.services.k8s.execute import exec as _exec
 
-    exec(execution_id=execution_id, egn_id=egn_id, container_index=container_index)
+    _exec(execution_id=execution_id, egn_id=egn_id, container_index=container_index)
 
 
 @main.command("register")
@@ -610,6 +611,15 @@ def execute(
         "will be available to develop sessions."
     ),
 )
+@click.option(
+    "--dockerfile",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help=(
+        "Path to a custom Dockerfile to use when registering. Default is to (1) use a Dockerfile in "
+        "the package root if one exists, or (2) generate one in .latch/Dockerfile if none exists."
+    ),
+)
 @requires_login
 def register(
     pkg_root: str,
@@ -626,6 +636,7 @@ def register(
     nf_execution_profile: Optional[str],
     mark_as_release: bool,
     staging: bool,
+    dockerfile: Optional[Path],
 ):
     """Register local workflow code to Latch.
 
@@ -648,6 +659,7 @@ def register(
             wf_module=workflow_module,
             progress_plain=(docker_progress == "auto" and not sys.stdout.isatty())
             or docker_progress == "plain",
+            dockerfile_path=dockerfile,
         )
 
         return
@@ -683,6 +695,7 @@ def register(
         use_new_centromere=use_new_centromere,
         cache_tasks=cache_tasks,
         mark_as_release=mark_as_release,
+        dockerfile_path=dockerfile,
     )
 
 
@@ -866,7 +879,7 @@ LDATA COMMANDS
 )
 @requires_login
 def cp(
-    src: List[str],
+    src: list[str],
     dest: str,
     progress: _Progress,
     verbose: bool,
@@ -874,8 +887,7 @@ def cp(
     cores: Optional[int] = None,
     chunk_size_mib: Optional[int] = None,
 ):
-    """
-    Copy files between Latch Data and local, or between two Latch Data locations.
+    """Copy files between Latch Data and local, or between two Latch Data locations.
 
     Behaves like `cp -R` in Unix. Directories are copied recursively. If any parents of dest do not exist, the copy will fail.
     """
@@ -928,10 +940,8 @@ def mv(src: str, dest: str, no_glob: bool):
 )
 @click.argument("paths", nargs=-1, shell_complete=remote_complete)
 @requires_login
-def ls(paths: Tuple[str], group_directories_first: bool):
-    """
-    List the contents of a Latch Data directory
-    """
+def ls(paths: tuple[str], group_directories_first: bool):
+    """List the contents of a Latch Data directory"""
 
     crash_handler.message = f"Unable to display contents of {paths}"
     crash_handler.pkg_root = str(Path.cwd())
@@ -1022,15 +1032,13 @@ def mkdir(remote_directory: str):
 @click.option("--cores", help="Number of cores to use for parallel syncing.", type=int)
 @requires_login
 def sync(
-    srcs: List[str],
+    srcs: list[str],
     dst: str,
     delete: bool,
     ignore_unsyncable: bool,
     cores: Optional[int] = None,
 ):
-    """
-    Update the contents of a remote directory with local data.
-    """
+    """Update the contents of a remote directory with local data."""
     from latch_cli.services.sync import sync
 
     # todo(maximsmol): remote -> local
@@ -1046,7 +1054,6 @@ NEXTFLOW COMMANDS
 @main.group()
 def nextflow():
     """Manage nextflow"""
-    pass
 
 
 @nextflow.command("version")
@@ -1054,8 +1061,7 @@ def nextflow():
 def version(pkg_root: Path):
     """Get the Latch version of Nextflow installed for the current project."""
 
-    with open(pkg_root / ".latch" / "nextflow_version", "r") as f:
-        version = f.read().strip()
+    version = (pkg_root / ".latch" / "nextflow_version").read_text().strip()
 
     click.secho(f"Nextflow version: {version}", fg="green")
 
@@ -1079,23 +1085,49 @@ def version(pkg_root: Path):
     default=None,
     help="Set execution profile for Nextflow workflow",
 )
+@click.option(
+    "--destination",
+    "-d",
+    type=click.Path(path_type=Path),
+    default=None,
+    help=(
+        "Where to write the entrypoint file. Defaults to wf/custom_entrypoint.py. If the filename "
+        "does not end with a .py suffix, one will be appended."
+    ),
+)
+@click.option("--yes", "-y", is_flag=True, help="Skip the confirmation dialog.")
 def generate_entrypoint(
     pkg_root: Path,
     metadata_root: Optional[Path],
     nf_script: Path,
     execution_profile: Optional[str],
+    destination: Optional[Path],
+    yes: bool,
 ):
     """Generate a `wf/entrypoint.py` file from a Nextflow workflow"""
 
-    import latch.types.metadata as metadata
+    from latch.types import metadata
     from latch_cli.nextflow.workflow import generate_nextflow_workflow
     from latch_cli.services.register.utils import import_module_by_path
 
-    dest = pkg_root / "wf" / "custom_entrypoint.py"
-    dest.parent.mkdir(exist_ok=True)
+    if destination is None:
+        destination = pkg_root / "wf" / "custom_entrypoint.py"
 
-    if dest.exists() and not click.confirm(
-        f"Nextflow entrypoint already exists at `{dest}`. Overwrite?"
+    destination = destination.with_suffix(".py")
+
+    if not yes and not click.confirm(
+        f"Will generate an entrypoint at {destination}. Proceed?"
+    ):
+        raise click.exceptions.Abort
+
+    destination.parent.mkdir(exist_ok=True)
+
+    if (
+        not yes
+        and destination.exists()
+        and not click.confirm(
+            f"Nextflow entrypoint already exists at `{destination}`. Overwrite?"
+        )
     ):
         return
 
@@ -1119,7 +1151,11 @@ def generate_entrypoint(
         raise click.exceptions.Exit(1)
 
     generate_nextflow_workflow(
-        pkg_root, metadata_root, nf_script, dest, execution_profile=execution_profile
+        pkg_root,
+        metadata_root,
+        nf_script,
+        destination,
+        execution_profile=execution_profile,
     )
 
 
@@ -1331,7 +1367,6 @@ POD COMMANDS
 @main.group()
 def pods():
     """Manage pods"""
-    pass
 
 
 @pods.command("stop")
@@ -1422,7 +1457,7 @@ def test_data_remove(object_url: str):
 def test_data_ls():
     """List test data objects."""
 
-    crash_handler.message = f"Unable to list objects within managed bucket"
+    crash_handler.message = "Unable to list objects within managed bucket"
     crash_handler.pkg_root = str(Path.cwd())
 
     from latch_cli.services.test_data.ls import ls
