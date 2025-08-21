@@ -16,16 +16,17 @@ from latch.ldata.path import LPath
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
 from latch.types.samplesheet_item import SamplesheetItem
-from latch_cli.snakemake.config.utils import dataclass_repr, get_preamble
+from latch_cli.snakemake.config.utils import get_preamble
 from latch_cli.utils import best_effort_display_name, identifier_from_str
 
 from .parse_schema import NfType, parse_schema
 
 underscores = re.compile(r"_+")
+spaces = re.compile(r"\s+")
 
 
 def best_effort_title_case(s: str) -> str:
-    return identifier_from_str("".join(underscores.sub(" ", s).title().split()))
+    return identifier_from_str(spaces.sub("", underscores.sub(" ", s).title()))
 
 
 T = TypeVar("T")
@@ -49,10 +50,11 @@ def get_field_type(
 
     # todo(ayush): defaults don't really work if the dataclass is nested but that isn't
     # supported by the nf-schema spec (however, that has never stopped nf-core developers)
-    args = {}
-    default_value = None
+    args: dict[str, object] = {}
+    default_value: Optional[dict[str, object]] = None
     if "default" in props:
         python_val = as_python_val(inner, props["default"])
+        # note(ayush): not dealing with lists or dicts here as those are not supported by the nf-schema spec
         if isinstance(python_val, (LatchDir, LatchFile, LPath)):
             args["default_factory"] = lambda: python_val
         else:
@@ -128,7 +130,7 @@ def get_python_type_inner(
 
     assert typ["type"] == "enum", f"unsupported type {typ['typ']!r}"
 
-    variants: dict = {}
+    variants: dict[str, str] = {}
     is_numeric = typ["flavor"] == "number" or typ["flavor"] == "integer"
     for value in typ["values"]:
         field_name = identifier_from_str(str(value))
@@ -138,6 +140,7 @@ def get_python_type_inner(
         # todo(ayush): this is not strictly correct because float string representations can vary across
         # languages - however since nextflow accepts them as strings anyway i think it should be fine
         # in this specific case
+        # see randomascii.wordpress.com/2013/02/07/float-precision-revisited-nine-digit-float-portability for some related stuff
         variants[field_name] = str(value)
 
     return Enum(f"{best_effort_title_case(param_name)}Type", variants)
@@ -224,13 +227,8 @@ def generate_metadata(
 
     display_name: Optional[str] = raw_schema_content.get("title")
     # note(rahul): seems like it is convention to use "<pipeline-name> pipeline parameters" for schema title
-    suffix = " pipeline parameters"
-    if (
-        display_name is not None
-        and isinstance(display_name, str)
-        and display_name.endswith(suffix)
-    ):
-        display_name = display_name[: -len(suffix)]
+    if display_name is not None and isinstance(display_name, str):
+        display_name = display_name.removesuffix(" pipeline parameters")
 
     if metadata_root.is_file():
         if not click.confirm(

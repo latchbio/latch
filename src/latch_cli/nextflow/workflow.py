@@ -246,11 +246,13 @@ def is_samplesheet_parameter(f: Field[object]) -> bool:
     args = get_args(f.type)
     assert len(args) > 1
 
-    ann = args[1]
-    if not isinstance(ann, FlyteAnnotation):
-        return False
+    for ann in args:
+        if not isinstance(ann, FlyteAnnotation):
+            continue
 
-    return ann.data.get("samplesheet", False)
+        return ann.data.get("samplesheet", False)
+
+    return False
 
 
 T = TypeVar("T")
@@ -260,9 +262,7 @@ def get_flag_ext(
     f: Field[object],
     value: object,
     shared_dir: Path,
-    samplesheet_constructor: Callable[
-        [list[T], type[T]], Path
-    ] = metadata.default_samplesheet_constructor,
+    samplesheet_constructor: Callable[[list[T], type[T]], Path],
 ) -> list[str]:
     if not is_samplesheet_parameter(f):
         return get_flag(f.name, value)
@@ -283,8 +283,10 @@ def get_flag_ext(
 
     output_path = shared_dir / f"{f.name}_samplesheet.csv"
     res = samplesheet_constructor(value, list_args[0])
-    output_path.write_text(res.read_text())
-    res.unlink()
+    try:
+        output_path.write_text(res.read_text())
+    finally:
+        res.unlink()
 
     return [f"--{f.name}", str(output_path)]
 
@@ -294,13 +296,14 @@ def flags_from_args(
     shared_dir: Path,
     *,
     # todo(ayush): support samplesheet constructors per parameter
-    samplesheet_constructor: Callable[
-        [list[T], type[T]], Path
-    ] = metadata.default_samplesheet_constructor,
+    samplesheet_constructor: Optional[Callable[[T, type[T]], Path]] = None,
 ) -> list[str]:
     assert is_dataclass(args)
 
-    flags = []
+    if samplesheet_constructor is None:
+        samplesheet_constructor = metadata.default_samplesheet_constructor
+
+    flags: list[str] = []
     for f in fields(args):
         flags.extend(
             get_flag_ext(f, getattr(args, f.name), shared_dir, samplesheet_constructor)
@@ -355,7 +358,7 @@ def get_results_code_block(parameters: dict[str, metadata.NextflowParameter]) ->
             f" '{str(sub_path).lstrip('/')}'))\n"
         )
 
-    code_block += dedent(f"add_execution_results(results)\n")
+    code_block += dedent("add_execution_results(results)\n")
 
     return code_block
 
