@@ -379,7 +379,9 @@ def init(
 
     template_func(pkg_root)
 
-    config = get_or_create_workflow_config(pkg_root, base_image_type)
+    config = get_or_create_workflow_config(
+        pkg_root / ".latch" / "config", base_image_type
+    )
 
     wf_type = WorkflowType.latchbiosdk
     if chosen_template == "Snakemake Example":
