@@ -239,6 +239,12 @@ def init(
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     help="Path to a direnv file (.env) containing environment variables to inject into the container.",
 )
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Where to write the result Dockerfile. Default is Dockerfile in the root of the workflow directory.",
+)
 def dockerfile(
     pkg_root: Path,
     snakemake: bool = False,
@@ -250,6 +256,7 @@ def dockerfile(
     pyproject: Optional[Path] = None,
     pip_requirements: Optional[Path] = None,
     direnv: Optional[Path] = None,
+    output: Optional[Path] = None,
 ):
     """Generates a user editable dockerfile for a workflow and saves under `pkg_root/Dockerfile`.
 
@@ -275,8 +282,11 @@ def dockerfile(
         workflow_type = WorkflowType.nextflow
         base_image = BaseImageOptions.nextflow
 
+    if output is None:
+        output = pkg_root / "Dockerfile"
+
     config = get_or_create_workflow_config(
-        pkg_root=pkg_root, base_image_type=base_image
+        output.parent / ".latch" / "config", base_image_type=base_image
     )
 
     builder = DockerfileBuilder(
@@ -290,7 +300,7 @@ def dockerfile(
         pip_requirements=pip_requirements,
         direnv=direnv,
     )
-    builder.generate(overwrite=force)
+    builder.generate(dest=output, overwrite=force)
 
     if not click.confirm("Generate a .dockerignore?"):
         return

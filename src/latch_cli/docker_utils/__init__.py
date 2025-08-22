@@ -425,11 +425,13 @@ def generate_dockerignore(
     click.secho(f"Successfully generated .dockerignore `{dest}`", fg="green")
 
 
-def get_default_dockerfile(pkg_root: Path, *, wf_type: WorkflowType, overwrite: bool = False):
+def get_default_dockerfile(
+    pkg_root: Path, *, wf_type: WorkflowType, overwrite: bool = False
+):
     default_dockerfile = pkg_root / "Dockerfile"
 
     config = get_or_create_workflow_config(
-        pkg_root=pkg_root,
+        pkg_root / ".latch" / "config",
         base_image_type=BaseImageOptions.nextflow
         if wf_type == WorkflowType.nextflow
         else BaseImageOptions.default,
