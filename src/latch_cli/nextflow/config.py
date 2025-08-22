@@ -278,6 +278,7 @@ def generate_metadata(
                     storage_gib=100,
                 ),
                 log_dir=LatchDir("latch:///your_log_dir"),
+                flow=generated_flow,
             )
         """)
         )
