@@ -1,22 +1,21 @@
-import os
-import re
 from os import PathLike
 from pathlib import Path
-from typing import Optional, Type, Union
+from typing import Annotated, Optional, Union
 from urllib.parse import urlparse
 
 import gql
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
-from flytekit.models.literals import Literal
+from flytekit.models.core.types import BlobType
+from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
+from flytekit.models.types import LiteralType
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
-from latch_sdk_gql.execute import execute
-from typing_extensions import Annotated
 
 from latch.ldata.path import LPath
 from latch.types.utils import format_path, is_absolute_node_path, is_valid_url
 from latch_cli.utils.path import normalize_path
+from latch_sdk_gql.execute import execute
 
 
 class LatchFile(FlyteFile):
@@ -115,9 +114,7 @@ class LatchFile(FlyteFile):
                     self._idempotent_set_path(local_path_hint)
 
                     return ctx.file_access.get_data(
-                        self._remote_path,
-                        self.path,
-                        is_multipart=False,
+                        self._remote_path, self.path, is_multipart=False
                     )
 
             super().__init__(self.path, downloader, self._remote_path)
@@ -173,12 +170,7 @@ class LatchFile(FlyteFile):
         return f"LatchFile({format_path(self.remote_path)})"
 
 
-LatchOutputFile = Annotated[
-    LatchFile,
-    FlyteAnnotation(
-        {"output": True},
-    ),
-]
+LatchOutputFile = Annotated[LatchFile, FlyteAnnotation({"output": True})]
 """A LatchFile tagged as the output of some workflow.
 
 The Latch Console uses this metadata to avoid checking for existence of the
@@ -192,11 +184,31 @@ class LatchFilePathTransformer(FlyteFilePathTransformer):
     def __init__(self):
         TypeTransformer.__init__(self, name="LatchFilePath", t=LatchFile)
 
+    def to_literal(
+        self,
+        ctx: FlyteContext,
+        python_val: LatchFile,
+        python_type: type[LatchFile],
+        expected: LiteralType,
+    ):
+        return Literal(
+            scalar=Scalar(
+                blob=Blob(
+                    metadata=BlobMetadata(
+                        type=BlobType(
+                            format="", dimensionality=BlobType.BlobDimensionality.SINGLE
+                        )
+                    ),
+                    uri=python_val.remote_path,
+                )
+            )
+        )
+
     def to_python_value(
         self,
         ctx: FlyteContext,
         lv: Literal,
-        expected_python_type: Union[Type[LatchFile], PathLike],
+        expected_python_type: Union[type[LatchFile], PathLike],
     ) -> LatchFile:
         uri = lv.scalar.blob.uri
         if expected_python_type is PathLike:

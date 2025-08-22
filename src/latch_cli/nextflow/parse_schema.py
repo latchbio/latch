@@ -37,7 +37,7 @@ class CommonMetadata(TypedDict):
 class NfStringType(TypedDict):
     type: Literal["string"]
     default: NotRequired[str]
-    metadata: NotRequired[CommonMetadata]
+    metadata: CommonMetadata
     regex: NotRequired[str]
 
 
@@ -46,7 +46,7 @@ class NfIntegerType(TypedDict):
     default: NotRequired[int]
     min: NotRequired[int]
     max: NotRequired[int]
-    metadata: NotRequired[CommonMetadata]
+    metadata: CommonMetadata
 
 
 class NfFloatType(TypedDict):
@@ -54,13 +54,13 @@ class NfFloatType(TypedDict):
     default: NotRequired[float]
     min: NotRequired[float]
     max: NotRequired[float]
-    metadata: NotRequired[CommonMetadata]
+    metadata: CommonMetadata
 
 
 class NfBooleanType(TypedDict):
     type: Literal["boolean"]
     default: NotRequired[bool]
-    metadata: NotRequired[CommonMetadata]
+    metadata: CommonMetadata
 
 
 EnumT = TypeVar("EnumT", str, int, float)
@@ -71,34 +71,34 @@ class NfEnumType(TypedDict, Generic[EnumT]):
     flavor: Literal["string", "integer", "number"]
     values: list[EnumT]
     default: NotRequired[EnumT]
-    metadata: NotRequired[CommonMetadata]
+    metadata: CommonMetadata
 
 
 class NfArrayType(TypedDict):
     type: Literal["array"]
     default: NotRequired[list]
     items: "NfType"
-    metadata: NotRequired[CommonMetadata]
+    metadata: CommonMetadata
 
 
 class NfObjectType(TypedDict):
     type: Literal["object"]
     default: NotRequired[dict]
     properties: dict[str, "NfType"]
-    metadata: NotRequired[CommonMetadata]
+    metadata: CommonMetadata
 
 
 class NfSamplesheetType(TypedDict):
     type: Literal["samplesheet"]
     default: NotRequired[list[dict]]
-    metadata: NotRequired[CommonMetadata]
+    metadata: CommonMetadata
     schema: dict[str, "NfType"]
 
 
 class NfBlobType(TypedDict):
     type: Literal["blob"]
     node_type: Literal["file", "dir", "any"]
-    metadata: NotRequired[CommonMetadata]
+    metadata: CommonMetadata
     regex: NotRequired[str]
 
 
@@ -142,8 +142,8 @@ def parse_string(
     regex = properties.get("pattern")
     default = properties.get("default")
 
-    assert format is None or isinstance(format, str)
-    assert regex is None or isinstance(regex, str)
+    assert format is None or isinstance(format, str), "`format` must be a string"
+    assert regex is None or isinstance(regex, str), "`regex` must be a string"
 
     # todo(ayush): treating glob as a string for now
     if format is None or format == "file-path-pattern":
@@ -154,12 +154,16 @@ def parse_string(
             **({"default": default} if default is not None else {}),
         )
 
-    assert format in {"uri", "file-path", "directory-path", "path"}
+    assert format in {"uri", "file-path", "directory-path", "path"}, (
+        "`format` must be one of 'uri', 'file-path', 'directory-path', or 'path'"
+    )
 
     if "schema" in properties and format == "file-path":
         schema_ref = properties["schema"]
-        assert isinstance(schema_ref, str)
-        assert default is None or isinstance(default, list)
+        assert isinstance(schema_ref, str), "`schema` must be a string"
+        assert default is None or isinstance(default, list), (
+            "`default` must be a list of values if using `schema`"
+        )
 
         parse_res = parse_samplesheet_schema(Path(schema_ref))
         default = parse_res.default
@@ -171,7 +175,7 @@ def parse_string(
             **({} if default is None else {"default": default}),
         )
 
-    assert default is None or isinstance(default, str)
+    assert default is None or isinstance(default, str), "`default` must be a string"
 
     node_type: Literal["file", "dir", "any"] = "any"
     if format == "file-path":
@@ -199,9 +203,9 @@ def parse_integer(
     max = properties.get("maximum")
     default = properties.get("default")
 
-    assert min is None or isinstance(min, int)
-    assert max is None or isinstance(max, int)
-    assert default is None or isinstance(default, int)
+    assert min is None or isinstance(min, int), "`min` must be an integer"
+    assert max is None or isinstance(max, int), "`max` must be an integer"
+    assert default is None or isinstance(default, int), "`default` must be an integer"
 
     return NfIntegerType(
         type="integer",
@@ -223,9 +227,11 @@ def parse_float(
     max = properties.get("maximum")
     default = properties.get("default")
 
-    assert min is None or isinstance(min, (int, float))
-    assert max is None or isinstance(max, (int, float))
-    assert default is None or isinstance(default, (int, float))
+    assert min is None or isinstance(min, (int, float)), "`min` must be numeric"
+    assert max is None or isinstance(max, (int, float)), "`max` must be numeric"
+    assert default is None or isinstance(default, (int, float)), (
+        "`default` must be numeric"
+    )
 
     return NfFloatType(
         type="number",
@@ -244,7 +250,7 @@ def parse_bool(
     metadata = get_common_metadata(param_name, properties, required_set)
     default = properties.get("default")
 
-    assert default is None or isinstance(default, bool)
+    assert default is None or isinstance(default, bool), "`default` must be a boolean"
 
     return NfBooleanType(
         type="boolean",
@@ -257,16 +263,19 @@ def parse_enum(
     param_name: str, properties: dict[str, object], required_set: set[str]
 ) -> Union[NfEnumType[str], NfEnumType[int], NfEnumType[float]]:
     typ = properties["type"]
-
-    assert typ in {"string", "number", "integer"}
     assert "enum" in properties
+
+    assert typ in {"string", "number", "integer"}, (
+        "enum parameters must be of type 'string', 'number', or 'integer'"
+    )
 
     metadata = get_common_metadata(param_name, properties, required_set)
 
     default = properties.get("default")
     values = properties.get("enum")
 
-    assert values is not None
+    assert values is not None, "enum parameter must specify a set of `values`"
+    assert isinstance(values, list), "`values` must be a list"
 
     # todo(ayush): fix type errors here
     return NfEnumType(
@@ -287,8 +296,7 @@ def parse_array(
     default = properties.get("default")
     items = properties.get("items")
 
-    if items is None:
-        raise ValueError("malformed array type: no 'item' type specified")
+    assert items is not None, "array must specify `items` type"
 
     # todo(ayush): this is kind of weird tbh, doesn't make sense for certain metadata like
     # "required" to apply here
@@ -314,8 +322,13 @@ def parse_object(
     required = properties.get("required")
     fields = properties.get("properties")
 
-    if fields is None:
-        raise ValueError("malformed object type: no 'properties' dict specified")
+    assert fields is not None, "object type must provide a value for `properties`"
+    assert isinstance(fields, dict), "`properties` must be an object"
+
+    assert default is None or isinstance(default, dict), "`default` must be an object"
+    assert required is None or isinstance(required, list), (
+        "`required` must be a list of parameter names"
+    )
 
     required_fields = set(required if required is not None else [])
 
@@ -354,7 +367,7 @@ def parse(
             return parse_array(param_name, properties, required_set)
         if typ == "object":
             return parse_object(param_name, properties, required_set)
-    except Exception as e:
+    except AssertionError as e:
         if "enum" in properties:
             typ = "enum"
 
@@ -388,7 +401,7 @@ def parse_samplesheet_schema(schema_path: Path) -> ParseSamplesheetRes:
     return ParseSamplesheetRes(array["items"]["properties"], array.get("default"))
 
 
-def parse_schema(schema_path: Path) -> dict[str, NfType]:
+def parse_schema(schema_path: Path, *, strict: bool = True) -> dict[str, NfType]:
     try:
         schema_contents = json.loads(schema_path.read_text())
     except OSError as e:
@@ -437,6 +450,13 @@ def parse_schema(schema_path: Path) -> dict[str, NfType]:
             try:
                 params[param_name] = parse(param_name, props, required)
             except SchemaParsingError as e:
+                if not strict:
+                    click.secho(
+                        f"Warning: unable to parse {param_name!r} ({e}) - skipping",
+                        fg="yellow",
+                    )
+                    continue
+
                 click.secho(f"Unable to parse {schema_path}\n{e}", fg="red")
                 raise click.exceptions.Exit(1) from e
 

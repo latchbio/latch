@@ -1,6 +1,6 @@
 from os import PathLike
 from pathlib import Path
-from typing import List, Optional, Type, TypedDict, Union, get_args, get_origin
+from typing import Optional, TypedDict, Union, get_args, get_origin
 from urllib.parse import urlparse
 
 import gql
@@ -8,12 +8,13 @@ from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.exceptions.user import FlyteUserException
-from flytekit.models.literals import Literal
+from flytekit.models.core.types import BlobType
+from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
+from flytekit.models.types import LiteralType
 from flytekit.types.directory.types import (
     FlyteDirectory,
     FlyteDirToMultipartBlobTransformer,
 )
-from latch_sdk_gql.execute import execute
 from typing_extensions import Annotated
 
 from latch.ldata.path import LPath
@@ -21,6 +22,7 @@ from latch.types.file import LatchFile
 from latch.types.utils import format_path, is_valid_url
 from latch_cli.utils import urljoins
 from latch_cli.utils.path import normalize_path
+from latch_sdk_gql.execute import execute
 
 
 class IterdirChild(TypedDict):
@@ -33,7 +35,7 @@ class IterdirChildLdataTreeEdge(TypedDict):
 
 
 class IterdirChildLdataTreeEdges(TypedDict):
-    nodes: List[IterdirChildLdataTreeEdge]
+    nodes: list[IterdirChildLdataTreeEdge]
 
 
 class IterDirLDataResolvePathFinalLinkTarget(TypedDict):
@@ -49,7 +51,7 @@ class NodeDescendantsNode(TypedDict):
 
 
 class NodeDescendantsDescendants(TypedDict):
-    nodes: List[NodeDescendantsNode]
+    nodes: list[NodeDescendantsNode]
 
 
 class NodeDescendantsFinalLinkTarget(TypedDict):
@@ -136,9 +138,7 @@ class LatchDir(FlyteDirectory):
                     self._idempotent_set_path()
 
                     return ctx.file_access.get_data(
-                        self._remote_directory,
-                        self.path,
-                        is_multipart=True,
+                        self._remote_directory, self.path, is_multipart=True
                     )
 
             super().__init__(self.path, downloader, self._remote_directory)
@@ -154,8 +154,8 @@ class LatchDir(FlyteDirectory):
         self.path = ctx.file_access.get_random_local_directory()
         self._path_generated = True
 
-    def iterdir(self) -> List[Union[LatchFile, "LatchDir"]]:
-        ret: List[Union[LatchFile, "LatchDir"]] = []
+    def iterdir(self) -> list[Union[LatchFile, "LatchDir"]]:
+        ret: list[Union[LatchFile, "LatchDir"]] = []
 
         if self.remote_path is None:
             for child in Path(self.path).iterdir():
@@ -254,7 +254,7 @@ class LatchDir(FlyteDirectory):
 
         return (
             f"LatchDir({repr(self.path)},"
-            f" remote_path={repr( format_path(self.remote_path))})"
+            f" remote_path={repr(format_path(self.remote_path))})"
         )
 
     def __str__(self):
@@ -264,12 +264,7 @@ class LatchDir(FlyteDirectory):
         return f"LatchDir({format_path(self.remote_path)})"
 
 
-LatchOutputDir = Annotated[
-    LatchDir,
-    FlyteAnnotation(
-        {"output": True},
-    ),
-]
+LatchOutputDir = Annotated[LatchDir, FlyteAnnotation({"output": True})]
 """A LatchDir tagged as the output of some workflow.
 
 The Latch Console uses this metadata to avoid checking for existence of the
@@ -283,11 +278,32 @@ class LatchDirPathTransformer(FlyteDirToMultipartBlobTransformer):
     def __init__(self):
         TypeTransformer.__init__(self, name="LatchDirPath", t=LatchDir)
 
+    def to_literal(
+        self,
+        ctx: FlyteContext,
+        python_val: LatchDir,
+        python_type: type[LatchDir],
+        expected: LiteralType,
+    ):
+        return Literal(
+            scalar=Scalar(
+                blob=Blob(
+                    metadata=BlobMetadata(
+                        type=BlobType(
+                            format="",
+                            dimensionality=BlobType.BlobDimensionality.MULTIPART,
+                        )
+                    ),
+                    uri=python_val.remote_path,
+                )
+            )
+        )
+
     def to_python_value(
         self,
         ctx: FlyteContext,
         lv: Literal,
-        expected_python_type: Union[Type[LatchDir], PathLike],
+        expected_python_type: Union[type[LatchDir], PathLike],
     ) -> FlyteDirectory:
         uri = lv.scalar.blob.uri
         if expected_python_type is PathLike:
