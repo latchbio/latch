@@ -1096,8 +1096,8 @@ def version(pkg_root: Path):
     help="Set execution profile for Nextflow workflow",
 )
 @click.option(
-    "--destination",
-    "-d",
+    "--output",
+    "-o",
     type=click.Path(path_type=Path),
     default=None,
     help=(
@@ -1111,7 +1111,7 @@ def generate_entrypoint(
     metadata_root: Optional[Path],
     nf_script: Path,
     execution_profile: Optional[str],
-    destination: Optional[Path],
+    output: Optional[Path],
     yes: bool,
 ):
     """Generate a `wf/entrypoint.py` file from a Nextflow workflow"""
@@ -1120,23 +1120,23 @@ def generate_entrypoint(
     from latch_cli.nextflow.workflow import generate_nextflow_workflow
     from latch_cli.services.register.utils import import_module_by_path
 
-    if destination is None:
-        destination = pkg_root / "wf" / "custom_entrypoint.py"
+    if output is None:
+        output = pkg_root / "wf" / "custom_entrypoint.py"
 
-    destination = destination.with_suffix(".py")
+    output = output.with_suffix(".py")
 
     if not yes and not click.confirm(
-        f"Will generate an entrypoint at {destination}. Proceed?"
+        f"Will generate an entrypoint at {output}. Proceed?"
     ):
         raise click.exceptions.Abort
 
-    destination.parent.mkdir(exist_ok=True)
+    output.parent.mkdir(exist_ok=True)
 
     if (
         not yes
-        and destination.exists()
+        and output.exists()
         and not click.confirm(
-            f"Nextflow entrypoint already exists at `{destination}`. Overwrite?"
+            f"Nextflow entrypoint already exists at `{output}`. Overwrite?"
         )
     ):
         return
@@ -1161,11 +1161,7 @@ def generate_entrypoint(
         raise click.exceptions.Exit(1)
 
     generate_nextflow_workflow(
-        pkg_root,
-        metadata_root,
-        nf_script,
-        destination,
-        execution_profile=execution_profile,
+        pkg_root, metadata_root, nf_script, output, execution_profile=execution_profile
     )
 
 
