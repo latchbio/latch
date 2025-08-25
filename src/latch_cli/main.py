@@ -242,8 +242,17 @@ def init(
 @click.option(
     "--output",
     "-o",
-    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    type=click.Path(path_type=Path),
     help="Where to write the result Dockerfile. Default is Dockerfile in the root of the workflow directory.",
+)
+@click.option(
+    "--config-path",
+    type=click.Path(path_type=Path),
+    help=(
+        "Where to read the config to use for generating the Dockerfile. If a config is not found either at"
+        " `config_path` or `config_path / .latch / config`, one will be generated at "
+        "`config_path / .latch / config`. If not provided, it will default to the parent of the output Dockerfile"
+    ),
 )
 def dockerfile(
     pkg_root: Path,
@@ -257,8 +266,9 @@ def dockerfile(
     pip_requirements: Optional[Path] = None,
     direnv: Optional[Path] = None,
     output: Optional[Path] = None,
+    config_path: Optional[Path] = None,
 ):
-    """Generates a user editable dockerfile for a workflow and saves under `pkg_root/Dockerfile`.
+    """Generates a user editable dockerfile for a workflow.
 
     Visit docs.latch.bio to learn more.
     """
@@ -284,10 +294,29 @@ def dockerfile(
 
     if output is None:
         output = pkg_root / "Dockerfile"
+    if output.name != "Dockerfile":
+        output /= "Dockerfile"
 
-    config = get_or_create_workflow_config(
-        output.parent / ".latch" / "config", base_image_type=base_image
+    ignore_path = output.with_name(".dockerignore")
+
+    if config_path is None:
+        config_path = output.parent / ".latch" / "config"
+    if config_path.name != "config":
+        config_path /= ".latch/config"
+
+    click.secho(
+        dedent(f"""\
+    The following files will be generated:
+    {click.style("Dockerfile:", fg="bright_blue")} {output}
+    {click.style("Ignore File:", fg="bright_blue")} {ignore_path}
+    {click.style("Latch Config:", fg="bright_blue")} {config_path}
+    """)
     )
+
+    output.parent.mkdir(exist_ok=True, parents=True)
+
+    # todo(ayush): make overwriting this easier
+    config = get_or_create_workflow_config(config_path, base_image_type=base_image)
 
     builder = DockerfileBuilder(
         pkg_root,
@@ -302,10 +331,7 @@ def dockerfile(
     )
     builder.generate(dest=output, overwrite=force)
 
-    if not click.confirm("Generate a .dockerignore?"):
-        return
-
-    generate_dockerignore(pkg_root, wf_type=workflow_type, overwrite=force)
+    generate_dockerignore(ignore_path, wf_type=workflow_type, overwrite=force)
 
 
 @main.command("generate-metadata")
