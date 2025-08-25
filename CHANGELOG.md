@@ -16,6 +16,17 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.67.1 - 2025-08-25
+
+### Added
+
+* `latch dockerfile` now has two new options, `--output` and `--config-path` for choosing where to write the output Dockerfile and where to read/write the `.latch/config` used to generate the dockerfile
+* `latch nextflow generate-entrypoint` option `--destination` is now named `--output`
+
+### Changes
+
+* `latch dockerfile` now generates a `.dockerignore` always without asking for confirmation.
+
 ## 2.67.0 - 2025-08-21
 
 ### Added

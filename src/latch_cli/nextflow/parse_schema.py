@@ -2,7 +2,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 from textwrap import indent
-from typing import Generic, Literal, Optional, TypedDict, TypeVar, Union
+from typing import Literal, Optional, TypedDict, Union
 
 import click
 from typing_extensions import NotRequired, TypeAlias
@@ -63,15 +63,31 @@ class NfBooleanType(TypedDict):
     metadata: CommonMetadata
 
 
-EnumT = TypeVar("EnumT", str, int, float)
-
-
-class NfEnumType(TypedDict, Generic[EnumT]):
+class NfStringEnumType(TypedDict):
     type: Literal["enum"]
-    flavor: Literal["string", "integer", "number"]
-    values: list[EnumT]
-    default: NotRequired[EnumT]
+    flavor: Literal["string"]
+    values: list[str]
+    default: NotRequired[str]
     metadata: CommonMetadata
+
+
+class NfIntegerEnumType(TypedDict):
+    type: Literal["enum"]
+    flavor: Literal["integer"]
+    values: list[int]
+    default: NotRequired[int]
+    metadata: CommonMetadata
+
+
+class NfNumberEnumType(TypedDict):
+    type: Literal["enum"]
+    flavor: Literal["number"]
+    values: list[float]
+    default: NotRequired[float]
+    metadata: CommonMetadata
+
+
+NfEnumType: TypeAlias = Union[NfStringEnumType, NfIntegerEnumType, NfNumberEnumType]
 
 
 class NfArrayType(TypedDict):
@@ -106,9 +122,7 @@ NfType: TypeAlias = Union[
     NfStringType,
     NfIntegerType,
     NfFloatType,
-    NfEnumType[str],
-    NfEnumType[float],
-    NfEnumType[int],
+    NfEnumType,
     NfBooleanType,
     NfArrayType,
     NfObjectType,
@@ -261,7 +275,7 @@ def parse_bool(
 
 def parse_enum(
     param_name: str, properties: dict[str, object], required_set: set[str]
-) -> Union[NfEnumType[str], NfEnumType[int], NfEnumType[float]]:
+) -> NfEnumType:
     typ = properties["type"]
     assert "enum" in properties
 
@@ -277,13 +291,37 @@ def parse_enum(
     assert values is not None, "enum parameter must specify a set of `values`"
     assert isinstance(values, list), "`values` must be a list"
 
-    # todo(ayush): fix type errors here
-    return NfEnumType(
+    if typ == "string":
+        assert default is None or isinstance(default, str), "default must be a string"
+
+        return NfStringEnumType(
+            type="enum",
+            flavor="string",
+            values=values,
+            metadata=metadata,
+            **({"default": default} if default is not None else {}),
+        )
+    if typ == "integer":
+        assert default is None or isinstance(default, int), "default must be an integer"
+
+        return NfIntegerEnumType(
+            type="enum",
+            flavor="integer",
+            values=values,
+            metadata=metadata,
+            **({"default": default} if default is not None else {}),
+        )
+
+    assert default is None or isinstance(default, (int, float)), (
+        "default must be a number"
+    )
+
+    return NfNumberEnumType(
         type="enum",
-        flavor=typ,
+        flavor="number",
         values=values,
         metadata=metadata,
-        **({"default": default} if default is not None else {}),
+        **({"default": float(default)} if default is not None else {}),
     )
 
 

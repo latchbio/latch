@@ -239,6 +239,21 @@ def init(
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     help="Path to a direnv file (.env) containing environment variables to inject into the container.",
 )
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(path_type=Path),
+    help="Where to write the result Dockerfile. Default is Dockerfile in the root of the workflow directory.",
+)
+@click.option(
+    "--config-path",
+    type=click.Path(path_type=Path),
+    help=(
+        "Where to read the config to use for generating the Dockerfile. If a config is not found either at"
+        " `config_path` or `config_path / .latch / config`, one will be generated at "
+        "`config_path / .latch / config`. If not provided, it will default to the parent of the output Dockerfile"
+    ),
+)
 def dockerfile(
     pkg_root: Path,
     snakemake: bool = False,
@@ -250,8 +265,10 @@ def dockerfile(
     pyproject: Optional[Path] = None,
     pip_requirements: Optional[Path] = None,
     direnv: Optional[Path] = None,
+    output: Optional[Path] = None,
+    config_path: Optional[Path] = None,
 ):
-    """Generates a user editable dockerfile for a workflow and saves under `pkg_root/Dockerfile`.
+    """Generates a user editable dockerfile for a workflow.
 
     Visit docs.latch.bio to learn more.
     """
@@ -275,9 +292,31 @@ def dockerfile(
         workflow_type = WorkflowType.nextflow
         base_image = BaseImageOptions.nextflow
 
-    config = get_or_create_workflow_config(
-        pkg_root=pkg_root, base_image_type=base_image
+    if output is None:
+        output = pkg_root / "Dockerfile"
+    if output.name != "Dockerfile":
+        output /= "Dockerfile"
+
+    ignore_path = output.with_name(".dockerignore")
+
+    if config_path is None:
+        config_path = output.parent / ".latch" / "config"
+    if config_path.name != "config":
+        config_path /= ".latch/config"
+
+    click.secho(
+        dedent(f"""\
+    The following files will be generated:
+    {click.style("Dockerfile:", fg="bright_blue")} {output}
+    {click.style("Ignore File:", fg="bright_blue")} {ignore_path}
+    {click.style("Latch Config:", fg="bright_blue")} {config_path}
+    """)
     )
+
+    output.parent.mkdir(exist_ok=True, parents=True)
+
+    # todo(ayush): make overwriting this easier
+    config = get_or_create_workflow_config(config_path, base_image_type=base_image)
 
     builder = DockerfileBuilder(
         pkg_root,
@@ -290,12 +329,9 @@ def dockerfile(
         pip_requirements=pip_requirements,
         direnv=direnv,
     )
-    builder.generate(overwrite=force)
+    builder.generate(dest=output, overwrite=force)
 
-    if not click.confirm("Generate a .dockerignore?"):
-        return
-
-    generate_dockerignore(pkg_root, wf_type=workflow_type, overwrite=force)
+    generate_dockerignore(ignore_path, wf_type=workflow_type, overwrite=force)
 
 
 @main.command("generate-metadata")
@@ -1086,8 +1122,8 @@ def version(pkg_root: Path):
     help="Set execution profile for Nextflow workflow",
 )
 @click.option(
-    "--destination",
-    "-d",
+    "--output",
+    "-o",
     type=click.Path(path_type=Path),
     default=None,
     help=(
@@ -1101,7 +1137,7 @@ def generate_entrypoint(
     metadata_root: Optional[Path],
     nf_script: Path,
     execution_profile: Optional[str],
-    destination: Optional[Path],
+    output: Optional[Path],
     yes: bool,
 ):
     """Generate a `wf/entrypoint.py` file from a Nextflow workflow"""
@@ -1110,23 +1146,23 @@ def generate_entrypoint(
     from latch_cli.nextflow.workflow import generate_nextflow_workflow
     from latch_cli.services.register.utils import import_module_by_path
 
-    if destination is None:
-        destination = pkg_root / "wf" / "custom_entrypoint.py"
+    if output is None:
+        output = pkg_root / "wf" / "custom_entrypoint.py"
 
-    destination = destination.with_suffix(".py")
+    output = output.with_suffix(".py")
 
     if not yes and not click.confirm(
-        f"Will generate an entrypoint at {destination}. Proceed?"
+        f"Will generate an entrypoint at {output}. Proceed?"
     ):
         raise click.exceptions.Abort
 
-    destination.parent.mkdir(exist_ok=True)
+    output.parent.mkdir(exist_ok=True)
 
     if (
         not yes
-        and destination.exists()
+        and output.exists()
         and not click.confirm(
-            f"Nextflow entrypoint already exists at `{destination}`. Overwrite?"
+            f"Nextflow entrypoint already exists at `{output}`. Overwrite?"
         )
     ):
         return
@@ -1151,11 +1187,7 @@ def generate_entrypoint(
         raise click.exceptions.Exit(1)
 
     generate_nextflow_workflow(
-        pkg_root,
-        metadata_root,
-        nf_script,
-        destination,
-        execution_profile=execution_profile,
+        pkg_root, metadata_root, nf_script, output, execution_profile=execution_profile
     )
 
 
