@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.67.2 - 2025-08-26
+
+### Dependencies
+
+* Latch nextflow version bumped to v3.0.6 (support `spot` argument for processes)
+
 ## 2.67.1 - 2025-08-25
 
 ### Added
@@ -23,7 +29,7 @@ Types of changes
 * `latch dockerfile` now has two new options, `--output` and `--config-path` for choosing where to write the output Dockerfile and where to read/write the `.latch/config` used to generate the dockerfile
 * `latch nextflow generate-entrypoint` option `--destination` is now named `--output`
 
-### Changes
+### Changed
 
 * `latch dockerfile` now generates a `.dockerignore` always without asking for confirmation.
 
