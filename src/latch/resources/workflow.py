@@ -7,6 +7,7 @@ from typing import Callable, Dict, Union, get_args, get_origin
 
 import click
 import dill
+import dill.settings
 from flytekit import workflow as _workflow
 from flytekit.core.interface import transform_function_to_interface
 from flytekit.core.workflow import PythonFunctionWorkflow
@@ -18,6 +19,9 @@ from latch.types.metadata import (
     NextflowMetadata,
 )
 from latch_cli.utils import best_effort_display_name
+
+dill.settings["recurse"] = True
+dill.settings["byref"] = False
 
 
 def _generate_metadata(f: Callable) -> LatchMetadata:
