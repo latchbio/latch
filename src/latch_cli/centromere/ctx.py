@@ -187,20 +187,25 @@ class _CentromereCtx:
                 # fixme(ayush): this sucks
                 module_path = pkg_root / Path(self.wf_module.replace(".", "/"))
 
+                error_msg = (
+                    dedent(
+                        f"""
+                    Unable to locate workflow module `{self.wf_module}` in `{self.pkg_root.resolve()}`. Check that:
+
+                    1. {module_path} exists.
+                    2. Package `{self.wf_module}` is an absolute importable Python path (e.g. `workflows.my_workflow`).
+                    3. All directories in `{module_path}` contain an `__init__.py` file."""
+                    ),
+                )
+
                 try:
+                    if not module_path.exists():
+                        click.secho(error_msg, fg="red")
+                        raise click.exceptions.Exit(1)
+
                     flyte_objects = get_flyte_objects(module_path)
                 except ModuleNotFoundError as e:
-                    click.secho(
-                        dedent(
-                            f"""
-                            Unable to locate workflow module `{self.wf_module}` in `{self.pkg_root.resolve()}`. Check that:
-
-                            1. {module_path} exists.
-                            2. Package `{self.wf_module}` is an absolute importable Python path (e.g. `workflows.my_workflow`).
-                            3. All directories in `{module_path}` contain an `__init__.py` file."""
-                        ),
-                        fg="red",
-                    )
+                    click.secho(error_msg, fg="red")
                     raise click.exceptions.Exit(1) from e
 
                 wf_name: Optional[str] = None

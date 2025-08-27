@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.67.3 - 2025-08-27
+
+### Fixed
+
+* Better error messaging when running `latch register` in a non-workflow directory
+
 ## 2.67.2 - 2025-08-26
 
 ### Dependencies
