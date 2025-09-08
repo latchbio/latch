@@ -107,6 +107,7 @@ def register(pkg_root: Path, *, config: RegisterConfig):
 
             pbar.close()
 
+        f.flush()
         archive_size = Path(f.name).stat().st_size
         chunk_size = latch_constants.file_chunk_size
 
