@@ -16,11 +16,17 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.67.4 - 2025-09-10
+## 2.67.5 - 2025-09-10
 
 ### Fixed
 
 * Bug where `LatchDir`/`LatchFile`s returned from tasks would not upload their results
+
+## 2.67.4 - 2025-09-09
+
+### Fixed
+
+* Bug where `latch nextflow register` would create corrupted tarballs
 
 ## 2.67.3 - 2025-08-27
 
