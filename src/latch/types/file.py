@@ -1,3 +1,4 @@
+import os
 from os import PathLike
 from pathlib import Path
 from typing import Annotated, Optional, Union
@@ -191,6 +192,20 @@ class LatchFilePathTransformer(FlyteFilePathTransformer):
         python_type: type[LatchFile],
         expected: LiteralType,
     ):
+        is_execution_context = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID") is not None
+
+        put_res = {}
+        if is_execution_context and not ctx.file_access.is_remote(python_val.path):
+            remote_path = python_val.remote_path
+            if remote_path is None:
+                remote_path = ctx.file_access.get_random_remote_path()
+
+            put_res = ctx.file_access.put_data(
+                python_val.path, remote_path, is_multipart=False
+            )
+            if put_res is None:
+                put_res = {}
+
         return Literal(
             scalar=Scalar(
                 blob=Blob(
@@ -201,7 +216,8 @@ class LatchFilePathTransformer(FlyteFilePathTransformer):
                     ),
                     uri=python_val.remote_path,
                 )
-            )
+            ),
+            hash=put_res.get("cache"),
         )
 
     def to_python_value(

@@ -1,3 +1,4 @@
+import os
 from os import PathLike
 from pathlib import Path
 from typing import Optional, TypedDict, Union, get_args, get_origin
@@ -285,6 +286,20 @@ class LatchDirPathTransformer(FlyteDirToMultipartBlobTransformer):
         python_type: type[LatchDir],
         expected: LiteralType,
     ):
+        is_execution_context = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID") is not None
+
+        put_res = {}
+        if is_execution_context and not ctx.file_access.is_remote(python_val.path):
+            remote_directory = python_val.remote_directory
+            if remote_directory is None:
+                remote_directory = ctx.file_access.get_random_remote_directory()
+
+            put_res = ctx.file_access.put_data(
+                python_val.path, remote_directory, is_multipart=True
+            )
+            if put_res is None:
+                put_res = {}
+
         return Literal(
             scalar=Scalar(
                 blob=Blob(
@@ -296,7 +311,8 @@ class LatchDirPathTransformer(FlyteDirToMultipartBlobTransformer):
                     ),
                     uri=python_val.remote_path,
                 )
-            )
+            ),
+            hash=put_res.get("cache"),
         )
 
     def to_python_value(
