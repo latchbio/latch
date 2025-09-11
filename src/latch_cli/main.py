@@ -656,6 +656,16 @@ def execute(
         "the package root if one exists, or (2) generate one in .latch/Dockerfile if none exists."
     ),
 )
+@click.option(
+    "--workspace",
+    type=str,
+    default=None,
+    help=(
+        "Register the workflow to the specified workspace. "
+        "This argument accepts a numeric workspace ID, e.g. `--workspace 1234`. "
+        "By default, workflows are registered to the active workspace."
+    ),
+)
 @requires_login
 def register(
     pkg_root: str,
@@ -673,6 +683,7 @@ def register(
     mark_as_release: bool,
     staging: bool,
     dockerfile: Optional[Path],
+    workspace: Optional[str],
 ):
     """Register local workflow code to Latch.
 
@@ -732,6 +743,7 @@ def register(
         cache_tasks=cache_tasks,
         mark_as_release=mark_as_release,
         dockerfile_path=dockerfile,
+        workspace=workspace,
     )
 
 

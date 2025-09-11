@@ -305,6 +305,7 @@ def register(
     use_new_centromere: bool = False,
     mark_as_release: bool = False,
     dockerfile_path: Optional[Path] = None,
+    workspace: Optional[str] = None,
 ):
     """Registers a workflow, defined as python code, with Latch.
 
@@ -382,16 +383,18 @@ def register(
         )
         click.echo(" ".join([click.style("Version:", fg="bright_blue"), ctx.version]))
 
+        workspace_id: str = workspace if workspace is not None else current_workspace()
+
         workspaces = get_workspaces()
         ws_name = next(
-            (x[1]["name"] for x in workspaces.items() if x[0] == current_workspace()),
+            (x[1]["name"] for x in workspaces.items() if x[0] == workspace_id),
             "N/A",
         )
         click.echo(
             " ".join([
                 click.style("Target workspace:", fg="bright_blue"),
                 ws_name,
-                f"({current_workspace()})",
+                f"({workspace_id})",
             ])
         )
         click.echo(
@@ -450,7 +453,7 @@ def register(
                 ctx.snakefile,
                 ctx.version,
                 ctx.default_container.image_name,
-                current_workspace(),
+                workspace_id,
             )
         elif ctx.workflow_type == WorkflowType.nextflow:
             assert ctx.nf_script is not None
@@ -571,7 +574,7 @@ def register(
                     ) from e
 
             reg_resp = register_serialized_pkg(
-                protos, ctx.token, ctx.version, current_workspace()
+                protos, ctx.token, ctx.version, workspace_id
             )
             _print_reg_resp(reg_resp, ctx.default_container.image_name)
 
@@ -600,7 +603,7 @@ def register(
                     {
                         "name": wf_name,
                         "version": ctx.version,
-                        "ownerId": current_workspace(),
+                        "ownerId": workspace_id,
                     },
                 )["workflowInfos"]["nodes"]
                 time.sleep(1)
