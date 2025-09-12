@@ -384,8 +384,16 @@ def register(
         click.echo(" ".join([click.style("Version:", fg="bright_blue"), ctx.version]))
 
         workspace_id: str = workspace if workspace is not None else current_workspace()
-
         workspaces = get_workspaces()
+
+        if workspace_id not in workspaces:
+            click.secho(
+                f"\nUser does not have permission to access workspace {workspace_id}.",
+                fg="red",
+                bold=True,
+            )
+            raise click.exceptions.Exit(1)
+
         ws_name = next(
             (x[1]["name"] for x in workspaces.items() if x[0] == workspace_id),
             "N/A",
