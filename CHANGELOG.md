@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.67.6 - 2025-09-23
+
+### Fixed
+
+* Certain xattrs versions force bytes for value, others accept bytes and strings: switch to strictly bytes
+* Registry API failing when no update provenance event on record: use creation time instead
+
 ## 2.67.5 - 2025-09-10
 
 ### Fixed
