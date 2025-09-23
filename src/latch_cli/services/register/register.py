@@ -305,7 +305,7 @@ def register(
     use_new_centromere: bool = False,
     mark_as_release: bool = False,
     dockerfile_path: Optional[Path] = None,
-    workspace: Optional[str] = None,
+    workspace_id: Optional[str] = None,
 ):
     """Registers a workflow, defined as python code, with Latch.
 
@@ -383,7 +383,7 @@ def register(
         )
         click.echo(" ".join([click.style("Version:", fg="bright_blue"), ctx.version]))
 
-        workspace_id: str = workspace if workspace is not None else current_workspace()
+        workspace_id = workspace_id or current_workspace()
         workspaces = get_workspaces()
 
         if workspace_id not in workspaces:

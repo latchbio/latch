@@ -657,7 +657,7 @@ def execute(
     ),
 )
 @click.option(
-    "--workspace",
+    "--workspace-id",
     type=str,
     default=None,
     help=(
@@ -683,7 +683,7 @@ def register(
     mark_as_release: bool,
     staging: bool,
     dockerfile: Optional[Path],
-    workspace: Optional[str],
+    workspace_id: Optional[str],
 ):
     """Register local workflow code to Latch.
 
@@ -743,7 +743,7 @@ def register(
         cache_tasks=cache_tasks,
         mark_as_release=mark_as_release,
         dockerfile_path=dockerfile,
-        workspace=workspace,
+        workspace_id=workspace_id,
     )
 
 
