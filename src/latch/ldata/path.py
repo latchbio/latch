@@ -343,17 +343,25 @@ class LPath:
 
         self._clear_cache()
         version_id = self.version_id()
+        if version_id is not None:
+            version_id = version_id.encode()
+
         version_xattr = b"user.version_id"
 
-        if (
-            not_windows
-            and cache
-            and dst.exists()
-            and xattr.listxattr(dst_str) is not None
-            and version_xattr in xattr.listxattr(dst_str)
-            and version_id == xattr.getxattr(dst_str, version_xattr).decode()
-        ):
-            return dst
+        if not_windows and cache and dst.exists():
+            list_attrs = xattr.listxattr(dst_str)
+            if list_attrs is None:
+                list_attrs = []
+
+            normalized_attr_names = [
+                (a if isinstance(a, (bytes, bytearray)) else a.encode())
+                for a in list_attrs
+            ]
+            if (
+                version_xattr in normalized_attr_names
+                and version_id == xattr.getxattr(dst_str, version_xattr)
+            ):
+                return dst
 
         if self.is_dir():
             self._persistence.download_directory(self.path, str(dst))

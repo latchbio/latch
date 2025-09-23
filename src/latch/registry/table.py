@@ -64,7 +64,7 @@ class _AllRecordsNode(TypedDict):
     id: str
     name: str
     creationTime: str
-    lastUpdated: str
+    lastUpdated: Optional[str]
     key: str
     data: DBValue
 
@@ -300,7 +300,7 @@ class Table:
                     node["id"],
                     node["name"],
                     dp.isoparse(node["creationTime"]),
-                    dp.isoparse(node["lastUpdated"]),
+                    dp.isoparse(node["lastUpdated"] if node["lastUpdated"] is not None else node["creationTime"]),
                 )
                 vals = record_values.setdefault(node["id"], {})
 
