@@ -383,7 +383,8 @@ def register(
         )
         click.echo(" ".join([click.style("Version:", fg="bright_blue"), ctx.version]))
 
-        workspace_id = workspace_id or current_workspace()
+        if workspace_id is None:
+            workspace_id = current_workspace()
         workspaces = get_workspaces()
 
         if workspace_id not in workspaces:
