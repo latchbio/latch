@@ -388,7 +388,7 @@ def register(
 
         if workspace_id not in workspaces:
             click.secho(
-                f"\nUser does not have permission to access workspace {workspace_id}.",
+                f"User does not have permission to access workspace {workspace_id}.",
                 fg="red",
                 bold=True,
             )
