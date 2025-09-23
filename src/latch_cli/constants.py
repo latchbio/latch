@@ -5,7 +5,7 @@ from enum import Enum
 
 class Units(int, Enum):
     KiB = 2**10
-    kB = 10**3
+    kB = 10**3  # noqa: N815
 
     MiB = 2**20
     MB = 10**6
@@ -22,7 +22,7 @@ class LatchConstants:
     base_image: str = (
         "812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:cb01-main"
     )
-    nextflow_latest_version: str = "v2.3.0"
+    nextflow_latest_version: str = "v3.0.6"
 
     file_max_size: int = 4 * Units.MiB
     file_chunk_size: int = 64 * Units.MiB

@@ -1,6 +1,7 @@
+import os
 from os import PathLike
 from pathlib import Path
-from typing import List, Optional, Type, TypedDict, Union, get_args, get_origin
+from typing import Optional, TypedDict, Union, get_args, get_origin
 from urllib.parse import urlparse
 
 import gql
@@ -8,7 +9,9 @@ from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.exceptions.user import FlyteUserException
-from flytekit.models.literals import Literal
+from flytekit.models.core.types import BlobType
+from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
+from flytekit.models.types import LiteralType
 from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
 from typing_extensions import Annotated
 
@@ -30,7 +33,7 @@ class IterdirChildLdataTreeEdge(TypedDict):
 
 
 class IterdirChildLdataTreeEdges(TypedDict):
-    nodes: List[IterdirChildLdataTreeEdge]
+    nodes: list[IterdirChildLdataTreeEdge]
 
 
 class IterDirLDataResolvePathFinalLinkTarget(TypedDict):
@@ -46,7 +49,7 @@ class NodeDescendantsNode(TypedDict):
 
 
 class NodeDescendantsDescendants(TypedDict):
-    nodes: List[NodeDescendantsNode]
+    nodes: list[NodeDescendantsNode]
 
 
 class NodeDescendantsFinalLinkTarget(TypedDict):
@@ -146,8 +149,8 @@ class LatchDir(FlyteDirectory):
         self.path = ctx.file_access.get_random_local_directory()
         self._path_generated = True
 
-    def iterdir(self) -> List[Union[LatchFile, "LatchDir"]]:
-        ret: List[Union[LatchFile, "LatchDir"]] = []
+    def iterdir(self) -> list[Union[LatchFile, "LatchDir"]]:
+        ret: list[Union[LatchFile, "LatchDir"]] = []
 
         if self.remote_path is None:
             for child in Path(self.path).iterdir():
@@ -267,8 +270,41 @@ class LatchDirPathTransformer(FlyteDirToMultipartBlobTransformer):
     def __init__(self):
         TypeTransformer.__init__(self, name="LatchDirPath", t=LatchDir)
 
+    def to_literal(
+        self,
+        ctx: FlyteContext,
+        python_val: LatchDir,
+        python_type: type[LatchDir],
+        expected: LiteralType,
+    ):
+        is_execution_context = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID") is not None
+
+        put_res = {}
+        if is_execution_context and not ctx.file_access.is_remote(python_val.path):
+            remote_directory = python_val.remote_directory
+            if remote_directory is None:
+                remote_directory = ctx.file_access.get_random_remote_directory()
+
+            put_res = ctx.file_access.put_data(python_val.path, remote_directory, is_multipart=True)
+            if put_res is None:
+                put_res = {}
+
+        return Literal(
+            scalar=Scalar(
+                blob=Blob(
+                    metadata=BlobMetadata(
+                        type=BlobType(
+                            format="", dimensionality=BlobType.BlobDimensionality.MULTIPART
+                        )
+                    ),
+                    uri=python_val.remote_path,
+                )
+            ),
+            hash=put_res.get("cache"),
+        )
+
     def to_python_value(
-        self, ctx: FlyteContext, lv: Literal, expected_python_type: Union[Type[LatchDir], PathLike]
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Union[type[LatchDir], PathLike]
     ) -> FlyteDirectory:
         uri = lv.scalar.blob.uri
         if expected_python_type is PathLike:

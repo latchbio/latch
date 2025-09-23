@@ -90,6 +90,7 @@ class _CentromereCtx:
         nf_script: Optional[Path] = None,
         use_new_centromere: bool = False,
         overwrite: bool = False,
+        dockerfile_path: Optional[Path] = None,
     ):
         self.use_new_centromere = use_new_centromere
         self.remote = remote
@@ -185,20 +186,25 @@ class _CentromereCtx:
                 # fixme(ayush): this sucks
                 module_path = pkg_root / Path(self.wf_module.replace(".", "/"))
 
+                error_msg = (
+                    dedent(
+                        f"""
+                    Unable to locate workflow module `{self.wf_module}` in `{self.pkg_root.resolve()}`. Check that:
+
+                    1. {module_path} exists.
+                    2. Package `{self.wf_module}` is an absolute importable Python path (e.g. `workflows.my_workflow`).
+                    3. All directories in `{module_path}` contain an `__init__.py` file."""
+                    ),
+                )
+
                 try:
+                    if not module_path.exists():
+                        click.secho(error_msg, fg="red")
+                        raise click.exceptions.Exit(1)
+
                     flyte_objects = get_flyte_objects(module_path)
                 except ModuleNotFoundError as e:
-                    click.secho(
-                        dedent(
-                            f"""
-                            Unable to locate workflow module `{self.wf_module}` in `{self.pkg_root.resolve()}`. Check that:
-
-                            1. {module_path} exists.
-                            2. Package `{self.wf_module}` is an absolute importable Python path (e.g. `workflows.my_workflow`).
-                            3. All directories in `{module_path}` contain an `__init__.py` file."""
-                        ),
-                        fg="red",
-                    )
+                    click.secho(error_msg, fg="red")
                     raise click.exceptions.Exit(1) from e
 
                 wf_name: Optional[str] = None
@@ -404,7 +410,9 @@ class _CentromereCtx:
                 sys.exit(1)
 
             self.default_container = _Container(
-                dockerfile=get_default_dockerfile(
+                dockerfile=dockerfile_path
+                if dockerfile_path is not None
+                else get_default_dockerfile(
                     self.pkg_root, wf_type=self.workflow_type, overwrite=overwrite
                 ),
                 image_name=self.image_tagged,

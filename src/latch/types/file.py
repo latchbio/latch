@@ -1,17 +1,17 @@
 import os
-import re
 from os import PathLike
 from pathlib import Path
-from typing import Optional, Type, Union
+from typing import Annotated, Optional, Union
 from urllib.parse import urlparse
 
 import gql
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
-from flytekit.models.literals import Literal
+from flytekit.models.core.types import BlobType
+from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
+from flytekit.models.types import LiteralType
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
-from typing_extensions import Annotated
 
 from latch.ldata.path import LPath
 from latch.types.utils import format_path, is_absolute_node_path, is_valid_url
@@ -182,8 +182,39 @@ class LatchFilePathTransformer(FlyteFilePathTransformer):
     def __init__(self):
         TypeTransformer.__init__(self, name="LatchFilePath", t=LatchFile)
 
+    def to_literal(
+        self,
+        ctx: FlyteContext,
+        python_val: LatchFile,
+        python_type: type[LatchFile],
+        expected: LiteralType,
+    ):
+        is_execution_context = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID") is not None
+
+        put_res = {}
+        if is_execution_context and not ctx.file_access.is_remote(python_val.path):
+            remote_path = python_val.remote_path
+            if remote_path is None:
+                remote_path = ctx.file_access.get_random_remote_path()
+
+            put_res = ctx.file_access.put_data(python_val.path, remote_path, is_multipart=False)
+            if put_res is None:
+                put_res = {}
+
+        return Literal(
+            scalar=Scalar(
+                blob=Blob(
+                    metadata=BlobMetadata(
+                        type=BlobType(format="", dimensionality=BlobType.BlobDimensionality.SINGLE)
+                    ),
+                    uri=python_val.remote_path,
+                )
+            ),
+            hash=put_res.get("cache"),
+        )
+
     def to_python_value(
-        self, ctx: FlyteContext, lv: Literal, expected_python_type: Union[Type[LatchFile], PathLike]
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Union[type[LatchFile], PathLike]
     ) -> LatchFile:
         uri = lv.scalar.blob.uri
         if expected_python_type is PathLike:

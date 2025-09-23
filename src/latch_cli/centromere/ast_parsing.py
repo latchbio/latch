@@ -41,7 +41,7 @@ class Visitor(ast.NodeVisitor):
         # 3. save fully qualified name for tasks (need to parse based on import graph)
         for decorator in node.decorator_list:
             if isinstance(decorator, ast.Name):
-                if decorator.id == "workflow":
+                if decorator.id in {"workflow", "nextflow_workflow"}:
                     self.flyte_objects.append(FlyteObject("workflow", fqn))
                 elif decorator.id in task_decorators:
                     self.flyte_objects.append(FlyteObject("task", fqn))
@@ -50,10 +50,13 @@ class Visitor(ast.NodeVisitor):
                 func = decorator.func
                 assert isinstance(func, ast.Name)
 
-                if func.id not in task_decorators and func.id != "workflow":
+                if func.id not in task_decorators and func.id not in {
+                    "workflow",
+                    "nextflow_workflow",
+                }:
                     continue
 
-                if func.id == "workflow":
+                if func.id in {"workflow", "nextflow_workflow"}:
                     self.flyte_objects.append(FlyteObject("workflow", fqn))
                     continue
 

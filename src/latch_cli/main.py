@@ -1,3 +1,4 @@
+# ruff: noqa: FBT001, FBT002
 """Entrypoints to service functions through a latch_cli."""
 
 import os
@@ -5,14 +6,16 @@ import sys
 import traceback
 from pathlib import Path
 from textwrap import dedent
-from typing import Callable, List, Optional, Tuple, TypeVar, Union
+from typing import Callable, Optional, TypeVar, Union
 
 import click
+import gql
 from packaging.version import parse as parse_version
 from typing_extensions import ParamSpec
 
 import latch_cli.click_utils
-from latch.ldata._transfer.progress import Progress as _Progress
+from latch.ldata._transfer.progress import Progress as _Progress  # noqa: PLC2701
+from latch.utils import current_workspace
 from latch_cli.click_utils import EnumChoice
 from latch_cli.exceptions.handler import CrashHandler
 from latch_cli.services.cp.autocomplete import complete as cp_complete
@@ -25,8 +28,10 @@ from latch_cli.utils import (
     get_auth_header,
     get_latest_package_version,
     get_local_package_version,
+    hash_directory,
 )
 from latch_cli.workflow_config import BaseImageOptions
+from latch_sdk_gql.execute import execute as gql_execute
 
 latch_cli.click_utils.patch()
 
@@ -64,10 +69,8 @@ def requires_login(f: Callable[P, T]) -> Callable[P, T]:
 @click.group("latch", context_settings={"max_content_width": 160})
 @click.version_option(package_name="latch")
 def main():
-    """
-    Collection of command line tools for using the Latch SDK and
-    interacting with the Latch platform.
-    """
+    """Collection of command line tools for using the Latch SDK and interacting with the Latch platform."""
+
     if os.environ.get("LATCH_SKIP_VERSION_CHECK") is not None:
         return
 
@@ -92,10 +95,7 @@ LOGIN COMMANDS
 
 @main.command("login")
 @click.option(
-    "--connection",
-    type=str,
-    default=None,
-    help="Specific AuthO connection name e.g. for SSO.",
+    "--connection", type=str, default=None, help="Specific AuthO connection name e.g. for SSO."
 )
 def login(connection: Optional[str]):
     """Manually login to Latch."""
@@ -173,9 +173,7 @@ def init(
 
 
 @main.command("dockerfile")
-@click.argument(
-    "pkg_root", type=click.Path(exists=True, file_okay=False, path_type=Path)
-)
+@click.argument("pkg_root", type=click.Path(exists=True, file_okay=False, path_type=Path))
 @click.option(
     "-s",
     "--snakemake",
@@ -236,6 +234,21 @@ def init(
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     help="Path to a direnv file (.env) containing environment variables to inject into the container.",
 )
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(path_type=Path),
+    help="Where to write the result Dockerfile. Default is Dockerfile in the root of the workflow directory.",
+)
+@click.option(
+    "--config-path",
+    type=click.Path(path_type=Path),
+    help=(
+        "Where to read the config to use for generating the Dockerfile. If a config is not found either at"
+        " `config_path` or `config_path / .latch / config`, one will be generated at "
+        "`config_path / .latch / config`. If not provided, it will default to the parent of the output Dockerfile"
+    ),
+)
 def dockerfile(
     pkg_root: Path,
     snakemake: bool = False,
@@ -247,8 +260,10 @@ def dockerfile(
     pyproject: Optional[Path] = None,
     pip_requirements: Optional[Path] = None,
     direnv: Optional[Path] = None,
+    output: Optional[Path] = None,
+    config_path: Optional[Path] = None,
 ):
-    """Generates a user editable dockerfile for a workflow and saves under `pkg_root/Dockerfile`.
+    """Generates a user editable dockerfile for a workflow.
 
     Visit docs.latch.bio to learn more.
     """
@@ -272,9 +287,31 @@ def dockerfile(
         workflow_type = WorkflowType.nextflow
         base_image = BaseImageOptions.nextflow
 
-    config = get_or_create_workflow_config(
-        pkg_root=pkg_root, base_image_type=base_image
+    if output is None:
+        output = pkg_root / "Dockerfile"
+    if output.name != "Dockerfile":
+        output /= "Dockerfile"
+
+    ignore_path = output.with_name(".dockerignore")
+
+    if config_path is None:
+        config_path = output.parent / ".latch" / "config"
+    if config_path.name != "config":
+        config_path /= ".latch/config"
+
+    click.secho(
+        dedent(f"""\
+    The following files will be generated:
+    {click.style("Dockerfile:", fg="bright_blue")} {output}
+    {click.style("Ignore File:", fg="bright_blue")} {ignore_path}
+    {click.style("Latch Config:", fg="bright_blue")} {config_path}
+    """)
     )
+
+    output.parent.mkdir(exist_ok=True, parents=True)
+
+    # todo(ayush): make overwriting this easier
+    config = get_or_create_workflow_config(config_path, base_image_type=base_image)
 
     builder = DockerfileBuilder(
         pkg_root,
@@ -287,12 +324,9 @@ def dockerfile(
         pip_requirements=pip_requirements,
         direnv=direnv,
     )
-    builder.generate(overwrite=force)
+    builder.generate(dest=output, overwrite=force)
 
-    if not click.confirm("Generate a .dockerignore?"):
-        return
-
-    generate_dockerignore(pkg_root, wf_type=workflow_type, overwrite=force)
+    generate_dockerignore(ignore_path, wf_type=workflow_type, overwrite=force)
 
 
 @main.command("generate-metadata")
@@ -360,8 +394,10 @@ def generate_metadata(
 
     if snakemake is True and nextflow is True:
         click.secho(
-            f"Please specify only one workflow type to generate metadata for. Use"
-            f" either `--snakemake` or `--nextflow`.",
+            (
+                "Please specify only one workflow type to generate metadata for. Use"
+                " either `--snakemake` or `--nextflow`."
+            ),
             fg="red",
         )
         raise click.exceptions.Exit(1)
@@ -375,12 +411,7 @@ def generate_metadata(
         if config_file is None:
             config_file = Path("nextflow_schema.json")
 
-        generate_metadata(
-            config_file,
-            metadata_root,
-            skip_confirmation=yes,
-            generate_defaults=not no_defaults,
-        )
+        generate_metadata(config_file, metadata_root, skip_confirmation=yes)
     else:
         from latch_cli.snakemake.config.parser import generate_metadata
 
@@ -406,12 +437,7 @@ def generate_metadata(
 @main.command("develop")
 @click.argument("pkg_root", nargs=1, type=click.Path(exists=True, path_type=Path))
 @click.option(
-    "--yes",
-    "-y",
-    is_flag=True,
-    default=False,
-    type=bool,
-    help="Skip the confirmation dialog.",
+    "--yes", "-y", is_flag=True, default=False, type=bool, help="Skip the confirmation dialog."
 )
 @click.option(
     "--wf-version",
@@ -486,9 +512,7 @@ def local_development(
 
 
 @main.command("exec")
-@click.option(
-    "--execution-id", "-e", type=str, help="Optional execution ID to inspect."
-)
+@click.option("--execution-id", "-e", type=str, help="Optional execution ID to inspect.")
 @click.option("--egn-id", "-g", type=str, help="Optional task execution ID to inspect.")
 @click.option(
     "--container-index",
@@ -497,14 +521,12 @@ def local_development(
     help="Optional container index to inspect (only used for Map Tasks)",
 )
 @requires_login
-def execute(
-    execution_id: Optional[str], egn_id: Optional[str], container_index: Optional[int]
-):
+def execute(execution_id: Optional[str], egn_id: Optional[str], container_index: Optional[int]):
     """Drops the user into an interactive shell from within a task."""
 
-    from latch_cli.services.k8s.execute import exec
+    from latch_cli.services.k8s.execute import exec as _exec
 
-    exec(execution_id=execution_id, egn_id=egn_id, container_index=container_index)
+    _exec(execution_id=execution_id, egn_id=egn_id, container_index=container_index)
 
 
 @main.command("register")
@@ -537,12 +559,7 @@ def execute(
     ),
 )
 @click.option(
-    "-y",
-    "--yes",
-    is_flag=True,
-    default=False,
-    type=bool,
-    help="Skip the confirmation dialog.",
+    "-y", "--yes", is_flag=True, default=False, type=bool, help="Skip the confirmation dialog."
 )
 @click.option(
     "--open",
@@ -583,9 +600,7 @@ def execute(
     is_flag=True,
     default=False,
     type=bool,
-    help=(
-        "Whether or not to cache snakemake tasks. Ignored if --snakefile is not provided."
-    ),
+    help=("Whether or not to cache snakemake tasks. Ignored if --snakefile is not provided."),
 )
 @click.option(
     "--nf-script",
@@ -598,6 +613,25 @@ def execute(
     type=str,
     default=None,
     help="Set execution profile for Nextflow workflow",
+)
+@click.option(
+    "--staging",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help=(
+        "Register the workflow in staging mode - the workflow will not show up in the console but "
+        "will be available to develop sessions."
+    ),
+)
+@click.option(
+    "--dockerfile",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help=(
+        "Path to a custom Dockerfile to use when registering. Default is to (1) use a Dockerfile in "
+        "the package root if one exists, or (2) generate one in .latch/Dockerfile if none exists."
+    ),
 )
 @requires_login
 def register(
@@ -614,6 +648,8 @@ def register(
     nf_script: Optional[Path],
     nf_execution_profile: Optional[str],
     mark_as_release: bool,
+    staging: bool,
+    dockerfile: Optional[Path],
 ):
     """Register local workflow code to Latch.
 
@@ -623,6 +659,23 @@ def register(
     1 - Registration failure
     2 - Workflow already registered
     """
+
+    if staging:
+        from .services.register.staging import register_staging
+
+        register_staging(
+            Path(pkg_root),
+            disable_auto_version=disable_auto_version,
+            disable_git_version=disable_auto_version,  # todo(ayush): have this apply to normal register too
+            remote=remote,
+            skip_confirmation=yes,
+            wf_module=workflow_module,
+            progress_plain=(docker_progress == "auto" and not sys.stdout.isatty())
+            or docker_progress == "plain",
+            dockerfile_path=dockerfile,
+        )
+
+        return
 
     use_new_centromere = os.environ.get("LATCH_REGISTER_BETA") is not None
 
@@ -655,19 +708,33 @@ def register(
         use_new_centromere=use_new_centromere,
         cache_tasks=cache_tasks,
         mark_as_release=mark_as_release,
+        dockerfile_path=dockerfile,
     )
 
 
 @main.command("launch")
 @click.argument("params_file", nargs=1, type=click.Path(exists=True))
 @click.option(
-    "--version",
-    default=None,
-    help="The version of the workflow to launch. Defaults to latest.",
+    "--version", default=None, help="The version of the workflow to launch. Defaults to latest."
 )
 @requires_login
 def launch(params_file: Path, version: Union[str, None] = None):
-    """Launch a workflow using a python parameter map."""
+    """[DEPRECATED] Launch a workflow using a python parameter map.
+
+    This command requires parameters in an obscure pre-serialized format which
+    is not properly documented or easy to create by hand.
+
+    To programmatically launch a workflow, use the SDK API:
+    https://wiki.latch.bio/workflows/sdk/testing-and-debugging-a-workflow/programmatic-execution
+
+    CLI relaunch may be reimplemented in the future, so please let us know if this
+    would be useful for you.
+    """
+
+    click.secho(
+        "`latch launch` is deprecated. See `latch launch --help` for details and alternatives.",
+        fg="yellow",
+    )
 
     from latch_cli.services.launch.launch import launch
 
@@ -681,19 +748,31 @@ def launch(params_file: Path, version: Union[str, None] = None):
         version = "latest"
 
     click.secho(
-        f"Successfully launched workflow named {wf_name} with version {version}.",
-        fg="green",
+        f"Successfully launched workflow named {wf_name} with version {version}.", fg="green"
     )
 
 
 @main.command("get-params")
 @click.argument("wf_name", nargs=1)
-@click.option(
-    "--version", default=None, help="The version of the workflow. Defaults to latest."
-)
+@click.option("--version", default=None, help="The version of the workflow. Defaults to latest.")
 @requires_login
 def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
-    """Generate a python parameter map for a workflow."""
+    """[DEPRECATED] Generate a python parameter map for a workflow.
+
+    This command will not work properly with workflows using complicated types
+    because it is not able to use Python typing information.
+
+    To programmatically launch a workflow, use the SDK API:
+    https://wiki.latch.bio/workflows/sdk/testing-and-debugging-a-workflow/programmatic-execution
+
+    CLI relaunch may be reimplemented in the future, so please let us know if this
+    would be useful for you.
+    """
+    click.secho(
+        "`latch get-params` is deprecated and frequently broken. See `latch launch --help` for details and alternatives.",
+        fg="yellow",
+    )
+
     crash_handler.message = "Unable to generate param map for workflow"
     crash_handler.pkg_root = str(Path.cwd())
 
@@ -711,9 +790,7 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
 
 @main.command("get-wf")
 @click.option(
-    "--name",
-    default=None,
-    help="The name of the workflow to list. Will display all versions",
+    "--name", default=None, help="The name of the workflow to list. Will display all versions"
 )
 @requires_login
 def get_wf(name: Union[str, None] = None):
@@ -733,9 +810,7 @@ def get_wf(name: Union[str, None] = None):
         version_padding = max(version_padding, version_len)
 
     # TODO(ayush): make this much better
-    click.secho(
-        f"ID{id_padding * ' '}\tName{name_padding * ' '}\tVersion{version_padding * ' '}"
-    )
+    click.secho(f"ID{id_padding * ' '}\tName{name_padding * ' '}\tVersion{version_padding * ' '}")
     for wf in wfs:
         click.secho(
             f"{wf[0]}{(id_padding - len(str(wf[0]))) * ' '}\t{wf[1]}{(name_padding - len(wf[1])) * ' '}\t{wf[2]}{(version_padding - len(wf[2])) * ' '}"
@@ -798,17 +873,13 @@ LDATA COMMANDS
     default=False,
     show_default=True,
 )
+@click.option("--cores", help="Manually specify number of cores to parallelize over", type=int)
 @click.option(
-    "--cores", help="Manually specify number of cores to parallelize over", type=int
-)
-@click.option(
-    "--chunk-size-mib",
-    help="Manually specify the upload chunk size in MiB. Must be >= 5",
-    type=int,
+    "--chunk-size-mib", help="Manually specify the upload chunk size in MiB. Must be >= 5", type=int
 )
 @requires_login
 def cp(
-    src: List[str],
+    src: list[str],
     dest: str,
     progress: _Progress,
     verbose: bool,
@@ -816,8 +887,7 @@ def cp(
     cores: Optional[int] = None,
     chunk_size_mib: Optional[int] = None,
 ):
-    """
-    Copy files between Latch Data and local, or between two Latch Data locations.
+    """Copy files between Latch Data and local, or between two Latch Data locations.
 
     Behaves like `cp -R` in Unix. Directories are copied recursively. If any parents of dest do not exist, the copy will fail.
     """
@@ -870,10 +940,8 @@ def mv(src: str, dest: str, no_glob: bool):
 )
 @click.argument("paths", nargs=-1, shell_complete=remote_complete)
 @requires_login
-def ls(paths: Tuple[str], group_directories_first: bool):
-    """
-    List the contents of a Latch Data directory
-    """
+def ls(paths: tuple[str], group_directories_first: bool):
+    """List the contents of a Latch Data directory"""
 
     crash_handler.message = f"Unable to display contents of {paths}"
     crash_handler.pkg_root = str(Path.cwd())
@@ -897,12 +965,7 @@ def ls(paths: Tuple[str], group_directories_first: bool):
 @main.command("rmr")
 @click.argument("remote_path", nargs=1, type=str)
 @click.option(
-    "-y",
-    "--yes",
-    is_flag=True,
-    default=False,
-    type=bool,
-    help="Skip the confirmation dialog.",
+    "-y", "--yes", is_flag=True, default=False, type=bool, help="Skip the confirmation dialog."
 )
 @click.option(
     "--no-glob",
@@ -948,31 +1011,20 @@ def mkdir(remote_directory: str):
 @click.argument("srcs", nargs=-1)
 @click.argument("dst", nargs=1)
 @click.option(
-    "--delete",
-    help="Delete extraneous files from destination.",
-    is_flag=True,
-    default=False,
+    "--delete", help="Delete extraneous files from destination.", is_flag=True, default=False
 )
 @click.option(
     "--ignore-unsyncable",
-    help=(
-        "Synchronize even if some source paths do not exist or refer to special files."
-    ),
+    help=("Synchronize even if some source paths do not exist or refer to special files."),
     is_flag=True,
     default=False,
 )
 @click.option("--cores", help="Number of cores to use for parallel syncing.", type=int)
 @requires_login
 def sync(
-    srcs: List[str],
-    dst: str,
-    delete: bool,
-    ignore_unsyncable: bool,
-    cores: Optional[int] = None,
+    srcs: list[str], dst: str, delete: bool, ignore_unsyncable: bool, cores: Optional[int] = None
 ):
-    """
-    Update the contents of a remote directory with local data.
-    """
+    """Update the contents of a remote directory with local data."""
     from latch_cli.services.sync import sync
 
     # todo(maximsmol): remote -> local
@@ -995,8 +1047,7 @@ def nextflow():
 def version(pkg_root: Path):
     """Get the Latch version of Nextflow installed for the current project."""
 
-    with open(pkg_root / ".latch" / "nextflow_version", "r") as f:
-        version = f.read().strip()
+    version = (pkg_root / ".latch" / "nextflow_version").read_text().strip()
 
     click.secho(f"Nextflow version: {version}", fg="green")
 
@@ -1020,23 +1071,45 @@ def version(pkg_root: Path):
     default=None,
     help="Set execution profile for Nextflow workflow",
 )
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(path_type=Path),
+    default=None,
+    help=(
+        "Where to write the entrypoint file. Defaults to wf/custom_entrypoint.py. If the filename "
+        "does not end with a .py suffix, one will be appended."
+    ),
+)
+@click.option("--yes", "-y", is_flag=True, help="Skip the confirmation dialog.")
 def nf_generate_entrypoint(
     pkg_root: Path,
     metadata_root: Optional[Path],
     nf_script: Path,
     execution_profile: Optional[str],
+    output: Optional[Path],
+    yes: bool,
 ):
     """Generate a `wf/entrypoint.py` file from a Nextflow workflow"""
 
-    import latch.types.metadata as metadata
+    from latch.types import metadata
     from latch_cli.nextflow.workflow import generate_nextflow_workflow
     from latch_cli.services.register.utils import import_module_by_path
 
-    dest = pkg_root / "wf" / "custom_entrypoint.py"
-    dest.parent.mkdir(exist_ok=True)
+    if output is None:
+        output = pkg_root / "wf" / "custom_entrypoint.py"
 
-    if dest.exists() and not click.confirm(
-        f"Nextflow entrypoint already exists at `{dest}`. Overwrite?"
+    output = output.with_suffix(".py")
+
+    if not yes and not click.confirm(f"Will generate an entrypoint at {output}. Proceed?"):
+        raise click.exceptions.Abort
+
+    output.parent.mkdir(exist_ok=True)
+
+    if (
+        not yes
+        and output.exists()
+        and not click.confirm(f"Nextflow entrypoint already exists at `{output}`. Overwrite?")
     ):
         return
 
@@ -1058,14 +1131,12 @@ def nf_generate_entrypoint(
         raise click.exceptions.Exit(1)
 
     generate_nextflow_workflow(
-        pkg_root, metadata_root, nf_script, dest, execution_profile=execution_profile
+        pkg_root, metadata_root, nf_script, output, execution_profile=execution_profile
     )
 
 
 @nextflow.command("attach")
-@click.option(
-    "--execution-id", "-e", type=str, help="Optional execution ID to inspect."
-)
+@click.option("--execution-id", "-e", type=str, help="Optional execution ID to inspect.")
 @requires_login
 def attach(execution_id: Optional[str]):
     """Drops the user into an interactive shell to inspect the workdir of a nextflow execution."""
@@ -1073,6 +1144,188 @@ def attach(execution_id: Optional[str]):
     from latch_cli.services.k8s.attach import attach
 
     attach(execution_id)
+
+
+@nextflow.command("register")
+@click.argument("pkg_root", type=click.Path(exists=True, file_okay=False, path_type=Path))
+@click.option("--yes", "-y", is_flag=True, help="Skip confirmation dialogs.")
+@click.option(
+    "--no-ignore",
+    "--all",
+    "-a",
+    is_flag=True,
+    help="Add all files (including those excluded by .gitignore/.dockerignore) to workflow archive",
+)
+@click.option(
+    "--disable-auto-version",
+    "-d",
+    is_flag=True,
+    help="Only use the contents of the version file for workflow versioning.",
+)
+@click.option(
+    "--disable-git-version",
+    "-G",
+    is_flag=True,
+    help="When the package root is a git repository, do not append the current commit hash to the version.",
+)
+@click.option(
+    "--script-path",
+    type=str,
+    default="main.nf",
+    help="Path to the entrypoint nextflow file. Must be relative to the package root.",
+)
+@requires_login
+def nf_register(
+    pkg_root: Path,
+    yes: bool,
+    no_ignore: bool,
+    disable_auto_version: bool,
+    disable_git_version: bool,
+    script_path: str,
+):
+    from latch_cli.nextflow.forch_register import RegisterConfig, register
+
+    if not (pkg_root / script_path).exists():
+        click.secho(
+            f"""\
+            Could not locate entrypoint file '{script_path}'. Ensure that the path exists, or provide
+            another using `--script-path`
+            """.strip(),
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
+
+    # >>> Version parsing
+
+    version_file = pkg_root / "version"
+    try:
+        version_base = version_file.read_text().strip()
+    except OSError:
+        if not yes and not click.confirm(
+            "Could not find a `version` file in the package root. One will be created. Proceed?"
+        ):
+            return
+
+        version_base = "0.1.0"
+        version_file.write_text(version_base)
+        click.echo(f"Created a version file with initial version {version_base}.")
+
+    components: list[str] = [version_base]
+
+    if disable_auto_version:
+        click.echo("Skipping version tagging due to `--disable-auto-version`")
+    elif disable_git_version:
+        click.echo("Skipping git version tagging due to `--disable-git-version`")
+
+    if not disable_auto_version and not disable_git_version:
+        try:
+            from git import GitError, Repo
+
+            try:
+                repo = Repo(pkg_root)
+                sha = repo.head.commit.hexsha[:6]
+                components.append(sha)
+                click.echo(f"Tagging version with git commit {sha}.")
+                click.secho("  Disable with --disable-git-version/-G", dim=True, italic=True)
+
+                if repo.is_dirty():
+                    components.append("wip")
+                    click.secho(
+                        "  Repo contains uncommitted changes - tagging version with `wip`",
+                        italic=True,
+                    )
+            except GitError:
+                pass
+        except ImportError:
+            pass
+
+    if not disable_auto_version:
+        sha = hash_directory(pkg_root, silent=True)[:6]
+        components.append(sha)
+        click.echo(f"Tagging version with directory checksum {sha}.")
+        click.secho("  Disable with --disable-auto-version/-d", dim=True, italic=True)
+
+    version = "-".join(components)
+
+    click.echo()
+
+    # >>> Display Name parsing
+
+    dotfile_root = pkg_root / ".latch"
+    dotfile_root.mkdir(exist_ok=True)
+
+    workflow_name_file = dotfile_root / "workflow_name"
+    try:
+        workflow_name = workflow_name_file.read_text()
+    except OSError:
+        workflow_name = click.prompt("What is the name of this workflow?")
+
+        if not yes and not click.confirm(
+            "This workflow name will be stored in a file at `.latch/workflow_name` under the package root for future use. Proceed?"
+        ):
+            return
+
+        workflow_name_file.write_text(workflow_name)
+        click.echo("Stored workflow name in .latch/workflow_name.")
+        click.echo()
+
+    assert isinstance(workflow_name, str)
+
+    click.echo(
+        dedent(f"""\
+        {click.style("Workflow Name", fg="bright_blue")}: {workflow_name}
+        {click.style("Version", fg="bright_blue")}: {version}
+        {click.style("Workspace", fg="bright_blue")}: {current_workspace()}
+        """).strip()
+    )
+
+    click.echo()
+
+    res = gql_execute(
+        gql.gql("""
+            query WorkflowVersionExistenceCheck(
+                $argWorkspaceId: BigInt!
+                $argWorkflowName: String!
+                $argWorkflowVersion: String!
+            ) {
+                workflowInfos(
+                    condition: {
+                        name: $argWorkflowName
+                        version: $argWorkflowVersion
+                        ownerId: $argWorkspaceId
+                    }
+                ) {
+                    totalCount
+                }
+            }
+        """),
+        {
+            "argWorkspaceId": current_workspace(),
+            "argWorkflowName": workflow_name,
+            "argWorkflowVersion": version,
+        },
+    )["workflowInfos"]
+
+    if int(res["totalCount"]) > 0:
+        click.secho(
+            dedent(f"""
+            Workflow {workflow_name}:{version} already exists in this workspace.
+
+            Please update either the `.latch/workflow_name` or `version` file(s) and re-register.
+            """).strip(),
+            fg="red",
+        )
+        raise click.exceptions.Exit(1)
+
+    if not yes and not click.confirm("Start registration?"):
+        click.secho("Cancelled", bold=True)
+        return
+
+    click.echo()
+
+    register(
+        pkg_root, config=RegisterConfig(workflow_name, version, Path(script_path), not no_ignore)
+    )
 
 
 @main.group()
@@ -1160,7 +1413,6 @@ POD COMMANDS
 @main.group()
 def pods():
     """Manage pods"""
-    pass
 
 
 @pods.command("stop")
@@ -1186,8 +1438,7 @@ def stop_pod(pod_id: Optional[int] = None):
                 err_str = f"Error reading Pod ID from `{id_path}`"
 
             click.secho(
-                f"{err_str} -- please provide a Pod ID as a command line argument.",
-                fg="red",
+                f"{err_str} -- please provide a Pod ID as a command line argument.", fg="red"
             )
             return
 
@@ -1251,7 +1502,7 @@ def test_data_remove(object_url: str):
 def test_data_ls():
     """List test data objects."""
 
-    crash_handler.message = f"Unable to list objects within managed bucket"
+    crash_handler.message = "Unable to list objects within managed bucket"
     crash_handler.pkg_root = str(Path.cwd())
 
     from latch_cli.services.test_data.ls import ls

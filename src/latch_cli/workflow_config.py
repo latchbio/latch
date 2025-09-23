@@ -31,9 +31,8 @@ class LatchWorkflowConfig:
 
 
 def get_or_create_workflow_config(
-    pkg_root: Path, base_image_type: BaseImageOptions = BaseImageOptions.default
+    config_path: Path, base_image_type: BaseImageOptions = BaseImageOptions.default
 ) -> LatchWorkflowConfig:
-    config_path = pkg_root / latch_constants.pkg_config
     if config_path.exists() and config_path.is_file():
         try:
             return LatchWorkflowConfig(**json.loads(config_path.read_text()))
@@ -60,9 +59,7 @@ def get_or_create_workflow_config(
         date=datetime.now(timezone.utc).isoformat(),
     )
 
-    (pkg_root / ".latch").mkdir(exist_ok=True)
-
-    with (pkg_root / latch_constants.pkg_config).open("w") as f:
-        f.write(json.dumps(asdict(config)))
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(json.dumps(asdict(config)))
 
     return config
