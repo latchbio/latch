@@ -724,6 +724,14 @@ def register(
         )
         raise click.exceptions.Exit(1)
 
+    if workspace_id is not None and not workspace_id.isdigit():
+        click.secho(
+            f"The value provided for --workspace-id must be an integer: {workspace_id}",
+            fg="red",
+            bold=True,
+        )
+        raise click.exceptions.Exit(1)
+
     from latch_cli.services.register import register
 
     register(
