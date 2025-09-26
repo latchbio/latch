@@ -11,12 +11,7 @@ from flytekit import workflow as _workflow
 from flytekit.core.interface import transform_function_to_interface
 from flytekit.core.workflow import PythonFunctionWorkflow
 
-from latch.types.metadata import (
-    LatchAuthor,
-    LatchMetadata,
-    LatchParameter,
-    NextflowMetadata,
-)
+from latch.types.metadata import LatchAuthor, LatchMetadata, LatchParameter, NextflowMetadata
 from latch_cli.utils import best_effort_display_name
 
 
@@ -44,9 +39,7 @@ def _inject_metadata(f: Callable, metadata: LatchMetadata) -> None:
 # this weird Union thing is to ensure backwards compatibility,
 # so that when users call @workflow without any arguments or
 # parentheses, the workflow still serializes as expected
-def workflow(
-    metadata: Union[LatchMetadata, Callable],
-) -> Union[PythonFunctionWorkflow, Callable]:
+def workflow(metadata: Union[LatchMetadata, Callable]) -> Union[PythonFunctionWorkflow, Callable]:
     if isinstance(metadata, Callable):
         f = metadata
         if f.__doc__ is None or "__metadata__:" not in f.__doc__:
@@ -107,9 +100,7 @@ def workflow(
                 raise click.exceptions.Exit(1)
 
             arg_origin = get_origin(args[0])
-            valid = is_dataclass(args[0]) or (
-                arg_origin is not None and is_dataclass(arg_origin)
-            )
+            valid = is_dataclass(args[0]) or (arg_origin is not None and is_dataclass(arg_origin))
             if not valid:
                 click.secho(
                     f"parameter marked as samplesheet is not valid: {name} "
@@ -148,9 +139,13 @@ def workflow(
     return decorator
 
 
-def nextflow_workflow(
-    metadata: NextflowMetadata,
-) -> Callable[[Callable], PythonFunctionWorkflow]:
+def nextflow_workflow(metadata: NextflowMetadata) -> Callable[[Callable], PythonFunctionWorkflow]:
+    metadata._non_standard["unpack_records"] = True
+
+    return workflow(metadata)
+
+
+def snakemake_workflow(metadata: NextflowMetadata) -> Callable[[Callable], PythonFunctionWorkflow]:
     metadata._non_standard["unpack_records"] = True
 
     return workflow(metadata)

@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import latch.types.metadata.snakemake_v2 as snakemake
-from latch_cli.snakemake.config.utils import get_preamble, type_repr
 
 _template = """\
 import json
@@ -18,18 +17,17 @@ from pathlib import Path
 import requests
 
 from latch.resources.tasks import custom_task, snakemake_runtime_task
-from latch.resources.workflow import workflow
+from latch.resources.workflow import snakemake_workflow
 from latch.types.directory import LatchDir, LatchOutputDir
 from latch.types.file import LatchFile
 from latch_cli.snakemake.v2.utils import get_config_val
 from latch_cli.services.register.utils import import_module_by_path
 
-import_module_by_path(Path({metadata_path}))
+latch_metadata = import_module_by_path(Path({metadata_path}))
 
 import latch.types.metadata.snakemake_v2 as smv2
 
 
-{preambles}
 @custom_task(cpu=0.25, memory=0.5, storage_gib=1)
 def initialize() -> str:
     token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID")
@@ -54,13 +52,13 @@ def initialize() -> str:
     return resp.json()["name"]
 
 @snakemake_runtime_task(cpu=1, memory=2, storage_gib=50)
-def snakemake_runtime(pvc_name: str, {parameters}):
+def snakemake_runtime(pvc_name: str, args: latch_metadata.WorkflowArgsType):
     print(f"Using shared filesystem: {{pvc_name}}")
 
     shared = Path("/snakemake-workdir")
     snakefile = shared / {snakefile_path}
 
-    config = {{{config_builders}}}
+    config = get_config_val(args)
 
     config_path = (shared / "__latch.config.json").resolve()
     config_path.write_text(json.dumps(config, indent=2))
@@ -115,13 +113,14 @@ def snakemake_runtime(pvc_name: str, {parameters}):
         sys.exit(1)
 
 
-@workflow(smv2._snakemake_v2_metadata)
-def {workflow_name}({parameters}):
+@snakemake_workflow(smv2._snakemake_v2_metadata)
+def {
+}(args: latch_metadata.WorkflowArgsType):
     \"\"\"
     Sample Description
     \"\"\"
 
-    snakemake_runtime(pvc_name=initialize(), {assignments})
+    snakemake_runtime(pvc_name=initialize(), args=args)
 """
 
 
@@ -129,35 +128,8 @@ def get_entrypoint_content(pkg_root: Path, metadata_path: Path, snakefile_path: 
     metadata = snakemake._snakemake_v2_metadata
     assert metadata is not None
 
-    defined_names: set[str] = set()
-    preambles: list[str] = []
-
-    defaults: list[str] = []
-    no_defaults: list[str] = []
-    config_builders: list[str] = []
-    assignments: list[str] = []
-
-    for name, param in metadata.parameters.items():
-        assert param.type is not None
-
-        param_str = f"{name}: {type_repr(param.type)}"
-        if param.default is None:
-            no_defaults.append(param_str)
-        else:
-            param_str = f"{param_str} = {param.default!r}"
-            defaults.append(param_str)
-
-        config_builders.append(f"{name!r}: get_config_val({name})")
-        assignments.append(f"{name}={name}")
-
-        preambles.append(get_preamble(param.type, defined_names=defined_names))
-
     return _template.format(
         metadata_path=repr(str(metadata_path.relative_to(pkg_root))),
-        preambles="".join(preambles),
-        parameters=", ".join(no_defaults + defaults),
         snakefile_path=repr(str(snakefile_path.relative_to(pkg_root))),
-        config_builders=", ".join(config_builders),
         workflow_name=metadata.name,
-        assignments=", ".join(assignments),
     )

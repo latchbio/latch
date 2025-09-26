@@ -1,9 +1,12 @@
 import itertools
 import os
-from typing import Dict, TypedDict
+from dataclasses import dataclass
+from typing import ClassVar, Dict, Optional, TypedDict
 
 import gql
 import jwt
+from typing_extensions import Self
+
 from latch_sdk_config.user import user_config
 from latch_sdk_gql.execute import execute
 
@@ -112,9 +115,7 @@ def get_workspaces() -> Dict[str, WSInfo]:
     owned_org_teams = [x["teamInfosByOrgId"]["nodes"] for x in res["orgInfos"]["nodes"]]
     owned_org_teams = list(itertools.chain(*owned_org_teams))
 
-    member_org_teams = [
-        x["org"]["teamInfosByOrgId"]["nodes"] for x in res["orgMembers"]["nodes"]
-    ]
+    member_org_teams = [x["org"]["teamInfosByOrgId"]["nodes"] for x in res["orgMembers"]["nodes"]]
     member_org_teams = list(itertools.chain(*member_org_teams))
 
     default_account = (
@@ -130,11 +131,7 @@ def get_workspaces() -> Dict[str, WSInfo]:
         )
         for x in owned_teams
         + member_teams
-        + (
-            [res["teamInfoByAccountId"]]
-            if res["teamInfoByAccountId"] is not None
-            else []
-        )
+        + ([res["teamInfoByAccountId"]] if res["teamInfoByAccountId"] is not None else [])
         + owned_org_teams
         + member_org_teams
     }
@@ -167,7 +164,7 @@ def current_workspace() -> str:
                     }
                 }
             }
-        """),
+        """)
     )["accountInfoCurrent"]
 
     ws = res["id"]
@@ -180,3 +177,20 @@ def current_workspace() -> str:
 
 
 class NotFoundError(ValueError): ...
+
+
+@dataclass(frozen=True)
+class Singleton:
+    """Base class for singleton objects.
+
+    The constructor returns a referentially identical instance each call. That is,
+    `Singleton() is Singleton()`
+    """
+
+    _singleton: ClassVar[Optional[Self]] = None
+
+    def __new__(cls) -> Self:
+        if cls._singleton is None:
+            cls._singleton = super().__new__(cls)
+
+        return cls._singleton

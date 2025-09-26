@@ -1,13 +1,12 @@
 from dataclasses import fields, is_dataclass
 from enum import Enum
-from typing import Any
 from urllib.parse import urlparse
 
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
 
 
-def get_config_val(val: Any):
+def get_config_val(val: object):
     if isinstance(val, list):
         return [get_config_val(x) for x in val]
     if isinstance(val, dict):

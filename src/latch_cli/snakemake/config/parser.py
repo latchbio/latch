@@ -1,16 +1,17 @@
-from dataclasses import fields, is_dataclass
+from dataclasses import Field, field, fields, is_dataclass, make_dataclass
 from pathlib import Path
-from typing import Dict, List, Tuple, Type, TypeVar, get_args, get_origin
+from typing import Annotated, TypeVar, Union, get_args, get_origin
 
 import click
 import yaml
-from typing_extensions import Annotated
 
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
+from latch.utils import Singleton
 from latch_cli.snakemake.utils import reindent
 from latch_cli.utils import best_effort_display_name, identifier_from_str
 
+from ...utils import best_effort_title_case, exit
 from .utils import (
     JSONValue,
     get_preamble,
@@ -24,29 +25,20 @@ from .utils import (
 T = TypeVar("T")
 
 
-def parse_config(
-    config_path: Path,
-    *,
-    infer_files: bool = False,
-) -> Dict[str, Tuple[Type[T], T]]:
+class NoValue(Singleton): ...
+
+
+def parse_config(config_path: Path) -> dict[str, tuple[type[T], Union[T, NoValue]]]:
     if not config_path.exists():
-        click.secho(
-            f"No config file found at {config_path}.",
-            fg="red",
-        )
-        raise click.exceptions.Exit(1)
+        raise exit(f"No config file found at {config_path}.")
 
     if config_path.is_dir():
-        click.secho(
-            f"Path {config_path} points to a directory.",
-            fg="red",
-        )
-        raise click.exceptions.Exit(1)
+        raise exit(f"Path {config_path} points to a directory.")
 
     try:
         res: JSONValue = yaml.safe_load(config_path.read_text())
     except yaml.YAMLError as e:
-        click.secho(
+        raise exit(
             reindent(
                 f"""
                 Error loading config from {config_path}:
@@ -54,86 +46,28 @@ def parse_config(
                 {e}
                 """,
                 0,
-            ),
-            fg="red",
-        )
-        raise click.exceptions.Exit(1) from e
+            )
+        ) from e
 
-    if not isinstance(res, dict):
-        # ayush: this case doesn't matter bc a non-dict .yaml file isn't valid snakemake
-        return {"snakemake_parameter": (parse_type(res, infer_files=infer_files), res)}
+    assert isinstance(res, dict)
 
-    parsed: Dict[str, Type] = {}
+    parsed: dict[str, tuple[type[T], T]] = {}
     for k, v in res.items():
         try:
-            typ = parse_type(v, k, infer_files=infer_files)
+            typ = parse_type(v, k)
         except ValueError as e:
-            click.secho(
-                f"WARNING: Skipping parameter {k}. Failed to parse type: {e}.",
-                fg="yellow",
-            )
+            click.secho(f"WARNING: Skipping parameter {k}. Failed to parse type: {e}.", fg="yellow")
             continue
-        val, default = parse_value(typ, v)
 
-        parsed[k] = (typ, (val, default))
+        default = NoValue()
+        try:
+            default = parse_value(typ, v)
+        except AssertionError as e:
+            click.secho(f"WARNING: Unable to parse default for parameter {k}: {e}.", fg="yellow")
+
+        parsed[k] = (typ, default)
 
     return parsed
-
-
-def file_metadata_str(typ: Type, value: JSONValue, level: int = 0) -> str:
-    if get_origin(typ) is Annotated:
-        args = get_args(typ)
-        assert len(args) > 0
-        return file_metadata_str(args[0], value, level)
-
-    if is_primitive_type(typ):
-        return ""
-
-    if typ in {LatchFile, LatchDir}:
-        return reindent(
-            f"""\
-            SnakemakeFileMetadata(
-                path={repr(value)},
-                config=True,
-            ),\n""",
-            level,
-        )
-
-    metadata: List[str] = []
-    if is_list_type(typ):
-        template = """
-        [
-        __metadata__],\n"""
-
-        args = get_args(typ)
-        assert len(args) > 0
-        for val in value:
-            metadata_str = file_metadata_str(get_args(typ)[0], val, level + 1)
-            if metadata_str == "":
-                continue
-            metadata.append(metadata_str)
-    else:
-        template = """
-        {
-        __metadata__},\n"""
-
-        assert is_dataclass(typ)
-        for field in fields(typ):
-            metadata_str = file_metadata_str(
-                field.type, getattr(value, field.name), level
-            )
-            if metadata_str == "":
-                continue
-            metadata_str = f"{repr(identifier_from_str(field.name))}: {metadata_str}"
-            metadata.append(reindent(metadata_str, level + 1))
-
-    if len(metadata) == 0:
-        return ""
-
-    return reindent(
-        template,
-        level,
-    ).replace("__metadata__", "".join(metadata), level + 1)
 
 
 # todo(ayush): print informative stuff here ala register
@@ -143,40 +77,26 @@ def generate_metadata(
     *,
     skip_confirmation: bool = False,
     generate_defaults: bool = False,
-    infer_files: bool = False,
 ):
-    parsed = parse_config(config_path, infer_files=infer_files)
+    parsed = parse_config(config_path)
 
-    preambles: List[str] = []
-    params: List[str] = []
-    file_metadata: List[str] = []
+    no_defaults: list[tuple[str, type, Field[object]]] = []
+    defaults: list[tuple[str, type, Field[object]]] = []
 
-    for k, (typ, (val, default)) in parsed.items():
-        preambles.append(get_preamble(typ))
+    for k, (typ, default) in parsed.items():
+        name = identifier_from_str(k)
 
-        param_str = reindent(
-            f"""\
-            {repr(identifier_from_str(k))}: SnakemakeParameter(
-                display_name={repr(best_effort_display_name(k))},
-                type={type_repr(typ)},
-            __default__),""",
-            0,
-        )
-
-        default_str = ""
-        if generate_defaults and default is not None:
-            default_str = f"    default={repr(default)},\n"
-
-        param_str = param_str.replace("__default__", default_str)
-
-        param_str = reindent(param_str, 1)
-        params.append(param_str)
-
-        metadata_str = file_metadata_str(typ, val)
-        if metadata_str == "":
+        if not generate_defaults or default is NoValue():
+            no_defaults.append((name, typ, field()))
             continue
-        metadata_str = f"{repr(identifier_from_str(k))}: {metadata_str}"
-        file_metadata.append(reindent(metadata_str, 1))
+
+        if isinstance(default, (list, dict, LatchFile, LatchDir)):
+            defaults.append((name, typ, field(default_factory=lambda: default)))
+            continue
+
+        defaults.append((name, typ, field(default=default)))
+
+    generated_args_type = make_dataclass("SnakemakeArgsType", no_defaults + defaults)
 
     if metadata_root.is_file():
         if not click.confirm(f"A file exists at `{metadata_root}`. Delete it?"):
@@ -187,47 +107,28 @@ def generate_metadata(
     metadata_root.mkdir(exist_ok=True)
 
     metadata_path = metadata_root / Path("__init__.py")
-    old_metadata_path = Path("latch_metadata.py")
-
-    if old_metadata_path.exists() and not metadata_path.exists():
-        if click.confirm(
-            "Found legacy `latch_metadata.py` file in current directory. This is"
-            " deprecated and will be ignored in future releases. Move to"
-            f" `{metadata_path}`? (This will not change file contents)"
-        ):
-            old_metadata_path.rename(metadata_path)
-    elif old_metadata_path.exists() and metadata_path.exists():
-        click.secho(
-            "Warning: Found both `latch_metadata.py` and"
-            f" `{metadata_path}` in current directory."
-            " `latch_metadata.py` will be ignored.",
-            fg="yellow",
-        )
 
     if not metadata_path.exists():
         metadata_path.write_text(
             reindent(
                 r"""
-                from latch.types.metadata import SnakemakeMetadata, LatchAuthor, EnvironmentConfig
-                from latch.types.directory import LatchDir
+                from latch.types.metadata import LatchAuthor
+                from latch.types.metadata.snakemake_v2 import SnakemakeV2Metadata, SnakemakeParameter
 
-                from .parameters import generated_parameters, file_metadata
+                from .generated import SnakemakeArgsType
 
-                SnakemakeMetadata(
-                    output_dir=LatchDir("latch:///your_output_directory"),
+                class WorkflowArgsType(SnakemakeArgsType):
+                    # add custom parameters here
+                    ...
+
+                SnakemakeV2Metadata(
                     display_name="Your Workflow Name",
                     author=LatchAuthor(
                         name="Your Name",
                     ),
-                    env_config=EnvironmentConfig(
-                        use_conda=False,
-                        use_container=False,
-                    ),
-                    cores=4,
-                    # Add more parameters
-                    parameters=generated_parameters,
-                    file_metadata=file_metadata,
-
+                    parameters={
+                        "args": SnakemakeParameter(type=WorkflowArgsType)
+                    },
                 )
                 """,
                 0,
@@ -235,7 +136,7 @@ def generate_metadata(
         )
         click.secho(f"Generated `{metadata_path}`.", fg="green")
 
-    params_path = metadata_root / Path("parameters.py")
+    params_path = metadata_root / Path("generated.py")
     if (
         params_path.exists()
         and not skip_confirmation
@@ -245,35 +146,30 @@ def generate_metadata(
 
     params_path.write_text(
         reindent(
-            r"""
-            from dataclasses import dataclass
-            import typing
-            import typing_extensions
+            rf"""
+            # This file is auto-generated, PLEASE DO NOT EDIT DIRECTLY! To update, run
+            #
+            #   $ latch generate-metadata --snakemake {config_path}
+            #
+            # Add any custom logic or parameters in `latch_metadata/__init__.py`.
 
+            import typing
+            from dataclasses import dataclass, field
+            from enum import Enum
+
+            import typing_extensions
             from flytekit.core.annotation import FlyteAnnotation
 
-            from latch.types.metadata import SnakemakeParameter, SnakemakeFileParameter, SnakemakeFileMetadata
-            from latch.types.file import LatchFile
+            from latch.ldata.path import LPath
             from latch.types.directory import LatchDir
+            from latch.types.file import LatchFile
+            from latch.types.metadata import Params, Section, Spoiler, Text
+            from latch.types.samplesheet_item import SamplesheetItem
 
             __preambles__
 
-            # Import these into your `__init__.py` file:
-            #
-            # from .parameters import generated_parameters, file_metadata
-
-            generated_parameters = {
-            __params__
-            }
-
-            file_metadata = {
-            __file_metadata__}
-
             """,
             0,
-        )
-        .replace("__preambles__", "".join(preambles))
-        .replace("__params__", "\n".join(params))
-        .replace("__file_metadata__", "".join(file_metadata))
+        ).replace("__preambles__", get_preamble(generated_args_type))
     )
     click.secho(f"Generated `{params_path}`.", fg="green")
