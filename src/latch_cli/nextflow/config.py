@@ -16,18 +16,10 @@ from latch.ldata.path import LPath
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
 from latch.types.samplesheet_item import SamplesheetItem
-from latch_cli.snakemake.config.utils import get_preamble
-from latch_cli.utils import best_effort_display_name, identifier_from_str
 
+from ..snakemake.config.utils import get_preamble
+from ..utils import best_effort_display_name, best_effort_title_case, identifier_from_str
 from .parse_schema import NfType, parse_schema
-
-underscores = re.compile(r"_+")
-spaces = re.compile(r"\s+")
-
-
-def best_effort_title_case(s: str) -> str:
-    return identifier_from_str(spaces.sub("", underscores.sub(" ", s).title()))
-
 
 T = TypeVar("T")
 
@@ -118,14 +110,10 @@ def get_python_type_inner(
             else:
                 defaults.append((field_name, field_type, field_obj))
 
-        return make_dataclass(
-            f"{best_effort_title_case(param_name)}Type", no_defaults + defaults
-        )
+        return make_dataclass(f"{best_effort_title_case(param_name)}Type", no_defaults + defaults)
 
     if typ["type"] == "samplesheet":
-        dc = get_python_type(
-            param_name, {**typ, "type": "object", "properties": typ["schema"]}
-        )
+        dc = get_python_type(param_name, {**typ, "type": "object", "properties": typ["schema"]})
         return list[SamplesheetItem[dc]]
 
     assert typ["type"] == "enum", f"unsupported type {typ['typ']!r}"
@@ -157,9 +145,7 @@ def get_python_type(
     return Optional[inner]
 
 
-def generate_flow(
-    raw_schema_content: dict[str, object], parsed: dict[str, NfType]
-) -> str:
+def generate_flow(raw_schema_content: dict[str, object], parsed: dict[str, NfType]) -> str:
     if "$defs" not in raw_schema_content:
         return "generated_flow = None"
 
@@ -220,9 +206,7 @@ def generate_flow(
     return f"generated_flow = [{', '.join(flow_elements)}]"
 
 
-def generate_metadata(
-    schema_path: Path, metadata_root: Path, *, skip_confirmation: bool = False
-):
+def generate_metadata(schema_path: Path, metadata_root: Path, *, skip_confirmation: bool = False):
     raw_schema_content: dict[str, object] = json.loads(schema_path.read_text())
 
     display_name: Optional[str] = raw_schema_content.get("title")

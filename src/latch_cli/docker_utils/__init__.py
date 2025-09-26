@@ -52,11 +52,6 @@ class DockerfileBuilder:
     direnv: Optional[Path] = None
 
     def get_prologue(self):
-        if self.wf_type == WorkflowType.snakemake:
-            library_name = '"latch[snakemake]"'
-        else:
-            library_name = "latch"
-
         self.commands.append(
             DockerCmdBlock(
                 comment="Prologue",
@@ -83,21 +78,25 @@ class DockerfileBuilder:
                     "env LANG='en_US.UTF-8'",
                     "",
                     "arg DEBIAN_FRONTEND=noninteractive",
-                    "",
-                    "# Latch SDK",
-                    "# DO NOT REMOVE",
-                    f"run pip install {library_name}=={self.config.latch_version}",
-                    "run mkdir /opt/latch",
                 ],
                 order=DockerCmdBlockOrder.precopy,
             )
         )
 
     def get_epilogue(self):
+        if self.wf_type == WorkflowType.snakemake:
+            library_name = '"latch[snakemake]"'
+        else:
+            library_name = "latch"
+
         self.commands.append(
             DockerCmdBlock(
                 comment="Epilogue",
                 commands=[
+                    "",
+                    "# Latch SDK",
+                    "# DO NOT REMOVE",
+                    f"run pip install {library_name}=={self.config.latch_version}",
                     "",
                     "# Latch workflow registration metadata",
                     "# DO NOT CHANGE",
@@ -294,10 +293,7 @@ class DockerfileBuilder:
             return
 
         click.echo(
-            " ".join([
-                click.style(f"{self.direnv.name}:", bold=True),
-                "Environment variable setup",
-            ])
+            " ".join([click.style(f"{self.direnv.name}:", bold=True), "Environment variable setup"])
         )
         envs: list[str] = []
         for line in self.direnv.read_text().splitlines():
@@ -327,15 +323,6 @@ class DockerfileBuilder:
     def get_copy_file_commands(self):
         cmd = ["copy . /root/"]
 
-        if self.wf_type == WorkflowType.snakemake:
-            cmd.extend([
-                "",
-                "# Latch snakemake workflow entrypoint",
-                "# DO NOT CHANGE",
-                "",
-                "copy .latch/snakemake_jit_entrypoint.py /root/snakemake_jit_entrypoint.py",
-            ])
-
         self.commands.append(
             DockerCmdBlock(
                 comment="Copy workflow data (use .dockerignore to skip files)",
@@ -351,20 +338,13 @@ class DockerfileBuilder:
         if (
             dest.exists()
             and not overwrite
-            and not (
-                click.confirm(f"Dockerfile already exists at `{dest}`. Overwrite?")
-            )
+            and not (click.confirm(f"Dockerfile already exists at `{dest}`. Overwrite?"))
         ):
             return
 
         click.secho("Generating Dockerfile", bold=True)
 
-        click.echo(
-            " ".join([
-                click.style("Base image:", fg="bright_blue"),
-                self.config.base_image,
-            ])
-        )
+        click.echo(" ".join([click.style("Base image:", fg="bright_blue"), self.config.base_image]))
         click.echo(
             " ".join([
                 click.style("Latch SDK version:", fg="bright_blue"),
@@ -403,10 +383,7 @@ def generate_dockerignore(
 ) -> None:
     if dest.exists():
         if dest.is_dir():
-            click.secho(
-                f".dockerignore already exists at `{dest}` and is a directory.",
-                fg="red",
-            )
+            click.secho(f".dockerignore already exists at `{dest}` and is a directory.", fg="red")
             raise click.exceptions.Exit(1)
 
         if not overwrite and not click.confirm(

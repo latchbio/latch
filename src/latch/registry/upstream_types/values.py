@@ -3,6 +3,8 @@ from typing import ClassVar, List, Literal, Optional, TypedDict, Union
 
 from typing_extensions import Self, TypeAlias
 
+from latch.utils import Singleton
+
 
 class InvalidValue(TypedDict):
     rawValue: str
@@ -62,9 +64,7 @@ class PrimitiveUnresolvedBlobValueValid(TypedDict):
     valid: Literal[True]
 
 
-PrimitiveUnresolvedBlobValue: TypeAlias = Union[
-    PrimitiveUnresolvedBlobValueValid, InvalidValue
-]
+PrimitiveUnresolvedBlobValue: TypeAlias = Union[PrimitiveUnresolvedBlobValueValid, InvalidValue]
 
 
 class LinkValue(TypedDict):
@@ -108,23 +108,11 @@ class UnionValue(TypedDict):
 DBValue: TypeAlias = Union[PrimitiveValue, ArrayValue, UnionValue]
 
 
-@dataclass(frozen=True)
-class EmptyCell:
+class EmptyCell(Singleton):
     """Empty Registry :class:`Record` value. Singleton.
-
-    The constructor returns a referentially identical instance each call. That is,
-    `EmptyCell() is EmptyCell()`
 
     Used to distinguish explicit `None` values from missing values.
     """
-
-    _singleton: ClassVar[Optional["EmptyCell"]] = None
-
-    def __new__(cls) -> Self:
-        if cls._singleton is None:
-            cls._singleton = super().__new__(cls)
-
-        return cls._singleton
 
 
 Value: TypeAlias = Union[DBValue, EmptyCell]

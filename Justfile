@@ -1,7 +1,7 @@
 # Setup
 
 install:
-  uv sync --no-cache --frozen
+  uv sync --group dev --group docs --no-cache --frozen
 
 # Packaging
 
@@ -16,8 +16,8 @@ publish:
 # Testing
 
 test:
-  export TEST_TOKEN=$(cat ~/.latch/token) &&\
-    pytest -s tests
+  export TEST_TOKEN=$(cat ~/.latch/token)
+  pytest -s
 
 # Docs
 

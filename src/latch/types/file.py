@@ -160,10 +160,7 @@ class LatchFile(FlyteFile):
         if self.remote_path is None:
             return f"LatchFile({repr(format_path(self.local_path))})"
 
-        return (
-            f"LatchFile({repr(self.path)},"
-            f" remote_path={repr(format_path(self.remote_path))})"
-        )
+        return f"LatchFile({repr(self.path)}, remote_path={repr(format_path(self.remote_path))})"
 
     def __str__(self):
         if self.remote_path is None:
@@ -200,9 +197,7 @@ class LatchFilePathTransformer(FlyteFilePathTransformer):
             if remote_path is None:
                 remote_path = ctx.file_access.get_random_remote_path()
 
-            put_res = ctx.file_access.put_data(
-                python_val.path, remote_path, is_multipart=False
-            )
+            put_res = ctx.file_access.put_data(python_val.path, remote_path, is_multipart=False)
             if put_res is None:
                 put_res = {}
 
@@ -210,9 +205,7 @@ class LatchFilePathTransformer(FlyteFilePathTransformer):
             scalar=Scalar(
                 blob=Blob(
                     metadata=BlobMetadata(
-                        type=BlobType(
-                            format="", dimensionality=BlobType.BlobDimensionality.SINGLE
-                        )
+                        type=BlobType(format="", dimensionality=BlobType.BlobDimensionality.SINGLE)
                     ),
                     uri=python_val.remote_path,
                 )
@@ -221,21 +214,14 @@ class LatchFilePathTransformer(FlyteFilePathTransformer):
         )
 
     def to_python_value(
-        self,
-        ctx: FlyteContext,
-        lv: Literal,
-        expected_python_type: Union[type[LatchFile], PathLike],
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Union[type[LatchFile], PathLike]
     ) -> LatchFile:
         uri = lv.scalar.blob.uri
         if expected_python_type is PathLike:
-            raise TypeError(
-                "Casting from Pathlike to LatchFile is currently not supported."
-            )
+            raise TypeError("Casting from Pathlike to LatchFile is currently not supported.")
 
         if not issubclass(expected_python_type, LatchFile):
-            raise TypeError(
-                f"Neither os.PathLike nor LatchFile specified {expected_python_type}"
-            )
+            raise TypeError(f"Neither os.PathLike nor LatchFile specified {expected_python_type}")
 
         # This is a local file path, like /usr/local/my_file, don't mess with it. Certainly, downloading it doesn't
         # make any sense.

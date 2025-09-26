@@ -96,8 +96,7 @@ def sub_from_jwt(token: str) -> str:
         sub = payload["sub"]
     except KeyError:
         raise ValueError(
-            "Provided token lacks a user sub in the data payload"
-            " and is not a valid token."
+            "Provided token lacks a user sub in the data payload and is not a valid token."
         )
     return sub
 
@@ -156,9 +155,7 @@ def human_readable_time(t_seconds: float) -> str:
 def hash_directory(dir_path: Path, *, silent: bool = False) -> str:
     # todo(maximsmol): store per-file hashes to show which files triggered a version change
     if not silent:
-        click.secho(
-            "Calculating workflow version based on file content hash", bold=True
-        )
+        click.secho("Calculating workflow version based on file content hash", bold=True)
         click.secho("  Disable with --disable-auto-version/-d", italic=True, dim=True)
 
     m = hashlib.new("sha256")
@@ -203,8 +200,7 @@ def hash_directory(dir_path: Path, *, silent: bool = False) -> str:
         if not stat.S_ISREG(p_stat.st_mode):
             if not silent:
                 click.secho(
-                    f"{p.relative_to(dir_path.resolve())} is not a regular file."
-                    " Ignoring contents",
+                    f"{p.relative_to(dir_path.resolve())} is not a regular file. Ignoring contents",
                     fg="yellow",
                     bold=True,
                 )
@@ -225,9 +221,7 @@ def hash_directory(dir_path: Path, *, silent: bool = False) -> str:
     return m.hexdigest()
 
 
-def generate_temporary_ssh_credentials(
-    ssh_key_path: Path, *, add_to_agent: bool = True
-) -> str:
+def generate_temporary_ssh_credentials(ssh_key_path: Path, *, add_to_agent: bool = True) -> str:
     # check if there is already a valid key at that path, and if so, use that
     # otherwise, if its not valid, remove it
     if ssh_key_path.exists():
@@ -242,14 +236,10 @@ def generate_temporary_ssh_credentials(
                 raise
 
             # if both files are valid and their fingerprints match, use them instead of generating a new pair
-            click.secho(
-                f"Found existing key pair at {ssh_key_path}.", dim=True, italic=True
-            )
+            click.secho(f"Found existing key pair at {ssh_key_path}.", dim=True, italic=True)
         except:
             click.secho(
-                f"Found malformed key-pair at {ssh_key_path}. Overwriting.",
-                dim=True,
-                italic=True,
+                f"Found malformed key-pair at {ssh_key_path}. Overwriting.", dim=True, italic=True
             )
 
             ssh_key_path.unlink(missing_ok=True)
@@ -363,13 +353,8 @@ class TemporarySSHCredentials:
         self._public_key = generate_temporary_ssh_credentials(self._ssh_key_path)
 
     def cleanup(self):
-        if (
-            self._ssh_key_path.exists()
-            and self._ssh_key_path.with_suffix(".pub").exists()
-        ):
-            subprocess.run(
-                ["ssh-add", "-d", self._ssh_key_path], check=True, capture_output=True
-            )
+        if self._ssh_key_path.exists() and self._ssh_key_path.with_suffix(".pub").exists():
+            subprocess.run(["ssh-add", "-d", self._ssh_key_path], check=True, capture_output=True)
         self._ssh_key_path.unlink(missing_ok=True)
         self._ssh_key_path.with_suffix(".pub").unlink(missing_ok=True)
 
@@ -442,10 +427,7 @@ def check_exists_and_rename(old: Path, new: Path):
         return
 
     if new.is_file():
-        print(
-            f"Warning: {old} is a directory but {new} is not. {new} will be"
-            " overwritten."
-        )
+        print(f"Warning: {old} is a directory but {new} is not. {new} will be overwritten.")
         shutil.rmtree(new)
         os.renames(old, new)
         return
@@ -455,7 +437,17 @@ def check_exists_and_rename(old: Path, new: Path):
 
 
 underscores = re.compile(r"_+")
+spaces = re.compile(r"\s+")
 
 
 def best_effort_display_name(x: str) -> str:
     return underscores.sub(" ", x).title().strip()
+
+
+def best_effort_title_case(s: str) -> str:
+    return identifier_from_str(spaces.sub("", underscores.sub(" ", s).title()))
+
+
+def exit(msg: str, *, exit_code: int = 1) -> click.exceptions.Exit:
+    click.secho(msg, fg="red")
+    return click.exceptions.Exit(exit_code)

@@ -12,10 +12,7 @@ from flytekit.exceptions.user import FlyteUserException
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
-from flytekit.types.directory.types import (
-    FlyteDirectory,
-    FlyteDirToMultipartBlobTransformer,
-)
+from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
 from typing_extensions import Annotated
 
 from latch.ldata.path import LPath
@@ -96,10 +93,7 @@ class LatchDir(FlyteDirectory):
     """
 
     def __init__(
-        self,
-        path: Union[str, PathLike],
-        remote_path: Optional[PathLike] = None,
-        **kwargs,
+        self, path: Union[str, PathLike], remote_path: Optional[PathLike] = None, **kwargs
     ):
         if path is None:
             raise ValueError("Unable to instantiate LatchDir with None")
@@ -253,10 +247,7 @@ class LatchDir(FlyteDirectory):
         if self.remote_path is None:
             return f"LatchDir({repr(format_path(self.local_path))})"
 
-        return (
-            f"LatchDir({repr(self.path)},"
-            f" remote_path={repr(format_path(self.remote_path))})"
-        )
+        return f"LatchDir({repr(self.path)}, remote_path={repr(format_path(self.remote_path))})"
 
     def __str__(self):
         if self.remote_path is None:
@@ -294,9 +285,7 @@ class LatchDirPathTransformer(FlyteDirToMultipartBlobTransformer):
             if remote_directory is None:
                 remote_directory = ctx.file_access.get_random_remote_directory()
 
-            put_res = ctx.file_access.put_data(
-                python_val.path, remote_directory, is_multipart=True
-            )
+            put_res = ctx.file_access.put_data(python_val.path, remote_directory, is_multipart=True)
             if put_res is None:
                 put_res = {}
 
@@ -305,8 +294,7 @@ class LatchDirPathTransformer(FlyteDirToMultipartBlobTransformer):
                 blob=Blob(
                     metadata=BlobMetadata(
                         type=BlobType(
-                            format="",
-                            dimensionality=BlobType.BlobDimensionality.MULTIPART,
+                            format="", dimensionality=BlobType.BlobDimensionality.MULTIPART
                         )
                     ),
                     uri=python_val.remote_path,
@@ -316,24 +304,17 @@ class LatchDirPathTransformer(FlyteDirToMultipartBlobTransformer):
         )
 
     def to_python_value(
-        self,
-        ctx: FlyteContext,
-        lv: Literal,
-        expected_python_type: Union[type[LatchDir], PathLike],
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Union[type[LatchDir], PathLike]
     ) -> FlyteDirectory:
         uri = lv.scalar.blob.uri
         if expected_python_type is PathLike:
-            raise TypeError(
-                "Casting from Pathlike to LatchDir is currently not supported."
-            )
+            raise TypeError("Casting from Pathlike to LatchDir is currently not supported.")
 
         while get_origin(expected_python_type) == Annotated:
             expected_python_type = get_args(expected_python_type)[0]
 
         if not issubclass(expected_python_type, LatchDir):
-            raise TypeError(
-                f"Neither os.PathLike nor LatchDir specified {expected_python_type}"
-            )
+            raise TypeError(f"Neither os.PathLike nor LatchDir specified {expected_python_type}")
 
         # This is a local file path, like /usr/local/my_file, don't mess with it. Certainly, downloading it doesn't
         # make any sense.

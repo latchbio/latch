@@ -19,8 +19,8 @@ maintainers = [{ name = "Ayush Kamat", email = "ayush@latch.bio" }]
 
 readme = "README.md"
 license = { file = "LICENSE" }
-
 requires-python = ">=3.9"
+
 dependencies = [
   "kubernetes>=24.2.0",
   "pyjwt>=0.2.0",
@@ -72,7 +72,11 @@ classifiers = [
 
 [project.optional-dependencies]
 pandas = ["pandas>=2.0.0"]
-snakemake = ["snakemake>=7.18.0,<7.30.2", "pulp>=2.0,<2.8"]
+snakemake = [
+  "snakemake",
+  "snakemake-storage-plugin-latch==0.1.11",
+  "snakemake-executor-plugin-latch==0.1.9",
+]
 
 [project.scripts]
 latch = "latch_cli.main:main"
@@ -96,11 +100,10 @@ docs = [
 ]
 
 [tool.ruff]
+line-length = 100
 target-version = "py39"
 
 [tool.ruff.lint]
-preview = true
-
 pydocstyle = { convention = "google" }
 extend-select = [
   "F",
