@@ -114,8 +114,7 @@ def snakemake_runtime(pvc_name: str, args: latch_metadata.WorkflowArgsType):
 
 
 @snakemake_workflow(smv2._snakemake_v2_metadata)
-def {
-}(args: latch_metadata.WorkflowArgsType):
+def {workflow_name}(args: latch_metadata.WorkflowArgsType):
     \"\"\"
     Sample Description
     \"\"\"

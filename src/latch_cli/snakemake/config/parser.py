@@ -3,7 +3,11 @@ from pathlib import Path
 from typing import Annotated, TypeVar, Union, get_args, get_origin
 
 import click
+import google.protobuf.json_format as gpjson
 import yaml
+from flytekit.core.annotation import FlyteAnnotation
+from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.type_engine import TypeEngine
 
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
@@ -70,6 +74,17 @@ def parse_config(config_path: Path) -> dict[str, tuple[type[T], Union[T, NoValue
     return parsed
 
 
+# doing bare lambda: variable_name doesn't work because we call the lambda to get its return value
+# and print it so if its something of the form lambda: variable_name, the call will always result
+# in the latest value of variable_name, as opposed to the value of variable_name at the time the
+# lambda was created
+def get_lambda(value: object):
+    def inner():
+        return value
+
+    return inner
+
+
 # todo(ayush): print informative stuff here ala register
 def generate_metadata(
     config_path: Path,
@@ -83,15 +98,31 @@ def generate_metadata(
     no_defaults: list[tuple[str, type, Field[object]]] = []
     defaults: list[tuple[str, type, Field[object]]] = []
 
+    ctx = FlyteContextManager.current_context()
+
     for k, (typ, default) in parsed.items():
         name = identifier_from_str(k)
 
+        annotations: dict[str, object] = {
+            "display_name": best_effort_display_name(k),
+            "output": name == "outdir",
+        }
+        annotated_typ = Annotated[typ, FlyteAnnotation(annotations)]
+
         if not generate_defaults or default is NoValue():
-            no_defaults.append((name, typ, field()))
+            no_defaults.append((name, annotated_typ, field()))
             continue
 
+        annotations["default"] = gpjson.MessageToDict(
+            TypeEngine.to_literal(ctx, default, typ, TypeEngine.to_literal_type(typ)).to_flyte_idl()
+        )
+
         if isinstance(default, (list, dict, LatchFile, LatchDir)):
-            defaults.append((name, typ, field(default_factory=lambda: default)))
+            defaults.append((name, annotated_typ, field(default_factory=get_lambda(default))))
+            continue
+
+        if is_dataclass(default):
+            defaults.append((name, annotated_typ, field(default_factory=default)))
             continue
 
         defaults.append((name, typ, field(default=default)))

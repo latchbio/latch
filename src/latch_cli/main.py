@@ -426,11 +426,7 @@ def generate_metadata(
             raise click.exceptions.Exit(1)
 
         generate_metadata(
-            config_file,
-            metadata_root,
-            skip_confirmation=yes,
-            infer_files=not no_infer_files,
-            generate_defaults=not no_defaults,
+            config_file, metadata_root, skip_confirmation=yes, generate_defaults=not no_defaults
         )
 
 

@@ -41,7 +41,7 @@ class Visitor(ast.NodeVisitor):
         # 3. save fully qualified name for tasks (need to parse based on import graph)
         for decorator in node.decorator_list:
             if isinstance(decorator, ast.Name):
-                if decorator.id in {"workflow", "nextflow_workflow"}:
+                if decorator.id in {"workflow", "nextflow_workflow", "snakemake_workflow"}:
                     self.flyte_objects.append(FlyteObject("workflow", fqn))
                 elif decorator.id in task_decorators:
                     self.flyte_objects.append(FlyteObject("task", fqn))
@@ -53,10 +53,11 @@ class Visitor(ast.NodeVisitor):
                 if func.id not in task_decorators and func.id not in {
                     "workflow",
                     "nextflow_workflow",
+                    "snakemake_workflow",
                 }:
                     continue
 
-                if func.id in {"workflow", "nextflow_workflow"}:
+                if func.id in {"workflow", "nextflow_workflow", "snakemake_workflow"}:
                     self.flyte_objects.append(FlyteObject("workflow", fqn))
                     continue
 
@@ -105,9 +106,7 @@ def get_flyte_objects(module: Path) -> list[FlyteObject]:
         if file.suffix != ".py":
             continue
 
-        module_name = str(file.with_suffix("").relative_to(module.parent)).replace(
-            os.sep, "."
-        )
+        module_name = str(file.with_suffix("").relative_to(module.parent)).replace(os.sep, ".")
 
         v = Visitor(file, module_name)
 
@@ -115,9 +114,7 @@ def get_flyte_objects(module: Path) -> list[FlyteObject]:
             parsed = ast.parse(file.read_text(), filename=file)
         except SyntaxError as e:
             traceback.print_exc()
-            click.secho(
-                "\nRegistration failed due to a syntax error (see above)", fg="red"
-            )
+            click.secho("\nRegistration failed due to a syntax error (see above)", fg="red")
             raise click.exceptions.Exit(1) from e
 
         v.visit(parsed)

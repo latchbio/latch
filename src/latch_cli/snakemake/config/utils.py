@@ -13,7 +13,7 @@ from latch.ldata.path import LPath
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
 from latch.types.samplesheet_item import SamplesheetItem
-from latch_cli.utils import identifier_from_str
+from latch_cli.utils import best_effort_title_case, identifier_from_str
 
 JSONValue: TypeAlias = Union[int, str, bool, float, None, list["JSONValue"], "JSONDict"]
 JSONDict: TypeAlias = dict[str, "JSONValue"]
@@ -118,19 +118,22 @@ expr = re.compile(
 )
 
 
-def is_file_like(s: str) -> bool:
-    if expr.match(s):
+def is_file_like(name: str, value: str) -> bool:
+    if name == "outdir":
         return True
 
-    return any(s.endswith(x) for x in valid_extensions)
+    if expr.match(value):
+        return True
+
+    return any(value.endswith(x) for x in valid_extensions)
 
 
 def parse_type(v: JSONValue, name: str) -> type:
     if v is None:
         return str
 
-    if isinstance(v, str) and is_file_like(v):
-        if v.endswith("/"):
+    if isinstance(v, str) and is_file_like(name, v):
+        if v.endswith("/") or name == "outdir":
             return LatchDir
 
         return LatchFile
@@ -157,7 +160,7 @@ def parse_type(v: JSONValue, name: str) -> type:
     for k, x in v.items():
         fields[identifier_from_str(k)] = parse_type(x, f"{name}_{k}")
 
-    return make_dataclass(identifier_from_str(name), fields.items())
+    return make_dataclass(best_effort_title_case(f"{name}_type"), fields.items())
 
 
 T = TypeVar("T")
@@ -262,9 +265,6 @@ def type_repr(t: type[Any] | str, *, add_namespace: bool = False) -> str:
         args = get_args(t)
         assert len(args) > 1
         if isinstance(args[1], FlyteAnnotation):
-            if "output" in args[1].data:
-                return "LatchOutputDir"
-
             return (
                 f"typing_extensions.Annotated[{type_repr(args[0], add_namespace=add_namespace)},"
                 f" FlyteAnnotation({args[1].data!r})]"

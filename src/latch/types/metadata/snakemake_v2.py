@@ -2,16 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import click
 
 from latch_cli.utils import identifier_suffix_from_str
 
 from .latch import LatchMetadata
-
-if TYPE_CHECKING:
-    from .snakemake import SnakemakeParameter
+from .snakemake import SnakemakeParameter  # noqa: TCH001
 
 
 @dataclass(frozen=True)
