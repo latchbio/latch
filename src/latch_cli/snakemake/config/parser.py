@@ -125,7 +125,7 @@ def generate_metadata(
             defaults.append((name, annotated_typ, field(default_factory=default)))
             continue
 
-        defaults.append((name, typ, field(default=default)))
+        defaults.append((name, annotated_typ, field(default=default)))
 
     generated_args_type = make_dataclass("SnakemakeArgsType", no_defaults + defaults)
 
