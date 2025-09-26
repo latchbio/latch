@@ -17,6 +17,7 @@ import latch_cli.click_utils
 from latch.ldata._transfer.progress import Progress as _Progress  # noqa: PLC2701
 from latch.utils import current_workspace
 from latch_cli.click_utils import EnumChoice
+from latch_cli.docker_utils import DockerfileBuilder
 from latch_cli.exceptions.handler import CrashHandler
 from latch_cli.services.cp.autocomplete import complete as cp_complete
 from latch_cli.services.cp.autocomplete import remote_complete
@@ -30,7 +31,7 @@ from latch_cli.utils import (
     get_local_package_version,
     hash_directory,
 )
-from latch_cli.workflow_config import BaseImageOptions
+from latch_cli.workflow_config import BaseImageOptions, get_or_create_workflow_config
 from latch_sdk_gql.execute import execute as gql_execute
 
 latch_cli.click_utils.patch()
@@ -1329,6 +1330,10 @@ def snakemake():
     """Manage snakemake-specific commands"""
 
 
+# todo(ayush): allow providing destinations for
+# - config path
+# - dockerfile path
+# - entrypoint output
 @snakemake.command("generate-entrypoint")
 @click.argument("pkg-root", nargs=1, type=click.Path(exists=True, path_type=Path))
 @click.option(
@@ -1345,8 +1350,16 @@ def snakemake():
     help="Path to the Snakefile to register. If not provided, will default to searching the package "
     "root for a file named `Snakefile`.",
 )
+@click.option(
+    "--no-dockerfile",
+    "-D",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Disable automatically generating a Dockerfile.",
+)
 def sm_generate_entrypoint(
-    pkg_root: Path, metadata_root: Optional[Path], snakefile: Optional[Path]
+    pkg_root: Path, metadata_root: Optional[Path], snakefile: Optional[Path], no_dockerfile: bool
 ):
     """Generate a `wf/entrypoint.py` file from a Snakemake workflow"""
 
@@ -1398,7 +1411,14 @@ def sm_generate_entrypoint(
         )
         raise click.exceptions.Exit(1)
 
+    if not no_dockerfile:
+        config = get_or_create_workflow_config(
+            pkg_root / ".latch/config", base_image_type=BaseImageOptions.default
+        )
+        DockerfileBuilder(pkg_root, config, wf_type=WorkflowType.snakemake).generate()
+
     dest.write_text(get_entrypoint_content(pkg_root, metadata_path, snakefile))
+    click.secho(f"Successfully generated entrypoint file `{dest}`", fg="green")
 
 
 """

@@ -378,9 +378,7 @@ class DockerfileBuilder:
         click.secho(f"Successfully generated dockerfile `{dest}`", fg="green")
 
 
-def generate_dockerignore(
-    dest: Path, *, wf_type: WorkflowType, overwrite: bool = False
-) -> None:
+def generate_dockerignore(dest: Path, *, wf_type: WorkflowType, overwrite: bool = False) -> None:
     if dest.exists():
         if dest.is_dir():
             click.secho(f".dockerignore already exists at `{dest}` and is a directory.", fg="red")
@@ -401,9 +399,7 @@ def generate_dockerignore(
     click.secho(f"Successfully generated .dockerignore `{dest}`", fg="green")
 
 
-def get_default_dockerfile(
-    pkg_root: Path, *, wf_type: WorkflowType, overwrite: bool = False
-):
+def get_default_dockerfile(pkg_root: Path, *, wf_type: WorkflowType, overwrite: bool = False):
     default_dockerfile = pkg_root / "Dockerfile"
 
     config = get_or_create_workflow_config(
