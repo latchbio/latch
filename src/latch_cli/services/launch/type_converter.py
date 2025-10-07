@@ -4,6 +4,7 @@ This module provides best-effort conversion that works with structurally compati
 allowing dataclasses, enums, and other types to be passed without exact module import matches.
 """
 
+import dataclasses
 from dataclasses import asdict, is_dataclass
 from datetime import datetime, timedelta
 from enum import Enum
@@ -12,6 +13,7 @@ from typing import Any
 from flytekit.core.context_manager import FlyteContext
 from flytekit.models import literals as _literals
 from flytekit.models import types as _types
+from flytekit.models.core import types as _core_types
 from google.protobuf import struct_pb2
 
 
@@ -35,8 +37,14 @@ def convert_python_value_to_literal(
     if flyte_literal_type.map_value_type is not None:  # pyright: ignore[reportUnnecessaryComparison]
         return _convert_map(value, flyte_literal_type.map_value_type, ctx)
 
+    if flyte_literal_type.record_type is not None:  # pyright: ignore[reportUnnecessaryComparison]
+        return _convert_record(value, flyte_literal_type.record_type, ctx)
+
     if flyte_literal_type.blob is not None:  # pyright: ignore[reportUnnecessaryComparison]
         return _convert_blob(value, flyte_literal_type.blob, ctx)
+
+    if flyte_literal_type.enum_type is not None:  # pyright: ignore[reportUnnecessaryComparison]
+        return _convert_enum(value, flyte_literal_type.enum_type)
 
     raise ValueError(f"Unsupported literal type: {flyte_literal_type}")
 
@@ -223,9 +231,47 @@ def _convert_map(
     )
 
 
+def _convert_record(
+    value: Any,
+    record_type: _types.RecordType,
+    ctx: FlyteContext,
+) -> _literals.Literal:
+    """Convert a Python object to a Flyte record literal.
+
+    Accepts dicts, dataclasses, or plain objects with attributes.
+    Only fields declared in the record type are serialized.
+    """
+    if isinstance(value, dict):
+        src = value
+    elif is_dataclass(value):
+        # Do NOT use dataclasses.asdict here as it recursively converts nested dataclasses
+        # like LatchFile into dicts, breaking downstream blob conversions. Extract fields directly.
+        src = {f.name: getattr(value, f.name) for f in dataclasses.fields(value)}
+    elif hasattr(value, "__dict__"):
+        src = {k: v for k, v in value.__dict__.items() if not k.startswith("_")}
+    else:
+        raise ValueError(f"Cannot convert {type(value)} to record")
+
+    record_fields: list[_literals.RecordField] = []
+    for field in record_type.fields:
+        key = field.key
+        sub_type = field.literal_type
+
+        if key in src:
+            sub_value = src[key]
+        else:
+            # Missing key: allow None if sub_type is Optional (Union with NONE)
+            sub_value = None
+
+        sub_literal = convert_python_value_to_literal(sub_value, sub_type, ctx)
+        record_fields.append(_literals.RecordField(key=key, value=sub_literal))
+
+    return _literals.Literal(record=_literals.Record(fields=record_fields))
+
+
 def _convert_blob(
     value: Any,
-    blob_type: _types.BlobType,
+    blob_type: _core_types.BlobType,
     ctx: FlyteContext,
 ) -> _literals.Literal:
     """Convert a file/directory path to a Flyte blob literal."""
@@ -268,6 +314,29 @@ def _convert_blob(
         raise ValueError(f"Failed to convert blob: {e}") from e
 
 
+def _convert_enum(
+    value: Any,
+    enum_type: _core_types.EnumType,
+) -> _literals.Literal:
+    """Convert a Python Enum or string to an enum literal (string primitive)."""
+    if isinstance(value, Enum):
+        enum_val = value.value
+    else:
+        enum_val = value
+
+    if not isinstance(enum_val, str):
+        enum_val = str(enum_val)
+
+    # Optional: enforce that the value is one of the declared enum values
+    if enum_type.values and enum_val not in enum_type.values:
+        raise ValueError(
+            f"'{enum_val}' is not a valid value for enum {enum_type.values}"
+        )
+
+    prim = _literals.Primitive(string_value=enum_val)
+    return _literals.Literal(scalar=_literals.Scalar(primitive=prim))
+
+
 def _convert_union(
     value: Any,
     union_type: _types.LiteralType,
@@ -285,7 +354,7 @@ def _convert_union(
             scalar=_literals.Scalar(
                 union=_literals.Union(
                     value=none_literal,
-                    type=_types.LiteralType(simple=_types.SimpleType.NONE),
+                    stored_type=_types.LiteralType(simple=_types.SimpleType.NONE),
                 )
             )
         )
@@ -301,7 +370,7 @@ def _convert_union(
                 scalar=_literals.Scalar(
                     union=_literals.Union(
                         value=converted,
-                        type=variant,
+                        stored_type=variant,
                     )
                 )
             )
