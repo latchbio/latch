@@ -13,8 +13,7 @@ import google.protobuf.json_format as gpjson
 import gql
 from flyteidl.core import interface_pb2 as _interface_pb2
 from flytekit.core.context_manager import FlyteContextManager
-from flytekit.core.promise import translate_inputs_to_literals
-from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
+from flytekit.core.type_engine import TypeEngine
 from flytekit.models.interface import Parameter, ParameterMap, Variable, VariableMap
 from flytekit.models.literals import LiteralMap
 
@@ -22,6 +21,7 @@ from latch.ldata.path import LPath
 from latch.utils import current_workspace
 from latch_cli import tinyrequests
 from latch_cli.services.launch.interface import get_workflow_interface
+from latch_cli.services.launch.type_converter import convert_inputs_to_literals
 from latch_cli.utils import get_auth_header
 from latch_sdk_config.latch import NUCLEUS_URL, config
 from latch_sdk_gql.execute import execute
@@ -370,19 +370,11 @@ def launch(
     ctx = FlyteContextManager.current_context()
     assert ctx is not None
 
-    try:
-        fixed_literals = translate_inputs_to_literals(
-            ctx,
-            incoming_values=params,
-            flyte_interface_types=flyte_interface_types,
-            native_types={k: v[0] for k, v in python_interface_with_defaults.items()},
-        )
-    except TypeTransformerFailedError as e:
-        if "is not an instance of" in str(e):
-            raise ValueError(
-                "Failed to translate inputs to literals. Ensure you are importing the same classes used in the workflow function header"
-            ) from e
-        raise
+    fixed_literals = convert_inputs_to_literals(
+        ctx,
+        params=params,
+        flyte_interface_types=flyte_interface_types,
+    )
 
     return launch_workflow(
         target_account_id,
