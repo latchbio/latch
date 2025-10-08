@@ -105,7 +105,9 @@ def _convert_primitive(
             raise ValueError(f"Cannot convert {value} to duration")
 
     elif simple_type == _types.SimpleType.NONE:  # pyright: ignore[reportUnnecessaryComparison]
-        return _create_none_literal()
+        if value is None:
+            return _create_none_literal()
+        raise ValueError("Expected None for NONE type")
 
     else:
         raise ValueError(f"Unsupported simple type: {simple_type}")
@@ -304,7 +306,10 @@ def _convert_union(
             scalar=_literals.Scalar(
                 union=_literals.Union(
                     value=none_literal,
-                    stored_type=_types.LiteralType(simple=_types.SimpleType.NONE),
+                    stored_type=_types.LiteralType(
+                        simple=_types.SimpleType.NONE,
+                        structure=_types.TypeStructure(tag="none"),
+                    ),
                 )
             )
         )
@@ -317,11 +322,23 @@ def _convert_union(
     for variant in variants:
         try:
             converted = convert_python_value_to_literal(value, variant, ctx)
+            stored = _types.LiteralType(
+                simple=variant.simple,
+                collection_type=variant.collection_type,
+                map_value_type=variant.map_value_type,
+                record_type=variant.record_type,
+                blob=variant.blob,
+                enum_type=variant.enum_type,
+                union_type=variant.union_type,
+                metadata=variant.metadata,
+                structure=variant.structure,
+                annotation=variant.annotation,
+            )
             possible_variants.append(_literals.Literal(
                 scalar=_literals.Scalar(
                     union=_literals.Union(
                         value=converted,
-                        stored_type=variant,
+                        stored_type=stored,
                     )
                 )
             ))
