@@ -46,7 +46,7 @@ def convert_python_value_to_literal(
         return _convert_record(value, flyte_literal_type.record_type, ctx)
 
     if flyte_literal_type.blob is not None:  # pyright: ignore[reportUnnecessaryComparison]
-        return _convert_blob(value, flyte_literal_type.blob, ctx)
+        return _convert_blob(value, flyte_literal_type.blob)
 
     if flyte_literal_type.enum_type is not None:  # pyright: ignore[reportUnnecessaryComparison]
         return _convert_enum(value, flyte_literal_type.enum_type)
@@ -248,20 +248,29 @@ def _convert_record(
 def _convert_blob(
     value: Any,  # noqa: ANN401
     blob_type: _core_types.BlobType,
-    ctx: FlyteContext,
 ) -> _literals.Literal:
-    is_multipart = (
-        blob_type.dimensionality == _core_types.BlobType.BlobDimensionality.MULTIPART
-    )
-
-    target_py_type = LatchDir if is_multipart else LatchFile
+    remote_uri: str | None = None
 
     if isinstance(value, str):
-        value = target_py_type(value)
+        remote_uri = value
     elif isinstance(value, LPath):
-        value = target_py_type(value.path)
+        remote_uri = value.path
+    elif isinstance(value, (LatchFile, LatchDir)):
+        if value.remote_path is not None:
+            remote_uri = value.remote_path
+        elif isinstance(value.path, str):
+            remote_uri = value.path
+    else:
+        raise TypeError(f"Cannot convert {type(value)} to blob")
 
-    return TypeEngine.to_literal(ctx, value, target_py_type, None)
+    return _literals.Literal(
+        scalar=_literals.Scalar(
+            blob=_literals.Blob(
+                metadata=_literals.BlobMetadata(type=blob_type),
+                uri=remote_uri,
+            )
+        )
+    )
 
 
 def _convert_enum(
