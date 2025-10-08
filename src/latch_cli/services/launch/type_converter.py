@@ -320,11 +320,11 @@ def _convert_union(
             errors.append((variant, str(e)))
             continue
 
-    if len(possible_variants) > 0:
-        raise ValueError(f"Multiple possible union variants for value\n{value}\n{', '.join([str(v.scalar.union.stored_type) for v in possible_variants])}")
-
     if len(possible_variants) == 1:
         return possible_variants[0]
+
+    if len(possible_variants) > 1:
+        raise ValueError(f"Multiple possible union variants for value\n{value}\n{', '.join([str(v.scalar.union.stored_type) for v in possible_variants])}")
 
     error_msg = "Could not convert value to any union variant. Tried:\n"
     for variant, error in errors:
