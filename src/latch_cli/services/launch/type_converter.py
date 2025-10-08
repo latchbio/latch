@@ -18,10 +18,9 @@ from latch.types.file import LatchFile
 def convert_python_value_to_literal(
     value: Any,  # noqa: ANN401
     flyte_literal_type: _types.LiteralType,
-    ctx: FlyteContext,
 ) -> _literals.Literal:
     if flyte_literal_type.union_type is not None:  # pyright: ignore[reportUnnecessaryComparison]
-        return _convert_union(value, flyte_literal_type, ctx)
+        return _convert_union(value, flyte_literal_type)
 
     if value is None:
         return _create_none_literal()
@@ -30,13 +29,13 @@ def convert_python_value_to_literal(
         return _convert_primitive(value, flyte_literal_type.simple)
 
     if flyte_literal_type.collection_type is not None:  # pyright: ignore[reportUnnecessaryComparison]
-        return _convert_collection(value, flyte_literal_type.collection_type, ctx)
+        return _convert_collection(value, flyte_literal_type.collection_type)
 
     if flyte_literal_type.map_value_type is not None:  # pyright: ignore[reportUnnecessaryComparison]
-        return _convert_map(value, flyte_literal_type.map_value_type, ctx)
+        return _convert_map(value, flyte_literal_type.map_value_type)
 
     if flyte_literal_type.record_type is not None:  # pyright: ignore[reportUnnecessaryComparison]
-        return _convert_record(value, flyte_literal_type.record_type, ctx)
+        return _convert_record(value, flyte_literal_type.record_type)
 
     if flyte_literal_type.blob is not None:  # pyright: ignore[reportUnnecessaryComparison]
         return _convert_blob(value, flyte_literal_type.blob)
@@ -176,13 +175,12 @@ def _python_value_to_struct_value(value: Any) -> struct_pb2.Value:  # noqa: ANN4
 def _convert_collection(
     value: Any,  # noqa: ANN401
     element_type: _types.LiteralType,
-    ctx: FlyteContext,
 ) -> _literals.Literal:
     if not isinstance(value, (list, tuple)):
         raise TypeError(f"Expected list or tuple, got {type(value)}")
 
     literals = [
-        convert_python_value_to_literal(item, element_type, ctx)
+        convert_python_value_to_literal(item, element_type)
         for item in value
     ]
 
@@ -194,13 +192,12 @@ def _convert_collection(
 def _convert_map(
     value: Any,  # noqa: ANN401
     value_type: _types.LiteralType,
-    ctx: FlyteContext,
 ) -> _literals.Literal:
     if not isinstance(value, dict):
         raise TypeError(f"Expected dict, got {type(value)}")
 
     literals = {
-        str(k): convert_python_value_to_literal(v, value_type, ctx)
+        str(k): convert_python_value_to_literal(v, value_type)
         for k, v in value.items()
     }
 
@@ -212,7 +209,6 @@ def _convert_map(
 def _convert_record(
     value: Any,  # noqa: ANN401
     record_type: _types.RecordType,
-    ctx: FlyteContext,
 ) -> _literals.Literal:
     if isinstance(value, dict):
         src = value
@@ -234,7 +230,7 @@ def _convert_record(
             # missing key allowed if optional
             sub_value = None
 
-        sub_literal = convert_python_value_to_literal(sub_value, sub_type, ctx)
+        sub_literal = convert_python_value_to_literal(sub_value, sub_type)
         record_fields.append(_literals.RecordField(key=key, value=sub_literal))
 
     return _literals.Literal(record=_literals.Record(fields=record_fields))
@@ -292,7 +288,6 @@ def _convert_enum(
 def _convert_union(
     value: Any,  # noqa: ANN401
     union_type: _types.LiteralType,
-    ctx: FlyteContext,
 ) -> _literals.Literal:
     if value is None:
         none_literal = _create_none_literal()
@@ -315,7 +310,7 @@ def _convert_union(
     possible_variants = []
     for variant in variants:
         try:
-            converted = convert_python_value_to_literal(value, variant, ctx)
+            converted = convert_python_value_to_literal(value, variant)
             stored = _types.LiteralType(
                 simple=variant.simple,
                 collection_type=variant.collection_type,
@@ -353,7 +348,6 @@ def _convert_union(
 
 
 def convert_inputs_to_literals(
-    ctx: FlyteContext,
     params: dict[str, Any],
     flyte_interface_types: dict[str, Any],  # Variable map
 ) -> dict[str, _literals.Literal]:
@@ -369,7 +363,6 @@ def convert_inputs_to_literals(
         result[param_name] = convert_python_value_to_literal(
             param_value,
             literal_type,
-            ctx,
         )
 
     return result

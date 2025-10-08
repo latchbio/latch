@@ -314,14 +314,14 @@ def launch(
     """
     target_account_id = current_workspace()
 
-    wf_id, interface, _ = get_workflow_interface(target_account_id, wf_name, version)
+    wf_id, interface, defaults = get_workflow_interface(target_account_id, wf_name, version)
 
     flyte_interface_types: dict[str, Variable] = VariableMap.from_flyte_idl(
         gpjson.ParseDict(interface, _interface_pb2.VariableMap())
     ).variables
 
-    python_interface_with_defaults: Union[dict[str, tuple[type, Any]], None] = None
     python_outputs: Union[dict[str, type], None] = None
+    raw_python_interface_with_defaults: Union[str, None] = None
 
     for v in flyte_interface_types.values():
         description: dict[str, Any] = json.loads(v.description)
@@ -329,56 +329,60 @@ def launch(
             continue
 
         meta = description.get("__workflow_meta__", {}).get("meta", {})
-
         raw_python_interface_with_defaults = meta.get("python_interface")
         raw_python_outputs = meta.get("python_outputs")
 
-        if (
-            raw_python_interface_with_defaults is not None
-            and raw_python_outputs is not None
-        ):
+        if raw_python_outputs is not None:
             try:
-                python_interface_with_defaults = dill.loads(
-                    base64.b64decode(raw_python_interface_with_defaults)
-                )
                 python_outputs = dill.loads(base64.b64decode(raw_python_outputs))
-
             except dill.UnpicklingError as e:
-                raise RuntimeError(
-                    "Failed to decode the workflow python interface / outputs. Ensure your python version matches the version in the workflow environment"
-                ) from e
+                raise RuntimeError("Failed to decode the workflow outputs.") from e
 
             break
 
-    if python_interface_with_defaults is None or python_outputs is None:
+    if python_outputs is None:
         raise RuntimeError(
             "Missing python interface / outputs in workflow metadata. Re-register workflow with latch version >= 2.65.0 in workflow environment"
         )
 
-    for k, v in python_interface_with_defaults.items():
-        if k in params:
-            continue
-
-        if v[1] is not None:
-            params[k] = v[1]
-            continue
-
-        t = v[0]
-        if get_origin(t) is Union and type(None) in get_args(t):
-            params[k] = None
-        else:
-            raise ValueError(f"Required parameter '{k}' not provided in params")
-
-    ctx = FlyteContextManager.current_context()
-    assert ctx is not None
-
     if best_effort:
         fixed_literals = convert_inputs_to_literals(
-            ctx,
             params=params,
             flyte_interface_types=flyte_interface_types,
         )
+        defaults = defaults["parameters"]
+        # switch to using the default params here
     else:
+        python_interface_with_defaults: Union[dict[str, tuple[type, Any]], None] = None
+
+        try:
+            python_interface_with_defaults = dill.loads(
+                base64.b64decode(raw_python_interface_with_defaults)
+            )
+            python_outputs = dill.loads(base64.b64decode(raw_python_outputs))
+
+        except dill.UnpicklingError as e:
+            raise RuntimeError(
+                "Failed to decode the workflow python interface / outputs. Ensure your python version matches the version in the workflow environment"
+            ) from e
+
+        for k, v in python_interface_with_defaults.items():
+            if k in params:
+                continue
+
+            if v[1] is not None:
+                params[k] = v[1]
+                continue
+
+            t = v[0]
+            if get_origin(t) is Union and type(None) in get_args(t):
+                params[k] = None
+            else:
+                raise ValueError(f"Required parameter '{k}' not provided in params")
+
+        ctx = FlyteContextManager.current_context()
+        assert ctx is not None
+
         try:
             fixed_literals = translate_inputs_to_literals(
                 ctx,
