@@ -13,7 +13,8 @@ import google.protobuf.json_format as gpjson
 import gql
 from flyteidl.core import interface_pb2 as _interface_pb2
 from flytekit.core.context_manager import FlyteContextManager
-from flytekit.core.type_engine import TypeEngine
+from flytekit.core.promise import translate_inputs_to_literals
+from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.models.interface import Parameter, ParameterMap, Variable, VariableMap
 from flytekit.models.literals import LiteralMap
 
@@ -294,7 +295,7 @@ def launch_from_launch_plan(
 
 
 def launch(
-    *, wf_name: str, params: dict[str, Any], version: Optional[str] = None
+    *, wf_name: str, params: dict[str, Any], version: Optional[str] = None, best_effort: bool = False
 ) -> Execution:
     """Create an execution of workflow `wf_name` with version `version` and parameters `params`.
 
@@ -306,6 +307,7 @@ def launch(
         wf_name: Name of workflow to launch (see `.latch/workflow_name` in the workflow directory).
         params: A dictionary of parameters to pass to the workflow.
         version: An optional workflow version to launch, defaulting to latest.
+        best_effort: Use best effort to translate inputs to literals if types do not match
 
     Returns:
         Execution ID of the launched workflow.
@@ -370,11 +372,26 @@ def launch(
     ctx = FlyteContextManager.current_context()
     assert ctx is not None
 
-    fixed_literals = convert_inputs_to_literals(
-        ctx,
-        params=params,
-        flyte_interface_types=flyte_interface_types,
-    )
+    if best_effort:
+        fixed_literals = convert_inputs_to_literals(
+            ctx,
+            params=params,
+            flyte_interface_types=flyte_interface_types,
+        )
+    else:
+        try:
+            fixed_literals = translate_inputs_to_literals(
+                ctx,
+                incoming_values=params,
+                flyte_interface_types=flyte_interface_types,
+                native_types={k: v[0] for k, v in python_interface_with_defaults.items()},
+            )
+        except TypeTransformerFailedError as e:
+            if "is not an instance of" in str(e):
+                raise ValueError(
+                    "Failed to translate inputs to literals. Ensure you are importing the same classes used in the workflow function header"
+                ) from e
+            raise
 
     return launch_workflow(
         target_account_id,

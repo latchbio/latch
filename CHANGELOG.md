@@ -18,10 +18,9 @@ Types of changes
 
 ## 2.67.8 - 2025-10-08
 
-### Fixed
+### Added
 
-* launch_v2 does not require exact types, does a best effort conversion
-
+* `launch_v2` accepts a `best_effort` argument which allows for a best effort conversion of inputs to literals if types do not match
 
 ## 2.67.7 - 2025-10-08
 
