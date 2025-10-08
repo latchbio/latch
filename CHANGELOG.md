@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.67.7 - 2025-10-08
+
+### Fixed
+
+* Bug where union types containing blobs threw an error when being converted to IDL
+
 ## 2.67.6 - 2025-09-23
 
 ### Fixed

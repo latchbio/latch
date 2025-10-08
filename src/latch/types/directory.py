@@ -1,13 +1,17 @@
 import os
 from os import PathLike
 from pathlib import Path
-from typing import Optional, TypedDict, Union, get_args, get_origin
+from typing import Annotated, Optional, TypedDict, Union, get_args, get_origin
 from urllib.parse import urlparse
 
 import gql
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import TypeEngine, TypeTransformer
+from flytekit.core.type_engine import (
+    TypeEngine,
+    TypeTransformer,
+    TypeTransformerFailedError,
+)
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
@@ -16,7 +20,6 @@ from flytekit.types.directory.types import (
     FlyteDirectory,
     FlyteDirToMultipartBlobTransformer,
 )
-from typing_extensions import Annotated
 
 from latch.ldata.path import LPath
 from latch.types.file import LatchFile
@@ -282,10 +285,15 @@ class LatchDirPathTransformer(FlyteDirToMultipartBlobTransformer):
     def to_literal(
         self,
         ctx: FlyteContext,
-        python_val: LatchDir,
+        python_val: object,
         python_type: type[LatchDir],
         expected: LiteralType,
     ):
+        if not isinstance(python_val, LatchDir):
+            raise TypeTransformerFailedError(
+                f"unable to convert non-LatchDir to LatchDir literal: {python_val}"
+            )
+
         is_execution_context = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID") is not None
 
         put_res = {}

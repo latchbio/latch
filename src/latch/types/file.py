@@ -7,7 +7,11 @@ from urllib.parse import urlparse
 import gql
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import TypeEngine, TypeTransformer
+from flytekit.core.type_engine import (
+    TypeEngine,
+    TypeTransformer,
+    TypeTransformerFailedError,
+)
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
@@ -188,10 +192,15 @@ class LatchFilePathTransformer(FlyteFilePathTransformer):
     def to_literal(
         self,
         ctx: FlyteContext,
-        python_val: LatchFile,
+        python_val: object,
         python_type: type[LatchFile],
         expected: LiteralType,
     ):
+        if not isinstance(python_val, LatchFile):
+            raise TypeTransformerFailedError(
+                f"unable to convert non-LatchFile to LatchFile literal: {python_val}"
+            )
+
         is_execution_context = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID") is not None
 
         put_res = {}
