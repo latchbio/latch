@@ -313,7 +313,6 @@ def launch(
         Execution ID of the launched workflow.
     """
     target_account_id = current_workspace()
-
     wf_id, interface, defaults = get_workflow_interface(target_account_id, wf_name, version)
 
     flyte_interface_types: dict[str, Variable] = VariableMap.from_flyte_idl(
@@ -332,38 +331,72 @@ def launch(
         raw_python_interface_with_defaults = meta.get("python_interface")
         raw_python_outputs = meta.get("python_outputs")
 
-        if raw_python_outputs is not None:
-            try:
-                python_outputs = dill.loads(base64.b64decode(raw_python_outputs))
-            except dill.UnpicklingError as e:
-                raise RuntimeError("Failed to decode the workflow outputs.") from e
+        if raw_python_outputs is None:
+            raise RuntimeError("Missing python outputs in workflow metadata. Re-register workflow with latch version >= 2.65.0 in workflow environment to use launch command.")
 
-            break
+        try:
+            python_outputs = dill.loads(base64.b64decode(raw_python_outputs))  # noqa: S301
+        except dill.UnpicklingError as e:
+            raise RuntimeError("Failed to decode the workflow outputs. Ensure your python version matches the version in the workflow environment.") from e
 
-    if python_outputs is None:
-        raise RuntimeError(
-            "Missing python interface / outputs in workflow metadata. Re-register workflow with latch version >= 2.65.0 in workflow environment"
-        )
+        break
 
+    params_for_launch: dict[str, Any] = params
     if best_effort:
         fixed_literals = convert_inputs_to_literals(
             params=params,
             flyte_interface_types=flyte_interface_types,
         )
         defaults = defaults["parameters"]
-        # switch to using the default params here
-    else:
-        python_interface_with_defaults: Union[dict[str, tuple[type, Any]], None] = None
 
+        params_json: dict[str, Any] = {
+            k: gpjson.MessageToDict(v.to_flyte_idl()) for k, v in fixed_literals.items()
+        }
+
+        def _is_optional_none(var_type: dict[str, Any]) -> bool:
+            ut = var_type.get("unionType")
+            if ut is None:
+                return False
+
+            return any(v.get("simple") == "NONE" for v in ut.get("variants", []))
+
+        for name, entry in defaults.items():
+            if name in params_json:
+                continue
+
+            default_lit = entry.get("default")
+            if default_lit is not None:
+                params_json[name] = default_lit
+                continue
+
+            var = entry.get("var", {})
+            vtype = var.get("type", {})
+            if _is_optional_none(vtype):
+                params_json[name] = {
+                    "scalar": {
+                        "union": {
+                            "value": {"scalar": {"noneType": {}}},
+                            "type": {"simple": "NONE", "structure": {"tag": "none"}},
+                        }
+                    }
+                }
+                continue
+
+            raise ValueError(f"Required parameter '{name}' not provided in params")
+
+        params_for_launch = params_json
+    else:
+        if raw_python_interface_with_defaults is None:
+            raise RuntimeError("Missing python interface in workflow metadata. Try using with best_effort=True.")
+
+        python_interface_with_defaults: Union[dict[str, tuple[type, Any]], None] = None
         try:
-            python_interface_with_defaults = dill.loads(
+            python_interface_with_defaults = dill.loads(  # noqa: S301
                 base64.b64decode(raw_python_interface_with_defaults)
             )
-            python_outputs = dill.loads(base64.b64decode(raw_python_outputs))
-
         except dill.UnpicklingError as e:
             raise RuntimeError(
-                "Failed to decode the workflow python interface / outputs. Ensure your python version matches the version in the workflow environment"
+                "Failed to decode the workflow python interface. Ensure your python version matches the version in the workflow environment."
             ) from e
 
         for k, v in python_interface_with_defaults.items():
@@ -397,10 +430,12 @@ def launch(
                 ) from e
             raise
 
+        params_for_launch = {k: gpjson.MessageToDict(v.to_flyte_idl()) for k, v in fixed_literals.items()}
+
     return launch_workflow(
         target_account_id,
         wf_id,
-        {k: gpjson.MessageToDict(v.to_flyte_idl()) for k, v in fixed_literals.items()},
+        params_for_launch,
         python_outputs,
     )
 
