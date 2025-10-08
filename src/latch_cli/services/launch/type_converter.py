@@ -1,9 +1,3 @@
-"""Type converter for converting Python values to Flyte Literals without requiring exact type matches.
-
-This module provides best-effort conversion that works with structurally compatible values,
-allowing dataclasses, enums, and other types to be passed without exact module import matches.
-"""
-
 import dataclasses
 from dataclasses import asdict, is_dataclass
 from datetime import datetime, timedelta
