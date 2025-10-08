@@ -11,7 +11,6 @@ from enum import Enum
 from typing import Any
 
 from flytekit.core.context_manager import FlyteContext
-from flytekit.core.type_engine import TypeEngine
 from flytekit.models import literals as _literals
 from flytekit.models import types as _types
 from flytekit.models.core import types as _core_types
@@ -79,16 +78,16 @@ def _convert_primitive(
     elif simple_type == _types.SimpleType.FLOAT:  # pyright: ignore[reportUnnecessaryComparison]
         primitive = _literals.Primitive(float_value=float(value))
 
-    elif simple_type == _types.SimpleType.STRING:
+    elif simple_type == _types.SimpleType.STRING:  # pyright: ignore[reportUnnecessaryComparison]
         if isinstance(value, Enum):
             primitive = _literals.Primitive(string_value=str(value.value))
         else:
             primitive = _literals.Primitive(string_value=str(value))
 
-    elif simple_type == _types.SimpleType.BOOLEAN:
+    elif simple_type == _types.SimpleType.BOOLEAN:  # pyright: ignore[reportUnnecessaryComparison]
         primitive = _literals.Primitive(boolean=bool(value))
 
-    elif simple_type == _types.SimpleType.DATETIME:
+    elif simple_type == _types.SimpleType.DATETIME:  # pyright: ignore[reportUnnecessaryComparison]
         if isinstance(value, datetime):
             primitive = _literals.Primitive(datetime=value)
         elif isinstance(value, str):
@@ -97,7 +96,7 @@ def _convert_primitive(
         else:
             raise ValueError(f"Cannot convert {value} to datetime")
 
-    elif simple_type == _types.SimpleType.DURATION:
+    elif simple_type == _types.SimpleType.DURATION:  # pyright: ignore[reportUnnecessaryComparison]
         if isinstance(value, timedelta):
             primitive = _literals.Primitive(duration=value)
         elif isinstance(value, (int, float)):
@@ -105,7 +104,7 @@ def _convert_primitive(
         else:
             raise ValueError(f"Cannot convert {value} to duration")
 
-    elif simple_type == _types.SimpleType.NONE:
+    elif simple_type == _types.SimpleType.NONE:  # pyright: ignore[reportUnnecessaryComparison]
         return _create_none_literal()
 
     else:
@@ -118,7 +117,7 @@ def _convert_to_struct(value: Any) -> _literals.Literal:  # noqa: ANN401
     if isinstance(value, dict):
         fields = value
     elif is_dataclass(value):
-        fields = asdict(value)
+        fields = asdict(value)  # pyright: ignore[reportArgumentType]
     elif hasattr(value, "__dict__"):
         fields = {
             k: v
@@ -169,7 +168,7 @@ def _python_value_to_struct_value(value: Any) -> struct_pb2.Value:  # noqa: ANN4
         return struct_pb2.Value(struct_value=struct_value)
 
     if is_dataclass(value):
-        return _python_value_to_struct_value(asdict(value))
+        return _python_value_to_struct_value(asdict(value))  # pyright: ignore[reportArgumentType]
 
     if hasattr(value, "__dict__"):
         obj_dict = {k: v for k, v in value.__dict__.items() if not k.startswith("_")}
@@ -261,7 +260,7 @@ def _convert_blob(
     elif isinstance(value, LPath):
         value = target_py_type(value.path)
 
-    return TypeEngine.to_literal(ctx, value, target_py_type, None)
+    raise TypeError(f"Cannot convert {type(value)} to blob")
 
 
 def _convert_enum(
