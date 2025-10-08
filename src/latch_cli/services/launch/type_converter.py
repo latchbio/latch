@@ -250,14 +250,18 @@ def _convert_blob(
     blob_type: _core_types.BlobType,
     ctx: FlyteContext,
 ) -> _literals.Literal:
+    is_multipart = (
+        blob_type.dimensionality == _core_types.BlobType.BlobDimensionality.MULTIPART
+    )
 
-    if blob_type.format == "":
-        if isinstance(value, str):
-            value = LatchFile(value)
-        elif hasattr(value, "remote_path") or hasattr(value, "path"):
-            pass
+    target_py_type = LatchDir if is_multipart else LatchFile
 
-    return TypeEngine.to_literal(ctx, value, blob_type.format, None)
+    if isinstance(value, str):
+        value = target_py_type(value)
+    elif isinstance(value, LPath):
+        value = target_py_type(value.path)
+
+    return TypeEngine.to_literal(ctx, value, target_py_type, None)
 
 
 def _convert_enum(
