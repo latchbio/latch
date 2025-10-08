@@ -11,10 +11,15 @@ from enum import Enum
 from typing import Any
 
 from flytekit.core.context_manager import FlyteContext
+from flytekit.core.type_engine import TypeEngine
 from flytekit.models import literals as _literals
 from flytekit.models import types as _types
 from flytekit.models.core import types as _core_types
 from google.protobuf import struct_pb2
+
+from latch.ldata.path import LPath
+from latch.types.directory import LatchDir
+from latch.types.file import LatchFile
 
 
 def convert_python_value_to_literal(
@@ -75,58 +80,46 @@ def _convert_primitive(
         primitive = _literals.Primitive(float_value=float(value))
 
     elif simple_type == _types.SimpleType.STRING:
-        # Handle enums that have string values
         if isinstance(value, Enum):
             primitive = _literals.Primitive(string_value=str(value.value))
         else:
             primitive = _literals.Primitive(string_value=str(value))
-            
+
     elif simple_type == _types.SimpleType.BOOLEAN:
         primitive = _literals.Primitive(boolean=bool(value))
-        
+
     elif simple_type == _types.SimpleType.DATETIME:
         if isinstance(value, datetime):
             primitive = _literals.Primitive(datetime=value)
+        elif isinstance(value, str):
+            dt = datetime.fromisoformat(value)
+            primitive = _literals.Primitive(datetime=dt)
         else:
-            # Try to parse as datetime
-            if isinstance(value, str):
-                dt = datetime.fromisoformat(value)
-                primitive = _literals.Primitive(datetime=dt)
-            else:
-                raise ValueError(f"Cannot convert {value} to datetime")
-                
+            raise ValueError(f"Cannot convert {value} to datetime")
+
     elif simple_type == _types.SimpleType.DURATION:
         if isinstance(value, timedelta):
             primitive = _literals.Primitive(duration=value)
+        elif isinstance(value, (int, float)):
+            primitive = _literals.Primitive(duration=timedelta(seconds=value))
         else:
-            # Try to convert to timedelta
-            if isinstance(value, (int, float)):
-                primitive = _literals.Primitive(duration=timedelta(seconds=value))
-            else:
-                raise ValueError(f"Cannot convert {value} to duration")
-    
+            raise ValueError(f"Cannot convert {value} to duration")
+
     elif simple_type == _types.SimpleType.NONE:
         return _create_none_literal()
-    
+
     else:
         raise ValueError(f"Unsupported simple type: {simple_type}")
-    
+
     return _literals.Literal(scalar=_literals.Scalar(primitive=primitive))
 
 
-def _convert_to_struct(value: Any) -> _literals.Literal:
-    """
-    Convert a Python object to a Flyte struct literal.
-    
-    This works with dicts, dataclasses, or any object with attributes.
-    """
-    # Extract fields from the value
+def _convert_to_struct(value: Any) -> _literals.Literal:  # noqa: ANN401
     if isinstance(value, dict):
         fields = value
     elif is_dataclass(value):
         fields = asdict(value)
     elif hasattr(value, "__dict__"):
-        # Duck typing - extract public attributes
         fields = {
             k: v
             for k, v in value.__dict__.items()
@@ -134,118 +127,101 @@ def _convert_to_struct(value: Any) -> _literals.Literal:
         }
     else:
         raise ValueError(f"Cannot convert {type(value)} to struct")
-    
-    # Convert to protobuf Struct
+
     struct_value = struct_pb2.Struct()
-    
+
     for field_name, field_value in fields.items():
         struct_value.fields[field_name].CopyFrom(
             _python_value_to_struct_value(field_value)
         )
-    
+
     return _literals.Literal(
         scalar=_literals.Scalar(generic=struct_value)
     )
 
 
-def _python_value_to_struct_value(value: Any) -> struct_pb2.Value:
-    """Convert a Python value to a protobuf Value for use in Struct."""
+def _python_value_to_struct_value(value: Any) -> struct_pb2.Value:  # noqa: ANN401
     if value is None:
         return struct_pb2.Value(null_value=struct_pb2.NullValue.NULL_VALUE)
-    
-    elif isinstance(value, bool):
-        # Must check bool before int since bool is a subclass of int
+
+    if isinstance(value, bool):
         return struct_pb2.Value(bool_value=value)
-    
-    elif isinstance(value, (int, float)):
+
+    if isinstance(value, (int, float)):
         return struct_pb2.Value(number_value=float(value))
-    
-    elif isinstance(value, str):
+
+    if isinstance(value, str):
         return struct_pb2.Value(string_value=value)
-    
-    elif isinstance(value, Enum):
-        # Convert enum to its value
+
+    if isinstance(value, Enum):
         return _python_value_to_struct_value(value.value)
-    
-    elif isinstance(value, (list, tuple)):
+
+    if isinstance(value, (list, tuple)):
         list_value = struct_pb2.ListValue()
         for item in value:
             list_value.values.append(_python_value_to_struct_value(item))
         return struct_pb2.Value(list_value=list_value)
-    
-    elif isinstance(value, dict):
+
+    if isinstance(value, dict):
         struct_value = struct_pb2.Struct()
         for k, v in value.items():
             struct_value.fields[str(k)].CopyFrom(_python_value_to_struct_value(v))
         return struct_pb2.Value(struct_value=struct_value)
-    
-    elif is_dataclass(value):
-        # Convert dataclass to dict first
+
+    if is_dataclass(value):
         return _python_value_to_struct_value(asdict(value))
-    
-    elif hasattr(value, "__dict__"):
-        # Duck typing for objects
+
+    if hasattr(value, "__dict__"):
         obj_dict = {k: v for k, v in value.__dict__.items() if not k.startswith("_")}
         return _python_value_to_struct_value(obj_dict)
-    
-    else:
-        # Last resort: convert to string
-        return struct_pb2.Value(string_value=str(value))
+
+    return struct_pb2.Value(string_value=str(value))
 
 
 def _convert_collection(
-    value: Any,
+    value: Any,  # noqa: ANN401
     element_type: _types.LiteralType,
     ctx: FlyteContext,
 ) -> _literals.Literal:
-    """Convert a Python list/tuple to a Flyte collection literal."""
     if not isinstance(value, (list, tuple)):
-        raise ValueError(f"Expected list or tuple, got {type(value)}")
-    
+        raise TypeError(f"Expected list or tuple, got {type(value)}")
+
     literals = [
         convert_python_value_to_literal(item, element_type, ctx)
         for item in value
     ]
-    
+
     return _literals.Literal(
         collection=_literals.LiteralCollection(literals=literals)
     )
 
 
 def _convert_map(
-    value: Any,
+    value: Any,  # noqa: ANN401
     value_type: _types.LiteralType,
     ctx: FlyteContext,
 ) -> _literals.Literal:
-    """Convert a Python dict to a Flyte map literal."""
     if not isinstance(value, dict):
-        raise ValueError(f"Expected dict, got {type(value)}")
-    
+        raise TypeError(f"Expected dict, got {type(value)}")
+
     literals = {
         str(k): convert_python_value_to_literal(v, value_type, ctx)
         for k, v in value.items()
     }
-    
+
     return _literals.Literal(
         map=_literals.LiteralMap(literals=literals)
     )
 
 
 def _convert_record(
-    value: Any,
+    value: Any,  # noqa: ANN401
     record_type: _types.RecordType,
     ctx: FlyteContext,
 ) -> _literals.Literal:
-    """Convert a Python object to a Flyte record literal.
-
-    Accepts dicts, dataclasses, or plain objects with attributes.
-    Only fields declared in the record type are serialized.
-    """
     if isinstance(value, dict):
         src = value
     elif is_dataclass(value):
-        # Do NOT use dataclasses.asdict here as it recursively converts nested dataclasses
-        # like LatchFile into dicts, breaking downstream blob conversions. Extract fields directly.
         src = {f.name: getattr(value, f.name) for f in dataclasses.fields(value)}
     elif hasattr(value, "__dict__"):
         src = {k: v for k, v in value.__dict__.items() if not k.startswith("_")}
@@ -260,7 +236,7 @@ def _convert_record(
         if key in src:
             sub_value = src[key]
         else:
-            # Missing key: allow None if sub_type is Optional (Union with NONE)
+            # missing key allowed if optional
             sub_value = None
 
         sub_literal = convert_python_value_to_literal(sub_value, sub_type, ctx)
@@ -270,55 +246,24 @@ def _convert_record(
 
 
 def _convert_blob(
-    value: Any,
+    value: Any,  # noqa: ANN401
     blob_type: _core_types.BlobType,
     ctx: FlyteContext,
 ) -> _literals.Literal:
-    """Convert a file/directory path to a Flyte blob literal."""
-    from latch.ldata.path import LPath
-    from flytekit.core.type_engine import TypeEngine
-    
-    # Import file types
-    try:
-        from latch.types.file import LatchFile
-        from latch.types.directory import LatchDir
-    except ImportError:
-        LatchFile = None
-        LatchDir = None
-    
-    # Determine the appropriate type based on blob format
+
     if blob_type.format == "":
-        # Generic blob - try to infer
         if isinstance(value, str):
-            if LatchFile is not None:
-                value = LatchFile(value)
+            value = LatchFile(value)
         elif hasattr(value, "remote_path") or hasattr(value, "path"):
-            # Already a file-like object
             pass
-    
-    # Use TypeEngine as fallback for blob types since they're well-defined
-    try:
-        if LatchFile is not None and isinstance(value, LatchFile):
-            return TypeEngine.to_literal(ctx, value, LatchFile, None)
-        elif LatchDir is not None and isinstance(value, LatchDir):
-            return TypeEngine.to_literal(ctx, value, LatchDir, None)
-        elif isinstance(value, LPath):
-            return TypeEngine.to_literal(ctx, value, LPath, None)
-        else:
-            # Try converting string to LPath
-            if isinstance(value, str):
-                lpath = LPath(value)
-                return TypeEngine.to_literal(ctx, lpath, LPath, None)
-            raise ValueError(f"Cannot convert {type(value)} to blob")
-    except Exception as e:
-        raise ValueError(f"Failed to convert blob: {e}") from e
+
+    return TypeEngine.to_literal(ctx, value, blob_type.format, None)
 
 
 def _convert_enum(
-    value: Any,
+    value: Any,  # noqa: ANN401
     enum_type: _core_types.EnumType,
 ) -> _literals.Literal:
-    """Convert a Python Enum or string to an enum literal (string primitive)."""
     if isinstance(value, Enum):
         enum_val = value.value
     else:
@@ -327,7 +272,6 @@ def _convert_enum(
     if not isinstance(enum_val, str):
         enum_val = str(enum_val)
 
-    # Optional: enforce that the value is one of the declared enum values
     if enum_type.values and enum_val not in enum_type.values:
         raise ValueError(
             f"'{enum_val}' is not a valid value for enum {enum_type.values}"
@@ -338,17 +282,11 @@ def _convert_enum(
 
 
 def _convert_union(
-    value: Any,
+    value: Any,  # noqa: ANN401
     union_type: _types.LiteralType,
     ctx: FlyteContext,
 ) -> _literals.Literal:
-    """
-    Convert a value to a union type by trying each variant.
-    
-    For Optional types (Union with None), handle None specially.
-    """
     if value is None:
-        # Create a union literal with None
         none_literal = _create_none_literal()
         return _literals.Literal(
             scalar=_literals.Scalar(
@@ -358,11 +296,11 @@ def _convert_union(
                 )
             )
         )
-    
-    # Try to convert to each variant
+
     variants = union_type.union_type.variants if union_type.union_type else []
-    
+
     errors = []
+    # does not support tagging values / overlapping variants where one is intended
     for variant in variants:
         try:
             converted = convert_python_value_to_literal(value, variant, ctx)
@@ -377,9 +315,8 @@ def _convert_union(
         except Exception as e:
             errors.append((variant, str(e)))
             continue
-    
-    # If none of the variants worked, raise an error
-    error_msg = f"Could not convert value to any union variant. Tried:\n"
+
+    error_msg = "Could not convert value to any union variant. Tried:\n"
     for variant, error in errors:
         error_msg += f"  - {variant}: {error}\n"
     raise ValueError(error_msg)
@@ -390,38 +327,19 @@ def convert_inputs_to_literals(
     params: dict[str, Any],
     flyte_interface_types: dict[str, Any],  # Variable map
 ) -> dict[str, _literals.Literal]:
-    """
-    Convert a dictionary of Python values to Flyte Literals.
-    
-    This is the main entry point that replaces translate_inputs_to_literals
-    with more flexible type conversion.
-    
-    Args:
-        ctx: Flyte context
-        params: Dictionary of parameter names to Python values
-        flyte_interface_types: Dictionary of parameter names to Flyte Variables
-        
-    Returns:
-        Dictionary of parameter names to Flyte Literals
-    """
     result = {}
-    
+
     for param_name, param_value in params.items():
         if param_name not in flyte_interface_types:
             raise ValueError(f"Parameter '{param_name}' not found in workflow interface")
-        
+
         variable = flyte_interface_types[param_name]
         literal_type = variable.type
-        
-        try:
-            result[param_name] = convert_python_value_to_literal(
-                param_value,
-                literal_type,
-                ctx,
-            )
-        except Exception as e:
-            raise ValueError(
-                f"Failed to convert parameter '{param_name}' with value {param_value!r}: {e}"
-            ) from e
-    
+
+        result[param_name] = convert_python_value_to_literal(
+            param_value,
+            literal_type,
+            ctx,
+        )
+
     return result
