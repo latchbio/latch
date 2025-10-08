@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.67.8 - 2025-10-08
+
+### Fixed
+
+* launch_v2 does not require exact types, does a best effort conversion
+
+
 ## 2.67.7 - 2025-10-08
 
 ### Fixed
