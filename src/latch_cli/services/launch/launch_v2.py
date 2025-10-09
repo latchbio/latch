@@ -295,7 +295,7 @@ def launch_from_launch_plan(
 
 
 def launch(
-    *, wf_name: str, params: dict[str, Any], version: Optional[str] = None, best_effort: bool = False
+    *, wf_name: str, params: dict[str, Any], version: Optional[str] = None, best_effort: bool = True
 ) -> Execution:
     """Create an execution of workflow `wf_name` with version `version` and parameters `params`.
 

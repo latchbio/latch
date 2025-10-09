@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.67.9 - 2025-10-08
+
+### Fixed
+
+* Make best_effort the default behavior for `launch_v2`
+
 ## 2.67.8 - 2025-10-08
 
 ### Added
