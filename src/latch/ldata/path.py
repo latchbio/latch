@@ -357,9 +357,8 @@ class LPath:
                 (a if isinstance(a, (bytes, bytearray)) else a.encode())
                 for a in list_attrs
             ]
-            if (
-                version_xattr in normalized_attr_names
-                and version_id == xattr.getxattr(dst_str, version_xattr)
+            if version_xattr in normalized_attr_names and version_id == xattr.getxattr(
+                dst_str, version_xattr
             ):
                 return dst
 

@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.67.12 - 2025-10-09
+
+### Fixed
+
+* Bug in `Latch(File|Dir)TypeTransformer` where converting to IDL would try to upload certain classes of files that were invalid
+
 ## 2.67.11 - 2025-10-09
 
 ### Fixed

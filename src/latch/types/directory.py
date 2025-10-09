@@ -297,7 +297,11 @@ class LatchDirPathTransformer(FlyteDirToMultipartBlobTransformer):
         is_execution_context = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID") is not None
 
         put_res = {}
-        if is_execution_context and not ctx.file_access.is_remote(python_val.path):
+        if (
+            is_execution_context
+            and python_val._remote_source is None
+            and not ctx.file_access.is_remote(python_val.path)
+        ):
             remote_directory = python_val.remote_directory
             if remote_directory is None:
                 remote_directory = ctx.file_access.get_random_remote_directory()
