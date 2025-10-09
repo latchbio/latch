@@ -22,6 +22,7 @@ from latch.ldata.path import LPath
 from latch.utils import current_workspace
 from latch_cli import tinyrequests
 from latch_cli.services.launch.interface import get_workflow_interface
+from latch_cli.services.launch.type_converter import convert_inputs_to_literals
 from latch_cli.utils import get_auth_header
 from latch_sdk_config.latch import NUCLEUS_URL, config
 from latch_sdk_gql.execute import execute
@@ -294,7 +295,7 @@ def launch_from_launch_plan(
 
 
 def launch(
-    *, wf_name: str, params: dict[str, Any], version: Optional[str] = None
+    *, wf_name: str, params: dict[str, Any], version: Optional[str] = None, best_effort: bool = False
 ) -> Execution:
     """Create an execution of workflow `wf_name` with version `version` and parameters `params`.
 
@@ -306,20 +307,20 @@ def launch(
         wf_name: Name of workflow to launch (see `.latch/workflow_name` in the workflow directory).
         params: A dictionary of parameters to pass to the workflow.
         version: An optional workflow version to launch, defaulting to latest.
+        best_effort: Use best effort to translate inputs to literals if types do not match
 
     Returns:
         Execution ID of the launched workflow.
     """
     target_account_id = current_workspace()
-
-    wf_id, interface, _ = get_workflow_interface(target_account_id, wf_name, version)
+    wf_id, interface, defaults = get_workflow_interface(target_account_id, wf_name, version)
 
     flyte_interface_types: dict[str, Variable] = VariableMap.from_flyte_idl(
         gpjson.ParseDict(interface, _interface_pb2.VariableMap())
     ).variables
 
-    python_interface_with_defaults: Union[dict[str, tuple[type, Any]], None] = None
     python_outputs: Union[dict[str, type], None] = None
+    raw_python_interface_with_defaults: Union[str, None] = None
 
     for v in flyte_interface_types.values():
         description: dict[str, Any] = json.loads(v.description)
@@ -327,67 +328,114 @@ def launch(
             continue
 
         meta = description.get("__workflow_meta__", {}).get("meta", {})
-
         raw_python_interface_with_defaults = meta.get("python_interface")
         raw_python_outputs = meta.get("python_outputs")
 
-        if (
-            raw_python_interface_with_defaults is not None
-            and raw_python_outputs is not None
-        ):
-            try:
-                python_interface_with_defaults = dill.loads(
-                    base64.b64decode(raw_python_interface_with_defaults)
-                )
-                python_outputs = dill.loads(base64.b64decode(raw_python_outputs))
+        if raw_python_outputs is None:
+            raise RuntimeError("Missing python outputs in workflow metadata. Re-register workflow with latch version >= 2.65.0 in workflow environment to use launch command.")
 
-            except dill.UnpicklingError as e:
-                raise RuntimeError(
-                    "Failed to decode the workflow python interface / outputs. Ensure your python version matches the version in the workflow environment"
-                ) from e
+        try:
+            python_outputs = dill.loads(base64.b64decode(raw_python_outputs))  # noqa: S301
+        except dill.UnpicklingError as e:
+            raise RuntimeError("Failed to decode the workflow outputs. Ensure your python version matches the version in the workflow environment.") from e
 
-            break
+        break
 
-    if python_interface_with_defaults is None or python_outputs is None:
-        raise RuntimeError(
-            "Missing python interface / outputs in workflow metadata. Re-register workflow with latch version >= 2.65.0 in workflow environment"
-        )
-
-    for k, v in python_interface_with_defaults.items():
-        if k in params:
-            continue
-
-        if v[1] is not None:
-            params[k] = v[1]
-            continue
-
-        t = v[0]
-        if get_origin(t) is Union and type(None) in get_args(t):
-            params[k] = None
-        else:
-            raise ValueError(f"Required parameter '{k}' not provided in params")
-
-    ctx = FlyteContextManager.current_context()
-    assert ctx is not None
-
-    try:
-        fixed_literals = translate_inputs_to_literals(
-            ctx,
-            incoming_values=params,
+    params_for_launch: dict[str, Any] = params
+    if best_effort:
+        fixed_literals = convert_inputs_to_literals(
+            params=params,
             flyte_interface_types=flyte_interface_types,
-            native_types={k: v[0] for k, v in python_interface_with_defaults.items()},
         )
-    except TypeTransformerFailedError as e:
-        if "is not an instance of" in str(e):
-            raise ValueError(
-                "Failed to translate inputs to literals. Ensure you are importing the same classes used in the workflow function header"
+        defaults = defaults["parameters"]
+
+        params_json: dict[str, Any] = {
+            k: gpjson.MessageToDict(v.to_flyte_idl()) for k, v in fixed_literals.items()
+        }
+
+        def _is_optional_none(var_type: dict[str, Any]) -> bool:
+            ut = var_type.get("unionType")
+            if ut is None:
+                return False
+
+            return any(v.get("simple") == "NONE" for v in ut.get("variants", []))
+
+        for name, entry in defaults.items():
+            if name in params_json:
+                continue
+
+            default_lit = entry.get("default")
+            if default_lit is not None:
+                params_json[name] = default_lit
+                continue
+
+            var = entry.get("var", {})
+            vtype = var.get("type", {})
+            if _is_optional_none(vtype):
+                params_json[name] = {
+                    "scalar": {
+                        "union": {
+                            "value": {"scalar": {"noneType": {}}},
+                            "type": {"simple": "NONE", "structure": {"tag": "none"}},
+                        }
+                    }
+                }
+                continue
+
+            raise ValueError(f"Required parameter '{name}' not provided in params")
+
+        params_for_launch = params_json
+    else:
+        if raw_python_interface_with_defaults is None:
+            raise RuntimeError("Missing python interface in workflow metadata. Try using with best_effort=True.")
+
+        python_interface_with_defaults: Union[dict[str, tuple[type, Any]], None] = None
+        try:
+            python_interface_with_defaults = dill.loads(  # noqa: S301
+                base64.b64decode(raw_python_interface_with_defaults)
+            )
+        except dill.UnpicklingError as e:
+            raise RuntimeError(
+                "Failed to decode the workflow python interface. Ensure your python version matches the version in the workflow environment."
             ) from e
-        raise
+
+        for k, v in python_interface_with_defaults.items():
+            if k in params:
+                continue
+
+            if v[1] is not None:
+                params[k] = v[1]
+                continue
+
+            t = v[0]
+            if get_origin(t) is Union and type(None) in get_args(t):
+                params[k] = None
+            else:
+                raise ValueError(f"Required parameter '{k}' not provided in params")
+
+        ctx = FlyteContextManager.current_context()
+        assert ctx is not None
+
+        try:
+            fixed_literals = translate_inputs_to_literals(
+                ctx,
+                incoming_values=params,
+                flyte_interface_types=flyte_interface_types,
+                native_types={k: v[0] for k, v in python_interface_with_defaults.items()},
+            )
+        except TypeTransformerFailedError as e:
+            if "is not an instance of" in str(e):
+                raise ValueError(
+                    "Failed to translate inputs to literals. Ensure you are importing the same classes used in the workflow function header"
+                ) from e
+            raise
+
+        params_for_launch = {k: gpjson.MessageToDict(v.to_flyte_idl()) for k, v in fixed_literals.items()}
 
     return launch_workflow(
         target_account_id,
         wf_id,
-        {k: gpjson.MessageToDict(v.to_flyte_idl()) for k, v in fixed_literals.items()},
+        params_for_launch,
         python_outputs,
     )
 
