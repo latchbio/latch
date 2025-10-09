@@ -16,11 +16,29 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.67.8 - 2025-10-09
+## 2.67.11 - 2025-10-09
 
 ### Fixed
 
-* Bug where `latch preview` would fail on projects that imported `boto3`
+* Bug in `latch preview` where projects that imported `boto3` would cause the command to fail.
+
+## 2.67.10 - 2025-10-08
+
+### Fixed
+
+* `launch_v2` type conversion too permissive for record types
+
+## 2.67.9 - 2025-10-08
+
+### Fixed
+
+* Make best_effort the default behavior for `launch_v2`
+
+## 2.67.8 - 2025-10-08
+
+### Added
+
+* `launch_v2` accepts a `best_effort` argument which allows for a best effort conversion of inputs to literals if types do not match
 
 ## 2.67.7 - 2025-10-08
 
