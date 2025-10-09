@@ -208,8 +208,9 @@ def _convert_record(
         src = value
     elif is_dataclass(value):
         src = {f.name: getattr(value, f.name) for f in dataclasses.fields(value)}
-    elif hasattr(value, "__dict__"):
-        src = {k: v for k, v in value.__dict__.items() if not k.startswith("_")}
+    # note(aidan): removed because it caused classes (Like LatchFile) to match into records
+    # elif hasattr(value, "__dict__"):
+    #     src = {k: v for k, v in value.__dict__.items() if not k.startswith("_")}
     else:
         raise ValueError(f"Cannot convert {type(value)} to record")
 
@@ -221,7 +222,14 @@ def _convert_record(
         if key in src:
             sub_value = src[key]
         else:
-            # missing key allowed if optional
+            ut = getattr(sub_type, "union_type", None)
+            if ut is None or not any(
+                v.simple == _types.SimpleType.NONE for v in ut.variants  # pyright: ignore[reportUnnecessaryComparison]
+            ):
+                raise ValueError(
+                    f"Record field '{key}' is required but missing for value of type {type(value)}"
+                )
+
             sub_value = None
 
         sub_literal = _convert_python_value_to_literal(sub_value, sub_type)

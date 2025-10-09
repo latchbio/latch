@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.67.10 - 2025-10-08
+
+### Fixed
+
+* `launch_v2` type conversion too permissive for record types
+
 ## 2.67.9 - 2025-10-08
 
 ### Fixed
