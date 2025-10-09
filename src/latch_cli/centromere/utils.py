@@ -79,7 +79,7 @@ def import_flyte_objects(paths: List[Path], module_name: str = "wf"):
                 return real_import(
                     name, globals=globals, locals=locals, fromlist=fromlist, level=level
                 )
-            except (ModuleNotFoundError, AttributeError):
+            except (ModuleNotFoundError, AttributeError, TypeError):
                 return FakeModule(name)
 
         # Temporary ctx tells lytekit to skip local execution when
