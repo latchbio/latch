@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any
 
-from flytekit.core.context_manager import FlyteContext
 from flytekit.models import literals as _literals
 from flytekit.models import types as _types
 from flytekit.models.core import types as _core_types
@@ -15,8 +14,8 @@ from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
 
 
-def convert_python_value_to_literal(
-    value: Any,  # noqa: ANN401
+def _convert_python_value_to_literal(
+    value: object,
     flyte_literal_type: _types.LiteralType,
 ) -> _literals.Literal:
     if flyte_literal_type.union_type is not None:  # pyright: ignore[reportUnnecessaryComparison]
@@ -55,12 +54,12 @@ def _create_none_literal() -> _literals.Literal:
 
 
 def _convert_primitive(
-    value: Any, simple_type: _types.SimpleType  # noqa: ANN401
+    value: object, simple_type: _types.SimpleType
 ) -> _literals.Literal:
     if simple_type == _types.SimpleType.STRUCT:  # pyright: ignore[reportUnnecessaryComparison]
         return _convert_to_struct(value)
 
-    primitive = None
+    primitive: _literals.Primitive | None = None
 
     if simple_type == _types.SimpleType.INTEGER:  # pyright: ignore[reportUnnecessaryComparison]
         if isinstance(value, Enum):
@@ -92,7 +91,7 @@ def _convert_primitive(
     elif simple_type == _types.SimpleType.DURATION:  # pyright: ignore[reportUnnecessaryComparison]
         if isinstance(value, timedelta):
             primitive = _literals.Primitive(duration=value)
-        elif isinstance(value, (int, float)):
+        elif isinstance(value, (int, float)) and not isinstance(value, bool):
             primitive = _literals.Primitive(duration=timedelta(seconds=value))
         else:
             raise ValueError(f"Cannot convert {value} to duration")
@@ -108,22 +107,20 @@ def _convert_primitive(
     return _literals.Literal(scalar=_literals.Scalar(primitive=primitive))
 
 
-def _convert_to_struct(value: Any) -> _literals.Literal:  # noqa: ANN401
+def _to_public_fields(value: object) -> dict[str, object]:
     if isinstance(value, dict):
-        fields = value
-    elif is_dataclass(value):
-        fields = asdict(value)  # pyright: ignore[reportArgumentType]
-    elif hasattr(value, "__dict__"):
-        fields = {
-            k: v
-            for k, v in value.__dict__.items()
-            if not k.startswith("_")
-        }
-    else:
-        raise ValueError(f"Cannot convert {type(value)} to struct")
+        return value  # type: ignore[return-value]
+    if is_dataclass(value):
+        return asdict(value)  # pyright: ignore[reportArgumentType]
+    if hasattr(value, "__dict__"):
+        return {k: v for k, v in value.__dict__.items() if not k.startswith("_")}
+    raise ValueError(f"Cannot extract fields from {type(value)}")
+
+
+def _convert_to_struct(value: object) -> _literals.Literal:
+    fields = _to_public_fields(value)
 
     struct_value = struct_pb2.Struct()
-
     for field_name, field_value in fields.items():
         struct_value.fields[field_name].CopyFrom(
             _python_value_to_struct_value(field_value)
@@ -134,7 +131,7 @@ def _convert_to_struct(value: Any) -> _literals.Literal:  # noqa: ANN401
     )
 
 
-def _python_value_to_struct_value(value: Any) -> struct_pb2.Value:  # noqa: ANN401
+def _python_value_to_struct_value(value: object) -> struct_pb2.Value:
     if value is None:
         return struct_pb2.Value(null_value=struct_pb2.NullValue.NULL_VALUE)
 
@@ -162,25 +159,22 @@ def _python_value_to_struct_value(value: Any) -> struct_pb2.Value:  # noqa: ANN4
             struct_value.fields[str(k)].CopyFrom(_python_value_to_struct_value(v))
         return struct_pb2.Value(struct_value=struct_value)
 
-    if is_dataclass(value):
-        return _python_value_to_struct_value(asdict(value))  # pyright: ignore[reportArgumentType]
-
-    if hasattr(value, "__dict__"):
-        obj_dict = {k: v for k, v in value.__dict__.items() if not k.startswith("_")}
+    if is_dataclass(value) or hasattr(value, "__dict__"):
+        obj_dict = _to_public_fields(value)
         return _python_value_to_struct_value(obj_dict)
 
     return struct_pb2.Value(string_value=str(value))
 
 
 def _convert_collection(
-    value: Any,  # noqa: ANN401
+    value: object,
     element_type: _types.LiteralType,
 ) -> _literals.Literal:
     if not isinstance(value, (list, tuple)):
         raise TypeError(f"Expected list or tuple, got {type(value)}")
 
     literals = [
-        convert_python_value_to_literal(item, element_type)
+        _convert_python_value_to_literal(item, element_type)
         for item in value
     ]
 
@@ -190,14 +184,14 @@ def _convert_collection(
 
 
 def _convert_map(
-    value: Any,  # noqa: ANN401
+    value: object,
     value_type: _types.LiteralType,
 ) -> _literals.Literal:
     if not isinstance(value, dict):
         raise TypeError(f"Expected dict, got {type(value)}")
 
     literals = {
-        str(k): convert_python_value_to_literal(v, value_type)
+        str(k): _convert_python_value_to_literal(v, value_type)
         for k, v in value.items()
     }
 
@@ -207,7 +201,7 @@ def _convert_map(
 
 
 def _convert_record(
-    value: Any,  # noqa: ANN401
+    value: object,
     record_type: _types.RecordType,
 ) -> _literals.Literal:
     if isinstance(value, dict):
@@ -230,14 +224,14 @@ def _convert_record(
             # missing key allowed if optional
             sub_value = None
 
-        sub_literal = convert_python_value_to_literal(sub_value, sub_type)
+        sub_literal = _convert_python_value_to_literal(sub_value, sub_type)
         record_fields.append(_literals.RecordField(key=key, value=sub_literal))
 
     return _literals.Literal(record=_literals.Record(fields=record_fields))
 
 
 def _convert_blob(
-    value: Any,  # noqa: ANN401
+    value: object,
     blob_type: _core_types.BlobType,
 ) -> _literals.Literal:
 
@@ -265,7 +259,7 @@ def _convert_blob(
 
 
 def _convert_enum(
-    value: Any,  # noqa: ANN401
+    value: object,
     enum_type: _core_types.EnumType,
 ) -> _literals.Literal:
     if isinstance(value, Enum):
@@ -286,10 +280,14 @@ def _convert_enum(
 
 
 def _convert_union(
-    value: Any,  # noqa: ANN401
+    value: object,
     union_type: _types.LiteralType,
 ) -> _literals.Literal:
     if value is None:
+        variants = union_type.union_type.variants if union_type.union_type else []
+        if not any(v.simple == _types.SimpleType.NONE for v in variants):  # pyright: ignore[reportUnnecessaryComparison]
+            raise ValueError("Union does not allow NONE variant")
+
         none_literal = _create_none_literal()
         return _literals.Literal(
             scalar=_literals.Scalar(
@@ -310,7 +308,7 @@ def _convert_union(
     possible_variants = []
     for variant in variants:
         try:
-            converted = convert_python_value_to_literal(value, variant)
+            converted = _convert_python_value_to_literal(value, variant)
             stored = _types.LiteralType(
                 simple=variant.simple,
                 collection_type=variant.collection_type,
@@ -348,10 +346,10 @@ def _convert_union(
 
 
 def convert_inputs_to_literals(
-    params: dict[str, Any],
+    params: dict[str, object],
     flyte_interface_types: dict[str, Any],  # Variable map
 ) -> dict[str, _literals.Literal]:
-    result = {}
+    result: dict[str, _literals.Literal] = {}
 
     for param_name, param_value in params.items():
         if param_name not in flyte_interface_types:
@@ -360,7 +358,7 @@ def convert_inputs_to_literals(
         variable = flyte_interface_types[param_name]
         literal_type = variable.type
 
-        result[param_name] = convert_python_value_to_literal(
+        result[param_name] = _convert_python_value_to_literal(
             param_value,
             literal_type,
         )
