@@ -662,7 +662,7 @@ def execute(
     default=None,
     help=(
         "Register the workflow to the specified workspace. "
-        "This argument accepts a numeric workspace ID, e.g. `--workspace 1234`. "
+        "This argument accepts a numeric workspace ID, e.g. `--workspace-id 1234`. "
         "By default, workflows are registered to the active workspace."
     ),
 )
