@@ -92,8 +92,17 @@ def get_ingress_data(flytedb_id: str) -> list[LPath]:
             """
             query ExecutionIngressTag($flytedbId: BigInt!) {
                 ldataNodeEvents(
-                    condition: { causeExecutionFlytedbId: $flytedbId }
-                    filter: { type: { equalTo: INGRESS } }
+                    filter: {
+                        type: { equalTo: INGRESS }
+                        or: [
+                            {
+                                causeExecutionId: { equalTo: $executionId }
+                            },
+                            {
+                                causeExecutionFlytedbId: { equalTo: $flytedbId }
+                            }
+                        ]
+                    }
                 ) {
                     nodes {
                         id
