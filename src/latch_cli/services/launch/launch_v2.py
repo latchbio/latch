@@ -86,11 +86,13 @@ def process_output(outputs_url: str, python_outputs: dict[str, type]) -> dict[st
     return output
 
 
-def get_ingress_data(flytedb_id: str) -> list[LPath]:
+def get_ingress_data(
+    flytedb_id: Optional[str], execution_id: Optional[str]
+) -> list[LPath]:
     query_res: dict[str, Any] = execute(
         gql.gql(
             """
-            query ExecutionIngressTag($flytedbId: BigInt!) {
+            query ExecutionIngressTag($flytedbId: BigInt, $executionId: BigInt) {
                 ldataNodeEvents(
                     filter: {
                         type: { equalTo: INGRESS }
@@ -114,7 +116,7 @@ def get_ingress_data(flytedb_id: str) -> list[LPath]:
             }
             """
         ),
-        {"flytedbId": flytedb_id},
+        {"flytedbId": flytedb_id, "executionId": execution_id},
     )
 
     nodes = query_res.get("ldataNodeEvents", {}).get("nodes", [])
@@ -172,14 +174,13 @@ class Execution:
 
     async def wait(self) -> Union[CompletedExecution, None]:
         for _ in self.poll():
-            if self.flytedb_id is None:
-                continue
-
             if self.status == "SUCCEEDED" and self.outputs_url is not None:
                 return CompletedExecution(
                     id=self.id,
                     output=process_output(self.outputs_url, self.python_outputs),
-                    ingress_data=get_ingress_data(self.flytedb_id),
+                    ingress_data=get_ingress_data(
+                        flytedb_id=self.flytedb_id, execution_id=self.id
+                    ),
                     status=self.status,
                 )
 
@@ -187,7 +188,9 @@ class Execution:
                 return CompletedExecution(
                     id=self.id,
                     output={},
-                    ingress_data=get_ingress_data(self.flytedb_id),
+                    ingress_data=get_ingress_data(
+                        flytedb_id=self.flytedb_id, execution_id=self.id
+                    ),
                     status=self.status,
                 )
 
