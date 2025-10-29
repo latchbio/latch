@@ -276,13 +276,16 @@ def get_flag_ext(
     assert len(list_args) == 1
 
     item_type = list_args[0]
-    if item_type is SamplesheetItem:
+    item_origin = get_origin(item_type)
+    if item_origin is SamplesheetItem:
         item_args = get_args(item_type)
         assert len(item_args) == 1
         item_type = item_args[0]
+        value = [v.data for v in value]
 
     output_path = shared_dir / f"{f.name}_samplesheet.csv"
-    res = samplesheet_constructor(value, list_args[0])
+
+    res = samplesheet_constructor(value, item_type)
     try:
         output_path.write_text(res.read_text())
     finally:

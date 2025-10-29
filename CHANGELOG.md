@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.67.14 - 2025-10-28
+
+### Fixed
+
+* Bug in `get_flag_ext` (used in nextflow workflows) where `SamplesheetItem`s were not handled correctly
+
 ## 2.67.12 - 2025-10-09
 
 ### Fixed
