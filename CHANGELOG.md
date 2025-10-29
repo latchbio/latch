@@ -22,6 +22,12 @@ Types of changes
 
 * Bug in `get_flag_ext` (used in nextflow workflows) where `SamplesheetItem`s were not handled correctly
 
+## 2.67.13 - 2025-10-09
+
+## Fixed
+
+* Bug in 'get_ingress_data` in launch api not querying by cause_execution_id
+
 ## 2.67.12 - 2025-10-09
 
 ### Fixed
