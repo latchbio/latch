@@ -22,7 +22,7 @@ Types of changes
 
 * Bug in `get_flag_ext` (used in nextflow workflows) where `SamplesheetItem`s were not handled correctly
 
-## 2.67.13 - 2025-10-09
+## 2.67.13 - 2025-10-22
 
 ## Fixed
 
