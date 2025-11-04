@@ -288,7 +288,7 @@ def launch_from_launch_plan(
 
         raw_python_outputs = meta.get("python_outputs")
         if raw_python_outputs is None:
-            print("No python outputs found -- re-register workflow with latch version >= 2.65.1 in workflow environment to access outputs in Execution object.")
+            print("No python outputs found. If your workflow has outputs, re-register workflow with latch version >= 2.65.1 in workflow environment to access outputs in Execution object.")
             break
 
         if raw_python_outputs is not None:
@@ -346,7 +346,7 @@ def launch(
         raw_python_outputs = meta.get("python_outputs")
 
         if raw_python_outputs is None:
-            print("No python outputs found -- re-register workflow with latch version >= 2.65.1 in workflow environment to access outputs in Execution object.")
+            print("No python outputs found. If your workflow has outputs, re-register workflow with latch version >= 2.65.1 in workflow environment to access outputs in Execution object.")
             break
 
         try:
