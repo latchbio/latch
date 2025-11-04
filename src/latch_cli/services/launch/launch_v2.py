@@ -291,14 +291,13 @@ def launch_from_launch_plan(
             print("No python outputs found. If your workflow has outputs, re-register workflow with latch version >= 2.65.1 in workflow environment to access outputs in Execution object.")
             break
 
-        if raw_python_outputs is not None:
-            try:
-                python_outputs = dill.loads(base64.b64decode(raw_python_outputs))
-            except dill.UnpicklingError as e:
-                raise RuntimeError(
-                    "Failed to decode the workflow python output -- ensure your python version matches the version in the workflow environment"
-                ) from e
-            break
+        try:
+            python_outputs = dill.loads(base64.b64decode(raw_python_outputs))
+        except dill.UnpicklingError as e:
+            raise RuntimeError(
+                "Failed to decode the workflow python output -- ensure your python version matches the version in the workflow environment"
+            ) from e
+        break
 
     if python_outputs is None:
         python_outputs = {}
