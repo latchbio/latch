@@ -287,6 +287,10 @@ def launch_from_launch_plan(
         meta = description.get("__workflow_meta__", {}).get("meta", {})
 
         raw_python_outputs = meta.get("python_outputs")
+        if raw_python_outputs is None:
+            print("No python outputs found -- re-register workflow with latch version >= 2.65.1 in workflow environment to access outputs in Execution object.")
+            break
+
         if raw_python_outputs is not None:
             try:
                 python_outputs = dill.loads(base64.b64decode(raw_python_outputs))
@@ -342,7 +346,8 @@ def launch(
         raw_python_outputs = meta.get("python_outputs")
 
         if raw_python_outputs is None:
-            raise RuntimeError("Missing python outputs in workflow metadata. Re-register workflow with latch version >= 2.65.0 in workflow environment to use launch command.")
+            print("No python outputs found -- re-register workflow with latch version >= 2.65.1 in workflow environment to access outputs in Execution object.")
+            break
 
         try:
             python_outputs = dill.loads(base64.b64decode(raw_python_outputs))  # noqa: S301
