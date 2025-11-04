@@ -8,6 +8,7 @@ from textwrap import dedent
 from typing import Any, Dict, List, Optional, Set, Union, get_args
 
 import click
+import snakemake.cli
 from flyteidl.admin.launch_plan_pb2 import LaunchPlan as _idl_admin_LaunchPlan
 from flyteidl.admin.task_pb2 import TaskSpec as _idl_admin_TaskSpec
 from flyteidl.admin.workflow_pb2 import WorkflowSpec as _idl_admin_WorkflowSpec
