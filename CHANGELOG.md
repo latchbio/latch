@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.67.15 - 2025-11-04
+
+### Fixed
+
+* launch_v2 crashing when workflow does not have outputs
+
 ## 2.67.14 - 2025-10-28
 
 ### Fixed

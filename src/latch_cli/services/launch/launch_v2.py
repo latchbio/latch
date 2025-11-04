@@ -297,9 +297,7 @@ def launch_from_launch_plan(
             break
 
     if python_outputs is None:
-        raise ValueError(
-            "No python outputs found -- re-register workflow with latch version >= 2.65.0 in workflow environment"
-        )
+        python_outputs = {}
 
     return launch_workflow(
         target_account_id, wf_id, combined_params_map, python_outputs
@@ -352,6 +350,9 @@ def launch(
             raise RuntimeError("Failed to decode the workflow outputs. Ensure your python version matches the version in the workflow environment.") from e
 
         break
+
+    if python_outputs is None:
+        python_outputs = {}
 
     params_for_launch: dict[str, Any] = params
     if best_effort:
