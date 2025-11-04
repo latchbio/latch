@@ -287,19 +287,20 @@ def launch_from_launch_plan(
         meta = description.get("__workflow_meta__", {}).get("meta", {})
 
         raw_python_outputs = meta.get("python_outputs")
-        if raw_python_outputs is not None:
-            try:
-                python_outputs = dill.loads(base64.b64decode(raw_python_outputs))
-            except dill.UnpicklingError as e:
-                raise RuntimeError(
-                    "Failed to decode the workflow python output -- ensure your python version matches the version in the workflow environment"
-                ) from e
+        if raw_python_outputs is None:
+            print("No python outputs found. If your workflow has outputs, re-register workflow with latch version >= 2.65.1 in workflow environment to access outputs in Execution object.")
             break
 
+        try:
+            python_outputs = dill.loads(base64.b64decode(raw_python_outputs))
+        except dill.UnpicklingError as e:
+            raise RuntimeError(
+                "Failed to decode the workflow python output -- ensure your python version matches the version in the workflow environment"
+            ) from e
+        break
+
     if python_outputs is None:
-        raise ValueError(
-            "No python outputs found -- re-register workflow with latch version >= 2.65.0 in workflow environment"
-        )
+        python_outputs = {}
 
     return launch_workflow(
         target_account_id, wf_id, combined_params_map, python_outputs
@@ -344,7 +345,8 @@ def launch(
         raw_python_outputs = meta.get("python_outputs")
 
         if raw_python_outputs is None:
-            raise RuntimeError("Missing python outputs in workflow metadata. Re-register workflow with latch version >= 2.65.0 in workflow environment to use launch command.")
+            print("No python outputs found. If your workflow has outputs, re-register workflow with latch version >= 2.65.1 in workflow environment to access outputs in Execution object.")
+            break
 
         try:
             python_outputs = dill.loads(base64.b64decode(raw_python_outputs))  # noqa: S301
@@ -352,6 +354,9 @@ def launch(
             raise RuntimeError("Failed to decode the workflow outputs. Ensure your python version matches the version in the workflow environment.") from e
 
         break
+
+    if python_outputs is None:
+        python_outputs = {}
 
     params_for_launch: dict[str, Any] = params
     if best_effort:
