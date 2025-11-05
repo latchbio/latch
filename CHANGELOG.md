@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.67.16 - 2025-11-05
+
+### Fixed
+
+* @msto fixed an issue in registering Snakemake workflows using snakemake>=8.0
+
 ## 2.67.15 - 2025-11-04
 
 ### Fixed
