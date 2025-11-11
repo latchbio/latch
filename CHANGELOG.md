@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.67.17 - 2025-11-10
+
+### Fixed
+
+* Awaiting an Execution with no outputs leads to a 400 Client error
+
 ## 2.67.16 - 2025-11-05
 
 ### Fixed

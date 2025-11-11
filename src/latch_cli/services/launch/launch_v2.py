@@ -45,6 +45,9 @@ class MissingParameterError(ValueError): ...
 
 
 def process_output(outputs_url: str, python_outputs: dict[str, type]) -> dict[str, Any]:
+    if python_outputs == {}:
+        return {}
+
     res = tinyrequests.post(
         urljoin(NUCLEUS_URL, "/ldata/get-flyte-metadata-signed-url"),
         headers={"Authorization": get_auth_header()},
