@@ -25,7 +25,6 @@ from urllib.parse import urlparse
 
 import click
 import snakemake
-import snakemake.cli
 import snakemake.io
 import snakemake.jobs
 from flytekit.configuration import SerializationSettings

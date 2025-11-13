@@ -9,7 +9,6 @@ from typing import Dict, Optional, Set
 from urllib.parse import urlparse, urlunparse
 
 import snakemake
-import snakemake.cli
 import snakemake.workflow
 from snakemake.deployment import singularity
 from snakemake.parser import (
