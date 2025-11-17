@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.67.18 - 2025-11-10
+
+### Dependencies
+
+* Updated `websockets` dependency to 15.0.1
+
 ## 2.67.17 - 2025-11-10
 
 ### Fixed
