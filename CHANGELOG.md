@@ -16,7 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.67.18 - 2025-11-10
+## 2.67.19 - 2025-11-18
+
+### Fixed
+
+* Revert broken changes from 2.67.16
+
+## 2.67.18 - 2025-11-17
 
 ### Dependencies
 
