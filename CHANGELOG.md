@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.67.20 - 2025-11-20
+
+### Added
+
+* `LPath.exists()` method to check if a remote path exists
+
 ## 2.67.19 - 2025-11-18
 
 ### Fixed

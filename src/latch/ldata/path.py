@@ -149,6 +149,15 @@ class LPath:
         self._cache.content_type = None
         self._cache.version_id = None
 
+    def exists(self, *, load_if_missing: bool = True) -> bool:
+        if self._cache.node_id is None and load_if_missing:
+            try:
+                self.fetch_metadata()
+            except LatchPathError:
+                return False
+
+        return self._cache.node_id is not None
+
     def node_id(self, *, load_if_missing: bool = True) -> Optional[str]:
         match = node_id_regex.match(self.path)
         if match:
