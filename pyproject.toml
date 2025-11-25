@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.sdist]
-include = ["src/**/*.py", "src/latch_cli/services/init/*"]
+include = ["src/**/*.py", "src/**/py.typed", "src/latch_cli/services/init/*"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "src/latch_cli" = "latch_cli"
@@ -12,13 +12,10 @@ include = ["src/**/*.py", "src/latch_cli/services/init/*"]
 
 [project]
 name = "latch"
-version = "2.54.3"
+version = "2.67.20"
 description = "The Latch SDK"
 authors = [{ name = "Kenny Workman", email = "kenny@latch.bio" }]
-maintainers = [
-  { name = "Ayush Kamat", email = "ayush@latch.bio" },
-  { name = "Rahul Desai", email = "rahul@latch.bio" },
-]
+maintainers = [{ name = "Ayush Kamat", email = "ayush@latch.bio" }]
 
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -34,25 +31,28 @@ dependencies = [
   "scp>=0.14.0",
   "boto3>=1.26.0",
   "tqdm>=4.63.0",
-  "lytekit==0.15.13",
-  "lytekitplugins-pods==0.6.2",
+  "lytekit==0.15.29",
+  "lytekitplugins-pods==0.7.4",
   "typing-extensions>=4.12.0",
   "apscheduler>=3.10.0",
-  "gql==3.4.0",
+  "gql==3.5.0",
   "graphql-core==3.2.3",
-  "requests-toolbelt==0.10.1",
+  "requests-toolbelt==1.0.0",
   "python-dateutil>=2.8",
   "GitPython==3.1.40",
   # for old latch develop, to be removed
   "aioconsole==0.6.1",
   "asyncssh==2.13.2",
-  "websockets==11.0.3",
+  "websockets>=15.0.1",
   "watchfiles==0.19.0",
   # marshmallow_jsonschema depends on setuptools but doesn't specify it so we have to do it for them yay :D
   "setuptools>=75.3.0",
   "pyxattr>=0.8.1",
   "uvloop>=0.21.0",
   "aiohttp>=3.11.7",
+  "orjson>=3.10.12",
+  "latch-persistence>=0.1.5",
+  "dill>=0.4.0",
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -171,6 +171,9 @@ ignore = [
 
   "ANN101",
   "ANN102",
+  "ANN201",
+  "ANN202",
+  "ANN204",
 
   "E402",
   "E501",
@@ -179,15 +182,16 @@ ignore = [
   "C408",
   "C901",
 
+  "FA100",
+
   "T201",
   "T203",
-
-  "D415",
 
   "SIM108",
 
   "S101",
   "S603",
+  "S607",
 
   "N807",
 
@@ -199,12 +203,18 @@ ignore = [
   "D105",
   "D106",
   "D107",
+  "D202",
+  "D415",
 
   "TRY003",
   "TRY300",
   "TRY301",
 
   "FLY002",
+
+  "PERF203",
+
+  "PLC0415",
 
   "PLW2901",
   "PLW0603",
@@ -228,6 +238,7 @@ ignore = [
 
   "PD901",
 
+  "UP006",
   "UP040",
 
   "SIM112",

@@ -11,17 +11,14 @@ import docker
 import paramiko
 import paramiko.util
 from docker.transport import SSHHTTPAdapter
-from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import FlyteEntities
-from flytekit.core.workflow import PythonFunctionWorkflow
 
 import latch_cli.tinyrequests as tinyrequests
 from latch.utils import account_id_from_token, current_workspace, retrieve_or_login
+from latch_cli.centromere.ast_parsing import get_flyte_objects
 from latch_cli.centromere.utils import (
     RemoteConnInfo,
     _construct_dkr_client,
     _construct_ssh_client,
-    _import_flyte_objects,
 )
 from latch_cli.constants import docker_image_name_illegal_pat, latch_constants
 from latch_cli.docker_utils import get_default_dockerfile
@@ -29,6 +26,7 @@ from latch_cli.utils import (
     WorkflowType,
     generate_temporary_ssh_credentials,
     hash_directory,
+    identifier_suffix_from_str,
 )
 from latch_sdk_config.latch import config
 
@@ -40,6 +38,7 @@ class _Container:
     image_name: str
 
 
+# todo(ayush): cleanse this
 class _CentromereCtx:
     """Manages state for interaction with centromere.
 
@@ -90,11 +89,22 @@ class _CentromereCtx:
         snakefile: Optional[Path] = None,
         nf_script: Optional[Path] = None,
         use_new_centromere: bool = False,
+        overwrite: bool = False,
+        dockerfile_path: Optional[Path] = None,
     ):
         self.use_new_centromere = use_new_centromere
         self.remote = remote
         self.disable_auto_version = disable_auto_version
         self.wf_module = wf_module if wf_module is not None else "wf"
+
+        if self.wf_module.startswith("."):
+            click.secho(
+                dedent(f"""\
+                Workflow module `{self.wf_module}` must be absolute (i.e. must not start with `.`)
+                """),
+                fg="red",
+            )
+            raise click.exceptions.Exit(1)
 
         try:
             self.token = retrieve_or_login()
@@ -174,28 +184,45 @@ class _CentromereCtx:
             self.container_map: Dict[str, _Container] = {}
 
             if self.workflow_type == WorkflowType.latchbiosdk:
+                # fixme(ayush): this sucks
+                module_path = pkg_root / Path(self.wf_module.replace(".", "/"))
+
+                error_msg = (
+                    dedent(
+                        f"""
+                    Unable to locate workflow module `{self.wf_module}` in `{self.pkg_root.resolve()}`. Check that:
+
+                    1. {module_path} exists.
+                    2. Package `{self.wf_module}` is an absolute importable Python path (e.g. `workflows.my_workflow`).
+                    3. All directories in `{module_path}` contain an `__init__.py` file."""
+                    ),
+                )
+
                 try:
-                    _import_flyte_objects([self.pkg_root], module_name=self.wf_module)
-                except ModuleNotFoundError:
-                    click.secho(
-                        dedent(
-                            f"""
-                            Unable to locate workflow module `{self.wf_module}`. Check that:
+                    if not module_path.exists():
+                        click.secho(error_msg, fg="red")
+                        raise click.exceptions.Exit(1)
 
-                            1. Package `{self.wf_module}` exists in {pkg_root.resolve()}.
-                            2. Package `{self.wf_module}` is an importable Python path (e.g. `workflows.my_workflow`).
-                            3. Any directories in `{self.wf_module}` contain an `__init__.py` file."""
-                        ),
-                        fg="red",
-                    )
-                    raise click.exceptions.Exit(1)
+                    flyte_objects = get_flyte_objects(module_path)
+                except ModuleNotFoundError as e:
+                    click.secho(error_msg, fg="red")
+                    raise click.exceptions.Exit(1) from e
 
-                for entity in FlyteEntities.entities:
-                    if isinstance(entity, PythonFunctionWorkflow):
-                        self.workflow_name = entity.name
+                wf_name: Optional[str] = None
+
+                name_path = pkg_root / latch_constants.pkg_workflow_name
+                if name_path.exists():
+                    wf_name = name_path.read_text().strip()
+
+                if wf_name is None:
+                    for obj in flyte_objects:
+                        if obj.type != "workflow":
+                            continue
+
+                        wf_name = obj.name
                         break
 
-                if not hasattr(self, "workflow_name"):
+                if wf_name is None:
                     click.secho(
                         dedent("""\
                         Unable to locate workflow code. If you are a registering a Snakemake project, make sure to pass the Snakefile path with the --snakefile flag.
@@ -204,21 +231,30 @@ class _CentromereCtx:
                     )
                     raise click.exceptions.Exit(1)
 
-                name_path = pkg_root / latch_constants.pkg_workflow_name
-                if name_path.exists():
-                    self.workflow_name = name_path.read_text().strip()
+                self.workflow_name = wf_name
 
-                for entity in FlyteEntities.entities:
-                    if isinstance(entity, PythonTask):
-                        if (
-                            hasattr(entity, "dockerfile_path")
-                            and entity.dockerfile_path is not None
-                        ):
-                            self.container_map[entity.name] = _Container(
-                                dockerfile=entity.dockerfile_path,
-                                image_name=self.task_image_name(entity.name),
-                                pkg_dir=entity.dockerfile_path.parent,
-                            )
+                for obj in flyte_objects:
+                    if obj.type != "task" or obj.dockerfile is None:
+                        continue
+
+                    dockerfile = self.pkg_root / obj.dockerfile
+
+                    if not dockerfile.exists():
+                        click.secho(
+                            f"""\
+                            The `dockerfile` value (provided {obj.dockerfile}, resolved to {dockerfile}) for task `{obj.name}` does not exist.
+                            Note that relative paths are resolved with respect to the package root.\
+                            """,
+                            fg="red",
+                        )
+
+                        raise click.exceptions.Exit(1)
+
+                    self.container_map[obj.name] = _Container(
+                        dockerfile=obj.dockerfile,
+                        image_name=self.task_image_name(obj.name),
+                        pkg_dir=obj.dockerfile.parent,
+                    )
 
             elif self.workflow_type == WorkflowType.snakemake:
                 assert snakefile is not None
@@ -270,8 +306,7 @@ class _CentromereCtx:
                         )
                         click.secho(f"`{new_meta}`", bold=True, fg="red", nl=False)
                         click.secho(
-                            f" file:\n```\n{snakemake_metadata_example}```",
-                            fg="red",
+                            f" file:\n```\n{snakemake_metadata_example}```", fg="red"
                         )
                         if click.confirm(
                             click.style(
@@ -299,9 +334,10 @@ class _CentromereCtx:
                                 import subprocess
 
                                 if system == "Linux":
-                                    res = subprocess.run(
-                                        ["xdg-open", new_meta]
-                                    ).returncode
+                                    res = subprocess.run([
+                                        "xdg-open",
+                                        new_meta,
+                                    ]).returncode
                                 elif system == "Darwin":
                                     res = subprocess.run(["open", new_meta]).returncode
                                 elif system == "Windows":
@@ -320,7 +356,7 @@ class _CentromereCtx:
                         dedent(
                             """
                             Make sure a `latch_metadata` exists in the Snakemake
-                            project root or provide a metadata folder with the `--metadata-root` argument.""",
+                            project root or provide a metadata folder with the `--metadata-root` argument."""
                         ),
                         fg="red",
                     )
@@ -373,8 +409,10 @@ class _CentromereCtx:
                 sys.exit(1)
 
             self.default_container = _Container(
-                dockerfile=get_default_dockerfile(
-                    self.pkg_root, wf_type=self.workflow_type
+                dockerfile=dockerfile_path
+                if dockerfile_path is not None
+                else get_default_dockerfile(
+                    self.pkg_root, wf_type=self.workflow_type, overwrite=overwrite
                 ),
                 image_name=self.image_tagged,
                 pkg_dir=self.pkg_root,
@@ -437,8 +475,6 @@ class _CentromereCtx:
         else:
             account_id = self.account_id
 
-        from ..utils import identifier_suffix_from_str
-
         wf_name = identifier_suffix_from_str(self.workflow_name).lower()
         wf_name = docker_image_name_illegal_pat.sub("_", wf_name)
 
@@ -478,6 +514,9 @@ class _CentromereCtx:
         return f"{self.image}:{self.version}"
 
     def task_image_name(self, task_name: str) -> str:
+        task_name = identifier_suffix_from_str(task_name).lower()
+        task_name = docker_image_name_illegal_pat.sub("_", task_name)
+
         return f"{self.image}:{task_name}-{self.version}"
 
     @property
@@ -500,9 +539,7 @@ class _CentromereCtx:
         response = tinyrequests.post(
             self.latch_provision_url,
             headers=headers,
-            json={
-                "public_key": self.public_key,
-            },
+            json={"public_key": self.public_key},
         )
 
         resp = response.json()
@@ -559,11 +596,7 @@ class _CentromereCtx:
 
         headers = {"Authorization": f"Bearer {self.token}"}
         response = tinyrequests.post(
-            self.latch_get_image_url,
-            headers=headers,
-            json={
-                "task_name": task_name,
-            },
+            self.latch_get_image_url, headers=headers, json={"task_name": task_name}
         )
 
         resp = response.json()

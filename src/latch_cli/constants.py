@@ -5,7 +5,7 @@ from enum import Enum
 
 class Units(int, Enum):
     KiB = 2**10
-    kB = 10**3
+    kB = 10**3  # noqa: N815
 
     MiB = 2**20
     MB = 10**6
@@ -20,9 +20,9 @@ class Units(int, Enum):
 @dataclass(frozen=True)
 class LatchConstants:
     base_image: str = (
-        "812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:fe0b-main"
+        "812206152185.dkr.ecr.us-west-2.amazonaws.com/latch-base:cb01-main"
     )
-    nextflow_latest_version: str = "v2.3.0"
+    nextflow_latest_version: str = "v3.0.6"
 
     file_max_size: int = 4 * Units.MiB
     file_chunk_size: int = 64 * Units.MiB
@@ -46,6 +46,10 @@ class LatchConstants:
     # seconds
     centromere_poll_timeout: int = 18000
     centromere_keepalive_interval: int = 30
+
+    ssh_forwarder_elb_host: str = (
+        "a1fd7b5d7b5824b46b8671207e1124b6-610912349.us-west-2.elb.amazonaws.com"
+    )
 
 
 latch_constants = LatchConstants()

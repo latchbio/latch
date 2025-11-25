@@ -17,11 +17,11 @@ from urllib.parse import urljoin
 
 import click
 import jwt
-from latch_sdk_config.user import user_config
 
 from latch_cli.click_utils import bold
 from latch_cli.constants import latch_constants
 from latch_cli.tinyrequests import get
+from latch_sdk_config.user import user_config
 
 # todo(ayush): need a better way to check if "latch" has been appended to urllib
 if "latch" not in urllib.parse.uses_netloc:
@@ -152,33 +152,38 @@ def human_readable_time(t_seconds: float) -> str:
     return " ".join(x)
 
 
-def hash_directory(dir_path: Path) -> str:
+def hash_directory(dir_path: Path, *, silent: bool = False) -> str:
     from latch.utils import current_workspace
 
     # todo(maximsmol): store per-file hashes to show which files triggered a version change
-    click.secho("Calculating workflow version based on file content hash", bold=True)
-    click.secho("  Disable with --disable-auto-version/-d", italic=True, dim=True)
+    if not silent:
+        click.secho(
+            "Calculating workflow version based on file content hash", bold=True
+        )
+        click.secho("  Disable with --disable-auto-version/-d", italic=True, dim=True)
 
     m = hashlib.new("sha256")
     m.update(current_workspace().encode("utf-8"))
 
-    ignore_file = dir_path / ".dockerignore"
     exclude: List[str] = ["/.latch", ".git"]
-    try:
-        with ignore_file.open("r") as f:
-            click.secho("  Using .dockerignore", italic=True)
+    for file in [".dockerignore", ".gitignore"]:
+        ignore_file = dir_path / file
+        try:
+            with ignore_file.open("r") as f:
+                if not silent:
+                    click.secho(f"  Using {file}", italic=True)
 
-            for l in f:
-                l = l.strip()
+                for l in f:
+                    l = l.strip()
 
-                if l == "":
-                    continue
-                if l[0] == "#":
-                    continue
+                    if l == "":
+                        continue
+                    if l[0] == "#":
+                        continue
 
-                exclude.append(l)
-    except FileNotFoundError:
-        ...
+                    exclude.append(l)
+        except FileNotFoundError:
+            ...
 
     from docker.utils import exclude_paths
 
@@ -197,21 +202,23 @@ def hash_directory(dir_path: Path) -> str:
 
         file_size = p_stat.st_size
         if not stat.S_ISREG(p_stat.st_mode):
-            click.secho(
-                f"{p.relative_to(dir_path.resolve())} is not a regular file."
-                " Ignoring contents",
-                fg="yellow",
-                bold=True,
-            )
+            if not silent:
+                click.secho(
+                    f"{p.relative_to(dir_path.resolve())} is not a regular file."
+                    " Ignoring contents",
+                    fg="yellow",
+                    bold=True,
+                )
             continue
 
         if file_size > latch_constants.file_max_size:
-            click.secho(
-                f"{p.relative_to(dir_path.resolve())} is too large"
-                f" ({with_si_suffix(file_size)}) to checksum. Ignoring contents",
-                fg="yellow",
-                bold=True,
-            )
+            if not silent:
+                click.secho(
+                    f"{p.resolve().relative_to(dir_path.resolve())} is too large"
+                    f" ({with_si_suffix(file_size)}) to checksum. Ignoring contents",
+                    fg="yellow",
+                    bold=True,
+                )
             continue
 
         m.update(p.read_bytes())
@@ -258,10 +265,12 @@ def generate_temporary_ssh_credentials(
             subprocess.run(cmd, check=True)
         except subprocess.CalledProcessError as e:
             click.secho(
-                dedent(f"""
+                dedent(
+                    f"""
                     There was a problem creating temporary SSH credentials. Please ensure
                     that `{bold("ssh-keygen")}` is installed and available in your PATH.
-                """.strip()),
+                """.strip()
+                ),
                 fg="red",
             )
 
@@ -277,14 +286,16 @@ def generate_temporary_ssh_credentials(
             subprocess.run(cmd, check=True, stderr=subprocess.DEVNULL)
         except subprocess.CalledProcessError as e:
             click.secho(
-                dedent(f"""
+                dedent(
+                    f"""
                     There was an issue adding temporary SSH credentials to your SSH Agent.
                     Please activate your SSH Agent by running
 
                         {bold("$ eval `ssh-agent -s`")}
 
                     in your terminal.
-                """.strip()),
+                """.strip()
+                ),
                 fg="red",
             )
 
@@ -296,10 +307,12 @@ def generate_temporary_ssh_credentials(
         out = subprocess.run(cmd, check=True, capture_output=True)
     except subprocess.CalledProcessError as e:
         click.secho(
-            dedent(f"""
+            dedent(
+                f"""
                 There was a problem decoding your temporary credentials. Please ensure
                 that `{bold("ssh-keygen")}` is installed and available in your PATH.
-            """.strip()),
+            """.strip()
+            ),
             fg="red",
         )
 
@@ -356,9 +369,7 @@ class TemporarySSHCredentials:
             and self._ssh_key_path.with_suffix(".pub").exists()
         ):
             subprocess.run(
-                ["ssh-add", "-d", self._ssh_key_path],
-                check=True,
-                capture_output=True,
+                ["ssh-add", "-d", self._ssh_key_path], check=True, capture_output=True
             )
         self._ssh_key_path.unlink(missing_ok=True)
         self._ssh_key_path.with_suffix(".pub").unlink(missing_ok=True)
@@ -366,13 +377,13 @@ class TemporarySSHCredentials:
     @property
     def public_key(self):
         self.generate()
+        assert self._public_key is not None
         return self._public_key
 
     @property
     def private_key(self):
         self.generate()
-        with open(self._ssh_key_path, "r") as f:
-            return f.read()
+        return self._ssh_key_path.read_text()
 
     def __enter__(self):
         self.generate()

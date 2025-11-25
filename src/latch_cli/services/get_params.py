@@ -7,7 +7,7 @@ import enum
 import json
 import keyword
 import typing
-from typing import Optional
+from typing import Optional, TypedDict
 
 import google.protobuf.json_format as gpjson
 from flyteidl.core.literals_pb2 import Literal as _Literal
@@ -17,8 +17,8 @@ from flytekit.models.types import LiteralType
 
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
-from latch.utils import retrieve_or_login
-from latch_cli.services.launch import _get_workflow_interface
+from latch.utils import current_workspace
+from latch_cli.services.launch.interface import get_workflow_interface
 
 
 class _Unsupported: ...
@@ -37,21 +37,14 @@ _simple_table = {
     9: _Unsupported,
 }
 
-_primitive_table = {
-    type(None): None,
-    int: 0,
-    float: 0.0,
-    str: "foo",
-    bool: False,
-}
+_primitive_table = {type(None): None, int: 0, float: 0.0, str: "foo", bool: False}
 
 # TODO(ayush): fix this to
-# (1) support records,
-# (2) support fully qualified workflow names,
+# (1) support fully qualified workflow names,
 # (note from kenny) - pretty sure you intend to support the opposite,
 # fqn are supported by default, address when you get to this todo
-# (3) show a message indicating the generated filename,
-# (4) optionally specify the output filename
+# (2) show a message indicating the generated filename,
+# (3) optionally specify the output filename
 
 
 def get_params(wf_name: str, wf_version: Optional[str] = None):
@@ -74,9 +67,8 @@ def get_params(wf_name: str, wf_version: Optional[str] = None):
             # contains a template parameter map.
     """
 
-    token = retrieve_or_login()
-    wf_id, wf_interface, wf_default_params = _get_workflow_interface(
-        token, wf_name, wf_version
+    _, wf_interface, wf_default_params = get_workflow_interface(
+        current_workspace(), wf_name, wf_version
     )
 
     params = {}
@@ -267,6 +259,9 @@ def _guess_python_val(literal: _Literal, python_type: typing.T):
             else:
                 return LatchDir(blob.uri)
 
+        if literal.scalar.union is not None:
+            return _guess_python_val(literal.scalar.union.value, python_type)
+
     # collection
     if literal.collection is not None:
         p_list = []
@@ -274,9 +269,11 @@ def _guess_python_val(literal: _Literal, python_type: typing.T):
             p_list.append(_guess_python_val(item, get_args(python_type)[0]))
         return p_list
 
-    # sum
-
-    # enum
+    if literal.record is not None:
+        res = {}
+        for f in literal.record.fields:
+            res[f.key] = _guess_python_val(f.value, python_type.__annotations__[f.key])
+        return res
 
     raise NotImplementedError(
         f"The flyte literal {literal} cannot be transformed to a python type."
@@ -332,6 +329,12 @@ def _guess_python_type(literal: LiteralType, param_name: str):
         _VariantCarrier._name = param_name
         return _VariantCarrier
 
+    if literal.record_type is not None:
+        res: dict[str, type] = {}
+        for f in literal.record_type.fields:
+            res[f.key] = _guess_python_type(f.literal_type, f"{param_name}_{f.key}")
+        return TypedDict(f"Record_{param_name}", res)
+
     raise NotImplementedError(
         f"The flyte literal {literal} cannot be transformed to a python type."
     )
@@ -356,11 +359,6 @@ def _best_effort_default_val(t: typing.T):
     if type(t) is enum.EnumMeta:
         return f"{t._name}.{t._variants[0]}"
 
-    if get_origin(t) is None:
-        raise NotImplementedError(
-            f"Unable to produce a best-effort value for the python type {t}"
-        )
-
     if get_origin(t) is list:
         list_args = get_args(t)
         if len(list_args) == 0:
@@ -369,6 +367,15 @@ def _best_effort_default_val(t: typing.T):
 
     if get_origin(t) is typing.Union:
         return _best_effort_default_val(get_args(t)[0])
+
+    if issubclass(t, dict):
+        # TypedDict
+
+        res = {}
+        for k in t.__required_keys__:
+            typ = t.__annotations__[k]
+            res[k] = _best_effort_default_val(typ)
+        return res
 
     raise NotImplementedError(
         f"Unable to produce a best-effort value for the python type {t}"

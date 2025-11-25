@@ -19,6 +19,7 @@ from typing import (
     overload,
 )
 
+import dateutil.parser as dp
 import gql
 import gql.transport.exceptions
 import graphql.language as l
@@ -60,15 +61,25 @@ from ..types.json import JsonValue
 
 
 class _AllRecordsNode(TypedDict):
-    sampleId: str
-    sampleName: str
-    sampleDataKey: str
-    sampleDataValue: DBValue
+    id: str
+    name: str
+    creationTime: str
+    lastUpdated: Optional[str]
+    key: str
+    data: DBValue
 
 
 class _ColumnNode(TypedDict("_ColumnNodeReserved", {"def": DBValue})):
     key: str
     type: DBType
+
+
+@dataclass
+class RecordMeta:
+    id: str
+    name: str
+    creation_time: datetime
+    last_updated: datetime
 
 
 @dataclass
@@ -245,70 +256,91 @@ class Table:
 
         cols = self.get_columns()
 
-        # todo(maximsmol): because allSamples returns each column as its own
-        # row, we can't paginate by samples because we don't know when a sample is finished
-        data = execute(
-            gql.gql("""
-                query TableQuery($id: BigInt!) {
-                    catalogExperiment(id: $id) {
-                        allSamples {
-                            nodes {
-                                sampleId
-                                sampleName
-                                sampleDataKey
-                                sampleDataValue
+        offset = 0
+        while True:
+            data = execute(
+                gql.gql("""
+                    query TableQuery(
+                        $id: BigInt!,
+                        $argLimit: BigInt!,
+                        $argOffset: BigInt!
+                    ) {
+                        catalogExperiment(id: $id) {
+                            allSamplesJoinInfoPaginated(
+                                argLimit: $argLimit,
+                                argOffset: $argOffset
+                            ) {
+                                nodes {
+                                    id
+                                    name
+                                    creationTime
+                                    lastUpdated
+                                    key
+                                    data
+                                }
                             }
                         }
                     }
-                }
                 """),
-            {"id": self.id},
-        )["catalogExperiment"]
+                {"id": self.id, "argLimit": page_size, "argOffset": offset},
+            )["catalogExperiment"]
 
-        if data is None:
-            raise TableNotFoundError(
-                f"table does not exist or you lack permissions: id={self.id}"
-            )
+            if data is None:
+                raise TableNotFoundError(
+                    f"table does not exist or you lack permissions: id={self.id}"
+                )
 
-        nodes: List[_AllRecordsNode] = data["allSamples"]["nodes"]
+            nodes: List[_AllRecordsNode] = data["allSamplesJoinInfoPaginated"]["nodes"]
 
-        record_names: Dict[str, str] = {}
-        record_values: Dict[str, Dict[str, RecordValue]] = {}
+            record_meta: Dict[str, RecordMeta] = {}
+            record_values: Dict[str, Dict[str, RecordValue]] = {}
 
-        for node in nodes:
-            record_names[node["sampleId"]] = node["sampleName"]
-            vals = record_values.setdefault(node["sampleId"], {})
+            for node in nodes:
+                record_meta[node["id"]] = RecordMeta(
+                    node["id"],
+                    node["name"],
+                    dp.isoparse(node["creationTime"]),
+                    dp.isoparse(node["lastUpdated"] if node["lastUpdated"] is not None else node["creationTime"]),
+                )
+                vals = record_values.setdefault(node["id"], {})
 
-            col = cols.get(node["sampleDataKey"])
-            if col is None:
-                continue
-
-            # todo(maximsmol): in the future, allow storing or yielding values that failed to parse
-            vals[col.key] = to_python_literal(
-                node["sampleDataValue"], col.upstream_type["type"]
-            )
-
-        page: Dict[str, Record] = {}
-        for id, values in record_values.items():
-            for col in cols.values():
-                if col.key in values:
+                col = cols.get(node["key"])
+                if col is None:
                     continue
 
-                if not col.upstream_type["allowEmpty"]:
-                    values[col.key] = InvalidValue("")
+                # todo(maximsmol): in the future, allow storing or yielding values that failed to parse
+                vals[col.key] = to_python_literal(
+                    node["data"], col.upstream_type["type"]
+                )
 
-            cur = Record(id)
-            cur._cache.name = record_names[id]
-            cur._cache.values = values
-            cur._cache.columns = cols
-            page[id] = cur
+            page: Dict[str, Record] = {}
+            for id, values in record_values.items():
+                for col in cols.values():
+                    if col.key in values:
+                        continue
 
-            if len(page) == page_size:
+                    if not col.upstream_type["allowEmpty"]:
+                        values[col.key] = InvalidValue("")
+
+                meta = record_meta[id]
+
+                cur = Record(id)
+                cur._cache.name = meta.name
+                cur._cache.creation_time = meta.creation_time
+                cur._cache.last_updated = meta.last_updated
+                cur._cache.values = values
+                cur._cache.columns = cols
+                page[id] = cur
+
+            if len(page) > 0:
                 yield page
-                page = {}
 
-        if len(page) > 0:
-            yield page
+                if len(page) < page_size:
+                    break
+
+                offset += page_size
+            else:
+                break
 
     def get_dataframe(self):
         """Get a pandas DataFrame of all records in this table.

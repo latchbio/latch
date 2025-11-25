@@ -1,18 +1,20 @@
+import json
 import time
 from concurrent.futures import ProcessPoolExecutor
 from contextlib import closing
 from dataclasses import dataclass
 from itertools import repeat
 from pathlib import Path
-from typing import Dict, List, Set, TypedDict
+from typing import Dict, List, Optional, Set, TypedDict
 
 import click
-from latch_sdk_config.latch import config as latch_config
 
 from latch.ldata.type import LDataNodeType
 from latch_cli.constants import Units
 from latch_cli.utils import get_auth_header, human_readable_time, with_si_suffix
 from latch_cli.utils.path import normalize_path
+from latch_sdk_config.latch import config as latch_config
+from latch_sdk_config.user import user_config
 
 from .manager import TransferStateManager
 from .node import get_node_data
@@ -72,19 +74,43 @@ def download(
     else:
         endpoint = latch_config.api.data.get_signed_url
 
+    egress_source: Optional[dict[str, str]] = None
+
+    try:
+        pod_id = Path("/root/.latch/id").read_text("utf-8")
+        egress_source = {"pod_id": pod_id}
+    except OSError:
+        pass
+
     res = http_session.post(
         endpoint,
         headers={"Authorization": get_auth_header()},
-        json={"path": normalized},
+        json={
+            "path": normalized,
+            "egress_event_data": {
+                "purpose": json.dumps({
+                    "method": "latch-cli",
+                    **({"source": egress_source} if egress_source is not None else {}),
+                })
+            },
+        },
     )
 
     if res.status_code != 200:
         err = res.json()["error"]
         msg = f"failed to fetch presigned url(s) for path {src}"
         if res.status_code == 400:
+            if err == "Node does not exist or signer lacks permissions":
+                raise RuntimeError(
+                    f"{msg}: Either the data does not exist, or you lack the necessary permissions to download it. Contact your administrator."
+                )
             raise ValueError(f"{msg}: download request invalid: {err}")
         if res.status_code == 401:
             raise RuntimeError(f"authorization token invalid: {err}")
+        if res.status_code == 403:
+            raise RuntimeError(
+                "You lack the necessary permissions to download this data. Contact your administrator."
+            )
         raise RuntimeError(f"{msg} with code {res.status_code}: {res.json()['error']}")
 
     json_data = res.json()
@@ -149,9 +175,7 @@ def download(
             progress_bars: ProgressBars
             with closing(
                 manager.ProgressBars(
-                    num_bars,
-                    show_total_progress=show_total_progress,
-                    verbose=verbose,
+                    num_bars, show_total_progress=show_total_progress, verbose=verbose
                 )
             ) as progress_bars:
                 progress_bars.set_total(num_files, "Copying Files")
@@ -162,9 +186,7 @@ def download(
                 with ProcessPoolExecutor(max_workers=get_max_workers()) as executor:
                     total_bytes = sum(
                         executor.map(
-                            download_file,
-                            confirmed_jobs,
-                            repeat(progress_bars),
+                            download_file, confirmed_jobs, repeat(progress_bars)
                         )
                     )
 
@@ -186,15 +208,12 @@ def download(
             progress_bars: ProgressBars
             with closing(
                 manager.ProgressBars(
-                    num_bars,
-                    show_total_progress=False,
-                    verbose=verbose,
+                    num_bars, show_total_progress=False, verbose=verbose
                 )
             ) as progress_bars:
                 start = time.monotonic()
                 total_bytes = download_file(
-                    DownloadJob(file_data["url"], dest),
-                    progress_bars,
+                    DownloadJob(file_data["url"], dest), progress_bars
                 )
                 end = time.monotonic()
 
@@ -205,10 +224,7 @@ def download(
 
 # dest will always be a path which includes the copied file as its leaf
 # e.g. download_file("a/b.txt", Path("c/d.txt")) will copy the content of 'b.txt' into 'd.txt'
-def download_file(
-    job: DownloadJob,
-    progress_bars: ProgressBars,
-) -> int:
+def download_file(job: DownloadJob, progress_bars: ProgressBars) -> int:
     # todo(ayush): benchmark parallelized downloads using the range header
     with open(job.dest, "wb") as f:
         res = http_session.get(job.signed_url, stream=True)

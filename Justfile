@@ -1,7 +1,7 @@
 # Setup
 
 install:
-  uv sync
+  uv sync --no-cache --frozen
 
 # Packaging
 

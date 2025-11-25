@@ -8,9 +8,10 @@ from typing import Callable, Optional
 
 import click
 
-from latch_cli.docker_utils import generate_dockerfile
+from latch_cli.docker_utils import DockerfileBuilder
 from latch_cli.menus import select_tui
-from latch_cli.workflow_config import BaseImageOptions, create_and_write_config
+from latch_cli.utils import WorkflowType
+from latch_cli.workflow_config import BaseImageOptions, get_or_create_workflow_config
 
 
 def _get_boilerplate(pkg_root: Path, source_path: Path, copy_wf_dir: bool = True):
@@ -24,13 +25,7 @@ def _get_boilerplate(pkg_root: Path, source_path: Path, copy_wf_dir: bool = True
         for f in source_path.glob("*.py"):
             shutil.copy(f, wf_root)
 
-    pkg_root_globs = [
-        "LICENSE*",
-        "README*",
-        "*requirements*",
-        "env*",
-        "Dockerfile*",
-    ]
+    pkg_root_globs = ["LICENSE*", "README*", "*requirements*", "env*", "Dockerfile*"]
 
     for g in pkg_root_globs:
         for f in source_path.glob(g):
@@ -303,21 +298,21 @@ def init(
         raise ValueError(
             append_ctx_to_error(
                 f"package name must not contain any upper-case characters: {pkg_name}"
-            ),
+            )
         )
 
     if re.search("^[a-z]", pkg_name) is None:
         raise ValueError(
             append_ctx_to_error(
                 f"package name must start with a lower-case letter: {pkg_name}"
-            ),
+            )
         )
 
     if re.search("[a-z]$", pkg_name) is None:
         raise ValueError(
             append_ctx_to_error(
                 f"package name must end with a lower-case letter: {pkg_name}"
-            ),
+            )
         )
 
     for char in pkg_name:
@@ -326,7 +321,7 @@ def init(
                 append_ctx_to_error(
                     "package name must only contain alphanumeric characters, hyphens,"
                     f" and underscores: found `{char}`."
-                ),
+                )
             )
 
     if template is None:
@@ -384,9 +379,16 @@ def init(
 
     template_func(pkg_root)
 
-    create_and_write_config(pkg_root, base_image_type)
+    config = get_or_create_workflow_config(
+        pkg_root / ".latch" / "config", base_image_type
+    )
+
+    wf_type = WorkflowType.latchbiosdk
+    if chosen_template == "Snakemake Example":
+        wf_type = WorkflowType.snakemake
 
     if expose_dockerfile:
-        generate_dockerfile(pkg_root)
+        builder = DockerfileBuilder(pkg_root, config, wf_type)
+        builder.generate()
 
     return True

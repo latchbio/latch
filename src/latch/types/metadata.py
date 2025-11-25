@@ -396,16 +396,17 @@ class LatchParameter:
         appearance_dict["file_type"] = (
             "ANY"
             if self.allow_file and self.allow_dir
-            else "FILE" if self.allow_file else "DIR" if self.allow_dir else "NONE"
+            else "FILE"
+            if self.allow_file
+            else "DIR"
+            if self.allow_dir
+            else "NONE"
         )
 
         parameter_dict["appearance"] = appearance_dict
 
         if len(self.rules) > 0:
-            rules = []
-            for rule in self.rules:
-                rules.append(rule.dict)
-            parameter_dict["rules"] = rules
+            parameter_dict["rules"] = [rule.dict for rule in self.rules]
 
         return {"__metadata__": parameter_dict}
 
@@ -447,12 +448,7 @@ class SnakemakeFileParameter(SnakemakeParameter[Union[LatchFile, LatchDir]]):
     Deprecated: use `file_metadata` keyword in `SnakemakeMetadata` instead
     """
 
-    type: Optional[
-        Union[
-            Type[LatchFile],
-            Type[LatchDir],
-        ]
-    ] = None
+    type: Optional[Union[Type[LatchFile], Type[LatchDir]]] = None
     """
     The python type of the parameter.
     """
@@ -540,15 +536,17 @@ class NextflowParameter(Generic[T], LatchParameter):
         if self.samplesheet_type is not None:
             delim = "," if self.samplesheet_type == "csv" else "\t"
             self.samplesheet_constructor = functools.partial(
-                _samplesheet_constructor, t=get_args(self.type)[0], delim=delim
+                default_samplesheet_constructor, t=get_args(self.type)[0], delim=delim
             )
             return
 
         click.secho(
-            dedent("""\
+            dedent(
+                """\
             A Samplesheet constructor is required for a samplesheet parameter. Please either provide a value for
             `samplesheet_type` or provide a custom callable to the `samplesheet_constructor` argument.
-            """),
+            """
+            ),
             fg="red",
         )
         raise click.exceptions.Exit(1)
@@ -568,10 +566,10 @@ def _samplesheet_repr(v: Any) -> str:
     return str(v)
 
 
-def _samplesheet_constructor(samples: List[DC], t: DC, delim: str = ",") -> Path:
+def default_samplesheet_constructor(samples: List[DC], t: DC, delim: str = ",") -> Path:
     samplesheet = Path("samplesheet.csv")
 
-    with open(samplesheet, "w") as f:
+    with samplesheet.open("w") as f:
         writer = csv.DictWriter(f, [f.name for f in fields(t)], delimiter=delim)
         writer.writeheader()
 
@@ -601,10 +599,10 @@ class NextflowRuntimeResources:
     """
     Storage required for the task in GiB
     """
-    storage_expiration_hours: int = 0
+    storage_expiration_hours: int = 7 * 24
     """
-    Number of hours after execution failure that workdir should be retained in EFS.
-    Warning: Increasing this number will increase your Nextflow EFS Storage costs.
+    Number of hours after execution failure that workdir should be retained in EFS/OFS.
+    Warning: Increasing this number will increase your Nextflow Storage costs.
     """
 
 
@@ -680,6 +678,21 @@ class LatchMetadata:
     parameter
     """
     _non_standard: Dict[str, object] = field(default_factory=dict)
+
+    about_page_path: Optional[Path] = None
+    """
+    Path to a markdown file containing information about the pipeline - rendered in the About page.
+    """
+
+    def validate(self):
+        if self.about_page_path is not None and not isinstance(
+            self.about_page_path, Path
+        ):
+            click.secho(
+                f"`about_page_path` parameter ({self.about_page_path}) must be a"
+                " Path object.",
+                fg="red",
+            )
 
     @property
     def dict(self):
@@ -852,19 +865,6 @@ class NextflowMetadata(LatchMetadata):
     """
     Upload .command.* logs to Latch Data after each task execution
     """
-    about_page_path: Optional[Path] = None
-    """
-    Path to a markdown file containing information about the pipeline - rendered in the About page.
-    """
-
-    def validate(self):
-        if self.about_page_path is not None:
-            if not isinstance(self.about_page_path, Path):
-                click.secho(
-                    f"`about_page_path` parameter ({self.about_page_path}) must be a"
-                    " Path object.",
-                    fg="red",
-                )
 
     @property
     def dict(self):

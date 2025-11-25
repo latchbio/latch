@@ -65,49 +65,59 @@ def print_and_write_build_logs(
     pkg_root: Path,
     *,
     progress_plain: bool = False,
+    write_build_logs: bool = True,
 ):
-    click.secho(f"Building Docker image", bold=True)
+    click.secho("Building Docker image", bold=True)
 
     logs_path = pkg_root / ".latch" / ".logs" / image
     logs_path.mkdir(parents=True, exist_ok=True)
 
-    click.echo(f"  Writing log to {click.style(logs_path, italic=True)}\n")
+    if write_build_logs:
+        click.echo(f"  Writing log to {click.style(logs_path, italic=True)}\n")
 
     with (logs_path / "docker-build-logs.txt").open("w") as save_file:
+
+        def write(s: str):
+            if not write_build_logs:
+                return
+
+            save_file.write(s)
+
         cur_lines: list[str] = []
 
         for x in build_logs:
             # for dockerfile parse errors
             message = x.get("message")
             if message is not None:
-                save_file.write(f"{message}\n")
+                write(message)
                 raise ValueError(message)
 
             lines = x.get("stream")
             error = x.get("error")
             if error is not None:
-                save_file.write(f"{error}\n")
+                write(error)
                 click.secho(f"Error when building image:\n{error}", fg="red", bold=True)
                 sys.exit(1)
 
             if lines is not None:
-                save_file.write(f"{lines}\n")
+                write(lines)
 
-                if not progress_plain:
-                    for line in lines.split("\n"):
-                        curr_terminal_width = shutil.get_terminal_size()[0]
-
-                        if len(line) > curr_terminal_width:
-                            line = line[: curr_terminal_width - 3] + "..."
-
-                        if docker_build_step_pat.match(line):
-                            _delete_lines(len(cur_lines))
-                            cur_lines = []
-                            click.secho(line, fg="blue")
-                        else:
-                            cur_lines = _print_window(cur_lines, line)
-                else:
+                if progress_plain:
                     click.echo(lines, nl=False)
+                    continue
+
+                for line in lines.split("\n"):
+                    term_width = shutil.get_terminal_size()[0]
+
+                    if len(line) > term_width:
+                        line = line[: term_width - 3] + "..."
+
+                    if docker_build_step_pat.match(line):
+                        _delete_lines(len(cur_lines))
+                        cur_lines = []
+                        click.secho(line, fg="blue")
+                    else:
+                        cur_lines = _print_window(cur_lines, line)
 
         if not progress_plain:
             _delete_lines(len(cur_lines))
@@ -166,14 +176,16 @@ def _print_reg_resp(resp, image):
 
                 error_str += line + "\n"
 
+        error_code = 1
         if "task with different structure already exists" in error_str:
             error_str = (
                 f"Version {version} already exists. Make sure that you've saved any"
                 " changes you made."
             )
+            error_code = 2
 
         click.secho(f"\n{error_str}", fg="red", bold=True)
-        sys.exit(1)
+        raise click.exceptions.Exit(error_code)
     elif not "Successfully registered file" in resp["stdout"]:
         click.secho(
             f"\nVersion ({version}) already exists."
@@ -181,7 +193,7 @@ def _print_reg_resp(resp, image):
             fg="red",
             bold=True,
         )
-        sys.exit(1)
+        raise click.exceptions.Exit(2)
 
     click.echo(resp.get("stdout"))
 
@@ -291,6 +303,8 @@ def register(
     progress_plain: bool = False,
     cache_tasks: bool = False,
     use_new_centromere: bool = False,
+    mark_as_release: bool = False,
+    dockerfile_path: Optional[Path] = None,
 ):
     """Registers a workflow, defined as python code, with Latch.
 
@@ -353,15 +367,18 @@ def register(
         snakefile=snakefile,
         nf_script=nf_script,
         use_new_centromere=use_new_centromere,
+        overwrite=skip_confirmation,
+        dockerfile_path=dockerfile_path,
     ) as ctx:
         assert ctx.workflow_name is not None, "Unable to determine workflow name"
         assert ctx.version is not None, "Unable to determine workflow version"
 
         # todo(maximsmol): we really want the workflow display name here
         click.echo(
-            " ".join(
-                [click.style("Workflow name:", fg="bright_blue"), ctx.workflow_name]
-            )
+            " ".join([
+                click.style("Workflow name:", fg="bright_blue"),
+                ctx.workflow_name,
+            ])
         )
         click.echo(" ".join([click.style("Version:", fg="bright_blue"), ctx.version]))
 
@@ -392,15 +409,17 @@ def register(
         )
         if ctx.workflow_type == WorkflowType.snakemake:
             click.echo(
-                " ".join(
-                    [click.style("Snakefile:", fg="bright_blue"), str(ctx.snakefile)]
-                )
+                " ".join([
+                    click.style("Snakefile:", fg="bright_blue"),
+                    str(ctx.snakefile),
+                ])
             )
         elif ctx.workflow_type == WorkflowType.nextflow:
             click.echo(
-                " ".join(
-                    [click.style("NF script:", fg="bright_blue"), str(ctx.nf_script)]
-                )
+                " ".join([
+                    click.style("NF script:", fg="bright_blue"),
+                    str(ctx.nf_script),
+                ])
             )
 
         if use_new_centromere:
@@ -532,7 +551,7 @@ def register(
                     try:
                         split_task_name = task_name.split(".")
                         task_name = ".".join(
-                            split_task_name[split_task_name.index("wf") :]
+                            split_task_name[split_task_name.index(ctx.wf_module) :]
                         )
                         for new_proto in new_protos:
                             if task_name in new_proto.name:
@@ -614,6 +633,19 @@ def register(
                 wf_id = wf_infos[0]["id"]
                 url = f"https://console.latch.bio/workflows/{wf_id}"
                 click.secho(url, fg="green")
+
+                if mark_as_release:
+                    l_gql.execute(
+                        gql.gql("""
+                        mutation MarkWorkflowAsRelease($id: BigInt!) {
+                            updateWorkflowInfo(input: {patch: {isRelease: true}, id: $id}) {
+                                clientMutationId
+                            }
+                        }
+                        """),
+                        {"id": wf_id},
+                    )
+                    click.secho("Workflow marked as release", fg="green")
 
                 if open:
                     webbrowser.open(url)

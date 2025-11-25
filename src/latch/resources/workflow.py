@@ -1,3 +1,4 @@
+import base64
 import inspect
 import os
 from dataclasses import is_dataclass
@@ -5,10 +6,17 @@ from textwrap import dedent
 from typing import Callable, Dict, Union, get_args, get_origin
 
 import click
+import dill
 from flytekit import workflow as _workflow
+from flytekit.core.interface import transform_function_to_interface
 from flytekit.core.workflow import PythonFunctionWorkflow
 
-from latch.types.metadata import LatchAuthor, LatchMetadata, LatchParameter
+from latch.types.metadata import (
+    LatchAuthor,
+    LatchMetadata,
+    LatchParameter,
+    NextflowMetadata,
+)
 from latch_cli.utils import best_effort_display_name
 
 
@@ -26,6 +34,10 @@ def _inject_metadata(f: Callable, metadata: LatchMetadata) -> None:
     if f.__doc__ is None:
         f.__doc__ = f"{f.__name__}\n\nSample Description"
     short_desc, long_desc = f.__doc__.split("\n", 1)
+
+    if metadata.about_page_path is not None:
+        long_desc = metadata.about_page_path.read_text()
+
     f.__doc__ = f"{short_desc}\n{dedent(long_desc)}\n\n" + str(metadata)
 
 
@@ -33,7 +45,7 @@ def _inject_metadata(f: Callable, metadata: LatchMetadata) -> None:
 # so that when users call @workflow without any arguments or
 # parentheses, the workflow still serializes as expected
 def workflow(
-    metadata: Union[LatchMetadata, Callable]
+    metadata: Union[LatchMetadata, Callable],
 ) -> Union[PythonFunctionWorkflow, Callable]:
     if isinstance(metadata, Callable):
         f = metadata
@@ -85,10 +97,18 @@ def workflow(
 
             origin = get_origin(annotation)
             args = get_args(annotation)
-            valid = (
-                origin is not None
-                and issubclass(origin, list)
-                and is_dataclass(args[0])
+
+            if origin is None or not issubclass(origin, list) or len(args) != 1:
+                click.secho(
+                    f"parameter marked as samplesheet is not valid: {name} "
+                    f"in workflow {f.__name__} must be a list of dataclasses",
+                    fg="red",
+                )
+                raise click.exceptions.Exit(1)
+
+            arg_origin = get_origin(args[0])
+            valid = is_dataclass(args[0]) or (
+                arg_origin is not None and is_dataclass(arg_origin)
             )
             if not valid:
                 click.secho(
@@ -100,6 +120,15 @@ def workflow(
 
         git_hash = os.environ.get("GIT_COMMIT_HASH")
         is_dirty = os.environ.get("GIT_IS_DIRTY")
+
+        interface = transform_function_to_interface(f)
+
+        metadata._non_standard["python_interface"] = base64.b64encode(
+            dill.dumps(interface.inputs_with_defaults)
+        ).decode("ascii")
+        metadata._non_standard["python_outputs"] = base64.b64encode(
+            dill.dumps(interface.outputs)
+        ).decode("ascii")
 
         if git_hash is not None:
             metadata._non_standard["git_commit_hash"] = git_hash
@@ -117,3 +146,11 @@ def workflow(
         return _workflow(f, wf_name_override=wf_name_override)
 
     return decorator
+
+
+def nextflow_workflow(
+    metadata: NextflowMetadata,
+) -> Callable[[Callable], PythonFunctionWorkflow]:
+    metadata._non_standard["unpack_records"] = True
+
+    return workflow(metadata)

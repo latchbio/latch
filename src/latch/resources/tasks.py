@@ -56,13 +56,13 @@ def get_v100_x1_pod() -> Pod:
             "cpu": "7",
             "memory": "48Gi",
             "nvidia.com/gpu": 1,
-            "ephemeral-storage": "1500Gi",
+            "ephemeral-storage": "4500Gi",
         },
         limits={
             "cpu": "7",
             "memory": "48Gi",
             "nvidia.com/gpu": 1,
-            "ephemeral-storage": "2000Gi",
+            "ephemeral-storage": "5000Gi",
         },
     )
     primary_container.resources = resources
@@ -92,13 +92,13 @@ def get_v100_x4_pod() -> Pod:
             "cpu": "30",
             "memory": "230Gi",
             "nvidia.com/gpu": 4,
-            "ephemeral-storage": "1500Gi",
+            "ephemeral-storage": "4500Gi",
         },
         limits={
             "cpu": "30",
             "memory": "230Gi",
             "nvidia.com/gpu": 4,
-            "ephemeral-storage": "2000Gi",
+            "ephemeral-storage": "5000Gi",
         },
     )
     primary_container.resources = resources
@@ -133,13 +133,13 @@ def get_v100_x8_pod() -> Pod:
             "cpu": "62",
             "memory": "400Gi",
             "nvidia.com/gpu": 8,
-            "ephemeral-storage": "1500Gi",
+            "ephemeral-storage": "4500Gi",
         },
         limits={
             "cpu": "62",
             "memory": "400Gi",
             "nvidia.com/gpu": 8,
-            "ephemeral-storage": "2000Gi",
+            "ephemeral-storage": "5000Gi",
         },
     )
     primary_container.resources = resources
@@ -166,21 +166,21 @@ def get_v100_x8_pod() -> Pod:
 
 
 def _get_large_gpu_pod() -> Pod:
-    """g5.8xlarge,g5.16xlarge on-demand"""
+    """g5.16xlarge on-demand"""
 
     primary_container = V1Container(name="primary")
     resources = V1ResourceRequirements(
         requests={
-            "cpu": "31",
-            "memory": "120Gi",
+            "cpu": "63",
+            "memory": "245Gi",
             "nvidia.com/gpu": "1",
-            "ephemeral-storage": "1500Gi",
+            "ephemeral-storage": "4500Gi",
         },
         limits={
-            "cpu": "64",
-            "memory": "256Gi",
+            "cpu": "63",
+            "memory": "245Gi",
             "nvidia.com/gpu": "1",
-            "ephemeral-storage": "2000Gi",
+            "ephemeral-storage": "5000Gi",
         },
     )
     primary_container.resources = resources
@@ -606,6 +606,36 @@ def custom_task(
     )
 
 
+def lustre_setup_task():
+    primary_container = V1Container(
+        name="primary",
+        resources=V1ResourceRequirements(
+            requests={"cpu": "500m", "memory": "500Mi"},
+            limits={"cpu": "500m", "memory": "500Mi"},
+        ),
+        volume_mounts=[
+            V1VolumeMount(mount_path="/nf-workdir", name="nextflow-workdir")
+        ],
+    )
+
+    task_config = Pod(
+        pod_spec=V1PodSpec(
+            containers=[primary_container],
+            volumes=[
+                V1Volume(
+                    name="nextflow-workdir",
+                    persistent_volume_claim=V1PersistentVolumeClaimVolumeSource(
+                        claim_name="nextflow-pvc-placeholder"
+                    ),
+                )
+            ],
+        ),
+        primary_container_name="primary",
+    )
+
+    return functools.partial(task, task_config=task_config)
+
+
 def nextflow_runtime_task(cpu: int, memory: int, storage_gib: int = 50):
     task_config = _custom_task_config(cpu, memory, storage_gib)
 
@@ -627,3 +657,94 @@ def nextflow_runtime_task(cpu: int, memory: int, storage_gib: int = 50):
     ]
 
     return functools.partial(task, task_config=task_config)
+
+
+def _get_l40s_pod(instance_type: str, cpu: int, memory_gib: int, gpus: int) -> Pod:
+    """Helper function to create L40s GPU pod configurations."""
+    primary_container = V1Container(name="primary")
+
+    backoff_cpu = cpu - 2
+    backoff_memory = min(memory_gib - 4, int(memory_gib * 0.9))
+
+    resources = V1ResourceRequirements(
+        requests={
+            "cpu": str(backoff_cpu),
+            "memory": f"{backoff_memory}Gi",
+            "nvidia.com/gpu": str(gpus),
+            "ephemeral-storage": "4500Gi",
+        },
+        limits={
+            "cpu": str(cpu),
+            "memory": f"{memory_gib}Gi",
+            "nvidia.com/gpu": str(gpus),
+            "ephemeral-storage": "5000Gi",
+        },
+    )
+    primary_container.resources = resources
+
+    return Pod(
+        pod_spec=V1PodSpec(
+            containers=[primary_container],
+            tolerations=[
+                V1Toleration(
+                    effect="NoSchedule",
+                    key="ng",
+                    value=instance_type
+                )
+            ],
+        ),
+        primary_container_name="primary",
+        annotations={
+            "cluster-autoscaler.kubernetes.io/safe-to-evict": "false",
+        },
+    )
+
+
+g6e_xlarge_task = functools.partial(
+    task,
+    task_config=_get_l40s_pod("g6e-xlarge", cpu=4, memory_gib=32, gpus=1)
+)
+"""4 vCPUs, 32 GiB RAM, 1 L40s GPU"""
+
+g6e_2xlarge_task = functools.partial(
+    task,
+    task_config=_get_l40s_pod("g6e-2xlarge", cpu=8, memory_gib=64, gpus=1)
+)
+"""8 vCPUs, 64 GiB RAM, 1 L40s GPU"""
+
+g6e_4xlarge_task = functools.partial(
+    task,
+    task_config=_get_l40s_pod("g6e-4xlarge", cpu=16, memory_gib=128, gpus=1)
+)
+"""16 vCPUs, 128 GiB RAM, 1 L40s GPU"""
+
+g6e_8xlarge_task = functools.partial(
+    task,
+    task_config=_get_l40s_pod("g6e-8xlarge", cpu=32, memory_gib=256, gpus=1)
+)
+"""32 vCPUs, 256 GiB RAM, 1 L40s GPU"""
+
+g6e_12xlarge_task = functools.partial(
+    task,
+    task_config=_get_l40s_pod("g6e-12xlarge", cpu=48, memory_gib=384, gpus=4)
+)
+"""48 vCPUs, 384 GiB RAM, 4 L40s GPUs"""
+
+g6e_16xlarge_task = functools.partial(
+    task,
+    task_config=_get_l40s_pod("g6e-16xlarge", cpu=64, memory_gib=512, gpus=1)
+)
+"""64 vCPUs, 512 GiB RAM, 1 L40s GPUs"""
+
+g6e_24xlarge_task = functools.partial(
+    task,
+    task_config=_get_l40s_pod("g6e-24xlarge", cpu=96, memory_gib=768, gpus=4)
+)
+"""96 vCPUs, 768 GiB RAM, 4 L40s GPUs"""
+
+
+g6e_48xlarge_task = functools.partial(
+    task,
+    task_config=_get_l40s_pod("g6e-48xlarge", cpu=192, memory_gib=1536, gpus=8)
+)
+"""192 vCPUs, 1536 GiB RAM, 8 L40s GPUs"""

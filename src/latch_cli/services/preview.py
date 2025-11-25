@@ -1,22 +1,23 @@
+import json
 import os
 import sys
 import webbrowser
 from pathlib import Path
-from typing import List
 
+import click
+import gql
+from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.core.workflow import PythonFunctionWorkflow
+from flytekit.models.interface import Variable
 from google.protobuf.json_format import MessageToJson
-from latch_sdk_config.latch import config
 
-import latch_cli.menus as menus
-from latch.utils import current_workspace, retrieve_or_login
-from latch_cli.centromere.utils import _import_flyte_objects
-from latch_cli.tinyrequests import post
+from latch.utils import current_workspace
+from latch_cli import menus
+from latch_cli.centromere.utils import import_flyte_objects
+from latch_sdk_gql.execute import execute
 
 
-# TODO(ayush): make this import the `wf` directory and use the package root
-# instead of the workflow name. also redo the frontend, also make it open the
-# page
 def preview(pkg_root: Path):
     """Generate a preview of the parameter interface for a workflow.
 
@@ -28,53 +29,82 @@ def preview(pkg_root: Path):
             preview. The path can be absolute or relative.
 
     Example:
-        >>> preview("wf.__init__.alphafold_wf")
+        >>> preview("alphafold_wf")
     """
 
     try:
-        modules = _import_flyte_objects([pkg_root.resolve()])
+        modules = import_flyte_objects([pkg_root.resolve()])
         wfs: dict[str, PythonFunctionWorkflow] = {}
         for module in modules:
             for flyte_obj in module.__dict__.values():
                 if isinstance(flyte_obj, PythonFunctionWorkflow):
                     wfs[flyte_obj.name] = flyte_obj
+
         if len(wfs) == 0:
-            raise ValueError(f"Unable to find a workflow definition in {pkg_root}")
+            click.secho(f"Unable to find a workflow definition in {pkg_root}", fg="red")
+            raise click.exceptions.Exit(1)
     except ImportError as e:
-        raise ValueError(
+        click.secho(
             f"Unable to find {e.name} - make sure that all necessary packages"
-            " are installed and you have the correct function name."
+            " are installed and you have the correct function name.",
+            fg="red",
         )
+        raise click.exceptions.Exit(1) from e
 
-    wf = list(wfs.values())[0]
+    wf = next(iter(wfs.values()))
     if len(wfs) > 1:
-        wf = wfs[
-            _select_workflow_tui(
-                title="Select which workflow to preview",
-                options=list(wfs.keys()),
-            )
-        ]
+        choice = _select_workflow_tui(
+            title="Select which workflow to preview", options=list(wfs.keys())
+        )
+        if choice is None:
+            raise click.Abort
 
-    resp = post(
-        url=config.api.workflow.preview,
-        headers={"Authorization": f"Bearer {retrieve_or_login()}"},
-        json={
-            "workflow_ui_preview": MessageToJson(wf.interface.to_flyte_idl().inputs),
-            "ws_account_id": current_workspace(),
+        wf = wfs[choice]
+
+    ctx = FlyteContextManager.current_context()
+    assert ctx is not None
+
+    for param_name, x in wf.python_interface.inputs_with_defaults.items():
+        if not isinstance(x, tuple):
+            continue
+
+        typ, default = x
+        try:
+            literal = TypeEngine.to_literal(
+                ctx, default, typ, TypeEngine.to_literal_type(typ)
+            )
+        except TypeTransformerFailedError:
+            continue
+
+        cur = wf.interface.inputs[param_name]
+
+        desc = json.loads(cur.description)
+        desc["default"] = json.loads(MessageToJson(literal.to_flyte_idl()))
+
+        wf.interface.inputs[param_name] = Variable(cur.type, json.dumps(desc))
+
+    execute(
+        gql.gql("""
+            mutation UpdatePreview($accountId: BigInt!, $inputs: String!) {
+                upsertWorkflowPreview(
+                    input: { argAccountId: $accountId, argInputs: $inputs }
+                ) {
+                    clientMutationId
+                }
+            }
+        """),
+        {
+            "accountId": current_workspace(),
+            "inputs": MessageToJson(wf.interface.to_flyte_idl().inputs),
         },
     )
 
-    resp.raise_for_status()
-
-    url = f"{config.console_url}/preview/parameters"
-    webbrowser.open(url)
+    webbrowser.open("https://console.latch.bio/preview/parameters")
 
 
 # TODO(ayush): abstract this logic in a unified interface that all tui commands use
-def _select_workflow_tui(title: str, options: List[str], clear_terminal: bool = True):
-    """
-    Renders a terminal UI that allows users to select one of the options
-    listed in `options`
+def _select_workflow_tui(title: str, options: list[str], clear_terminal: bool = True):
+    """Renders a terminal UI that allows users to select one of the options listed in `options`
 
     Args:
         title: The title of the selection window.
@@ -143,9 +173,7 @@ def _select_workflow_tui(title: str, options: List[str], clear_terminal: bool = 
         max_per_page = term_height - 4
 
     num_lines_rendered = render(
-        curr_selected,
-        start_index=start_index,
-        max_per_page=max_per_page,
+        curr_selected, start_index=start_index, max_per_page=max_per_page
     )
 
     try:
@@ -173,9 +201,7 @@ def _select_workflow_tui(title: str, options: List[str], clear_terminal: bool = 
                     continue
             menus.clear(num_lines_rendered)
             num_lines_rendered = render(
-                curr_selected,
-                start_index=start_index,
-                max_per_page=max_per_page,
+                curr_selected, start_index=start_index, max_per_page=max_per_page
             )
     except KeyboardInterrupt:
         ...

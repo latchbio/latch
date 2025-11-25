@@ -18,13 +18,13 @@ import boto3
 import click
 import websockets.client as client
 import websockets.exceptions
-from latch_sdk_config.latch import config
 from watchfiles import awatch
 
 from latch.utils import current_workspace, retrieve_or_login
 from latch_cli.constants import docker_image_name_illegal_pat, latch_constants
 from latch_cli.tinyrequests import post
 from latch_cli.utils import TemporarySSHCredentials, identifier_suffix_from_str
+from latch_sdk_config.latch import config
 
 
 def _get_workflow_name(
@@ -50,9 +50,9 @@ def _get_workflow_name(
         from flytekit.core.context_manager import FlyteEntities
         from flytekit.core.workflow import PythonFunctionWorkflow
 
-        from latch_cli.centromere.utils import _import_flyte_objects
+        from latch_cli.centromere.utils import import_flyte_objects
 
-        _import_flyte_objects([pkg_root])
+        import_flyte_objects([pkg_root])
         for entity in FlyteEntities.entities:
             if isinstance(entity, PythonFunctionWorkflow):
                 return entity.name
@@ -95,10 +95,7 @@ def get_image(
         resp = post(
             config.api.workflow.get_latest,
             headers={"Authorization": f"Bearer {retrieve_or_login()}"},
-            json={
-                "registry_name": registry_name,
-                "ws_account_id": current_workspace(),
-            },
+            json={"registry_name": registry_name, "ws_account_id": current_workspace()},
         )
 
         try:
@@ -169,9 +166,7 @@ async def _watch_and_rsync(
             f"root@{ip}:/root/",
         ]
         process = await asyncio.subprocess.create_subprocess_exec(
-            *command,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+            *command, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
         rval = await process.wait()
         stdout, stderr = await process.communicate()
@@ -208,20 +203,13 @@ class _MessageType(Enum):
     exit = "exit"
 
 
-async def _get_messages(
-    ws: client.WebSocketClientProtocol,
-    show_output: bool,
-):
+async def _get_messages(ws: client.WebSocketClientProtocol, show_output: bool):
     async for message in ws:
         msg = json.loads(message)
         if msg.get("Type") == _MessageType.exit.value:
             return
         if show_output:
-            await aioconsole.aprint(
-                msg.get("Body"),
-                end="",
-                flush=True,
-            )
+            await aioconsole.aprint(msg.get("Body"), end="", flush=True)
 
 
 async def _send_message(
@@ -241,23 +229,16 @@ async def _send_message(
 
 
 async def _send_resize_message(
-    ws: client.WebSocketClientProtocol,
-    term_width: int,
-    term_height: int,
+    ws: client.WebSocketClientProtocol, term_width: int, term_height: int
 ):
     await _send_message(
         ws,
-        json.dumps({
-            "Width": term_width,
-            "Height": term_height,
-        }),
+        json.dumps({"Width": term_width, "Height": term_height}),
         typ=_MessageType.resize,
     )
 
 
-async def _shell_session(
-    ws: client.WebSocketClientProtocol,
-):
+async def _shell_session(ws: client.WebSocketClientProtocol):
     import termios
     import tty
 
@@ -273,23 +254,13 @@ async def _shell_session(
     old_sigwinch_handler = signal.getsignal(signal.SIGWINCH)
 
     await loop.connect_read_pipe(
-        lambda: asyncio.StreamReaderProtocol(
-            reader,
-            loop=loop,
-        ),
-        os.fdopen(stdin2),
+        lambda: asyncio.StreamReaderProtocol(reader, loop=loop), os.fdopen(stdin2)
     )
 
     writer_transport, writer_protocol = await loop.connect_write_pipe(
-        lambda: asyncio.streams.FlowControlMixin(loop=loop),
-        os.fdopen(stdout2),
+        lambda: asyncio.streams.FlowControlMixin(loop=loop), os.fdopen(stdout2)
     )
-    writer = asyncio.streams.StreamWriter(
-        writer_transport,
-        writer_protocol,
-        None,
-        loop,
-    )
+    writer = asyncio.streams.StreamWriter(writer_transport, writer_protocol, None, loop)
 
     resize_event_queue = asyncio.Queue()
 
@@ -367,10 +338,7 @@ async def _run_local_dev_session(
             init_local_dev_resp = post(
                 config.api.centromere.start_local_dev,
                 headers=headers,
-                json={
-                    "ws_account_id": current_workspace(),
-                    "pkg_root": pkg_root.name,
-                },
+                json={"ws_account_id": current_workspace(), "pkg_root": pkg_root.name},
             )
             init_local_dev_resp.raise_for_status()
         except Exception as e:
@@ -523,11 +491,13 @@ def local_development(
             check=True,
         )
     except FileNotFoundError:
-        raise ValueError(dedent("""
+        raise ValueError(
+            dedent("""
                 rsync is required for latch develop. Please install rsync and try again
                     linux: apt install rsync
                     mac: brew install rsync
-                """))
+                """)
+        )
 
     asyncio.run(
         _run_local_dev_session(

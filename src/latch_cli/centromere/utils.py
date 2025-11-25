@@ -1,6 +1,5 @@
 import builtins
 import contextlib
-import functools
 import os
 import random
 import string
@@ -12,10 +11,8 @@ from types import ModuleType
 from typing import Callable, Iterator, List, Optional, TypeVar
 
 import docker
+import docker.errors
 import paramiko
-from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.data_persistence import FileAccessProvider
-from flytekit.tools import module_loader
 from typing_extensions import ParamSpec
 
 from latch_cli.constants import latch_constants
@@ -41,7 +38,11 @@ def _add_sys_paths(paths: List[Path]) -> Iterator[None]:
             sys.path.remove(p)
 
 
-def _import_flyte_objects(paths: List[Path], module_name: str = "wf"):
+def import_flyte_objects(paths: List[Path], module_name: str = "wf"):
+    from flytekit.core.context_manager import FlyteContext, FlyteContextManager
+    from flytekit.core.data_persistence import FileAccessProvider
+    from flytekit.tools import module_loader
+
     with _add_sys_paths(paths):
 
         class FakeModule(ModuleType):
@@ -76,20 +77,15 @@ def _import_flyte_objects(paths: List[Path], module_name: str = "wf"):
         def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
             try:
                 return real_import(
-                    name,
-                    globals=globals,
-                    locals=locals,
-                    fromlist=fromlist,
-                    level=level,
+                    name, globals=globals, locals=locals, fromlist=fromlist, level=level
                 )
-            except (ModuleNotFoundError, AttributeError) as e:
+            except (ModuleNotFoundError, AttributeError, TypeError):
                 return FakeModule(name)
 
         # Temporary ctx tells lytekit to skip local execution when
         # inspecting objects
         fap = FileAccessProvider(
-            local_sandbox_dir=tempfile.mkdtemp(prefix="foo"),
-            raw_output_prefix="bar",
+            local_sandbox_dir=tempfile.mkdtemp(prefix="foo"), raw_output_prefix="bar"
         )
         tmp_context = FlyteContext(fap, inspect_objects_only=True)
 
@@ -201,9 +197,7 @@ def _construct_ssh_client(
             raise ConnectionError("unable to create connection to jump host")
 
         sock = gateway_transport.open_channel(
-            kind="direct-tcpip",
-            dest_addr=(remote_conn_info.ip, 22),
-            src_addr=("", 0),
+            kind="direct-tcpip", dest_addr=(remote_conn_info.ip, 22), src_addr=("", 0)
         )
     else:
         sock = None
@@ -214,10 +208,7 @@ def _construct_ssh_client(
     ssh.load_system_host_keys()
     ssh.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy)
     ssh.connect(
-        remote_conn_info.ip,
-        username=remote_conn_info.username,
-        sock=sock,
-        pkey=pkey,
+        remote_conn_info.ip, username=remote_conn_info.username, sock=sock, pkey=pkey
     )
 
     transport = ssh.get_transport()

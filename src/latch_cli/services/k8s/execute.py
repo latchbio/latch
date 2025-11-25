@@ -5,7 +5,6 @@ from typing import Optional
 from urllib.parse import urljoin, urlparse
 
 import websockets.client as websockets
-from latch_sdk_config.latch import NUCLEUS_URL
 
 from latch_cli.services.k8s.utils import (
     ContainerNode,
@@ -16,6 +15,7 @@ from latch_cli.services.k8s.utils import (
     get_execution_info,
 )
 from latch_cli.utils import get_auth_header
+from latch_sdk_config.latch import NUCLEUS_URL
 
 from .ws_utils import forward_stdio
 
