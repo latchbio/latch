@@ -449,6 +449,10 @@ def custom_memory_optimized_task(cpu: int, memory: int):
     the specified CPU/RAM allocations. This task
     can utilize a maximum of 61 CPUs and 484 GiB of RAM.
     This is ideal for processes which utilize a lot of memory per thread.
+
+    `custom_memory_optimized_task` is slated for deprecation.
+    Users should use `custom_task` instead.
+
     Args:
         cpu: An integer number of cores to request, up to 63 cores
         memory: An integer number of Gibibytes of RAM to request, up to 511 GiB
