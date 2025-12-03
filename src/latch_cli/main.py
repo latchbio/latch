@@ -6,7 +6,7 @@ import sys
 import traceback
 from pathlib import Path
 from textwrap import dedent
-from typing import Callable, Optional, TypeVar, Union
+from typing import Callable, Literal, Optional, TypeVar, Union
 
 import click
 import gql
@@ -14,7 +14,6 @@ from packaging.version import parse as parse_version
 from typing_extensions import ParamSpec
 
 import latch_cli.click_utils
-from latch.ldata._transfer.progress import Progress as _Progress  # noqa: PLC2701
 from latch.utils import current_workspace
 from latch_cli.click_utils import EnumChoice
 from latch_cli.exceptions.handler import CrashHandler
@@ -905,7 +904,7 @@ LDATA COMMANDS
 @click.option(
     "--progress",
     help="Type of progress information to show while copying",
-    type=EnumChoice(_Progress, case_sensitive=False),
+    type=click.Choice(["none", "total", "tasks"]),
     default="tasks",
     show_default=True,
 )
@@ -913,6 +912,14 @@ LDATA COMMANDS
     "--verbose",
     "-v",
     help="Print file names as they are copied",
+    is_flag=True,
+    default=False,
+    show_default=True,
+)
+@click.option(
+    "--force",
+    "-f",
+    help="Don't ask to confirm when overwriting files",
     is_flag=True,
     default=False,
     show_default=True,
@@ -937,8 +944,9 @@ LDATA COMMANDS
 def cp(
     src: list[str],
     dest: str,
-    progress: _Progress,
+    progress: Literal["none", "total", "tasks"],
     verbose: bool,
+    force: bool,
     no_glob: bool,
     cores: Optional[int] = None,
     chunk_size_mib: Optional[int] = None,
@@ -956,6 +964,7 @@ def cp(
         src,
         dest,
         progress=progress,
+        force=force,
         verbose=verbose,
         expand_globs=not no_glob,
         cores=cores,
