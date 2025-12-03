@@ -445,10 +445,9 @@ small_task = functools.partial(task, task_config=_get_small_pod())
 
 
 def custom_memory_optimized_task(cpu: int, memory: int):
-    """Returns a custom task configuration requesting
+    """Returns a memory optimized custom task configuration requesting
     the specified CPU/RAM allocations. This task
-    can utilize fewer cpu cores (62) than `custom_task`s (95)
-    but can use more RAM (up to 485 GiB) than `custom_task`s (up to 179 GiB).
+    can utilize a maximum of 61 CPUs and 484 GiB of RAM.
     This is ideal for processes which utilize a lot of memory per thread.
     Args:
         cpu: An integer number of cores to request, up to 63 cores
