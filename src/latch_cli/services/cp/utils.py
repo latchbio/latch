@@ -1,8 +1,9 @@
-from typing import List, TypedDict
+import sys
+from typing import Iterable, List, TypedDict, TypeVar
 
-try:
+if sys.version_info >= (3, 9):
     from functools import cache
-except ImportError:
+else:
     from functools import lru_cache as cache
 
 import gql
@@ -101,7 +102,7 @@ class AccountInfoCurrent(TypedDict):
 
 # todo(taras): support for gcp and azure mounts
 # skipping now due to time. This decision does not
-# influence correcetness of the CLI and only
+# influence correctness of the CLI and only
 # reduces the set of returned autocomplete
 # suggestions
 @cache
@@ -162,3 +163,20 @@ def _get_known_domains_for_account() -> List[str]:
     res.extend(f"{x}.mount" for x in buckets)
 
     return res
+
+
+chunk_batch_size = 3
+
+T = TypeVar("T")
+
+
+def chunked(iter: Iterable[T]) -> Iterable[List[T]]:
+    chunk = []
+    for x in iter:
+        if len(chunk) == chunk_batch_size:
+            yield chunk
+            chunk = []
+
+        chunk.append(x)
+
+    yield chunk
