@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.67.21 - 2025-12-03
+
+### Added
+
+* `--workspace-id` flag for `latch register` which allows registering to a workspace different from the current setting
+
 ## 2.67.20 - 2025-11-20
 
 ### Added
