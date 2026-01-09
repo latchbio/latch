@@ -1,10 +1,8 @@
 import asyncio
-import queue
-import shutil
 import time
 from pathlib import Path
 from textwrap import dedent
-from typing import Dict, List, Literal, Optional, TypedDict
+from typing import Literal, Optional, TypedDict
 
 import click
 import requests
@@ -35,11 +33,11 @@ class GetSignedUrlData(TypedDict):
 
 
 class GetSignedUrlsRecursiveData(TypedDict):
-    urls: Dict[str, str]
+    urls: dict[str, str]
 
 
 def download(
-    srcs: List[str],
+    srcs: list[str],
     dest: Path,
     progress: Literal["none", "total", "tasks"],
     verbose: bool,
@@ -191,6 +189,7 @@ def download(
     uvloop.install()
 
     loop = uvloop.new_event_loop()
+    loop.set_debug(True)
     res = loop.run_until_complete(
         run_workers(work_queue, num_workers, tbar, progress != "none", verbose)
     )
@@ -201,8 +200,10 @@ def download(
     total_time = time.monotonic() - start
 
     if progress != "none":
-        click.echo(dedent(f"""\
+        click.echo(
+            dedent(f"""\
             {click.style("Download Complete", fg="green")}
             {click.style("Time Elapsed:", fg="blue")}     {human_readable_time(total_time)}
             {click.style("Files Downloaded:", fg="blue")} {total} ({with_si_suffix(total_bytes)})\
-        """))
+        """)
+        )

@@ -2,16 +2,12 @@ import asyncio
 import math
 import mimetypes
 import os
-import queue
-import random
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List, TypedDict, TypeVar
+from typing import TypedDict
 
 import aiohttp
-import click
 import tqdm
-import uvloop
 
 from latch_cli.constants import Units, latch_constants
 from latch_cli.utils import get_auth_header, with_si_suffix
@@ -29,7 +25,7 @@ class Work:
 
 class StartUploadData(TypedDict):
     upload_id: str
-    urls: List[str]
+    urls: list[str]
 
 
 @dataclass
@@ -113,7 +109,7 @@ async def worker(
             if file_size > latch_constants.maximum_upload_size:
                 raise ValueError(
                     f"{resolved}: file is {with_si_suffix(file_size)} which exceeds the"
-                    " maximum upload size (5TiB)",
+                    " maximum upload size (5TiB)"
                 )
 
             chunk_size = work.chunk_size_mib * Units.MiB
@@ -125,12 +121,10 @@ async def worker(
                 )
 
             part_count = min(
-                latch_constants.maximum_upload_parts,
-                math.ceil(file_size / chunk_size),
+                latch_constants.maximum_upload_parts, math.ceil(file_size / chunk_size)
             )
             part_size = max(
-                chunk_size,
-                math.ceil(file_size / latch_constants.maximum_upload_parts),
+                chunk_size, math.ceil(file_size / latch_constants.maximum_upload_parts)
             )
 
             pbar.desc = resolved.name
@@ -162,7 +156,7 @@ async def worker(
                 # file is empty - nothing to do
                 continue
 
-            parts: List[CompletedPart] = []
+            parts: list[CompletedPart] = []
             try:
                 for pairs in chunked(enumerate(data["urls"])):
                     parts.extend(
@@ -184,11 +178,7 @@ async def worker(
                     "path": work.dest,
                     "upload_id": data["upload_id"],
                     "parts": [
-                        {
-                            "ETag": part.etag,
-                            "PartNumber": part.part,
-                        }
-                        for part in parts
+                        {"ETag": part.etag, "PartNumber": part.part} for part in parts
                     ],
                 },
             )

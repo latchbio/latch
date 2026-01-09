@@ -1,6 +1,7 @@
+import logging
 from pathlib import Path
 from textwrap import dedent
-from typing import List, Literal, Optional
+from typing import Literal, Optional
 
 import click
 
@@ -19,16 +20,18 @@ def _copy_and_print(
     _remote_copy(src, dst)
 
     if progress != "none":
-        click.echo(dedent(f"""\
+        click.echo(
+            dedent(f"""\
             {click.style("Copy Requested.", fg="green")}
             {click.style("Source: ", fg="blue")}{(src)}
             {click.style("Destination: ", fg="blue")}{(dst)}\
-        """))
+        """)
+        )
 
 
 # todo(ayush): come up with a better behavior scheme than unix cp
 def cp(
-    srcs: List[str],
+    srcs: list[str],
     dest: str,
     *,
     progress: Literal["none", "total", "tasks"],
@@ -64,14 +67,7 @@ def cp(
                 chunk_size_mib,
             )
         elif dest_is_remote and not any(srcs_are_remote):
-            upload(
-                srcs,
-                dest,
-                progress,
-                verbose,
-                cores,
-                chunk_size_mib,
-            )
+            upload(srcs, dest, progress, verbose, cores, chunk_size_mib)
         elif dest_is_remote and all(srcs_are_remote):
             for src in srcs:
                 if expand_globs:
@@ -97,5 +93,6 @@ def cp(
 
         raise click.exceptions.Exit(1) from e
     except Exception as e:
-        click.secho(str(e), fg="red")
-        raise click.exceptions.Exit(1) from e
+        raise e
+        # click.secho(str(e), fg="red")
+        # raise click.exceptions.Exit(1) from e

@@ -16,7 +16,6 @@ from typing_extensions import ParamSpec
 import latch_cli.click_utils
 from latch.utils import current_workspace
 from latch_cli.click_utils import EnumChoice
-from latch_cli.exceptions.handler import CrashHandler
 from latch_cli.services.cp.autocomplete import complete as cp_complete
 from latch_cli.services.cp.autocomplete import remote_complete
 from latch_cli.services.init.init import template_flag_to_option
@@ -34,7 +33,6 @@ from latch_sdk_gql.execute import execute as gql_execute
 
 latch_cli.click_utils.patch()
 
-crash_handler = CrashHandler()
 
 P = ParamSpec("P")
 T = TypeVar("T")
@@ -84,8 +82,6 @@ def main():
             fg="yellow",
         )
 
-    crash_handler.init()
-
 
 """
 LOGIN COMMANDS
@@ -102,9 +98,6 @@ LOGIN COMMANDS
 def login(connection: Optional[str]):
     """Manually login to Latch."""
 
-    crash_handler.message = "Unable to log in"
-    crash_handler.pkg_root = str(Path.cwd())
-
     from latch_cli.services.login import login
 
     login(connection)
@@ -115,9 +108,6 @@ def login(connection: Optional[str]):
 @requires_login
 def workspace():
     """Spawns an interactive terminal prompt allowing users to choose what workspace they want to work in."""
-
-    crash_handler.message = "Unable to fetch workspaces"
-    crash_handler.pkg_root = str(Path.cwd())
 
     from latch_cli.services.workspace import workspace
 
@@ -157,9 +147,6 @@ def init(
     base_image: str = "default",
 ):
     """Initialize boilerplate for local workflow code."""
-
-    crash_handler.message = f"Unable to initialize {pkg_name}"
-    crash_handler.pkg_root = str(Path.cwd())
 
     from latch_cli.services.init import init
 
@@ -498,9 +485,6 @@ def local_development(
     Visit docs.latch.bio to learn more.
     """
 
-    crash_handler.message = "Error during local development session"
-    crash_handler.pkg_root = str(pkg_root)
-
     # todo(ayush): purge
     if snakemake:
         from latch_cli.services.local_dev_old import local_development
@@ -712,9 +696,6 @@ def register(
 
     use_new_centromere = os.environ.get("LATCH_REGISTER_BETA") is not None
 
-    crash_handler.message = "Unable to register workflow."
-    crash_handler.pkg_root = pkg_root
-
     if nf_script is None and (nf_execution_profile is not None):
         click.secho(
             "Command Invalid: --execution-profile flag is only valid when registering a"
@@ -820,9 +801,6 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
         fg="yellow",
     )
 
-    crash_handler.message = "Unable to generate param map for workflow"
-    crash_handler.pkg_root = str(Path.cwd())
-
     from latch_cli.services.get_params import get_params
 
     get_params(wf_name, version)
@@ -844,8 +822,6 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
 @requires_login
 def get_wf(name: Union[str, None] = None):
     """List workflows."""
-    crash_handler.message = "Unable to get workflows"
-    crash_handler.pkg_root = str(Path.cwd())
 
     from latch_cli.services.get import get_wf
 
@@ -873,8 +849,6 @@ def get_wf(name: Union[str, None] = None):
 @requires_login
 def preview(pkg_root: Path):
     """Creates a preview of your workflow interface."""
-    crash_handler.message = f"Unable to preview inputs for {pkg_root}"
-    crash_handler.pkg_root = str(pkg_root)
 
     from latch_cli.services.preview import preview
 
@@ -885,8 +859,6 @@ def preview(pkg_root: Path):
 @requires_login
 def get_executions():
     """Spawns an interactive terminal UI that shows all executions in a given workspace"""
-
-    crash_handler.message = "Unable to fetch executions"
 
     from latch_cli.services.get_executions import get_executions
 
@@ -955,8 +927,6 @@ def cp(
 
     Behaves like `cp -R` in Unix. Directories are copied recursively. If any parents of dest do not exist, the copy will fail.
     """
-    crash_handler.message = f"Unable to copy {src} to {dest}"
-    crash_handler.pkg_root = str(Path.cwd())
 
     from latch_cli.services.cp.main import cp
 
@@ -987,9 +957,6 @@ def cp(
 def mv(src: str, dest: str, no_glob: bool):
     """Move remote files in LatchData."""
 
-    crash_handler.message = f"Unable to move {src} to {dest}"
-    crash_handler.pkg_root = str(Path.cwd())
-
     from latch_cli.services.move import move
 
     move(src, dest, no_glob=no_glob)
@@ -1007,9 +974,6 @@ def mv(src: str, dest: str, no_glob: bool):
 @requires_login
 def ls(paths: tuple[str], group_directories_first: bool):
     """List the contents of a Latch Data directory"""
-
-    crash_handler.message = f"Unable to display contents of {paths}"
-    crash_handler.pkg_root = str(Path.cwd())
 
     from latch_cli.services.ls import ls
 
@@ -1056,8 +1020,6 @@ def ls(paths: tuple[str], group_directories_first: bool):
 @requires_login
 def rmr(remote_path: str, yes: bool, no_glob: bool, verbose: bool):
     """Deletes a remote entity."""
-    crash_handler.message = f"Unable to delete {remote_path}"
-    crash_handler.pkg_root = str(Path.cwd())
 
     from latch_cli.services.rm import rmr
 
@@ -1069,8 +1031,6 @@ def rmr(remote_path: str, yes: bool, no_glob: bool, verbose: bool):
 @requires_login
 def mkdir(remote_directory: str):
     """Creates a new remote directory."""
-    crash_handler.message = f"Unable to create directory {remote_directory}"
-    crash_handler.pkg_root = str(Path.cwd())
 
     from latch_cli.services.mkdir import mkdirp
 
@@ -1435,7 +1395,6 @@ def pods():
 @requires_login
 def stop_pod(pod_id: Optional[int] = None):
     """Stops a pod given a pod_id or the pod from which the command is run"""
-    crash_handler.message = "Unable to stop pod"
 
     from latch_cli.services.stop_pod import stop_pod
 
@@ -1489,9 +1448,6 @@ def test_data(ctx: click.Context):
 def test_data_upload(src_path: str, dont_confirm_overwrite: bool):
     """Upload test data object."""
 
-    crash_handler.message = f"Unable to upload {src_path} to managed bucket"
-    crash_handler.pkg_root = str(Path.cwd())
-
     from latch_cli.services.test_data.upload import upload
 
     s3_url = upload(src_path, dont_confirm_overwrite)
@@ -1504,9 +1460,6 @@ def test_data_upload(src_path: str, dont_confirm_overwrite: bool):
 def test_data_remove(object_url: str):
     """Remove test data object."""
 
-    crash_handler.message = f"Unable to remove {object_url} from managed bucket"
-    crash_handler.pkg_root = str(Path.cwd())
-
     from latch_cli.services.test_data.remove import remove
 
     remove(object_url)
@@ -1517,9 +1470,6 @@ def test_data_remove(object_url: str):
 @requires_login
 def test_data_ls():
     """List test data objects."""
-
-    crash_handler.message = "Unable to list objects within managed bucket"
-    crash_handler.pkg_root = str(Path.cwd())
 
     from latch_cli.services.test_data.ls import ls
 

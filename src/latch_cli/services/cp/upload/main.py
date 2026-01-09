@@ -3,7 +3,7 @@ import os
 import time
 from pathlib import Path
 from textwrap import dedent
-from typing import List, Literal, Optional
+from typing import Literal, Optional
 
 import click
 import tqdm
@@ -15,7 +15,7 @@ from .worker import Work, run_workers
 
 
 def upload(
-    srcs: List[str],
+    srcs: list[str],
     dest: str,
     progress: Literal["none", "total", "tasks"],
     verbose: bool,
@@ -78,7 +78,6 @@ def upload(
 
             work_queue.put_nowait(Work(src_path, root, chunk_size_mib))
         else:
-
             for dir, _, file_names in os.walk(src_path, followlinks=True):
                 for f in file_names:
                     rel = Path(dir) / f
@@ -117,8 +116,10 @@ def upload(
     total_time = time.monotonic() - start
 
     if progress != "none":
-        click.echo(dedent(f"""\
+        click.echo(
+            dedent(f"""\
             {click.style("Upload Complete", fg="green")}
             {click.style("Time Elapsed:", fg="blue")}   {human_readable_time(total_time)}
             {click.style("Files Uploaded:", fg="blue")} {num_files} ({with_si_suffix(total_bytes)})\
-        """))
+        """)
+        )

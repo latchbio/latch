@@ -4,6 +4,7 @@ from typing import Awaitable, Callable, Dict, List, Optional
 
 import aiohttp
 import aiohttp.typedefs
+from aiohttp.connector import TCPConnector
 from typing_extensions import ParamSpec
 
 P = ParamSpec("P")
@@ -24,7 +25,6 @@ class RetryClientSession(aiohttp.ClientSession):
         *args,
         **kwargs,
     ):
-
         self.status_list = (
             status_list
             if status_list is not None
@@ -45,13 +45,13 @@ class RetryClientSession(aiohttp.ClientSession):
             "https://nucleus.latch.bio/ldata/end-upload": asyncio.BoundedSemaphore(2),
         }
 
+        connector = TCPConnector(limit=10)
+        kwargs["connector"] = connector
+
         super().__init__(*args, **kwargs)
 
     async def _request(
-        self,
-        method: str,
-        str_or_url: aiohttp.typedefs.StrOrURL,
-        **kwargs,
+        self, method: str, str_or_url: aiohttp.typedefs.StrOrURL, **kwargs
     ) -> aiohttp.ClientResponse:
         sema = self.semas.get(str_or_url)
 
