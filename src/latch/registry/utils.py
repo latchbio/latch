@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Type, TypeVar, Union, ca
 import gql
 from dateutil.parser import parse
 
+from latch.ldata.path import LPath
 from latch.registry.record import Record
 from latch.registry.types import InvalidValue, RegistryPythonValue
 from latch.registry.upstream_types.types import (
@@ -326,12 +327,15 @@ def to_registry_literal(
         if not (
             isinstance(python_literal, LatchFile)
             or isinstance(python_literal, LatchDir)
+            or isinstance(python_literal, LPath)
         ):
             raise RegistryTransformerException(
                 "cannot convert non-blob python literal to registry blob"
             )
 
-        value = {"remote_path": python_literal.remote_path}
+        remote_path = python_literal.path if isinstance(python_literal, LPath) else python_literal.remote_path
+
+        value = {"remote_path": remote_path}
         if resolve_paths:
             ws_id = current_workspace()
             if ws_id == "":
@@ -349,7 +353,7 @@ def to_registry_literal(
                         }
                     }
                     """),
-                    {"argPath": python_literal.remote_path},
+                    {"argPath": remote_path},
                 )["ldataResolvePath"]
             else:
                 data = execute(
@@ -364,13 +368,13 @@ def to_registry_literal(
                         }
                     }
                     """),
-                    {"argPath": python_literal.remote_path, "wsId": ws_id},
+                    {"argPath": remote_path, "wsId": ws_id},
                 )["ldataResolvePathExt"]
 
             if data["path"] is not None and data["path"] != "":
                 # todo(maximsmol): store an invalid value instead?
                 raise RegistryTransformerException(
-                    f"could not resolve path: {python_literal.remote_path}"
+                    f"could not resolve path: {remote_path}"
                 )
 
             value = {"ldataNodeId": data["nodeId"]}

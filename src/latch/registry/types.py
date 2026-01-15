@@ -8,6 +8,7 @@ from typing_extensions import TypeAlias
 from latch.registry.record import Record
 from latch.registry.upstream_types.types import DBType
 from latch.registry.upstream_types.values import EmptyCell
+from latch.ldata.path import LPath
 from latch.types.directory import LatchDir
 from latch.types.file import LatchFile
 
@@ -42,6 +43,7 @@ RegistryPrimitivePythonValue: TypeAlias = Union[
     float,
     LatchFile,
     LatchDir,
+    LPath,
     None,
     bool,
 ]
