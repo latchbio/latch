@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.67.22 - 2026-01-14
+
+### Added
+
+* Support passing `LPath` values to `TableUpdate.upsert_record`
+
 ## 2.67.21 - 2025-12-03
 
 ### Added
