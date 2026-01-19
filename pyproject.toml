@@ -48,6 +48,8 @@ dependencies = [
   # marshmallow_jsonschema depends on setuptools but doesn't specify it so we have to do it for them yay :D
   "setuptools>=75.3.0",
   "pyxattr>=0.8.1",
+  "uvloop>=0.21.0",
+  "aiohttp>=3.11.7",
   "orjson>=3.10.12",
   "latch-persistence>=0.1.5",
   "dill>=0.4.0",
