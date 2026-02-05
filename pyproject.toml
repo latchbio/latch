@@ -12,7 +12,7 @@ include = ["src/**/*.py", "src/**/py.typed", "src/latch_cli/services/init/*"]
 
 [project]
 name = "latch"
-version = "2.67.22"
+version = "2.67.23"
 description = "The Latch SDK"
 authors = [{ name = "Kenny Workman", email = "kenny@latch.bio" }]
 maintainers = [{ name = "Ayush Kamat", email = "ayush@latch.bio" }]
