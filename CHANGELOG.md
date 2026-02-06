@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.67.24 - 2026-02-06
+
+### Fixed
+
+* Bug in get_secret API -- failed to resolve secret shared through workflow when latch token present
+
 ## 2.67.23 - 2026-01-14
 
 * Update dependencies
