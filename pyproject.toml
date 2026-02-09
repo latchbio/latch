@@ -12,7 +12,7 @@ include = ["src/**/*.py", "src/**/py.typed", "src/latch_cli/services/init/*"]
 
 [project]
 name = "latch"
-version = "2.67.23"
+version = "2.67.24"
 description = "The Latch SDK"
 authors = [{ name = "Kenny Workman", email = "kenny@latch.bio" }]
 maintainers = [{ name = "Ayush Kamat", email = "ayush@latch.bio" }]
@@ -46,7 +46,7 @@ dependencies = [
   "websockets>=15.0.1",
   "watchfiles==1.1.1",
   # marshmallow_jsonschema depends on setuptools but doesn't specify it so we have to do it for them yay :D
-  "setuptools>=75.3.0",
+  "setuptools<81",
   "pyxattr>=0.8.1",
   "orjson>=3.10.12",
   "latch-persistence>=0.1.5",
