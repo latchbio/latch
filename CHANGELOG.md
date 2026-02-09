@@ -16,6 +16,10 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.68.1 - 2026-02-09
+
+* Upgrade lytekit to 0.15.32 (removes distutils requirements)
+
 ## 2.68.0 - 2026-02-09
 
 * Upgrade lytekit to 0.15.31 (removes setuptools / marshmallow_jsonschema requirements)
