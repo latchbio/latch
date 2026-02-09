@@ -16,7 +16,11 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.67.23 - 2026-01-14
+## 2.67.24 - 2026-02-05
+
+* Downgrade setuptools<81 
+
+## 2.67.23 - 2026-02-05
 
 * Update dependencies
 
