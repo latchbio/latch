@@ -3,10 +3,10 @@ import re
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from enum import Enum
+from importlib.metadata import distribution
 from pathlib import Path
 
 import click
-from pkg_resources import get_distribution
 
 from latch_cli.constants import latch_constants
 
@@ -54,7 +54,7 @@ def get_or_create_workflow_config(
         )
 
     config = LatchWorkflowConfig(
-        latch_version=get_distribution("latch").version,
+        latch_version=distribution("latch").version,
         base_image=base_image,
         date=datetime.now(timezone.utc).isoformat(),
     )
