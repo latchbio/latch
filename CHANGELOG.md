@@ -16,6 +16,10 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.68.2 - 2026-02-09
+
+* Upgrade lytekit to 0.15.33
+
 ## 2.68.1 - 2026-02-09
 
 * Upgrade lytekit to 0.15.32 (removes distutils requirements)
