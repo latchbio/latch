@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.68.3 - 2026-02-09
+
+## Fixed
+
+* Add guard to directory and file type transformer
+
 ## 2.68.2 - 2026-02-09
 
 * Upgrade lytekit to 0.15.33

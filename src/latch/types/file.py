@@ -239,7 +239,11 @@ class LatchFilePathTransformer(FlyteFilePathTransformer):
         lv: Literal,
         expected_python_type: Union[type[LatchFile], PathLike],
     ) -> LatchFile:
-        uri = lv.scalar.blob.uri
+        try:
+            uri = lv.scalar.blob.uri
+        except AttributeError:
+            raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
+
         if expected_python_type is PathLike:
             raise TypeError(
                 "Casting from Pathlike to LatchFile is currently not supported."
