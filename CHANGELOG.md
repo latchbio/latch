@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.68.4 - 2026-02-25
+
+## Fixed
+
+* Fix thread-safety issue in GQL client causing `TransportAlreadyConnected` errors under concurrent usage
+
 ## 2.68.3 - 2026-02-09
 
 ## Fixed
