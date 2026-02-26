@@ -1,10 +1,4 @@
 import os
-
-try:
-    from functools import cache
-except ImportError:
-    from functools import lru_cache as cache
-
 import time
 from typing import Dict, Optional
 
@@ -17,7 +11,6 @@ from latch_sdk_config.user import user_config
 from latch_sdk_gql import AuthenticationError, JsonValue
 
 
-@cache
 def _get_client() -> gql.Client:
     auth_header: Optional[str] = None
 
