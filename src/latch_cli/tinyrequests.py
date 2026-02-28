@@ -111,6 +111,9 @@ def _req(
     return TinyResponse(resp, url, stream=stream)
 
 
+_retryable_status_codes = {429, 500, 502, 503, 504}
+
+
 def request(
     method: str,
     url: str,
@@ -121,8 +124,8 @@ def request(
     stream: bool = False,
     num_retries: int = 3,
 ) -> TinyResponse:
-    """Send HTTP request. Retry on 500s or ConnectionErrors.
-    Implements exponential backoff between retries.
+    """Send HTTP request. Retry on transient errors (429, 5xx, ConnectionError)
+    with exponential backoff.
     """
     err = None
     res = None
@@ -135,15 +138,13 @@ def request(
             res = _req(
                 method, url, headers=headers, data=data, json=json, stream=stream
             )
-            if res.status_code < 500:
+            if res.status_code not in _retryable_status_codes:
                 return res
         except ConnectionError as e:
             err = e
 
         if attempt < num_retries:
-            # todo(rahul): tune the sleep interval based on the startup time of the server
-            # todo(rahul): change sleep interval based on which service we are calling
-            time.sleep(2**attempt * 5)
+            time.sleep(2**attempt)
 
     if res is None:
         raise err
