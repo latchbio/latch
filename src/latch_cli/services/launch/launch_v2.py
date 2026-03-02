@@ -201,6 +201,43 @@ class Execution:
 
         return None
 
+    def abort(self) -> bool:
+        if self.status in {
+            "SUCCEEDED",
+            "FAILED",
+            "ABORTED",
+            "SKIPPED",
+            "ABORTING",
+            "CANCELLED",
+        }:
+            return False
+
+        response = tinyrequests.post(
+            config.api.execution.abort,
+            headers={"Authorization": get_auth_header()},
+            json={"execution_id": self.id},
+        )
+
+        try:
+            response_data = response.json()
+        except JSONDecodeError as e:
+            raise RuntimeError(
+                f"Could not parse abort response as JSON: ({response.status_code}) {response}"
+            ) from e
+
+        if response.status_code != 200:
+            error = response_data.get("error", response_data)
+            raise RuntimeError(
+                f"Execution abort failed (HTTP {response.status_code}): {error}"
+            )
+
+        if response_data.get("success") is False:
+            error = response_data.get("error", response_data)
+            raise RuntimeError(f"Execution abort failed: {error}")
+
+        self.status = "ABORTING"
+        return True
+
 
 def launch_from_launch_plan(
     *, wf_name: str, lp_name: str, version: Optional[str] = None
@@ -291,7 +328,9 @@ def launch_from_launch_plan(
 
         raw_python_outputs = meta.get("python_outputs")
         if raw_python_outputs is None:
-            print("No python outputs found. If your workflow has outputs, re-register workflow with latch version >= 2.65.1 in workflow environment to access outputs in Execution object.")
+            print(
+                "No python outputs found. If your workflow has outputs, re-register workflow with latch version >= 2.65.1 in workflow environment to access outputs in Execution object."
+            )
             break
 
         try:
@@ -311,7 +350,11 @@ def launch_from_launch_plan(
 
 
 def launch(
-    *, wf_name: str, params: dict[str, Any], version: Optional[str] = None, best_effort: bool = True
+    *,
+    wf_name: str,
+    params: dict[str, Any],
+    version: Optional[str] = None,
+    best_effort: bool = True,
 ) -> Execution:
     """Create an execution of workflow `wf_name` with version `version` and parameters `params`.
 
@@ -329,7 +372,9 @@ def launch(
         Execution ID of the launched workflow.
     """
     target_account_id = current_workspace()
-    wf_id, interface, defaults = get_workflow_interface(target_account_id, wf_name, version)
+    wf_id, interface, defaults = get_workflow_interface(
+        target_account_id, wf_name, version
+    )
 
     flyte_interface_types: dict[str, Variable] = VariableMap.from_flyte_idl(
         gpjson.ParseDict(interface, _interface_pb2.VariableMap())
@@ -348,13 +393,17 @@ def launch(
         raw_python_outputs = meta.get("python_outputs")
 
         if raw_python_outputs is None:
-            print("No python outputs found. If your workflow has outputs, re-register workflow with latch version >= 2.65.1 in workflow environment to access outputs in Execution object.")
+            print(
+                "No python outputs found. If your workflow has outputs, re-register workflow with latch version >= 2.65.1 in workflow environment to access outputs in Execution object."
+            )
             break
 
         try:
             python_outputs = dill.loads(base64.b64decode(raw_python_outputs))  # noqa: S301
         except dill.UnpicklingError as e:
-            raise RuntimeError("Failed to decode the workflow outputs. Ensure your python version matches the version in the workflow environment.") from e
+            raise RuntimeError(
+                "Failed to decode the workflow outputs. Ensure your python version matches the version in the workflow environment."
+            ) from e
 
         break
 
@@ -364,8 +413,7 @@ def launch(
     params_for_launch: dict[str, Any] = params
     if best_effort:
         fixed_literals = convert_inputs_to_literals(
-            params=params,
-            flyte_interface_types=flyte_interface_types,
+            params=params, flyte_interface_types=flyte_interface_types
         )
         defaults = defaults["parameters"]
 
@@ -407,7 +455,9 @@ def launch(
         params_for_launch = params_json
     else:
         if raw_python_interface_with_defaults is None:
-            raise RuntimeError("Missing python interface in workflow metadata. Try using with best_effort=True.")
+            raise RuntimeError(
+                "Missing python interface in workflow metadata. Try using with best_effort=True."
+            )
 
         python_interface_with_defaults: Union[dict[str, tuple[type, Any]], None] = None
         try:
@@ -441,7 +491,9 @@ def launch(
                 ctx,
                 incoming_values=params,
                 flyte_interface_types=flyte_interface_types,
-                native_types={k: v[0] for k, v in python_interface_with_defaults.items()},
+                native_types={
+                    k: v[0] for k, v in python_interface_with_defaults.items()
+                },
             )
         except TypeTransformerFailedError as e:
             if "is not an instance of" in str(e):
@@ -450,14 +502,11 @@ def launch(
                 ) from e
             raise
 
-        params_for_launch = {k: gpjson.MessageToDict(v.to_flyte_idl()) for k, v in fixed_literals.items()}
+        params_for_launch = {
+            k: gpjson.MessageToDict(v.to_flyte_idl()) for k, v in fixed_literals.items()
+        }
 
-    return launch_workflow(
-        target_account_id,
-        wf_id,
-        params_for_launch,
-        python_outputs,
-    )
+    return launch_workflow(target_account_id, wf_id, params_for_launch, python_outputs)
 
 
 def launch_workflow(

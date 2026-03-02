@@ -16,15 +16,25 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.69.0 - 2026-03-02
+
+### Added
+
+* `Execution.abort()` method to abort a running execution
+
+### Fixed
+
+* Add to retryable statuses in `tinyrequests`
+
 ## 2.68.4 - 2026-02-25
 
-## Fixed
+### Fixed
 
 * Fix thread-safety issue in GQL client causing `TransportAlreadyConnected` errors under concurrent usage
 
 ## 2.68.3 - 2026-02-09
 
-## Fixed
+### Fixed
 
 * Add guard to directory and file type transformer
 
