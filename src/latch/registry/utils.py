@@ -150,7 +150,7 @@ def to_python_literal(registry_literal: DBValue, registry_type: RegistryType):
 
         from latch.registry.record import Record
 
-        return Record(value["sampleId"])
+        return Record(str(value["sampleId"]))
 
     if primitive == "string":
         if isinstance(value, str):
@@ -322,7 +322,7 @@ def to_registry_literal(
                 "cannot convert non-record python literal to registry link"
             )
 
-        value = {"sampleId": python_literal.id}
+        value = {"sampleId": str(python_literal.id)}
     elif primitive == "blob":
         if not (
             isinstance(python_literal, LatchFile)

@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.69.1 - 2026-03-02
+
+### Fixed
+
+* Fix registry link values storing `sampleId` as number instead of string
+
 ## 2.69.0 - 2026-03-02
 
 ### Added
