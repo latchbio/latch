@@ -543,6 +543,106 @@ def execute(
     _exec(execution_id=execution_id, egn_id=egn_id, container_index=container_index)
 
 
+@main.group()
+def image():
+    """Manage Private Image Uploads"""
+
+
+@image.command("build")
+@click.argument("root", type=click.Path(exists=True, file_okay=False))
+@click.option("-n", "--image-name", is_flag=False, type=str)
+@click.option("-v", "--version", is_flag=False, type=str)
+@click.option(
+    "-d",
+    "--dockerfile-path",
+    is_flag=False,
+    type=click.Path(exists=True, dir_okay=False),
+    help="Path to Dockerfile, defaults to the Dockerfile in specified root directory.",
+)
+@click.option(
+    "--remote/--no-remote",
+    is_flag=True,
+    default=True,
+    type=bool,
+    help="Use a remote server to build workflow.",
+)
+@click.option(
+    "-y",
+    "--yes",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Skip the confirmation dialog.",
+)
+@click.option(
+    "--docker-progress",
+    type=click.Choice(["plain", "tty", "auto"], case_sensitive=False),
+    default="auto",
+    help=(
+        "`tty` shows only the last N lines of the build log. `plain` does no special"
+        " handling. `auto` chooses `tty` when stdout is a terminal and `plain`"
+        " otherwise. Equivalent to Docker's `--progress` flag."
+    ),
+)
+@requires_login
+def build_and_upload_image(
+    root: Path,
+    *,
+    image_name: str,
+    version: Optional[str] = None,
+    dockerfile_path: Optional[Path] = None,
+    remote: bool = True,
+    yes: bool = False,
+    docker_progress: str,
+):
+    """Builds and uploads a Docker image to Latch ECR"""
+
+    from .services.private_images import build_and_upload_image
+
+    build_and_upload_image(
+        root,
+        image_name=image_name,
+        version=version,
+        dockerfile_path=dockerfile_path,
+        remote=remote,
+        skip_confirmation=yes,
+        progress_plain=(docker_progress == "auto" and not sys.stdout.isatty())
+        or docker_progress == "plain",
+    )
+
+
+@image.command("upload")
+@click.argument("image-reference", type=str, help="The image you wish to upload")
+@click.option("-n", "--image-name", is_flag=False, type=str)
+@click.option("-v", "--version", is_flag=False, type=str)
+@click.option(
+    "-y",
+    "--yes",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Skip the confirmation dialog.",
+)
+@requires_login
+def upload_image(
+    image_reference: str,
+    *,
+    image_name: Optional[str] = None,
+    version: Optional[str] = None,
+    yes: bool = False,
+):
+    """Uploads an existing Docker image to Latch ECR"""
+
+    from .services.private_images import upload_image
+
+    upload_image(
+        image_ref=image_reference,
+        image_name=image_name,
+        version=version,
+        skip_confirmation=yes,
+    )
+
+
 @main.command("register")
 @click.argument("pkg_root", type=click.Path(exists=True, file_okay=False))
 @click.option(
