@@ -59,7 +59,7 @@ valid_image_expr = re.compile(
 )
 valid_version_expr = re.compile(r"[\w][\w.-]{0,127}")
 image_ref_expr = re.compile(
-    r"((?P<registry>[^/:]+)/)?(?P<image>[^:]+):(?P<version>[^:/])"
+    r"((?P<registry>[^/:]+)/)?(?P<image>[^:]+)(:(?P<version>[^:/]))?"
 )
 
 
@@ -106,17 +106,17 @@ def validate_version(version: str):
 def upload_image(
     image_ref: str,
     *,
-    new_image_name: Optional[str] = None,
-    new_version: Optional[str] = None,
+    image_name: Optional[str] = None,
+    version: Optional[str] = None,
     skip_confirmation: bool = False,
 ):
     click.secho("Beginning image upload:")
     match = image_ref_expr.match(image_ref)
 
-    if new_image_name is not None:
-        validate_image_name(new_image_name)
+    if image_name is not None:
+        validate_image_name(image_name)
     elif match is not None:
-        new_image_name = match["image"]
+        image_name = match["image"]
     else:
         click.secho(
             dedent(f"""\
@@ -131,10 +131,12 @@ def upload_image(
 
         raise click.exceptions.Exit(1)
 
-    if new_version is not None:
-        validate_version(new_version)
+    if version is not None:
+        validate_version(version)
+    elif match is not None and match["version"] is not None:
+        version = match["version"]
     elif match is not None:
-        new_version = match["version"]
+        version = "latest"
     else:
         click.secho(
             dedent(f"""\
@@ -149,14 +151,14 @@ def upload_image(
 
         raise click.exceptions.Exit(1)
 
-    assert new_image_name is not None
-    assert new_version is not None
+    assert image_name is not None
+    assert version is not None
 
     ws_id = current_workspace()
 
-    namespaced_image_name = f"{ws_id}_{new_image_name}"
+    namespaced_image_name = f"{ws_id}_{image_name}"
 
-    full_image_ref = f"{ecr_base}/{namespaced_image_name}:{new_version}"
+    full_image_ref = f"{ecr_base}/{namespaced_image_name}:{version}"
 
     click.secho(f"Image Destination: {full_image_ref}")
 
@@ -172,9 +174,7 @@ def upload_image(
         print_header=False,
     )
 
-    client.tag(
-        image_ref, repository=f"{ecr_base}/{namespaced_image_name}", tag=new_version
-    )
+    client.tag(image_ref, repository=f"{ecr_base}/{namespaced_image_name}", tag=version)
 
     client._auth_configs = docker.auth.AuthConfig({  # noqa: SLF001
         "auths": {ecr_base: asdict(credentials)}
@@ -183,7 +183,7 @@ def upload_image(
     print_upload_logs(
         client.push(
             repository=f"{ecr_base}/{namespaced_image_name}",
-            tag=new_version,
+            tag=version,
             stream=True,
             decode=True,
             auth_config=asdict(credentials),
@@ -191,7 +191,7 @@ def upload_image(
         namespaced_image_name,
     )
 
-    # record_in_db(ws_id, namespaced_image_name, new_version)
+    record_in_db(ws_id, namespaced_image_name, version)
 
     click.secho(f"Successfully built and tagged {full_image_ref}", fg="green")
 
