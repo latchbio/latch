@@ -612,7 +612,7 @@ def build_and_upload_image(
 
 
 @image.command("upload")
-@click.argument("image-reference", type=str, help="The image you wish to upload")
+@click.argument("image-reference", type=str)
 @click.option("-n", "--image-name", is_flag=False, type=str)
 @click.option("-v", "--version", is_flag=False, type=str)
 @click.option(
