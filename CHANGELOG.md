@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.70.2 - 2026-03-18
+
+### Fixed
+
+* Remove `from datetime import UTC` to preserve 3.9 compatibility
+
 ## 2.70.1 - 2026-03-17
 
 ### Added
