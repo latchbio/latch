@@ -8,7 +8,7 @@ import stat
 import subprocess
 import urllib.parse
 from dataclasses import asdict, is_dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from textwrap import dedent
@@ -151,6 +151,10 @@ def human_readable_time(t_seconds: float) -> str:
         x.append(f"{s:.2f}s")
 
     return " ".join(x)
+
+
+def human_readable_datetime(dt: datetime) -> str:
+    return dt.astimezone().strftime("%c")
 
 
 def hash_directory(dir_path: Path, *, silent: bool = False) -> str:

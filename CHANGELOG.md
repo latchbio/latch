@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.70.1 - 2026-03-17
+
+### Added
+
+* `latch image ls` command for listing any private images in the current workspace
+
 ## 2.70.0 - 2026-03-17
 
 ### Added

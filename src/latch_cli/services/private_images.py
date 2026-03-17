@@ -2,9 +2,10 @@ import re
 from dataclasses import asdict
 from pathlib import Path
 from textwrap import dedent
-from typing import Optional
+from typing import Optional, TypedDict
 
 import click
+import dateutil.parser as dp
 import docker.auth
 import gql
 
@@ -12,7 +13,7 @@ from latch.utils import current_workspace
 from latch_sdk_config.latch import config
 from latch_sdk_gql.execute import execute
 
-from ..utils import hash_directory
+from ..utils import hash_directory, human_readable_datetime
 from .docker.utils import dbnp, get_credentials, get_local_docker_client, remote_dbnp
 from .register.register import print_upload_logs
 
@@ -269,3 +270,50 @@ def build_and_upload_image(
     record_in_db(ws_id, namespaced_image_name, version)
 
     click.secho(f"Successfully built and tagged {full_image_ref}", fg="green")
+
+
+class PrivateImageNode(TypedDict):
+    imageName: str
+    version: str
+    creationTime: str
+
+
+class PrivateImages(TypedDict):
+    nodes: Optional[list[PrivateImageNode]]
+
+
+# todo(ayush): scuffed
+def ls():
+    ws_id = current_workspace()
+
+    res: Optional[PrivateImages] = execute(
+        gql.gql(
+            """
+            query ListPrivateImages($wsId: BigInt!) {
+                privateImages(filter: { workspaceId: { equalTo: $wsId } }) {
+                    nodes {
+                        imageName
+                        version
+                        creationTime
+                    }
+                }
+            }
+            """
+        ),
+        {"wsId": ws_id},
+    )["privateImages"]
+
+    if res is None or res["nodes"] is None:
+        click.secho(
+            f"Could not find any private images in workspace {ws_id}",
+            dim=True,
+            italic=True,
+        )
+        raise click.Abort
+
+    for node in res["nodes"]:
+        click.secho(f"{ecr_base}/{node['imageName']}:{node['version']}    ", nl=False)
+
+        pretty_time = human_readable_datetime(dp.isoparse(node["creationTime"]))
+
+        click.secho(f"created on {pretty_time}", dim=True, italic=True)

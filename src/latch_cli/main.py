@@ -580,6 +580,16 @@ def upload_image(
     )
 
 
+@image.command("ls")
+@requires_login
+def image_ls():
+    """Uploads an existing Docker image to Latch ECR"""
+
+    from .services.private_images import ls
+
+    ls()
+
+
 @main.command("register")
 @click.argument("pkg_root", type=click.Path(exists=True, file_okay=False))
 @click.option(
