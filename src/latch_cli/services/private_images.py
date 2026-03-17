@@ -9,13 +9,14 @@ import docker.auth
 import gql
 
 from latch.utils import current_workspace
-from latch_cli.services.register.register import print_upload_logs
+from latch_sdk_config.latch import config
 from latch_sdk_gql.execute import execute
 
 from ..utils import hash_directory
 from .docker.utils import dbnp, get_credentials, get_local_docker_client, remote_dbnp
+from .register.register import print_upload_logs
 
-ecr_base = "812206152185.dkr.ecr.us-west-2.amazonaws.com"
+ecr_base = config.dkr_repo
 
 
 def record_in_db(ws_id: str, image_name: str, version: str):
@@ -219,7 +220,7 @@ def build_and_upload_image(
             italic=True,
         )
 
-        version = hash_directory(root, silent=True)
+        version = hash_directory(root, silent=True)[:6]
 
     ws_id = current_workspace()
     namespaced_image_name = f"{ws_id}_{image_name}"

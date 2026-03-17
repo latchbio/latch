@@ -549,8 +549,8 @@ def image():
 
 
 @image.command("build")
-@click.argument("root", type=click.Path(exists=True, file_okay=False))
-@click.option("-n", "--image-name", is_flag=False, type=str)
+@click.argument("root", type=click.Path(exists=True, file_okay=False, path_type=Path))
+@click.option("-n", "--image-name", is_flag=False, type=str, required=True)
 @click.option("-v", "--version", is_flag=False, type=str)
 @click.option(
     "-d",
