@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.70.0 - 2026-03-17
+
+### Added
+
+* `latch image upload` command for uploading custom images to private latch storage
+
 ## 2.69.1 - 2026-03-02
 
 ### Fixed
