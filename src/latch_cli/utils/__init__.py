@@ -8,7 +8,7 @@ import stat
 import subprocess
 import urllib.parse
 from dataclasses import asdict, is_dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from textwrap import dedent
