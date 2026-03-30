@@ -61,7 +61,7 @@ valid_image_expr = re.compile(
 )
 valid_version_expr = re.compile(r"[\w][\w.-]{0,127}")
 image_ref_expr = re.compile(
-    r"((?P<registry>[^/:]+)/)?(?P<image>[^:]+)(:(?P<version>[^:/]))?"
+    r"^((?P<registry>[^/:]+)/)?(?P<image>[^:]+)(:(?P<version>[^:/]+))?$"
 )
 
 

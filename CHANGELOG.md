@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.70.3 - 2026-03-30
+
+### Fixed
+
+* Update regex in `latch image upload`
+
 ## 2.70.2 - 2026-03-18
 
 ### Fixed
