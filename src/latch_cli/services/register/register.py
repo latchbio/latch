@@ -515,7 +515,9 @@ def register(
                 remote_dir_client = ctx.ssh_client
 
             td: str = stack.enter_context(
-                MaybeRemoteDir(remote_dir_client, ctx.remote_conn_info)
+                MaybeRemoteDir(
+                    remote_dir_client, getattr(ctx, "remote_conn_info", None)
+                )
             )
             _build_and_serialize(
                 ctx,

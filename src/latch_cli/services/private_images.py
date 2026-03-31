@@ -7,6 +7,7 @@ from typing import Optional, TypedDict
 import click
 import dateutil.parser as dp
 import docker.auth
+import docker.errors
 import gql
 
 from latch.utils import current_workspace
@@ -50,10 +51,20 @@ def record_in_db(ws_id: str, image_name: str, version: str):
 valid_image_expr = re.compile(
     r"""
     ^
-        [a-z0-9]+
         (
-            ([_.]|__|[-]*)
             [a-z0-9]+
+            (
+                ([_.]|__|[-]*)
+                [a-z0-9]+
+            )*
+        )
+        (
+            /
+            [a-z0-9]+
+            (
+                ([_.]|__|[-]*)
+                [a-z0-9]+
+            )*
         )*
     $
     """,
@@ -142,7 +153,7 @@ def upload_image(
     else:
         click.secho(
             dedent(f"""\
-            Could not parse image version ame from reference `{image_ref}`
+            Could not parse image version from reference `{image_ref}`
 
             Please either provide a human readable image reference (e.g. `registry.dockerhub.io/test_image:123`), or
             pass in a custom version using `--version`.
@@ -170,11 +181,14 @@ def upload_image(
     credentials = get_credentials(namespaced_image_name)
     client = get_local_docker_client()
 
-    print_upload_logs(
-        client.pull(image_ref, stream=True, decode=True, platform="linux/amd64"),
-        image_ref,
-        print_header=False,
-    )
+    try:
+        client.inspect_image(image_ref)
+    except docker.errors.ImageNotFound:
+        print_upload_logs(
+            client.pull(image_ref, stream=True, decode=True, platform="linux/amd64"),
+            image_ref,
+            print_header=False,
+        )
 
     client.tag(image_ref, repository=f"{ecr_base}/{namespaced_image_name}", tag=version)
 

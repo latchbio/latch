@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.70.4 - 2026-03-30
+
+### Fixed
+
+* Update `latch image upload` to not pull the image unless it isn't available locally
+
 ## 2.70.3 - 2026-03-30
 
 ### Fixed
