@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.71.0 - 2026-04-02
+
+### Dependencies
+
+* Bump lytekit (which now pins `protobuf<=3.21.0`) to fix incompatibility errors arising from newer `protobuf` versions
+
 ## 2.70.4 - 2026-03-30
 
 ### Fixed
