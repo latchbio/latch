@@ -185,7 +185,7 @@ def current_workspace() -> str:
             return ws
 
     raise NoWorkspaceSelectedError(
-        "No workspace selected. Make sure you have access to a workspace, then run `latch workspace` to choose one or set `LATCH_WORKSPACE`."
+        "No workspaces found. Please create a workspace at https://console.latch.bio before proceeding."
     )
 
 
