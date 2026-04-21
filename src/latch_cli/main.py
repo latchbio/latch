@@ -15,7 +15,7 @@ from typing_extensions import ParamSpec
 
 import latch_cli.click_utils
 from latch.ldata._transfer.progress import Progress as _Progress  # noqa: PLC2701
-from latch.utils import current_workspace
+from latch.utils import NoWorkspaceSelectedError, current_workspace
 from latch_cli.click_utils import EnumChoice
 from latch_cli.exceptions.handler import CrashHandler
 from latch_cli.services.cp.autocomplete import complete as cp_complete
@@ -57,6 +57,21 @@ def requires_login(f: Callable[P, T]) -> Callable[P, T]:
                 """).strip("\n"),
                 fg="red",
             )
+            raise click.exceptions.Exit(1) from e
+
+        return f(*args, **kwargs)
+
+    decorated.__doc__ = f.__doc__
+
+    return decorated
+
+
+def requires_workspace(f: Callable[P, T]) -> Callable[P, T]:
+    def decorated(*args: P.args, **kwargs: P.kwargs):
+        try:
+            current_workspace()
+        except NoWorkspaceSelectedError as e:
+            click.secho(str(e), fg="red")
             raise click.exceptions.Exit(1) from e
 
         return f(*args, **kwargs)
@@ -485,6 +500,7 @@ def generate_metadata(
     help="Size of machine to provision for develop session",
 )
 @requires_login
+@requires_workspace
 def local_development(
     pkg_root: Path,
     yes: bool,
@@ -533,6 +549,7 @@ def local_development(
     help="Optional container index to inspect (only used for Map Tasks)",
 )
 @requires_login
+@requires_workspace
 def execute(
     execution_id: Optional[str], egn_id: Optional[str], container_index: Optional[int]
 ):
@@ -667,6 +684,7 @@ def execute(
     ),
 )
 @requires_login
+@requires_workspace
 def register(
     pkg_root: str,
     disable_auto_version: bool,
@@ -763,6 +781,7 @@ def register(
     help="The version of the workflow to launch. Defaults to latest.",
 )
 @requires_login
+@requires_workspace
 def launch(params_file: Path, version: Union[str, None] = None):
     """[DEPRECATED] Launch a workflow using a python parameter map.
 
@@ -804,6 +823,7 @@ def launch(params_file: Path, version: Union[str, None] = None):
     "--version", default=None, help="The version of the workflow. Defaults to latest."
 )
 @requires_login
+@requires_workspace
 def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
     """[DEPRECATED] Generate a python parameter map for a workflow.
 
@@ -843,6 +863,7 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
     help="The name of the workflow to list. Will display all versions",
 )
 @requires_login
+@requires_workspace
 def get_wf(name: Union[str, None] = None):
     """List workflows."""
     crash_handler.message = "Unable to get workflows"
@@ -872,6 +893,7 @@ def get_wf(name: Union[str, None] = None):
 @main.command("preview")
 @click.argument("pkg_root", nargs=1, type=click.Path(exists=True, path_type=Path))
 @requires_login
+@requires_workspace
 def preview(pkg_root: Path):
     """Creates a preview of your workflow interface."""
     crash_handler.message = f"Unable to preview inputs for {pkg_root}"
@@ -884,6 +906,7 @@ def preview(pkg_root: Path):
 
 @main.command("get-executions")
 @requires_login
+@requires_workspace
 def get_executions():
     """Spawns an interactive terminal UI that shows all executions in a given workspace"""
 
@@ -1216,6 +1239,7 @@ def generate_entrypoint(
     "--execution-id", "-e", type=str, help="Optional execution ID to inspect."
 )
 @requires_login
+@requires_workspace
 def attach(execution_id: Optional[str]):
     """Drops the user into an interactive shell to inspect the workdir of a nextflow execution."""
 
@@ -1255,6 +1279,7 @@ def attach(execution_id: Optional[str]):
     help="Path to the entrypoint nextflow file. Must be relative to the package root.",
 )
 @requires_login
+@requires_workspace
 def nf_register(
     pkg_root: Path,
     yes: bool,
