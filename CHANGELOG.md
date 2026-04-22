@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.71.1 - 2026-04-21
+
+### Fixed
+
+* Improve workspace CLI handling when no workspace is selected or available
+
 ## 2.71.0 - 2026-04-02
 
 ### Dependencies
