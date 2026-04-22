@@ -16,6 +16,42 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.71.0 - 2026-04-02
+
+### Dependencies
+
+* Bump lytekit (which now pins `protobuf<=3.21.0`) to fix incompatibility errors arising from newer `protobuf` versions
+
+## 2.70.4 - 2026-03-30
+
+### Fixed
+
+* Update `latch image upload` to not pull the image unless it isn't available locally
+
+## 2.70.3 - 2026-03-30
+
+### Fixed
+
+* Update regex in `latch image upload`
+
+## 2.70.2 - 2026-03-18
+
+### Fixed
+
+* Remove `from datetime import UTC` to preserve 3.9 compatibility
+
+## 2.70.1 - 2026-03-17
+
+### Added
+
+* `latch image ls` command for listing any private images in the current workspace
+
+## 2.70.0 - 2026-03-17
+
+### Added
+
+* `latch image upload` command for uploading custom images to private latch storage
+
 ## 2.69.1 - 2026-03-02
 
 ### Fixed

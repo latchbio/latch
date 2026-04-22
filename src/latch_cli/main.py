@@ -560,6 +560,53 @@ def execute(
     _exec(execution_id=execution_id, egn_id=egn_id, container_index=container_index)
 
 
+@main.group()
+def image():
+    """Manage Private Image Uploads"""
+
+
+@image.command("upload")
+@click.argument("image-reference", type=str)
+@click.option("-n", "--image-name", is_flag=False, type=str)
+@click.option("-v", "--version", is_flag=False, type=str)
+@click.option(
+    "-y",
+    "--yes",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help="Skip the confirmation dialog.",
+)
+@requires_login
+def upload_image(
+    image_reference: str,
+    *,
+    image_name: Optional[str] = None,
+    version: Optional[str] = None,
+    yes: bool = False,
+):
+    """Uploads an existing Docker image to Latch ECR"""
+
+    from .services.private_images import upload_image
+
+    upload_image(
+        image_ref=image_reference,
+        image_name=image_name,
+        version=version,
+        skip_confirmation=yes,
+    )
+
+
+@image.command("ls")
+@requires_login
+def image_ls():
+    """Uploads an existing Docker image to Latch ECR"""
+
+    from .services.private_images import ls
+
+    ls()
+
+
 @main.command("register")
 @click.argument("pkg_root", type=click.Path(exists=True, file_okay=False))
 @click.option(

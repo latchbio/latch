@@ -123,23 +123,31 @@ def print_and_write_build_logs(
             _delete_lines(len(cur_lines))
 
 
-def print_upload_logs(upload_image_logs, image):
-    click.secho(f"Uploading Docker image", bold=True)
-    prog_map = {}
+# todo(ayush): this sucks
+def print_upload_logs(upload_image_logs, image, *, print_header: bool = True):
+    if print_header:
+        click.secho("Uploading Docker image", bold=True)
 
-    def _pp_prog_map(prog_map, prev_lines):
+    prog_map: dict[str, Optional[str]] = {}
+
+    def _pp_prog_map(prog_map: dict[str, Optional[str]], prev_lines: int):
         if prev_lines > 0:
             click.echo("\x1b[2K\x1b[1E" * prev_lines + f"\x1b[{prev_lines}F", nl=False)
+
         prog_chunk = ""
         i = 0
         for id, prog in prog_map.items():
             if prog is None:
                 continue
+
             prog_chunk += f"{id} ~ {prog}\n"
             i += 1
+
         if prog_chunk == "":
             return 0
+
         click.echo(prog_chunk + f"\x1b[{i}A", nl=False)
+
         return i
 
     prev_lines = 0
@@ -396,8 +404,7 @@ def register(
             raise click.exceptions.Exit(1)
 
         ws_name = next(
-            (x[1]["name"] for x in workspaces.items() if x[0] == workspace_id),
-            "N/A",
+            (x[1]["name"] for x in workspaces.items() if x[0] == workspace_id), "N/A"
         )
         click.echo(
             " ".join([
@@ -508,7 +515,9 @@ def register(
                 remote_dir_client = ctx.ssh_client
 
             td: str = stack.enter_context(
-                MaybeRemoteDir(remote_dir_client, ctx.remote_conn_info)
+                MaybeRemoteDir(
+                    remote_dir_client, getattr(ctx, "remote_conn_info", None)
+                )
             )
             _build_and_serialize(
                 ctx,
@@ -609,11 +618,7 @@ def register(
                         }
                     }
                     """),
-                    {
-                        "name": wf_name,
-                        "version": ctx.version,
-                        "ownerId": workspace_id,
-                    },
+                    {"name": wf_name, "version": ctx.version, "ownerId": workspace_id},
                 )["workflowInfos"]["nodes"]
                 time.sleep(1)
 

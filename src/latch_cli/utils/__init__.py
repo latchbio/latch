@@ -153,6 +153,10 @@ def human_readable_time(t_seconds: float) -> str:
     return " ".join(x)
 
 
+def human_readable_datetime(dt: datetime) -> str:
+    return dt.astimezone().strftime("%c")
+
+
 def hash_directory(dir_path: Path, *, silent: bool = False) -> str:
     # todo(maximsmol): store per-file hashes to show which files triggered a version change
     if not silent:
