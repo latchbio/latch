@@ -47,6 +47,9 @@ class WSInfo(TypedDict):
     default: bool
 
 
+class NoWorkspaceSelectedError(ValueError): ...
+
+
 def get_workspaces() -> Dict[str, WSInfo]:
     """Retrieve workspaces that user can access.
 
@@ -150,7 +153,7 @@ def current_workspace() -> str:
     """
 
     ws = os.environ.get("LATCH_WORKSPACE")
-    if ws is not None:
+    if ws not in {None, ""}:
         return ws
 
     ws = user_config.workspace_id
@@ -170,13 +173,20 @@ def current_workspace() -> str:
         """),
     )["accountInfoCurrent"]
 
-    ws = res["id"]
+    if res is not None:
+        is_local = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID") is None
+        if is_local and res["user"] is not None:
+            default_account = res["user"]["defaultAccount"]
+            if default_account is not None:
+                return default_account
 
-    is_local = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID") is None
-    if is_local and res["user"] is not None:
-        ws = res["user"]["defaultAccount"]
+        ws = res["id"]
+        if ws is not None:
+            return ws
 
-    return ws
+    raise NoWorkspaceSelectedError(
+        "No workspaces found. Please create a workspace at https://console.latch.bio before proceeding."
+    )
 
 
 class NotFoundError(ValueError): ...

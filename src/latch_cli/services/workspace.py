@@ -3,7 +3,12 @@ from typing import List, TypedDict
 import click
 from latch_sdk_config.user import user_config
 
-from latch.utils import current_workspace, get_workspaces, WSInfo
+from latch.utils import (
+    NoWorkspaceSelectedError,
+    WSInfo,
+    current_workspace,
+    get_workspaces,
+)
 from latch_cli.menus import SelectOption, select_tui
 
 
@@ -15,7 +20,11 @@ def workspace():
     """
     data = get_workspaces()
 
-    old_id = current_workspace()
+    old_id: str | None
+    try:
+        old_id = current_workspace()
+    except NoWorkspaceSelectedError:
+        old_id = None
 
     selected_marker = "\x1b[3m\x1b[2m (currently selected) \x1b[22m\x1b[23m"
 
@@ -25,7 +34,11 @@ def workspace():
     ):
         options.append(
             {
-                "display_name": info["name"] if old_id != info["workspace_id"] else info["name"] + selected_marker,
+                "display_name": (
+                    info["name"]
+                    if old_id != info["workspace_id"]
+                    else info["name"] + selected_marker
+                ),
                 "value": info,
             }
         )
