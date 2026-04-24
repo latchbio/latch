@@ -600,7 +600,7 @@ def upload_image(
 @image.command("ls")
 @requires_login
 def image_ls():
-    """Uploads an existing Docker image to Latch ECR"""
+    """Lists existing Docker images in Latch ECR"""
 
     from .services.private_images import ls
 
