@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.71.2 - 2026-05-01
+
+### Dependencies
+
+* Bump lytekit to unblock Python 3.12 installs with newer protobuf versions
+
 ## 2.71.1 - 2026-04-21
 
 ### Fixed
