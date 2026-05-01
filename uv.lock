@@ -1243,7 +1243,7 @@ wheels = [
 
 [[package]]
 name = "latch"
-version = "2.67.24"
+version = "2.71.2"
 source = { editable = "." }
 dependencies = [
     { name = "aioconsole" },
@@ -1269,7 +1269,6 @@ dependencies = [
     { name = "requests" },
     { name = "requests-toolbelt" },
     { name = "scp" },
-    { name = "setuptools" },
     { name = "tqdm" },
     { name = "typing-extensions" },
     { name = "watchfiles" },
@@ -1318,7 +1317,7 @@ requires-dist = [
     { name = "graphql-core", specifier = "==3.2.3" },
     { name = "kubernetes", specifier = ">=24.2.0" },
     { name = "latch-persistence", specifier = ">=0.1.5" },
-    { name = "lytekit", specifier = "==0.15.29" },
+    { name = "lytekit", specifier = "==0.15.35" },
     { name = "lytekitplugins-pods", specifier = "==0.7.4" },
     { name = "orjson", specifier = ">=3.10.12" },
     { name = "pandas", marker = "extra == 'pandas'", specifier = ">=2.0.0" },
@@ -1330,7 +1329,6 @@ requires-dist = [
     { name = "requests", specifier = ">=2.28.1" },
     { name = "requests-toolbelt", specifier = "==1.0.0" },
     { name = "scp", specifier = ">=0.14.0" },
-    { name = "setuptools", specifier = "<81" },
     { name = "snakemake", marker = "extra == 'snakemake'", specifier = ">=7.18.0,<7.30.2" },
     { name = "tqdm", specifier = ">=4.63.0" },
     { name = "typing-extensions", specifier = ">=4.12.0" },
@@ -1367,21 +1365,20 @@ wheels = [
 
 [[package]]
 name = "lyteidl"
-version = "0.2.1"
+version = "0.3.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "googleapis-common-protos" },
     { name = "protobuf" },
-    { name = "protoc-gen-swagger" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ea/8a/7dc397cbb70badafd3bb11b7128b7931b9fdaf4326450d49c0e5fd1402ce/lyteidl-0.2.1.tar.gz", hash = "sha256:9c5ebe96615e4fd03dd393c49f6356285be8e3860c58271ac7c8babc170165a8", size = 143158, upload-time = "2023-07-13T19:32:15.292Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/92/5b/ffa9ca2b04f28ff5d8062685a74e35eb6a731c0046033c055c65a2a82f88/lyteidl-0.3.1.tar.gz", hash = "sha256:23202773d76e734929bfe9767cbf22f33db903b8a23a22e9be759c6afb932be9", size = 133771, upload-time = "2026-05-01T21:55:44.391Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2e/c0/c5cd61582075eb7dcd2eb3729f5c5a7ef7953122651a9a7d7fde492425d4/lyteidl-0.2.1-py3-none-any.whl", hash = "sha256:65fd47fab75275b12e0381acf6af1eb2b07bd55b53138aa15a1fd709e0c798fa", size = 206934, upload-time = "2023-07-13T19:32:13.419Z" },
+    { url = "https://files.pythonhosted.org/packages/36/ef/57374e3b2b54c63bdaefa1b68b68d3e15bf00974dab5add24f4a0bdb72cb/lyteidl-0.3.1-py3-none-any.whl", hash = "sha256:18b91e99dfbc3c34df1c671fd3d8e4f51cfe948962f4ec1efbf0550fac6c6397", size = 210650, upload-time = "2026-05-01T21:55:43.026Z" },
 ]
 
 [[package]]
 name = "lytekit"
-version = "0.15.29"
+version = "0.15.35"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click", version = "8.1.8", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
@@ -1401,8 +1398,6 @@ dependencies = [
     { name = "keyring" },
     { name = "latch-persistence" },
     { name = "lyteidl" },
-    { name = "marshmallow-enum" },
-    { name = "marshmallow-jsonschema" },
     { name = "memory-profiler" },
     { name = "natsort" },
     { name = "protobuf" },
@@ -1420,9 +1415,9 @@ dependencies = [
     { name = "wheel" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c4/85/7a189bacc375ed35d9b0d3449d3d6568307be1ff1bea0406fb41fb34c9be/lytekit-0.15.29.tar.gz", hash = "sha256:7bda8084e7478a2ea2c4eae0602bc5fc5a8ca0d17ebe72f4c5fcefef4a868166", size = 293174, upload-time = "2025-08-22T00:28:08.397Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4b/00/61b5c1dffb820be80974856c8a79a6b542f31f635610cc2ae6ae46d72c29/lytekit-0.15.35.tar.gz", hash = "sha256:7498aa0c796ea62aa3acc699d722d797a2f9822c9937d946c5d81713a5089a2e", size = 402796, upload-time = "2026-05-01T22:04:25.048Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/15/f5/f03064404a7c6750a3a8954fb2ec380d380c91b5c31e657a0170eaf41278/lytekit-0.15.29-py3-none-any.whl", hash = "sha256:1f3611f3cbf3b373813f3f88ce8156e0e57a775e25aad77b390de7fd430c0082", size = 355428, upload-time = "2025-08-22T00:28:06.888Z" },
+    { url = "https://files.pythonhosted.org/packages/f4/55/e78c1c6df264746927b4c1d140c1eb14967c74bc12629df8cd73f8889883/lytekit-0.15.35-py3-none-any.whl", hash = "sha256:8ce174d39d8720fde399dff12673067ca9c15957a32889f89ced8c8afaaef1f9", size = 346883, upload-time = "2026-05-01T22:04:23.295Z" },
 ]
 
 [[package]]
@@ -1568,18 +1563,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/8e/8c/ceecdce57dfd37913143087fffd15f38562a94f0d22823e3c66eac0dca31/marshmallow-enum-1.5.1.tar.gz", hash = "sha256:38e697e11f45a8e64b4a1e664000897c659b60aa57bfa18d44e226a9920b6e58", size = 4013, upload-time = "2019-08-21T01:07:46.254Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c6/59/ef3a3dc499be447098d4a89399beb869f813fee1b5a57d5d79dee2c1bf51/marshmallow_enum-1.5.1-py2.py3-none-any.whl", hash = "sha256:57161ab3dbfde4f57adeb12090f39592e992b9c86d206d02f6bd03ebec60f072", size = 4186, upload-time = "2019-08-21T01:07:44.814Z" },
-]
-
-[[package]]
-name = "marshmallow-jsonschema"
-version = "0.13.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "marshmallow" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/2f/53/109d80013b70b6140d05e521ad31e3014680007b51c3dfac72ad20a2d6ee/marshmallow-jsonschema-0.13.0.tar.gz", hash = "sha256:f8ce19cfc0edd909e81f141d7420c33544b849bc5ebbfae8f6a3deea5a3b1f47", size = 12703, upload-time = "2021-10-21T18:02:40.923Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f6/cf/a620a7b0a5ba2aaa52e70f95795e0cf3a7f6332a7cb432a1223b61ac654e/marshmallow_jsonschema-0.13.0-py3-none-any.whl", hash = "sha256:2814f2afb94a6e01b3c0a5795b3dfb142b628763655f20378400af5c0a2307fb", size = 11812, upload-time = "2021-10-21T18:02:39.392Z" },
 ]
 
 [[package]]
@@ -2459,17 +2442,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/36/8b/433071fed0058322090a55021bdc8da76d16c7bc9823f5795797803dd6d0/protobuf-3.20.3-cp39-cp39-win32.whl", hash = "sha256:819559cafa1a373b7096a482b504ae8a857c89593cf3a25af743ac9ecbd23480", size = 780270, upload-time = "2022-09-29T22:11:25.927Z" },
     { url = "https://files.pythonhosted.org/packages/11/a5/e52b731415ad6ef3d841e9e6e337a690249e800cc7c06f0749afab26348c/protobuf-3.20.3-cp39-cp39-win_amd64.whl", hash = "sha256:03038ac1cfbc41aa21f6afcbcd357281d7521b4157926f30ebecc8d4ea59dcb7", size = 904215, upload-time = "2022-09-29T22:11:28.056Z" },
     { url = "https://files.pythonhosted.org/packages/8d/14/619e24a4c70df2901e1f4dbc50a6291eb63a759172558df326347dce1f0d/protobuf-3.20.3-py2.py3-none-any.whl", hash = "sha256:a7ca6d488aa8ff7f329d4c545b2dbad8ac31464f1d8b1c87ad1346717731e4db", size = 162128, upload-time = "2022-09-29T22:39:44.547Z" },
-]
-
-[[package]]
-name = "protoc-gen-swagger"
-version = "0.1.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "protobuf" },
-]
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/7d/7f/d8f8d81a921f07e703cabf8a0b5bb6cbc26e3bce7614db905c3c7637315a/protoc_gen_swagger-0.1.0-py2.py3-none-any.whl", hash = "sha256:cdc043da538865f055a7f22b304a35085cef269dc33e2f3408b12d397e8d8b4b", size = 9443, upload-time = "2018-01-29T14:10:53.57Z" },
 ]
 
 [[package]]
@@ -3484,15 +3456,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/32/8a/ed6747b1cc723c81f526d4c12c1b1d43d07190e1e8258dbf934392fc850e/secretstorage-3.4.1.tar.gz", hash = "sha256:a799acf5be9fb93db609ebaa4ab6e8f1f3ed5ae640e0fa732bfea59e9c3b50e8", size = 19871, upload-time = "2025-11-11T11:30:23.798Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b0/6d/24ebb101484f1911a6be6695b76ce43219caa110ebbe07d8c3a5f3106cca/secretstorage-3.4.1-py3-none-any.whl", hash = "sha256:c55d57b4da3de568d8c3af89dad244ab24c35ca1da8625fc1b550edf005ebc41", size = 15301, upload-time = "2025-11-11T11:30:22.618Z" },
-]
-
-[[package]]
-name = "setuptools"
-version = "80.9.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/18/5d/3bf57dcd21979b887f014ea83c24ae194cfcd12b9e0fda66b957c69d1fca/setuptools-80.9.0.tar.gz", hash = "sha256:f36b47402ecde768dbfafc46e8e4207b4360c654f1f3bb84475f0a28628fb19c", size = 1319958, upload-time = "2025-05-27T00:56:51.443Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a3/dc/17031897dae0efacfea57dfd3a82fdd2a2aeb58e0ff71b77b87e44edc772/setuptools-80.9.0-py3-none-any.whl", hash = "sha256:062d34222ad13e0cc312a4c02d73f059e86a4acbfbdea8f8f76b28c99f306922", size = 1201486, upload-time = "2025-05-27T00:56:49.664Z" },
 ]
 
 [[package]]
