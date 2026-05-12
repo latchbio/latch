@@ -2,20 +2,20 @@
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.hatch.build.targets.sdist]
-include = ["src/**/*.py", "src/**/py.typed", "src/latch_cli/services/init/*"]
+# [tool.hatch.build.targets.sdist]
+# include = ["src/**/*.py", "src/**/py.typed", "src/latch_cli/services/init/*"]
 
-[tool.hatch.build.targets.wheel.force-include]
-"src/latch_cli" = "latch_cli"
-"src/latch_sdk_gql" = "latch_sdk_gql"
-"src/latch_sdk_config" = "latch_sdk_config"
+# [tool.hatch.build.targets.wheel.force-include]
+# "src/latch_cli" = "latch_cli"
+# "src/latch_sdk_gql" = "latch_sdk_gql"
+# "src/latch_sdk_config" = "latch_sdk_config"
 
 [project]
 name = "latch"
-version = "2.71.2"
+version = "2.72.0"
 description = "The Latch SDK"
 authors = [{ name = "Kenny Workman", email = "kenny@latch.bio" }]
-maintainers = [{ name = "Ayush Kamat", email = "ayush@latch.bio" }]
+maintainers = [{ name = "Kenny Workman", email = "kenny@latch.bio" }]
 
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -83,7 +83,11 @@ Issues = "https://github.com/latchbio/latch/issues"
 Changelog = "https://github.com/latchbio/latch/blob/main/CHANGELOG.md"
 
 [dependency-groups]
-dev = ["ruff>=0.7.0", "pytest>=8.3.3"]
+dev = [
+    "ruff>=0.7.0",
+    "pytest>=8.3.3",
+    "types-boto3[s3]>=1.43.6",
+]
 docs = [
   "sphinx",
   "sphinx-book-theme",
