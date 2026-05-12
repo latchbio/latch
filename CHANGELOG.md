@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.72.0 - 2026-05-12
+
+### Added
+
+* `latch test-data remove` now supports directories
+
 ## 2.71.2 - 2026-05-01
 
 ### Dependencies
