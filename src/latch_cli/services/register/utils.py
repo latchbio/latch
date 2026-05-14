@@ -5,6 +5,7 @@ import io
 import os
 import sys
 import typing
+from logging import getLogger
 from pathlib import Path
 from types import ModuleType
 from typing import (
@@ -31,14 +32,18 @@ if TYPE_CHECKING:
 else:
     _CentromereCtx = ""
 
+log = getLogger(__name__)
+
 
 # todo(maximsmol): only login if the credentials are expired
 def _docker_login(ctx: _CentromereCtx):
+    log.debug("_docker_login")
     assert ctx.dkr_client is not None
 
     headers = {"Authorization": f"Bearer {ctx.token}"}
     data = {"pkg_name": ctx.image, "ws_account_id": current_workspace()}
     response = requests.post(ctx.latch_image_api_url, headers=headers, json=data)
+    log.debug("POST latch_image_api_url %s", response.status_code)
 
     try:
         response = response.json()
@@ -49,6 +54,7 @@ def _docker_login(ctx: _CentromereCtx):
         raise ValueError(f"malformed response on image upload: {response}") from err
 
     try:
+        log.debug("Creating a boto3 session")
         client = boto3.session.Session(
             aws_access_key_id=access_key,
             aws_secret_access_key=secret_key,
@@ -64,10 +70,15 @@ def _docker_login(ctx: _CentromereCtx):
         ) from err
 
     auth = ctx.dkr_client._auth_configs
+
+    log.debug("Getting the credential store")
     store_name = auth.get_credential_store(ctx.dkr_repo)
+
     if store_name is not None:
+        log.debug("Getting the credential store instance")
         store = auth._get_store_instance(store_name)
         try:
+            log.debug("Clearing credentials for %s", ctx.dkr_repo)
             store.erase(ctx.dkr_repo)
         # To handle: "Credentials store docker-credential-osxkeychain exited
         # with "The specified item could not be found in the keychain.""
@@ -75,9 +86,12 @@ def _docker_login(ctx: _CentromereCtx):
             pass
 
     user, password = base64.b64decode(token).decode("utf-8").split(":")
+
+    log.debug("Logging in to Docker")
     res = ctx.dkr_client.login(
         username=user, password=password, registry=ctx.dkr_repo, reauth=True
     )
+    log.debug("Docker login status: %s", res["Status"])
     assert res["Status"] == "Login Succeeded"
 
 
@@ -93,9 +107,12 @@ def build_image(
     context_path: Path,
     dockerfile: Optional[Path] = None,
 ) -> Iterable[DockerBuildLogItem]:
+    log.debug("_build_image")
     assert ctx.dkr_client is not None
 
     _docker_login(ctx)
+
+    log.debug("dkr_client.build")
     build_logs = ctx.dkr_client.build(
         path=str(context_path),
         dockerfile=str(dockerfile) if dockerfile is not None else None,

@@ -6,6 +6,7 @@ import string
 import sys
 import tempfile
 from dataclasses import dataclass
+from logging import getLogger
 from pathlib import Path
 from types import ModuleType
 from typing import Callable, Iterator, List, Optional, TypeVar
@@ -16,6 +17,8 @@ import paramiko
 from typing_extensions import ParamSpec
 
 from latch_cli.constants import latch_constants
+
+log = getLogger(__name__)
 
 
 @dataclass
@@ -242,6 +245,7 @@ class MaybeRemoteDir:
         self.reconnect_info = reconnect_info
 
     def __enter__(self):
+        log.debug("MaybeRemoteDir.__enter__")
         return self.create()
 
     def __exit__(self, exc_type, exc_value, tb):

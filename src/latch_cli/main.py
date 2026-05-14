@@ -1,15 +1,18 @@
 # ruff: noqa: FBT001, FBT002
 """Entrypoints to service functions through a latch_cli."""
 
+import logging
 import os
 import sys
 import traceback
+from logging import getLogger
 from pathlib import Path
 from textwrap import dedent
 from typing import Callable, Optional, TypeVar, Union
 
 import click
 import gql
+from gql.transport.requests import log as requests_logger
 from packaging.version import parse as parse_version
 from typing_extensions import ParamSpec
 
@@ -32,6 +35,8 @@ from latch_cli.utils import (
 )
 from latch_cli.workflow_config import BaseImageOptions
 from latch_sdk_gql.execute import execute as gql_execute
+
+log = getLogger(__name__)
 
 latch_cli.click_utils.patch()
 
@@ -83,22 +88,28 @@ def requires_workspace(f: Callable[P, T]) -> Callable[P, T]:
 
 @click.group("latch", context_settings={"max_content_width": 160})
 @click.version_option(package_name="latch")
-def main():
+@click.option("-v", "--verbose", count=True)
+def main(verbose: int):
     """Collection of command line tools for using the Latch SDK and interacting with the Latch platform."""
 
-    if os.environ.get("LATCH_SKIP_VERSION_CHECK") is not None:
-        return
+    logging.basicConfig(level=logging.INFO if verbose < 1 else logging.DEBUG)
 
-    local_ver = parse_version(get_local_package_version())
-    latest_ver = parse_version(get_latest_package_version())
-    if local_ver < latest_ver:
-        click.secho(
-            dedent(f"""
-                WARN: Your local version of latch ({local_ver}) is out of date. This may result in unexpected behavior.
-                Please upgrade to the latest version ({latest_ver}) using `python3 -m pip install --upgrade latch`.
-                """).strip("\n"),
-            fg="yellow",
-        )
+    requests_logger.setLevel(logging.WARNING)
+    getLogger("git.cmd").setLevel(logging.WARNING)
+
+    log.debug("Verbosity: %s", verbose)
+
+    if os.environ.get("LATCH_SKIP_VERSION_CHECK") is None:
+        local_ver = parse_version(get_local_package_version())
+        latest_ver = parse_version(get_latest_package_version())
+        if local_ver < latest_ver:
+            click.secho(
+                dedent(f"""
+                    WARN: Your local version of latch ({local_ver}) is out of date. This may result in unexpected behavior.
+                    Please upgrade to the latest version ({latest_ver}) using `python3 -m pip install --upgrade latch`.
+                    """).strip("\n"),
+                fg="yellow",
+            )
 
     crash_handler.init()
 
