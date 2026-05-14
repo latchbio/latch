@@ -184,7 +184,11 @@ def _construct_dkr_client(ssh_host: Optional[str] = None):
 def _construct_ssh_client(
     remote_conn_info: RemoteConnInfo, *, use_gateway: bool = True
 ) -> paramiko.SSHClient:
-    log.debug("_construct_ssh_client use_gateway=%s", use_gateway)
+    log.debug(
+        "_construct_ssh_client conn_info=%s use_gateway=%s",
+        remote_conn_info,
+        use_gateway,
+    )
 
     if use_gateway:
         gateway = paramiko.SSHClient()
