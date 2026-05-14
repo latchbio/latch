@@ -88,7 +88,10 @@ def print_and_write_build_logs(
 
         cur_lines: list[str] = []
 
+        log.debug("Streaming docker logs")
         for x in build_logs:
+            log.debug("Received: %s", x)
+
             # for dockerfile parse errors
             message = x.get("message")
             if message is not None:

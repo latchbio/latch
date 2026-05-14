@@ -112,6 +112,7 @@ def _construct_dkr_client(ssh_host: Optional[str] = None):
     If `ssh_host` is passed, we attempt to make a connection with a remote
     machine.
     """
+    log.debug("Creating docker client: %s", ssh_host)
 
     def _from_env():
         host = environment.get("DOCKER_HOST")
@@ -126,6 +127,8 @@ def _construct_dkr_client(ssh_host: Optional[str] = None):
         tls_verify = environment.get("DOCKER_TLS_VERIFY") != ""
 
         enable_tls = tls_verify or cert_path is not None
+
+        log.debug("Determined Docker host from environment: %s", host)
 
         dkr_client = None
         try:
@@ -169,6 +172,7 @@ def _construct_dkr_client(ssh_host: Optional[str] = None):
     else:
         try:
             # TODO: platform specific socket defaults
+            log.debug("Using default Docker host: unix://var/run/docker.sock")
             return docker.APIClient(base_url="unix://var/run/docker.sock")
         except docker.errors.DockerException as de:
             raise OSError(
@@ -180,40 +184,58 @@ def _construct_dkr_client(ssh_host: Optional[str] = None):
 def _construct_ssh_client(
     remote_conn_info: RemoteConnInfo, *, use_gateway: bool = True
 ) -> paramiko.SSHClient:
+    log.debug("_construct_ssh_client use_gateway=%s", use_gateway)
+
     if use_gateway:
         gateway = paramiko.SSHClient()
+
+        log.debug("Loading system host keys")
         gateway.load_system_host_keys()
+
+        log.debug("Setting missing host key policy")
         gateway.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy)
 
-        gateway_pkey = paramiko.PKey.from_path(
-            path=str(remote_conn_info.jump_key_path.resolve())
-        )
+        path = str(remote_conn_info.jump_key_path.resolve())
+        log.debug("Loading public key from %s", path)
+        gateway_pkey = paramiko.PKey.from_path(path=path)
 
+        log.debug("Connecting to gateway")
         gateway.connect(
             latch_constants.jump_host,
             username=latch_constants.jump_user,
             pkey=gateway_pkey,
         )
 
+        log.debug("Getting gateway transport")
         gateway_transport = gateway.get_transport()
         if gateway_transport is None:
             raise ConnectionError("unable to create connection to jump host")
 
+        log.debug("Opening gateway channel")
         sock = gateway_transport.open_channel(
             kind="direct-tcpip", dest_addr=(remote_conn_info.ip, 22), src_addr=("", 0)
         )
     else:
         sock = None
 
-    pkey = paramiko.PKey.from_path(path=str(remote_conn_info.ssh_key_path.resolve()))
+    path = str(remote_conn_info.ssh_key_path.resolve())
+    log.debug("Loading public key")
+    pkey = paramiko.PKey.from_path(path=path)
 
     ssh = paramiko.SSHClient()
+
+    log.debug("Loading system host keys")
     ssh.load_system_host_keys()
+
+    log.debug("Setting missing host key policy")
     ssh.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy)
+
+    log.debug("Connecting to remote")
     ssh.connect(
         remote_conn_info.ip, username=remote_conn_info.username, sock=sock, pkey=pkey
     )
 
+    log.debug("Getting transport")
     transport = ssh.get_transport()
     if transport is None:
         raise ConnectionError(
@@ -222,6 +244,7 @@ def _construct_ssh_client(
 
     # (kenny) Equivalent of OpenSSH configuration `ServerAliveInterval`
     # No analogue for `ServerAliveCountMax` in paramiko I could find.
+    log.debug("Setting Keep-Alive")
     transport.set_keepalive(latch_constants.centromere_keepalive_interval)
 
     return ssh

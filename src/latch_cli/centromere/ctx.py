@@ -1,3 +1,4 @@
+from logging import getLogger
 import re
 import sys
 import traceback
@@ -29,6 +30,8 @@ from latch_cli.utils import (
     identifier_suffix_from_str,
 )
 from latch_sdk_config.latch import config
+
+log = getLogger(__name__)
 
 
 @dataclass
@@ -97,6 +100,7 @@ class _CentromereCtx:
         self.disable_auto_version = disable_auto_version
         self.wf_module = wf_module if wf_module is not None else "wf"
 
+        log.debug("Initializing CentromereCtx")
         if self.wf_module.startswith("."):
             click.secho(
                 dedent(f"""\
@@ -107,10 +111,13 @@ class _CentromereCtx:
             raise click.exceptions.Exit(1)
 
         try:
+            log.debug("retrieve_or_login")
             self.token = retrieve_or_login()
+            log.debug("current_workspace")
             self.account_id = current_workspace()
 
             self.dkr_repo = config.dkr_repo
+            log.debug("resolving pkg_root")
             self.pkg_root = pkg_root.resolve()
 
             if snakefile is not None and nf_script is not None:
@@ -131,6 +138,7 @@ class _CentromereCtx:
             else:
                 self.workflow_type = WorkflowType.latchbiosdk
 
+            log.debug("Determining version")
             version_file = self.pkg_root / "version"
             try:
                 self.version = version_file.read_text()
@@ -143,6 +151,7 @@ class _CentromereCtx:
 
             self.version = self.version.strip()
 
+            log.debug("Loading the git repo")
             try:
                 from git import GitError, Repo
 
@@ -162,6 +171,7 @@ class _CentromereCtx:
                     fg="yellow",
                 )
 
+            log.debug("Auto-versioning")
             if not self.disable_auto_version:
                 hash = ""
 
@@ -198,6 +208,7 @@ class _CentromereCtx:
                     ),
                 )
 
+                log.debug("Loading Flyte objects")
                 try:
                     if not module_path.exists():
                         click.secho(error_msg, fg="red")
@@ -448,6 +459,7 @@ class _CentromereCtx:
                 def _patched_connect(self): ...
 
                 def _patched_create_paramiko_client(self, base_url):
+                    log.debug("_patched_create_paramiko_client")
                     self.ssh_client = ssh_client
 
                 SSHHTTPAdapter._create_paramiko_client = _patched_create_paramiko_client
@@ -514,6 +526,7 @@ class _CentromereCtx:
         return f"{self.image}:{self.version}"
 
     def task_image_name(self, task_name: str) -> str:
+        log.debug("task_image_name: %s", task_name)
         task_name = identifier_suffix_from_str(task_name).lower()
         task_name = docker_image_name_illegal_pat.sub("_", task_name)
 
@@ -555,6 +568,7 @@ class _CentromereCtx:
 
     def provision_register_deployment(self) -> Tuple[str, str]:
         """Retrieve centromere IP + username."""
+        log.debug("provision_register_deployment")
         click.echo("Provisioning register instance. This may take a few minutes.")
 
         assert self.ssh_key_path is not None
@@ -609,6 +623,8 @@ class _CentromereCtx:
 
     def nucleus_check_version(self, version: str, workflow_name: str) -> bool:
         """Check if version has already been registered for given workflow"""
+
+        log.debug("nucleus_check_version")
 
         headers = {"Authorization": f"Bearer {self.token}"}
 
