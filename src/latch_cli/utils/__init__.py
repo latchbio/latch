@@ -10,6 +10,7 @@ import urllib.parse
 from dataclasses import asdict, is_dataclass
 from datetime import datetime, timedelta
 from enum import Enum
+from logging import getLogger
 from pathlib import Path
 from textwrap import dedent
 from typing import List
@@ -23,6 +24,8 @@ from latch_cli.click_utils import bold
 from latch_cli.constants import latch_constants
 from latch_cli.tinyrequests import get
 from latch_sdk_config.user import user_config
+
+log = getLogger(__name__)
 
 # todo(ayush): need a better way to check if "latch" has been appended to urllib
 if "latch" not in urllib.parse.uses_netloc:
@@ -232,10 +235,14 @@ def hash_directory(dir_path: Path, *, silent: bool = False) -> str:
 def generate_temporary_ssh_credentials(
     ssh_key_path: Path, *, add_to_agent: bool = True
 ) -> str:
+    log.debug("generate_temporary_ssh_credentials")
+
     # check if there is already a valid key at that path, and if so, use that
     # otherwise, if its not valid, remove it
     if ssh_key_path.exists():
         try:
+            log.debug("Checking existing key fingerprint")
+
             # check if file is valid + print out a fingerprint for the key
             cmd = ["ssh-keygen", "-l", "-f", ssh_key_path]
             valid_private_key = subprocess.run(cmd, check=True, capture_output=True)
@@ -261,6 +268,8 @@ def generate_temporary_ssh_credentials(
 
     # generate private key
     if not ssh_key_path.exists():
+        log.debug("Generating a key")
+
         ssh_key_path.parent.mkdir(parents=True, exist_ok=True)
         cmd = ["ssh-keygen", "-f", ssh_key_path, "-N", "", "-q"]
 
@@ -282,6 +291,8 @@ def generate_temporary_ssh_credentials(
         os.chmod(ssh_key_path, 0o700)
 
     if add_to_agent:
+        log.debug("Registering key with SSH agent")
+
         # make key available to ssh-agent daemon
         cmd = ["ssh-add", ssh_key_path]
 
@@ -303,6 +314,8 @@ def generate_temporary_ssh_credentials(
             )
 
             raise click.exceptions.Exit(1) from e
+
+    log.debug("Decoding the public key")
 
     # decode private key into public key
     cmd = ["ssh-keygen", "-y", "-f", ssh_key_path]

@@ -5,6 +5,7 @@ import sys
 import tempfile
 import time
 import webbrowser
+from logging import getLogger
 from pathlib import Path
 from textwrap import dedent
 from typing import Iterable, List, Optional
@@ -28,6 +29,8 @@ from latch_cli.services.register.utils import (
     upload_image,
 )
 from latch_cli.utils import WorkflowType
+
+log = getLogger(__name__)
 
 
 def _delete_lines(num: int):
@@ -85,7 +88,10 @@ def print_and_write_build_logs(
 
         cur_lines: list[str] = []
 
+        log.debug("Streaming docker logs")
         for x in build_logs:
+            log.debug("Received: %s", x)
+
             # for dockerfile parse errors
             message = x.get("message")
             if message is not None:
@@ -222,6 +228,7 @@ def _build_and_serialize(
     progress_plain: bool = False,
     sm_jit_wf: Optional[WorkflowBase] = None,
 ):
+    log.debug("_build_and_serialize")
     assert ctx.pkg_root is not None
 
     image_build_logs = build_image(ctx, image_name, context_path, dockerfile)
@@ -502,9 +509,11 @@ def register(
         if remote:
             click.secho("Connecting to remote server for docker build\n", bold=True)
 
+            log.debug("Getting ssh transport")
             assert ctx.ssh_client is not None
             transport = ctx.ssh_client.get_transport()
 
+            log.debug("Making SCP client")
             assert transport is not None
             scp = SCPClient(transport=transport, sanitize=lambda x: x)
 
@@ -519,6 +528,7 @@ def register(
                     remote_dir_client, getattr(ctx, "remote_conn_info", None)
                 )
             )
+
             _build_and_serialize(
                 ctx,
                 ctx.default_container.image_name,

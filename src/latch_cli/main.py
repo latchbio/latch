@@ -1,15 +1,18 @@
 # ruff: noqa: FBT001, FBT002
 """Entrypoints to service functions through a latch_cli."""
 
+import logging
 import os
 import sys
 import traceback
+from logging import getLogger
 from pathlib import Path
 from textwrap import dedent
 from typing import Callable, Optional, TypeVar, Union
 
 import click
 import gql
+from gql.transport.requests import log as requests_logger
 from packaging.version import parse as parse_version
 from typing_extensions import ParamSpec
 
@@ -32,6 +35,8 @@ from latch_cli.utils import (
 )
 from latch_cli.workflow_config import BaseImageOptions
 from latch_sdk_gql.execute import execute as gql_execute
+
+log = getLogger(__name__)
 
 latch_cli.click_utils.patch()
 
@@ -82,24 +87,37 @@ def requires_workspace(f: Callable[P, T]) -> Callable[P, T]:
 
 @click.group("latch", context_settings={"max_content_width": 160})
 @click.version_option(package_name="latch")
-def main():
+@click.option("-v", "--verbose", count=True)
+def latch(verbose: int):
     """Collection of command line tools for using the Latch SDK and interacting with the Latch platform."""
 
-    if os.environ.get("LATCH_SKIP_VERSION_CHECK") is not None:
-        return
+    logging.basicConfig(
+        level=logging.ERROR if verbose < 1 else logging.DEBUG,
+        format="%(asctime)s [%(levelname)s] %(name)s/%(funcName)s:%(lineno)s %(message)s",
+    )
 
-    local_ver = parse_version(get_local_package_version())
-    latest_ver = parse_version(get_latest_package_version())
-    if local_ver < latest_ver:
-        click.secho(
-            dedent(f"""
-                WARN: Your local version of latch ({local_ver}) is out of date. This may result in unexpected behavior.
-                Please upgrade to the latest version ({latest_ver}) using `python3 -m pip install --upgrade latch`.
-                """).strip("\n"),
-            fg="yellow",
-        )
+    requests_logger.setLevel(logging.WARNING)
+    getLogger("git.cmd").setLevel(logging.WARNING)
+
+    log.debug("Verbosity: %s", verbose)
+
+    if os.environ.get("LATCH_SKIP_VERSION_CHECK") is None:
+        local_ver = parse_version(get_local_package_version())
+        latest_ver = parse_version(get_latest_package_version())
+        if local_ver < latest_ver:
+            click.secho(
+                dedent(f"""
+                    WARN: Your local version of latch ({local_ver}) is out of date. This may result in unexpected behavior.
+                    Please upgrade to the latest version ({latest_ver}) using `python3 -m pip install --upgrade latch`.
+                    """).strip("\n"),
+                fg="yellow",
+            )
 
     crash_handler.init()
+
+
+def main():
+    latch.main(standalone_mode="-v" not in sys.argv and "--verbose" not in sys.argv)
 
 
 """
@@ -107,7 +125,7 @@ LOGIN COMMANDS
 """
 
 
-@main.command("login")
+@latch.command("login")
 @click.option(
     "--connection",
     type=str,
@@ -126,7 +144,7 @@ def login(connection: Optional[str]):
     click.secho("Successfully logged into LatchBio.", fg="green")
 
 
-@main.command("workspace")
+@latch.command("workspace")
 @requires_login
 def workspace():
     """Spawns an interactive terminal prompt allowing users to choose what workspace they want to work in."""
@@ -144,7 +162,7 @@ WORKFLOW COMMANDS
 """
 
 
-@main.command("init")
+@latch.command("init")
 @click.argument("pkg_name", nargs=1)
 @click.option(
     "--template",
@@ -189,7 +207,7 @@ def init(
     click.secho("No workflow created.", fg="yellow")
 
 
-@main.command("dockerfile")
+@latch.command("dockerfile")
 @click.argument(
     "pkg_root", type=click.Path(exists=True, file_okay=False, path_type=Path)
 )
@@ -348,7 +366,7 @@ def dockerfile(
     generate_dockerignore(ignore_path, wf_type=workflow_type, overwrite=force)
 
 
-@main.command("generate-metadata")
+@latch.command("generate-metadata")
 @click.argument(
     "config_file",
     required=False,
@@ -453,7 +471,7 @@ def generate_metadata(
         )
 
 
-@main.command("develop")
+@latch.command("develop")
 @click.argument("pkg_root", nargs=1, type=click.Path(exists=True, path_type=Path))
 @click.option(
     "--yes",
@@ -536,7 +554,7 @@ def local_development(
     )
 
 
-@main.command("exec")
+@latch.command("exec")
 @click.option(
     "--execution-id", "-e", type=str, help="Optional execution ID to inspect."
 )
@@ -559,7 +577,7 @@ def execute(
     _exec(execution_id=execution_id, egn_id=egn_id, container_index=container_index)
 
 
-@main.group()
+@latch.group()
 def image():
     """Manage Private Image Uploads"""
 
@@ -606,7 +624,7 @@ def image_ls():
     ls()
 
 
-@main.command("register")
+@latch.command("register")
 @click.argument("pkg_root", type=click.Path(exists=True, file_okay=False))
 @click.option(
     "-d",
@@ -819,7 +837,7 @@ def register(
     )
 
 
-@main.command("launch")
+@latch.command("launch")
 @click.argument("params_file", nargs=1, type=click.Path(exists=True))
 @click.option(
     "--version",
@@ -863,7 +881,7 @@ def launch(params_file: Path, version: Union[str, None] = None):
     )
 
 
-@main.command("get-params")
+@latch.command("get-params")
 @click.argument("wf_name", nargs=1)
 @click.option(
     "--version", default=None, help="The version of the workflow. Defaults to latest."
@@ -902,7 +920,7 @@ def get_params(wf_name: Union[str, None], version: Union[str, None] = None):
     )
 
 
-@main.command("get-wf")
+@latch.command("get-wf")
 @click.option(
     "--name",
     default=None,
@@ -936,7 +954,7 @@ def get_wf(name: Union[str, None] = None):
         )
 
 
-@main.command("preview")
+@latch.command("preview")
 @click.argument("pkg_root", nargs=1, type=click.Path(exists=True, path_type=Path))
 @requires_login
 @requires_workspace
@@ -950,7 +968,7 @@ def preview(pkg_root: Path):
     preview(pkg_root)
 
 
-@main.command("get-executions")
+@latch.command("get-executions")
 @requires_login
 @requires_workspace
 def get_executions():
@@ -968,7 +986,7 @@ LDATA COMMANDS
 """
 
 
-@main.command("cp")
+@latch.command("cp")
 @click.argument("src", shell_complete=cp_complete, nargs=-1)
 @click.argument("dest", shell_complete=cp_complete, nargs=1)
 @click.option(
@@ -1032,7 +1050,7 @@ def cp(
     )
 
 
-@main.command("mv")
+@latch.command("mv")
 @click.argument("src", shell_complete=remote_complete, nargs=1)
 @click.argument("dest", shell_complete=remote_complete, nargs=1)
 @click.option(
@@ -1055,7 +1073,7 @@ def mv(src: str, dest: str, no_glob: bool):
     move(src, dest, no_glob=no_glob)
 
 
-@main.command("ls")
+@latch.command("ls")
 @click.option(
     "--group-directories-first",
     "--gdf",
@@ -1087,7 +1105,7 @@ def ls(paths: tuple[str], group_directories_first: bool):
             click.echo("")
 
 
-@main.command("rmr")
+@latch.command("rmr")
 @click.argument("remote_path", nargs=1, type=str)
 @click.option(
     "-y",
@@ -1124,7 +1142,7 @@ def rmr(remote_path: str, yes: bool, no_glob: bool, verbose: bool):
     rmr(remote_path, skip_confirmation=yes, no_glob=no_glob, verbose=verbose)
 
 
-@main.command("mkdirp")
+@latch.command("mkdirp")
 @click.argument("remote_directory", nargs=1, type=str)
 @requires_login
 def mkdir(remote_directory: str):
@@ -1137,7 +1155,7 @@ def mkdir(remote_directory: str):
     mkdirp(remote_directory)
 
 
-@main.command("sync")
+@latch.command("sync")
 @click.argument("srcs", nargs=-1)
 @click.argument("dst", nargs=1)
 @click.option(
@@ -1176,7 +1194,7 @@ NEXTFLOW COMMANDS
 """
 
 
-@main.group()
+@latch.group()
 def nextflow():
     """Manage nextflow"""
 
@@ -1487,7 +1505,7 @@ POD COMMANDS
 """
 
 
-@main.group()
+@latch.group()
 def pods():
     """Manage pods"""
 
@@ -1528,7 +1546,7 @@ TEST DATA COMMANDS
 """
 
 
-@main.group(invoke_without_command=True)
+@latch.group(invoke_without_command=True)
 @click.version_option(package_name="latch")
 @click.pass_context
 def test_data(ctx: click.Context):

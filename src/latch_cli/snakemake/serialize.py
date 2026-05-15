@@ -3,6 +3,7 @@ import os
 import sys
 import textwrap
 import traceback
+from logging import getLogger
 from pathlib import Path
 from textwrap import dedent
 from typing import Any, Dict, List, Optional, Set, Union, get_args
@@ -34,6 +35,8 @@ from .serialize_utils import (
 )
 from .utils import load_snakemake_metadata
 from .workflow import JITRegisterWorkflow, SnakemakeWorkflow, interface_to_parameters
+
+log = getLogger(__name__)
 
 RegistrableEntity = Union[
     task_models.TaskSpec,
@@ -166,8 +169,7 @@ class SnakemakeWorkflowExtractor(Workflow):
         msg = str(value)
         if (
             "Workflow defines configfile config.yaml but it is not present or"
-            " accessible"
-            in msg
+            " accessible" in msg
         ):
             # todo(maximsmol): print the expected config path
             traceback.print_exception(typ, value, tb)
@@ -192,15 +194,10 @@ def snakemake_workflow_extractor(
     load_snakemake_metadata(pkg_root, metadata_root)
 
     extractor = SnakemakeWorkflowExtractor(
-        pkg_root=pkg_root,
-        snakefile=snakefile,
-        overwrite_config=overwrite_config,
+        pkg_root=pkg_root, snakefile=snakefile, overwrite_config=overwrite_config
     )
     with extractor:
-        extractor.include(
-            snakefile,
-            overwrite_default_target=True,
-        )
+        extractor.include(snakefile, overwrite_default_target=True)
         ensure_snakemake_metadata_exists()
 
     return extractor
@@ -234,19 +231,14 @@ def extract_snakemake_workflow(
 
 
 def serialize_snakemake(
-    wf: SnakemakeWorkflow,
-    output_dir: Path,
-    image_name: str,
-    dkr_repo: str,
+    wf: SnakemakeWorkflow, output_dir: Path, image_name: str, dkr_repo: str
 ):
     image_name_no_version, version = image_name.split(":")
     default_img = Image(
-        name=image_name,
-        fqn=f"{dkr_repo}/{image_name_no_version}",
-        tag=version,
+        name=image_name, fqn=f"{dkr_repo}/{image_name_no_version}", tag=version
     )
     settings = SerializationSettings(
-        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+        image_config=ImageConfig(default_image=default_img, images=[default_img])
     )
 
     registrable_entity_cache: EntityCache = {}
@@ -296,19 +288,16 @@ def serialize_snakemake(
 
 
 def serialize_jit_register_workflow(
-    jit_wf: JITRegisterWorkflow,
-    output_dir: str,
-    image_name: str,
-    dkr_repo: str,
+    jit_wf: JITRegisterWorkflow, output_dir: str, image_name: str, dkr_repo: str
 ):
+    log.debug("serialize_jit_register_workflow")
+
     image_name_no_version, version = image_name.split(":")
     default_img = Image(
-        name=image_name,
-        fqn=f"{dkr_repo}/{image_name_no_version}",
-        tag=version,
+        name=image_name, fqn=f"{dkr_repo}/{image_name_no_version}", tag=version
     )
     settings = SerializationSettings(
-        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+        image_config=ImageConfig(default_image=default_img, images=[default_img])
     )
 
     registrable_entity_cache: EntityCache = {}

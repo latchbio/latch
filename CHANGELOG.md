@@ -16,6 +16,17 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.72.3 - 2026-05-15
+
+### Added
+
+* Debug logging using the `-v/--verbose` option
+
+### Fixed
+
+* `latch register --no-remote` failing on systems where the Docker socket is under the home directory (e.g. Mac OS)
+* `latch register --no-remote` failing on ARM systems
+
 ## 2.72.2 - 2026-05-15
 
 ### Dependencies

@@ -6,6 +6,7 @@ import string
 import sys
 import tempfile
 from dataclasses import dataclass
+from logging import getLogger
 from pathlib import Path
 from types import ModuleType
 from typing import Callable, Iterator, List, Optional, TypeVar
@@ -16,6 +17,8 @@ import paramiko
 from typing_extensions import ParamSpec
 
 from latch_cli.constants import latch_constants
+
+log = getLogger(__name__)
 
 
 @dataclass
@@ -109,6 +112,7 @@ def _construct_dkr_client(ssh_host: Optional[str] = None):
     If `ssh_host` is passed, we attempt to make a connection with a remote
     machine.
     """
+    log.debug("Creating docker client: %s", ssh_host)
 
     def _from_env():
         host = environment.get("DOCKER_HOST")
@@ -123,6 +127,8 @@ def _construct_dkr_client(ssh_host: Optional[str] = None):
         tls_verify = environment.get("DOCKER_TLS_VERIFY") != ""
 
         enable_tls = tls_verify or cert_path is not None
+
+        log.debug("Determined Docker host from environment: %s", host)
 
         dkr_client = None
         try:
@@ -165,7 +171,18 @@ def _construct_dkr_client(ssh_host: Optional[str] = None):
         return _from_env()
     else:
         try:
+            base_url = f"unix:/{Path.home()}/.docker/run/docker.sock"
+            log.debug(
+                "Using default Docker host: unix://$HOME/run/docker.sock (%s)", base_url
+            )
+            return docker.APIClient(base_url=base_url)
+        except docker.errors.DockerException:
+            tracebac
+            pass
+
+        try:
             # TODO: platform specific socket defaults
+            log.debug("Using default Docker host: unix://var/run/docker.sock")
             return docker.APIClient(base_url="unix://var/run/docker.sock")
         except docker.errors.DockerException as de:
             raise OSError(
@@ -177,40 +194,66 @@ def _construct_dkr_client(ssh_host: Optional[str] = None):
 def _construct_ssh_client(
     remote_conn_info: RemoteConnInfo, *, use_gateway: bool = True
 ) -> paramiko.SSHClient:
+    log.debug(
+        "_construct_ssh_client conn_info=%s use_gateway=%s",
+        remote_conn_info,
+        use_gateway,
+    )
+
     if use_gateway:
         gateway = paramiko.SSHClient()
+
+        log.debug("Loading system host keys")
         gateway.load_system_host_keys()
+
+        log.debug("Setting missing host key policy")
         gateway.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy)
 
-        gateway_pkey = paramiko.PKey.from_path(
-            path=str(remote_conn_info.jump_key_path.resolve())
-        )
+        path = str(remote_conn_info.jump_key_path.resolve())
+        log.debug("Loading public key from %s", path)
+        gateway_pkey = paramiko.PKey.from_path(path=path)
 
+        log.debug(
+            "Connecting to gateway: %s@%s",
+            latch_constants.jump_user,
+            latch_constants.jump_host,
+        )
         gateway.connect(
             latch_constants.jump_host,
             username=latch_constants.jump_user,
             pkey=gateway_pkey,
         )
 
+        log.debug("Getting gateway transport")
         gateway_transport = gateway.get_transport()
         if gateway_transport is None:
             raise ConnectionError("unable to create connection to jump host")
 
+        log.debug("Opening gateway channel")
         sock = gateway_transport.open_channel(
             kind="direct-tcpip", dest_addr=(remote_conn_info.ip, 22), src_addr=("", 0)
         )
     else:
         sock = None
 
-    pkey = paramiko.PKey.from_path(path=str(remote_conn_info.ssh_key_path.resolve()))
+    path = str(remote_conn_info.ssh_key_path.resolve())
+    log.debug("Loading public key")
+    pkey = paramiko.PKey.from_path(path=path)
 
     ssh = paramiko.SSHClient()
+
+    log.debug("Loading system host keys")
     ssh.load_system_host_keys()
+
+    log.debug("Setting missing host key policy")
     ssh.set_missing_host_key_policy(paramiko.MissingHostKeyPolicy)
+
+    log.debug("Connecting to remote")
     ssh.connect(
         remote_conn_info.ip, username=remote_conn_info.username, sock=sock, pkey=pkey
     )
 
+    log.debug("Getting transport")
     transport = ssh.get_transport()
     if transport is None:
         raise ConnectionError(
@@ -219,6 +262,7 @@ def _construct_ssh_client(
 
     # (kenny) Equivalent of OpenSSH configuration `ServerAliveInterval`
     # No analogue for `ServerAliveCountMax` in paramiko I could find.
+    log.debug("Setting Keep-Alive")
     transport.set_keepalive(latch_constants.centromere_keepalive_interval)
 
     return ssh
@@ -242,6 +286,7 @@ class MaybeRemoteDir:
         self.reconnect_info = reconnect_info
 
     def __enter__(self):
+        log.debug("MaybeRemoteDir.__enter__")
         return self.create()
 
     def __exit__(self, exc_type, exc_value, tb):
