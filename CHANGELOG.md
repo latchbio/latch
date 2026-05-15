@@ -21,6 +21,7 @@ Types of changes
 ### Fixed
 
 * Documentation around generating tokens for the CLI
+* Remove unused endpoints from config
 
 ## 2.72.0 - 2026-05-12
 
