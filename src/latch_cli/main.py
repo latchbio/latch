@@ -93,7 +93,7 @@ def latch(verbose: int):
     """Collection of command line tools for using the Latch SDK and interacting with the Latch platform."""
 
     logging.basicConfig(
-        level=logging.INFO if verbose < 1 else logging.DEBUG,
+        level=logging.ERROR if verbose < 1 else logging.DEBUG,
         format="%(asctime)s [%(levelname)s] %(name)s/%(funcName)s:%(lineno)s %(message)s",
     )
 
