@@ -25,6 +25,7 @@ Types of changes
 ### Fixed
 
 * `latch register --no-remote` failing on systems where the Docker socket is under the home directory (e.g. Mac OS)
+* `latch register --no-remote` failing on ARM systems
 
 ## 2.72.0 - 2026-05-12
 
