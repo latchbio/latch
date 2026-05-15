@@ -171,6 +171,16 @@ def _construct_dkr_client(ssh_host: Optional[str] = None):
         return _from_env()
     else:
         try:
+            base_url = f"unix:/{Path.home()}/.docker/run/docker.sock"
+            log.debug(
+                "Using default Docker host: unix://$HOME/run/docker.sock (%s)", base_url
+            )
+            return docker.APIClient(base_url=base_url)
+        except docker.errors.DockerException:
+            tracebac
+            pass
+
+        try:
             # TODO: platform specific socket defaults
             log.debug("Using default Docker host: unix://var/run/docker.sock")
             return docker.APIClient(base_url="unix://var/run/docker.sock")
