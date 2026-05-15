@@ -52,8 +52,7 @@ def requires_login(f: Callable[P, T]) -> Callable[P, T]:
 
                 If you are on a machine with a browser, run `latch login`.
 
-                If not, navigate to `https://console.latch.bio/settings/developer` on a different machine, select `Access Tokens`, and copy your `User API Key` to `~/.latch/token` on this machine.
-                If you do not see this value in the console, make sure you are logged into the correct Latch account.
+                If not, on a different machine go to `https://console.latch.bio/settings/developer`, open `Access Tokens`, generate a Personal API Token (or Workspace API Token if you only need to access a single workspace from this machine), and paste it into `~/.latch/token` on this machine.
                 """).strip("\n"),
                 fg="red",
             )

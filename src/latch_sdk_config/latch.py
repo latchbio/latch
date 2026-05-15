@@ -20,12 +20,6 @@ T = TypeVar("T")
 
 @dataclass
 class _DataAPI:
-    id: str = "/sdk/node-id"
-    list: str = "/sdk/list"
-    remove: str = "/sdk/rm"
-    touch: str = "/sdk/touch"
-    mkdir: str = "/sdk/mkdir"
-    verify: str = "/sdk/verify"
     test_data: str = "/sdk/get-test-data-creds"
 
     get_signed_url: str = "/ldata/get-signed-url"
@@ -44,7 +38,6 @@ class _WorkflowAPI:
     graph: str = "/sdk/get-workflow-graph"
     check_version: str = "/sdk/check-workflow-version"
     get_latest: str = "/sdk/get-latest-version-new"
-    preview: str = "/sdk/workflow-ui-preview"
 
 
 @dataclass
@@ -53,15 +46,11 @@ class _ExecutionAPI:
     list: str = "/sdk/get-executions"
     abort: str = "/sdk/abort-execution"
     logs: str = "/sdk/get-logs-for-node"
-    exec: str = "/sdk/get-pod-exec-info"
 
 
 @dataclass
 class _UserAPI:
     jwt: str = "/sdk/access-jwt"
-    list_workspaces: str = "/sdk/get-ws"
-    get_secret: str = "/secrets/get"
-    get_secret_local: str = "/secrets/get-local"
 
 
 @dataclass

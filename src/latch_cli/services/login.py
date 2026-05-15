@@ -1,6 +1,5 @@
 """Service to login."""
 
-
 from typing import Optional
 
 import click
@@ -24,7 +23,7 @@ def login(connection: Optional[str] = None) -> str:
     """
     if _browser_available() is False:
         token: str = click.prompt(
-            f"Go to `{config.console_routes.developer}` and copy your API Key here",
+            f"Go to `{config.console_routes.developer}`, generate a Personal API Token (or Workspace API Token if you only need to access a single workspace from this machine), and paste it here",
             type=str,
         )
         token = token.strip()
@@ -76,9 +75,7 @@ def _auth0_jwt_for_access_jwt(token) -> str:
     """
     import latch_cli.tinyrequests as tinyrequests
 
-    headers = {
-        "Authorization": f"Bearer {token}",
-    }
+    headers = {"Authorization": f"Bearer {token}"}
 
     url = config.api.user.jwt
 
