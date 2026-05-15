@@ -22,6 +22,10 @@ Types of changes
 
 * Debug logging using the `-v/--verbose` option
 
+### Fixed
+
+* `latch register --no-remote` failing on systems where the Docker socket is under the home directory (e.g. Mac OS)
+
 ## 2.72.0 - 2026-05-12
 
 ### Added
