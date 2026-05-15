@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.72.1 - 2026-05-15
+
+### Added
+
+* Debug logging using the `-v/--verbose` option
+
 ## 2.72.0 - 2026-05-12
 
 ### Added
