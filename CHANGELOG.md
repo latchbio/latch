@@ -16,7 +16,7 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.72.1 - 2026-05-15
+## 2.72.3 - 2026-05-15
 
 ### Added
 
@@ -26,6 +26,19 @@ Types of changes
 
 * `latch register --no-remote` failing on systems where the Docker socket is under the home directory (e.g. Mac OS)
 * `latch register --no-remote` failing on ARM systems
+
+## 2.72.2 - 2026-05-15
+
+### Dependencies
+
+* Relax `websockets` dependency
+
+## 2.72.1 - 2026-05-15
+
+### Fixed
+
+* Documentation around generating tokens for the CLI
+* Remove unused endpoints from config
 
 ## 2.72.0 - 2026-05-12
 

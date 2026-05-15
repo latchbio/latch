@@ -12,7 +12,7 @@ include = ["src/**/*.py", "src/**/py.typed", "src/latch_cli/services/init/*"]
 
 [project]
 name = "latch"
-version = "2.72.1"
+version = "2.72.3"
 description = "The Latch SDK"
 authors = [{ name = "Kenny Workman", email = "kenny@latch.bio" }]
 maintainers = [{ name = "Kenny Workman", email = "kenny@latch.bio" }]
@@ -43,7 +43,7 @@ dependencies = [
   # for old latch develop, to be removed
   "aioconsole==0.6.1",
   "asyncssh==2.13.2",
-  "websockets>=15.0.1",
+  "websockets>=11,<16",
   "watchfiles==1.1.1",
   "pyxattr>=0.8.1",
   "orjson>=3.10.12",
