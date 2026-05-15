@@ -203,7 +203,11 @@ def _construct_ssh_client(
         log.debug("Loading public key from %s", path)
         gateway_pkey = paramiko.PKey.from_path(path=path)
 
-        log.debug("Connecting to gateway")
+        log.debug(
+            "Connecting to gateway: %s@%s",
+            latch_constants.jump_user,
+            latch_constants.jump_host,
+        )
         gateway.connect(
             latch_constants.jump_host,
             username=latch_constants.jump_user,

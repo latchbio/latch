@@ -437,6 +437,7 @@ class _CentromereCtx:
                     self.ssh_key_path, add_to_agent=False
                 )
 
+                log.debug("use_new_centromere=%s", use_new_centromere)
                 if use_new_centromere:
                     self.internal_ip, self.username = (
                         self.provision_register_deployment()
