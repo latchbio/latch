@@ -33,22 +33,13 @@ def login(connection: Optional[str] = None) -> str:
             ):
                 return user_config.token
 
-            token_preview = (
-                user_config.token[:19]
-                if len(user_config.token) >= 19
-                else user_config.token
-            ) + "..."
             click.secho(
-                f"Generating new token. If old token is unused, please revoke it from the Latch console ({token_preview}).",
+                "Generating new token. If old token is unused, please revoke it from the Latch console (https://console.latch.bio/settings/developer).",
                 fg="yellow",
             )
 
-        except Exception:  # noqa: BLE001
-            click.secho(
-                "Invalid Latch access token found, prompting login flow.", fg="yellow"
-            )
-    else:
-        click.secho("No Latch access token found, prompting login flow.", fg="yellow")
+        except Exception:  # noqa: BLE001, S110
+            pass
 
     if _browser_available() is False:
         token: str = click.prompt(
