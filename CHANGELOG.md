@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.72.4 - 2026-05-18
+
+### Added
+
+* Support for unwrapped SDK token in ~/.latch/token
+
 ## 2.72.3 - 2026-05-15
 
 ### Added

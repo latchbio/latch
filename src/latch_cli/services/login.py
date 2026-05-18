@@ -3,8 +3,12 @@
 from typing import Optional
 
 import click
+import gql
+
+from latch.utils import account_id_from_token, get_workspaces
 from latch_sdk_config.latch import config
 from latch_sdk_config.user import user_config
+from latch_sdk_gql.execute import execute
 
 
 def login(connection: Optional[str] = None) -> str:
@@ -21,6 +25,46 @@ def login(connection: Optional[str] = None) -> str:
     .. _this RFC:
         https://datatracker.ietf.org/doc/html/rfc6749
     """
+
+    if user_config.token != "":
+        try:
+            account_id = account_id_from_token(user_config.token)
+            res = execute(
+                gql.gql("""
+                    query AccountIdToDisplayName($accountId: BigInt!) {
+                        userInfoByAccountId(accountId: $accountId) {
+                            id
+                            name
+                        }
+                        teamInfoByAccountId(accountId: $accountId) {
+                            accountId
+                            displayName
+                        }
+                    }
+                """),
+                {"accountId": account_id},
+            )
+            entity_string = None
+            if res["userInfoByAccountId"] is not None:
+                user_name = res["userInfoByAccountId"]["name"]
+                entity_string = f"user {user_name}"
+            elif res["teamInfoByAccountId"] is not None:
+                team_info = res["teamInfoByAccountId"]["displayName"]
+                entity_string = f"team {team_info}"
+            else:
+                raise ValueError("absurd")
+
+            if click.confirm(f"Found token for {entity_string}, use it?", default=True):
+                return user_config.token
+
+            click.secho(
+                "Generating new token. If old token is unused, please revoke it from the Latch console (https://console.latch.bio/settings/developer).",
+                fg="yellow",
+            )
+
+        except Exception:  # noqa: BLE001, S110
+            pass
+
     if _browser_available() is False:
         token: str = click.prompt(
             f"Go to `{config.console_routes.developer}`, generate a Personal API Token (or Workspace API Token if you only need to access a single workspace from this machine), and paste it here",
