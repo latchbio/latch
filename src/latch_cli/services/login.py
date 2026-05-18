@@ -3,11 +3,10 @@
 from typing import Optional
 
 import click
-import gql
 
+from latch.utils import account_id_from_token
 from latch_sdk_config.latch import config
 from latch_sdk_config.user import user_config
-from latch_sdk_gql.execute import execute
 
 
 def login(connection: Optional[str] = None) -> str:
@@ -27,23 +26,10 @@ def login(connection: Optional[str] = None) -> str:
 
     if user_config.token != "":
         try:
-            res = execute(
-                gql.gql("""
-                    query AccountIdFromToken {
-                        accountInfoCurrent {
-                            id
-                        }
-                    }
-                """)
-            )
-            aic = res.get("accountInfoCurrent")
-            if aic is None or aic.get("id") is None:
-                raise ValueError(
-                    "Your Latch access token is invalid or could not be resolved to an account."
-                )
+            account_id = account_id_from_token(user_config.token)
 
             if click.confirm(
-                f"Found token for account ID {aic['id']}, use it?", default=True
+                f"Found token for account ID {account_id}, use it?", default=True
             ):
                 return user_config.token
 
