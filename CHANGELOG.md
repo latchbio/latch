@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.73.0 - 2026-05-18
+
+### Changed
+
+* `latch login` generates token and will resuse existing token if exists and authenticated
+
 ## 2.72.4 - 2026-05-18
 
 ### Added

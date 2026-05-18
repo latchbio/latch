@@ -11,8 +11,11 @@ from latch_sdk_config.user import user_config
 from latch_sdk_gql import AuthenticationError, JsonValue
 
 
-def _get_client() -> gql.Client:
+def _get_client(arg_auth_header: Optional[str] = None) -> gql.Client:
     auth_header: Optional[str] = None
+
+    if arg_auth_header is not None:
+        auth_header = arg_auth_header
 
     if auth_header is None:
         token = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", "")
@@ -42,8 +45,9 @@ def execute(
     *,
     max_retries: int = 5,
     backoff: float = 0.1,
+    auth_header: Optional[str] = None,
 ):
-    client = _get_client()
+    client = _get_client(auth_header)
     retries = 0
     while True:
         try:

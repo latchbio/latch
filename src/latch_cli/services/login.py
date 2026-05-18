@@ -1,11 +1,12 @@
 """Service to login."""
 
+from datetime import datetime
 from typing import Optional
 
 import click
 import gql
 
-from latch.utils import account_id_from_token, get_workspaces
+from latch.utils import account_id_from_token
 from latch_sdk_config.latch import config
 from latch_sdk_config.user import user_config
 from latch_sdk_gql.execute import execute
@@ -84,12 +85,10 @@ def login(connection: Optional[str] = None) -> str:
             auth_code = oauth2_flow.authorization_request(connection)
             jwt = oauth2_flow.access_token_request(auth_code)
 
-            # Exchange JWT from Auth0 for a persistent token issued by
-            # LatchBio.
-            access_jwt = _auth0_jwt_for_access_jwt(jwt)
-            user_config.update_token(access_jwt)
+            latch_sdk_token = _auth0_jwt_for_latch_sdk_token(jwt)
+            user_config.update_token(latch_sdk_token)
 
-            return access_jwt
+            return latch_sdk_token
 
 
 def _browser_available() -> bool:
@@ -112,25 +111,50 @@ def _browser_available() -> bool:
     return False
 
 
-def _auth0_jwt_for_access_jwt(token) -> str:
-    """Requests a LatchBio minted (long-lived) acccess JWT.
-
-    Uses an Auth0 token to authenticate the user.
-    """
-    import latch_cli.tinyrequests as tinyrequests
-
-    headers = {"Authorization": f"Bearer {token}"}
-
-    url = config.api.user.jwt
-
-    response = tinyrequests.post(url, headers=headers)
-
-    resp = response.json()
-    try:
-        jwt = resp["jwt"]
-    except KeyError as e:
+def _auth0_jwt_for_latch_sdk_token(auth0_token: str) -> str:
+    res = execute(
+        gql.gql("""
+            query AccountIdFromToken {
+                accountInfoCurrent {
+                    id
+                }
+            }
+        """),
+        auth_header=f"Bearer {auth0_token}",
+    )
+    aic = res.get("accountInfoCurrent")
+    if aic is None or aic.get("id") is None:
         raise ValueError(
-            f"Malformed response from request for access token {resp}"
-        ) from e
+            "Your Latch access token is invalid or could not be resolved to an account."
+        )
+    account_id = aic["id"]
 
-    return jwt
+    mint_res = execute(
+        gql.gql("""
+            mutation ApiKeyCreate(
+                $accountId: BigInt!
+                $displayName: String!
+            ) {
+            apiKeyCreate(
+                input: {
+                    argAccountId: $accountId
+                    argDisplayName: $displayName
+                }
+            ) {
+                result {
+                        token
+                    }
+                }
+            }
+        """),
+        {
+            "accountId": account_id,
+            "displayName": f"CLI Login on {datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S %Z%z')}",
+        },
+        auth_header=f"Bearer {auth0_token}",
+    )
+    minted_token = mint_res.get("apiKeyCreate")
+    if minted_token is None or minted_token.get("result") is None:
+        raise ValueError("Failed to generate a token for the user account id.")
+
+    return minted_token.get("result").get("token")
