@@ -20,7 +20,7 @@ Types of changes
 
 ### Added
 
-* Added support for unwrapped SDK token in ~/.latch/token
+* Support for unwrapped SDK token in ~/.latch/token
 
 ## 2.72.3 - 2026-05-15
 
