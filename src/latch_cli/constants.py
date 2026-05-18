@@ -57,7 +57,7 @@ latch_constants = LatchConstants()
 
 @dataclass(frozen=True)
 class OAuth2Constants:
-    client_id: str = "jzFBOhIbfp4EPRYZ8wmx4YyvL27LFDeB"
+    client_id: str = "UQs8mV2SvKLrPkcI5dt3nmsnrdZvPUs0"
     """Identifies the authentication server in 0Auth2.0 flow"""
 
     authz_server_host: str = "https://latchai.us.auth0.com"
