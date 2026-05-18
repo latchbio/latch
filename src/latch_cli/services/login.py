@@ -3,8 +3,11 @@
 from typing import Optional
 
 import click
+import gql
+
 from latch_sdk_config.latch import config
 from latch_sdk_config.user import user_config
+from latch_sdk_gql.execute import execute
 
 
 def login(connection: Optional[str] = None) -> str:
@@ -21,6 +24,46 @@ def login(connection: Optional[str] = None) -> str:
     .. _this RFC:
         https://datatracker.ietf.org/doc/html/rfc6749
     """
+
+    if user_config.token != "":
+        try:
+            res = execute(
+                gql.gql("""
+                    query AccountIdFromToken {
+                        accountInfoCurrent {
+                            id
+                        }
+                    }
+                """)
+            )
+            aic = res.get("accountInfoCurrent")
+            if aic is None or aic.get("id") is None:
+                raise ValueError(
+                    "Your Latch access token is invalid or could not be resolved to an account."
+                )
+
+            if click.confirm(
+                f"Found token for account ID {aic['id']}, use it?", default=True
+            ):
+                return user_config.token
+
+            token_preview = (
+                user_config.token[:19]
+                if len(user_config.token) >= 19
+                else user_config.token
+            ) + "..."
+            click.secho(
+                f"Generating new token. If old token is unused, please revoke it from the Latch console ({token_preview}).",
+                fg="yellow",
+            )
+
+        except Exception:  # noqa: BLE001
+            click.secho(
+                "Invalid Latch access token found, prompting login flow.", fg="yellow"
+            )
+    else:
+        click.secho("No Latch access token found, prompting login flow.", fg="yellow")
+
     if _browser_available() is False:
         token: str = click.prompt(
             f"Go to `{config.console_routes.developer}`, generate a Personal API Token (or Workspace API Token if you only need to access a single workspace from this machine), and paste it here",

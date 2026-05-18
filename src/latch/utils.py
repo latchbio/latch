@@ -4,27 +4,39 @@ from typing import Dict, TypedDict
 
 import gql
 import jwt
+
 from latch_sdk_config.user import user_config
 from latch_sdk_gql.execute import execute
 
 
 def account_id_from_token(token: str) -> str:
-    """Exchanges a valid JWT for a Latch account ID.
+    """Resolve the Latch account ID associated with ``token``.
 
     Latch account IDs are needed for any user-specific request, eg. register
     workflows or copy files to Latch.
 
     Args:
-        token: JWT
+        token: A Latch SDK token.
 
     Returns:
-        A Latch account ID (UUID).
+        A Latch account ID.
     """
-    decoded_jwt = jwt.decode(token, options={"verify_signature": False})
-    try:
-        return decoded_jwt.get("id")
-    except KeyError as e:
-        raise ValueError("Your Latch access token is malformed") from e
+
+    res = execute(
+        gql.gql("""
+            query AccountIdFromToken {
+                accountInfoCurrent {
+                    id
+                }
+            }
+        """)
+    )
+    aic = res.get("accountInfoCurrent")
+    if aic is None or aic.get("id") is None:
+        raise ValueError(
+            "Your Latch access token is invalid or could not be resolved to an account."
+        )
+    return aic["id"]
 
 
 def retrieve_or_login() -> str:
@@ -170,7 +182,7 @@ def current_workspace() -> str:
                     }
                 }
             }
-        """),
+        """)
     )["accountInfoCurrent"]
 
     if res is not None:
