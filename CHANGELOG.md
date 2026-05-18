@@ -16,7 +16,7 @@ Types of changes
 
 # Latch SDK Changelog
 
-## 2.72.5 - 2026-05-18
+## 2.73.0 - 2026-05-18
 
 ### Changed
 
