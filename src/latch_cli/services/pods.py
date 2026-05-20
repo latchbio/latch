@@ -4,13 +4,15 @@ import json
 import os
 import shlex
 import time
-from contextlib import suppress
-from typing import TYPE_CHECKING
+from importlib import resources
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urljoin
 
 import click
 import gql
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from rich.console import Console
+from rich.table import Table
 from typing_extensions import Literal
 
 from latch.utils import NoWorkspaceSelectedError, current_workspace
@@ -22,96 +24,17 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
-_PODS_QUERY = gql.gql("""
-    query CliPodsList($accountId: BigInt!) {
-        podInfos(
-            condition: {
-                accountId: $accountId,
-                removed: false,
-                plotNotebookId: null
-            },
-            orderBy: CREATION_DATE_DESC
-        ) {
-            nodes {
-                id
-                creationDate
-                displayName
-                status
-                cpuMillicores
-                memoryBytes
-                gpus
-                gpuType
-                storageGigs
-                usedStorageGigs
-                statusExtra
-                metadata
-                templateVersionId
-                srcTemplateCreationDate
-                effectiveSecurityMetadata
-                archivalStatus
-                backupInterval {
-                    days
-                    months
-                    hours
-                    minutes
-                    seconds
-                    years
-                }
-                autoShutoffDelay {
-                    days
-                    months
-                    hours
-                    minutes
-                    seconds
-                    years
-                }
-                latestPodSession: latestSession {
-                    id
-                    startTime
-                    endTime
-                    size
-                }
-                deployment {
-                    id
-                    targetRegion
-                    targetDomain
-                }
-            }
-        }
-    }
-""")
+pods_query = gql.gql(
+    resources.files(__package__).joinpath("gql/pods_list.graphql").read_text()
+)
+pod_ssh_query = gql.gql(
+    resources.files(__package__).joinpath("gql/pod_ssh.graphql").read_text()
+)
 
+pod_ssh_poll_interval_seconds = 0.5
+pod_ssh_max_wait_seconds = 600.0
 
-_POD_SSH_QUERY = gql.gql("""
-    query CliPodSsh($podId: BigInt!) {
-        podInfo(id: $podId) {
-            id
-            status
-            deployment {
-                targetRegion
-                targetDomain
-            }
-        }
-    }
-""")
-
-# todo(anirudh): don't hardcode
-_FORCH_PODS_SSH_ENDPOINT_BY_DOMAIN_REGION = {
-    "1": {
-        "us-west-2": "54.212.151.84",
-    },
-    "2": {
-        "us-west-2": "44.237.115.144",
-        "us-east-1": "52.0.156.72",
-        "eu-central-1": "3.72.154.205",
-        "eu-west-1": "54.154.243.51",
-    },
-}
-
-_POD_SSH_POLL_INTERVAL_SECONDS = 0.5
-_POD_SSH_MAX_WAIT_SECONDS = 600.0
-
-_POD_SSH_STARTING_STATUSES = {
+pod_ssh_starting_statuses = {
     "STARTING",
     "POD_SCHEDULED",
     "INITIALIZED",
@@ -120,89 +43,122 @@ _POD_SSH_STARTING_STATUSES = {
 }
 
 
-_DEFAULT_FIELDS = ["id", "displayName", "status"]
-_VERBOSE_FIELDS = [
-    "id",
-    "creationDate",
-    "displayName",
-    "status",
-    "cpuMillicores",
-    "memoryBytes",
-    "gpus",
-    "gpuType",
-    "storageGigs",
-    "usedStorageGigs",
-    "archivalStatus",
-    "backupInterval",
-    "autoShutdownInterval",
-    "automountLDataFuse",
-    "blockNetworkTraffic",
-    "blockDownloads",
-    "latestSessionStartTime",
-    "latestSessionEndTime",
-    "region",
-]
-
-
 class CreatePodRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     ws_account_id: str | None = Field(
-        default=None,
-        json_schema_extra={"default_description": "current workspace"},
+        default=None, json_schema_extra={"default_description": "current workspace"}
     )
-    display_name: str = Field(
-        ...,
-        json_schema_extra={"template": "My Pod"},
-    )
-    cpu: int = Field(
-        ...,
-        json_schema_extra={
-            "template": 2,
-            "units": "cores",
-        },
-    )
-    memory: int = Field(
-        ...,
-        json_schema_extra={
-            "template": 8,
-            "units": "GiB",
-        },
-    )
-    gpu: int = Field(
-        default=0,
-        json_schema_extra={
-            "template": 0,
-        },
-    )
+    display_name: str = Field(..., json_schema_extra={"template": "My Pod"})
+    cpu: int = Field(..., json_schema_extra={"template": 2, "units": "cores"})
+    memory: int = Field(..., json_schema_extra={"template": 8, "units": "GiB"})
+    gpu: int = Field(default=0, json_schema_extra={"template": 0})
     gpu_type: Literal["nvidia-a10g", "nvidia-l40s"] | None = Field(
-        default=None,
-        json_schema_extra={"template": None},
+        default=None, json_schema_extra={"template": None}
     )
     storage_gigs: int = Field(
-        default=20,
-        json_schema_extra={"template": 20, "units": "GiB"},
+        default=20, json_schema_extra={"template": 20, "units": "GiB"}
     )
     backup_interval: Literal["daily", "weekly", "monthly"] | None = Field(
-        default=None,
-        json_schema_extra={"template": None},
+        default=None, json_schema_extra={"template": None}
     )
-    target_region: Literal[
-        "us-west-2", "us-east-1", "eu-central-1", "eu-west-1"
-    ] = Field(default="us-west-2", json_schema_extra={"template": "us-west-2"})
+    target_region: Literal["us-west-2", "us-east-1", "eu-central-1", "eu-west-1"] = (
+        Field(default="us-west-2", json_schema_extra={"template": "us-west-2"})
+    )
+
+
+class PodInfoList(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    id: object = Field(
+        default=None, alias="id", json_schema_extra={"default_column": True}
+    )
+    creation_date: object = Field(default=None, alias="creationDate")
+    display_name: object = Field(
+        default=None, alias="displayName", json_schema_extra={"default_column": True}
+    )
+    status: object = Field(
+        default=None, alias="status", json_schema_extra={"default_column": True}
+    )
+    cpu_millicores: object = Field(default=None, alias="cpuMillicores")
+    memory_bytes: object = Field(default=None, alias="memoryBytes")
+    gpus: object = Field(default=None, alias="gpus")
+    gpu_type: object = Field(default=None, alias="gpuType")
+    storage_gigs: object = Field(default=None, alias="storageGigs")
+    used_storage_gigs: object = Field(default=None, alias="usedStorageGigs")
+    archival_status: object = Field(default=None, alias="archivalStatus")
+    backup_interval: object = Field(default=None, alias="backupInterval")
+    auto_shutoff_delay: object = Field(default=None, alias="autoShutoffDelay")
+    effective_security_metadata: object = Field(
+        default=None, alias="effectiveSecurityMetadata"
+    )
+    latest_pod_session: object = Field(default=None, alias="latestPodSession")
+    deployment: object = Field(default=None, alias="deployment")
+
+
+class PodInfosConnection(BaseModel):
+    nodes: list[PodInfoList]
+
+
+class PodInfosResponse(BaseModel):
+    pod_infos: PodInfosConnection = Field(alias="podInfos")
+
+
+class PodSshResponse(BaseModel):
+    pod_info: dict[str, Any] | None = Field(alias="podInfo")
+
+
+def pod_list_fields(*, detailed: bool) -> list[str]:
+    res: list[str] = []
+    for field_info in PodInfoList.model_fields.values():
+        extra = field_info.json_schema_extra
+        if not detailed and (
+            not isinstance(extra, dict) or extra.get("default_column") is not True
+        ):
+            continue
+
+        alias = field_info.alias
+        if isinstance(alias, str):
+            res.append(alias)
+
+    return res
+
+
+def create_pod_request_skeleton() -> dict[str, object]:
+    res: dict[str, object] = {}
+    for field_name, field_info in CreatePodRequest.model_fields.items():
+        extra = field_info.json_schema_extra
+        if not isinstance(extra, dict) or "template" not in extra:
+            continue
+
+        res[field_name] = extra["template"]
+
+    return res
+
+
+forch_pods_ssh_endpoint_by_domain_region = {
+    "1": {"us-west-2": "54.212.151.84"},
+    "2": {
+        "us-west-2": "44.237.115.144",
+        "us-east-1": "52.0.156.72",
+        "eu-central-1": "3.72.154.205",
+        "eu-west-1": "54.154.243.51",
+    },
+}
 
 
 def create_pod(request_file: Path) -> None:
     from latch_cli.utils import get_auth_header
 
     try:
-        payload_model = CreatePodRequest.model_validate_json(request_file.read_text(encoding="utf-8"))
+        payload_model = CreatePodRequest.model_validate_json(
+            request_file.read_text(encoding="utf-8")
+        )
     except ValidationError as e:
         raise click.ClickException(f"Invalid pod create request: {e}") from e
 
     if payload_model.ws_account_id is None:
         try:
-
             payload_model.ws_account_id = current_workspace()
         except NoWorkspaceSelectedError as e:
             raise click.ClickException(str(e)) from e
@@ -215,9 +171,13 @@ def create_pod(request_file: Path) -> None:
         json=payload,
     )
 
-    body: dict[str, object] = {}
-    with suppress(Exception):
+    try:
         body = res.json()
+    except Exception as e:
+        raise click.ClickException("Malformed response while creating pod.") from e
+
+    if not isinstance(body, dict):
+        raise click.ClickException("Malformed response while creating pod.")
 
     pod_id = body.get("id")
     if res.status_code == 200 and pod_id is not None:
@@ -226,76 +186,36 @@ def create_pod(request_file: Path) -> None:
 
     err = body.get("error")
     if isinstance(err, str) and err != "":
-        click.secho(f"Unable to create pod: {err}", fg="red")
-        return
+        raise click.ClickException(f"Unable to create pod: {err}")
 
     if res.status_code in {403, 404}:
-        click.secho("Permission denied.", fg="red")
-        return
-    click.secho(
+        raise click.ClickException("Permission denied.")
+    raise click.ClickException(
         "Internal error while creating pod. Please try again. "
-        "contact `support@latch.bio` if the issue persists.",
-        fg="red",
+        "contact `support@latch.bio` if the issue persists."
     )
 
 
-def list_pods(*, verbose: bool = False) -> None:
+def list_pods(*, detailed: bool = False) -> None:
     from latch.utils import current_workspace
 
     workspace_id = current_workspace()
-    res = gql_execute(_PODS_QUERY, {"accountId": workspace_id})
+    try:
+        res = PodInfosResponse.model_validate(
+            gql_execute(pods_query, {"accountId": workspace_id})
+        )
+    except ValidationError as e:
+        raise click.ClickException(f"Malformed response while listing pods: {e}") from e
 
-    pods = res.get("podInfos", {}).get("nodes", [])
-    if not isinstance(pods, list):
-        raise TypeError("Malformed response while listing pods.")
+    pods = res.pod_infos.nodes
 
-    fields = _VERBOSE_FIELDS if verbose else _DEFAULT_FIELDS
+    output_fields = pod_list_fields(detailed=detailed)
     output: list[dict[str, object]] = []
     for pod in pods:
-        if not verbose:
-            output.append({field: pod.get(field) for field in fields})
-            continue
+        row = pod.model_dump(by_alias=True)
+        output.append({field_name: row.get(field_name) for field_name in output_fields})
 
-        latest_session = pod.get("latestPodSession")
-        if not isinstance(latest_session, dict):
-            latest_session = {}
-
-        deployment = pod.get("deployment")
-        if not isinstance(deployment, dict):
-            deployment = {}
-
-        security_metadata = pod.get("effectiveSecurityMetadata")
-        if not isinstance(security_metadata, dict):
-            security_metadata = {}
-
-        output.append(
-            {
-                "id": pod.get("id"),
-                "creationDate": pod.get("creationDate"),
-                "displayName": pod.get("displayName"),
-                "status": pod.get("status"),
-                "cpuMillicores": pod.get("cpuMillicores"),
-                "memoryBytes": pod.get("memoryBytes"),
-                "gpus": pod.get("gpus"),
-                "gpuType": pod.get("gpuType"),
-                "storageGigs": pod.get("storageGigs"),
-                "usedStorageGigs": pod.get("usedStorageGigs"),
-                "archivalStatus": pod.get("archivalStatus"),
-                "backupInterval": pod.get("backupInterval"),
-                "autoShutdownInterval": pod.get("autoShutoffDelay"),
-                "automountLDataFuse": security_metadata.get("mount_ldata_fuse"),
-                "blockNetworkTraffic": security_metadata.get("block_network_traffic"),
-                "blockDownloads": (
-                    security_metadata.get("block_jupyter_downloads")
-                    and security_metadata.get("block_rstudio_downloads")
-                ),
-                "latestSessionStartTime": latest_session.get("startTime"),
-                "latestSessionEndTime": latest_session.get("endTime"),
-                "region": deployment.get("targetRegion"),
-            }
-        )
-
-    if verbose:
+    if detailed:
         click.echo(json.dumps(output, indent=2, sort_keys=True))
         return
 
@@ -303,11 +223,14 @@ def list_pods(*, verbose: bool = False) -> None:
         click.echo("No pods found.")
         return
 
-    rendered_rows = []
+    table = Table(show_header=True, header_style="bold underline", box=None)
+    for field_name in output_fields:
+        table.add_column(field_name)
+
     for row in output:
         rendered_row = []
-        for field in fields:
-            value = row.get(field)
+        for field_name in output_fields:
+            value = row.get(field_name)
             if value is None:
                 rendered_row.append("-")
             elif isinstance(value, (dict, list)):
@@ -317,22 +240,9 @@ def list_pods(*, verbose: bool = False) -> None:
             else:
                 rendered_row.append(str(value))
 
-        rendered_rows.append(rendered_row)
+        table.add_row(*rendered_row)
 
-    widths = [
-        max(len(field), *(len(row[idx]) for row in rendered_rows))
-        for idx, field in enumerate(fields)
-    ]
-
-    click.echo(
-        "  ".join(
-            click.style(field.ljust(widths[idx]), underline=True)
-            for idx, field in enumerate(fields)
-        )
-    )
-
-    for row in rendered_rows:
-        click.echo("  ".join(value.ljust(widths[idx]) for idx, value in enumerate(row)))
+    Console().print(table)
 
 
 def start_pod(pod_id: int) -> None:
@@ -344,9 +254,13 @@ def start_pod(pod_id: int) -> None:
         json={"pod_id": str(pod_id)},
     )
 
-    body: dict[str, object] = {}
-    with suppress(Exception):
+    try:
         body = res.json()
+    except Exception as e:
+        raise click.ClickException("Malformed response while starting pod.") from e
+
+    if not isinstance(body, dict):
+        raise click.ClickException("Malformed response while starting pod.")
 
     if res.status_code == 200 and body.get("success") is True:
         click.secho(f"Pod with ID `{pod_id}` started.", fg="green")
@@ -372,8 +286,7 @@ def start_pod(pod_id: int) -> None:
         return
 
     click.secho(
-        f"Internal error while starting Pod `{pod_id}`. Please try again. ",
-        fg="red",
+        f"Internal error while starting Pod `{pod_id}`. Please try again. ", fg="red"
     )
 
 
@@ -382,10 +295,7 @@ def _format_pod_status(status: str) -> str:
 
 
 def _get_pod_ssh_args(
-    pod_id: int,
-    pod: dict[str, object],
-    *,
-    key: Path | None = None,
+    pod_id: int, pod: dict[str, object], *, key: Path | None = None
 ) -> list[str] | None:
     deployment = pod.get("deployment")
     if not isinstance(deployment, dict):
@@ -393,12 +303,12 @@ def _get_pod_ssh_args(
         return None
 
     target_domain = deployment.get("targetDomain")
-    target_region = deployment.get("targetRegion") or "us-west-2"
+    target_region = deployment.get("targetRegion", "us-west-2")
     if not isinstance(target_domain, str) or not isinstance(target_region, str):
         click.secho("Pod deployment information is unavailable.", fg="red")
         return None
 
-    jump_host = _FORCH_PODS_SSH_ENDPOINT_BY_DOMAIN_REGION.get(target_domain, {}).get(
+    jump_host = forch_pods_ssh_endpoint_by_domain_region.get(target_domain, {}).get(
         target_region
     )
     if jump_host is None:
@@ -409,23 +319,11 @@ def _get_pod_ssh_args(
         )
         return None
 
-    ssh_args = [
-        "ssh",
-        "-o",
-        "ServerAliveInterval=30",
-        "-o",
-        "ServerAliveCountMax=5",
-    ]
+    ssh_args = ["ssh", "-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=5"]
     if key is not None:
         ssh_args.extend(["-i", str(key)])
 
-    ssh_args.extend(
-        [
-            "-J",
-            f"root@{jump_host}",
-            f"root@{pod_id}.pods-ssh.latch.bio",
-        ]
-    )
+    ssh_args.extend(["-J", f"root@{jump_host}", f"root@{pod_id}.pods-ssh.latch.bio"])
     return ssh_args
 
 
@@ -434,16 +332,23 @@ def ssh_pod(
     *,
     print_only: bool = False,
     key: Path | None = None,
-    poll_interval_seconds: float = _POD_SSH_POLL_INTERVAL_SECONDS,
-    max_wait_seconds: float = _POD_SSH_MAX_WAIT_SECONDS,
+    poll_interval_seconds: float = pod_ssh_poll_interval_seconds,
+    max_wait_seconds: float = pod_ssh_max_wait_seconds,
     exec_fn: Callable[[str, list[str]], object] = os.execvp,
 ) -> None:
     deadline = time.monotonic() + max_wait_seconds
     waiting_message_printed = False
 
     while True:
-        res = gql_execute(_POD_SSH_QUERY, {"podId": str(pod_id)})
-        pod = res.get("podInfo")
+        try:
+            res = PodSshResponse.model_validate(
+                gql_execute(pod_ssh_query, {"podId": str(pod_id)})
+            )
+        except ValidationError as e:
+            raise click.ClickException(
+                f"Malformed response while checking pod SSH status: {e}"
+            ) from e
+        pod = res.pod_info
         if pod is None:
             click.secho("Pod does not exist or permission denied.", fg="red")
             return
@@ -476,15 +381,14 @@ def ssh_pod(
                 return
 
             click.echo(shlex.join(ssh_args))
+            # Allow time for ssh forwarder ip list to propagate
+            time.sleep(3)
             exec_fn(ssh_args[0], ssh_args)
             return
 
-        if status in _POD_SSH_STARTING_STATUSES:
+        if status in pod_ssh_starting_statuses:
             if time.monotonic() >= deadline:
-                click.secho(
-                    f"Timed out waiting for pod `{pod_id}` to start.",
-                    fg="red",
-                )
+                click.secho(f"Timed out waiting for pod `{pod_id}` to start.", fg="red")
                 return
 
             if not waiting_message_printed:
@@ -495,10 +399,7 @@ def ssh_pod(
                 waiting_message_printed = True
 
             time.sleep(
-                min(
-                    poll_interval_seconds,
-                    max(0.0, deadline - time.monotonic()),
-                )
+                min(poll_interval_seconds, max(0.0, deadline - time.monotonic()))
             )
             continue
 

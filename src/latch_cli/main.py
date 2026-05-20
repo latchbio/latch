@@ -1554,7 +1554,11 @@ def create_pod(
     """
     crash_handler.message = "Unable to create pod"
 
-    from latch_cli.services.pods import CreatePodRequest, create_pod
+    from latch_cli.services.pods import (
+        CreatePodRequest,
+        create_pod,
+        create_pod_request_skeleton,
+    )
 
     if generate_skeleton and describe_fields:
         raise click.UsageError("Use only one of --generate-skeleton or --describe-fields.")
@@ -1565,15 +1569,7 @@ def create_pod(
                 "Do not provide request_file with --generate-skeleton."
             )
 
-        template: dict[str, object] = {}
-        for field_name, field_info in CreatePodRequest.model_fields.items():
-            extra = field_info.json_schema_extra
-            if not isinstance(extra, dict) or "template" not in extra:
-                continue
-
-            template[field_name] = extra["template"]
-
-        click.echo(json.dumps(template, indent=2))
+        click.echo(json.dumps(create_pod_request_skeleton(), indent=2))
         return
 
     if describe_fields:
@@ -1590,23 +1586,23 @@ def create_pod(
     create_pod(request_file)
 
 
-@pods.command("list", short_help="List pods [--verbose]")
+@pods.command("list", short_help="List pods [--detailed]")
 @click.option(
-    "--verbose",
-    "verbose_output",
+    "--detailed",
+    "detailed",
     is_flag=True,
     default=False,
     help="Print detailed pod information as JSON.",
 )
 @requires_login
 @requires_workspace
-def list_pods(verbose_output: bool = False):
+def list_pods(detailed: bool = False):
     """List pods in the current workspace."""
     crash_handler.message = "Unable to list pods"
 
     from latch_cli.services.pods import list_pods
 
-    list_pods(verbose=verbose_output)
+    list_pods(detailed=detailed)
 
 
 @pods.command("start", short_help="Start pod: POD_ID")
@@ -1678,7 +1674,7 @@ def stop_pod(pod_id: Optional[int] = None):
         id_path = Path("/root/.latch/id")
 
         try:
-            pod_id = int(id_path.read_text().strip("\n"))
+            pod_id = int(id_path.read_text(encoding="utf-8").strip("\n"))
         except Exception as e:
             if isinstance(e, FileNotFoundError):
                 err_str = f"Pod ID not found at `{id_path}`"

@@ -112,10 +112,10 @@ latch\_cli.services.preview module
    :undoc-members:
    :show-inheritance:
 
-latch\_cli.services.stop\_pod module
-------------------------------------
+latch\_cli.services.pods module
+-------------------------------
 
-.. automodule:: latch_cli.services.stop_pod
+.. automodule:: latch_cli.services.pods
    :members:
    :undoc-members:
    :show-inheritance:

@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.sdist]
-include = ["src/**/*.py", "src/**/py.typed", "src/latch_cli/services/init/*"]
+include = ["src/**/*.py", "src/**/*.graphql", "src/**/py.typed", "src/latch_cli/services/init/*"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "src/latch_cli" = "latch_cli"
@@ -40,6 +40,7 @@ dependencies = [
   "requests-toolbelt==1.0.0",
   "python-dateutil>=2.8",
   "pydantic>=2,<3",
+  "rich>=14.0.0",
   "GitPython==3.1.40",
   # for old latch develop, to be removed
   "aioconsole==0.6.1",
