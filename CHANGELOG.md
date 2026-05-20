@@ -16,6 +16,15 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.74.0 - 2026-05-18
+
+## Added
+
+* `latch pods start` command to start a Latch Pod
+* `latch pods list [--verbose]` command to list Latch Pods in a workspace
+* `latch pods ssh <pod_id>` command to ssh into a Latch Pod
+* `latch pods create <local_file_path> [--generate-skeleton] [--describe-fields]` command to create a Latch Pod from a JSON request file
+
 ## 2.73.0 - 2026-05-18
 
 ### Changed

@@ -12,7 +12,7 @@ include = ["src/**/*.py", "src/**/py.typed", "src/latch_cli/services/init/*"]
 
 [project]
 name = "latch"
-version = "2.73.0"
+version = "2.74.0"
 description = "The Latch SDK"
 authors = [{ name = "Kenny Workman", email = "kenny@latch.bio" }]
 maintainers = [{ name = "Kenny Workman", email = "kenny@latch.bio" }]
@@ -39,6 +39,7 @@ dependencies = [
   "graphql-core==3.2.3",
   "requests-toolbelt==1.0.0",
   "python-dateutil>=2.8",
+  "pydantic>=2,<3",
   "GitPython==3.1.40",
   # for old latch develop, to be removed
   "aioconsole==0.6.1",
