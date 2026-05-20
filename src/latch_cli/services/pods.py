@@ -303,7 +303,7 @@ def _get_pod_ssh_args(
         return None
 
     target_domain = deployment.get("targetDomain")
-    target_region = deployment.get("targetRegion", "us-west-2")
+    target_region = deployment.get("targetRegion", "us-west-2") if deployment.get("targetRegion") is not None else "us-west-2"
     if not isinstance(target_domain, str) or not isinstance(target_region, str):
         click.secho("Pod deployment information is unavailable.", fg="red")
         return None
