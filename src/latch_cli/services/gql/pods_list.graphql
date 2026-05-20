@@ -1,0 +1,48 @@
+query CliPodsList($accountId: BigInt!) {
+  podInfos(
+    condition: {
+      accountId: $accountId,
+      removed: false,
+      plotNotebookId: null
+    },
+    orderBy: CREATION_DATE_DESC
+  ) {
+    nodes {
+      id
+      creationDate
+      displayName
+      status
+      cpuMillicores
+      memoryBytes
+      gpus
+      gpuType
+      storageGigs
+      usedStorageGigs
+      effectiveSecurityMetadata
+      archivalStatus
+      backupInterval {
+        days
+        months
+        hours
+        minutes
+        seconds
+        years
+      }
+      autoShutoffDelay {
+        days
+        months
+        hours
+        minutes
+        seconds
+        years
+      }
+      latestPodSession: latestSession {
+        startTime
+        endTime
+      }
+      deployment {
+        targetRegion
+      }
+    }
+  }
+}

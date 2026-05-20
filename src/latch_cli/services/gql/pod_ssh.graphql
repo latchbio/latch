@@ -1,0 +1,10 @@
+query CliPodSsh($podId: BigInt!) {
+  podInfo(id: $podId) {
+    id
+    status
+    deployment {
+      targetRegion
+      targetDomain
+    }
+  }
+}

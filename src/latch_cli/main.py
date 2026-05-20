@@ -1,6 +1,7 @@
 # ruff: noqa: FBT001, FBT002
 """Entrypoints to service functions through a latch_cli."""
 
+import json
 import logging
 import os
 import sys
@@ -48,26 +49,30 @@ T = TypeVar("T")
 
 def requires_login(f: Callable[P, T]) -> Callable[P, T]:
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        try:
-            get_auth_header()
-        except AuthenticationError as e:
-            click.secho(
-                dedent("""
-                Unable to authenticate with Latch.
-
-                If you are on a machine with a browser, run `latch login`.
-
-                If not, on a different machine go to `https://console.latch.bio/settings/developer`, open `Access Tokens`, generate a Personal API Token (or Workspace API Token if you only need to access a single workspace from this machine), and paste it into `~/.latch/token` on this machine.
-                """).strip("\n"),
-                fg="red",
-            )
-            raise click.exceptions.Exit(1) from e
+        _require_login()
 
         return f(*args, **kwargs)
 
     decorated.__doc__ = f.__doc__
 
     return decorated
+
+
+def _require_login() -> None:
+    try:
+        get_auth_header()
+    except AuthenticationError as e:
+        click.secho(
+            dedent("""
+            Unable to authenticate with Latch.
+
+            If you are on a machine with a browser, run `latch login`.
+
+            If not, on a different machine go to `https://console.latch.bio/settings/developer`, open `Access Tokens`, generate a Personal API Token (or Workspace API Token if you only need to access a single workspace from this machine), and paste it into `~/.latch/token` on this machine.
+            """).strip("\n"),
+            fg="red",
+        )
+        raise click.exceptions.Exit(1) from e
 
 
 def requires_workspace(f: Callable[P, T]) -> Callable[P, T]:
@@ -1510,20 +1515,166 @@ def pods():
     """Manage pods"""
 
 
-@pods.command("stop")
+@pods.command(
+    "create",
+    short_help="Create pod: request_file | --generate-skeleton | --describe-fields",
+)
+@click.argument(
+    "request_file",
+    metavar="request_file",
+    nargs=1,
+    required=False,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+)
+@click.option(
+    "--generate-skeleton",
+    is_flag=True,
+    default=False,
+    help="Print a skeleton JSON request body and exit.",
+)
+@click.option(
+    "--describe-fields",
+    is_flag=True,
+    default=False,
+    help="Print valid pod create request fields and values as JSON.",
+)
+def create_pod(
+    request_file: Optional[Path] = None,
+    generate_skeleton: bool = False,
+    describe_fields: bool = False,
+):
+    """Create a pod.
+
+    Valid forms:
+
+    \b
+      latch pods create request_file
+      latch pods create --generate-skeleton
+      latch pods create --describe-fields
+    """
+    crash_handler.message = "Unable to create pod"
+
+    from latch_cli.services.pods import (
+        CreatePodRequest,
+        create_pod,
+        create_pod_request_skeleton,
+    )
+
+    if generate_skeleton and describe_fields:
+        raise click.UsageError("Use only one of --generate-skeleton or --describe-fields.")
+
+    if generate_skeleton:
+        if request_file is not None:
+            raise click.UsageError(
+                "Do not provide request_file with --generate-skeleton."
+            )
+
+        click.echo(json.dumps(create_pod_request_skeleton(), indent=2))
+        return
+
+    if describe_fields:
+        if request_file is not None:
+            raise click.UsageError("Do not provide request_file with --describe-fields.")
+
+        click.echo(json.dumps(CreatePodRequest.model_json_schema(), indent=2))
+        return
+
+    if request_file is None:
+        raise click.UsageError("Missing argument 'request_file'.")
+
+    _require_login()
+    create_pod(request_file)
+
+
+@pods.command("list", short_help="List pods [--detailed]")
+@click.option(
+    "--detailed",
+    "detailed",
+    is_flag=True,
+    default=False,
+    help="Print detailed pod information as JSON.",
+)
+@requires_login
+@requires_workspace
+def list_pods(detailed: bool = False):
+    """List pods in the current workspace."""
+    crash_handler.message = "Unable to list pods"
+
+    from latch_cli.services.pods import list_pods
+
+    list_pods(detailed=detailed)
+
+
+@pods.command("start", short_help="Start pod: POD_ID")
+@click.argument("pod_id", nargs=1, type=int)
+@requires_login
+def start_pod(pod_id: int):
+    """Start a pod.
+
+    \b
+      latch pods start POD_ID
+    """
+    crash_handler.message = "Unable to start pod"
+
+    from latch_cli.services.pods import start_pod
+
+    start_pod(pod_id)
+
+
+@pods.command("ssh", short_help="SSH into pod: POD_ID [--key key] [--print-only]")
+@click.argument("pod_id", nargs=1, type=int)
+@click.option(
+    "--key",
+    "key",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    default=None,
+    help="SSH private key to pass with `ssh -i`.",
+)
+@click.option(
+    "--print-only",
+    "print_only",
+    is_flag=True,
+    default=False,
+    help="Print the SSH command without executing it.",
+)
+@requires_login
+def ssh_pod(pod_id: int, key: Optional[Path] = None, print_only: bool = False):
+    """SSH into a pod.
+
+    Valid forms:
+
+    \b
+      latch pods ssh POD_ID
+      latch pods ssh POD_ID --key key
+      latch pods ssh POD_ID --print-only
+    """
+    crash_handler.message = "Unable to SSH into pod"
+
+    from latch_cli.services.pods import ssh_pod
+
+    ssh_pod(pod_id, key=key, print_only=print_only)
+
+
+@pods.command("stop", short_help="Stop pod: [POD_ID]")
 @click.argument("pod_id", nargs=1, type=int, required=False)
 @requires_login
 def stop_pod(pod_id: Optional[int] = None):
-    """Stops a pod given a pod_id or the pod from which the command is run"""
+    """Stop a pod.
+
+    \b
+      latch pods stop [POD_ID]
+
+    If POD_ID is omitted, this stops the current pod.
+    """
     crash_handler.message = "Unable to stop pod"
 
-    from latch_cli.services.stop_pod import stop_pod
+    from latch_cli.services.pods import stop_pod
 
     if pod_id is None:
         id_path = Path("/root/.latch/id")
 
         try:
-            pod_id = int(id_path.read_text().strip("\n"))
+            pod_id = int(id_path.read_text(encoding="utf-8").strip("\n"))
         except Exception as e:
             if isinstance(e, FileNotFoundError):
                 err_str = f"Pod ID not found at `{id_path}`"
