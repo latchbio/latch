@@ -396,12 +396,15 @@ def generate_nextflow_workflow(
     dest: Path,
     *,
     execution_profile: Optional[str] = None,
+    workflow_name: Optional[str] = None,
 ):
     generate_nextflow_config(pkg_root)
 
     assert metadata._nextflow_metadata is not None
 
-    wf_name = metadata._nextflow_metadata.name
+    wf_name = workflow_name
+    if wf_name is None:
+        wf_name = metadata._nextflow_metadata.name
     assert wf_name is not None
 
     parameters = metadata._nextflow_metadata.parameters
