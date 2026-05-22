@@ -33,6 +33,7 @@ from latch_cli.utils import (
     get_latest_package_version,
     get_local_package_version,
     hash_directory,
+    normalize_explicit_workflow_name,
 )
 from latch_cli.workflow_config import BaseImageOptions
 from latch_sdk_gql.execute import execute as gql_execute
@@ -629,6 +630,21 @@ def image_ls():
     ls()
 
 
+def _validate_explicit_workflow_name(
+    ctx: click.Context,
+    _param: click.Parameter,
+    value: Optional[str],
+) -> Optional[str]:
+    if value is None:
+        return None
+
+    value = normalize_explicit_workflow_name(value)
+    if value is None:
+        ctx.fail("--workflow-name must not be empty.")
+
+    return value
+
+
 @latch.command("register")
 @click.argument("pkg_root", type=click.Path(exists=True, file_okay=False))
 @click.option(
@@ -688,6 +704,14 @@ def image_ls():
     "-w",
     type=str,
     help="Module containing Latch workflow to register. Defaults to `wf`",
+)
+@click.option(
+    "--workflow-name",
+    "explicit_workflow_name",
+    type=str,
+    default=None,
+    callback=_validate_explicit_workflow_name,
+    help="Override workflow name to use for this registration.",
 )
 @click.option(
     "--metadata-root",
@@ -762,6 +786,7 @@ def register(
     yes: bool,
     open: bool,
     workflow_module: Optional[str],
+    explicit_workflow_name: Optional[str],
     metadata_root: Optional[Path],
     snakefile: Optional[Path],
     cache_tasks: bool,
@@ -791,6 +816,7 @@ def register(
             remote=remote,
             skip_confirmation=yes,
             wf_module=workflow_module,
+            explicit_workflow_name=explicit_workflow_name,
             progress_plain=(docker_progress == "auto" and not sys.stdout.isatty())
             or docker_progress == "plain",
             dockerfile_path=dockerfile,
@@ -828,6 +854,7 @@ def register(
         skip_confirmation=yes,
         open=open,
         wf_module=workflow_module,
+        explicit_workflow_name=explicit_workflow_name,
         metadata_root=metadata_root,
         snakefile=snakefile,
         nf_script=nf_script,

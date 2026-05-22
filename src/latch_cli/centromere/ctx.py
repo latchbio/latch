@@ -1,8 +1,8 @@
-from logging import getLogger
 import re
 import sys
 import traceback
 from dataclasses import dataclass
+from logging import getLogger
 from pathlib import Path
 from textwrap import dedent
 from typing import Dict, Optional, Tuple
@@ -94,6 +94,7 @@ class _CentromereCtx:
         use_new_centromere: bool = False,
         overwrite: bool = False,
         dockerfile_path: Optional[Path] = None,
+        explicit_workflow_name: Optional[str] = None,
     ):
         self.use_new_centromere = use_new_centromere
         self.remote = remote
@@ -242,7 +243,11 @@ class _CentromereCtx:
                     )
                     raise click.exceptions.Exit(1)
 
-                self.workflow_name = wf_name
+                self.workflow_name = (
+                    explicit_workflow_name
+                    if explicit_workflow_name is not None
+                    else wf_name
+                )
 
                 for obj in flyte_objects:
                     if obj.type != "task" or obj.dockerfile is None:
@@ -373,8 +378,6 @@ class _CentromereCtx:
                     )
                     raise click.exceptions.Exit(1)
 
-                # todo(kenny): support per container task and custom workflow
-                # name for snakemake
                 self.workflow_name = f"{metadata._snakemake_metadata.name}_jit_register"
             else:
                 assert self.nf_script is not None
@@ -407,6 +410,9 @@ class _CentromereCtx:
                 name_path = pkg_root / latch_constants.pkg_workflow_name
                 if name_path.exists():
                     self.workflow_name = name_path.read_text().strip()
+
+            if explicit_workflow_name is not None:
+                self.workflow_name = explicit_workflow_name
 
             assert self.workflow_name is not None
 

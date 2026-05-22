@@ -13,7 +13,7 @@ from enum import Enum
 from logging import getLogger
 from pathlib import Path
 from textwrap import dedent
-from typing import List
+from typing import List, Optional
 from urllib.parse import urljoin
 
 import click
@@ -68,6 +68,17 @@ def urljoins(*args: str, dir: bool = False) -> str:
 
 
 class AuthenticationError(RuntimeError): ...
+
+
+def normalize_explicit_workflow_name(workflow_name: Optional[str]) -> Optional[str]:
+    if workflow_name is None:
+        return None
+
+    workflow_name = workflow_name.strip()
+    if len(workflow_name) == 0:
+        return None
+
+    return workflow_name
 
 
 def get_auth_header() -> str:

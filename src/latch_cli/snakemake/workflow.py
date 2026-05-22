@@ -316,6 +316,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         cache_tasks: bool = False,
         git_commit_hash: Optional[str] = None,
         git_is_dirty: bool = False,
+        workflow_name: Optional[str] = None,
     ):
         self.cache_tasks = cache_tasks
 
@@ -367,7 +368,7 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         workflow_metadata = WorkflowMetadata(
             on_failure=WorkflowFailurePolicy.FAIL_IMMEDIATELY
         )
-        name = f"{name}_jit_register"
+        name = workflow_name if workflow_name is not None else f"{name}_jit_register"
         workflow_metadata_defaults = WorkflowMetadataDefaults(False)
         super().__init__(
             name=name,
@@ -577,8 +578,9 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
         remote_output_url: Optional[str],
     ):
         task_name = f"{self.name}_task"
+        fn_name = identifier_from_str(task_name)
 
-        code_block = self.get_fn_interface(fn_name=task_name)
+        code_block = self.get_fn_interface(fn_name=fn_name)
 
         code_block += reindent(
             rf"""
@@ -763,6 +765,11 @@ class JITRegisterWorkflow(WorkflowBase, ClassStorageTaskResolver):
             1,
         )
         code_block += self.get_fn_return_stmt()
+        code_block += dedent(rf"""
+
+            {fn_name}._name = {task_name!r}
+            setattr(sys.modules[__name__], {task_name!r}, {fn_name})
+            """)
         return code_block
 
 
@@ -1032,8 +1039,11 @@ def build_jit_register_wrapper(
     cache_tasks: bool = False,
     git_commit_hash: Optional[str] = None,
     git_is_dirty: bool = False,
+    workflow_name: Optional[str] = None,
 ) -> JITRegisterWorkflow:
-    wrapper_wf = JITRegisterWorkflow(cache_tasks, git_commit_hash, git_is_dirty)
+    wrapper_wf = JITRegisterWorkflow(
+        cache_tasks, git_commit_hash, git_is_dirty, workflow_name
+    )
     out_parameter_name = wrapper_wf.out_parameter_name
 
     python_interface = wrapper_wf.python_interface

@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.75.0 - 2026-05-21
+
+## Added
+
+* `latch register --workflow-name` option to override workflow name for registration.
+
 ## 2.74.0 - 2026-05-18
 
 ## Added

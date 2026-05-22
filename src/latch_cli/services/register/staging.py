@@ -11,7 +11,12 @@ from latch_sdk_gql.execute import execute
 
 from ...centromere.ast_parsing import get_flyte_objects
 from ...constants import docker_image_name_illegal_pat, latch_constants
-from ...utils import WorkflowType, hash_directory, identifier_suffix_from_str
+from ...utils import (
+    WorkflowType,
+    hash_directory,
+    identifier_suffix_from_str,
+    normalize_explicit_workflow_name,
+)
 from ..docker.utils import dbnp, get_local_docker_client, remote_dbnp
 
 
@@ -23,6 +28,7 @@ def register_staging(
     remote: bool = False,
     skip_confirmation: bool = False,
     wf_module: Optional[str] = None,
+    explicit_workflow_name: Optional[str] = None,
     progress_plain: bool = False,
     dockerfile_path: Optional[Path] = None,
 ):
@@ -50,10 +56,10 @@ def register_staging(
         )
         raise click.exceptions.Exit(1) from e
 
-    wf_name: Optional[str] = None
+    wf_name: Optional[str] = normalize_explicit_workflow_name(explicit_workflow_name)
 
     name_path = pkg_root / latch_constants.pkg_workflow_name
-    if name_path.exists():
+    if wf_name is None and name_path.exists():
         click.echo(f"Parsing workflow name from {name_path}.")
         wf_name = name_path.read_text().strip()
 

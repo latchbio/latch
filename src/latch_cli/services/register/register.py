@@ -28,7 +28,7 @@ from latch_cli.services.register.utils import (
     serialize_pkg_in_container,
     upload_image,
 )
-from latch_cli.utils import WorkflowType
+from latch_cli.utils import WorkflowType, normalize_explicit_workflow_name
 
 log = getLogger(__name__)
 
@@ -311,6 +311,7 @@ def register(
     open: bool = False,
     skip_confirmation: bool = False,
     wf_module: Optional[str] = None,
+    explicit_workflow_name: Optional[str] = None,
     metadata_root: Optional[Path] = None,
     snakefile: Optional[Path] = None,
     nf_script: Optional[Path] = None,
@@ -374,6 +375,9 @@ def register(
             click.secho("\n`snakemake` package is not installed.", fg="red", bold=True)
             sys.exit(1)
 
+    explicit_workflow_name = normalize_explicit_workflow_name(explicit_workflow_name)
+    use_explicit_workflow_name = explicit_workflow_name is not None
+
     with _CentromereCtx(
         Path(pkg_root),
         disable_auto_version=disable_auto_version,
@@ -385,6 +389,7 @@ def register(
         use_new_centromere=use_new_centromere,
         overwrite=skip_confirmation,
         dockerfile_path=dockerfile_path,
+        explicit_workflow_name=explicit_workflow_name,
     ) as ctx:
         assert ctx.workflow_name is not None, "Unable to determine workflow name"
         assert ctx.version is not None, "Unable to determine workflow version"
@@ -397,6 +402,10 @@ def register(
             ])
         )
         click.echo(" ".join([click.style("Version:", fg="bright_blue"), ctx.version]))
+        if use_explicit_workflow_name:
+            click.echo(
+                "Using workflow name from --workflow-name; .latch/workflow_name will not be updated."
+            )
 
         if workspace_id is None:
             workspace_id = current_workspace()
@@ -467,7 +476,10 @@ def register(
             from ...snakemake.workflow import build_jit_register_wrapper
 
             sm_jit_wf = build_jit_register_wrapper(
-                cache_tasks, ctx.git_commit_hash, ctx.git_is_dirty
+                cache_tasks,
+                ctx.git_commit_hash,
+                ctx.git_is_dirty,
+                workflow_name=ctx.workflow_name,
             )
             generate_jit_register_code(
                 sm_jit_wf,
@@ -492,6 +504,7 @@ def register(
                 ctx.nf_script,
                 dest,
                 execution_profile=nf_execution_profile,
+                workflow_name=ctx.workflow_name,
             )
 
         click.secho("\nInitializing registration", bold=True)
@@ -614,7 +627,8 @@ def register(
             wf_name = ctx.workflow_name
 
             name_path = Path(pkg_root) / latch_constants.pkg_workflow_name
-            if not name_path.exists():
+            if not use_explicit_workflow_name and not name_path.exists():
+                name_path.parent.mkdir(parents=True, exist_ok=True)
                 name_path.write_text(ctx.workflow_name)
 
             while len(wf_infos) == 0:

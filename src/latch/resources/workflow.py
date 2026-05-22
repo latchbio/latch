@@ -52,7 +52,11 @@ def workflow(
         if f.__doc__ is None or "__metadata__:" not in f.__doc__:
             metadata = _generate_metadata(f)
             _inject_metadata(f, metadata)
-        return _workflow(f)
+        wf_name_override = os.environ.get("LATCH_WF_NAME_OVERRIDE")
+        if wf_name_override is not None and wf_name_override.strip() == "":
+            wf_name_override = None
+
+        return _workflow(f, wf_name_override=wf_name_override)
 
     def decorator(f: Callable):
         signature = inspect.signature(f)
