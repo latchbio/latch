@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.76.0 - 2026-05-18
+
+## Fixed
+
+
+* `latch login` when authenticating with Github
+
 ## 2.75.0 - 2026-05-18
 
 ## Removed
