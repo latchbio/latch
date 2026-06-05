@@ -21,15 +21,6 @@ wheels = [
 ]
 
 [[package]]
-name = "aioconsole"
-version = "0.6.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/27/a2/4bbeecceb6786a058e92469686ae1b7d3a616b3f5b99e00b96c3064349e2/aioconsole-0.6.1.tar.gz", hash = "sha256:520313bc5d7ed6bea3baf072ce7e622479afd67c01b3fdcc076bc528da354f6f", size = 28591, upload-time = "2023-03-04T10:45:31.436Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f0/8e/bf614f0c435f89c1dde2490f28bdc31d0c54a00185dbb1ea70649d8ca925/aioconsole-0.6.1-py3-none-any.whl", hash = "sha256:79da3a0a092e1fde87ee3a68d44f36d7286f3f0d7029dfa05d95c4b80ce566fd", size = 30317, upload-time = "2023-03-04T10:45:29.92Z" },
-]
-
-[[package]]
 name = "alabaster"
 version = "0.7.16"
 source = { registry = "https://pypi.org/simple" }
@@ -1264,10 +1255,9 @@ wheels = [
 
 [[package]]
 name = "latch"
-version = "2.74.0"
+version = "2.75.0"
 source = { editable = "." }
 dependencies = [
-    { name = "aioconsole" },
     { name = "apscheduler" },
     { name = "asyncssh" },
     { name = "boto3" },
@@ -1329,7 +1319,6 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aioconsole", specifier = "==0.6.1" },
     { name = "apscheduler", specifier = ">=3.10.0" },
     { name = "asyncssh", specifier = "==2.13.2" },
     { name = "boto3", specifier = ">=1.26.0" },

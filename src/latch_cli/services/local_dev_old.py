@@ -12,7 +12,6 @@ from pathlib import Path
 from textwrap import dedent
 from typing import Callable, Optional, Tuple, Union
 
-import aioconsole
 import asyncssh
 import boto3
 import click
@@ -189,9 +188,7 @@ async def _watch_and_rsync(
         async for _ in watcher:
             rval, _, stderr = await _rsync()
             if rval != 0:
-                await aioconsole.aprint(
-                    f"Error running rsync: {stderr}", use_stderr=True
-                )
+                print(f"Error running rsync: {stderr}", file=sys.stderr)
     except RuntimeError as e:
         if not str(e) == "Already borrowed":
             raise e
@@ -209,7 +206,7 @@ async def _get_messages(ws: client.WebSocketClientProtocol, show_output: bool):
         if msg.get("Type") == _MessageType.exit.value:
             return
         if show_output:
-            await aioconsole.aprint(msg.get("Body"), end="", flush=True)
+            print(msg.get("Body"), end="", flush=True)
 
 
 async def _send_message(
@@ -393,29 +390,25 @@ async def _run_local_dev_session(
                 extra_headers=headers,
             ):
                 try:
-                    await aioconsole.aprint(
-                        "Successfully connected to remote instance."
-                    )
+                    print("Successfully connected to remote instance.")
                     try:
                         if disable_sync:
-                            await aioconsole.aprint(
-                                "Skipping local sync because --disable-sync"
-                            )
+                            print("Skipping local sync because --disable-sync")
                         else:
-                            await aioconsole.aprint("Setting up local sync...")
+                            print("Setting up local sync...")
                             watch_task = asyncio.create_task(
                                 _watch_and_rsync(
                                     pkg_root, centromere_ip, ssh_port, key_path
                                 )
                             )
-                            await aioconsole.aprint("Done.")
+                            print("Done.")
 
                         await _send_message(ws, docker_access_token)
                         await _send_message(ws, image_name_tagged)
-                        await aioconsole.aprint(f"Pulling {image_name_tagged}... ")
+                        print(f"Pulling {image_name_tagged}... ")
 
                         await _get_messages(ws, show_output=False)
-                        await aioconsole.aprint("Image successfully pulled.\n")
+                        print("Image successfully pulled.\n")
 
                         await _get_messages(ws, show_output=True)
 
@@ -427,10 +420,10 @@ async def _run_local_dev_session(
 
                     except websockets.exceptions.ConnectionClosed:
                         continue
-                except Exception as e:
-                    await aioconsole.aprint(traceback.format_exc())
+                except Exception:
+                    print(traceback.format_exc())
                 finally:
-                    await aioconsole.aprint("Exiting local development session")
+                    print("Exiting local development session")
                     await ws.close()
                     close_resp = post(
                         config.api.centromere.stop_local_dev,
