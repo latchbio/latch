@@ -60,7 +60,8 @@ class OAuth2Constants:
     client_id: str = "UQs8mV2SvKLrPkcI5dt3nmsnrdZvPUs0"
     """Identifies the authentication server in 0Auth2.0 flow"""
 
-    authz_server_host: str = "https://latchai.us.auth0.com"
+    authz_server_host: str = "https://auth.latch.bio"
+
     """Host of the authentication server used in 0Auth2.0 flow."""
 
     redirect_url: str = "http://127.0.0.1:5050/callback"

@@ -12,7 +12,7 @@ include = ["src/**/*.py", "src/**/*.graphql", "src/**/py.typed", "src/latch_cli/
 
 [project]
 name = "latch"
-version = "2.75.0"
+version = "2.76.0"
 description = "The Latch SDK"
 authors = [{ name = "Kenny Workman", email = "kenny@latch.bio" }]
 maintainers = [{ name = "Kenny Workman", email = "kenny@latch.bio" }]
