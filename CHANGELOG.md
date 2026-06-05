@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.75.0 - 2026-05-18
+
+## Removed
+
+* Removed `aioconsole` dependency
+
 ## 2.74.0 - 2026-05-18
 
 ## Added
