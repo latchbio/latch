@@ -20,7 +20,7 @@ Types of changes
 
 ### Fixed
 
-* `latch register --workspace-id` now builds, tags, and pushes the workflow image under the target workspace instead of the active workspace, so the registered task's project matches the image's account prefix
+* `latch register --workspace-id` now builds, tags, and pushes the workflow image under the target workspace instead of the active workspace
 
 ## 2.76.0 - 2026-05-18
 
