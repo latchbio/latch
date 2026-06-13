@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.76.1 - 2026-06-12
+
+### Fixed
+
+* `latch register --workspace-id` now builds, tags, and pushes the workflow image under the target workspace instead of the active workspace, so the registered task's project matches the image's account prefix
+
 ## 2.76.0 - 2026-05-18
 
 ## Fixed

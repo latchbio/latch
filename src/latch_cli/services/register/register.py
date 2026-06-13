@@ -374,6 +374,9 @@ def register(
             click.secho("\n`snakemake` package is not installed.", fg="red", bold=True)
             sys.exit(1)
 
+    if workspace_id is None:
+        workspace_id = current_workspace()
+
     with _CentromereCtx(
         Path(pkg_root),
         disable_auto_version=disable_auto_version,
@@ -385,6 +388,7 @@ def register(
         use_new_centromere=use_new_centromere,
         overwrite=skip_confirmation,
         dockerfile_path=dockerfile_path,
+        account_id=workspace_id,
     ) as ctx:
         assert ctx.workflow_name is not None, "Unable to determine workflow name"
         assert ctx.version is not None, "Unable to determine workflow version"
@@ -398,8 +402,6 @@ def register(
         )
         click.echo(" ".join([click.style("Version:", fg="bright_blue"), ctx.version]))
 
-        if workspace_id is None:
-            workspace_id = current_workspace()
         workspaces = get_workspaces()
 
         if workspace_id not in workspaces:

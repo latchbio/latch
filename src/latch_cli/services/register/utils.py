@@ -24,7 +24,6 @@ import click
 import docker
 import requests
 
-from latch.utils import current_workspace
 from latch_sdk_config.latch import config
 
 if TYPE_CHECKING:
@@ -41,7 +40,7 @@ def _docker_login(ctx: _CentromereCtx):
     assert ctx.dkr_client is not None
 
     headers = {"Authorization": f"Bearer {ctx.token}"}
-    data = {"pkg_name": ctx.image, "ws_account_id": current_workspace()}
+    data = {"pkg_name": ctx.image, "ws_account_id": ctx.account_id}
     response = requests.post(ctx.latch_image_api_url, headers=headers, json=data)
     log.debug("POST latch_image_api_url %s", response.status_code)
 

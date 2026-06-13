@@ -94,6 +94,7 @@ class _CentromereCtx:
         use_new_centromere: bool = False,
         overwrite: bool = False,
         dockerfile_path: Optional[Path] = None,
+        account_id: Optional[str] = None,
     ):
         self.use_new_centromere = use_new_centromere
         self.remote = remote
@@ -114,7 +115,9 @@ class _CentromereCtx:
             log.debug("retrieve_or_login")
             self.token = retrieve_or_login()
             log.debug("current_workspace")
-            self.account_id = current_workspace()
+            self.account_id = (
+                account_id if account_id is not None else current_workspace()
+            )
 
             self.dkr_repo = config.dkr_repo
             log.debug("resolving pkg_root")
@@ -629,7 +632,7 @@ class _CentromereCtx:
 
         headers = {"Authorization": f"Bearer {self.token}"}
 
-        ws_id = current_workspace()
+        ws_id = self.account_id
         if ws_id is None or ws_id == "":
             ws_id = account_id_from_token(retrieve_or_login())
 
