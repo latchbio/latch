@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.76.2 - 2026-06-18
+
+### Fixed
+
+* Fixes https://github.com/latchbio/latch/issues/602
+
+
 ## 2.76.1 - 2026-06-12
 
 ### Fixed
