@@ -1255,7 +1255,7 @@ wheels = [
 
 [[package]]
 name = "latch"
-version = "2.76.0"
+version = "2.76.2"
 source = { editable = "." }
 dependencies = [
     { name = "apscheduler" },
@@ -1330,7 +1330,7 @@ requires-dist = [
     { name = "graphql-core", specifier = "==3.2.3" },
     { name = "kubernetes", specifier = ">=24.2.0" },
     { name = "latch-persistence", specifier = ">=0.1.5" },
-    { name = "lytekit", specifier = "==0.15.35" },
+    { name = "lytekit", specifier = "==0.16" },
     { name = "lytekitplugins-pods", specifier = "==0.7.4" },
     { name = "orjson", specifier = ">=3.10.12" },
     { name = "pandas", marker = "extra == 'pandas'", specifier = ">=2.0.0" },
@@ -1394,7 +1394,7 @@ wheels = [
 
 [[package]]
 name = "lytekit"
-version = "0.15.35"
+version = "0.16"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click", version = "8.1.8", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
@@ -1431,9 +1431,9 @@ dependencies = [
     { name = "wheel" },
     { name = "wrapt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4b/00/61b5c1dffb820be80974856c8a79a6b542f31f635610cc2ae6ae46d72c29/lytekit-0.15.35.tar.gz", hash = "sha256:7498aa0c796ea62aa3acc699d722d797a2f9822c9937d946c5d81713a5089a2e", size = 402796, upload-time = "2026-05-01T22:04:25.048Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/76/da/1603dda55859af839fa7fdef3433cb8bc7d4e6435bfa5b2379ed23fd01a8/lytekit-0.16.tar.gz", hash = "sha256:b01f35b73b901a8e73c19447bbc763e09408b0914f1ace100f9fda8899020f9c", size = 404393, upload-time = "2026-06-19T01:26:30.832Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f4/55/e78c1c6df264746927b4c1d140c1eb14967c74bc12629df8cd73f8889883/lytekit-0.15.35-py3-none-any.whl", hash = "sha256:8ce174d39d8720fde399dff12673067ca9c15957a32889f89ced8c8afaaef1f9", size = 346883, upload-time = "2026-05-01T22:04:23.295Z" },
+    { url = "https://files.pythonhosted.org/packages/fb/5a/5614ffa3a28878bb1b5dd1008f6944dab0cad568be2a331401a11997ca0a/lytekit-0.16-py3-none-any.whl", hash = "sha256:7e76d2a1b9a82a32fad811cd41849d570717f09ef20d960a28724f9231ac066f", size = 347129, upload-time = "2026-06-19T01:26:29.254Z" },
 ]
 
 [[package]]
