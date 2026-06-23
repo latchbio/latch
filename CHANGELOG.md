@@ -16,6 +16,9 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.76.5 - 2026-06-22
+
+* Fix LatchFilePathTransformer for Annotated types
 
 ## 2.76.3 - 2026-06-19
 

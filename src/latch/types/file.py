@@ -1,7 +1,7 @@
 import os
 from os import PathLike
 from pathlib import Path
-from typing import Annotated, Optional, Union
+from typing import Annotated, Optional, Union, get_args, get_origin
 from urllib.parse import urlparse
 
 import gql
@@ -248,6 +248,9 @@ class LatchFilePathTransformer(FlyteFilePathTransformer):
             raise TypeError(
                 "Casting from Pathlike to LatchFile is currently not supported."
             )
+
+        while get_origin(expected_python_type) == Annotated:
+            expected_python_type = get_args(expected_python_type)[0]
 
         if not issubclass(expected_python_type, LatchFile):
             raise TypeError(
