@@ -150,8 +150,15 @@ def login(connection: Optional[str]):
 
 
 @latch.command("workspace")
+@click.option(
+    "--id",
+    "workspace_id",
+    type=str,
+    default=None,
+    help="Workspace ID to switch to without opening the interactive selector.",
+)
 @requires_login
-def workspace():
+def workspace(workspace_id: Optional[str]):
     """Spawns an interactive terminal prompt allowing users to choose what workspace they want to work in."""
 
     crash_handler.message = "Unable to fetch workspaces"
@@ -159,7 +166,7 @@ def workspace():
 
     from latch_cli.services.workspace import workspace
 
-    workspace()
+    workspace(workspace_id)
 
 
 """
