@@ -13,7 +13,7 @@ from latch_sdk_config.user import user_config
 
 
 def workspace(workspace_id: Optional[str] = None):
-    """Switch workspaces from the CLI.
+    """Opens a terminal user interface in which a user can select the workspace they want to switch to.
 
     Like `get_executions`, this function should only be called from the CLI.
     """
