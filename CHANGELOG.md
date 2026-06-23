@@ -16,6 +16,14 @@ Types of changes
 
 # Latch SDK Changelog
 
+
+## 2.76.3 - 2026-06-19
+
+### Dependencies
+
+* Add `latch workspace --id` to switch to a specific workspace by ID
+
+
 ## 2.76.2 - 2026-06-18
 
 ### Fixed
