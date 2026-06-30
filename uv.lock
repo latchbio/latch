@@ -1255,7 +1255,7 @@ wheels = [
 
 [[package]]
 name = "latch"
-version = "2.76.5"
+version = "2.76.6"
 source = { editable = "." }
 dependencies = [
     { name = "apscheduler" },
@@ -1330,7 +1330,7 @@ requires-dist = [
     { name = "graphql-core", specifier = "==3.2.3" },
     { name = "kubernetes", specifier = ">=24.2.0" },
     { name = "latch-persistence", specifier = ">=0.1.5" },
-    { name = "lytekit", specifier = "==0.16" },
+    { name = "lytekit", specifier = ">=0.16,<0.17" },
     { name = "lytekitplugins-pods", specifier = "==0.7.4" },
     { name = "orjson", specifier = ">=3.10.12" },
     { name = "pandas", marker = "extra == 'pandas'", specifier = ">=2.0.0" },
