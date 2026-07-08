@@ -1,0 +1,44 @@
+query CliPodTemplateById($templateId: BigInt!) {
+  podTemplate(id: $templateId) {
+    id
+    metadata
+    availableInExplore
+    ownerId
+    podTemplateSubscriptionsByTemplateId {
+      nodes {
+        accountId
+        templateId
+      }
+    }
+    podTemplateVersionsByTemplateId(
+      filter: { removed: { equalTo: false } }
+      orderBy: CREATION_DATE_DESC
+    ) {
+      nodes {
+        id
+        metadata
+        creationDate
+        status
+        source {
+          providerId
+          status
+          infraGeoPartition
+          podId
+          sourcePodDisplayName
+        }
+        podBackupRequests {
+          nodes {
+            id
+            targetRegions
+            podBackupsByReqId(filter: { resolutionTime: { isNull: false } }) {
+              nodes {
+                providerId
+                infraGeoPartition
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

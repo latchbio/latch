@@ -1,0 +1,18 @@
+mutation CliCreatePodTemplateVersion(
+  $metadata: String!
+  $sourceId: String!
+  $templateId: BigInt!
+  $targetRegions: [String!]!
+) {
+  podCreateTemplateVersion(
+    input: {
+      metadata: $metadata
+      sourceId: $sourceId
+      templateId: $templateId
+      targetRegions: $targetRegions
+    }
+  ) {
+    clientMutationId
+    bigInt
+  }
+}

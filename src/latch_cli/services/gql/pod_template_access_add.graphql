@@ -1,0 +1,9 @@
+mutation CliAddPodTemplateAccess($accountId: BigInt!, $templateId: BigInt!) {
+  createPodTemplateSubscription(
+    input: {
+      podTemplateSubscription: { accountId: $accountId, templateId: $templateId }
+    }
+  ) {
+    clientMutationId
+  }
+}

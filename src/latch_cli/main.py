@@ -1516,6 +1516,8 @@ def nf_register(
 POD COMMANDS
 """
 
+pod_template_region_choices = ("us-west-2", "us-east-1", "eu-central-1", "eu-west-1")
+
 
 @latch.group()
 def pods():
@@ -1524,11 +1526,11 @@ def pods():
 
 @pods.command(
     "create",
-    short_help="Create pod: request_file | --generate-skeleton | --describe-fields",
+    short_help="Create pod: request_file | --from-template template | --generate-skeleton | --describe-fields",
 )
 @click.argument(
     "request_file",
-    metavar="request_file",
+    metavar="[request_file]",
     nargs=1,
     required=False,
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
@@ -1545,30 +1547,119 @@ def pods():
     default=False,
     help="Print valid pod create request fields and values as JSON.",
 )
+@click.option(
+    "--from-template",
+    "from_template",
+    metavar="template",
+    default=None,
+    help=(
+        "Create a pod from a template id or exact template name. Uses the "
+        "latest usable version unless --version is set."
+    ),
+)
+@click.option(
+    "--version",
+    "template_version",
+    metavar="version",
+    default=None,
+    help=(
+        "Template version label to use with --from-template. If omitted, "
+        "the latest usable version is used."
+    ),
+)
+@click.option(
+    "--name",
+    "display_name",
+    metavar="name",
+    default=None,
+    help="Display name for the new pod. Defaults to the template name.",
+)
+@click.option(
+    "--workspace",
+    "workspace_id",
+    metavar="ws_id",
+    default=None,
+    help="Workspace id for a pod created with --from-template. Defaults to the current workspace.",
+)
+@click.option(
+    "--backup-interval",
+    "backup_interval",
+    type=click.Choice(["daily", "weekly", "monthly"]),
+    default=None,
+    help="Backup interval for a pod created with --from-template.",
+)
+@click.option(
+    "--region",
+    "target_region",
+    type=click.Choice(pod_template_region_choices),
+    default=None,
+    help=(
+        "Deployment region for the new pod. Defaults to the template source "
+        "snapshot region when available."
+    ),
+)
 def create_pod(
     request_file: Optional[Path] = None,
     generate_skeleton: bool = False,
     describe_fields: bool = False,
+    from_template: Optional[str] = None,
+    template_version: Optional[str] = None,
+    display_name: Optional[str] = None,
+    workspace_id: Optional[str] = None,
+    backup_interval: Optional[str] = None,
+    target_region: Optional[str] = None,
 ):
     """Create a pod.
 
-    Valid forms:
-
-    \b
-      latch pods create request_file
-      latch pods create --generate-skeleton
-      latch pods create --describe-fields
+    Examples: latch pods create request_file; latch pods create --from-template
+    template --version v1.0.0 --name name; latch pods create --generate-skeleton.
     """
     crash_handler.message = "Unable to create pod"
 
     from latch_cli.services.pods import (
         CreatePodRequest,
         create_pod,
+        create_pod_from_template,
         create_pod_request_skeleton,
     )
 
+    template_flags = [
+        template_version,
+        display_name,
+        workspace_id,
+        backup_interval,
+        target_region,
+    ]
+
+    if from_template is not None:
+        if request_file is not None:
+            raise click.UsageError("Do not provide request_file with --from-template.")
+        if generate_skeleton or describe_fields:
+            raise click.UsageError(
+                "Do not use --from-template with --generate-skeleton or --describe-fields."
+            )
+
+        _require_login()
+        create_pod_from_template(
+            template=from_template,
+            version=template_version,
+            display_name=display_name,
+            workspace_id=workspace_id,
+            backup_interval=backup_interval,
+            target_region=target_region,
+        )
+        return
+
+    if any(x is not None for x in template_flags):
+        raise click.UsageError(
+            "Use --version, --name, --workspace, --backup-interval, and --region "
+            "only with --from-template."
+        )
+
     if generate_skeleton and describe_fields:
-        raise click.UsageError("Use only one of --generate-skeleton or --describe-fields.")
+        raise click.UsageError(
+            "Use only one of --generate-skeleton or --describe-fields."
+        )
 
     if generate_skeleton:
         if request_file is not None:
@@ -1581,7 +1672,9 @@ def create_pod(
 
     if describe_fields:
         if request_file is not None:
-            raise click.UsageError("Do not provide request_file with --describe-fields.")
+            raise click.UsageError(
+                "Do not provide request_file with --describe-fields."
+            )
 
         click.echo(json.dumps(CreatePodRequest.model_json_schema(), indent=2))
         return
@@ -1591,6 +1684,180 @@ def create_pod(
 
     _require_login()
     create_pod(request_file)
+
+
+@pods.group("templates")
+def pod_templates():
+    """List, save, share, and publish pod templates."""
+
+
+@pod_templates.command("list", short_help="List pod templates [--json]")
+@click.option(
+    "--json",
+    "json_output",
+    is_flag=True,
+    default=False,
+    help="Print pod templates as JSON.",
+)
+@requires_login
+@requires_workspace
+def list_pod_templates(json_output: bool = False):
+    """List templates owned by or shared with the current workspace.
+
+    Use --json to include every version id, version label, and creation status.
+    """
+    crash_handler.message = "Unable to list pod templates"
+
+    from latch_cli.services.pods import list_pod_templates
+
+    list_pod_templates(json_output=json_output)
+
+
+@pod_templates.command("save", short_help="Save pod as template: POD_ID")
+@click.argument("pod_id", nargs=1, type=int)
+@click.option(
+    "--template",
+    "template",
+    metavar="template",
+    default=None,
+    help=(
+        "Existing template id or exact template name to add a new version to. "
+        "If omitted, creates a new template."
+    ),
+)
+@click.option(
+    "--name",
+    "name",
+    metavar="name",
+    default=None,
+    help="Name for a new template. Required unless --template is set.",
+)
+@click.option(
+    "--description",
+    "description",
+    metavar="text",
+    default=None,
+    help="Description for a new template. Required unless --template is set.",
+)
+@click.option(
+    "--version",
+    "version",
+    metavar="version",
+    required=True,
+    help="Version label to create, for example v1.0.0.",
+)
+@click.option(
+    "--notes",
+    "notes",
+    metavar="text",
+    default=None,
+    help="Notes for this template version.",
+)
+@click.option(
+    "--region",
+    "target_regions",
+    type=click.Choice(pod_template_region_choices),
+    multiple=True,
+    help=(
+        "Additional region to make this template version available in. Can be "
+        "provided multiple times; the source pod region is always included."
+    ),
+)
+@requires_login
+@requires_workspace
+def save_pod_template(
+    pod_id: int,
+    template: Optional[str] = None,
+    name: Optional[str] = None,
+    description: Optional[str] = None,
+    version: str = "",
+    notes: Optional[str] = None,
+    target_regions: tuple[str, ...] = (),
+):
+    """Save a pod as a new template or as a new version of an existing template.
+
+    Examples: latch pods templates save POD_ID --name name --description text
+    --version v1.0.0; latch pods templates save POD_ID --template template
+    --version v1.1.0.
+    """
+    crash_handler.message = "Unable to save pod template"
+
+    from latch_cli.services.pods import save_pod_template
+
+    save_pod_template(
+        pod_id=pod_id,
+        template=template,
+        name=name,
+        description=description,
+        version=version,
+        notes=notes,
+        target_regions=target_regions,
+    )
+
+
+@pod_templates.command("access", short_help="Grant or remove template access")
+@click.argument("template_id", metavar="TEMPLATE_ID", nargs=1)
+@click.option(
+    "--add",
+    "add_workspace_ids",
+    metavar="ws_id",
+    multiple=True,
+    help="Workspace id to grant access to. Can be provided multiple times.",
+)
+@click.option(
+    "--remove",
+    "remove_workspace_ids",
+    metavar="ws_id",
+    multiple=True,
+    help="Workspace id to remove access from. Can be provided multiple times.",
+)
+@requires_login
+def update_pod_template_access(
+    template_id: str,
+    add_workspace_ids: tuple[str, ...] = (),
+    remove_workspace_ids: tuple[str, ...] = (),
+):
+    """Grant or remove workspace access for a pod template."""
+    crash_handler.message = "Unable to update pod template access"
+
+    from latch_cli.services.pods import update_pod_template_access
+
+    update_pod_template_access(
+        template_id=template_id,
+        add_workspace_ids=add_workspace_ids,
+        remove_workspace_ids=remove_workspace_ids,
+    )
+
+
+@pod_templates.command("publish", short_help="Publish template: TEMPLATE")
+@click.argument("template", nargs=1)
+@requires_login
+def publish_pod_template(template: str):
+    """Publish a pod template to public templates.
+
+    TEMPLATE may be a template id or exact template name. Public publishing may
+    require Latch approval.
+    """
+    crash_handler.message = "Unable to publish pod template"
+
+    from latch_cli.services.pods import set_pod_template_publish_status
+
+    set_pod_template_publish_status(template=template, publish=True)
+
+
+@pod_templates.command("unpublish", short_help="Unpublish template: TEMPLATE")
+@click.argument("template", nargs=1)
+@requires_login
+def unpublish_pod_template(template: str):
+    """Remove a pod template from public templates.
+
+    TEMPLATE may be a template id or exact template name.
+    """
+    crash_handler.message = "Unable to unpublish pod template"
+
+    from latch_cli.services.pods import set_pod_template_publish_status
+
+    set_pod_template_publish_status(template=template, publish=False)
 
 
 @pods.command("list", short_help="List pods [--detailed]")
@@ -1616,11 +1883,7 @@ def list_pods(detailed: bool = False):
 @click.argument("pod_id", nargs=1, type=int)
 @requires_login
 def start_pod(pod_id: int):
-    """Start a pod.
-
-    \b
-      latch pods start POD_ID
-    """
+    """Start a pod."""
     crash_handler.message = "Unable to start pod"
 
     from latch_cli.services.pods import start_pod
@@ -1646,15 +1909,7 @@ def start_pod(pod_id: int):
 )
 @requires_login
 def ssh_pod(pod_id: int, key: Optional[Path] = None, print_only: bool = False):
-    """SSH into a pod.
-
-    Valid forms:
-
-    \b
-      latch pods ssh POD_ID
-      latch pods ssh POD_ID --key key
-      latch pods ssh POD_ID --print-only
-    """
+    """SSH into a pod."""
     crash_handler.message = "Unable to SSH into pod"
 
     from latch_cli.services.pods import ssh_pod
@@ -1666,13 +1921,7 @@ def ssh_pod(pod_id: int, key: Optional[Path] = None, print_only: bool = False):
 @click.argument("pod_id", nargs=1, type=int, required=False)
 @requires_login
 def stop_pod(pod_id: Optional[int] = None):
-    """Stop a pod.
-
-    \b
-      latch pods stop [POD_ID]
-
-    If POD_ID is omitted, this stops the current pod.
-    """
+    """Stop a pod. If POD_ID is omitted, this stops the current pod."""
     crash_handler.message = "Unable to stop pod"
 
     from latch_cli.services.pods import stop_pod

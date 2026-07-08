@@ -1,0 +1,7 @@
+mutation CliRemovePodTemplateAccess($accountId: BigInt!, $templateId: BigInt!) {
+  deletePodTemplateSubscription(
+    input: { accountId: $accountId, templateId: $templateId }
+  ) {
+    clientMutationId
+  }
+}

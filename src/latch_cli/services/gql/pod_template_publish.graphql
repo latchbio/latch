@@ -1,0 +1,13 @@
+mutation CliSetPodTemplatePublishStatus(
+  $templateId: BigInt!
+  $availableInExplore: Boolean!
+) {
+  updatePodTemplate(
+    input: {
+      id: $templateId
+      patch: { availableInExplore: $availableInExplore }
+    }
+  ) {
+    clientMutationId
+  }
+}

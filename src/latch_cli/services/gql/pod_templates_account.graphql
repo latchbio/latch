@@ -1,0 +1,90 @@
+query CliPodTemplatesAccount($accountId: BigInt!) {
+  accountInfo(id: $accountId) {
+    id
+    podTemplatesByOwnerId(
+      filter: { removed: { equalTo: false } }
+      orderBy: CREATION_DATE_DESC
+    ) {
+      nodes {
+        id
+        metadata
+        availableInExplore
+        ownerId
+        podTemplateVersionsByTemplateId(
+          filter: { removed: { equalTo: false } }
+          orderBy: CREATION_DATE_DESC
+        ) {
+          nodes {
+            id
+            metadata
+            creationDate
+            status
+            source {
+              providerId
+              status
+              infraGeoPartition
+              podId
+              sourcePodDisplayName
+            }
+            podBackupRequests {
+              nodes {
+                id
+                targetRegions
+                podBackupsByReqId(filter: { resolutionTime: { isNull: false } }) {
+                  nodes {
+                    providerId
+                    infraGeoPartition
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    podTemplateSubscriptionsByAccountId {
+      nodes {
+        templateId
+        accountId
+        template {
+          id
+          metadata
+          availableInExplore
+          ownerId
+          podTemplateVersionsByTemplateId(
+            filter: { removed: { equalTo: false } }
+            orderBy: CREATION_DATE_DESC
+          ) {
+            nodes {
+              id
+              metadata
+              creationDate
+              status
+              source {
+                providerId
+                status
+                infraGeoPartition
+                podId
+                sourcePodDisplayName
+              }
+              podBackupRequests {
+                nodes {
+                  id
+                  targetRegions
+                  podBackupsByReqId(
+                    filter: { resolutionTime: { isNull: false } }
+                  ) {
+                    nodes {
+                      providerId
+                      infraGeoPartition
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

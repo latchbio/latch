@@ -1,0 +1,10 @@
+mutation CliCreatePodTemplate($metadata: String!, $ownerId: BigInt!) {
+  createPodTemplate(
+    input: { podTemplate: { ownerId: $ownerId, metadata: $metadata } }
+  ) {
+    clientMutationId
+    podTemplate {
+      id
+    }
+  }
+}

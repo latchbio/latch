@@ -1,0 +1,18 @@
+query CliPodTemplateSourcePod($podId: BigInt!) {
+  podInfo(id: $podId) {
+    id
+    displayName
+    metadata
+    cpuMillicores
+    memoryBytes
+    storageGigs
+    gpus
+    gpuType
+    templateVersion {
+      metadata
+    }
+    deployment {
+      targetRegion
+    }
+  }
+}

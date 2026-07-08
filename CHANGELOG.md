@@ -16,6 +16,16 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.76.7 - 2026-07-08
+
+### Added
+
+* `latch pods create --from-template <template>` creates a pod from the latest usable version of a pod template, with `--version` available for selecting a specific template version label
+* `latch pods templates list [--json]` lists pod templates and their latest usable versions
+* `latch pods templates save <pod_id>` saves a pod as a new template or as a new version of an existing template
+* `latch pods templates access <template_id> --add <ws_id> --remove <ws_id>` manages workspace access to pod templates
+* `latch pods templates publish <template>` and `latch pods templates unpublish <template>` manage public template visibility
+
 ## 2.76.5 - 2026-06-22
 
 * Fix LatchFilePathTransformer for Annotated types
