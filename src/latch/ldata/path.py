@@ -372,12 +372,26 @@ class LPath:
                 return dst
 
         if self.is_dir():
-            self._persistence.download_directory(self.path, str(dst))
+            download_complete = self._persistence.download_directory(
+                self.path, str(dst)
+            )
         else:
-            self._persistence.download(self.path, str(dst))
+            download_complete = self._persistence.download(self.path, str(dst))
 
         if not_windows and version_id is not None:
-            xattr.setxattr(dst_str, version_xattr, version_id)
+            if download_complete:
+                xattr.setxattr(dst_str, version_xattr, version_id)
+            elif dst.exists():
+                list_attrs = xattr.listxattr(dst_str)
+                if list_attrs is None:
+                    list_attrs = []
+
+                normalized_attr_names = [
+                    (a if isinstance(a, (bytes, bytearray)) else a.encode())
+                    for a in list_attrs
+                ]
+                if version_xattr in normalized_attr_names:
+                    xattr.removexattr(dst_str, version_xattr)
 
         return dst
 
