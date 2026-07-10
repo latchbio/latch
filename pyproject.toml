@@ -12,7 +12,7 @@ include = ["src/**/*.py", "src/**/*.graphql", "src/**/py.typed", "src/latch_cli/
 
 [project]
 name = "latch"
-version = "2.76.7"
+version = "2.76.8"
 description = "The Latch SDK"
 authors = [{ name = "Kenny Workman", email = "kenny@latch.bio" }]
 maintainers = [{ name = "Kenny Workman", email = "kenny@latch.bio" }]
@@ -48,7 +48,7 @@ dependencies = [
   "watchfiles==1.1.1",
   "pyxattr>=0.8.1",
   "orjson>=3.10.12",
-  "latch-persistence>=0.1.5",
+  "latch-persistence>=0.1.8",
   "dill>=0.4.0",
 ]
 classifiers = [
