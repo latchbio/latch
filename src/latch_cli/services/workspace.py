@@ -19,7 +19,7 @@ def workspace(workspace_id: Optional[str] = None):
     """
     data = get_workspaces()
 
-    old_id: str | None
+    old_id: Optional[str]
     try:
         old_id = current_workspace()
     except NoWorkspaceSelectedError:

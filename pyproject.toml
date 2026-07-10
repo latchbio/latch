@@ -247,6 +247,10 @@ ignore = [
   "PLC1901",
 ]
 
+[tool.ruff.lint.pyupgrade]
+# Pydantic resolves annotations at runtime, where PEP 604 is unsupported on Python 3.9.
+keep-runtime-typing = true
+
 [tool.ruff.format]
 preview = true
 skip-magic-trailing-comma = true

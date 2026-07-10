@@ -306,7 +306,7 @@ def local_development(
     *,
     size: InstanceSize,
     skip_confirm_dialog: bool,
-    wf_version: str | None,
+    wf_version: Optional[str],
     disable_sync: bool,
 ):
     if not disable_sync:

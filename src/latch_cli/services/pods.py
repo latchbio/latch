@@ -5,7 +5,7 @@ import os
 import shlex
 import time
 from importlib import resources
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 from urllib.parse import urljoin
 
 import click
@@ -46,20 +46,20 @@ pod_ssh_starting_statuses = {
 class CreatePodRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    ws_account_id: str | None = Field(
+    ws_account_id: Optional[str] = Field(
         default=None, json_schema_extra={"default_description": "current workspace"}
     )
     display_name: str = Field(..., json_schema_extra={"template": "My Pod"})
     cpu: int = Field(..., json_schema_extra={"template": 2, "units": "cores"})
     memory: int = Field(..., json_schema_extra={"template": 8, "units": "GiB"})
     gpu: int = Field(default=0, json_schema_extra={"template": 0})
-    gpu_type: Literal["nvidia-a10g", "nvidia-l40s"] | None = Field(
+    gpu_type: Optional[Literal["nvidia-a10g", "nvidia-l40s"]] = Field(
         default=None, json_schema_extra={"template": None}
     )
     storage_gigs: int = Field(
         default=20, json_schema_extra={"template": 20, "units": "GiB"}
     )
-    backup_interval: Literal["daily", "weekly", "monthly"] | None = Field(
+    backup_interval: Optional[Literal["daily", "weekly", "monthly"]] = Field(
         default=None, json_schema_extra={"template": None}
     )
     target_region: Literal["us-west-2", "us-east-1", "eu-central-1", "eu-west-1"] = (
@@ -105,7 +105,7 @@ class PodInfosResponse(BaseModel):
 
 
 class PodSshResponse(BaseModel):
-    pod_info: dict[str, Any] | None = Field(alias="podInfo")
+    pod_info: Optional[dict[str, Any]] = Field(alias="podInfo")
 
 
 def pod_list_fields(*, detailed: bool) -> list[str]:
@@ -295,8 +295,8 @@ def _format_pod_status(status: str) -> str:
 
 
 def _get_pod_ssh_args(
-    pod_id: int, pod: dict[str, object], *, key: Path | None = None
-) -> list[str] | None:
+    pod_id: int, pod: dict[str, object], *, key: Optional[Path] = None
+) -> Optional[list[str]]:
     deployment = pod.get("deployment")
     if not isinstance(deployment, dict):
         click.secho("Pod deployment information is unavailable.", fg="red")
@@ -331,7 +331,7 @@ def ssh_pod(
     pod_id: int,
     *,
     print_only: bool = False,
-    key: Path | None = None,
+    key: Optional[Path] = None,
     poll_interval_seconds: float = pod_ssh_poll_interval_seconds,
     max_wait_seconds: float = pod_ssh_max_wait_seconds,
     exec_fn: Callable[[str, list[str]], object] = os.execvp,

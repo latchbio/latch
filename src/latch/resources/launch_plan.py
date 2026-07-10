@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import base64
-from typing import Any
+from typing import Any, Optional
 
 from flytekit.core.launch_plan import LaunchPlan as _LaunchPlan
 from flytekit.core.workflow import PythonFunctionWorkflow
@@ -41,7 +41,7 @@ class LaunchPlan:
         name: str,
         default_params: dict[str, Any],
         *,
-        description: str | None = None,
+        description: Optional[str] = None,
     ):
         labels = {}
         if description is not None:

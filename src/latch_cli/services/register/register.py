@@ -62,6 +62,17 @@ def _print_window(cur_lines: List[str], line: str):
 docker_build_step_pat = re.compile("^Step [0-9]+/[0-9]+ :")
 
 
+def _replace_task_protos(
+    protos: List[Path], new_protos: List[Path], task_name: str
+) -> List[Path]:
+    """Replace a task's default-image protobuf with its custom-image version."""
+    new_task_protos = {
+        proto.name: proto for proto in new_protos if task_name in proto.name
+    }
+
+    return [new_task_protos.get(proto.name, proto) for proto in protos]
+
+
 def print_and_write_build_logs(
     build_logs: Iterable[DockerBuildLogItem],
     image: str,
@@ -581,22 +592,7 @@ def register(
 
                     new_protos = _recursive_list(local_task_td)
 
-                    try:
-                        split_task_name = task_name.split(".")
-                        task_name = ".".join(
-                            split_task_name[split_task_name.index(ctx.wf_module) :]
-                        )
-                        for new_proto in new_protos:
-                            if task_name in new_proto.name:
-                                protos = [
-                                    new_proto if new_proto.name == f.name else f
-                                    for f in protos
-                                ]
-                    except ValueError as e:
-                        raise ValueError(
-                            f"Unable to match {task_name} to any of the protobuf files"
-                            f" in {new_protos}"
-                        ) from e
+                    protos = _replace_task_protos(protos, new_protos, task_name)
                 except TypeError as e:
                     raise ValueError(
                         "The path to your provided dockerfile ",

@@ -2,7 +2,7 @@ import dataclasses
 from dataclasses import asdict, is_dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
 
 from flytekit.models import literals as _literals
 from flytekit.models import types as _types
@@ -59,7 +59,7 @@ def _convert_primitive(
     if simple_type == _types.SimpleType.STRUCT:  # pyright: ignore[reportUnnecessaryComparison]
         return _convert_to_struct(value)
 
-    primitive: _literals.Primitive | None = None
+    primitive: Optional[_literals.Primitive] = None
 
     if simple_type == _types.SimpleType.INTEGER:  # pyright: ignore[reportUnnecessaryComparison]
         if isinstance(value, Enum):
@@ -243,7 +243,7 @@ def _convert_blob(
     blob_type: _core_types.BlobType,
 ) -> _literals.Literal:
 
-    remote_uri: str | None = None
+    remote_uri: Optional[str] = None
     if isinstance(value, (LatchFile, LatchDir)):
         remote_uri = value.remote_path if value.remote_path is not None else value.path
     elif isinstance(value, LPath):
