@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.76.9 - 2026-07-27
+
+### Added
+
+* Expose `modify_time` on `LPath`
+
 ## 2.76.8 - 2026-07-10
 
 * Misc bugfixes
