@@ -5,6 +5,7 @@ import sys
 import warnings
 from collections.abc import Iterator
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import Optional, Type
 
@@ -53,6 +54,7 @@ class _Cache:
     dir_size: Optional[int] = None
     content_type: Optional[str] = None
     version_id: Optional[str] = None
+    modify_time: Optional[datetime] = None
 
 
 @dataclass(frozen=True)
@@ -107,6 +109,7 @@ class LPath:
                                 contentSize
                                 contentType
                                 versionId
+                                modifyTime
                             }
                         }
                     }
@@ -138,6 +141,14 @@ class LPath:
             )
             self._cache.content_type = meta["contentType"]
             self._cache.version_id = meta["versionId"]
+            modify_time = meta["modifyTime"]
+            self._cache.modify_time = (
+                None
+                if modify_time is None
+                # note: `fromisoformat` does not support the "Z" suffix until
+                # python 3.11, so normalize it to a numeric UTC offset
+                else datetime.fromisoformat(modify_time.replace("Z", "+00:00"))
+            )
 
     def _clear_cache(self):
         self._cache.path = None
@@ -148,6 +159,7 @@ class LPath:
         self._cache.dir_size = None
         self._cache.content_type = None
         self._cache.version_id = None
+        self._cache.modify_time = None
 
     def exists(self, *, load_if_missing: bool = True) -> bool:
         if self._cache.node_id is None and load_if_missing:
@@ -209,6 +221,11 @@ class LPath:
         if self._cache.version_id is None and load_if_missing:
             self.fetch_metadata()
         return self._cache.version_id
+
+    def modify_time(self, *, load_if_missing: bool = True) -> Optional[datetime]:
+        if self._cache.modify_time is None and load_if_missing:
+            self.fetch_metadata()
+        return self._cache.modify_time
 
     def is_dir(self, *, load_if_missing: bool = True) -> bool:
         return self.type(load_if_missing=load_if_missing) in _dir_types
