@@ -10,7 +10,14 @@ build:
   uv build
 
 publish:
-  uv publish --token $(<credentials/pypi_token)
+  #!/usr/bin/env bash
+
+  if [[ -e credentials/pypi_token ]]; then
+    uv publish --token $(<credentials/pypi_token)
+  else
+    UV_PUBLISH_TOKEN='op://Employee/pypi-latch/password' \
+      op run -- uv publish
+  fi
   rm -rf dist
 
 # Testing
