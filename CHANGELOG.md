@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.76.10 - 2026-07-30
+
+### Fixed
+
+* `message()` server errors no longer terminate the execution (see #607)
+* Typo on non-Mac Docker socket code path (see #608)
+
 ## 2.76.9 - 2026-07-27
 
 ### Added

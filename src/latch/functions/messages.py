@@ -1,4 +1,5 @@
 import os
+import sys
 from typing import Any, Dict
 
 import requests
@@ -22,9 +23,6 @@ def message(typ: str, data: Dict[str, Any]) -> None:
             The data displayed on the Latch console, formatted as follows:
             ```{'title': ..., 'body': ...}```.
 
-    Raises:
-        RuntimeError: If an internal error occurs while processing the message.
-
     Example usage: ::
 
         @small_task
@@ -34,10 +32,10 @@ def message(typ: str, data: Dict[str, Any]) -> None:
 
             try:
                 ...
-            catch ValueError:
+            except ValueError:
                 title = 'Invalid sample ID column selected'
                 body = 'Your file indicates that sample columns a, b are valid'
-                message(type='error', data={'title': title, 'body': body})
+                message(typ='error', data={'title': title, 'body': body})
 
             ...
     """
@@ -53,22 +51,33 @@ def message(typ: str, data: Dict[str, Any]) -> None:
         print(f"Local execution message:\n[{typ}]: {data}")
         return
 
-    response = requests.post(
-        url=ADD_MESSAGE_ENDPOINT,
-        json={
-            "execution_token": execution_token,
-            "task": {
-                "project": task_project,
-                "domain": task_domain,
-                "name": task_name,
-                "version": task_version,
+    try:
+        response = requests.post(
+            url=ADD_MESSAGE_ENDPOINT,
+            json={
+                "execution_token": execution_token,
+                "task": {
+                    "project": task_project,
+                    "domain": task_domain,
+                    "name": task_name,
+                    "version": task_version,
+                },
+                "task_attempt_number": task_attempt_number,
+                "task_array_index": array_index,
+                "type": typ,
+                "data": data,
             },
-            "task_attempt_number": task_attempt_number,
-            "task_array_index": array_index,
-            "type": typ,
-            "data": data,
-        },
-    )
+        )
 
-    if response.status_code != 200:
-        raise RuntimeError("Could not add task execution message to Latch.")
+    except requests.RequestException as e:
+        status_code = None
+        if e.response is not None:
+            status_code = e.response.status_code
+
+        print(
+            "\n".join([
+                f"Could not add task execution message to Latch (status={status_code}):",
+                f"[{typ}]: {data}",
+            ]),
+            file=sys.stderr,
+        )

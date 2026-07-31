@@ -177,7 +177,6 @@ def _construct_dkr_client(ssh_host: Optional[str] = None):
             )
             return docker.APIClient(base_url=base_url)
         except docker.errors.DockerException:
-            tracebac
             pass
 
         try:
