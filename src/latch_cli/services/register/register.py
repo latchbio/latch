@@ -8,7 +8,7 @@ import webbrowser
 from logging import getLogger
 from pathlib import Path
 from textwrap import dedent
-from typing import Iterable, List, Optional
+from typing import Any, Iterable, List, Optional
 
 import click
 import gql
@@ -141,7 +141,12 @@ def print_and_write_build_logs(
 
 
 # todo(ayush): this sucks
-def print_upload_logs(upload_image_logs, image, *, print_header: bool = True):
+def print_upload_logs(
+    upload_image_logs: Iterable[dict[str, Any]],
+    image: str,
+    *,
+    print_header: bool = True,
+) -> None:
     if print_header:
         click.secho("Uploading Docker image", bold=True)
 
@@ -170,16 +175,22 @@ def print_upload_logs(upload_image_logs, image, *, print_header: bool = True):
     prev_lines = 0
 
     for x in upload_image_logs:
-        if (
-            x.get("error") is not None
-            and "denied: Your authorization token has expired." in x["error"]
-        ):
-            click.secho(
-                f"\nDocker authorization token for {image} is expired.",
-                fg="red",
-                bold=True,
-            )
-            sys.exit(1)
+        if x.get("error") is not None:
+            # the cursor sits at the top of the progress block. Move below it so that the
+            # error message does not overwrite the progress lines.
+            if prev_lines > 0:
+                click.echo(f"\x1b[{prev_lines}E", nl=False)
+
+            if "denied: Your authorization token has expired." in x["error"]:
+                click.secho(
+                    f"Docker authorization token for {image} is expired.",
+                    fg="red",
+                    bold=True,
+                )
+            else:
+                click.secho(x["error"], fg="red", bold=True)
+
+            raise click.exceptions.Exit(1)
 
         prog_map[x.get("id")] = x.get("progress")
         prev_lines = _pp_prog_map(prog_map, prev_lines)
