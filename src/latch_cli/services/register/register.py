@@ -8,7 +8,7 @@ import webbrowser
 from logging import getLogger
 from pathlib import Path
 from textwrap import dedent
-from typing import Any, Iterable, List, Optional
+from typing import Iterable, List, Optional
 
 import click
 import gql
@@ -20,9 +20,14 @@ from latch.utils import current_workspace, get_workspaces
 from latch_cli.centromere.ctx import _CentromereCtx
 from latch_cli.centromere.utils import MaybeRemoteDir
 from latch_cli.constants import latch_constants
-from latch_cli.services.register.constants import ANSI_REGEX, MAX_LINES
+from latch_cli.services.register.constants import (
+    ANSI_REGEX,
+    EXPIRED_TOKEN_ERROR,
+    MAX_LINES,
+)
 from latch_cli.services.register.utils import (
     DockerBuildLogItem,
+    DockerPushLogItem,
     build_image,
     register_serialized_pkg,
     serialize_pkg_in_container,
@@ -142,7 +147,7 @@ def print_and_write_build_logs(
 
 # todo(ayush): this sucks
 def print_upload_logs(
-    upload_image_logs: Iterable[dict[str, Any]],
+    upload_image_logs: Iterable[DockerPushLogItem],
     image: str,
     *,
     print_header: bool = True,
@@ -152,7 +157,7 @@ def print_upload_logs(
 
     prog_map: dict[str, Optional[str]] = {}
 
-    def _pp_prog_map(prog_map: dict[str, Optional[str]], prev_lines: int):
+    def _pp_prog_map(prog_map: dict[str, Optional[str]], prev_lines: int) -> int:
         if prev_lines > 0:
             click.echo("\x1b[2K\x1b[1E" * prev_lines + f"\x1b[{prev_lines}F", nl=False)
 
@@ -175,24 +180,29 @@ def print_upload_logs(
     prev_lines = 0
 
     for x in upload_image_logs:
-        if x.get("error") is not None:
-            # the cursor sits at the top of the progress block. Move below it so that the
-            # error message does not overwrite the progress lines.
+        error = x.get("error")
+        if error is not None:
+            # the cursor sits at the top of the progress block. Move below it.
             if prev_lines > 0:
                 click.echo(f"\x1b[{prev_lines}E", nl=False)
 
-            if "denied: Your authorization token has expired." in x["error"]:
+            if EXPIRED_TOKEN_ERROR in error:
                 click.secho(
                     f"Docker authorization token for {image} is expired.",
                     fg="red",
                     bold=True,
                 )
             else:
-                click.secho(x["error"], fg="red", bold=True)
+                click.secho(error, fg="red", bold=True)
 
             raise click.exceptions.Exit(1)
 
-        prog_map[x.get("id")] = x.get("progress")
+        # status-only items carry no id, and would collide on a single None key
+        layer_id = x.get("id")
+        if layer_id is None:
+            continue
+
+        prog_map[layer_id] = x.get("progress")
         prev_lines = _pp_prog_map(prog_map, prev_lines)
 
 

@@ -100,6 +100,13 @@ class DockerBuildLogItem(TypedDict):
     stream: Optional[str]
 
 
+# a subset: the stream also carries `status` and `aux`, which holds the pushed digest
+class DockerPushLogItem(TypedDict, total=False):
+    id: str
+    error: str
+    progress: str
+
+
 def build_image(
     ctx: _CentromereCtx,
     image_name: str,
@@ -124,7 +131,7 @@ def build_image(
     return build_logs
 
 
-def upload_image(ctx: _CentromereCtx, image_name: str) -> List[str]:
+def upload_image(ctx: _CentromereCtx, image_name: str) -> Iterable[DockerPushLogItem]:
     assert ctx.dkr_client is not None
     return ctx.dkr_client.push(
         repository=f"{ctx.dkr_repo}/{image_name}", stream=True, decode=True
