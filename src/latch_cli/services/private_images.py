@@ -10,7 +10,7 @@ import docker.auth
 import docker.errors
 import gql
 
-from latch.utils import current_workspace
+from latch.utils import current_workspace, get_workspaces
 from latch_sdk_config.latch import config
 from latch_sdk_gql.execute import execute
 
@@ -223,6 +223,34 @@ def validate_version(version: str):
         raise click.exceptions.Exit(1)
 
 
+def resolve_workspace(workspace_id: Optional[str]) -> str:
+    """Return the workspace to act on, and check that the user can reach it.
+
+    An explicit id is validated against the workspaces the user can access, so a typo
+    fails here instead of pushing an image into a namespace they did not intend.
+    """
+    if workspace_id is None:
+        return current_workspace()
+
+    workspaces = get_workspaces()
+
+    if workspace_id not in workspaces:
+        click.secho(
+            f"User does not have permission to access workspace {workspace_id}.",
+            fg="red",
+            bold=True,
+        )
+
+        raise click.exceptions.Exit(1)
+
+    click.secho(
+        f"Target workspace: {workspaces[workspace_id]['name']} ({workspace_id})",
+        fg="bright_blue",
+    )
+
+    return workspace_id
+
+
 # note(ayush): not going to support remote here as remote instance will not have necessary
 # credentials if the source image is private and i dont want to deal with federation or forwarding
 # credentials
@@ -231,6 +259,7 @@ def upload_image(
     *,
     image_name: Optional[str] = None,
     version: Optional[str] = None,
+    workspace_id: Optional[str] = None,
     skip_confirmation: bool = False,
 ) -> None:
     click.secho("Beginning image upload:")
@@ -277,7 +306,7 @@ def upload_image(
     assert image_name is not None
     assert version is not None
 
-    ws_id = current_workspace()
+    ws_id = resolve_workspace(workspace_id)
 
     namespaced_image_name = f"{ws_id}_{image_name}"
 
@@ -288,7 +317,7 @@ def upload_image(
     if not skip_confirmation and not click.confirm("Proceed?"):
         raise click.Abort
 
-    credentials = get_credentials(namespaced_image_name)
+    credentials = get_credentials(namespaced_image_name, ws_id=ws_id)
     client = get_local_docker_client()
 
     try:
@@ -330,6 +359,7 @@ def build_and_upload_image(
     image_name: str,
     version: Optional[str] = None,
     dockerfile_path: Optional[Path] = None,
+    workspace_id: Optional[str] = None,
     remote: bool = True,
     skip_confirmation: bool = False,
     progress_plain: bool = False,
@@ -349,7 +379,7 @@ def build_and_upload_image(
 
         version = hash_directory(root, silent=True)[:6]
 
-    ws_id = current_workspace()
+    ws_id = resolve_workspace(workspace_id)
     namespaced_image_name = f"{ws_id}_{image_name}"
 
     full_image_ref = f"{ecr_base}/{namespaced_image_name}:{version}"
@@ -380,6 +410,7 @@ def build_and_upload_image(
             version,
             dockerfile_path,
             progress_plain=progress_plain,
+            ws_id=ws_id,
         )
     else:
         client = get_local_docker_client()
@@ -391,6 +422,7 @@ def build_and_upload_image(
             version,
             dockerfile_path,
             progress_plain=progress_plain,
+            ws_id=ws_id,
         )
 
     click.secho(f"Successfully built and tagged {full_image_ref}", fg="green")
@@ -401,8 +433,8 @@ def build_and_upload_image(
 
 
 # todo(ayush): scuffed
-def ls():
-    ws_id = current_workspace()
+def ls(workspace_id: Optional[str] = None) -> None:
+    ws_id = resolve_workspace(workspace_id)
 
     res: Optional[PrivateImages] = execute(
         gql.gql(

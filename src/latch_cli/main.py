@@ -599,6 +599,16 @@ def image():
 @click.option("-n", "--image-name", is_flag=False, type=str)
 @click.option("-v", "--version", is_flag=False, type=str)
 @click.option(
+    "--workspace-id",
+    type=str,
+    default=None,
+    help=(
+        "Upload the image to the specified workspace. "
+        "This argument accepts a numeric workspace ID, e.g. `--workspace-id 1234`. "
+        "By default, the active workspace is used."
+    ),
+)
+@click.option(
     "-y",
     "--yes",
     is_flag=True,
@@ -612,6 +622,7 @@ def upload_image(
     *,
     image_name: Optional[str] = None,
     version: Optional[str] = None,
+    workspace_id: Optional[str] = None,
     yes: bool = False,
 ) -> None:
     """Uploads an existing Docker image to Latch ECR
@@ -627,18 +638,29 @@ def upload_image(
         image_ref=image_reference,
         image_name=image_name,
         version=version,
+        workspace_id=workspace_id,
         skip_confirmation=yes,
     )
 
 
 @image.command("ls")
+@click.option(
+    "--workspace-id",
+    type=str,
+    default=None,
+    help=(
+        "List the images in the specified workspace. "
+        "This argument accepts a numeric workspace ID, e.g. `--workspace-id 1234`. "
+        "By default, the active workspace is used."
+    ),
+)
 @requires_login
-def image_ls():
+def image_ls(*, workspace_id: Optional[str] = None) -> None:
     """Lists existing Docker images in Latch ECR"""
 
     from .services.private_images import ls
 
-    ls()
+    ls(workspace_id=workspace_id)
 
 
 @latch.command("register")
