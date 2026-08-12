@@ -1,7 +1,7 @@
 import re
 from dataclasses import asdict
 from pathlib import Path
-from textwrap import dedent
+from textwrap import dedent, indent
 from typing import Optional, TypedDict
 
 import click
@@ -20,15 +20,15 @@ from .register.register import print_upload_logs
 
 ecr_base = config.dkr_repo
 
-# exit code used when the image reached the registry but the database record did not. A
-# caller that sees this must not push the image again - the tag is already taken.
+# the image reached the registry but the record did not. Distinct from 1 so a caller
+# can tell "not published" from "published but unrecorded".
 record_failed_exit_code = 3
 
 
 class PrivateImageNode(TypedDict):
+    workspaceId: str
     imageName: str
     version: str
-    creationTime: str
 
 
 class PrivateImages(TypedDict):
@@ -52,9 +52,9 @@ def is_recorded_in_db(ws_id: str, image_name: str, version: str) -> bool:
                     }
                 ) {
                     nodes {
+                        workspaceId
                         imageName
                         version
-                        creationTime
                     }
                 }
             }
@@ -62,13 +62,22 @@ def is_recorded_in_db(ws_id: str, image_name: str, version: str) -> bool:
         {"wsId": ws_id, "imageName": image_name, "version": version},
     )["privateImages"]
 
-    return res is not None and bool(res["nodes"])
+    if res is None or res["nodes"] is None:
+        return False
+
+    # match again client-side: a false positive here makes `record_in_db` skip the
+    # create and report success for a record that never landed.
+    return any(
+        node["workspaceId"] == ws_id
+        and node["imageName"] == image_name
+        and node["version"] == version
+        for node in res["nodes"]
+    )
 
 
 def record_in_db(ws_id: str, image_name: str, version: str) -> None:
-    # the mutation is a plain create, so a second call for the same image and version
-    # fails on the uniqueness constraint. Skip it if the record is already there, which
-    # makes a retry of a partly completed upload safe.
+    # the mutation is a plain create, so a repeat call fails on the uniqueness
+    # constraint. Skipping it makes a retry of a partly completed upload safe.
     if is_recorded_in_db(ws_id, image_name, version):
         return
 
@@ -97,26 +106,37 @@ def record_in_db(ws_id: str, image_name: str, version: str) -> None:
 
 
 def record_in_db_or_exit(
-    ws_id: str, image_name: str, version: str, full_image_ref: str
+    ws_id: str, image_name: str, version: str, *, full_image_ref: str
 ) -> None:
-    """Record an image that is already in the registry, or exit with a distinct code.
+    """Record an image already in the registry, or exit with a distinct code.
 
-    Call this only after the push succeeds. A failure here means the image is in the
-    registry but Latch does not know about it, which a caller must not treat the same
-    way as a failed push.
+    Call only after the push succeeds: a failure here means the image is published but
+    unrecorded, which a caller must not treat like a failed push.
     """
     try:
         record_in_db(ws_id, image_name, version)
+    # both subclass RuntimeError, so `except Exception` would relabel them as a
+    # record failure and swallow the real exit code
+    except (click.exceptions.Exit, click.Abort):
+        raise
     except Exception as e:
+        # dedent the template first: interpolating a multi-line error would leave a
+        # zero-indent line, and dedent would then strip nothing from the whole block
+        template = dedent("""\
+            The image reached the registry, but Latch could not record it:
+
+            {error}
+
+            `{ref}` is pushed, but Latch has no record of it. It will not appear in
+            `latch image ls`, and workflows cannot reference it.
+
+            Re-run this command to retry the record. The record step skips itself if
+            the record already exists. If the registry refuses the repeated push
+            because the tag is immutable, upload under a new version instead.
+        """)
+
         click.secho(
-            dedent(f"""\
-                The image reached the registry, but Latch could not record it:
-
-                  {e}
-
-                `{full_image_ref}` is in the registry and its tag cannot be reused. Do
-                not run this command again with the same version.
-            """),
+            template.format(error=indent(str(e), "  "), ref=full_image_ref),
             fg="red",
             bold=True,
         )
@@ -287,7 +307,9 @@ def upload_image(
 
     click.secho(f"Successfully pushed {full_image_ref}", fg="green")
 
-    record_in_db_or_exit(ws_id, namespaced_image_name, version, full_image_ref)
+    record_in_db_or_exit(
+        ws_id, namespaced_image_name, version, full_image_ref=full_image_ref
+    )
 
 
 def build_and_upload_image(
@@ -361,7 +383,9 @@ def build_and_upload_image(
 
     click.secho(f"Successfully built and tagged {full_image_ref}", fg="green")
 
-    record_in_db_or_exit(ws_id, namespaced_image_name, version, full_image_ref)
+    record_in_db_or_exit(
+        ws_id, namespaced_image_name, version, full_image_ref=full_image_ref
+    )
 
 
 # todo(ayush): scuffed
