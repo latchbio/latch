@@ -613,8 +613,13 @@ def upload_image(
     image_name: Optional[str] = None,
     version: Optional[str] = None,
     yes: bool = False,
-):
-    """Uploads an existing Docker image to Latch ECR"""
+) -> None:
+    """Uploads an existing Docker image to Latch ECR
+
+    Exits 0 if the image is in the registry and Latch has a record of it, 1 if the
+    image did not reach the registry, and 3 if the image is in the registry but Latch
+    could not record it.
+    """
 
     from .services.private_images import upload_image
 

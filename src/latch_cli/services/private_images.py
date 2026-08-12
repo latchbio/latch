@@ -20,8 +20,58 @@ from .register.register import print_upload_logs
 
 ecr_base = config.dkr_repo
 
+# exit code used when the image reached the registry but the database record did not. A
+# caller that sees this must not push the image again - the tag is already taken.
+record_failed_exit_code = 3
 
-def record_in_db(ws_id: str, image_name: str, version: str):
+
+class PrivateImageNode(TypedDict):
+    imageName: str
+    version: str
+    creationTime: str
+
+
+class PrivateImages(TypedDict):
+    nodes: Optional[list[PrivateImageNode]]
+
+
+def is_recorded_in_db(ws_id: str, image_name: str, version: str) -> bool:
+    """Report whether the workspace already has a record of this image and version."""
+    res: Optional[PrivateImages] = execute(
+        gql.gql("""
+            query PrivateImageExists(
+                $wsId: BigInt!
+                $imageName: String!
+                $version: String!
+            ) {
+                privateImages(
+                    filter: {
+                        workspaceId: { equalTo: $wsId }
+                        imageName: { equalTo: $imageName }
+                        version: { equalTo: $version }
+                    }
+                ) {
+                    nodes {
+                        imageName
+                        version
+                        creationTime
+                    }
+                }
+            }
+        """),
+        {"wsId": ws_id, "imageName": image_name, "version": version},
+    )["privateImages"]
+
+    return res is not None and bool(res["nodes"])
+
+
+def record_in_db(ws_id: str, image_name: str, version: str) -> None:
+    # the mutation is a plain create, so a second call for the same image and version
+    # fails on the uniqueness constraint. Skip it if the record is already there, which
+    # makes a retry of a partly completed upload safe.
+    if is_recorded_in_db(ws_id, image_name, version):
+        return
+
     execute(
         gql.gql("""
             mutation AddStagingImage(
@@ -44,6 +94,34 @@ def record_in_db(ws_id: str, image_name: str, version: str):
         """),
         {"wsId": ws_id, "imageName": image_name, "version": version},
     )
+
+
+def record_in_db_or_exit(
+    ws_id: str, image_name: str, version: str, full_image_ref: str
+) -> None:
+    """Record an image that is already in the registry, or exit with a distinct code.
+
+    Call this only after the push succeeds. A failure here means the image is in the
+    registry but Latch does not know about it, which a caller must not treat the same
+    way as a failed push.
+    """
+    try:
+        record_in_db(ws_id, image_name, version)
+    except Exception as e:
+        click.secho(
+            dedent(f"""\
+                The image reached the registry, but Latch could not record it:
+
+                  {e}
+
+                `{full_image_ref}` is in the registry and its tag cannot be reused. Do
+                not run this command again with the same version.
+            """),
+            fg="red",
+            bold=True,
+        )
+
+        raise click.exceptions.Exit(record_failed_exit_code) from e
 
 
 # note(ayush): latch register, etc. do a simplified version of this that can unnecessarily reformat
@@ -122,7 +200,7 @@ def upload_image(
     image_name: Optional[str] = None,
     version: Optional[str] = None,
     skip_confirmation: bool = False,
-):
+) -> None:
     click.secho("Beginning image upload:")
     match = image_ref_expr.match(image_ref)
 
@@ -207,9 +285,9 @@ def upload_image(
         namespaced_image_name,
     )
 
-    record_in_db(ws_id, namespaced_image_name, version)
+    click.secho(f"Successfully pushed {full_image_ref}", fg="green")
 
-    click.secho(f"Successfully built and tagged {full_image_ref}", fg="green")
+    record_in_db_or_exit(ws_id, namespaced_image_name, version, full_image_ref)
 
 
 def build_and_upload_image(
@@ -221,7 +299,7 @@ def build_and_upload_image(
     remote: bool = True,
     skip_confirmation: bool = False,
     progress_plain: bool = False,
-):
+) -> None:
     click.secho("Beginning image build and upload:")
 
     validate_image_name(image_name)
@@ -281,19 +359,9 @@ def build_and_upload_image(
             progress_plain=progress_plain,
         )
 
-    record_in_db(ws_id, namespaced_image_name, version)
-
     click.secho(f"Successfully built and tagged {full_image_ref}", fg="green")
 
-
-class PrivateImageNode(TypedDict):
-    imageName: str
-    version: str
-    creationTime: str
-
-
-class PrivateImages(TypedDict):
-    nodes: Optional[list[PrivateImageNode]]
+    record_in_db_or_exit(ws_id, namespaced_image_name, version, full_image_ref)
 
 
 # todo(ayush): scuffed
