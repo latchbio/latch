@@ -223,6 +223,26 @@ def validate_version(version: str):
         raise click.exceptions.Exit(1)
 
 
+def resolve_pull_reference(image_ref: str) -> str:
+    """Return the reference Docker pulls for `image_ref`, with the registry made explicit.
+
+    Docker treats the first path component as a registry when it contains a `.` or a
+    `:`, is `localhost`, or is not all lowercase - a repository path may not contain
+    uppercase, so an uppercase component can only be a host. Anything else resolves to
+    Docker Hub, so `team/tool:v1` is `docker.io/team/tool:v1` - a namespace the caller
+    almost certainly does not own.
+    """
+    head, sep, _ = image_ref.partition("/")
+
+    if sep == "":
+        return f"docker.io/library/{image_ref}"
+
+    if "." in head or ":" in head or head == "localhost" or head.lower() != head:
+        return image_ref
+
+    return f"docker.io/{image_ref}"
+
+
 def resolve_workspace_id(workspace_id: Optional[str]) -> str:
     """Return the workspace to act on, and check that an explicit one is reachable.
 
@@ -265,6 +285,7 @@ def upload_image(
     image_name: Optional[str] = None,
     version: Optional[str] = None,
     workspace_id: Optional[str] = None,
+    should_pull: bool = False,
     skip_confirmation: bool = False,
 ) -> None:
     click.secho("Beginning image upload:")
@@ -317,20 +338,50 @@ def upload_image(
 
     full_image_ref = f"{ecr_base}/{namespaced_image_name}:{version}"
 
+    client = get_local_docker_client()
+
+    # resolve the source before we prompt: the user should be confirming a known
+    # source, and a missing image must not cost a credentials round trip
+    pull_ref: Optional[str] = None
+    try:
+        client.inspect_image(image_ref)
+    except docker.errors.ImageNotFound as e:
+        pull_ref = resolve_pull_reference(image_ref)
+
+        if not should_pull:
+            click.secho(f"No local image matches `{image_ref}`.\n", fg="red", bold=True)
+
+            if pull_ref != image_ref:
+                click.secho(
+                    dedent(f"""\
+                        That reference is unqualified, so Docker resolves it to
+                        `{pull_ref}` on Docker Hub. Check that you own that namespace.
+                    """),
+                    fg="red",
+                    bold=True,
+                )
+
+            click.secho(
+                f"Build the image first, or pass `--pull` to fetch `{pull_ref}`.",
+                fg="red",
+                bold=True,
+            )
+
+            raise click.exceptions.Exit(1) from e
+
     click.secho(f"Image Destination: {full_image_ref}")
+    if pull_ref is not None:
+        click.secho(f"Image Source: {pull_ref} (not present locally, will be pulled)")
 
     if not skip_confirmation and not click.confirm("Proceed?"):
         raise click.Abort
 
     credentials = get_credentials(namespaced_image_name, ws_id=ws_id)
-    client = get_local_docker_client()
 
-    try:
-        client.inspect_image(image_ref)
-    except docker.errors.ImageNotFound:
+    if pull_ref is not None:
         print_upload_logs(
-            client.pull(image_ref, stream=True, decode=True, platform="linux/amd64"),
-            image_ref,
+            client.pull(pull_ref, stream=True, decode=True, platform="linux/amd64"),
+            pull_ref,
             print_header=False,
         )
 

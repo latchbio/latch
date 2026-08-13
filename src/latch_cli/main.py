@@ -615,6 +615,16 @@ def image():
 @click.option("-v", "--version", is_flag=False, type=str)
 @workspace_id_option("Upload the image to the specified workspace.")
 @click.option(
+    "--pull",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help=(
+        "Pull the image if it is not present locally. An unqualified reference "
+        "resolves to Docker Hub, so check that you own the namespace."
+    ),
+)
+@click.option(
     "-y",
     "--yes",
     is_flag=True,
@@ -629,6 +639,7 @@ def upload_image(
     image_name: Optional[str] = None,
     version: Optional[str] = None,
     workspace_id: Optional[str] = None,
+    pull: bool = False,
     yes: bool = False,
 ) -> None:
     """Uploads an existing Docker image to Latch ECR
@@ -645,6 +656,7 @@ def upload_image(
         image_name=image_name,
         version=version,
         workspace_id=workspace_id,
+        should_pull=pull,
         skip_confirmation=yes,
     )
 

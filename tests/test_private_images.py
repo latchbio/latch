@@ -13,13 +13,15 @@ from latch_cli.services.private_images import (
     record_failed_exit_code,
     record_in_db,
     record_in_db_or_exit,
+    resolve_pull_reference,
     resolve_workspace_id,
 )
 
-from .conftest import ACTIVE_WS, OTHER_WS, PASSWORD
+from .conftest import ACTIVE_WS, OTHER_WS, PASSWORD, _MissingImageClient
 
-WS_ID = "1234"
-IMAGE_NAME = "1234_barcode_tools"
+# one workspace for the whole module, so the stubs and the assertions agree
+WS_ID = ACTIVE_WS
+IMAGE_NAME = f"{ACTIVE_WS}_barcode_tools"
 VERSION = "abc123"
 
 RECORDED_NODE = {"workspaceId": WS_ID, "imageName": IMAGE_NAME, "version": VERSION}
@@ -49,7 +51,7 @@ def fake_execute(
 
 OTHER_IMAGE_NODE = {
     "workspaceId": WS_ID,
-    "imageName": "1234_other_tool",
+    "imageName": f"{ACTIVE_WS}_other_tool",
     "version": VERSION,
 }
 OTHER_VERSION_NODE = {
@@ -386,3 +388,83 @@ def test_upload_image_uses_the_workspace_for_every_consumer(
     assert client.tagged["repository"].endswith(f"/{namespaced}")
     assert client.pushed["repository"].endswith(f"/{namespaced}")
     assert recorded == {"ws_id": OTHER_WS, "image_name": namespaced, "version": "v1"}
+
+
+@pytest.mark.parametrize(
+    ("image_ref", "resolved"),
+    [
+        # unqualified: Docker Hub, in a namespace the caller may not own
+        ("team/tool:v1", "docker.io/team/tool:v1"),
+        ("team/tool", "docker.io/team/tool"),
+        # single component: Docker Hub's official-image namespace
+        ("ubuntu:22.04", "docker.io/library/ubuntu:22.04"),
+        # a real registry is left alone
+        ("ghcr.io/team/tool:v1", "ghcr.io/team/tool:v1"),
+        ("ghcr.io/team/sub/tool:v1", "ghcr.io/team/sub/tool:v1"),
+        ("localhost/tool:v1", "localhost/tool:v1"),
+        # a digest reference keeps its digest
+        ("team/tool@sha256:abc", "docker.io/team/tool@sha256:abc"),
+        ("ubuntu@sha256:abc", "docker.io/library/ubuntu@sha256:abc"),
+        # uppercase cannot appear in a repository path, so it can only be a host
+        ("MyOrg/tool:v1", "MyOrg/tool:v1"),
+    ],
+)
+def test_resolve_pull_reference(image_ref: str, resolved: str):
+    """A host-looking first component is a registry; anything else is Docker Hub."""
+    assert resolve_pull_reference(image_ref) == resolved
+
+
+@pytest.mark.usefixtures("_upload_stubs")
+def test_missing_image_does_not_pull_by_default(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+):
+    """Publishing a third-party image under our tag must not happen silently."""
+    client = _MissingImageClient()
+    monkeypatch.setattr(private_images, "get_local_docker_client", lambda: client)
+
+    with pytest.raises(click.exceptions.Exit) as excinfo:
+        private_images.upload_image("team/tool:v1", skip_confirmation=True)
+
+    assert excinfo.value.exit_code == 1
+    assert client.pulled == []
+    # the invariant, not its proxy: nothing reached our registry
+    assert client.pushed == []
+
+    out = capsys.readouterr().out
+    assert "--pull" in out
+    # the message names where the image would actually come from
+    assert "docker.io/team/tool:v1" in out
+
+
+@pytest.mark.usefixtures("_upload_stubs")
+def test_pull_flag_pulls_the_image(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+):
+    client = _MissingImageClient()
+    monkeypatch.setattr(private_images, "get_local_docker_client", lambda: client)
+
+    private_images.upload_image(
+        "team/tool:v1", should_pull=True, skip_confirmation=True
+    )
+
+    # we pull the reference we printed, so the message cannot drift from the call
+    assert client.pulled == ["docker.io/team/tool:v1"]
+    assert "docker.io/team/tool:v1" in capsys.readouterr().out
+
+
+class _LocalImageClient(_MissingImageClient):
+    @staticmethod
+    def inspect_image(image_ref: str) -> dict[str, str]:
+        return {"Id": image_ref}
+
+
+@pytest.mark.usefixtures("_upload_stubs")
+def test_a_local_image_never_pulls(monkeypatch: pytest.MonkeyPatch):
+    """The flag only affects the missing-image path."""
+    client = _LocalImageClient()
+    monkeypatch.setattr(private_images, "get_local_docker_client", lambda: client)
+
+    private_images.upload_image("team/tool:v1", skip_confirmation=True)
+
+    assert client.pulled == []
+    assert client.pushed == [f"{private_images.ecr_base}/{WS_ID}_tool"]
