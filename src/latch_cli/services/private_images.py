@@ -223,11 +223,16 @@ def validate_version(version: str):
         raise click.exceptions.Exit(1)
 
 
-def resolve_workspace(workspace_id: Optional[str]) -> str:
-    """Return the workspace to act on, and check that the user can reach it.
+def resolve_workspace_id(workspace_id: Optional[str]) -> str:
+    """Return the workspace to act on, and check that an explicit one is reachable.
 
-    An explicit id is validated against the workspaces the user can access, so a typo
-    fails here instead of pushing an image into a namespace they did not intend.
+    An explicit id can be a typo, so it is checked against the workspaces the user can
+    access. The active workspace skips that check: it comes from the user's own config,
+    and `get_workspaces` (~230ms, measured 2026-08) costs more than the `ls` query it
+    would precede (~120ms). A wrong active workspace still fails, just later - at
+    `get_credentials` for a push, or as an empty listing for `ls`.
+
+    A deliberate difference from `latch register`, which checks both paths.
     """
     if workspace_id is None:
         return current_workspace()
@@ -306,7 +311,7 @@ def upload_image(
     assert image_name is not None
     assert version is not None
 
-    ws_id = resolve_workspace(workspace_id)
+    ws_id = resolve_workspace_id(workspace_id)
 
     namespaced_image_name = f"{ws_id}_{image_name}"
 
@@ -379,7 +384,7 @@ def build_and_upload_image(
 
         version = hash_directory(root, silent=True)[:6]
 
-    ws_id = resolve_workspace(workspace_id)
+    ws_id = resolve_workspace_id(workspace_id)
     namespaced_image_name = f"{ws_id}_{image_name}"
 
     full_image_ref = f"{ecr_base}/{namespaced_image_name}:{version}"
@@ -433,8 +438,8 @@ def build_and_upload_image(
 
 
 # todo(ayush): scuffed
-def ls(workspace_id: Optional[str] = None) -> None:
-    ws_id = resolve_workspace(workspace_id)
+def ls(*, workspace_id: Optional[str] = None) -> None:
+    ws_id = resolve_workspace_id(workspace_id)
 
     res: Optional[PrivateImages] = execute(
         gql.gql(

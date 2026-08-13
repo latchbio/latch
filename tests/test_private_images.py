@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, Optional
 
 import click
@@ -6,12 +7,16 @@ import graphql
 import pytest
 
 from latch_cli.services import private_images
+from latch_cli.services.docker import utils as docker_utils
 from latch_cli.services.private_images import (
     is_recorded_in_db,
     record_failed_exit_code,
     record_in_db,
     record_in_db_or_exit,
+    resolve_workspace_id,
 )
+
+from .conftest import ACTIVE_WS, OTHER_WS, PASSWORD
 
 WS_ID = "1234"
 IMAGE_NAME = "1234_barcode_tools"
@@ -219,3 +224,165 @@ def test_is_recorded_in_db_sends_all_three_variables(monkeypatch: pytest.MonkeyP
     is_recorded_in_db(WS_ID, IMAGE_NAME, VERSION)
 
     assert calls[0][1] == {"wsId": WS_ID, "imageName": IMAGE_NAME, "version": VERSION}
+
+
+@pytest.mark.parametrize(
+    ("given", "resolved"), [(None, ACTIVE_WS), (OTHER_WS, OTHER_WS)]
+)
+@pytest.mark.usefixtures("_workspaces")
+def test_resolve_workspace_id(given: Optional[str], resolved: str):
+    """An explicit id wins over the ambient one, or the two can disagree."""
+    assert resolve_workspace_id(given) == resolved
+
+
+@pytest.mark.usefixtures("_workspaces")
+def test_resolve_workspace_id_names_an_explicit_target(
+    capsys: pytest.CaptureFixture[str],
+):
+    resolve_workspace_id(OTHER_WS)
+
+    out = capsys.readouterr().out
+    assert "Other Team" in out
+    assert OTHER_WS in out
+
+
+@pytest.mark.usefixtures("_workspaces")
+def test_resolve_workspace_id_rejects_an_unreachable_workspace(
+    capsys: pytest.CaptureFixture[str],
+):
+    """A typo must fail before the push, not push into someone else's namespace."""
+
+    with pytest.raises(click.exceptions.Exit) as excinfo:
+        resolve_workspace_id("9999")
+
+    assert excinfo.value.exit_code == 1
+    assert "9999" in capsys.readouterr().out
+
+
+def test_resolve_workspace_id_does_not_look_up_the_active_workspace(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """A deliberate difference from `latch register`, which checks both paths.
+
+    The active workspace comes from the user's own config, so it is not worth a
+    `get_workspaces` query on every `ls`. If it is wrong, `get_credentials` fails.
+    Change this only together with the docstring on `resolve_workspace_id`.
+    """
+
+    def unreachable() -> dict[str, object]:
+        raise AssertionError("get_workspaces must not be called for the default")
+
+    monkeypatch.setattr(private_images, "current_workspace", lambda: ACTIVE_WS)
+    monkeypatch.setattr(private_images, "get_workspaces", unreachable)
+
+    assert resolve_workspace_id(None) == ACTIVE_WS
+
+
+class _FakeDockerClient:
+    """Minimal stand-in for the pieces of `docker.APIClient` that `upload_image` uses."""
+
+    def __init__(self) -> None:
+        self.tagged: dict[str, str] = {}
+        self.pushed: dict[str, str] = {}
+        self._auth_configs: object = None
+
+    @staticmethod
+    def inspect_image(image_ref: str) -> dict[str, str]:
+        return {"Id": image_ref}
+
+    def tag(self, _image_ref: str, *, repository: str, tag: str) -> bool:
+        self.tagged = {"repository": repository, "tag": tag}
+        return True
+
+    def push(self, *, repository: str, tag: str, **_kwargs: object) -> list[object]:
+        self.pushed = {"repository": repository, "tag": tag}
+        return []
+
+
+@pytest.mark.parametrize("remote", [True, False])
+@pytest.mark.usefixtures("_workspaces")
+def test_build_and_upload_passes_the_workspace_to_the_build(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, *, remote: bool
+):
+    """Both build paths must be handed the resolved workspace, not resolve their own."""
+    seen: dict[str, str] = {}
+
+    def build(*_args: object, ws_id: str, **_kwargs: object) -> None:
+        seen["ws_id"] = ws_id
+
+    monkeypatch.setattr(private_images, "remote_dbnp", build)
+    monkeypatch.setattr(private_images, "dbnp", build)
+    monkeypatch.setattr(private_images, "get_local_docker_client", lambda: None)
+    monkeypatch.setattr(
+        private_images, "record_in_db_or_exit", lambda *_args, **_kwargs: None
+    )
+
+    (tmp_path / "Dockerfile").touch()
+
+    private_images.build_and_upload_image(
+        tmp_path,
+        image_name="image",
+        version="v1",
+        workspace_id=OTHER_WS,
+        remote=remote,
+        skip_confirmation=True,
+    )
+
+    assert seen["ws_id"] == OTHER_WS
+
+
+@pytest.mark.parametrize("workspace_id", [None, OTHER_WS])
+@pytest.mark.usefixtures("_workspaces")
+def test_ls_accepts_a_workspace(
+    monkeypatch: pytest.MonkeyPatch, workspace_id: Optional[str]
+):
+    seen: list[str] = []
+
+    def execute(
+        _document: object, variables: dict[str, str], **_kwargs: object
+    ) -> dict:
+        seen.append(variables["wsId"])
+        return {"privateImages": {"nodes": []}}
+
+    monkeypatch.setattr(private_images, "execute", execute)
+
+    private_images.ls(workspace_id=workspace_id)
+
+    assert seen == [workspace_id if workspace_id is not None else ACTIVE_WS]
+
+
+@pytest.mark.usefixtures("_workspaces")
+def test_upload_image_uses_the_workspace_for_every_consumer(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """The repository name, the credentials and the record must agree on one workspace.
+
+    `upload_image` is the command the workspace flag exists for, so drive it end to
+    end rather than testing the pieces separately.
+    """
+    credentials_call: dict[str, str] = {}
+    recorded: dict[str, str] = {}
+    client = _FakeDockerClient()
+
+    def get_credentials(image: str, *, ws_id: str) -> object:
+        credentials_call.update({"image": image, "ws_id": ws_id})
+        return docker_utils.DockerCredentials(username="u", password=PASSWORD)
+
+    def record(ws_id: str, image_name: str, version: str, **_kwargs: object) -> None:
+        recorded.update({"ws_id": ws_id, "image_name": image_name, "version": version})
+
+    monkeypatch.setattr(private_images, "get_credentials", get_credentials)
+    monkeypatch.setattr(private_images, "get_local_docker_client", lambda: client)
+    monkeypatch.setattr(private_images, "print_upload_logs", lambda *_a, **_k: None)
+    monkeypatch.setattr(private_images, "record_in_db_or_exit", record)
+
+    private_images.upload_image(
+        "some_registry/image:v1", workspace_id=OTHER_WS, skip_confirmation=True
+    )
+
+    namespaced = f"{OTHER_WS}_image"
+
+    assert credentials_call == {"image": namespaced, "ws_id": OTHER_WS}
+    assert client.tagged["repository"].endswith(f"/{namespaced}")
+    assert client.pushed["repository"].endswith(f"/{namespaced}")
+    assert recorded == {"ws_id": OTHER_WS, "image_name": namespaced, "version": "v1"}

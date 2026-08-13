@@ -164,7 +164,11 @@ def register_staging(
     image_suffix = docker_image_name_illegal_pat.sub(
         "_", identifier_suffix_from_str(wf_name).lower()
     )
-    image_prefix = current_workspace()
+    # bind once: the repository name, the build credentials and the record below must
+    # all agree on one workspace
+    ws_id = current_workspace()
+
+    image_prefix = ws_id
     if len(image_prefix) == 1:
         # note(ayush): the sins of our past continue to haunt us
         image_prefix = f"x{image_prefix}"
@@ -173,7 +177,12 @@ def register_staging(
 
     if remote:
         remote_dbnp(
-            pkg_root, image, version, dockerfile_path, progress_plain=progress_plain
+            pkg_root,
+            image,
+            version,
+            dockerfile_path,
+            progress_plain=progress_plain,
+            ws_id=ws_id,
         )
     else:
         client = get_local_docker_client()
@@ -185,6 +194,7 @@ def register_staging(
             version,
             dockerfile_path,
             progress_plain=progress_plain,
+            ws_id=ws_id,
         )
 
     execute(

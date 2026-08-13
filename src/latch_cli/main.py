@@ -12,6 +12,7 @@ from textwrap import dedent
 from typing import Callable, Optional, TypeVar, Union
 
 import click
+from click.decorators import FC
 import gql
 from gql.transport.requests import log as requests_logger
 from packaging.version import parse as parse_version
@@ -56,6 +57,20 @@ def requires_login(f: Callable[P, T]) -> Callable[P, T]:
     decorated.__doc__ = f.__doc__
 
     return decorated
+
+
+def workspace_id_option(action: str) -> Callable[[FC], FC]:
+    """Return the `--workspace-id` option, worded for the given command."""
+    return click.option(
+        "--workspace-id",
+        type=str,
+        default=None,
+        help=(
+            f"{action} "
+            "This argument accepts a numeric workspace ID, e.g. `--workspace-id 1234`. "
+            "By default, the active workspace is used."
+        ),
+    )
 
 
 def _require_login() -> None:
@@ -598,16 +613,7 @@ def image():
 @click.argument("image-reference", type=str)
 @click.option("-n", "--image-name", is_flag=False, type=str)
 @click.option("-v", "--version", is_flag=False, type=str)
-@click.option(
-    "--workspace-id",
-    type=str,
-    default=None,
-    help=(
-        "Upload the image to the specified workspace. "
-        "This argument accepts a numeric workspace ID, e.g. `--workspace-id 1234`. "
-        "By default, the active workspace is used."
-    ),
-)
+@workspace_id_option("Upload the image to the specified workspace.")
 @click.option(
     "-y",
     "--yes",
@@ -644,16 +650,7 @@ def upload_image(
 
 
 @image.command("ls")
-@click.option(
-    "--workspace-id",
-    type=str,
-    default=None,
-    help=(
-        "List the images in the specified workspace. "
-        "This argument accepts a numeric workspace ID, e.g. `--workspace-id 1234`. "
-        "By default, the active workspace is used."
-    ),
-)
+@workspace_id_option("List the images in the specified workspace.")
 @requires_login
 def image_ls(*, workspace_id: Optional[str] = None) -> None:
     """Lists existing Docker images in Latch ECR"""
@@ -776,16 +773,7 @@ def image_ls(*, workspace_id: Optional[str] = None) -> None:
         "the package root if one exists, or (2) generate one in .latch/Dockerfile if none exists."
     ),
 )
-@click.option(
-    "--workspace-id",
-    type=str,
-    default=None,
-    help=(
-        "Register the workflow to the specified workspace. "
-        "This argument accepts a numeric workspace ID, e.g. `--workspace-id 1234`. "
-        "By default, workflows are registered to the active workspace."
-    ),
-)
+@workspace_id_option("Register the workflow to the specified workspace.")
 @requires_login
 @requires_workspace
 def register(
