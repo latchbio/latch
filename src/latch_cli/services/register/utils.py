@@ -100,11 +100,21 @@ class DockerBuildLogItem(TypedDict):
     stream: Optional[str]
 
 
-# a subset: the stream also carries `status` and `aux`, which holds the pushed digest
+# the daemon's push result, emitted once at the end of a push stream. docker-py does
+# not model it - these are the Engine API's keys verbatim. `build` emits a different
+# `aux` shape, so this is push-specific.
+class DockerPushAux(TypedDict, total=False):
+    Tag: str
+    Digest: str
+    Size: int
+
+
+# a subset: the stream also carries `status`
 class DockerPushLogItem(TypedDict, total=False):
     id: str
     error: str
     progress: str
+    aux: DockerPushAux
 
 
 def build_image(

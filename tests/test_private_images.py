@@ -417,7 +417,7 @@ def test_resolve_pull_reference(image_ref: str, resolved: str):
     assert resolve_pull_reference(image_ref) == resolved
 
 
-@pytest.mark.usefixtures("_upload_stubs")
+@pytest.mark.usefixtures("_upload_stubs", "_quiet_upload_logs")
 def test_missing_image_does_not_pull_by_default(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ):
@@ -439,7 +439,7 @@ def test_missing_image_does_not_pull_by_default(
     assert "docker.io/team/tool:v1" in out
 
 
-@pytest.mark.usefixtures("_upload_stubs")
+@pytest.mark.usefixtures("_upload_stubs", "_quiet_upload_logs")
 def test_pull_flag_pulls_the_image(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ):
@@ -461,7 +461,7 @@ class _LocalImageClient(_MissingImageClient):
         return {"Id": image_ref}
 
 
-@pytest.mark.usefixtures("_upload_stubs")
+@pytest.mark.usefixtures("_upload_stubs", "_quiet_upload_logs")
 def test_a_local_image_never_pulls(monkeypatch: pytest.MonkeyPatch):
     """The flag only affects the missing-image path."""
     client = _LocalImageClient()
@@ -555,3 +555,53 @@ def test_ls_lists_images_on_stdout(
     assert f"{IMAGE_NAME}:{VERSION}" in captured.out
     # the listing must not leak a spurious note to the stream a caller redirects
     assert captured.err == ""
+
+
+class _DigestPushClient(_MissingImageClient):
+    """A daemon with the image present, whose push reports a digest."""
+
+    digest = "sha256:8f1a2b3c4d5e6f70819293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8"
+
+    @staticmethod
+    def inspect_image(image_ref: str) -> dict[str, str]:
+        return {"Id": image_ref}
+
+    def push(self, **kwargs: object) -> list[object]:
+        self.pushed.append(kwargs.get("repository"))
+        return [{"aux": {"Digest": self.digest}}]
+
+
+class _NoDigestPushClient(_DigestPushClient):
+    def push(self, **kwargs: object) -> list[object]:
+        self.pushed.append(kwargs.get("repository"))
+        return [{"id": "layer_a", "progress": "1/1"}]
+
+
+@pytest.mark.usefixtures("_upload_stubs")
+def test_upload_reports_the_pushed_digest(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+):
+    client = _DigestPushClient()
+    monkeypatch.setattr(private_images, "get_local_docker_client", lambda: client)
+
+    private_images.upload_image("team/tool:v1", skip_confirmation=True)
+
+    captured = capsys.readouterr()
+    assert client.digest in captured.out
+    assert "did not report a digest" not in captured.err
+
+
+@pytest.mark.usefixtures("_upload_stubs")
+def test_upload_says_so_when_no_digest_is_reported(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+):
+    """Success without a digest is a weaker claim, and must not be stated as a strong one."""
+    client = _NoDigestPushClient()
+    monkeypatch.setattr(private_images, "get_local_docker_client", lambda: client)
+
+    private_images.upload_image("team/tool:v1", skip_confirmation=True)
+
+    captured = capsys.readouterr()
+    assert "did not report a digest" in captured.err
+    # the push itself did succeed, so the success line still stands
+    assert "Successfully pushed" in captured.out

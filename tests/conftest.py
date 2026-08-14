@@ -59,5 +59,10 @@ def _upload_stubs(monkeypatch: pytest.MonkeyPatch) -> None:
             username="u", password=PASSWORD
         ),
     )
-    monkeypatch.setattr(private_images, "print_upload_logs", lambda *_a, **_k: None)
     monkeypatch.setattr(private_images, "record_in_db_or_exit", lambda *_a, **_k: None)
+
+
+@pytest.fixture
+def _quiet_upload_logs(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Silence the push/pull stream renderer. Omit it to exercise the real one."""
+    monkeypatch.setattr(private_images, "print_upload_logs", lambda *_a, **_k: None)

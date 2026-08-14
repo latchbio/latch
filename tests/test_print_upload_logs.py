@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import click
 import pytest
@@ -108,3 +108,73 @@ def test_error_after_progress_moves_below_the_progress_block(
     error = next(i for i, m in enumerate(written) if m.startswith("denied:"))
 
     assert move_below < error
+
+
+DIGEST = "sha256:8f1a2b3c4d5e6f70819293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8"
+
+
+@pytest.mark.parametrize(
+    ("logs", "expected"),
+    [
+        pytest.param(
+            [
+                {"id": "layer_a", "progress": "1/1"},
+                {"aux": {"Tag": "v1", "Digest": DIGEST, "Size": 1234}},
+            ],
+            DIGEST,
+            id="a push ends with an aux entry, and that digest is returned",
+        ),
+        pytest.param(
+            [{"id": "layer_a", "progress": "1/1"}],
+            None,
+            id="a pull carries no aux, so no digest is invented",
+        ),
+        pytest.param(
+            [{"aux": {"Digest": "sha256:aaa"}}, {"aux": {"Digest": DIGEST}}],
+            DIGEST,
+            id="the last aux entry in the stream wins",
+        ),
+        pytest.param(
+            [{"aux": {"Tag": "v1", "Size": 10}}],
+            None,
+            id="an aux entry without a Digest yields no digest",
+        ),
+        pytest.param(
+            [{"aux": {"Digest": ""}}], None, id="an empty Digest is not a digest"
+        ),
+    ],
+)
+def test_the_digest_is_the_last_aux_digest_in_the_stream(
+    logs: "list[DockerPushLogItem]", expected: Optional[str]
+):
+    assert print_upload_logs(logs, "test_image") == expected
+
+
+def test_the_digest_is_shown_to_the_user(capsys: pytest.CaptureFixture[str]):
+    """A digest the caller never sees is no better than none at all."""
+    print_upload_logs([{"aux": {"Digest": DIGEST}}], "test_image")
+
+    assert DIGEST in capsys.readouterr().out
+
+
+def test_the_digest_is_printed_below_the_progress_block(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Same hazard as the error path: the cursor is parked at the top of the block."""
+    written: list[str] = []
+
+    def record(message: object = "", **_kwargs: object) -> None:
+        written.append(str(message))
+
+    monkeypatch.setattr(click, "echo", record)
+    monkeypatch.setattr(click, "secho", record)
+
+    print_upload_logs(
+        [{"id": "layer_a", "progress": "1/2"}, {"aux": {"Digest": DIGEST}}],
+        "test_image",
+    )
+
+    move_below = written.index("\x1b[1E")
+    digest_line = next(i for i, m in enumerate(written) if DIGEST in m)
+
+    assert move_below < digest_line

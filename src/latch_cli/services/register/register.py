@@ -27,6 +27,7 @@ from latch_cli.services.register.constants import (
 )
 from latch_cli.services.register.utils import (
     DockerBuildLogItem,
+    DockerPushAux,
     DockerPushLogItem,
     build_image,
     register_serialized_pkg,
@@ -151,7 +152,16 @@ def print_upload_logs(
     image: str,
     *,
     print_header: bool = True,
-) -> None:
+) -> Optional[str]:
+    """Render the stream, and return the digest of what the registry stored.
+
+    The stream is a single-pass iterator, so the digest is picked out during the same
+    traversal that renders it.
+
+    Returns:
+        The digest the registry reported, or None if the stream carried none. A pull
+        stream never carries one, so only a caller that pushed should ask.
+    """
     if print_header:
         click.secho("Uploading Docker image", bold=True)
 
@@ -178,6 +188,7 @@ def print_upload_logs(
         return i
 
     prev_lines = 0
+    digest: Optional[str] = None
 
     for x in upload_image_logs:
         error = x.get("error")
@@ -197,6 +208,10 @@ def print_upload_logs(
 
             raise click.exceptions.Exit(1)
 
+        aux: Optional[DockerPushAux] = x.get("aux")
+        if aux is not None and aux.get("Digest"):
+            digest = aux["Digest"]
+
         # status-only items carry no id, and would collide on a single None key
         layer_id = x.get("id")
         if layer_id is None:
@@ -204,6 +219,16 @@ def print_upload_logs(
 
         prog_map[layer_id] = x.get("progress")
         prev_lines = _pp_prog_map(prog_map, prev_lines)
+
+    # the cursor sits at the top of the progress block. Move below it so that this
+    # line, and whatever the caller prints next, do not overwrite a progress row.
+    if prev_lines > 0:
+        click.echo(f"\x1b[{prev_lines}E", nl=False)
+
+    if digest is not None:
+        click.secho(f"digest: {digest}", dim=True, italic=True)
+
+    return digest
 
 
 def _print_reg_resp(resp, image):

@@ -391,7 +391,7 @@ def upload_image(
         "auths": {ecr_base: asdict(credentials)}
     })
 
-    print_upload_logs(
+    digest = print_upload_logs(
         client.push(
             repository=f"{ecr_base}/{namespaced_image_name}",
             tag=version,
@@ -402,7 +402,19 @@ def upload_image(
         namespaced_image_name,
     )
 
-    click.secho(f"Successfully pushed {full_image_ref}", fg="green")
+    if digest is None:
+        # the push reported no error, so the tag is there - but without a digest we
+        # cannot say the registry stored what we built. Say so rather than imply it.
+        click.secho(
+            "The registry did not report a digest, so the pushed content could not be"
+            " confirmed.",
+            fg="yellow",
+            bold=True,
+            err=True,
+        )
+
+    confirmation = "" if digest is not None else " (digest unconfirmed)"
+    click.secho(f"Successfully pushed {full_image_ref}{confirmation}", fg="green")
 
     record_in_db_or_exit(
         ws_id, namespaced_image_name, version, full_image_ref=full_image_ref
