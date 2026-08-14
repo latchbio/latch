@@ -16,6 +16,39 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.77.0 - 2026-08-14
+
+### Added
+
+* `latch image upload` and `latch image ls` accept `--workspace-id`, matching
+  `latch register`. An explicit workspace is checked before the push, so an id the
+  user cannot reach fails immediately
+* `latch image upload` reports the digest the registry stored, and says so when the
+  registry reports none
+
+### Changed
+
+* `latch image upload` no longer pulls a missing image implicitly. Pass `--pull` to
+  fetch it. An unqualified reference resolves to Docker Hub, so the old behaviour
+  could publish a third party's image under your own tag
+* `latch image ls` exits 0 when a workspace has no images, and writes its own
+  messages to stderr so that stdout carries only image references
+* `latch_cli.services.docker.utils.get_credentials` requires a `ws_id` keyword
+  argument. It resolved the active workspace itself, which could mint credentials
+  for a different workspace than the one being pushed to. `dbnp` and `remote_dbnp`
+  carry it through
+
+### Fixed
+
+* `latch image upload` fails on any Docker push or pull error. It previously acted
+  only on an expired authorization token and recorded every other error as
+  progress, then reported success for an image that never reached the registry
+* `latch image upload` separates a failed push from a failed database record: exit
+  1 means the image is not in the registry, exit 3 means it is in the registry but
+  Latch has no record of it. The record is idempotent, so a retry no longer fails
+  on the uniqueness constraint
+* `latch image ls` distinguishes an empty workspace from a failed read
+
 ## 2.76.10 - 2026-07-30
 
 ### Fixed
