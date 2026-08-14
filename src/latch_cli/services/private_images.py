@@ -509,15 +509,31 @@ def ls(*, workspace_id: Optional[str] = None) -> None:
         {"wsId": ws_id},
     )["privateImages"]
 
-    if res is None or res["nodes"] is None:
-        click.secho(
-            f"Could not find any private images in workspace {ws_id}",
-            dim=True,
-            italic=True,
-        )
-        raise click.Abort
+    # a null connection, or a null list inside one, means the workspace could not be
+    # read - no permission, or a partial error from the API. Postgraphile returns a
+    # non-null `nodes` whenever the connection itself is non-null.
+    nodes = res["nodes"] if res is not None else None
 
-    for node in res["nodes"]:
+    if nodes is None:
+        click.secho(
+            f"Could not read the private images in workspace {ws_id}.",
+            fg="red",
+            bold=True,
+            err=True,
+        )
+
+        raise click.exceptions.Exit(1)
+
+    if len(nodes) == 0:
+        # an empty workspace is not an error. The note goes to stderr so that stdout
+        # stays parseable.
+        click.secho(
+            f"No private images in workspace {ws_id}.", dim=True, italic=True, err=True
+        )
+
+        return
+
+    for node in nodes:
         click.secho(f"{ecr_base}/{node['imageName']}:{node['version']}    ", nl=False)
 
         pretty_time = human_readable_datetime(dp.isoparse(node["creationTime"]))

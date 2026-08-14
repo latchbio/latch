@@ -9,6 +9,7 @@ import pytest
 from latch_cli.services import private_images
 from latch_cli.services.docker import utils as docker_utils
 from latch_cli.services.private_images import (
+    PrivateImages,
     is_recorded_in_db,
     record_failed_exit_code,
     record_in_db,
@@ -470,3 +471,85 @@ def test_a_local_image_never_pulls(monkeypatch: pytest.MonkeyPatch):
 
     assert client.pulled == []
     assert client.pushed == [f"{private_images.ecr_base}/{WS_ID}_tool"]
+
+
+def _stub_ls_response(
+    monkeypatch: pytest.MonkeyPatch, response: Optional[PrivateImages]
+) -> list[tuple[str, Any]]:
+    """Stub `execute` for `ls` and return the list that records its calls."""
+    calls: list[tuple[str, Any]] = []
+    monkeypatch.setattr(private_images, "current_workspace", lambda: ACTIVE_WS)
+    monkeypatch.setattr(private_images, "execute", fake_execute(response, calls))
+
+    return calls
+
+
+def test_ls_exits_0_on_an_empty_workspace(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+):
+    """An empty workspace must be distinguishable from an auth or network failure."""
+    _stub_ls_response(monkeypatch, {"nodes": []})
+
+    # returning rather than raising is the exit-0 contract
+    assert private_images.ls() is None
+
+    captured = capsys.readouterr()
+    # nothing on stdout, so a caller can parse it without special-casing empty
+    assert captured.out == ""
+    assert "No private images" in captured.err
+
+
+@pytest.mark.parametrize("response", [None, {"nodes": None}])
+def test_ls_exits_1_when_the_workspace_cannot_be_read(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    response: Optional[PrivateImages],
+):
+    """A null connection or a null node list is a failed read, not an empty workspace.
+
+    Postgraphile returns a non-null `nodes` whenever the connection is non-null, so
+    either null is a malformed response.
+    """
+    _stub_ls_response(monkeypatch, response)
+
+    with pytest.raises(click.exceptions.Exit) as excinfo:
+        private_images.ls()
+
+    assert excinfo.value.exit_code == 1
+
+    captured = capsys.readouterr()
+    # the failure must not land in the stream a caller redirects to a file
+    assert captured.out == ""
+    assert "Could not read" in captured.err
+
+
+@pytest.mark.usefixtures("_workspaces")
+def test_ls_queries_the_given_workspace(monkeypatch: pytest.MonkeyPatch):
+    calls = _stub_ls_response(monkeypatch, {"nodes": []})
+
+    private_images.ls(workspace_id=OTHER_WS)
+
+    assert calls[0][1] == {"wsId": OTHER_WS}
+
+
+def test_ls_lists_images_on_stdout(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+):
+    """The listing itself goes to stdout, where a caller can read it."""
+    _stub_ls_response(
+        monkeypatch,
+        {
+            "nodes": [
+                {
+                    "imageName": IMAGE_NAME,
+                    "version": VERSION,
+                    "creationTime": "2026-08-12T00:00:00Z",
+                }
+            ]
+        },
+    )
+
+    private_images.ls()
+
+    out = capsys.readouterr().out
+    assert f"{IMAGE_NAME}:{VERSION}" in out
