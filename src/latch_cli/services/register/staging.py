@@ -217,7 +217,7 @@ def register_staging(
             }
         }
         """),
-        {"wsId": current_workspace(), "workflowName": wf_name, "version": version},
+        {"wsId": ws_id, "workflowName": wf_name, "version": version},
     )
 
     click.secho("Successfully staged workflow.", fg="green")
