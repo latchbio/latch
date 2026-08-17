@@ -187,15 +187,19 @@ def print_upload_logs(
 
         return i
 
+    def _move_below_progress(prev_lines: int) -> None:
+        # the cursor sits at the top of the progress block. Move below it so that the
+        # next line, and whatever the caller prints next, do not overwrite a row.
+        if prev_lines > 0:
+            click.echo(f"\x1b[{prev_lines}E", nl=False)
+
     prev_lines = 0
     digest: Optional[str] = None
 
     for x in upload_image_logs:
         error = x.get("error")
         if error is not None:
-            # the cursor sits at the top of the progress block. Move below it.
-            if prev_lines > 0:
-                click.echo(f"\x1b[{prev_lines}E", nl=False)
+            _move_below_progress(prev_lines)
 
             if EXPIRED_TOKEN_ERROR in error:
                 click.secho(
@@ -220,10 +224,7 @@ def print_upload_logs(
         prog_map[layer_id] = x.get("progress")
         prev_lines = _pp_prog_map(prog_map, prev_lines)
 
-    # the cursor sits at the top of the progress block. Move below it so that this
-    # line, and whatever the caller prints next, do not overwrite a progress row.
-    if prev_lines > 0:
-        click.echo(f"\x1b[{prev_lines}E", nl=False)
+    _move_below_progress(prev_lines)
 
     if digest is not None:
         click.secho(f"digest: {digest}", dim=True, italic=True)
