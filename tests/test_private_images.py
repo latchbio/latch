@@ -402,6 +402,8 @@ def test_upload_image_uses_the_workspace_for_every_consumer(
         ("ghcr.io/team/tool:v1", "ghcr.io/team/tool:v1"),
         ("ghcr.io/team/sub/tool:v1", "ghcr.io/team/sub/tool:v1"),
         ("localhost/tool:v1", "localhost/tool:v1"),
+        # a port in the first component marks it a host, even without a dot
+        ("localhost:5000/tool:v1", "localhost:5000/tool:v1"),
         # a digest reference keeps its digest
         ("team/tool@sha256:abc", "docker.io/team/tool@sha256:abc"),
         ("ubuntu@sha256:abc", "docker.io/library/ubuntu@sha256:abc"),
