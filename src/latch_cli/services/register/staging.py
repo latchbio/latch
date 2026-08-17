@@ -130,6 +130,10 @@ def register_staging(
 
     click.echo()
 
+    # bind once: the duplicate check, the repository name, the build credentials and the
+    # record below must all agree on one workspace
+    ws_id = current_workspace()
+
     res = execute(
         gql.gql("""
         query LatestVersion($wsId: BigInt!, $name: String!, $version: String!) {
@@ -144,12 +148,12 @@ def register_staging(
             }
         }
         """),
-        {"wsId": current_workspace(), "name": wf_name, "version": version},
+        {"wsId": ws_id, "name": wf_name, "version": version},
     )
 
     if res["latchDevelopStagingImages"]["totalCount"] != 0:
         click.secho(
-            f"Version `{version}` already exists for workflow `{wf_name}` in workspace `{current_workspace()}`. ",
+            f"Version `{version}` already exists for workflow `{wf_name}` in workspace `{ws_id}`. ",
             fg="red",
         )
         raise click.exceptions.Exit(1)
@@ -164,10 +168,6 @@ def register_staging(
     image_suffix = docker_image_name_illegal_pat.sub(
         "_", identifier_suffix_from_str(wf_name).lower()
     )
-    # bind once: the repository name, the build credentials and the record below must
-    # all agree on one workspace
-    ws_id = current_workspace()
-
     image_prefix = ws_id
     if len(image_prefix) == 1:
         # note(ayush): the sins of our past continue to haunt us
