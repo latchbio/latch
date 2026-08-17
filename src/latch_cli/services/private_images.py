@@ -509,9 +509,10 @@ def ls(*, workspace_id: Optional[str] = None) -> None:
         {"wsId": ws_id},
     )["privateImages"]
 
-    # a null connection, or a null list inside one, means the workspace could not be
-    # read - no permission, or a partial error from the API. Postgraphile returns a
-    # non-null `nodes` whenever the connection itself is non-null.
+    # the schema types the connection as nullable but its nodes as `[PrivateImage!]!`
+    # (verified by introspection), so an empty-but-readable workspace returns `nodes:
+    # []`, never null. A null connection is the only null case, and it means the
+    # workspace could not be read - no permission, or a partial error from the API.
     nodes = res["nodes"] if res is not None else None
 
     if nodes is None:
