@@ -77,8 +77,10 @@ def is_recorded_in_db(ws_id: str, image_name: str, version: str) -> bool:
 
     # match again client-side: a false positive here makes `record_in_db` skip the
     # create and report success for a record that never landed.
+    # `workspaceId` comes from the `BigInt` scalar, which can serialize as a JSON
+    # number; normalise to str so the comparison never silently fails to match.
     return any(
-        node["workspaceId"] == ws_id
+        str(node["workspaceId"]) == ws_id
         and node["imageName"] == image_name
         and node["version"] == version
         for node in res["nodes"]

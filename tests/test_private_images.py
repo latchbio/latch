@@ -173,6 +173,22 @@ def test_record_in_db_or_exit_passes_through_a_click_exit(
     assert excinfo.value.exit_code == 1
 
 
+def test_record_in_db_or_exit_passes_through_a_click_abort(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """A click abort from below must propagate, not be relabelled as 3."""
+
+    def raises(_ws_id: str, _image_name: str, _version: str) -> None:
+        raise click.Abort
+
+    monkeypatch.setattr(private_images, "record_in_db", raises)
+
+    with pytest.raises(click.Abort):
+        record_in_db_or_exit(
+            WS_ID, IMAGE_NAME, VERSION, full_image_ref="ecr/image:abc123"
+        )
+
+
 def test_record_failure_message_survives_a_multiline_error(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ):
