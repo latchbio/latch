@@ -26,18 +26,28 @@ record_failed_exit_code = 3
 
 
 class PrivateImageNode(TypedDict):
-    workspaceId: str
     imageName: str
     version: str
+    creationTime: str
 
 
 class PrivateImages(TypedDict):
     nodes: Optional[list[PrivateImageNode]]
 
 
+class PrivateImageExistsNode(TypedDict):
+    workspaceId: str
+    imageName: str
+    version: str
+
+
+class PrivateImageExistsResult(TypedDict):
+    nodes: Optional[list[PrivateImageExistsNode]]
+
+
 def is_recorded_in_db(ws_id: str, image_name: str, version: str) -> bool:
     """Report whether the workspace already has a record of this image and version."""
-    res: Optional[PrivateImages] = execute(
+    res: Optional[PrivateImageExistsResult] = execute(
         gql.gql("""
             query PrivateImageExists(
                 $wsId: BigInt!
