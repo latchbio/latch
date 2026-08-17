@@ -21,6 +21,7 @@ def test_progress_stream_does_not_exit(capsys: pytest.CaptureFixture[str]):
     print_upload_logs(logs, "test_image")
 
     out = capsys.readouterr().out
+    assert "Uploading Docker image" in out  # header prints when not suppressed
     assert "layer_a ~ 2/2" in out
     assert "layer_b ~ 1/1" in out
     assert "None ~" not in out
