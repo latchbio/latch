@@ -29,7 +29,7 @@ Types of changes
 ### Changed
 
 * `latch image upload` no longer pulls a missing image implicitly. Pass `--pull` to
-  fetch it. An unqualified reference resolves to Docker Hub, so the old behaviour
+  fetch it. An unqualified reference resolves to Docker Hub, so the old behavior
   could publish a third party's image under your own tag
 * `latch image ls` exits 0 when a workspace has no images, and writes its own
   messages to stderr so that stdout carries only image references
