@@ -603,5 +603,7 @@ def test_upload_says_so_when_no_digest_is_reported(
 
     captured = capsys.readouterr()
     assert "did not report a digest" in captured.err
-    # the push itself did succeed, so the success line still stands
+    # the push itself did succeed, so the success line still stands - but it must carry
+    # the caveat rather than imply a confirmed push
     assert "Successfully pushed" in captured.out
+    assert "(digest unconfirmed)" in captured.out
