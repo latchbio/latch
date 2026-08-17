@@ -551,5 +551,7 @@ def test_ls_lists_images_on_stdout(
 
     private_images.ls()
 
-    out = capsys.readouterr().out
-    assert f"{IMAGE_NAME}:{VERSION}" in out
+    captured = capsys.readouterr()
+    assert f"{IMAGE_NAME}:{VERSION}" in captured.out
+    # the listing must not leak a spurious note to the stream a caller redirects
+    assert captured.err == ""
