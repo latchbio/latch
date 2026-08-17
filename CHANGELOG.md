@@ -21,7 +21,7 @@ Types of changes
 ### Added
 
 * `latch image upload` and `latch image ls` accept `--workspace-id`, matching
-  `latch register`. An explicit workspace is checked before the push, so an id the
+  `latch register`. An explicit workspace is verified up front, so an id the
   user cannot reach fails immediately
 * `latch image upload` reports the digest the registry stored, and says so when the
   registry reports none
@@ -32,7 +32,7 @@ Types of changes
   fetch it. An unqualified reference resolves to Docker Hub, so the old behavior
   could publish a third party's image under your own tag
 * `latch image ls` exits 0 when a workspace has no images, and writes its own
-  messages to stderr so that stdout carries only image references
+  messages to stderr so that stdout carries only the image listing
 * `latch_cli.services.docker.utils.get_credentials` requires a `ws_id` keyword
   argument. It resolved the active workspace itself, which could mint credentials
   for a different workspace than the one being pushed to. `dbnp` and `remote_dbnp`
