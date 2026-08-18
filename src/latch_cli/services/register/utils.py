@@ -100,6 +100,23 @@ class DockerBuildLogItem(TypedDict):
     stream: Optional[str]
 
 
+# the daemon's push result, emitted once at the end of a push stream. docker-py does
+# not model it - these are the Engine API's keys verbatim. `build` emits a different
+# `aux` shape, so this is push-specific.
+class DockerPushAux(TypedDict, total=False):
+    Tag: str
+    Digest: str
+    Size: int
+
+
+# a subset: the stream also carries `status`
+class DockerPushLogItem(TypedDict, total=False):
+    id: str
+    error: str
+    progress: str
+    aux: DockerPushAux
+
+
 def build_image(
     ctx: _CentromereCtx,
     image_name: str,
@@ -124,7 +141,7 @@ def build_image(
     return build_logs
 
 
-def upload_image(ctx: _CentromereCtx, image_name: str) -> List[str]:
+def upload_image(ctx: _CentromereCtx, image_name: str) -> Iterable[DockerPushLogItem]:
     assert ctx.dkr_client is not None
     return ctx.dkr_client.push(
         repository=f"{ctx.dkr_repo}/{image_name}", stream=True, decode=True

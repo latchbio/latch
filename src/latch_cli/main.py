@@ -12,6 +12,7 @@ from textwrap import dedent
 from typing import Callable, Optional, TypeVar, Union
 
 import click
+from click.decorators import FC
 import gql
 from gql.transport.requests import log as requests_logger
 from packaging.version import parse as parse_version
@@ -56,6 +57,20 @@ def requires_login(f: Callable[P, T]) -> Callable[P, T]:
     decorated.__doc__ = f.__doc__
 
     return decorated
+
+
+def workspace_id_option(action: str) -> Callable[[FC], FC]:
+    """Return the `--workspace-id` option, worded for the given command."""
+    return click.option(
+        "--workspace-id",
+        type=str,
+        default=None,
+        help=(
+            f"{action} "
+            "This argument accepts a numeric workspace ID, e.g. `--workspace-id 1234`. "
+            "By default, the active workspace is used."
+        ),
+    )
 
 
 def _require_login() -> None:
@@ -598,6 +613,17 @@ def image():
 @click.argument("image-reference", type=str)
 @click.option("-n", "--image-name", is_flag=False, type=str)
 @click.option("-v", "--version", is_flag=False, type=str)
+@workspace_id_option("Upload the image to the specified workspace.")
+@click.option(
+    "--pull",
+    is_flag=True,
+    default=False,
+    type=bool,
+    help=(
+        "Pull the image if it is not present locally. An unqualified reference "
+        "resolves to Docker Hub, so check that you own the namespace."
+    ),
+)
 @click.option(
     "-y",
     "--yes",
@@ -612,9 +638,16 @@ def upload_image(
     *,
     image_name: Optional[str] = None,
     version: Optional[str] = None,
+    workspace_id: Optional[str] = None,
+    pull: bool = False,
     yes: bool = False,
-):
-    """Uploads an existing Docker image to Latch ECR"""
+) -> None:
+    """Uploads an existing Docker image to Latch ECR
+
+    Exits 0 if the image is in the registry and Latch has a record of it, 1 if the
+    image did not reach the registry, and 3 if the image is in the registry but Latch
+    could not record it.
+    """
 
     from .services.private_images import upload_image
 
@@ -622,18 +655,21 @@ def upload_image(
         image_ref=image_reference,
         image_name=image_name,
         version=version,
+        workspace_id=workspace_id,
+        should_pull=pull,
         skip_confirmation=yes,
     )
 
 
 @image.command("ls")
+@workspace_id_option("List the images in the specified workspace.")
 @requires_login
-def image_ls():
+def image_ls(*, workspace_id: Optional[str] = None) -> None:
     """Lists existing Docker images in Latch ECR"""
 
     from .services.private_images import ls
 
-    ls()
+    ls(workspace_id=workspace_id)
 
 
 @latch.command("register")
@@ -749,16 +785,7 @@ def image_ls():
         "the package root if one exists, or (2) generate one in .latch/Dockerfile if none exists."
     ),
 )
-@click.option(
-    "--workspace-id",
-    type=str,
-    default=None,
-    help=(
-        "Register the workflow to the specified workspace. "
-        "This argument accepts a numeric workspace ID, e.g. `--workspace-id 1234`. "
-        "By default, workflows are registered to the active workspace."
-    ),
-)
+@workspace_id_option("Register the workflow to the specified workspace.")
 @requires_login
 @requires_workspace
 def register(

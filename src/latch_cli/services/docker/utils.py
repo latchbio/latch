@@ -14,7 +14,6 @@ import docker.errors
 import paramiko
 from docker.transport import SSHHTTPAdapter
 
-from latch.utils import current_workspace
 from latch_cli import tinyrequests
 from latch_sdk_config.latch import NUCLEUS_URL, config
 
@@ -33,11 +32,11 @@ class DockerCredentials:
     password: str
 
 
-def get_credentials(image: str) -> DockerCredentials:
+def get_credentials(image: str, *, ws_id: str) -> DockerCredentials:
     response = tinyrequests.post(
         urljoin(NUCLEUS_URL, "/sdk/initiate-image-upload"),
         headers={"Authorization": get_auth_header()},
-        json={"pkg_name": image, "ws_account_id": current_workspace()},
+        json={"pkg_name": image, "ws_account_id": ws_id},
     )
 
     try:
@@ -111,8 +110,9 @@ def dbnp(
     dockerfile: Path,
     *,
     progress_plain: bool,
+    ws_id: str,
 ):
-    credentials = get_credentials(image)
+    credentials = get_credentials(image, ws_id=ws_id)
     client._auth_configs = docker.auth.AuthConfig({  # noqa: SLF001
         "auths": {config.dkr_repo: asdict(credentials)}
     })
@@ -141,7 +141,13 @@ def dbnp(
 
 
 def remote_dbnp(
-    pkg_root: Path, image: str, version: str, dockerfile: Path, *, progress_plain: bool
+    pkg_root: Path,
+    image: str,
+    version: str,
+    dockerfile: Path,
+    *,
+    progress_plain: bool,
+    ws_id: str,
 ):
     key_path = pkg_root / ".latch" / "ssh_key"
 
@@ -185,5 +191,11 @@ def remote_dbnp(
         client = docker.APIClient("ssh://fake", version="1.41")
 
         dbnp(
-            client, pkg_root, image, version, dockerfile, progress_plain=progress_plain
+            client,
+            pkg_root,
+            image,
+            version,
+            dockerfile,
+            progress_plain=progress_plain,
+            ws_id=ws_id,
         )

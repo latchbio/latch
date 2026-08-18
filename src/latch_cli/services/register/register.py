@@ -20,9 +20,15 @@ from latch.utils import current_workspace, get_workspaces
 from latch_cli.centromere.ctx import _CentromereCtx
 from latch_cli.centromere.utils import MaybeRemoteDir
 from latch_cli.constants import latch_constants
-from latch_cli.services.register.constants import ANSI_REGEX, MAX_LINES
+from latch_cli.services.register.constants import (
+    ANSI_REGEX,
+    EXPIRED_TOKEN_ERROR,
+    MAX_LINES,
+)
 from latch_cli.services.register.utils import (
     DockerBuildLogItem,
+    DockerPushAux,
+    DockerPushLogItem,
     build_image,
     register_serialized_pkg,
     serialize_pkg_in_container,
@@ -141,13 +147,27 @@ def print_and_write_build_logs(
 
 
 # todo(ayush): this sucks
-def print_upload_logs(upload_image_logs, image, *, print_header: bool = True):
+def print_upload_logs(
+    upload_image_logs: Iterable[DockerPushLogItem],
+    image: str,
+    *,
+    print_header: bool = True,
+) -> Optional[str]:
+    """Render the stream, and return the digest of what the registry stored.
+
+    The stream is a single-pass iterator, so the digest is picked out during the same
+    traversal that renders it.
+
+    Returns:
+        The digest the registry reported, or None if the stream carried none. A pull
+        stream never carries one, so only a caller that pushed should ask.
+    """
     if print_header:
         click.secho("Uploading Docker image", bold=True)
 
     prog_map: dict[str, Optional[str]] = {}
 
-    def _pp_prog_map(prog_map: dict[str, Optional[str]], prev_lines: int):
+    def _pp_prog_map(prog_map: dict[str, Optional[str]], prev_lines: int) -> int:
         if prev_lines > 0:
             click.echo("\x1b[2K\x1b[1E" * prev_lines + f"\x1b[{prev_lines}F", nl=False)
 
@@ -167,22 +187,49 @@ def print_upload_logs(upload_image_logs, image, *, print_header: bool = True):
 
         return i
 
+    def _move_below_progress(prev_lines: int) -> None:
+        # the cursor sits at the top of the progress block. Move below it so that the
+        # next line, and whatever the caller prints next, do not overwrite a row.
+        if prev_lines > 0:
+            click.echo(f"\x1b[{prev_lines}E", nl=False)
+
     prev_lines = 0
+    digest: Optional[str] = None
 
     for x in upload_image_logs:
-        if (
-            x.get("error") is not None
-            and "denied: Your authorization token has expired." in x["error"]
-        ):
-            click.secho(
-                f"\nDocker authorization token for {image} is expired.",
-                fg="red",
-                bold=True,
-            )
-            sys.exit(1)
+        error = x.get("error")
+        if error is not None:
+            _move_below_progress(prev_lines)
 
-        prog_map[x.get("id")] = x.get("progress")
+            if EXPIRED_TOKEN_ERROR in error:
+                click.secho(
+                    f"Docker authorization token for {image} is expired.",
+                    fg="red",
+                    bold=True,
+                )
+            else:
+                click.secho(error, fg="red", bold=True)
+
+            raise click.exceptions.Exit(1)
+
+        aux: Optional[DockerPushAux] = x.get("aux")
+        if aux is not None and aux.get("Digest"):
+            digest = aux["Digest"]
+
+        # status-only items carry no id, and would collide on a single None key
+        layer_id = x.get("id")
+        if layer_id is None:
+            continue
+
+        prog_map[layer_id] = x.get("progress")
         prev_lines = _pp_prog_map(prog_map, prev_lines)
+
+    _move_below_progress(prev_lines)
+
+    if digest is not None:
+        click.secho(f"digest: {digest}", dim=True, italic=True)
+
+    return digest
 
 
 def _print_reg_resp(resp, image):

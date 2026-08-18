@@ -16,6 +16,24 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.77.0 - 2026-08-18
+
+### Added
+
+* `latch image upload` and `latch image ls` accept `--workspace-id`, matching `latch register`
+* `latch image upload` reports the digest of the pushed image
+
+### Changed
+
+* `latch image upload` no longer pulls a missing image implicitly; pass `--pull` to fetch it
+* `latch image ls` exits 0 when a workspace has no images and writes its messages to stderr, so stdout carries only the listing
+* `latch_cli.services.docker.utils.get_credentials` requires a `ws_id` keyword argument
+
+### Fixed
+
+* `latch image upload` fails on any Docker push or pull error, not just an expired token
+* `latch image upload` exits 3 when the image is pushed but Latch fails to record it; the record is idempotent, so re-running is safe
+
 ## 2.76.10 - 2026-07-30
 
 ### Fixed
