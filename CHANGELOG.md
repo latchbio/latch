@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.77.1 - 2026-08-24
+
+### Changed
+
+* `latch image upload` now skips when the image and version are already recorded, so re-runs
+  are idempotent instead of failing on a re-push to the immutable registry
+
 ## 2.77.0 - 2026-08-18
 
 ### Added

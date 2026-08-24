@@ -338,6 +338,12 @@ def upload_image(
 
     full_image_ref = f"{ecr_base}/{namespaced_image_name}:{version}"
 
+    # a re-push of an already-recorded tag can only fail on the immutable registry, so
+    # skip it here, before the local-image inspect, so a re-run needs no local image
+    if is_recorded_in_db(ws_id, namespaced_image_name, version):
+        click.secho(f"{full_image_ref} is already published; skipping.", fg="green")
+        return
+
     client = get_local_docker_client()
 
     # resolve the source before we prompt: the user should be confirming a known
