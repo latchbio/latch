@@ -491,8 +491,9 @@ def test_upload_skips_when_already_recorded(
     client = _LocalImageClient()
     monkeypatch.setattr(private_images, "get_local_docker_client", lambda: client)
 
-    private_images.upload_image("team/tool:v1", skip_confirmation=True)
+    result = private_images.upload_image("team/tool:v1", skip_confirmation=True)
 
+    assert result is None
     assert client.pushed == []
     assert recorded is False
     assert "already published" in capsys.readouterr().out
@@ -506,8 +507,9 @@ def test_upload_skips_before_requiring_a_local_image(monkeypatch: pytest.MonkeyP
     client = _MissingImageClient()
     monkeypatch.setattr(private_images, "get_local_docker_client", lambda: client)
 
-    private_images.upload_image("team/tool:v1", skip_confirmation=True)
+    result = private_images.upload_image("team/tool:v1", skip_confirmation=True)
 
+    assert result is None
     assert client.pushed == []
     assert client.pulled == []
 
