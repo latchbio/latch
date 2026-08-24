@@ -60,6 +60,7 @@ def _upload_stubs(monkeypatch: pytest.MonkeyPatch) -> None:
         ),
     )
     monkeypatch.setattr(private_images, "record_in_db_or_exit", lambda *_a, **_k: None)
+    monkeypatch.setattr(private_images, "is_recorded_in_db", lambda *_a, **_k: False)
 
 
 @pytest.fixture

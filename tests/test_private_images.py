@@ -378,6 +378,7 @@ def test_upload_image_uses_the_workspace_for_every_consumer(
     monkeypatch.setattr(private_images, "get_local_docker_client", lambda: client)
     monkeypatch.setattr(private_images, "print_upload_logs", lambda *_a, **_k: None)
     monkeypatch.setattr(private_images, "record_in_db_or_exit", record)
+    monkeypatch.setattr(private_images, "is_recorded_in_db", lambda *_a, **_k: False)
 
     private_images.upload_image(
         "some_registry/image:v1", workspace_id=OTHER_WS, skip_confirmation=True
@@ -471,6 +472,44 @@ def test_a_local_image_never_pulls(monkeypatch: pytest.MonkeyPatch):
 
     assert client.pulled == []
     assert client.pushed == [f"{private_images.ecr_base}/{WS_ID}_tool"]
+
+
+@pytest.mark.usefixtures("_upload_stubs", "_quiet_upload_logs")
+def test_upload_skips_when_already_recorded(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+):
+    """A re-run of an already-recorded publish must not push or record again."""
+    monkeypatch.setattr(private_images, "is_recorded_in_db", lambda *_a, **_k: True)
+    recorded = False
+
+    def record(*_args: object, **_kwargs: object) -> None:
+        nonlocal recorded
+        recorded = True
+
+    monkeypatch.setattr(private_images, "record_in_db_or_exit", record)
+
+    client = _LocalImageClient()
+    monkeypatch.setattr(private_images, "get_local_docker_client", lambda: client)
+
+    private_images.upload_image("team/tool:v1", skip_confirmation=True)
+
+    assert client.pushed == []
+    assert recorded is False
+    assert "already published" in capsys.readouterr().out
+
+
+@pytest.mark.usefixtures("_upload_stubs", "_quiet_upload_logs")
+def test_upload_skips_before_requiring_a_local_image(monkeypatch: pytest.MonkeyPatch):
+    """The skip must short-circuit before the local-image guard would exit(1)."""
+    monkeypatch.setattr(private_images, "is_recorded_in_db", lambda *_a, **_k: True)
+
+    client = _MissingImageClient()
+    monkeypatch.setattr(private_images, "get_local_docker_client", lambda: client)
+
+    private_images.upload_image("team/tool:v1", skip_confirmation=True)
+
+    assert client.pushed == []
+    assert client.pulled == []
 
 
 def _stub_ls_response(
