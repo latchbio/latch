@@ -41,7 +41,7 @@ dependencies = [
   "python-dateutil>=2.8",
   "pydantic>=2,<3",
   "rich>=14.0.0",
-  "GitPython==3.1.40",
+  "GitPython==3.1.61",
   # for old latch develop, to be removed
   "asyncssh==2.13.2",
   "websockets>=11,<16",
