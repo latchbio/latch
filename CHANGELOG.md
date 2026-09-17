@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.77.1 - 2026-09-17
+
+### Dependencies
+
+* Remove `pyxattr`; 
+
 ## 2.77.0 - 2026-08-18
 
 ### Added

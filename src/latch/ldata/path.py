@@ -1,6 +1,8 @@
 import atexit
+import os
 import re
 import shutil
+import subprocess
 import sys
 import warnings
 from collections.abc import Iterator
@@ -10,7 +12,6 @@ from pathlib import Path
 from typing import Optional, Type
 
 import gql
-import xattr
 from flytekit import (
     Blob,
     BlobMetadata,
@@ -42,6 +43,34 @@ _dir_types = {
 }
 
 _download_idx = 0
+
+
+def _listxattr(path: str) -> list[str]:
+    if sys.platform == "darwin":
+        output = subprocess.check_output(["xattr", path], text=True)
+        return output.splitlines()
+    return os.listxattr(path)
+
+
+def _getxattr(path: str, name: str) -> bytes:
+    if sys.platform == "darwin":
+        output = subprocess.check_output(["xattr", "-px", name, path], text=True)
+        return bytes.fromhex(output)
+    return os.getxattr(path, name)
+
+
+def _setxattr(path: str, name: str, value: bytes) -> None:
+    if sys.platform == "darwin":
+        subprocess.run(["xattr", "-wx", name, value.hex(), path], check=True)
+        return
+    os.setxattr(path, name, value)
+
+
+def _removexattr(path: str, name: str) -> None:
+    if sys.platform == "darwin":
+        subprocess.run(["xattr", "-d", name, path], check=True)
+        return
+    os.removexattr(path, name)
 
 
 @dataclass
@@ -372,18 +401,10 @@ class LPath:
         if version_id is not None:
             version_id = version_id.encode()
 
-        version_xattr = b"user.version_id"
+        version_xattr = "user.version_id"
 
         if not_windows and cache and dst.exists():
-            list_attrs = xattr.listxattr(dst_str)
-            if list_attrs is None:
-                list_attrs = []
-
-            normalized_attr_names = [
-                (a if isinstance(a, (bytes, bytearray)) else a.encode())
-                for a in list_attrs
-            ]
-            if version_xattr in normalized_attr_names and version_id == xattr.getxattr(
+            if version_xattr in _listxattr(dst_str) and version_id == _getxattr(
                 dst_str, version_xattr
             ):
                 return dst
@@ -397,18 +418,10 @@ class LPath:
 
         if not_windows and version_id is not None:
             if download_complete:
-                xattr.setxattr(dst_str, version_xattr, version_id)
+                _setxattr(dst_str, version_xattr, version_id)
             elif dst.exists():
-                list_attrs = xattr.listxattr(dst_str)
-                if list_attrs is None:
-                    list_attrs = []
-
-                normalized_attr_names = [
-                    (a if isinstance(a, (bytes, bytearray)) else a.encode())
-                    for a in list_attrs
-                ]
-                if version_xattr in normalized_attr_names:
-                    xattr.removexattr(dst_str, version_xattr)
+                if version_xattr in _listxattr(dst_str):
+                    _removexattr(dst_str, version_xattr)
 
         return dst
 
