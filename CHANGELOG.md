@@ -16,6 +16,12 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.77.2 - 2026-10-21
+
+### Security
+
+* Update `certifi` to 2026.10.19, removing trust in the compromised emSign certificate chain
+
 ## 2.77.1 - 2026-09-17
 
 ### Dependencies
