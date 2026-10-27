@@ -8,12 +8,12 @@ import sys
 import traceback
 from logging import getLogger
 from pathlib import Path
+from shlex import quote
 from textwrap import dedent
 from typing import Callable, Optional, TypeVar, Union
 
 import click
 from click.decorators import FC
-import gql
 from gql.transport.requests import log as requests_logger
 from packaging.version import parse as parse_version
 from typing_extensions import ParamSpec
@@ -33,10 +33,8 @@ from latch_cli.utils import (
     get_auth_header,
     get_latest_package_version,
     get_local_package_version,
-    hash_directory,
 )
 from latch_cli.workflow_config import BaseImageOptions
-from latch_sdk_gql.execute import execute as gql_execute
 
 log = getLogger(__name__)
 
@@ -1383,159 +1381,14 @@ def attach(execution_id: Optional[str]):
 )
 @requires_login
 @requires_workspace
-def nf_register(
-    pkg_root: Path,
-    yes: bool,
-    no_ignore: bool,
-    disable_auto_version: bool,
-    disable_git_version: bool,
-    script_path: str,
-):
-    from latch_cli.nextflow.forch_register import RegisterConfig, register
-
-    if not (pkg_root / script_path).exists():
-        click.secho(
-            f"""\
-            Could not locate entrypoint file '{script_path}'. Ensure that the path exists, or provide
-            another using `--script-path`
-            """.strip(),
-            fg="red",
-        )
-        raise click.exceptions.Exit(1)
-
-    # >>> Version parsing
-
-    version_file = pkg_root / "version"
-    try:
-        version_base = version_file.read_text().strip()
-    except OSError:
-        if not yes and not click.confirm(
-            "Could not find a `version` file in the package root. One will be created. Proceed?"
-        ):
-            return
-
-        version_base = "0.1.0"
-        version_file.write_text(version_base)
-        click.echo(f"Created a version file with initial version {version_base}.")
-
-    components: list[str] = [version_base]
-
-    if disable_auto_version:
-        click.echo("Skipping version tagging due to `--disable-auto-version`")
-    elif disable_git_version:
-        click.echo("Skipping git version tagging due to `--disable-git-version`")
-
-    if not disable_auto_version and not disable_git_version:
-        try:
-            from git import GitError, Repo
-
-            try:
-                repo = Repo(pkg_root)
-                sha = repo.head.commit.hexsha[:6]
-                components.append(sha)
-                click.echo(f"Tagging version with git commit {sha}.")
-                click.secho(
-                    "  Disable with --disable-git-version/-G", dim=True, italic=True
-                )
-
-                if repo.is_dirty():
-                    components.append("wip")
-                    click.secho(
-                        "  Repo contains uncommitted changes - tagging version with `wip`",
-                        italic=True,
-                    )
-            except GitError:
-                pass
-        except ImportError:
-            pass
-
-    if not disable_auto_version:
-        sha = hash_directory(pkg_root, silent=True)[:6]
-        components.append(sha)
-        click.echo(f"Tagging version with directory checksum {sha}.")
-        click.secho("  Disable with --disable-auto-version/-d", dim=True, italic=True)
-
-    version = "-".join(components)
-
-    click.echo()
-
-    # >>> Display Name parsing
-
-    dotfile_root = pkg_root / ".latch"
-    dotfile_root.mkdir(exist_ok=True)
-
-    workflow_name_file = dotfile_root / "workflow_name"
-    try:
-        workflow_name = workflow_name_file.read_text()
-    except OSError:
-        workflow_name = click.prompt("What is the name of this workflow?")
-
-        if not yes and not click.confirm(
-            "This workflow name will be stored in a file at `.latch/workflow_name` under the package root for future use. Proceed?"
-        ):
-            return
-
-        workflow_name_file.write_text(workflow_name)
-        click.echo("Stored workflow name in .latch/workflow_name.")
-        click.echo()
-
-    assert isinstance(workflow_name, str)
-
-    click.echo(
-        dedent(f"""\
-        {click.style("Workflow Name", fg="bright_blue")}: {workflow_name}
-        {click.style("Version", fg="bright_blue")}: {version}
-        {click.style("Workspace", fg="bright_blue")}: {current_workspace()}
-        """).strip()
+def nf_register(pkg_root: Path, script_path: str, **_retired_options: bool):
+    command = (
+        f"latch register {quote(str(pkg_root))} "
+        f"--nf-script {quote(str(pkg_root / script_path))}"
     )
-
-    click.echo()
-
-    res = gql_execute(
-        gql.gql("""
-            query WorkflowVersionExistenceCheck(
-                $argWorkspaceId: BigInt!
-                $argWorkflowName: String!
-                $argWorkflowVersion: String!
-            ) {
-                workflowInfos(
-                    condition: {
-                        name: $argWorkflowName
-                        version: $argWorkflowVersion
-                        ownerId: $argWorkspaceId
-                    }
-                ) {
-                    totalCount
-                }
-            }
-        """),
-        {
-            "argWorkspaceId": current_workspace(),
-            "argWorkflowName": workflow_name,
-            "argWorkflowVersion": version,
-        },
-    )["workflowInfos"]
-
-    if int(res["totalCount"]) > 0:
-        click.secho(
-            dedent(f"""
-            Workflow {workflow_name}:{version} already exists in this workspace.
-
-            Please update either the `.latch/workflow_name` or `version` file(s) and re-register.
-            """).strip(),
-            fg="red",
-        )
-        raise click.exceptions.Exit(1)
-
-    if not yes and not click.confirm("Start registration?"):
-        click.secho("Cancelled", bold=True)
-        return
-
-    click.echo()
-
-    register(
-        pkg_root,
-        config=RegisterConfig(workflow_name, version, Path(script_path), not no_ignore),
+    raise click.UsageError(
+        "Direct-upload Nextflow registration is retired. "
+        f"Use {command} with Flyte NextflowMetadata."
     )
 
 
