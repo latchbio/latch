@@ -32,6 +32,7 @@ protocol_version = 2
 sync_interval_seconds = 0.5
 process_stop_seconds = 5
 startup_seconds = 600
+rsync_vanished_exit_code = 24
 
 
 class InstanceSize(str, Enum):
@@ -92,7 +93,7 @@ def registered_workflow(name: str, version: Optional[str]) -> dict[str, str]:
     return workflows[0]
 
 
-async def sync_once(pkg_root: Path, session_id: str) -> None:
+async def sync_once(pkg_root: Path, session_id: str) -> bool:
     command = [
         "rsync",
         "--recursive",
@@ -123,10 +124,17 @@ async def sync_once(pkg_root: Path, session_id: str) -> None:
     )
     try:
         _, stderr = await process.communicate()
+        if process.returncode == rsync_vanished_exit_code:
+            click.echo(
+                "Warning: source files disappeared during transfer; synchronization remains incomplete.",
+                err=True,
+            )
+            return False
         if process.returncode != 0:
             raise click.ClickException(
                 f"Development synchronization failed: {stderr.decode(errors='replace').strip()}"
             )
+        return True
     finally:
         if process.returncode is None:
             os.killpg(process.pid, signal.SIGTERM)
@@ -190,7 +198,16 @@ async def session(
         if data.get("stream") != "open":
             raise click.ClickException("Forch terminal did not open.")
         if disable_sync is False:
-            await sync_once(pkg_root, session_id)
+            loop = asyncio.get_running_loop()
+            sync_deadline = loop.time() + startup_seconds
+            while True:
+                complete = await asyncio.wait_for(
+                    sync_once(pkg_root, session_id), sync_deadline - loop.time()
+                )
+                if complete is True:
+                    break
+
+                await asyncio.sleep(sync_interval_seconds)
 
         import termios
         import tty
