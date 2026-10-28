@@ -8,7 +8,6 @@ import sys
 import traceback
 from logging import getLogger
 from pathlib import Path
-from shlex import quote
 from textwrap import dedent
 from typing import Callable, Optional, TypeVar, Union
 
@@ -1347,49 +1346,6 @@ def attach(execution_id: Optional[str]):
     from latch_cli.services.k8s.attach import attach
 
     attach(execution_id)
-
-
-@nextflow.command("register")
-@click.argument(
-    "pkg_root", type=click.Path(exists=True, file_okay=False, path_type=Path)
-)
-@click.option("--yes", "-y", is_flag=True, help="Skip confirmation dialogs.")
-@click.option(
-    "--no-ignore",
-    "--all",
-    "-a",
-    is_flag=True,
-    help="Add all files (including those excluded by .gitignore/.dockerignore) to workflow archive",
-)
-@click.option(
-    "--disable-auto-version",
-    "-d",
-    is_flag=True,
-    help="Only use the contents of the version file for workflow versioning.",
-)
-@click.option(
-    "--disable-git-version",
-    "-G",
-    is_flag=True,
-    help="When the package root is a git repository, do not append the current commit hash to the version.",
-)
-@click.option(
-    "--script-path",
-    type=str,
-    default="main.nf",
-    help="Path to the entrypoint nextflow file. Must be relative to the package root.",
-)
-@requires_login
-@requires_workspace
-def nf_register(pkg_root: Path, script_path: str, **_retired_options: bool):
-    command = (
-        f"latch register {quote(str(pkg_root))} "
-        f"--nf-script {quote(str(pkg_root / script_path))}"
-    )
-    raise click.UsageError(
-        "Direct-upload Nextflow registration is retired. "
-        f"Use {command} with Flyte NextflowMetadata."
-    )
 
 
 """
