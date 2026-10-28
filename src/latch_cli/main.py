@@ -26,7 +26,7 @@ from latch_cli.exceptions.handler import CrashHandler
 from latch_cli.services.cp.autocomplete import complete as cp_complete
 from latch_cli.services.cp.autocomplete import remote_complete
 from latch_cli.services.init.init import template_flag_to_option
-from latch_cli.services.k8s.develop import InstanceSize
+from latch_cli.services.develop import InstanceSize
 from latch_cli.utils import (
     AuthenticationError,
     WorkflowType,
@@ -536,11 +536,12 @@ def generate_metadata(
 @click.option(
     "--instance-size",
     "--size",
-    "-s",
     type=EnumChoice(InstanceSize, case_sensitive=False),
     default=InstanceSize.small_task,
     help="Size of machine to provision for develop session",
 )
+@click.option("--forch-domain", default="2", show_default=True)
+@click.option("--forch-region", default="us-west-2", show_default=True)
 @requires_login
 @requires_workspace
 def local_development(
@@ -551,6 +552,8 @@ def local_development(
     snakemake: bool,
     metadata_root: Optional[Path],
     instance_size: InstanceSize,
+    forch_domain: str,
+    forch_region: str,
 ):
     """Develop workflows "locally"
 
@@ -560,15 +563,7 @@ def local_development(
     crash_handler.message = "Error during local development session"
     crash_handler.pkg_root = str(pkg_root)
 
-    # todo(ayush): purge
-    if snakemake:
-        from latch_cli.services.local_dev_old import local_development
-
-        return local_development(
-            pkg_root.resolve(), snakemake, wf_version, metadata_root, disable_sync
-        )
-
-    from latch_cli.services.k8s.develop import local_development
+    from latch_cli.services.develop import local_development
 
     return local_development(
         pkg_root.resolve(),
@@ -576,6 +571,10 @@ def local_development(
         size=instance_size,
         wf_version=wf_version,
         disable_sync=disable_sync,
+        snakemake=snakemake,
+        metadata_root=metadata_root,
+        target_domain=forch_domain,
+        target_region=forch_region,
     )
 
 
