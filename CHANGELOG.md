@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.78.0 - 2026-10-28
+
+### Removed
+
+* Remove `latch nextflow register` and its direct-upload implementation.
+  Use `latch register <pkg_root> --nf-script <script>` with `NextflowMetadata` for Flyte-backed registration.
+
 ## 2.77.2 - 2026-10-21
 
 ### Security
