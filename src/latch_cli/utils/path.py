@@ -162,7 +162,7 @@ auth = re.compile(
 )
 
 
-def get_path_error(path: str, message: str, acc_id: str) -> str:
+def get_path_error(path: str, message: str, acc_id: Optional[str] = None) -> str:
     with_scheme = append_scheme(path)
     normalized = normalize_path(path)
 
@@ -196,6 +196,19 @@ def get_path_error(path: str, message: str, acc_id: str) -> str:
         ws_str = f"{ws_str} ({ws_name})"
     ws_str += "\n"
 
+    if acc_id is not None:
+        perms_str = (
+            f"{click.style('2. Account ', bold=False, reset=False)}"
+            f"{click.style(acc_id, bold=True, reset=False)}"
+            f"{click.style(' has permission to view the target object', bold=False, reset=False)}"
+        )
+    else:
+        perms_str = click.style(
+            "2. The signing account has permission to view the target object",
+            bold=False,
+            reset=False,
+        )
+
     return click.style(
         f"""
 {click.style(f'{path}: ', bold=True, reset=False)}{click.style(message, bold=False, reset=False)}
@@ -203,7 +216,7 @@ def get_path_error(path: str, message: str, acc_id: str) -> str:
 {auth_str}
 {click.style("Check that:", bold=True, reset=False)}
 {click.style("1. The target object exists", bold=False, reset=False)}
-{click.style(f"2. Account ", bold=False, reset=False)}{click.style(acc_id, bold=True, reset=False)}{click.style(" has permission to view the target object", bold=False, reset=False)}
+{perms_str}
 {"3. The correct workspace is selected" if account_relative else ""}
 
 For privacy reasons, non-viewable objects and non-existent objects are indistinguishable""",
