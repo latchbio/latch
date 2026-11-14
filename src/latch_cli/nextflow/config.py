@@ -33,6 +33,10 @@ T = TypeVar("T")
 
 
 def as_python_val(typ: type[T], value: object) -> T:
+    # enum members are generated from `str(value)` of every schema value
+    if isinstance(typ, type) and issubclass(typ, Enum):
+        value = str(value)
+
     try:
         return typ(value)
     except:
@@ -52,8 +56,16 @@ def get_field_type(
     # supported by the nf-schema spec (however, that has never stopped nf-core developers)
     args: dict[str, object] = {}
     default_value: Optional[dict[str, object]] = None
-    if "default" in props:
-        python_val = as_python_val(inner, props["default"])
+    python_val = as_python_val(inner, props["default"]) if "default" in props else None
+    if isinstance(inner, type) and "default" in props and not isinstance(python_val, inner):
+        # e.g. `$projectDir/assets/x.json` is not a valid `LPath`; leave the parameter
+        # unset so that nextflow uses the pipeline's own default
+        click.secho(
+            f"Warning: default {props['default']!r} of {name!r} cannot be converted to"
+            f" `{inner.__name__}` - ignoring it",
+            fg="yellow",
+        )
+    elif "default" in props:
         # note(ayush): not dealing with lists or dicts here as those are not supported by the nf-schema spec
         if isinstance(python_val, (LatchDir, LatchFile, LPath)):
             args["default_factory"] = lambda: python_val
@@ -141,6 +153,13 @@ def get_python_type_inner(
         # languages - however since nextflow accepts them as strings anyway i think it should be fine
         # in this specific case
         # see randomascii.wordpress.com/2013/02/07/float-precision-revisited-nine-digit-float-portability for some related stuff
+        # distinct values can map to the same identifier (e.g. "+", "-", "?"); keep them all
+        base = field_name
+        n = 1
+        while field_name in variants:
+            n += 1
+            field_name = f"{base}_{n}"
+
         variants[field_name] = str(value)
 
     return Enum(f"{best_effort_title_case(param_name)}Type", variants)
