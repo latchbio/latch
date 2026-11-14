@@ -180,14 +180,17 @@ def parse_string(
         )
 
         parse_res = parse_samplesheet_schema(Path(schema_ref))
-        default = parse_res.default
+        # a schema whose items are not objects (e.g. a list of identifiers) does not
+        # describe a samplesheet: treat the parameter as a plain file below
+        if parse_res is not None:
+            default = parse_res.default
 
-        return NfSamplesheetType(
-            type="samplesheet",
-            metadata=metadata,
-            schema=parse_res.schema,
-            **({} if default is None else {"default": default}),
-        )
+            return NfSamplesheetType(
+                type="samplesheet",
+                metadata=metadata,
+                schema=parse_res.schema,
+                **({} if default is None else {"default": default}),
+            )
 
     assert default is None or isinstance(default, str), "`default` must be a string"
 
@@ -321,7 +324,7 @@ def parse_enum(
         flavor="number",
         values=values,
         metadata=metadata,
-        **({"default": float(default)} if default is not None else {}),
+        **({"default": default} if default is not None else {}),
     )
 
 
@@ -390,6 +393,11 @@ def parse(
 
     typ = properties["type"]
 
+    if not isinstance(typ, str):
+        raise SchemaParsingError(
+            f"error parsing {param_name!r}: unsupported type {typ!r}"
+        )
+
     try:
         if "enum" in properties:
             return parse_enum(param_name, properties, required_set)
@@ -414,7 +422,9 @@ def parse(
             [e],
         ) from e
 
-    raise ValueError(f"unknown type: {typ!r}")
+    raise SchemaParsingError(
+        f"error parsing {param_name!r}: unsupported type {typ!r}"
+    )
 
 
 @dataclass
@@ -423,7 +433,7 @@ class ParseSamplesheetRes:
     default: Optional[list[dict]] = None
 
 
-def parse_samplesheet_schema(schema_path: Path) -> ParseSamplesheetRes:
+def parse_samplesheet_schema(schema_path: Path) -> Optional[ParseSamplesheetRes]:
     try:
         schema_contents = json.loads(schema_path.read_text())
     except OSError as e:
@@ -436,7 +446,11 @@ def parse_samplesheet_schema(schema_path: Path) -> ParseSamplesheetRes:
     # schema is the samplesheet schema
     array = parse_array("", schema_contents, set())
 
-    return ParseSamplesheetRes(array["items"]["properties"], array.get("default"))
+    items = array["items"]
+    if items["type"] != "object":
+        return None
+
+    return ParseSamplesheetRes(items["properties"], array.get("default"))
 
 
 def parse_schema(schema_path: Path, *, strict: bool = True) -> dict[str, NfType]:

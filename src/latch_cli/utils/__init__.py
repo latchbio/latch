@@ -423,6 +423,9 @@ def identifier_suffix_from_str(x: str) -> str:
 
 
 def identifier_from_str(x: str) -> str:
+    if x == "":
+        return "_"
+
     return (x[0] if x[0].isidentifier() else "_") + identifier_suffix_from_str(x[1:])
 
 
