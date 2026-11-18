@@ -224,7 +224,7 @@ def get_flag(name: str, val: object) -> list[str]:
     if val is None:
         return []
     if isinstance(val, bool):
-        return [flag] if val else []
+        return [flag] if val else [flag, "false"]
     if isinstance(val, (LatchFile, LatchDir)):
         if val.remote_path is not None:
             return [flag, val.remote_path]
