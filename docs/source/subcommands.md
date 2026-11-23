@@ -238,12 +238,3 @@ $ latch get-executions
 Spawns a terminal user interface which mimics the listing of executions found in
 the browser. Browse through your previous executions, view logs, and manage your
 running executions all without leaving your terminal.
-
-## `latch develop`
-
-```console
-$ latch develop PATH_TO_WORKFLOW_DIRECTORY
-```
-
-Creates a REPL that allows for quick iteration and debugging during workflow
-development. See [here](basics/local_development.md) for more info.

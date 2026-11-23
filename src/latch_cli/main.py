@@ -25,7 +25,6 @@ from latch_cli.exceptions.handler import CrashHandler
 from latch_cli.services.cp.autocomplete import complete as cp_complete
 from latch_cli.services.cp.autocomplete import remote_complete
 from latch_cli.services.init.init import template_flag_to_option
-from latch_cli.services.k8s.develop import InstanceSize
 from latch_cli.utils import (
     AuthenticationError,
     WorkflowType,
@@ -495,89 +494,6 @@ def generate_metadata(
         )
 
 
-@latch.command("develop")
-@click.argument("pkg_root", nargs=1, type=click.Path(exists=True, path_type=Path))
-@click.option(
-    "--yes",
-    "-y",
-    is_flag=True,
-    default=False,
-    type=bool,
-    help="Skip the confirmation dialog.",
-)
-@click.option(
-    "--wf-version",
-    "-v",
-    type=str,
-    help="Use the container environment of a specific workflow version",
-)
-@click.option(
-    "--disable-sync",
-    "-d",
-    is_flag=True,
-    default=False,
-    type=bool,
-    help="Disable the automatic syncing of local files to develop session",
-)
-@click.option(
-    "-s",
-    "--snakemake",
-    is_flag=True,
-    default=False,
-    type=bool,
-    help="Start a develop session for a Snakemake workflow.",
-)
-@click.option(
-    "--metadata-root",
-    type=click.Path(exists=False, path_type=Path, file_okay=False),
-    help="Path to directory containing Latch metadata. Only for Snakemake",
-)
-@click.option(
-    "--instance-size",
-    "--size",
-    "-s",
-    type=EnumChoice(InstanceSize, case_sensitive=False),
-    default=InstanceSize.small_task,
-    help="Size of machine to provision for develop session",
-)
-@requires_login
-@requires_workspace
-def local_development(
-    pkg_root: Path,
-    yes: bool,
-    wf_version: Optional[str],
-    disable_sync: bool,
-    snakemake: bool,
-    metadata_root: Optional[Path],
-    instance_size: InstanceSize,
-):
-    """Develop workflows "locally"
-
-    Visit docs.latch.bio to learn more.
-    """
-
-    crash_handler.message = "Error during local development session"
-    crash_handler.pkg_root = str(pkg_root)
-
-    # todo(ayush): purge
-    if snakemake:
-        from latch_cli.services.local_dev_old import local_development
-
-        return local_development(
-            pkg_root.resolve(), snakemake, wf_version, metadata_root, disable_sync
-        )
-
-    from latch_cli.services.k8s.develop import local_development
-
-    return local_development(
-        pkg_root.resolve(),
-        skip_confirm_dialog=yes,
-        size=instance_size,
-        wf_version=wf_version,
-        disable_sync=disable_sync,
-    )
-
-
 @latch.command("exec")
 @click.option(
     "--execution-id", "-e", type=str, help="Optional execution ID to inspect."
@@ -769,8 +685,7 @@ def image_ls(*, workspace_id: Optional[str] = None) -> None:
     default=False,
     type=bool,
     help=(
-        "Register the workflow in staging mode - the workflow will not show up in the console but "
-        "will be available to develop sessions."
+        "Register the workflow in staging mode so it will not show up in the console."
     ),
 )
 @click.option(
