@@ -56,22 +56,6 @@ latch\_cli.services.launch module
    :undoc-members:
    :show-inheritance:
 
-latch\_cli.services.local\_dev module
--------------------------------------
-
-.. automodule:: latch_cli.services.local_dev
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-latch\_cli.services.local\_dev\_old module
-------------------------------------------
-
-.. automodule:: latch_cli.services.local_dev_old
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 latch\_cli.services.login module
 --------------------------------
 
