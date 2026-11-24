@@ -1,6 +1,6 @@
 """Service to upload test objects to a managed bucket."""
 
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import boto3
 import botocore
@@ -39,7 +39,11 @@ def upload(src_path: str, dont_confirm_overwrite: bool = True) -> str:
     if account_id is None or account_id == "":
         account_id = account_id_from_token(retrieve_or_login())
 
-    allowed_key = str((Path("test-data") / account_id).joinpath(src_path))
+    # S3 keys always use "/", and an absolute path would otherwise replace the
+    # account prefix entirely, so drop its anchor (eg. "/" or "C:").
+    path = Path(src_path)
+    parts = path.parts[1:] if path.anchor else path.parts
+    allowed_key = PurePosixPath("test-data", account_id, *parts).as_posix()
 
     upload_helper(
         Path(src_path).resolve(),
