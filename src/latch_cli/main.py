@@ -601,7 +601,7 @@ def image_ls(*, workspace_id: Optional[str] = None) -> None:
 @click.option(
     "--remote/--no-remote",
     is_flag=True,
-    default=True,
+    default=False,
     type=bool,
     help="Use a remote server to build workflow.",
 )

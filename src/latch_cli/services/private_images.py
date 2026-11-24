@@ -428,7 +428,7 @@ def build_and_upload_image(
     version: Optional[str] = None,
     dockerfile_path: Optional[Path] = None,
     workspace_id: Optional[str] = None,
-    remote: bool = True,
+    remote: bool = False,
     skip_confirmation: bool = False,
     progress_plain: bool = False,
 ) -> None:
