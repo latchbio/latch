@@ -12,8 +12,16 @@ from urllib.parse import urljoin
 
 DOMAIN = os.environ.get("LATCH_SDK_DOMAIN", "latch.bio")
 CONSOLE_URL: str = f"https://console.{DOMAIN}"
-NUCLEUS_URL: str = f"https://nucleus.{DOMAIN}"
-VACUOLE_URL: str = f"https://vacuole.{DOMAIN}"
+
+_in_execution = os.environ.get("FLYTE_INTERNAL_EXECUTION_ID") is not None
+_public = DOMAIN == "latch.bio" and not _in_execution
+
+NUCLEUS_URL: str = os.environ.get(
+    "LATCH_SDK_NUCLEUS_URL", f"https://{'api' if _public else 'nucleus'}.{DOMAIN}"
+)
+VACUOLE_URL: str = os.environ.get(
+    "LATCH_SDK_VACUOLE_URL", f"https://{'graphql' if _public else 'vacuole'}.{DOMAIN}"
+)
 
 T = TypeVar("T")
 
