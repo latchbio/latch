@@ -16,6 +16,13 @@ Types of changes
 
 # Latch SDK Changelog
 
+## 2.79.0 - 2026-11-24
+
+### Changed
+
+* Outside of workflow executions, the CLI and SDK now call `https://api.latch.bio` and `https://graphql.latch.bio` instead of `nucleus.latch.bio` and `vacuole.latch.bio`, which are no longer reachable from the internet. Upgrade to keep using `latch` from your own machine.
+* `LATCH_SDK_NUCLEUS_URL` and `LATCH_SDK_VACUOLE_URL` override the API hosts.
+
 ## 2.78.0 - 2026-10-28
 
 ### Removed
