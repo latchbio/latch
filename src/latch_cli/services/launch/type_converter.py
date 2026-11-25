@@ -245,6 +245,15 @@ def _convert_blob(
 
     remote_uri: Optional[str] = None
     if isinstance(value, (LatchFile, LatchDir)):
+        expected_dimensionality = (
+            _core_types.BlobType.BlobDimensionality.SINGLE
+            if isinstance(value, LatchFile)
+            else _core_types.BlobType.BlobDimensionality.MULTIPART
+        )
+        if blob_type.dimensionality != expected_dimensionality:
+            raise TypeError(
+                "Blob dimensionality does not match LatchFile/LatchDir value"
+            )
         remote_uri = value.remote_path if value.remote_path is not None else value.path
     elif isinstance(value, LPath):
         remote_uri = value.path
