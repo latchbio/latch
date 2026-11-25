@@ -17,7 +17,7 @@ def expand_pattern(remote_path: str) -> List[str]:
 
     res: List[str] = []
     for child in children:
-        if not pattern_re.match(child):
+        if not pattern_re.fullmatch(child):
             continue
 
         res.append(urljoins(parent, child))
