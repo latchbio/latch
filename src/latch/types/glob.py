@@ -50,4 +50,7 @@ def file_glob(
         wd = target_dir
     matched = sorted(wd.glob(pattern))
 
+    if not remote_directory.endswith("/"):
+        remote_directory += "/"
+
     return [LatchFile(str(file), remote_directory + file.name) for file in matched]
