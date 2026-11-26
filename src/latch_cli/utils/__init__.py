@@ -19,7 +19,6 @@ from urllib.parse import urljoin
 import click
 import jwt
 
-from latch.utils import current_workspace
 from latch_cli.click_utils import bold
 from latch_cli.constants import latch_constants
 from latch_cli.tinyrequests import get
@@ -161,6 +160,9 @@ def human_readable_datetime(dt: datetime) -> str:
 
 
 def hash_directory(dir_path: Path, *, silent: bool = False) -> str:
+    # Imported lazily to break a circular import. See latchbio/latch#618
+    from latch.utils import current_workspace
+
     # todo(maximsmol): store per-file hashes to show which files triggered a version change
     if not silent:
         click.secho(
